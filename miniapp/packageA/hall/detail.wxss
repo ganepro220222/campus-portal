@@ -99,6 +99,7 @@
   align-items: center;
   justify-content: center;
   gap: 12rpx;
+  white-space: nowrap;
   box-shadow: 0 16rpx 44rpx rgba(150, 110, 30, 0.35);
 }
 .poster-btn::after { border: none; }

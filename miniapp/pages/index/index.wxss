@@ -36,9 +36,14 @@
   justify-content: center;
 }
 .header-me:active { background: #F2F7FC; }
-.school-title-img {
-  height: 50rpx;
-  max-width: 62%;
+.header-name {
+  font-size: 46rpx;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: 6rpx;
+  white-space: nowrap;
+  /* 楷体优先，书香气更足；无楷体时回退宋体 */
+  font-family: "STKaiti", "KaiTi", "Kaiti SC", "楷体", "Noto Serif SC", "STSong", serif;
 }
 .bell-btn {
   position: absolute;
@@ -214,7 +219,7 @@
 .e3 { background: linear-gradient(135deg, #5867B8, #39418A); }
 .e4 { background: linear-gradient(135deg, #6E8FCB, #46639E); }
 .e5 { background: linear-gradient(135deg, #C0A24E, #9C7C2E); }
-.entry-label { font-size: 23rpx; color: #1F2547; font-weight: 500; }
+.entry-label { font-size: 23rpx; color: #1F2547; font-weight: 500; white-space: nowrap; }
 
 /* ── Section 通用 ── */
 .section { margin-top: 40rpx; }

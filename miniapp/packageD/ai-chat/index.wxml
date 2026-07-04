@@ -1,1 +1,35 @@
-<view class="page"><view class="placeholder">AI文化问答 — 开发中</view></view>
+<!-- packageD/ai-chat/index.wxml -->
+<view class="chat-page">
+  <scroll-view scroll-y class="chat-body" scroll-into-view="{{scrollTo}}" scroll-with-animation enhanced show-scrollbar="{{false}}">
+
+    <view class="chat-intro">
+      <view class="ci-avatar"><icon name="robot" size="32" color="#ffffff" /></view>
+      <view class="ci-name serif">书院文化助手</view>
+      <view class="ci-desc">基于中华文化书院知识库 · AI 智能问答</view>
+    </view>
+
+    <view class="row {{item.role}}" wx:for="{{messages}}" wx:key="index" id="m{{index}}">
+      <view wx:if="{{item.role === 'ai'}}" class="avt"><icon name="robot" size="18" color="#ffffff" /></view>
+      <view class="bubble {{item.role}}">{{item.text}}</view>
+    </view>
+
+    <view class="chips" wx:if="{{firstAsk}}">
+      <view class="chip" wx:for="{{chips}}" wx:key="*this" data-q="{{item}}" bindtap="onChip">{{item}}</view>
+    </view>
+
+    <view class="chat-pad"></view>
+  </scroll-view>
+
+  <view class="chat-input">
+    <input
+      class="ci-in"
+      value="{{input}}"
+      placeholder="向书院文化助手提问…"
+      placeholder-class="ci-ph"
+      confirm-type="send"
+      bindinput="onInput"
+      bindconfirm="send"
+    />
+    <view class="send" bindtap="send"><icon name="send" size="18" color="#ffffff" /></view>
+  </view>
+</view>

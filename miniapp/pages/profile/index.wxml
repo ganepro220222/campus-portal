@@ -45,6 +45,11 @@
 
   <!-- 功能菜单 -->
   <view class="menu">
+    <view class="menu-item" bindtap="onAiChat">
+      <view class="mi-ic mi-blue"><icon name="robot" size="20" color="#ffffff" /></view>
+      <text class="mi-tx">AI 文化问答</text>
+      <icon name="chevron-right" size="16" color="#C3CCE0" />
+    </view>
     <view class="menu-item" bindtap="onStatTap" data-type="badges">
       <view class="mi-ic mi-gold"><icon name="medal" size="20" color="#ffffff" /></view>
       <text class="mi-tx">文化徽章</text>

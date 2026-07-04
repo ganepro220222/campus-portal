@@ -1,1 +1,87 @@
-.page{padding:24rpx}.placeholder{color:#999;font-size:28rpx;padding:60rpx;text-align:center}
+/* packageB/resource/list.wxss */
+.res-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+
+/* 顶部搜索 + 分类 */
+.res-top {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16rpx);
+  border-bottom: 1rpx solid var(--line);
+  padding: 18rpx 0 10rpx;
+  box-shadow: 0 2rpx 14rpx rgba(31, 40, 90, 0.05);
+}
+.res-search {
+  margin: 0 28rpx;
+  height: 72rpx;
+  background: var(--sky-3);
+  border: 1rpx solid var(--line);
+  border-radius: 36rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 0 24rpx;
+}
+.rs-input { flex: 1; font-size: 26rpx; color: var(--ink); }
+.rs-ph { color: var(--muted); }
+.res-cats { white-space: nowrap; margin-top: 16rpx; }
+.rc-inner { display: inline-flex; gap: 16rpx; padding: 0 28rpx; }
+.rc {
+  flex: 0 0 auto;
+  font-size: 25rpx;
+  padding: 12rpx 30rpx;
+  border-radius: 32rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  color: var(--sub);
+}
+.rc-on { background: linear-gradient(135deg, #3F57B5, #2B356E); color: #fff; border-color: transparent; }
+
+/* 列表 */
+.res-scroll { flex: 1; overflow: hidden; padding: 24rpx 28rpx 0; }
+.res {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 22rpx;
+  padding: 22rpx 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: var(--shadow-sm);
+}
+.ft {
+  flex: 0 0 76rpx;
+  height: 76rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+}
+.res-info { flex: 1; min-width: 0; }
+.res-n {
+  font-size: 27rpx;
+  color: var(--ink);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.res-meta { display: flex; align-items: center; gap: 12rpx; margin-top: 10rpx; }
+.res-s { font-size: 21rpx; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res-dl {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: var(--sky-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.res-dl:active { background: var(--sky); }
+
+.list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

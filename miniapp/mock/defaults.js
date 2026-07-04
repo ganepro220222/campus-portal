@@ -77,6 +77,20 @@ module.exports = {
     { id: 4, title: '红色交通史主题研学行', startTime: '2026-07-02 08:30', location: '遵义会议会址', enrolledCount: 56, quota: 80, tag: '研学' }
   ],
 
+  colleges: [
+    { id: 1,  name: '马克思主义学院', short: '马院', en: 'Marxism',        desc: '马院 + 书院协同育人', colorClass: 'hc3' },
+    { id: 2,  name: '轨道交通学院', short: '轨道', en: 'Rail Transit',     desc: '轨道牵引 · 智慧运维', colorClass: 'hc1' },
+    { id: 3,  name: '智能交通学院', short: '智交', en: 'Smart Traffic',    desc: '车路协同 · 智慧出行', colorClass: 'hc1' },
+    { id: 4,  name: '汽车工程学院', short: '汽车', en: 'Automobile',       desc: '新能源 · 智能网联', colorClass: 'hc2' },
+    { id: 5,  name: '路桥工程学院', short: '路桥', en: 'Road & Bridge',    desc: '通途之路 · 大国工匠', colorClass: 'hc2' },
+    { id: 6,  name: '交通运输学院', short: '运输', en: 'Transportation',   desc: '运输组织 · 物流管理', colorClass: 'hc4' },
+    { id: 7,  name: '航运航空学院', short: '航运', en: 'Aviation',         desc: '海空联运 · 蓝色梦想', colorClass: 'hc4' },
+    { id: 8,  name: '建筑工程学院', short: '建工', en: 'Construction',     desc: '匠筑营造 · 品质人居', colorClass: 'hc5' },
+    { id: 9,  name: '信息工程学院', short: '信息', en: 'Information',       desc: '数字技术 · 智能应用', colorClass: 'hc1' },
+    { id: 10, name: '经济管理学院', short: '经管', en: 'Management',        desc: '经世致用 · 知行合一', colorClass: 'hc3' },
+    { id: 11, name: '人文艺术学院', short: '人文', en: 'Humanities',       desc: '以美育人 · 以文化人', colorClass: 'hc5' }
+  ],
+
   activityDetail: {
     id: 1,
     title: '“知行合一”阳明文化专题讲座',
@@ -109,7 +123,11 @@ module.exports = {
   resources: [
     { id: 1, name: '阳明心学导读.pdf', fileType: 'pdf', fileSizeKb: 2048, fileSizeText: '2.0 MB', categoryName: '思政学习' },
     { id: 2, name: '长征精神学习课件.ppt', fileType: 'ppt', fileSizeKb: 5120, fileSizeText: '5.0 MB', categoryName: '思政学习' },
-    { id: 3, name: '屯堡文化读本.doc', fileType: 'word', fileSizeKb: 1024, fileSizeText: '1.0 MB', categoryName: '文化读本' }
+    { id: 3, name: '屯堡文化读本.doc', fileType: 'word', fileSizeKb: 1024, fileSizeText: '1.0 MB', categoryName: '文化读本' },
+    { id: 4, name: '阳明心学十二讲·配套课件.pptx', fileType: 'ppt', fileSizeKb: 6220, fileSizeText: '6.1 MB', categoryName: '课程课件' },
+    { id: 5, name: '龙场悟道·情景微课.mp4', fileType: 'mp4', fileSizeKb: 86016, fileSizeText: '84 MB', categoryName: '视频课程' },
+    { id: 6, name: '致良知·音频导读.mp3', fileType: 'mp3', fileSizeKb: 18432, fileSizeText: '18 MB', categoryName: '音频伴学' },
+    { id: 7, name: '屯堡地戏·非遗纪录短片.mp4', fileType: 'mp4', fileSizeKb: 132096, fileSizeText: '129 MB', categoryName: '视频课程' }
   ],
 
   newsDetail: {

@@ -1,1 +1,93 @@
-.page{padding:24rpx}.placeholder{color:#999;font-size:28rpx;padding:60rpx;text-align:center}
+/* packageC/search/index.wxss */
+.search-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+
+/* 搜索栏 */
+.sbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 18rpx 28rpx;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1rpx solid var(--line);
+}
+.sbox {
+  flex: 1;
+  height: 74rpx;
+  background: var(--sky-3);
+  border: 1rpx solid var(--line);
+  border-radius: 37rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 0 22rpx;
+}
+.sinput { flex: 1; font-size: 27rpx; color: var(--ink); }
+.sph { color: var(--muted); }
+.sclear { width: 40rpx; height: 40rpx; display: flex; align-items: center; justify-content: center; }
+.sbtn { flex-shrink: 0; font-size: 28rpx; font-weight: 600; color: var(--navy); }
+
+/* 内容 */
+.search-scroll { flex: 1; overflow: hidden; padding: 24rpx 28rpx 0; }
+.sec { margin-bottom: 34rpx; }
+.sec-h { font-size: 28rpx; font-weight: 700; color: var(--ink); }
+.sec-h-row { display: flex; align-items: center; justify-content: space-between; }
+.sec-clear { display: flex; align-items: center; gap: 6rpx; }
+.sec-clear text { font-size: 22rpx; color: var(--muted); }
+.tags { display: flex; flex-wrap: wrap; gap: 18rpx; margin-top: 20rpx; }
+.tag {
+  font-size: 25rpx;
+  color: var(--sub);
+  background: #fff;
+  border: 1rpx solid var(--line);
+  padding: 12rpx 28rpx;
+  border-radius: 32rpx;
+  box-shadow: var(--shadow-sm);
+}
+.tag:active { background: var(--sky-2); }
+.tag-ghost { background: var(--sky-3); box-shadow: none; }
+
+/* 结果 */
+.res-count { font-size: 23rpx; color: var(--muted); margin-bottom: 18rpx; }
+.sres {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: var(--shadow-sm);
+}
+.sres:active { background: var(--sky-3); }
+.sres-tag {
+  flex-shrink: 0;
+  font-size: 21rpx;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--sky-2);
+  padding: 8rpx 16rpx;
+  border-radius: 14rpx;
+}
+.sres-body { flex: 1; min-width: 0; }
+.sres-title {
+  font-size: 27rpx;
+  color: var(--ink);
+  font-weight: 500;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sres-sub {
+  font-size: 21rpx;
+  color: var(--muted);
+  margin-top: 6rpx;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

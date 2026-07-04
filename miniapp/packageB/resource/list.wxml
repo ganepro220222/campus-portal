@@ -1,1 +1,45 @@
-<view class="page"><view class="placeholder">资源下载 — 开发中</view></view>
+<!-- packageB/resource/list.wxml -->
+<view class="res-page">
+
+  <view class="res-top">
+    <view class="res-search">
+      <icon name="search" size="17" color="#8A93B2" />
+      <input class="rs-input" placeholder="搜索资源名称…" placeholder-class="rs-ph"
+        value="{{keyword}}" bindinput="onSearch" confirm-type="search" />
+    </view>
+    <scroll-view scroll-x class="res-cats" enhanced show-scrollbar="{{false}}">
+      <view class="rc-inner">
+        <view
+          wx:for="{{cats}}"
+          wx:key="*this"
+          class="rc {{activeCat === index ? 'rc-on' : ''}}"
+          data-i="{{index}}"
+          bindtap="switchCat"
+        >{{item}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <scroll-view scroll-y class="res-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="res" wx:for="{{resourceList}}" wx:key="id">
+      <view class="ft {{item.ftClass}}">{{item.ftLabel}}</view>
+      <view class="res-info">
+        <view class="res-n">{{item.name}}</view>
+        <view class="res-meta">
+          <text class="pill">{{item.kind}}</text>
+          <text class="res-s">{{item.categoryName}} · {{item.fileSizeText}}</text>
+        </view>
+      </view>
+      <view class="res-dl" catchtap="onDownload" data-name="{{item.name}}">
+        <icon name="download" size="18" color="#2B356E" />
+      </view>
+    </view>
+
+    <view wx:if="{{!loading && !resourceList.length}}" class="empty-state">
+      <icon name="download" size="40" color="#C3CCE0" />
+      <text>暂无相关资源</text>
+    </view>
+
+    <view class="list-bottom"></view>
+  </scroll-view>
+</view>

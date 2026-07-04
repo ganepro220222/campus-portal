@@ -1,5 +1,6 @@
-// packageA/craft/list.js — 文创列表逻辑（占位页 UI 不变）
+// packageA/craft/list.js — 文创列表逻辑
 const { get } = require('../../utils/request')
+const { decorateCrafts } = require('../../utils/decorate')
 const mock = require('../../mock/defaults')
 
 Page({
@@ -11,11 +12,15 @@ Page({
     this.setData({ loading: true })
     try {
       const list = await get('/crafts').catch(() => null)
-      const craftList = (list && list.length) ? list : mock.crafts
-      this.setData({ craftList, loading: false })
+      const records = (list && list.length) ? list : mock.crafts
+      this.setData({ craftList: decorateCrafts(records), loading: false })
     } catch (err) {
       console.warn('[craft/list] 加载失败', err)
-      this.setData({ craftList: mock.crafts, loading: false })
+      this.setData({ craftList: decorateCrafts(mock.crafts), loading: false })
     }
+  },
+
+  onCardTap(e) {
+    wx.navigateTo({ url: `/packageA/craft/detail?id=${e.currentTarget.dataset.id}` })
   }
 })

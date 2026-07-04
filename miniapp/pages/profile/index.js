@@ -46,6 +46,10 @@ Page({
     wx.navigateTo({ url: `/packageC/profile/list?type=${type}` })
   },
 
+  onAiChat() {
+    wx.navigateTo({ url: '/packageD/ai-chat/index' })
+  },
+
   // 尚未实现的菜单项
   onTodo() {
     wx.showToast({ title: '功能开发中，敬请期待', icon: 'none' })

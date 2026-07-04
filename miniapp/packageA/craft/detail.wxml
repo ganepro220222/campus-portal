@@ -1,1 +1,62 @@
-<view class="page"><view class="placeholder">文创详情 — 开发中</view></view>
+<!-- packageA/craft/detail.wxml -->
+<view class="detail-page">
+  <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="detail-wrap">
+
+      <!-- 图集 -->
+      <view class="gal">
+        <swiper class="gslides" circular="{{slides.length > 1}}" bindchange="onGallery"
+          indicator-dots="{{slides.length > 1}}" indicator-color="rgba(255,255,255,.4)" indicator-active-color="#ffffff">
+          <swiper-item wx:for="{{slides}}" wx:key="angleLabel" bindtap="onPreview" data-url="{{item.imageUrl}}">
+            <view class="gimg {{item.cls}}">
+              <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" class="gimg-img" />
+              <icon wx:else name="{{item.icon}}" size="60" color="rgba(255,255,255,0.55)" />
+            </view>
+          </swiper-item>
+        </swiper>
+        <view class="gcap">{{detail.name}} · {{slides[galleryIndex].angleLabel}}（点击查看大图）</view>
+      </view>
+
+      <!-- 介绍 -->
+      <view class="craft-intro">
+        <view class="ci-title serif">{{detail.name}}</view>
+        <view class="ci-tags">
+          <text class="pill gold">非遗工艺</text>
+          <text wx:if="{{detail.previewType === 'model3d'}}" class="pill">3D 模型</text>
+          <text wx:else class="pill">多图鉴赏</text>
+        </view>
+        <view class="ci-zh">{{detail.introZh}}</view>
+        <view wx:if="{{detail.introEn}}" class="ci-en">{{detail.introEn}}</view>
+      </view>
+
+      <!-- 联系方式 -->
+      <view class="contact">
+        <view class="contact-title serif">合作与咨询</view>
+        <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.phone}}">
+          <view class="c-ic c-blue"><icon name="megaphone" size="18" color="#ffffff" /></view>
+          <view class="c-body"><text class="c-k">电话</text><text class="c-v">{{detail.contact.phone}}</text></view>
+          <icon name="file" size="16" color="#C3CCE0" />
+        </view>
+        <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.wechat}}">
+          <view class="c-ic c-green"><icon name="wechat" size="18" color="#ffffff" /></view>
+          <view class="c-body"><text class="c-k">微信</text><text class="c-v">{{detail.contact.wechat}}</text></view>
+          <icon name="file" size="16" color="#C3CCE0" />
+        </view>
+        <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.email}}">
+          <view class="c-ic c-gold"><icon name="send" size="18" color="#ffffff" /></view>
+          <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">{{detail.contact.email}}</text></view>
+          <icon name="file" size="16" color="#C3CCE0" />
+        </view>
+      </view>
+
+      <button class="poster-btn" bindtap="onPoster">
+        <icon name="poster" size="18" color="#ffffff" />
+        <text>一键生成文化分享海报</text>
+      </button>
+
+      <view class="detail-bottom"></view>
+    </view>
+  </scroll-view>
+
+  <ai-assistant bottom="60" />
+</view>

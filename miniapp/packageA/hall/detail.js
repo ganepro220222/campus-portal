@@ -32,5 +32,8 @@ Page({
   },
 
   onAudio() { wx.showToast({ title: '语音讲解播放中', icon: 'none' }) },
-  onPoster() { wx.showToast({ title: '正在生成专属文化海报…', icon: 'none' }) }
+  onPoster() {
+    const name = (this.data.hall && this.data.hall.name) || ''
+    wx.navigateTo({ url: `/packageD/poster/generate?type=hall&title=${encodeURIComponent(name)}` })
+  }
 })

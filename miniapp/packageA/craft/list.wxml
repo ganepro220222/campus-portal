@@ -1,1 +1,40 @@
-<view class="page"><view class="placeholder">文创展示 — 开发中</view></view>
+<!-- packageA/craft/list.wxml -->
+<view class="craft-page">
+  <scroll-view scroll-y class="craft-scroll" enhanced show-scrollbar="{{false}}">
+
+    <view class="craft-intro">
+      <text class="ci-zh serif">非遗匠心 · 文化好物</text>
+      <text class="ci-en">Intangible Cultural Heritage · Creative Works</text>
+    </view>
+
+    <view class="craft-grid">
+      <view
+        wx:for="{{craftList}}"
+        wx:key="id"
+        class="ccard"
+        bindtap="onCardTap"
+        data-id="{{item.id}}"
+      >
+        <view class="ccard-cover {{item.colorClass}}">
+          <view wx:if="{{item.cover}}" class="ccard-bg">
+            <image src="{{item.cover}}" mode="aspectFill" class="ccard-img" />
+          </view>
+          <icon name="{{item.icon}}" size="46" color="rgba(255,255,255,0.9)" />
+          <text wx:if="{{item.badge}}" class="ccard-badge">{{item.badge}}</text>
+        </view>
+        <view class="ccard-foot">
+          <text class="ccard-name serif">{{item.name}}</text>
+          <text class="ccard-desc">{{item.intro}}</text>
+          <view class="pill">{{item.categoryName}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!loading && !craftList.length}}" class="empty-state">
+      <icon name="medal" size="40" color="#C3CCE0" />
+      <text>暂无文创内容</text>
+    </view>
+
+    <view class="list-bottom"></view>
+  </scroll-view>
+</view>

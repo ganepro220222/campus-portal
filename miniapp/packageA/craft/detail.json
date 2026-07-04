@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "文创详情" }
+{
+  "navigationBarTitleText": "文创详情",
+  "usingComponents": {
+    "ai-assistant": "/components/ai-assistant/index"
+  }
+}

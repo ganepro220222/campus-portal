@@ -1,1 +1,182 @@
-.page{padding:24rpx}.placeholder{color:#999;font-size:28rpx;padding:60rpx;text-align:center}
+/* packageD/poster/generate.wxss */
+.poster-page { height: 100vh; display: flex; flex-direction: column; background: #EAEEF6; }
+.poster-scroll { flex: 1; overflow: hidden; }
+
+/* 预览 */
+.preview { display: flex; justify-content: center; padding: 32rpx 0 8rpx; }
+.poster {
+  position: relative;
+  width: 480rpx;
+  height: 800rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 24rpx 60rpx rgba(20, 26, 56, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 44rpx 40rpx 36rpx;
+  box-sizing: border-box;
+}
+.p-frame {
+  position: absolute;
+  left: 20rpx; top: 20rpx; right: 20rpx; bottom: 20rpx;
+  border: 1rpx solid;
+  border-radius: 16rpx;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.p-top {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 2rpx;
+  z-index: 2;
+}
+.p-seal {
+  width: 150rpx; height: 150rpx;
+  border-radius: 50%;
+  background: #fff;
+  margin-top: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.p-seal-img { width: 118rpx; height: 118rpx; }
+.p-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  line-height: 1.4;
+  margin-top: 54rpx;
+  z-index: 2;
+  text-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.25);
+}
+.p-div { position: relative; width: 160rpx; height: 24rpx; margin-top: 26rpx; z-index: 2; }
+.p-line { position: absolute; left: 0; right: 0; top: 50%; height: 1rpx; }
+.p-orn {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -60%);
+  font-size: 20rpx;
+}
+.p-sub {
+  font-size: 22rpx;
+  color: rgba(232, 240, 252, 0.9);
+  letter-spacing: 2rpx;
+  margin-top: 18rpx;
+  z-index: 2;
+}
+.p-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  width: 100%;
+  z-index: 2;
+}
+.p-qr {
+  position: relative;
+  width: 96rpx; height: 96rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
+.qr-c {
+  position: absolute;
+  width: 26rpx; height: 26rpx;
+  border: 6rpx solid #2B356E;
+  border-radius: 4rpx;
+}
+.qr-tl { left: 12rpx; top: 12rpx; }
+.qr-tr { right: 12rpx; top: 12rpx; }
+.qr-bl { left: 12rpx; bottom: 12rpx; }
+.qr-mid {
+  position: absolute;
+  right: 16rpx; bottom: 16rpx;
+  width: 20rpx; height: 20rpx;
+  border-radius: 3rpx;
+}
+.p-foot-tx { display: flex; flex-direction: column; gap: 6rpx; }
+.pf-1 { font-size: 22rpx; color: #fff; font-weight: 600; }
+.pf-2 { font-size: 19rpx; color: rgba(232, 240, 252, 0.75); }
+
+/* 模板选择 */
+.tpl-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--ink);
+  padding: 24rpx 32rpx 6rpx;
+}
+.tpls { display: flex; gap: 22rpx; padding: 14rpx 32rpx 0; }
+.tpl { display: flex; flex-direction: column; align-items: center; gap: 12rpx; }
+.tpl-sw {
+  width: 120rpx; height: 150rpx;
+  border-radius: 16rpx;
+  position: relative;
+  border: 3rpx solid transparent;
+  box-shadow: 0 6rpx 16rpx rgba(31, 40, 90, 0.18);
+}
+.tpl-on .tpl-sw { border-color: var(--navy); }
+.tpl-check {
+  position: absolute;
+  right: 8rpx; top: 8rpx;
+  width: 34rpx; height: 34rpx;
+  border-radius: 50%;
+  background: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tpl-name { font-size: 23rpx; color: var(--sub); }
+.tpl-on .tpl-name { color: var(--navy); font-weight: 600; }
+
+.poster-tip {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin: 28rpx 32rpx 0;
+  padding: 18rpx 22rpx;
+  background: #FBF3DD;
+  border-radius: 16rpx;
+}
+.poster-tip text { font-size: 22rpx; color: #9C7C2E; }
+
+.poster-bottom { height: calc(160rpx + env(safe-area-inset-bottom)); }
+
+/* 保存条 */
+.save-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 16rpx 32rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(16rpx);
+  border-top: 1rpx solid var(--line);
+}
+.save-btn {
+  height: 92rpx;
+  line-height: 92rpx;
+  border-radius: 46rpx;
+  background: linear-gradient(135deg, #CDA94E, #B58A2F);
+  color: #fff;
+  font-size: 31rpx;
+  font-weight: 700;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  box-shadow: 0 14rpx 34rpx rgba(150, 110, 30, 0.35);
+}
+.save-btn::after { border: none; }
+.saving { opacity: 0.7; }
+
+/* 离屏画布 */
+.hidden-canvas {
+  position: fixed;
+  left: -9999rpx;
+  top: -9999rpx;
+  width: 300px;
+  height: 500px;
+}

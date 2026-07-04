@@ -5,6 +5,7 @@ const mock    = require('../../mock/defaults')
 const {
   decorateHalls, decorateNews, decorateCourses, decorateBanners
 } = require('../../utils/decorate')
+const { openContentLink } = require('../../utils/navigate')
 
 Page({
   data: {
@@ -73,7 +74,10 @@ Page({
 
   onBannerChange(e) { this.setData({ bannerIndex: e.detail.current }) },
 
-  onBannerTap() { wx.switchTab({ url: '/pages/news/index' }) },
+  onBannerTap(e) {
+    const { linkType, linkValue } = e.currentTarget.dataset
+    openContentLink(linkType, linkValue)
+  },
 
   onProfileTap() {
     const app = getApp()

@@ -5,6 +5,13 @@ spring:
 server:
   port: 8080
 
+shuyuan:
+  jwt:
+    secret: shuyuan-dev-jwt-secret-change-in-prod
+    expire-days: 7
+  wx:
+    dev-mode: true
+
 mybatis-plus:
   configuration:
     # 数据库字段下划线自动转Java驼峰命名

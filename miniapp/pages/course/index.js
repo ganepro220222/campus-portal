@@ -2,13 +2,12 @@
 const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
 const { decorateCourseCards } = require('../../utils/decorate')
-
-const CATS = ['全部', '阳明文化', '思政必修', '文化传承', '美育素养']
+const { loadCategoryNames } = require('../../utils/category')
 
 Page({
   data: {
     statusBarHeight: 20,
-    cats: CATS,
+    cats: mock.categories.course,
     activeCat: 0,
     courseList: [],
     loading: true
@@ -17,6 +16,9 @@ Page({
   onLoad() {
     const sys = wx.getSystemInfoSync()
     this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
+    loadCategoryNames('course').then(cats => {
+      this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })
+    })
     this._load()
   },
 
@@ -30,7 +32,7 @@ Page({
 
   async _load() {
     this.setData({ loading: true })
-    const cat = this.data.activeCat ? CATS[this.data.activeCat] : undefined
+    const cat = this.data.activeCat ? this.data.cats[this.data.activeCat] : undefined
     try {
       const list = await get('/courses', { category: cat }).catch(() => null)
       const src = (list && list.length) ? list : mock.coursesFull

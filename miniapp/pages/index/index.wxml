@@ -33,7 +33,13 @@
         indicator-dots="{{false}}"
         bindchange="onBannerChange"
       >
-        <swiper-item wx:for="{{banners}}" wx:key="id" bindtap="onBannerTap">
+        <swiper-item
+          wx:for="{{banners}}"
+          wx:key="id"
+          bindtap="onBannerTap"
+          data-link-type="{{item.linkType}}"
+          data-link-value="{{item.linkValue}}"
+        >
           <view class="bslide {{item.colorClass || 's1'}}">
             <view class="bslide-deco"></view>
             <view wx:if="{{item.imageUrl}}" class="bslide-bg">

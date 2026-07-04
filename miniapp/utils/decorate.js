@@ -26,6 +26,7 @@ function decorateNews(list) {
   return (list || []).map((it, i) => ({
     ...it,
     categoryName: it.categoryName || it.category || '书院动态',
+    publishTime: it.publishTime ? String(it.publishTime).slice(0, 10) : it.publishTime,
     colorClass: it.colorClass || HALL_COLORS[i % HALL_COLORS.length],
     icon: it.icon || NEWS_ICONS[i % NEWS_ICONS.length]
   }))
@@ -35,6 +36,7 @@ function decorateNewsFeed(list) {
   return (list || []).map((it, i) => ({
     ...it,
     categoryName: it.categoryName || it.category || '书院动态',
+    publishTime: it.publishTime ? String(it.publishTime).slice(0, 10) : it.publishTime,
     readText: formatCount(it.readCount || 0),
     colorClass: it.colorClass || NEWS_FEED_COLORS[i % NEWS_FEED_COLORS.length],
     icon: it.icon || NEWS_FEED_ICONS[i % NEWS_FEED_ICONS.length]
@@ -64,6 +66,8 @@ function decorateCourseCards(list) {
 function decorateBanners(list) {
   return (list || []).map((it, i) => ({
     ...it,
+    linkType: it.linkType || it.link_type,
+    linkValue: it.linkValue || it.link_value,
     colorClass: it.colorClass || BANNER_COLORS[i % BANNER_COLORS.length]
   }))
 }

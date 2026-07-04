@@ -605,7 +605,9 @@ CREATE TABLE IF NOT EXISTS `ai_message` (
 
 CREATE TABLE IF NOT EXISTS `banner` (
   `id`          BIGINT       NOT NULL AUTO_INCREMENT,
-  `image_url`   VARCHAR(500) NOT NULL COMMENT '图片URL',
+  `title`       VARCHAR(200) DEFAULT NULL COMMENT '标题',
+  `description` VARCHAR(500) DEFAULT NULL COMMENT '副标题/描述',
+  `image_url`   VARCHAR(500) DEFAULT NULL COMMENT '图片URL',
   `link_type`   VARCHAR(20)  NOT NULL DEFAULT 'none' COMMENT 'none/page/url',
   `link_value`  VARCHAR(500) DEFAULT NULL COMMENT '跳转值（页面路径或URL）',
   `sort`        INT          NOT NULL DEFAULT 0,

@@ -6,7 +6,12 @@
       <!-- 画廊轮播 -->
       <view class="gal">
         <swiper class="gslides" circular bindchange="onGallery" indicator-dots indicator-color="rgba(255,255,255,.4)" indicator-active-color="#ffffff">
-          <swiper-item wx:for="{{hall.slides}}" wx:key="cls">
+          <swiper-item
+            wx:for="{{hall.slides}}"
+            wx:key="cls"
+            bindtap="onPreviewSlide"
+            data-url="{{item.imageUrl}}"
+          >
             <view class="gimg {{item.cls}}"><icon name="{{item.icon}}" size="54" color="rgba(255,255,255,0.55)" /></view>
           </swiper-item>
         </swiper>

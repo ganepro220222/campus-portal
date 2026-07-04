@@ -5,6 +5,11 @@ Page({
   data: { categories: [], hallList: [], currentCat: 0, loading: true },
 
   onLoad() { this._loadCategories(); this._loadList() },
+  onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 2 })
+    }
+  },
   onPullDownRefresh() { this._loadList().then(() => wx.stopPullDownRefresh()) },
 
   async _loadCategories() {

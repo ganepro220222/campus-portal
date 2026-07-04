@@ -4,6 +4,11 @@ const { get } = require('../../utils/request')
 Page({
   data: { categories: [], courseList: [], currentCat: 0, loading: true },
   onLoad() { this._loadCategories(); this._loadList() },
+  onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 3 })
+    }
+  },
   onPullDownRefresh() { this._loadList().then(() => wx.stopPullDownRefresh()) },
   async _loadCategories() {
     const list = await get('/categories?type=course').catch(() => [])

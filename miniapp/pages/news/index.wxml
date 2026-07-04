@@ -1,0 +1,58 @@
+<!-- pages/news/index.wxml -->
+<view class="news-page">
+
+  <!-- 自定义顶栏 -->
+  <view class="nav">
+    <view style="height: {{statusBarHeight}}px;"></view>
+    <view class="nav-row">
+      <text class="nav-title serif">新闻资讯</text>
+      <view class="nav-search" bindtap="onSearch">
+        <icon name="search" size="20" color="#1F2547" />
+      </view>
+    </view>
+    <!-- 分类 chips -->
+    <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
+      <view class="cats-inner">
+        <view
+          wx:for="{{cats}}"
+          wx:key="*this"
+          class="cat {{activeCat === index ? 'cat-on' : ''}}"
+          data-index="{{index}}"
+          bindtap="switchCat"
+        >{{item}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 列表 -->
+  <scroll-view scroll-y class="news-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="news-wrap">
+      <view
+        wx:for="{{newsList}}"
+        wx:key="id"
+        class="ncard"
+        bindtap="onCardTap"
+        data-id="{{item.id}}"
+      >
+        <view class="ncard-thumb {{item.colorClass}}">
+          <icon name="{{item.icon}}" size="30" color="rgba(255,255,255,0.92)" />
+        </view>
+        <view class="ncard-body">
+          <view class="ncard-title">{{item.title}}</view>
+          <view class="ncard-meta">
+            <text class="pill">{{item.categoryName}}</text>
+            <text class="ncard-sub">{{item.publishTime}} · 阅读 {{item.readText}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{!loading && !newsList.length}}" class="empty-state">
+        <icon name="file" size="40" color="#C3CCE0" />
+        <text>暂无资讯</text>
+      </view>
+
+      <view class="list-bottom"></view>
+    </view>
+  </scroll-view>
+
+</view>

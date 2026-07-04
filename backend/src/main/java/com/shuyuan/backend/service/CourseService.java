@@ -3,11 +3,16 @@ package com.shuyuan.backend.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.Course;
+import com.shuyuan.backend.entity.CourseResource;
+import com.shuyuan.backend.entity.Resource;
 import com.shuyuan.backend.mapper.CourseMapper;
+import com.shuyuan.backend.mapper.CourseResourceMapper;
+import com.shuyuan.backend.mapper.ResourceMapper;
 import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +22,8 @@ import java.util.Map;
 public class CourseService {
 
     private final CourseMapper courseMapper;
+    private final CourseResourceMapper courseResourceMapper;
+    private final ResourceMapper resourceMapper;
     private final CategoryService categoryService;
 
     public List<Map<String, Object>> list(String category) {
@@ -57,8 +64,43 @@ public class CourseService {
         m.put("videoUrl", course.getVideoUrl());
         m.put("subtitleUrl", course.getSubtitleUrl());
         m.put("tags", List.of(categoryName, hasSubtitle ? "AI 字幕" : "在线课程"));
-        m.put("resources", List.of());
+        m.put("resources", loadLinkedResources(id));
         return m;
+    }
+
+    /** 课程配套资源（供小程序详情页展示） */
+    private List<Map<String, Object>> loadLinkedResources(Long courseId) {
+        List<CourseResource> links = courseResourceMapper.selectList(
+                new LambdaQueryWrapper<CourseResource>()
+                        .eq(CourseResource::getCourseId, courseId)
+                        .orderByAsc(CourseResource::getSort));
+        if (links.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (CourseResource link : links) {
+            Resource r = resourceMapper.selectById(link.getResourceId());
+            if (r == null || r.getStatus() == null || r.getStatus() != 1) {
+                continue;
+            }
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", r.getId());
+            item.put("name", r.getName());
+            item.put("fileType", r.getFileType());
+            item.put("fileSizeText", formatFileSize(r.getFileSizeKb()));
+            list.add(item);
+        }
+        return list;
+    }
+
+    private String formatFileSize(Integer kb) {
+        if (kb == null || kb <= 0) {
+            return "";
+        }
+        if (kb >= 1024) {
+            return String.format("%.1f MB", kb / 1024.0);
+        }
+        return kb + " KB";
     }
 
     private Map<String, Object> toListItem(Course c, Map<Long, String> catMap) {

@@ -99,3 +99,72 @@ export interface EnrollItem {
   rejectReason: string | null
   createTime: string
 }
+
+/** 课程（后台） */
+export interface CourseItem {
+  id: number
+  name: string
+  cover: string | null
+  categoryId: number | null
+  categoryName: string
+  targetAudience: string
+  durationMinutes: number | null
+  startTime: string
+  intro: string
+  videoUrl: string | null
+  subtitleUrl: string | null
+  subtitleStatus: string
+  subtitleStatusLabel: string
+  subtitleTaskId: string | null
+  status: number
+  resourceIds?: number[]
+  resources?: { id: number; name: string; fileType: string }[]
+}
+
+/** 资源选项（下拉用） */
+export interface ResourceOption {
+  id: number
+  name: string
+  fileType: string
+  categoryName: string
+}
+
+/** 资源（后台） */
+export interface ResourceItem {
+  id: number
+  name: string
+  fileUrl: string
+  previewUrl: string | null
+  fileType: string
+  fileTypeLabel: string
+  fileSizeKb: number | null
+  fileSizeText: string
+  categoryId: number | null
+  categoryName: string
+  downloadCount: number
+  status: number
+  createTime: string
+}
+
+/** 文创（后台） */
+export interface CraftItem {
+  id: number
+  name: string
+  cover: string | null
+  categoryId: number | null
+  categoryName: string
+  introZh: string
+  introEn: string
+  previewType: string
+  previewTypeLabel: string
+  model3dUrl: string | null
+  sort: number
+  status: number
+  images?: { id?: number; imageUrl: string; angleLabel: string; sort: number }[]
+  contact?: {
+    phone: string | null
+    wechat: string | null
+    workWechat: string | null
+    email: string | null
+  } | null
+}

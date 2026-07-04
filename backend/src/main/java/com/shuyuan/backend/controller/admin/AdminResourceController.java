@@ -1,0 +1,43 @@
+package com.shuyuan.backend.controller.admin;
+
+import com.shuyuan.backend.common.PageResult;
+import com.shuyuan.backend.common.Result;
+import com.shuyuan.backend.dto.ResourceSaveRequest;
+import com.shuyuan.backend.service.AdminResourceService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1/admin/resources")
+@RequiredArgsConstructor
+public class AdminResourceController {
+
+    private final AdminResourceService adminResourceService;
+
+    @GetMapping
+    public Result<PageResult<Map<String, Object>>> list(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String fileType,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return Result.ok(adminResourceService.list(categoryId, fileType, status, page, size));
+    }
+
+    @GetMapping("/{id}")
+    public Result<Map<String, Object>> detail(@PathVariable Long id) {
+        return Result.ok(adminResourceService.detail(id));
+    }
+
+    @PostMapping
+    public Result<Map<String, Object>> create(@RequestBody ResourceSaveRequest req) {
+        return Result.ok(adminResourceService.create(req));
+    }
+
+    @PutMapping("/{id}")
+    public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody ResourceSaveRequest req) {
+        return Result.ok(adminResourceService.update(id, req));
+    }
+}

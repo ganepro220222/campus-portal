@@ -25,6 +25,48 @@
       </el-col>
       <el-col :span="8">
         <el-card shadow="hover" class="stat-card">
+          <div class="stat-label">文创管理</div>
+          <div class="stat-desc">工艺品双语介绍、鉴赏图/3D 与咨询方式</div>
+          <el-button v-if="auth.can('hall:read')" type="primary" link @click="$router.push('/crafts')">
+            进入文创管理 →
+          </el-button>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="row-gap">
+      <el-col :span="8">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-label">课程管理</div>
+          <div class="stat-desc">在线课程上下架、视频与字幕配置</div>
+          <el-button v-if="auth.can('course:read')" type="primary" link @click="$router.push('/courses')">
+            进入课程管理 →
+          </el-button>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-label">资源管理</div>
+          <div class="stat-desc">PDF/音视频资料上下架与下载统计</div>
+          <el-button v-if="auth.can('course:read')" type="primary" link @click="$router.push('/resources')">
+            进入资源管理 →
+          </el-button>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="row-gap">
+      <el-col :span="8">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-label">活动管理</div>
+          <div class="stat-desc">活动发布、报名审核与 Excel 导出</div>
+          <el-button v-if="auth.can('enroll:read')" type="primary" link @click="$router.push('/activities')">
+            进入活动管理 →
+          </el-button>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card shadow="hover" class="stat-card">
           <div class="stat-label">系统设置</div>
           <div class="stat-desc">首页轮播图与跳转链接</div>
           <el-button v-if="auth.can('admin:super')" type="primary" link @click="$router.push('/banners')">
@@ -67,6 +109,10 @@ const auth = useAuthStore()
   color: #909399;
   margin-bottom: 12px;
   line-height: 1.5;
+}
+
+.row-gap {
+  margin-top: 16px;
 }
 
 .notice {

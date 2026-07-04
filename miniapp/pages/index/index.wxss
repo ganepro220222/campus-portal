@@ -1,4 +1,4 @@
-/* pages/index/index.wxss — 对齐 demo 首页设计 */
+/* pages/index/index.wxss — 首页 */
 
 .home-page {
   height: 100vh;

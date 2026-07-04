@@ -1,4 +1,4 @@
-// pages/login/index.js —— 登录（对齐 demo 深色风格，保留微信/学号鉴权）
+// pages/login/index.js
 const { wxLogin } = require('../../utils/auth')
 const { post }    = require('../../utils/request')
 

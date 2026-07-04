@@ -1,4 +1,4 @@
-// custom-tab-bar/index.js —— 自定义底部导航（首页/新闻/展馆/课程）
+// custom-tab-bar/index.js
 Component({
   data: {
     selected: 0,

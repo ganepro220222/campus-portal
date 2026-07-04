@@ -1,4 +1,4 @@
-<!-- AI 助手浮标 -->
+<!-- 文化问答浮标 -->
 <view class="ai-fab" style="bottom: calc({{bottom}}rpx + env(safe-area-inset-bottom));" bindtap="open">
   <view class="pulse"></view>
   <view class="ai-badge">AI</view>

@@ -1,4 +1,4 @@
-/* AI 助手浮标 + 抽屉 —— 对齐 demo */
+/* 文化问答浮标 + 底部抽屉 */
 .ai-fab {
   position: fixed;
   right: 32rpx;

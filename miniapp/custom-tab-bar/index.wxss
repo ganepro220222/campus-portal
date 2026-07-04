@@ -1,4 +1,4 @@
-/* 自定义底部导航 —— 对齐 demo .tabbar */
+/* 自定义底部导航 */
 .tabbar {
   position: fixed;
   left: 0;

@@ -11,6 +11,10 @@ shuyuan:
     expire-days: 7
   wx:
     dev-mode: true
+  login:
+    max-fail-attempts: 5
+    lock-minutes: 5
+    fail-window-minutes: 15
 
 mybatis-plus:
   configuration:

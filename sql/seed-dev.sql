@@ -7,6 +7,14 @@ USE shuyuan;
 INSERT IGNORE INTO `member` (`id`, `openid`, `nickname`, `points`, `status`) VALUES
 (1, 'dev_test', '测试学员', 28, 1);
 
+-- 超管密码同步为 Admin@123（与 init.sql 旧哈希不一致时用 UPDATE 修正）
+UPDATE `sys_user` SET `password_hash` = '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm'
+WHERE `username` = 'admin';
+
+UPDATE `sys_role` SET `role_name` = '超级管理员',
+  `permissions` = '["admin:super","news:read","news:write","news:publish","hall:read","hall:write","course:read","course:write","enroll:read","enroll:export","stats:view"]'
+WHERE `id` = 1;
+
 INSERT IGNORE INTO `member_profile` (`member_id`, `real_name`, `college`, `phone`) VALUES
 (1, '测试学员', '贵州交通职业大学 · 中华文化书院', '13800001234')
 ON DUPLICATE KEY UPDATE `phone` = VALUES(`phone`), `real_name` = VALUES(`real_name`);

@@ -22,8 +22,11 @@ public class AuthInterceptor implements HandlerInterceptor {
         String auth = request.getHeader("Authorization");
         if (auth != null && auth.startsWith("Bearer ")) {
             try {
-                Long memberId = jwtUtils.getMemberId(auth.substring(7));
-                MemberContext.setMemberId(memberId);
+                String token = auth.substring(7);
+                Long memberId = jwtUtils.getMemberId(token);
+                if (memberId != null) {
+                    MemberContext.setMemberId(memberId);
+                }
             } catch (Exception ignored) {
                 // token 无效时不阻断公开读接口
             }

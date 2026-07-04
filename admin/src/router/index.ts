@@ -1,0 +1,103 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import type { Component } from 'vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+import { hasAnyPermission } from '@/utils/permission'
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/views/LoginView.vue'),
+      meta: { public: true, title: '登录' }
+    },
+    {
+      path: '/',
+      component: () => import('@/layouts/AdminLayout.vue'),
+      redirect: '/dashboard',
+      children: [
+        {
+          path: 'dashboard',
+          name: 'Dashboard',
+          component: () => import('@/views/DashboardView.vue'),
+          meta: { title: '首页概览' }
+        },
+        {
+          path: 'banners',
+          name: 'Banners',
+          component: () => import('@/views/banner/BannerListView.vue'),
+          meta: { title: 'Banner 管理', permission: 'admin:super' }
+        },
+        {
+          path: 'news',
+          name: 'News',
+          component: () => import('@/views/news/NewsListView.vue'),
+          meta: { title: '新闻管理', permission: 'news:read' }
+        },
+        {
+          path: 'halls',
+          name: 'Halls',
+          component: () => import('@/views/hall/HallListView.vue'),
+          meta: { title: '展馆管理', permission: 'hall:read' }
+        },
+        {
+          path: 'activities',
+          name: 'Activities',
+          component: () => import('@/views/activity/ActivityListView.vue'),
+          meta: { title: '活动管理', permission: 'enroll:read' }
+        },
+        {
+          path: 'activities/:id/enrolls',
+          name: 'ActivityEnrolls',
+          component: () => import('@/views/activity/ActivityEnrollView.vue'),
+          meta: { title: '报名管理', permission: 'enroll:read' }
+        }
+      ]
+    },
+    { path: '/:pathMatch(.*)*', redirect: '/dashboard' }
+  ]
+})
+
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+  if (to.meta.public) {
+    if (auth.isLoggedIn && to.name === 'Login') return { name: 'Dashboard' }
+    return true
+  }
+  if (!auth.isLoggedIn) {
+    return { name: 'Login', query: { redirect: to.fullPath } }
+  }
+  const perm = to.meta.permission as string | undefined
+  if (perm && !auth.can(perm)) {
+    return { name: 'Dashboard' }
+  }
+  document.title = `${to.meta.title || '管理后台'} · 云端书院`
+  return true
+})
+
+export default router
+
+/** 侧栏菜单配置（与 docs Phase 5 导航结构对齐，本期仅开放已实现模块） */
+export interface MenuItem {
+  path: string
+  title: string
+  icon: Component
+  permissions: string[]
+}
+
+export const menuItems: MenuItem[] = [
+  { path: '/dashboard', title: '首页概览', icon: Odometer, permissions: [] },
+  { path: '/news', title: '新闻管理', icon: Document, permissions: ['news:read'] },
+  { path: '/halls', title: '展馆管理', icon: OfficeBuilding, permissions: ['hall:read'] },
+  { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
+  { path: '/banners', title: 'Banner 管理', icon: Picture, permissions: ['admin:super'] }
+]
+
+export function filterMenus(permissions: string[]) {
+  return menuItems.filter((m) => {
+    if (!m.permissions.length) return true
+    return hasAnyPermission(permissions, m.permissions)
+  })
+}

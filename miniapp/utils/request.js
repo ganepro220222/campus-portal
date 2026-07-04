@@ -27,11 +27,16 @@ const request = (url, method = 'GET', data = {}) => {
           return
         }
         if (body.code === 401) {
-          // token 失效，跳登录
-          app.logout()
+          // token 失效，跳登录（登录接口本身的 401 不触发 logout）
+          if (!String(url).includes('/auth/')) {
+            app.logout()
+          }
+          wx.showToast({ title: body.message || '请先登录', icon: 'none', duration: 2500 })
           return reject(body)
         }
-        wx.showToast({ title: body.message || '请求失败', icon: 'none' })
+        // 429：登录锁定等限流提示，延长展示时间
+        const duration = body.code === 429 ? 3500 : 2500
+        wx.showToast({ title: body.message || '请求失败', icon: 'none', duration })
         reject(body)
       },
       fail(err) {

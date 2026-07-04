@@ -28,6 +28,7 @@ public class AuthService {
     private final MemberProfileMapper memberProfileMapper;
     private final JwtUtils jwtUtils;
     private final ShuyuanProperties properties;
+    private final LoginLockService loginLockService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Transactional
@@ -49,20 +50,36 @@ public class AuthService {
     }
 
     public LoginVO accountLogin(AccountLoginRequest req) {
+        String accountKey = req.getStudentNo() != null ? req.getStudentNo().trim() : "";
+        if (accountKey.isEmpty()) {
+            throw new BusinessException(400, "学号/账号不能为空");
+        }
+
+        loginLockService.ensureNotLocked(LoginLockService.SCENE_MEMBER, accountKey);
+
         MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
-                .and(w -> w.eq(MemberAccount::getStudentNo, req.getStudentNo())
+                .and(w -> w.eq(MemberAccount::getStudentNo, accountKey)
                         .or()
-                        .eq(MemberAccount::getUsername, req.getStudentNo()))
+                        .eq(MemberAccount::getUsername, accountKey))
                 .eq(MemberAccount::getStatus, 1)
                 .last("LIMIT 1"));
-        if (account == null || !passwordEncoder.matches(req.getPassword(), account.getPasswordHash())) {
+
+        boolean passwordOk = account != null
+                && passwordEncoder.matches(req.getPassword(), account.getPasswordHash());
+
+        if (!passwordOk) {
+            loginLockService.onFailure(LoginLockService.SCENE_MEMBER, accountKey);
+            // onFailure 已抛出业务异常，此行不可达
             throw new BusinessException(401, "账号或密码错误");
         }
+
         Member member = memberMapper.selectById(account.getMemberId());
         if (member == null) {
+            loginLockService.onFailure(LoginLockService.SCENE_MEMBER, accountKey);
             throw new BusinessException(401, "账号或密码错误");
         }
         checkMemberActive(member);
+        loginLockService.onSuccess(LoginLockService.SCENE_MEMBER, accountKey);
         return buildLogin(member);
     }
 

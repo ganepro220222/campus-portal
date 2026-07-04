@@ -1,0 +1,96 @@
+/* pages/news/index.wxss */
+.news-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: linear-gradient(180deg, #EAF1FB 0, #F5F8FC 240rpx);
+}
+
+/* 顶栏 */
+.nav {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20rpx);
+  border-bottom: 1rpx solid var(--line);
+  box-shadow: 0 2rpx 14rpx rgba(31, 40, 90, 0.05);
+}
+.nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 80rpx;
+  padding: 6rpx 32rpx 4rpx;
+}
+.nav-title { font-size: 38rpx; font-weight: 700; color: var(--ink); }
+.nav-search {
+  width: 64rpx; height: 64rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.nav-search:active { background: var(--sky-3); }
+
+/* 分类 chips */
+.cats { white-space: nowrap; padding: 6rpx 0 18rpx; }
+.cats-inner { display: inline-flex; gap: 16rpx; padding: 0 32rpx; }
+.cat {
+  flex: 0 0 auto;
+  font-size: 25rpx;
+  padding: 12rpx 28rpx;
+  border-radius: 32rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  color: var(--sub);
+  transition: 0.15s;
+}
+.cat-on {
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* 列表 */
+.news-scroll { flex: 1; overflow: hidden; }
+.news-wrap { padding: 22rpx 32rpx 0; }
+
+.ncard {
+  display: flex;
+  gap: 22rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 28rpx;
+  padding: 20rpx;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 22rpx;
+  transition: transform 0.15s;
+}
+.ncard:active { transform: scale(0.99); }
+.ncard-thumb {
+  flex: 0 0 176rpx;
+  height: 132rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ncard-body { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.ncard-title {
+  font-size: 29rpx;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ncard-meta {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding-top: 12rpx;
+}
+.ncard-sub { font-size: 22rpx; color: var(--muted); }
+
+.list-bottom { height: calc(150rpx + env(safe-area-inset-bottom)); }

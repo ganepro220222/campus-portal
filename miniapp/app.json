@@ -1,10 +1,11 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/login/index",
-    "pages/profile/index",
+    "pages/news/index",
     "pages/hall/index",
     "pages/course/index",
+    "pages/login/index",
+    "pages/profile/index",
     "pages/activity/index"
   ],
   "subpackages": [
@@ -54,17 +55,20 @@
     }
   },
   "tabBar": {
+    "custom": true,
     "color": "#8A93B2",
     "selectedColor": "#2B356E",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "black",
     "list": [
-      { "pagePath": "pages/index/index",    "text": "首页" },
-      { "pagePath": "pages/hall/index",     "text": "展馆" },
-      { "pagePath": "pages/course/index",   "text": "课程" },
-      { "pagePath": "pages/activity/index", "text": "活动" },
-      { "pagePath": "pages/profile/index",  "text": "我的" }
+      { "pagePath": "pages/index/index",  "text": "首页" },
+      { "pagePath": "pages/news/index",   "text": "新闻" },
+      { "pagePath": "pages/hall/index",   "text": "展馆" },
+      { "pagePath": "pages/course/index", "text": "课程" }
     ]
+  },
+  "usingComponents": {
+    "icon": "/components/icon/index"
   },
   "navigateToMiniProgramAppIdList": [],
   "permission": {

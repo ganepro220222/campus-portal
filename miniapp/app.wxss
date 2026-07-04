@@ -172,3 +172,27 @@ page {
 .ft-mp3  { background: #3F9A6B; }
 .ft-doc  { background: #2C66C2; }
 .ft-xlsx { background: #1E7A45; }
+
+/* ── 主题渐变色阶（展馆/封面/缩略图，对齐 demo hc1-hc5）── */
+.hc1 { background: linear-gradient(135deg, #2B356E, #475BA6); }
+.hc2 { background: linear-gradient(135deg, #365E8C, #2E7C8C); }
+.hc3 { background: linear-gradient(135deg, #7A2E36, #A0505A); }
+.hc4 { background: linear-gradient(135deg, #3F6B4A, #5C9A6B); }
+.hc5 { background: linear-gradient(135deg, #5A4E86, #7E72B0); }
+
+/* ── Banner 渐变（对齐 demo s1-s3）── */
+.s1 { background: linear-gradient(120deg, #1E2654, #3F57B5); }
+.s2 { background: linear-gradient(120deg, #243056, #4A4E86); }
+.s3 { background: linear-gradient(120deg, #1B2A4A, #2E5C7A); }
+
+/* ── 胶囊标签（对齐 demo .pill）── */
+.pill {
+  font-size: 20rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  background: var(--sky-2);
+  color: var(--navy);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.pill.gold { background: #FBF3DD; color: #9C7C2E; }

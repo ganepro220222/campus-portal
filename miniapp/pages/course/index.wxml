@@ -1,15 +1,57 @@
 <!-- pages/course/index.wxml -->
-<view class="page">
-  <scroll-view scroll-x class="cat-bar">
-    <view wx:for="{{categories}}" wx:key="id" class="cat-tag {{currentCat===item.id?'cat-active':''}}" bindtap="switchCat" data-id="{{item.id}}">{{item.name}}</view>
-  </scroll-view>
-  <view wx:for="{{courseList}}" wx:key="id" class="course-card" bindtap="onCardTap" data-id="{{item.id}}">
-    <image class="course-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
-    <view class="course-info">
-      <text class="course-name">{{item.name}}</text>
-      <text class="course-meta">{{item.durationMinutes ? item.durationMinutes + '分钟' : ''}}  {{item.targetAudience}}</text>
+<view class="course-page">
+
+  <!-- 自定义顶栏 -->
+  <view class="nav">
+    <view style="height: {{statusBarHeight}}px;"></view>
+    <view class="nav-row">
+      <text class="nav-title serif">课程中心</text>
     </view>
+    <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
+      <view class="cats-inner">
+        <view
+          wx:for="{{cats}}"
+          wx:key="*this"
+          class="cat {{activeCat === index ? 'cat-on' : ''}}"
+          data-index="{{index}}"
+          bindtap="switchCat"
+        >{{item}}</view>
+      </view>
+    </scroll-view>
   </view>
-  <view wx:if="{{!loading && !courseList.length}}" class="empty-state"><text>暂无课程</text></view>
-  <view class="safe-bottom" />
+
+  <!-- 课程列表 -->
+  <scroll-view scroll-y class="course-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="course-wrap">
+      <view
+        wx:for="{{courseList}}"
+        wx:key="id"
+        class="ccard"
+        bindtap="onCardTap"
+        data-id="{{item.id}}"
+      >
+        <view class="ccard-thumb {{item.colorClass}}">
+          <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" class="ccard-img" />
+          <icon wx:else name="{{item.icon}}" size="34" color="rgba(255,255,255,0.92)" />
+        </view>
+        <view class="ccard-body">
+          <view class="ccard-title serif">{{item.name}}</view>
+          <view class="ccard-desc">{{item.desc}}</view>
+          <view class="ccard-meta">
+            <view class="meta-i"><icon name="users" size="13" color="#8A93B2" /><text>{{item.audience}}</text></view>
+            <view class="meta-i"><icon name="clock" size="13" color="#8A93B2" /><text>{{item.lessonCount}} 课时</text></view>
+            <text class="pill {{item.tagGold ? 'gold' : ''}}">{{item.tag}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{!loading && !courseList.length}}" class="empty-state">
+        <icon name="course" size="40" color="#C3CCE0" />
+        <text>暂无课程</text>
+      </view>
+
+      <view class="list-bottom"></view>
+    </view>
+  </scroll-view>
+
 </view>

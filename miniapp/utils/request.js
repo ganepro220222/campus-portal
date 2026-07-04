@@ -18,7 +18,7 @@ const request = (url, method = 'GET', data = {}) => {
       data,
       header: {
         'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : ''
+        'Authorization': token ? ('Bearer ' + token) : ''
       },
       success(res) {
         const body = res.data

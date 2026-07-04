@@ -2,10 +2,17 @@
 
 module.exports = {
   banners: [
-    { id: 1, title: '王阳明“知行合一”专题讲座圆满举行', description: '名家云集，共探黔中阳明心学的当代价值', colorClass: 's1', category: '书院动态' },
-    { id: 2, title: '“通途之路”研学品牌正式启动', description: '线上承载 · 线下研学，打造协同育人新格局', colorClass: 's2', category: '通途之路' },
-    { id: 3, title: '屯堡地戏走进校园 · 六百年非遗活态传承', description: '沉浸式线上展馆同步上线，可听语音讲解', colorClass: 's3', category: '文化传承' }
+    { id: 1, title: '王阳明“知行合一”专题讲座圆满举行', description: '名家云集，共探黔中阳明心学的当代价值', colorClass: 's1', category: '书院动态', linkType: 'page', linkValue: '/packageA/news/detail?id=1' },
+    { id: 2, title: '“通途之路”研学品牌正式启动', description: '线上承载 · 线下研学，打造协同育人新格局', colorClass: 's2', category: '通途之路', linkType: 'page', linkValue: '/pages/hall/index' },
+    { id: 3, title: '屯堡地戏走进校园 · 六百年非遗活态传承', description: '沉浸式线上展馆同步上线，可听语音讲解', colorClass: 's3', category: '文化传承', linkType: 'page', linkValue: '/pages/course/index' }
   ],
+
+  // 各模块默认分类（接口 /categories 不可用时的兜底）
+  categories: {
+    news:   ['全部', '书院动态', '活动通知', '文化传承'],
+    hall:   ['全部', '传统文化', '红色文化', '非遗技艺', '校史校风'],
+    course: ['全部', '阳明文化', '思政必修', '文化传承', '美育素养']
+  },
 
   hallsHome: [
     { id: 1, name: '阳明文化馆' },
@@ -68,6 +75,41 @@ module.exports = {
     { id: 2, title: '“通途之路”研学品牌启动仪式', startTime: '2026-06-20 09:00', location: '学术报告厅', enrolledCount: 240, quota: 240, tag: '活动' },
     { id: 3, title: '屯堡地戏非遗活态传承公开课', startTime: '2026-06-25 15:00', location: '非遗技艺馆', enrolledCount: 88, quota: 120, tag: '公开课' },
     { id: 4, title: '红色交通史主题研学行', startTime: '2026-07-02 08:30', location: '遵义会议会址', enrolledCount: 56, quota: 80, tag: '研学' }
+  ],
+
+  activityDetail: {
+    id: 1,
+    title: '“知行合一”阳明文化专题讲座',
+    location: '明德讲堂',
+    startTime: '2026-06-15 14:30',
+    intro: '邀请省内知名学者主讲，深入阐释阳明心学“知行合一”的当代价值。',
+    tag: '讲座',
+    quota: 300,
+    enrolledCount: 186,
+    canEnroll: true,
+    enrollStatus: 'none'
+  },
+
+  crafts: [
+    { id: 1, name: '苗族银饰·蝴蝶冠', intro: '贵州苗族传统银饰', categoryName: '非遗工艺', previewType: 'multi_image' },
+    { id: 2, name: '蜡染壁挂·山水阳明', intro: '蜡染工艺呈现龙场山水', categoryName: '非遗工艺', previewType: 'multi_image' },
+    { id: 3, name: '屯堡石雕·地戏面具', intro: '六百年非遗活态传承', categoryName: '非遗工艺', previewType: 'model3d' }
+  ],
+
+  craftDetail: {
+    id: 1,
+    name: '苗族银饰·蝴蝶冠',
+    introZh: '贵州苗族传统银饰，以蝴蝶妈妈为图腾，寓意生命与美好。',
+    introEn: 'Traditional Miao silver headdress featuring butterfly motifs.',
+    previewType: 'multi_image',
+    images: [{ imageUrl: '', angleLabel: '正面' }],
+    contact: { phone: '0851-12345678', wechat: 'shuyuan_craft', email: 'craft@gzjtzy.edu.cn' }
+  },
+
+  resources: [
+    { id: 1, name: '阳明心学导读.pdf', fileType: 'pdf', fileSizeKb: 2048, fileSizeText: '2.0 MB', categoryName: '思政学习' },
+    { id: 2, name: '长征精神学习课件.ppt', fileType: 'ppt', fileSizeKb: 5120, fileSizeText: '5.0 MB', categoryName: '思政学习' },
+    { id: 3, name: '屯堡文化读本.doc', fileType: 'word', fileSizeKb: 1024, fileSizeText: '1.0 MB', categoryName: '文化读本' }
   ],
 
   newsDetail: {

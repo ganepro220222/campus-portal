@@ -62,7 +62,7 @@
   box-sizing: border-box;
 }
 
-/* ── 校徽印章（深色底 + 金环，衬白色徽记）── */
+/* ── 校徽印章（白色底 + 金环，衬原色校徽）── */
 .seal {
   width: 300rpx; height: 300rpx;
   border-radius: 50%;
@@ -70,11 +70,11 @@
   position: relative;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle, #0b0f24 0%, #12172f 72%);
+  background: #FFFFFF;
   box-shadow:
     0 0 0 2rpx rgba(190,156,68,.55),
-    0 24rpx 66rpx rgba(8,12,30,.50),
-    0 0 60rpx rgba(150,180,235,.42);
+    0 20rpx 56rpx rgba(8,12,30,.45),
+    0 0 52rpx rgba(150,180,235,.45);
 }
 .seal::after {
   content: "";
@@ -97,7 +97,7 @@
 }
 .brand-div {
   width: 256rpx; height: 0;
-  margin: 26rpx auto 24rpx;
+  margin: 26rpx auto 34rpx;
   position: relative;
 }
 .brand-div::before {
@@ -111,7 +111,7 @@
   content: "❖";
   position: absolute;
   left: 50%; top: 50%;
-  transform: translate(-50%, -54%);
+  transform: translate(-50%, -78%);
   color: #BE9C44;
   font-size: 22rpx;
   padding: 0 14rpx;
@@ -173,7 +173,7 @@
   gap: 14rpx;
 }
 .lbtn::after { border: none; }
-.lbtn-tx { line-height: 1; }
+.lbtn-tx { line-height: 1; white-space: nowrap; flex-shrink: 0; }
 .lbtn-primary {
   background: linear-gradient(135deg, #ffffff, #F3F6FF);
   color: #2B356E;

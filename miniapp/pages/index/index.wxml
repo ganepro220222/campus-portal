@@ -8,7 +8,7 @@
       <view class="header-me" bindtap="onProfileTap">
         <icon name="user-circle" size="25" color="#2B356E" />
       </view>
-      <image class="school-title-img" src="/assets/images/school-title.png" mode="heightFix" />
+      <text class="header-name">中华文化书院</text>
       <view class="bell-btn" bindtap="onBellTap">
         <icon name="bell" size="22" color="#2B356E" />
         <view wx:if="{{hasNewAnnouncement}}" class="bell-dot"></view>
@@ -88,7 +88,7 @@
         </view>
         <view class="entry" bindtap="onEntryTap" data-key="enroll">
           <view class="ico e5"><icon name="entry-enroll" size="25" color="#ffffff" /></view>
-          <text class="entry-label">活动报名</text>
+          <text class="entry-label">报名</text>
         </view>
       </view>
     </view>

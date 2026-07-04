@@ -38,6 +38,7 @@
   line-height: 1;
   color: #8A93B2;
   transition: color 0.2s;
+  white-space: nowrap;
 }
 
 .tab-txt.on {

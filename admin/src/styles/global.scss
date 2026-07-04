@@ -2,8 +2,26 @@
 
 :root {
   --brand-primary: #2b356e;
+  --brand-primary-deep: #1e2654;
+  --brand-blue: #3f57b5;
   --brand-gold: #c9a227;
-  --sidebar-width: 220px;
+  --brand-gold-soft: #f3ecd6;
+  --brand-ink: #1f2547;
+  --brand-sub: #5a648a;
+  --brand-muted: #8a93b2;
+  --brand-line: #e7ecf6;
+  --sidebar-width: 232px;
+
+  /* Element Plus 主题色对齐品牌海军蓝 */
+  --el-color-primary: #2b356e;
+  --el-color-primary-light-3: #58618f;
+  --el-color-primary-light-5: #8189ac;
+  --el-color-primary-light-7: #aab0c9;
+  --el-color-primary-light-8: #c9cddd;
+  --el-color-primary-light-9: #e9ebf2;
+  --el-color-primary-dark-2: #232a58;
+  --el-border-radius-base: 10px;
+  --el-font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 * {
@@ -17,28 +35,59 @@ body,
   padding: 0;
   height: 100%;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: #f0f2f5;
-  color: #303133;
+  background: #eef1f7;
+  color: var(--brand-ink);
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #c7cede;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #aab2c9;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .page-card {
   background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  padding: 22px 24px;
+  border: 1px solid var(--brand-line);
+  box-shadow: 0 6px 22px rgba(31, 40, 90, 0.06);
 }
 
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 
   h2 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 19px;
+    font-weight: 700;
     color: var(--brand-primary);
+    position: relative;
+    padding-left: 14px;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 5px;
+      height: 18px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, var(--brand-blue), var(--brand-primary));
+    }
   }
 }
 
@@ -51,13 +100,30 @@ body,
 }
 
 .text-muted {
-  color: #909399;
+  color: var(--brand-muted);
   font-size: 13px;
 }
 
 .form-tip {
   font-size: 12px;
-  color: #909399;
+  color: var(--brand-muted);
   line-height: 1.5;
   margin-top: 4px;
+}
+
+/* Element Plus 细节微调 */
+.el-card {
+  border-radius: 14px;
+  border: 1px solid var(--brand-line);
+}
+.el-button {
+  font-weight: 600;
+}
+.el-table th.el-table__cell {
+  background: #f6f8fc !important;
+  color: var(--brand-sub);
+  font-weight: 600;
+}
+.el-tag {
+  border-radius: 6px;
 }

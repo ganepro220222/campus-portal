@@ -1,40 +1,57 @@
 <template>
   <el-container class="admin-layout">
-    <el-aside :width="collapsed ? '64px' : '220px'" class="aside">
+    <el-aside :width="collapsed ? '68px' : '232px'" class="aside">
       <div class="logo" @click="router.push('/dashboard')">
-        <span class="logo-icon">书</span>
-        <span v-show="!collapsed" class="logo-text">云端书院</span>
+        <span class="logo-seal">书</span>
+        <span v-show="!collapsed" class="logo-text">
+          <span class="logo-zh">云端书院</span>
+          <span class="logo-en">管理后台</span>
+        </span>
       </div>
-      <el-menu
-        :default-active="route.path"
-        :collapse="collapsed"
-        background-color="#2B356E"
-        text-color="#c8cce0"
-        active-text-color="#C9A227"
-        router
-      >
-        <el-menu-item v-for="item in visibleMenus" :key="item.path" :index="item.path">
-          <el-icon><component :is="item.icon" /></el-icon>
-          <template #title>{{ item.title }}</template>
-        </el-menu-item>
-      </el-menu>
+      <el-scrollbar class="menu-scroll">
+        <el-menu
+          :default-active="route.path"
+          :collapse="collapsed"
+          :collapse-transition="false"
+          background-color="transparent"
+          text-color="#c8cce0"
+          active-text-color="#F0DCA0"
+          router
+        >
+          <el-menu-item v-for="item in visibleMenus" :key="item.path" :index="item.path">
+            <el-icon><component :is="item.icon" /></el-icon>
+            <template #title>{{ item.title }}</template>
+          </el-menu-item>
+        </el-menu>
+      </el-scrollbar>
     </el-aside>
 
     <el-container>
       <el-header class="header">
         <div class="header-left">
-          <el-button :icon="collapsed ? Expand : Fold" text @click="collapsed = !collapsed" />
-          <span class="breadcrumb">{{ route.meta.title }}</span>
+          <el-button :icon="collapsed ? Expand : Fold" text class="collapse-btn" @click="collapsed = !collapsed" />
+          <div class="crumb">
+            <el-icon class="crumb-ic"><HomeFilled /></el-icon>
+            <span class="crumb-sep">/</span>
+            <span class="crumb-title">{{ route.meta.title }}</span>
+          </div>
         </div>
         <div class="header-right">
-          <el-tag size="small" type="info">{{ auth.profile?.roleName || '管理员' }}</el-tag>
-          <span class="user-name">{{ auth.displayName }}</span>
+          <el-tag size="small" class="role-tag" effect="light">{{ auth.profile?.roleName || '管理员' }}</el-tag>
+          <div class="user">
+            <span class="avatar">{{ initial }}</span>
+            <span class="user-name">{{ auth.displayName }}</span>
+          </div>
           <el-button type="danger" link @click="onLogout">退出</el-button>
         </div>
       </el-header>
 
       <el-main class="main">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <transition name="fade-slide" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </el-main>
     </el-container>
   </el-container>
@@ -43,7 +60,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Expand, Fold } from '@element-plus/icons-vue'
+import { Expand, Fold, HomeFilled } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { filterMenus } from '@/router'
@@ -56,6 +73,8 @@ const collapsed = ref(false)
 const visibleMenus = computed(() =>
   filterMenus(auth.profile?.permissions || [])
 )
+
+const initial = computed(() => (auth.displayName || '管').trim().charAt(0))
 
 async function onLogout() {
   await ElMessageBox.confirm('确定退出登录？', '提示', { type: 'warning' })
@@ -70,80 +89,189 @@ async function onLogout() {
 }
 
 .aside {
-  background: #2b356e;
-  transition: width 0.2s;
+  background: linear-gradient(180deg, #2b356e 0%, #1e2654 100%);
+  transition: width 0.24s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 16px rgba(20, 26, 56, 0.18);
 }
 
 .logo {
-  height: 56px;
+  height: 64px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
   cursor: pointer;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: rgba(201, 162, 39, 0.15);
-  color: #c9a227;
+.logo-seal {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(201, 162, 39, 0.14);
+  border: 1.5px solid rgba(201, 162, 39, 0.7);
+  color: #f0dca0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: KaiTi, STKaiti, serif;
-  font-size: 18px;
+  font-size: 20px;
+  flex-shrink: 0;
 }
 
 .logo-text {
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
   white-space: nowrap;
+}
+.logo-zh {
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.logo-en {
+  color: rgba(200, 204, 224, 0.65);
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
+.menu-scroll {
+  flex: 1;
+  padding: 12px 12px 0;
 }
 
 .header {
   background: #fff;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--brand-line);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  height: 56px;
+  padding: 0 20px;
+  height: 60px;
+  box-shadow: 0 2px 12px rgba(31, 40, 90, 0.05);
+  z-index: 5;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+.collapse-btn {
+  font-size: 18px;
+  color: var(--brand-sub);
 }
 
-.breadcrumb {
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 15px;
-  color: #303133;
+}
+.crumb-ic {
+  color: var(--brand-primary);
+}
+.crumb-sep {
+  color: #c3cce0;
+}
+.crumb-title {
+  color: var(--brand-ink);
+  font-weight: 600;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
-
+.role-tag {
+  --el-tag-bg-color: var(--brand-gold-soft);
+  --el-tag-text-color: #9c7c2e;
+  --el-tag-border-color: transparent;
+  font-weight: 600;
+}
+.user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3f57b5, #2b356e);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .user-name {
   font-size: 14px;
-  color: #606266;
+  color: var(--brand-ink);
+  font-weight: 500;
 }
 
 .main {
-  padding: 20px;
-  background: #f0f2f5;
+  padding: 22px;
+  background: linear-gradient(180deg, #eef1f7 0, #f4f6fb 100%);
   overflow: auto;
 }
 
+/* 页面切换动效 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* 菜单 */
 :deep(.el-menu) {
   border-right: none;
+}
+:deep(.el-menu-item) {
+  height: 48px;
+  line-height: 48px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  color: #c8cce0;
+}
+:deep(.el-menu-item:hover) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+:deep(.el-menu-item.is-active) {
+  background: rgba(240, 220, 160, 0.14);
+  color: #f0dca0;
+  font-weight: 600;
+  position: relative;
+}
+:deep(.el-menu-item.is-active)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  border-radius: 3px;
+  background: #c9a227;
+}
+:deep(.el-menu--collapse .el-menu-item.is-active)::before {
+  display: none;
 }
 </style>

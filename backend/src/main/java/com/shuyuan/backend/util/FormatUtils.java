@@ -20,6 +20,18 @@ public final class FormatUtils {
         return time == null ? "" : time.format(DATETIME_FMT);
     }
 
+    /** 解析前端传入的时间字符串 */
+    public static LocalDateTime parseDateTime(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String s = text.trim().replace('T', ' ');
+        if (s.length() >= 16) {
+            return LocalDateTime.parse(s.substring(0, 16), DATETIME_FMT);
+        }
+        return LocalDateTime.parse(s, DATE_FMT);
+    }
+
     public static String formatCount(int count) {
         if (count >= 10000) {
             return String.format("%.1f万", count / 10000.0);

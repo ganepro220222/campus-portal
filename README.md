@@ -14,6 +14,7 @@ Private monorepo for a campus mini program and its backend services.
 ```
 backend/     API service
 miniapp/     Mini program client
+admin/       Vue 3 management console
 sql/         Database schema
 docs/        Internal specs
 ```
@@ -43,9 +44,25 @@ docker compose -f docker-compose.dev.yml down -v
 docker compose -f docker-compose.dev.yml up -d --build
 ```
 
-**Dev login:** student `2021001` / password `Admin@123`. WeChat login works in dev mode without AppID.
+**Dev login:** student `2021001` / password `Admin@123`. Admin console `admin` / `Admin@123`. WeChat login works in dev mode without AppID.
+
+**Login lock (§2.1):** 5 consecutive wrong passwords lock the account for 5 minutes (Redis). Clear dev locks: `docker exec shuyuan-redis-1 redis-cli -a dev123456 KEYS "login:*"`.
 
 **Logs:** `docker compose -f docker-compose.dev.yml logs -f backend`
+
+## Admin console (Vue 3)
+
+Requires Node.js 18+. Backend must be running on port 8080.
+
+```bash
+cd admin
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 — login `admin` / `Admin@123`.
+
+Vite dev server proxies `/api` to `http://localhost:8080`. Production build: `npm run build` → static files in `admin/dist/`.
 
 ## Local dev (without Docker backend)
 

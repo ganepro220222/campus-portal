@@ -33,7 +33,7 @@ Page({
     }
   },
 
-  // 学号密码登录
+  // 学号密码登录（失败次数由后端 Redis 计数，§2.1）
   async onAccountLogin() {
     const { studentNo, password } = this.data
     if (!studentNo.trim()) return wx.showToast({ title: '请输入学号/账号', icon: 'none' })

@@ -11,6 +11,17 @@ public class ShuyuanProperties {
 
     private Jwt jwt = new Jwt();
     private Wx wx = new Wx();
+    private Login login = new Login();
+
+    @Data
+    public static class Login {
+        /** 连续失败多少次后锁定 */
+        private int maxFailAttempts = 5;
+        /** 锁定时长（分钟） */
+        private int lockMinutes = 5;
+        /** 失败计数窗口（分钟），超时未再失败则清零 */
+        private int failWindowMinutes = 15;
+    }
 
     @Data
     public static class Jwt {

@@ -26,7 +26,21 @@ public class JwtUtils {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(memberId))
+                .claim("type", "member")
                 .claim("openid", openid)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + expireMs))
+                .signWith(key)
+                .compact();
+    }
+
+    /** 管理员 JWT（payload 含 adminId、roleId） */
+    public String createAdminToken(Long adminId, Long roleId) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(String.valueOf(adminId))
+                .claim("type", "admin")
+                .claim("roleId", roleId)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expireMs))
                 .signWith(key)
@@ -42,6 +56,27 @@ public class JwtUtils {
     }
 
     public Long getMemberId(String token) {
-        return Long.parseLong(parse(token).getSubject());
+        Claims claims = parse(token);
+        if ("admin".equals(claims.get("type", String.class))) {
+            return null;
+        }
+        return Long.parseLong(claims.getSubject());
+    }
+
+    public Long getAdminId(String token) {
+        Claims claims = parse(token);
+        if (!"admin".equals(claims.get("type", String.class))) {
+            return null;
+        }
+        return Long.parseLong(claims.getSubject());
+    }
+
+    public Long getAdminRoleId(String token) {
+        Claims claims = parse(token);
+        Object roleId = claims.get("roleId");
+        if (roleId == null) {
+            return null;
+        }
+        return Long.valueOf(roleId.toString());
     }
 }

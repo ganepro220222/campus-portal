@@ -1,4 +1,4 @@
-/* pages/login/index.wxss — 深海军蓝夜空登录（对齐 demo）*/
+/* pages/login/index.wxss — 登录页 */
 
 .login-page {
   min-height: 100vh;

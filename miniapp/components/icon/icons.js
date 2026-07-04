@@ -1,8 +1,4 @@
-// components/icon/icons.js
-// 图标图形库 + data URI 生成。图形数据 1:1 取自 design/demo 演示稿。
-// 独立成模块，便于组件与校验脚本共用。
-//
-// 每个图标：{ i: 内部 SVG, m: 'stroke' | 'fill', w: 默认描边粗细 }
+// components/icon/icons.js — SVG 图标路径库，供 icon 组件生成 data URI
 
 const ICONS = {
   /* ── TabBar ── */
@@ -47,7 +43,7 @@ const ICONS = {
   'share':       { i: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>', m: 'stroke', w: 2 },
   'poster':      { i: '<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M4 17l5-4 4 3 3-2 4 3"/>', m: 'stroke', w: 2 },
 
-  /* ── AI 助手 ── */
+  /* 文化问答助手 */
   'robot':       { i: '<path d="M12 3a7 7 0 0 1 7 7c0 2-1 3.7-2.5 4.8V18a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-3.2A7 7 0 0 1 12 3z"/><path d="M9 21h6"/><circle cx="9.5" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="10" r="1" fill="currentColor" stroke="none"/>', m: 'stroke', w: 1.8 },
   'send':        { i: '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/>', m: 'stroke', w: 2.2 },
 

@@ -1,4 +1,4 @@
-/* app.wxss — 全局样式（对齐 demo 设计规范）*/
+/* app.wxss — 全局样式 */
 page {
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   font-size: 28rpx;
@@ -7,7 +7,7 @@ page {
   box-sizing: border-box;
 }
 
-/* ── 颜色变量（完全对齐 demo CSS Variables）── */
+/* 品牌色与设计变量 */
 page {
   --navy:        #2B356E;
   --navy-deep:   #1E2654;
@@ -173,19 +173,19 @@ page {
 .ft-doc  { background: #2C66C2; }
 .ft-xlsx { background: #1E7A45; }
 
-/* ── 主题渐变色阶（展馆/封面/缩略图，对齐 demo hc1-hc5）── */
+/* 展馆/封面渐变色阶 hc1-hc5 */
 .hc1 { background: linear-gradient(135deg, #2B356E, #475BA6); }
 .hc2 { background: linear-gradient(135deg, #365E8C, #2E7C8C); }
 .hc3 { background: linear-gradient(135deg, #7A2E36, #A0505A); }
 .hc4 { background: linear-gradient(135deg, #3F6B4A, #5C9A6B); }
 .hc5 { background: linear-gradient(135deg, #5A4E86, #7E72B0); }
 
-/* ── Banner 渐变（对齐 demo s1-s3）── */
+/* Banner 渐变色阶 s1-s3 */
 .s1 { background: linear-gradient(120deg, #1E2654, #3F57B5); }
 .s2 { background: linear-gradient(120deg, #243056, #4A4E86); }
 .s3 { background: linear-gradient(120deg, #1B2A4A, #2E5C7A); }
 
-/* ── 胶囊标签（对齐 demo .pill）── */
+/* 胶囊标签 */
 .pill {
   font-size: 20rpx;
   padding: 4rpx 16rpx;

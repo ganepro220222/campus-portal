@@ -26,7 +26,9 @@ Page({
         userInfo: profile || this.data.userInfo,
         stats:    stats || this.data.stats
       })
-    } catch {}
+    } catch (err) {
+      console.warn('[profile] 个人数据加载失败', err)
+    }
   },
 
   onLoginTap() {

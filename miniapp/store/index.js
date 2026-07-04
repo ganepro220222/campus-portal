@@ -1,5 +1,4 @@
-// store/index.js — 轻量全局状态（无 Redux，用 getApp() 共享）
-// 使用方式：const store = require('../../store/index')
+// store/index.js — 轻量全局状态，基于 getApp() 共享
 
 const store = {
   // ── 用户状态 ──

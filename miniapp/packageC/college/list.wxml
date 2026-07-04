@@ -1,1 +1,27 @@
-<view class="page"><view class="placeholder">学院矩阵 — 开发中</view></view>
+<!-- packageC/college/list.wxml -->
+<view class="college-page">
+  <scroll-view scroll-y class="college-scroll" enhanced show-scrollbar="{{false}}">
+
+    <view class="college-intro">
+      <text class="ci-zh serif">学院矩阵</text>
+      <text class="ci-en">贵州交通职业大学 · 二级学院协同育人</text>
+    </view>
+
+    <view class="college-grid">
+      <view
+        wx:for="{{colleges}}"
+        wx:key="id"
+        class="col-card"
+        bindtap="onCardTap"
+        data-name="{{item.name}}"
+      >
+        <view class="col-badge {{item.colorClass}}"><text class="cb-tx serif">{{item.short}}</text></view>
+        <text class="col-name">{{item.name}}</text>
+        <text class="col-en">{{item.en}}</text>
+        <text class="col-desc">{{item.desc}}</text>
+      </view>
+    </view>
+
+    <view class="list-bottom"></view>
+  </scroll-view>
+</view>

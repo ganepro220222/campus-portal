@@ -12,6 +12,8 @@ const COURSE_COLORS   = ['hc1', 'hc3', 'hc2', 'hc5', 'hc4']
 const COURSE_CARD_ICONS = ['course', 'clock', 'book', 'star', 'flag']
 const ACTIVITY_COLORS = ['hc1', 'hc3', 'hc2', 'hc5']
 const ACTIVITY_ICONS  = ['megaphone', 'flag', 'star', 'calendar']
+const CRAFT_COLORS    = ['hc1', 'hc5', 'hc3', 'hc2', 'hc4']
+const CRAFT_ICONS     = ['medal', 'star', 'museum', 'book', 'flag']
 
 function decorateHalls(list) {
   return (list || []).map((it, i) => ({
@@ -81,9 +83,20 @@ function decorateActivities(list) {
   }))
 }
 
+function decorateCrafts(list) {
+  return (list || []).map((it, i) => ({
+    ...it,
+    colorClass: it.colorClass || CRAFT_COLORS[i % CRAFT_COLORS.length],
+    icon: it.icon || CRAFT_ICONS[i % CRAFT_ICONS.length],
+    categoryName: it.categoryName || '非遗工艺',
+    badge: it.previewType === 'model3d' ? '3D' : (it.previewType === 'multi_image' ? '多图' : '')
+  }))
+}
+
 module.exports = {
   HALL_COLORS,
   decorateHalls,
+  decorateCrafts,
   decorateNews,
   decorateNewsFeed,
   decorateCourses,

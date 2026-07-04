@@ -1,0 +1,6 @@
+<image
+  class="cp-icon"
+  src="{{src}}"
+  mode="scaleToFill"
+  style="width:{{size}}px;height:{{size}}px;"
+/>

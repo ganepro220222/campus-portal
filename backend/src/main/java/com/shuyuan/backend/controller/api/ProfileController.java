@@ -31,4 +31,24 @@ public class ProfileController {
     public Result<java.util.List<Map<String, Object>>> enrolls() {
         return Result.ok(profileService.enrolls());
     }
+
+    @GetMapping("/favorites")
+    public Result<java.util.List<Map<String, Object>>> favorites() {
+        return Result.ok(profileService.favorites());
+    }
+
+    @GetMapping("/downloads")
+    public Result<java.util.List<Map<String, Object>>> downloads() {
+        return Result.ok(profileService.downloads());
+    }
+
+    @GetMapping("/footprints")
+    public Result<java.util.List<Map<String, Object>>> footprints() {
+        return Result.ok(profileService.footprints());
+    }
+
+    @GetMapping("/badges")
+    public Result<java.util.List<Map<String, Object>>> badges() {
+        return Result.ok(profileService.badges());
+    }
 }

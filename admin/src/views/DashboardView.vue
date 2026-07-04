@@ -68,9 +68,12 @@
       <el-col :span="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-label">系统设置</div>
-          <div class="stat-desc">首页轮播图与跳转链接</div>
+          <div class="stat-desc">首页轮播图、公告通知条</div>
           <el-button v-if="auth.can('admin:super')" type="primary" link @click="$router.push('/banners')">
             Banner 管理 →
+          </el-button>
+          <el-button v-if="auth.can('admin:super')" type="primary" link @click="$router.push('/announcements')">
+            公告管理 →
           </el-button>
         </el-card>
       </el-col>

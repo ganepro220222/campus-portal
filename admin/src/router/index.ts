@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -29,6 +29,12 @@ const router = createRouter({
           name: 'Banners',
           component: () => import('@/views/banner/BannerListView.vue'),
           meta: { title: 'Banner 管理', permission: 'admin:super' }
+        },
+        {
+          path: 'announcements',
+          name: 'Announcements',
+          component: () => import('@/views/announcement/AnnouncementListView.vue'),
+          meta: { title: '公告管理', permission: 'admin:super' }
         },
         {
           path: 'news',
@@ -113,7 +119,8 @@ export const menuItems: MenuItem[] = [
   { path: '/courses', title: '课程管理', icon: VideoCamera, permissions: ['course:read'] },
   { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
   { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
-  { path: '/banners', title: 'Banner 管理', icon: Picture, permissions: ['admin:super'] }
+  { path: '/banners', title: 'Banner 管理', icon: Picture, permissions: ['admin:super'] },
+  { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] }
 ]
 
 export function filterMenus(permissions: string[]) {

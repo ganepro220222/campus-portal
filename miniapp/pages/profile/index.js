@@ -35,7 +35,18 @@ Page({
     wx.navigateTo({ url: '/pages/login/index' })
   },
 
-  // 尚未实现的子页统一提示
+  /** 跳转个人中心子列表（收藏/报名/下载/足迹/徽章） */
+  onStatTap(e) {
+    if (!this.data.isLoggedIn) {
+      this.onLoginTap()
+      return
+    }
+    const type = e.currentTarget.dataset.type
+    if (!type) return
+    wx.navigateTo({ url: `/packageC/profile/list?type=${type}` })
+  },
+
+  // 尚未实现的菜单项
   onTodo() {
     wx.showToast({ title: '功能开发中，敬请期待', icon: 'none' })
   },

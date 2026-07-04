@@ -1,1 +1,81 @@
-<view class="page"><view class="placeholder">活动详情 — 开发中</view></view>
+<!-- packageC/activity/detail.wxml — 活动详情 -->
+<view class="detail-page">
+  <view wx:if="{{loading}}" class="state-box">
+    <text class="state-text">加载中…</text>
+  </view>
+
+  <block wx:elif="{{detail}}">
+    <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
+      <!-- 封面 -->
+      <view class="hero {{coverClass}}">
+        <image wx:if="{{detail.cover}}" src="{{detail.cover}}" mode="aspectFill" class="hero-img" />
+        <icon wx:else name="megaphone" size="48" color="rgba(255,255,255,0.85)" />
+        <text class="hero-tag">{{detail.tag || '活动'}}</text>
+      </view>
+
+      <view class="body">
+        <view class="title serif">{{detail.title}}</view>
+
+        <view class="meta-row">
+          <icon name="calendar" size="16" color="#8A93B2" />
+          <text>{{detail.startTime}}</text>
+        </view>
+        <view class="meta-row">
+          <icon name="pin" size="16" color="#8A93B2" />
+          <text>{{detail.location}}</text>
+        </view>
+
+        <view class="quota-row">
+          <view class="quota-chip {{detail.full ? 'full' : ''}}">
+            <block wx:if="{{detail.quota > 0}}">已报 {{detail.enrolledCount}} / {{detail.quota}} 人</block>
+            <block wx:else>已报 {{detail.enrolledCount}} 人 · 名额不限</block>
+          </view>
+          <view wx:if="{{detail.needReview}}" class="review-chip">需审核</view>
+        </view>
+
+        <view wx:if="{{detail.enrollStartTime}}" class="enroll-window">
+          报名时间：{{detail.enrollStartTime}} 至 {{detail.enrollEndTime}}
+        </view>
+
+        <view wx:if="{{statusLabel}}" class="status-banner status-{{detail.enrollStatus}}">
+          {{statusLabel}}
+          <text wx:if="{{detail.voucherCode && detail.enrollStatus === 'approved'}}" class="voucher-inline">凭证码 {{detail.voucherCode}}</text>
+        </view>
+
+        <view class="section">
+          <view class="section-title">活动介绍</view>
+          <text class="intro">{{detail.intro || '暂无详细介绍'}}</text>
+        </view>
+      </view>
+
+      <view class="scroll-bottom"></view>
+    </scroll-view>
+
+    <!-- 底部操作栏 -->
+    <view class="foot-bar">
+      <block wx:if="{{actionType === 'login'}}">
+        <button class="btn-primary" bindtap="onLoginTap">登录后报名</button>
+      </block>
+      <block wx:elif="{{actionType === 'enroll'}}">
+        <button class="btn-primary" bindtap="onEnrollTap">立即报名</button>
+      </block>
+      <block wx:elif="{{actionType === 'disabled'}}">
+        <button class="btn-disabled" disabled>{{actionHint}}</button>
+      </block>
+      <block wx:elif="{{actionType === 'pending'}}">
+        <button class="btn-outline" bindtap="onCancelTap">取消报名</button>
+      </block>
+      <block wx:elif="{{actionType === 'approved'}}">
+        <button class="btn-outline" bindtap="onVoucherTap">查看凭证</button>
+        <button class="btn-primary btn-half" bindtap="onCancelTap">取消报名</button>
+      </block>
+      <block wx:elif="{{actionType === 'rejected'}}">
+        <button class="btn-primary" bindtap="onEnrollTap">重新报名</button>
+      </block>
+    </view>
+  </block>
+
+  <view wx:else class="state-box">
+    <text class="state-text">活动不存在或已下架</text>
+  </view>
+</view>

@@ -1,0 +1,23 @@
+.page { min-height: 100vh; background: #F5F8FC; }
+.placeholder { padding: 80rpx 40rpx; text-align: center; color: #8A93B2; font-size: 28rpx; }
+.list { padding: 24rpx; }
+.item {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(43, 53, 110, 0.06);
+}
+.item-title { font-size: 30rpx; color: #2B356E; font-weight: 600; display: block; }
+.item-sub { font-size: 24rpx; color: #8A93B2; margin-top: 8rpx; display: block; }
+.item-meta { font-size: 22rpx; color: #C3CCE0; margin-top: 12rpx; display: block; }
+.badge-tag {
+  display: inline-block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  background: #EEF1F8;
+  color: #8A93B2;
+}
+.badge-tag.earned { background: rgba(201, 162, 39, 0.15); color: #C9A227; }

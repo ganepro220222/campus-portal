@@ -35,6 +35,18 @@ export interface BannerItem {
   status: number
 }
 
+export interface AnnouncementItem {
+  id: number
+  content: string
+  linkUrl?: string | null
+  sort?: number
+  isScroll?: number
+  startTime?: string | null
+  endTime?: string | null
+  status?: number
+  activeNow?: boolean
+}
+
 export interface NewsItem {
   id: number
   title: string

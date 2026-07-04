@@ -1,66 +1,73 @@
 <!-- pages/profile/index.wxml -->
-<view class="page">
+<view class="profile-page">
 
-  <!-- 未登录状态 -->
-  <view wx:if="{{!isLoggedIn}}" class="guest-panel" bindtap="onLoginTap">
-    <image class="guest-avatar" src="/assets/icons/avatar-default.png" mode="aspectFill" />
-    <text class="guest-tip">点击登录，解锁全部功能</text>
-    <view class="login-btn">立即登录</view>
+  <!-- 顶部头区 -->
+  <view class="hero">
+    <view class="hero-deco"></view>
+    <block wx:if="{{isLoggedIn}}">
+      <view class="hero-row">
+        <view class="avatar">
+          <image wx:if="{{userInfo.avatar}}" src="{{userInfo.avatar}}" mode="aspectFill" class="avatar-img" />
+          <icon wx:else name="user-circle" size="40" color="#ffffff" />
+        </view>
+        <view class="hero-info">
+          <text class="nickname">{{userInfo.nickname || '书院用户'}}</text>
+          <text class="college">{{userInfo.college || '贵州交通职业大学 · 中华文化书院'}}</text>
+        </view>
+        <view class="points">
+          <text class="points-num">{{stats.points || 0}}</text>
+          <text class="points-lbl">积分</text>
+        </view>
+      </view>
+    </block>
+    <block wx:else>
+      <view class="hero-row" bindtap="onLoginTap">
+        <view class="avatar"><icon name="user-circle" size="40" color="#ffffff" /></view>
+        <view class="hero-info">
+          <text class="nickname">点击登录</text>
+          <text class="college">解锁收藏 · 报名 · 学习足迹</text>
+        </view>
+        <view class="login-chip">登录<icon name="chevron-right" size="14" color="#ffffff" /></view>
+      </view>
+    </block>
   </view>
 
-  <!-- 已登录：用户信息 -->
-  <view wx:if="{{isLoggedIn}}" class="user-panel">
-    <image class="avatar" src="{{userInfo.avatar || '/assets/icons/avatar-default.png'}}" mode="aspectFill" />
-    <view class="user-info">
-      <text class="nickname">{{userInfo.nickname || '书院用户'}}</text>
-      <text class="college">{{userInfo.college || ''}}</text>
-    </view>
-    <view class="points-badge">
-      <text class="points-num">{{stats.points}}</text>
-      <text class="points-label">积分</text>
-    </view>
-  </view>
-
-  <!-- 数据统计卡 -->
+  <!-- 数据统计 -->
   <view wx:if="{{isLoggedIn}}" class="stats-card">
-    <view class="stat-item" bindtap="onFavoritesTap">
-      <text class="stat-num">{{stats.favorites}}</text>
-      <text class="stat-label">收藏</text>
-    </view>
-    <view class="stat-divider" />
-    <view class="stat-item" bindtap="onEnrollsTap">
-      <text class="stat-num">{{stats.enrolls}}</text>
-      <text class="stat-label">报名</text>
-    </view>
-    <view class="stat-divider" />
-    <view class="stat-item" bindtap="onDownloadsTap">
-      <text class="stat-num">{{stats.downloads}}</text>
-      <text class="stat-label">下载</text>
-    </view>
-    <view class="stat-divider" />
-    <view class="stat-item" bindtap="onFootprintTap">
-      <text class="stat-num">足迹</text>
-      <text class="stat-label">学习</text>
-    </view>
+    <view class="stat" bindtap="onTodo"><text class="stat-num">{{stats.favorites || 0}}</text><text class="stat-lbl">收藏</text></view>
+    <view class="stat-dv"></view>
+    <view class="stat" bindtap="onTodo"><text class="stat-num">{{stats.enrolls || 0}}</text><text class="stat-lbl">报名</text></view>
+    <view class="stat-dv"></view>
+    <view class="stat" bindtap="onTodo"><text class="stat-num">{{stats.downloads || 0}}</text><text class="stat-lbl">下载</text></view>
+    <view class="stat-dv"></view>
+    <view class="stat" bindtap="onTodo"><view class="stat-ic"><icon name="footprint" size="26" color="#2B356E" /></view><text class="stat-lbl">足迹</text></view>
   </view>
 
   <!-- 功能菜单 -->
-  <view class="menu-section">
-    <view class="menu-item" bindtap="onBadgeTap">
-      <text class="menu-icon">🏅</text>
-      <text class="menu-text">文化徽章</text>
-      <text class="menu-arrow">›</text>
+  <view class="menu">
+    <view class="menu-item" bindtap="onTodo">
+      <view class="mi-ic mi-gold"><icon name="medal" size="20" color="#ffffff" /></view>
+      <text class="mi-tx">文化徽章</text>
+      <icon name="chevron-right" size="16" color="#C3CCE0" />
     </view>
-    <view class="menu-item" bindtap="onFeedbackTap">
-      <text class="menu-icon">💬</text>
-      <text class="menu-text">意见反馈</text>
-      <text class="menu-arrow">›</text>
+    <view class="menu-item" bindtap="onTodo">
+      <view class="mi-ic mi-blue"><icon name="chat" size="20" color="#ffffff" /></view>
+      <text class="mi-tx">意见反馈</text>
+      <icon name="chevron-right" size="16" color="#C3CCE0" />
+    </view>
+    <view class="menu-item" bindtap="onTodo">
+      <view class="mi-ic mi-slate"><icon name="grid" size="20" color="#ffffff" /></view>
+      <text class="mi-tx">关于云端书院</text>
+      <icon name="chevron-right" size="16" color="#C3CCE0" />
     </view>
   </view>
 
   <view wx:if="{{isLoggedIn}}" class="logout-area">
-    <button class="logout-btn" bindtap="onLogout">退出登录</button>
+    <button class="logout-btn" bindtap="onLogout">
+      <icon name="logout" size="18" color="#C0392B" />
+      <text>退出登录</text>
+    </button>
   </view>
 
-  <view class="safe-bottom" />
+  <view class="safe-bottom"></view>
 </view>

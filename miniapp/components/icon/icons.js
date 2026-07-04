@@ -65,7 +65,8 @@ const ICONS = {
   'logout':      { i: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>', m: 'stroke', w: 2 },
   'heart':       { i: '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/>', m: 'stroke', w: 2 },
   'footprint':   { i: '<path d="M4 16c0-2 1-3 2.5-3S9 14 9 16s-1 4-2.5 4S4 18 4 16z"/><path d="M6 9c0-1.5.7-2.5 1.8-2.5S9.5 7.5 9.5 9"/><path d="M15 12c0-2 1-3 2.5-3s2.5 1 2.5 3-1 4-2.5 4-2.5-2-2.5-4z"/><path d="M17 5c0-1.5.7-2.5 1.8-2.5S20.5 3.5 20.5 5"/>', m: 'stroke', w: 1.8 },
-  'grid':        { i: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>', m: 'stroke', w: 1.8 }
+  'grid':        { i: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>', m: 'stroke', w: 1.8 },
+  'pin':         { i: '<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>', m: 'stroke', w: 2 }
 }
 
 function buildSrc(name, size, color, sw) {

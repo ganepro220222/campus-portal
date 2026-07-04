@@ -1,14 +1,12 @@
-// pages/login/index.js
+// pages/login/index.js —— 登录（对齐 demo 深色风格，保留微信/学号鉴权）
 const { wxLogin } = require('../../utils/auth')
 const { post }    = require('../../utils/request')
 
 Page({
   data: {
-    activeTab:  'wx',
-    studentNo:  '',
-    password:   '',
-    loading:    false,
-    pwdVisible: false,
+    studentNo: '',
+    password: '',
+    loading: false,
     statusBarHeight: 20
   },
 
@@ -17,24 +15,8 @@ Page({
     this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
   },
 
-  switchTab(e) {
-    this.setData({ activeTab: e.currentTarget.dataset.tab })
-  },
-
-  switchTabAccount() {
-    this.setData({ activeTab: 'account' })
-  },
-
-  switchTabWx() {
-    this.setData({ activeTab: 'wx' })
-  },
-
   onInput(e) {
     this.setData({ [e.currentTarget.dataset.field]: e.detail.value })
-  },
-
-  togglePwd() {
-    this.setData({ pwdVisible: !this.data.pwdVisible })
   },
 
   // 微信授权登录

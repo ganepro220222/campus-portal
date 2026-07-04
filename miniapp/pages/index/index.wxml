@@ -1,28 +1,27 @@
 <!-- pages/index/index.wxml -->
 <view class="home-page">
 
-  <!-- 吸顶 Header：校名 + 铃铛（状态栏占位 + 内容区）-->
+  <!-- 吸顶 Header：我的 + 校名 + 铃铛 -->
   <view class="header">
     <view style="height: {{statusBarHeight}}px;"></view>
     <view class="header-row">
+      <view class="header-me" bindtap="onProfileTap">
+        <icon name="user-circle" size="25" color="#2B356E" />
+      </view>
       <image class="school-title-img" src="/assets/images/school-title.png" mode="heightFix" />
       <view class="bell-btn" bindtap="onBellTap">
-        <view class="bell-icon">
-          <text class="bell-svg">🔔</text>
-        </view>
+        <icon name="bell" size="22" color="#2B356E" />
         <view wx:if="{{hasNewAnnouncement}}" class="bell-dot"></view>
       </view>
     </view>
     <!-- 搜索框 -->
     <view class="search-bar" bindtap="onSearchTap">
-      <view class="search-icon-wrap">
-        <text class="s-icon">🔍</text>
-      </view>
-      <text class="search-placeholder">搜索新闻、展馆、课程…</text>
+      <icon name="search" size="17" color="#8A93B2" />
+      <text class="search-placeholder">搜索新闻、课程、展馆、资源…</text>
     </view>
   </view>
 
-  <scroll-view class="scroll-body" scroll-y enhanced>
+  <scroll-view class="scroll-body" scroll-y enhanced show-scrollbar="{{false}}">
 
     <!-- Banner 轮播 -->
     <view class="wrap">
@@ -34,28 +33,18 @@
         indicator-dots="{{false}}"
         bindchange="onBannerChange"
       >
-        <swiper-item
-          wx:for="{{banners}}"
-          wx:key="id"
-          bindtap="onBannerTap"
-          data-link-type="{{item.linkType}}"
-          data-link-value="{{item.linkValue}}"
-        >
-          <!-- 有图片用图片，无图片用渐变占位 -->
+        <swiper-item wx:for="{{banners}}" wx:key="id" bindtap="onBannerTap">
           <view class="bslide {{item.colorClass || 's1'}}">
             <view class="bslide-deco"></view>
             <view wx:if="{{item.imageUrl}}" class="bslide-bg">
               <image src="{{item.imageUrl}}" mode="aspectFill" class="bslide-img" />
             </view>
-            <view class="bslide-tag">
-              <text>{{item.category || '书院动态'}}</text>
-            </view>
+            <view class="bslide-tag">{{item.category || '书院动态'}}</view>
             <view class="bslide-title serif">{{item.title}}</view>
             <view class="bslide-desc">{{item.description}}</view>
           </view>
         </swiper-item>
       </swiper>
-      <!-- 自定义指示点 -->
       <view class="bdots">
         <view
           wx:for="{{banners}}"
@@ -66,68 +55,61 @@
 
       <!-- 公告条 -->
       <view wx:if="{{announcements.length}}" class="notice-bar" bindtap="onNoticeTap">
-        <text class="notice-ic">📢</text>
+        <icon name="megaphone" size="16" color="#BE9C44" />
         <text class="notice-text">{{announcements[0].content}}</text>
-        <text class="notice-arrow">›</text>
+        <icon name="chevron-right" size="15" color="#8A93B2" />
       </view>
     </view>
 
     <!-- 功能入口矩阵 -->
     <view class="entries-wrap wrap">
       <view class="entries">
-        <view class="entry" bindtap="onNavTap" data-path="/pages/hall/index">
-          <view class="ico ico-1">
-            <view class="ico-symbol">馆</view>
-          </view>
+        <view class="entry" bindtap="onEntryTap" data-key="news">
+          <view class="ico e1"><icon name="entry-news" size="25" color="#ffffff" /></view>
+          <text class="entry-label">新闻资讯</text>
+        </view>
+        <view class="entry" bindtap="onEntryTap" data-key="hall">
+          <view class="ico e2"><icon name="museum" size="25" color="#ffffff" /></view>
           <text class="entry-label">展馆展示</text>
         </view>
-        <view class="entry" bindtap="onNavTap" data-path="/pages/course/index">
-          <view class="ico ico-2">
-            <view class="ico-symbol">课</view>
-          </view>
+        <view class="entry" bindtap="onEntryTap" data-key="course">
+          <view class="ico e3"><icon name="course" size="25" color="#ffffff" /></view>
           <text class="entry-label">课程中心</text>
         </view>
-        <view class="entry" bindtap="onNavTap" data-path="/pages/activity/index">
-          <view class="ico ico-5">
-            <view class="ico-symbol">活</view>
-          </view>
-          <text class="entry-label">活动报名</text>
-        </view>
-        <view class="entry" bindtap="onNavTap" data-path="/packageB/resource/list">
-          <view class="ico ico-3">
-            <view class="ico-symbol">资</view>
-          </view>
+        <view class="entry" bindtap="onEntryTap" data-key="resource">
+          <view class="ico e4"><icon name="entry-resource" size="25" color="#ffffff" /></view>
           <text class="entry-label">资源下载</text>
         </view>
-        <view class="entry" bindtap="onNavTap" data-path="/packageC/search/index">
-          <view class="ico ico-4">
-            <view class="ico-symbol">搜</view>
-          </view>
-          <text class="entry-label">全站搜索</text>
+        <view class="entry" bindtap="onEntryTap" data-key="enroll">
+          <view class="ico e5"><icon name="entry-enroll" size="25" color="#ffffff" /></view>
+          <text class="entry-label">活动报名</text>
         </view>
       </view>
     </view>
 
-    <!-- 展馆横滑 -->
+    <!-- 线上展馆 -->
     <view class="section wrap">
       <view class="sec-head">
-        <view class="sec-title serif">线上展馆</view>
-        <navigator url="/pages/hall/index" hover-class="none" class="sec-more">更多 ›</navigator>
+        <view class="sec-title serif">线上展馆 · 11 馆</view>
+        <view class="sec-more" bindtap="onEntryTap" data-key="hall">全部<icon name="chevron-right" size="13" color="#8A93B2" /></view>
       </view>
       <scroll-view scroll-x class="halls-scroll" enhanced show-scrollbar="{{false}}">
         <view class="halls-inner">
           <view
             wx:for="{{hallList}}"
             wx:key="id"
-            class="hall-card {{item.colorClass || 'hc1'}}"
+            class="hall-card"
             bindtap="onHallTap"
             data-id="{{item.id}}"
           >
-            <view wx:if="{{item.cover}}" class="hc-bg">
-              <image src="{{item.cover}}" mode="aspectFill" class="hc-img" />
+            <view class="hc-cover {{item.colorClass || 'hc1'}}">
+              <view wx:if="{{item.cover}}" class="hc-bg">
+                <image src="{{item.cover}}" mode="aspectFill" class="hc-img" />
+              </view>
+              <view class="hc-corner"><icon name="museum" size="30" color="rgba(255,255,255,0.34)" /></view>
+              <text class="hc-ct serif">{{item.shortName}}</text>
             </view>
-            <view class="hc-mask"></view>
-            <view class="hc-name serif">{{item.name}}</view>
+            <view class="hc-name">{{item.name}}</view>
           </view>
         </view>
       </scroll-view>
@@ -137,7 +119,7 @@
     <view class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">最新资讯</view>
-        <navigator url="/packageA/news/list" hover-class="none" class="sec-more">更多 ›</navigator>
+        <view class="sec-more" bindtap="onEntryTap" data-key="news">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
       </view>
       <view class="cards">
         <view
@@ -149,11 +131,12 @@
         >
           <view class="ncard-thumb {{item.colorClass || 'hc1'}}">
             <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" class="ncard-img" />
+            <icon wx:else name="{{item.icon}}" size="26" color="rgba(255,255,255,0.92)" />
           </view>
           <view class="ncard-body">
             <view class="ncard-title">{{item.title}}</view>
             <view class="ncard-meta">
-              <view class="pill">{{item.categoryName || '书院动态'}}</view>
+              <text class="pill">{{item.categoryName}}</text>
               <text class="ncard-date">{{item.publishTime}}</text>
             </view>
           </view>
@@ -165,7 +148,7 @@
     <view class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">热门课程</view>
-        <navigator url="/pages/course/index" hover-class="none" class="sec-more">更多 ›</navigator>
+        <view class="sec-more" bindtap="onEntryTap" data-key="course">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
       </view>
       <view class="cards">
         <view
@@ -177,11 +160,12 @@
         >
           <view class="ccard-thumb {{item.colorClass || 'hc3'}}">
             <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" class="ccard-img" />
+            <icon wx:else name="{{item.icon}}" size="30" color="rgba(255,255,255,0.92)" />
           </view>
           <view class="ccard-body">
-            <view class="ccard-title">{{item.name}}</view>
+            <view class="ccard-title serif">{{item.name}}</view>
             <view class="ccard-meta">
-              <view class="pill gold">{{item.categoryName || '文化课程'}}</view>
+              <text class="pill {{item.categoryName === 'AI 字幕' ? 'gold' : ''}}">{{item.categoryName}}</text>
               <text class="ccard-sub">{{item.lessonCount || 0}} 课时</text>
             </view>
           </view>
@@ -189,7 +173,10 @@
       </view>
     </view>
 
-    <view style="height: 40rpx;"></view>
+    <view class="scroll-bottom"></view>
   </scroll-view>
+
+  <!-- AI 助手 -->
+  <ai-assistant />
 
 </view>

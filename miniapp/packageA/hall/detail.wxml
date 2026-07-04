@@ -1,1 +1,40 @@
-<view class="page"><view class="placeholder">展馆详情 — 开发中</view></view>
+<!-- packageA/hall/detail.wxml -->
+<view class="detail-page">
+  <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="detail-wrap">
+
+      <!-- 画廊轮播 -->
+      <view class="gal">
+        <swiper class="gslides" circular bindchange="onGallery" indicator-dots indicator-color="rgba(255,255,255,.4)" indicator-active-color="#ffffff">
+          <swiper-item wx:for="{{hall.slides}}" wx:key="cls">
+            <view class="gimg {{item.cls}}"><icon name="{{item.icon}}" size="54" color="rgba(255,255,255,0.55)" /></view>
+          </swiper-item>
+        </swiper>
+        <view class="gcap">{{hall.caption}}</view>
+      </view>
+
+      <!-- 语音讲解 -->
+      <view class="audio">
+        <view class="ap" bindtap="onAudio"><icon name="play" size="18" color="#ffffff" /></view>
+        <view class="aw">
+          <view class="wv-bar" wx:for="{{waveBars}}" wx:key="index" style="animation-delay:{{item}}s"></view>
+        </view>
+        <text class="at">{{hall.audioTime}}</text>
+      </view>
+
+      <!-- 展馆介绍 -->
+      <view class="hall-intro">
+        <view class="hi-title serif">{{hall.name}}</view>
+        <view class="hi-p">{{hall.intro}}</view>
+        <button class="poster-btn" bindtap="onPoster">
+          <icon name="poster" size="18" color="#ffffff" />
+          <text>一键生成文化分享海报</text>
+        </button>
+      </view>
+
+      <view class="detail-bottom"></view>
+    </view>
+  </scroll-view>
+
+  <ai-assistant bottom="60" />
+</view>

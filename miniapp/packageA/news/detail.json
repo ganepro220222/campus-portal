@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "新闻详情" }
+{
+  "navigationBarTitleText": "新闻资讯",
+  "usingComponents": {
+    "ai-assistant": "/components/ai-assistant/index"
+  }
+}

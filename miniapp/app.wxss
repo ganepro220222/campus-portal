@@ -1,0 +1,174 @@
+/* app.wxss — 全局样式（对齐 demo 设计规范）*/
+page {
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+  color: #1F2547;
+  background-color: #F5F8FC;
+  box-sizing: border-box;
+}
+
+/* ── 颜色变量（完全对齐 demo CSS Variables）── */
+page {
+  --navy:        #2B356E;
+  --navy-deep:   #1E2654;
+  --navy-ink:    #141A38;
+  --blue:        #3F57B5;
+  --blue-soft:   #5C72C9;
+  --sky:         #D0E7F7;
+  --sky-2:       #E8F2FB;
+  --sky-3:       #F2F7FC;
+  --paper:       #F5F8FC;
+  --card:        #FFFFFF;
+  --gold:        #BE9C44;
+  --gold-soft:   #E7D9AE;
+  --gold-line:   #D8C79A;
+  --ink:         #1F2547;
+  --sub:         #5A648A;
+  --muted:       #8A93B2;
+  --line:        #E7ECF6;
+  --shadow:      0 10px 30px rgba(31,40,90,.10);
+  --shadow-sm:   0 4px 14px rgba(31,40,90,.08);
+
+  /* 兼容旧变量名 */
+  --color-primary:   #2B356E;
+  --color-primary-light: #3F57B5;
+  --color-text:      #1F2547;
+  --color-text-sub:  #5A648A;
+  --color-text-hint: #8A93B2;
+  --color-border:    #E7ECF6;
+  --color-bg:        #F5F8FC;
+  --color-bg-white:  #FFFFFF;
+  --color-success:   #52C41A;
+  --color-warning:   #FAAD14;
+  --color-danger:    #FF4D4F;
+}
+
+/* ── 宋体辅助类 ── */
+.serif { font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif; }
+
+/* ── Flex 工具类 ── */
+.flex        { display: flex; }
+.flex-col    { display: flex; flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between{ display: flex; align-items: center; justify-content: space-between; }
+.flex-1      { flex: 1; }
+
+.text-navy   { color: var(--navy); }
+.text-sub    { color: var(--sub); }
+.text-hint   { color: var(--muted); }
+.text-center { text-align: center; }
+.text-bold   { font-weight: bold; }
+
+.mt-8  { margin-top: 8rpx; }
+.mt-16 { margin-top: 16rpx; }
+.mt-24 { margin-top: 24rpx; }
+.mb-8  { margin-bottom: 8rpx; }
+.mb-16 { margin-bottom: 16rpx; }
+.p-16  { padding: 16rpx; }
+.p-24  { padding: 24rpx; }
+.p-32  { padding: 32rpx; }
+
+/* ── 卡片容器（白底 + 海军蓝阴影）── */
+.card {
+  background: var(--card);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin: 0 24rpx 20rpx;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── section 标题（左侧蓝色竖线）── */
+.sec-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: var(--ink);
+  position: relative;
+  padding-left: 20rpx;
+  font-family: "Noto Serif SC", serif;
+}
+.sec-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6rpx;
+  height: 28rpx;
+  border-radius: 3rpx;
+  background: linear-gradient(180deg, #3F57B5, #2B356E);
+}
+
+/* ── 分类胶囊 ── */
+.cat-tag {
+  display: inline-block;
+  padding: 10rpx 28rpx;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  color: var(--sub);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+.cat-tag.cat-active {
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* ── 封面图占位 ── */
+.cover-image {
+  width: 100%;
+  border-radius: 24rpx;
+  background-color: var(--sky-2);
+}
+
+/* ── 空状态 ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+  color: var(--muted);
+}
+.empty-state text { margin-top: 16rpx; font-size: 26rpx; }
+
+/* ── 底部安全区 ── */
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ── 通用按钮 ── */
+.btn-navy {
+  height: 88rpx;
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  color: #fff;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  border: none;
+}
+.btn-gold {
+  height: 88rpx;
+  background: linear-gradient(135deg, #CDA94E, #B58A2F);
+  color: #fff;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  border: none;
+}
+.btn-ghost {
+  height: 88rpx;
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  border: 1rpx solid rgba(255,255,255,.28);
+}
+
+/* ── 文件类型色标 ── */
+.ft-pdf  { background: #C0392B; }
+.ft-ppt  { background: #D27B2C; }
+.ft-mp4  { background: #3F57B5; }
+.ft-mp3  { background: #3F9A6B; }
+.ft-doc  { background: #2C66C2; }
+.ft-xlsx { background: #1E7A45; }

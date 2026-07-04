@@ -1,0 +1,14 @@
+<!-- packageA/news/list.wxml -->
+<view class="page">
+  <scroll-view scroll-x class="cat-bar">
+    <view wx:for="{{categories}}" wx:key="id" class="cat-tag {{currentCat===item.id?'cat-active':''}}" bindtap="switchCat" data-id="{{item.id}}">{{item.name}}</view>
+  </scroll-view>
+  <view wx:for="{{newsList}}" wx:key="id" class="news-card" bindtap="onCardTap" data-id="{{item.id}}">
+    <image class="news-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
+    <view class="news-info">
+      <text class="news-title">{{item.title}}</text>
+      <view class="news-meta"><text>{{item.categoryName}}</text><text>{{item.publishTime}}</text></view>
+    </view>
+  </view>
+  <view wx:if="{{!hasMore && newsList.length}}" class="no-more">已加载全部</view>
+</view>

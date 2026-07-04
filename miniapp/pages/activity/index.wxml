@@ -1,0 +1,17 @@
+<!-- pages/activity/index.wxml -->
+<view class="page">
+  <view wx:for="{{activityList}}" wx:key="id" class="activity-card" bindtap="onCardTap" data-id="{{item.id}}">
+    <image class="activity-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
+    <view class="activity-info">
+      <text class="activity-title">{{item.title}}</text>
+      <text class="activity-time">{{item.startTime}}</text>
+      <text class="activity-location">📍 {{item.location}}</text>
+      <view class="activity-quota {{item.enrolledCount >= item.quota && item.quota > 0 ? 'quota-full' : ''}}">
+        <text wx:if="{{item.quota > 0}}">{{item.enrolledCount}}/{{item.quota}} 人</text>
+        <text wx:else>名额不限</text>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{!loading && !activityList.length}}" class="empty-state"><text>暂无活动</text></view>
+  <view class="safe-bottom" />
+</view>

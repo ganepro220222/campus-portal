@@ -1,14 +1,14 @@
 <!-- pages/login/index.wxml -->
 <view class="login-page">
-  <!-- 星光背景 -->
-  <view class="stars"></view>
+  <!-- 光晕 / 星光 / 波浪装饰 -->
   <view class="glow"></view>
+  <view class="stars"></view>
+  <view class="wave-deco"></view>
 
   <view class="login-inner">
-    <!-- 状态栏占位 -->
     <view style="height: {{statusBarHeight}}px; flex-shrink: 0;"></view>
 
-    <!-- 校徽 -->
+    <!-- 校徽印章（白色徽记 + 深色底 + 金环）-->
     <view class="seal">
       <image class="seal-img" src="/assets/images/school-badge.png" mode="aspectFit" />
     </view>
@@ -16,76 +16,55 @@
     <!-- 校名 -->
     <view class="brand">
       <view class="brand-zh serif">云端书院</view>
-      <view class="brand-divider"></view>
-      <view class="brand-sub">贵州交通职业大学 · 中华文化书院</view>
+      <view class="brand-div"></view>
+      <view class="brand-sub serif">贵州交通职业大学 · 中华文化书院</view>
       <view class="brand-en">Guizhou Communications Polytechnic University</view>
     </view>
 
-    <!-- 登录表单区 -->
+    <!-- 登录表单 -->
     <view class="login-form">
-
-      <!-- Tab 切换 -->
-      <view class="tab-row">
-        <view class="tab-item {{activeTab === 'wx' ? 'tab-on' : ''}}" bindtap="switchTab" data-tab="wx">微信登录</view>
-        <view class="tab-item {{activeTab === 'account' ? 'tab-on' : ''}}" bindtap="switchTab" data-tab="account">学号登录</view>
+      <view class="field">
+        <view class="field-ic"><icon name="user" size="18" color="rgba(214,224,248,0.7)" /></view>
+        <input
+          class="field-input"
+          placeholder="请输入学号 / 账号"
+          placeholder-class="field-ph"
+          value="{{studentNo}}"
+          data-field="studentNo"
+          bindinput="onInput"
+          maxlength="30"
+        />
+      </view>
+      <view class="field">
+        <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
+        <input
+          class="field-input"
+          placeholder="请输入密码"
+          placeholder-class="field-ph"
+          password
+          value="{{password}}"
+          data-field="password"
+          bindinput="onInput"
+          maxlength="50"
+        />
       </view>
 
-      <!-- 微信登录 -->
-      <view wx:if="{{activeTab === 'wx'}}" class="panel">
-        <button class="btn-primary-glass" open-type="getUserInfo" bindtap="onWxLogin" loading="{{loading}}" disabled="{{loading}}">
-          <view class="btn-icon">
-            <view class="wx-icon">
-              <text>✓</text>
-            </view>
-          </view>
-          微信一键登录
-        </button>
-        <button class="btn-ghost-glass" bindtap="switchTabAccount">学号 / 账号登录</button>
-      </view>
+      <button class="lbtn lbtn-primary" bindtap="onAccountLogin" loading="{{loading}}" disabled="{{loading}}">
+        <icon name="login" size="18" color="#2B356E" />
+        <text class="lbtn-tx">登 录</text>
+      </button>
 
-      <!-- 账号登录 -->
-      <view wx:if="{{activeTab === 'account'}}" class="panel">
-        <view class="field-glass">
-          <view class="field-icon">
-            <text class="iconfont icon-user"></text>
-          </view>
-          <input
-            class="field-input"
-            placeholder="请输入学号或账号"
-            placeholder-class="field-placeholder"
-            value="{{studentNo}}"
-            data-field="studentNo"
-            bindinput="onInput"
-            maxlength="30"
-          />
-        </view>
-        <view class="field-glass">
-          <view class="field-icon">
-            <text class="iconfont icon-lock"></text>
-          </view>
-          <input
-            class="field-input"
-            placeholder="请输入密码"
-            placeholder-class="field-placeholder"
-            password="{{!pwdVisible}}"
-            value="{{password}}"
-            data-field="password"
-            bindinput="onInput"
-            maxlength="50"
-          />
-          <text class="eye-toggle" bindtap="togglePwd">{{pwdVisible ? '●' : '○'}}</text>
-        </view>
-        <button class="btn-gold-login" bindtap="onAccountLogin" loading="{{loading}}" disabled="{{loading}}">
-          登 录
-        </button>
-        <view class="back-wx" bindtap="switchTabWx">← 返回微信登录</view>
-      </view>
+      <view class="divider">其他登录方式</view>
 
+      <button class="lbtn lbtn-ghost" bindtap="onWxLogin" loading="{{loading}}" disabled="{{loading}}">
+        <icon name="wechat" size="20" color="#ffffff" />
+        <text class="lbtn-tx">微信授权登录</text>
+      </button>
+
+      <view class="foot">
+        <text class="foot-b">“马院 + 书院”协同育人 · 云端思政平台</text>
+        <text class="foot-s">线上线下相结合 · 传承中华优秀传统文化</text>
+      </view>
     </view>
-
-    <view class="footer-tip">登录即代表同意《用户隐私政策》</view>
   </view>
-
-  <!-- 底部波浪装饰 -->
-  <view class="wave-deco"></view>
 </view>

@@ -1,17 +1,43 @@
 <!-- pages/activity/index.wxml -->
-<view class="page">
-  <view wx:for="{{activityList}}" wx:key="id" class="activity-card" bindtap="onCardTap" data-id="{{item.id}}">
-    <image class="activity-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
-    <view class="activity-info">
-      <text class="activity-title">{{item.title}}</text>
-      <text class="activity-time">{{item.startTime}}</text>
-      <text class="activity-location">📍 {{item.location}}</text>
-      <view class="activity-quota {{item.enrolledCount >= item.quota && item.quota > 0 ? 'quota-full' : ''}}">
-        <text wx:if="{{item.quota > 0}}">{{item.enrolledCount}}/{{item.quota}} 人</text>
-        <text wx:else>名额不限</text>
+<view class="act-page">
+  <view class="act-wrap">
+    <view
+      wx:for="{{activityList}}"
+      wx:key="id"
+      class="acard"
+      bindtap="onCardTap"
+      data-id="{{item.id}}"
+    >
+      <view class="acard-cover {{item.colorClass}}">
+        <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" class="acard-img" />
+        <icon wx:else name="{{item.icon}}" size="34" color="rgba(255,255,255,0.9)" />
+        <text class="acard-tag">{{item.tag}}</text>
+      </view>
+      <view class="acard-body">
+        <view class="acard-title">{{item.title}}</view>
+        <view class="acard-meta">
+          <icon name="calendar" size="14" color="#8A93B2" />
+          <text class="acard-mt">{{item.startTime}}</text>
+        </view>
+        <view class="acard-meta">
+          <icon name="pin" size="14" color="#8A93B2" />
+          <text class="acard-mt">{{item.location}}</text>
+        </view>
+        <view class="acard-foot">
+          <view class="quota {{item.full ? 'quota-full' : ''}}">
+            <block wx:if="{{item.quota > 0}}">{{item.enrolledCount}}/{{item.quota}} 人</block>
+            <block wx:else>名额不限</block>
+          </view>
+          <view class="enroll-btn {{item.full ? 'enroll-off' : ''}}">{{item.full ? '已满' : '报名'}}</view>
+        </view>
       </view>
     </view>
+
+    <view wx:if="{{!loading && !activityList.length}}" class="empty-state">
+      <icon name="entry-enroll" size="40" color="#C3CCE0" />
+      <text>暂无活动</text>
+    </view>
+
+    <view class="safe-bottom"></view>
   </view>
-  <view wx:if="{{!loading && !activityList.length}}" class="empty-state"><text>暂无活动</text></view>
-  <view class="safe-bottom" />
 </view>

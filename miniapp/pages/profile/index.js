@@ -1,61 +1,48 @@
-// pages/profile/index.js
-const { requireLogin, getUserInfo, clearToken } = require('../../utils/auth')
+// pages/profile/index.js —— 个人中心（从首页顶栏「我的」进入）
+const { getUserInfo } = require('../../utils/auth')
 const { get } = require('../../utils/request')
 
 Page({
   data: {
     userInfo:   null,
     stats:      { favorites: 0, enrolls: 0, downloads: 0, points: 0 },
-    badges:     [],
-    loading:    true,
     isLoggedIn: false
   },
 
   onShow() {
     const app = getApp()
     const loggedIn = app.isLoggedIn()
-    this.setData({ isLoggedIn: loggedIn })
+    this.setData({ isLoggedIn: loggedIn, userInfo: getUserInfo() })
     if (loggedIn) this._loadProfile()
   },
 
   async _loadProfile() {
     try {
       const [profile, stats] = await Promise.all([
-        get('/profile'),
-        get('/profile/stats')
+        get('/profile').catch(() => null),
+        get('/profile/stats').catch(() => null)
       ])
       this.setData({
-        userInfo: profile,
-        stats:    stats || this.data.stats,
-        loading:  false
+        userInfo: profile || this.data.userInfo,
+        stats:    stats || this.data.stats
       })
-    } catch {
-      this.setData({ loading: false })
-    }
+    } catch {}
   },
 
   onLoginTap() {
     wx.navigateTo({ url: '/pages/login/index' })
   },
 
-  onEditProfile() {
-    requireLogin(() => wx.navigateTo({ url: '/pages/profile/edit' }))
+  // 尚未实现的子页统一提示
+  onTodo() {
+    wx.showToast({ title: '功能开发中，敬请期待', icon: 'none' })
   },
-
-  onFavoritesTap()  { requireLogin(() => wx.navigateTo({ url: '/pages/profile/favorites' })) },
-  onEnrollsTap()    { requireLogin(() => wx.navigateTo({ url: '/pages/profile/enrolls' })) },
-  onDownloadsTap()  { requireLogin(() => wx.navigateTo({ url: '/pages/profile/downloads' })) },
-  onFootprintTap()  { requireLogin(() => wx.navigateTo({ url: '/pages/profile/footprint' })) },
-  onBadgeTap()      { requireLogin(() => wx.navigateTo({ url: '/pages/profile/badges' })) },
-  onFeedbackTap()   { requireLogin(() => wx.navigateTo({ url: '/pages/profile/feedback' })) },
 
   onLogout() {
     wx.showModal({
       title: '确认退出',
       content: '退出后需重新登录',
-      success: (res) => {
-        if (res.confirm) getApp().logout()
-      }
+      success: (res) => { if (res.confirm) getApp().logout() }
     })
   }
 })

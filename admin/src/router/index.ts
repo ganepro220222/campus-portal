@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -43,6 +43,12 @@ const router = createRouter({
           meta: { title: '展馆管理', permission: 'hall:read' }
         },
         {
+          path: 'crafts',
+          name: 'Crafts',
+          component: () => import('@/views/craft/CraftListView.vue'),
+          meta: { title: '文创管理', permission: 'hall:read' }
+        },
+        {
           path: 'activities',
           name: 'Activities',
           component: () => import('@/views/activity/ActivityListView.vue'),
@@ -53,6 +59,18 @@ const router = createRouter({
           name: 'ActivityEnrolls',
           component: () => import('@/views/activity/ActivityEnrollView.vue'),
           meta: { title: '报名管理', permission: 'enroll:read' }
+        },
+        {
+          path: 'courses',
+          name: 'Courses',
+          component: () => import('@/views/course/CourseListView.vue'),
+          meta: { title: '课程管理', permission: 'course:read' }
+        },
+        {
+          path: 'resources',
+          name: 'Resources',
+          component: () => import('@/views/resource/ResourceListView.vue'),
+          meta: { title: '资源管理', permission: 'course:read' }
         }
       ]
     },
@@ -91,6 +109,9 @@ export const menuItems: MenuItem[] = [
   { path: '/dashboard', title: '首页概览', icon: Odometer, permissions: [] },
   { path: '/news', title: '新闻管理', icon: Document, permissions: ['news:read'] },
   { path: '/halls', title: '展馆管理', icon: OfficeBuilding, permissions: ['hall:read'] },
+  { path: '/crafts', title: '文创管理', icon: Goods, permissions: ['hall:read'] },
+  { path: '/courses', title: '课程管理', icon: VideoCamera, permissions: ['course:read'] },
+  { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
   { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
   { path: '/banners', title: 'Banner 管理', icon: Picture, permissions: ['admin:super'] }
 ]

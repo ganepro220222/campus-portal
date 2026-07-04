@@ -1,0 +1,6 @@
+/* components/loading/index.wxss */
+.loading-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.loading-box  { background: #fff; border-radius: 16rpx; padding: 40rpx 48rpx; display: flex; flex-direction: column; align-items: center; }
+.loading-spinner { width: 60rpx; height: 60rpx; border: 6rpx solid #eee; border-top-color: var(--color-primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { margin-top: 16rpx; font-size: 26rpx; color: #666; }

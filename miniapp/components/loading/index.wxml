@@ -1,0 +1,7 @@
+<!-- components/loading/index.wxml -->
+<view wx:if="{{show}}" class="loading-mask">
+  <view class="loading-box">
+    <view class="loading-spinner" />
+    <text wx:if="{{text}}" class="loading-text">{{text}}</text>
+  </view>
+</view>

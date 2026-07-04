@@ -1,0 +1,46 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Java / Maven
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.log
+hs_err_pid*
+
+# Node (if added later)
+node_modules/
+npm-debug.log*
+dist/
+build/
+
+# Env & secrets (never commit real keys)
+.env
+.env.*
+*.local
+application-local.yml
+application-prod.yml
+
+# WeChat dev tools
+miniapp/project.private.config.json
+
+# Docker local data
+mysql_data/
+redis_data/
+
+# Cursor / editor caches
+.cursor/

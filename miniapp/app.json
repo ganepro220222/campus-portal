@@ -1,0 +1,86 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/login/index",
+    "pages/profile/index",
+    "pages/hall/index",
+    "pages/course/index",
+    "pages/activity/index"
+  ],
+  "subpackages": [
+    {
+      "root": "packageA",
+      "name": "内容",
+      "pages": [
+        "news/list",
+        "news/detail",
+        "hall/detail",
+        "craft/list",
+        "craft/detail"
+      ]
+    },
+    {
+      "root": "packageB",
+      "name": "学习",
+      "pages": [
+        "course/detail",
+        "course/player",
+        "resource/list"
+      ]
+    },
+    {
+      "root": "packageC",
+      "name": "互动",
+      "pages": [
+        "activity/detail",
+        "activity/enroll",
+        "search/index",
+        "college/list"
+      ]
+    },
+    {
+      "root": "packageD",
+      "name": "智能",
+      "pages": [
+        "ai-chat/index",
+        "poster/generate"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["packageA"]
+    }
+  },
+  "tabBar": {
+    "color": "#8A93B2",
+    "selectedColor": "#2B356E",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/index/index",    "text": "首页" },
+      { "pagePath": "pages/hall/index",     "text": "展馆" },
+      { "pagePath": "pages/course/index",   "text": "课程" },
+      { "pagePath": "pages/activity/index", "text": "活动" },
+      { "pagePath": "pages/profile/index",  "text": "我的" }
+    ]
+  },
+  "navigateToMiniProgramAppIdList": [],
+  "permission": {
+    "scope.writePhotosAlbum": {
+      "desc": "保存文化海报到相册"
+    }
+  },
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#2B356E",
+    "navigationBarTitleText": "云端书院",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F5F8FC"
+  },
+  "style": "v2",
+  "componentFramework": "glass-easel",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

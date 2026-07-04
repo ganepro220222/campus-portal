@@ -1,0 +1,18 @@
+<!-- pages/hall/index.wxml -->
+<view class="page">
+  <scroll-view scroll-x class="cat-bar">
+    <view wx:for="{{categories}}" wx:key="id" class="cat-tag {{currentCat===item.id?'cat-active':''}}" bindtap="switchCat" data-id="{{item.id}}">{{item.name}}</view>
+  </scroll-view>
+  <view wx:if="{{loading}}" class="loading-tip">加载中…</view>
+  <view wx:for="{{hallList}}" wx:key="id" class="hall-card" bindtap="onCardTap" data-id="{{item.id}}">
+    <image class="hall-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
+    <view class="hall-info">
+      <text class="hall-name">{{item.name}}</text>
+      <text class="hall-intro">{{item.intro}}</text>
+    </view>
+  </view>
+  <view wx:if="{{!loading && !hallList.length}}" class="empty-state">
+    <text>暂无展馆内容</text>
+  </view>
+  <view class="safe-bottom" />
+</view>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>云端书院 · 详情</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#2B356E; --navy-deep:#1E2654; --navy-ink:#141A38;
+  --blue:#3F57B5; --blue-soft:#5C72C9;
+  --sky:#D0E7F7; --sky-2:#E8F2FB; --sky-3:#F2F7FC;
+  --paper:#F5F8FC; --card:#FFFFFF;
+  --gold:#BE9C44; --gold-soft:#E7D9AE; --gold-line:#D8C79A;
+  --ink:#1F2547; --sub:#5A648A; --muted:#8A93B2; --line:#E7ECF6;
+  --shadow:0 10px 30px rgba(31,40,90,.10);
+  --shadow-sm:0 4px 14px rgba(31,40,90,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #E9EFFA 0%, transparent 60%),
+    repeating-linear-gradient(45deg, #EEF2FA 0 2px, transparent 2px 26px),
+    #E4EAF5;
+  display:flex; justify-content:center; align-items:center;
+  min-height:100vh; padding:22px;
+}
+.serif{font-family:"Noto Serif SC","Songti SC","STSong","SimSun",serif;}
+.eng{font-family:"Cormorant Garamond","Noto Serif SC",serif; letter-spacing:.06em;}
+
+.phone{
+  width:392px; height:846px; background:#0c1024;
+  border-radius:52px; padding:13px;
+  box-shadow:0 30px 70px rgba(20,26,56,.45), 0 4px 0 #2a2f4d inset;
+  position:relative;
+}
+.screen{
+  width:100%; height:100%; background:var(--paper);
+  border-radius:40px; overflow:hidden; position:relative;
+  display:flex; flex-direction:column;
+}
+.notch{position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:128px; height:32px; background:#0c1024;
+  border-bottom-left-radius:18px; border-bottom-right-radius:18px; z-index:1000;}
+.statusbar{height:46px; flex:0 0 46px; display:flex; align-items:center;
+  justify-content:space-between; padding:0 30px; font-size:14px; font-weight:700;
+  color:var(--ink); position:relative; z-index:60;}
+.statusbar.light{color:#fff;}
+.statusbar .time{position:absolute; left:50%; transform:translateX(-50%);}
+.statusbar .right{display:flex; gap:6px; align-items:center;}
+.statusbar svg{display:block;}
+
+.view{flex:1; overflow-y:auto; overflow-x:hidden; position:relative;}
+.view::-webkit-scrollbar{display:none;}
+
+/* 进入动画 */
+@keyframes appear{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+.fade-in{animation:appear .5s ease both;}
+body.leaving .phone{animation:leave .42s ease forwards;}
+@keyframes leave{to{opacity:0; transform:scale(.985);}}
+
+/* 通用按钮 */
+.btn{height:52px; border:none; border-radius:15px; font-size:16px; font-weight:700;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+  transition:transform .15s, box-shadow .2s, opacity .2s; width:100%;}
+.btn:active{transform:scale(.975);}
+.btn-primary{background:linear-gradient(135deg,#fff,#F3F6FF); color:var(--navy);
+  box-shadow:0 8px 20px rgba(255,255,255,.18);}
+.btn-gold{background:linear-gradient(135deg,#CDA94E,#B58A2F); color:#fff;
+  box-shadow:0 8px 22px rgba(150,110,30,.35);}
+.btn-ghost{background:rgba(255,255,255,.10); color:#fff;
+  border:1px solid rgba(255,255,255,.28);}
+
+/* 导航栏 */
+.navbar{height:52px; flex:0 0 52px; display:flex; align-items:center; padding:0 12px;
+  background:var(--card); position:sticky; top:0; z-index:40;
+  border-bottom:1px solid var(--line);}
+.nav-back{width:38px; height:38px; border-radius:50%; display:flex; align-items:center;
+  justify-content:center; cursor:pointer; color:var(--ink);}
+.nav-back:active{background:var(--sky-3);}
+.nav-title{flex:1; text-align:center; font-size:17px; font-weight:700; color:var(--ink);
+  margin-right:38px;}
+
+/* 底部 tab */
+.tabbar{height:62px; flex:0 0 62px; background:rgba(255,255,255,.96);
+  backdrop-filter:blur(8px); border-top:1px solid var(--line);
+  display:flex; justify-content:space-around; align-items:center; z-index:50;}
+.tab{display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer;
+  color:var(--muted); flex:1; padding:4px 0; transition:color .2s;}
+.tab.active{color:var(--navy);}
+.tab svg{width:23px; height:23px;}
+.tab span{font-size:10.5px; font-weight:600;}
+
+/* toast */
+.toast{position:absolute; left:50%; bottom:96px; transform:translateX(-50%) translateY(12px);
+  background:rgba(20,26,56,.92); color:#fff; padding:11px 20px; border-radius:24px;
+  font-size:13px; opacity:0; pointer-events:none; transition:.3s; z-index:2000; max-width:80%;
+  text-align:center;}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+/* AI 助手浮标 + 抽屉 */
+.ai-fab{position:absolute; right:16px; bottom:78px; width:56px; height:56px; border-radius:50%;
+  background:linear-gradient(135deg,#3F57B5,#2B356E); box-shadow:0 10px 24px rgba(43,53,110,.42);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:55;
+  border:2px solid rgba(255,255,255,.5);}
+.ai-fab svg{width:26px; height:26px; color:#fff;}
+.ai-fab .pulse{position:absolute; inset:-2px; border-radius:50%; border:2px solid rgba(190,156,68,.6);
+  animation:pulse 2.2s infinite;}
+@keyframes pulse{0%{transform:scale(1);opacity:.7}70%{transform:scale(1.4);opacity:0}100%{opacity:0}}
+.ai-badge{position:absolute; top:-4px; right:-4px; background:var(--gold); color:#fff;
+  font-size:9px; font-weight:700; padding:2px 6px; border-radius:10px; border:1.5px solid #fff;}
+.mask{position:absolute; inset:0; background:rgba(15,20,46,.45); opacity:0; pointer-events:none;
+  transition:.3s; z-index:80;}
+.mask.show{opacity:1; pointer-events:auto;}
+.sheet{position:absolute; left:0; right:0; bottom:0; background:var(--card);
+  border-radius:22px 22px 0 0; transform:translateY(100%); transition:.36s cubic-bezier(.32,.72,0,1);
+  z-index:90; max-height:78%; display:flex; flex-direction:column;}
+.sheet.show{transform:translateY(0);}
+.sheet-head{padding:16px 18px 10px; border-bottom:1px solid var(--line); display:flex;
+  align-items:center; gap:10px;}
+.sheet-head .avt{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3F57B5,#2B356E);
+  display:flex;align-items:center;justify-content:center;}
+.sheet-head .avt svg{width:20px;height:20px;color:#fff;}
+.sheet-title{font-weight:700; color:var(--ink); font-size:15px;}
+.sheet-sub{font-size:11px; color:var(--muted);}
+.sheet-body{padding:14px 16px; overflow-y:auto; gap:12px; display:flex; flex-direction:column;}
+.bubble{max-width:80%; padding:11px 14px; border-radius:14px; font-size:13.5px; line-height:1.6;}
+.bubble.ai{background:var(--sky-3); color:var(--ink); border-top-left-radius:4px; align-self:flex-start;
+  border:1px solid var(--line);}
+.bubble.me{background:linear-gradient(135deg,#3F57B5,#2B356E); color:#fff; border-top-right-radius:4px;
+  align-self:flex-end;}
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:2px;}
+.chip{font-size:12px; padding:7px 12px; border-radius:16px; background:#fff; color:var(--navy);
+  border:1px solid var(--sky); cursor:pointer;}
+.chip:active{background:var(--sky-3);}
+.sheet-input{display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--line);}
+.sheet-input input{flex:1; height:42px; border:1px solid var(--line); border-radius:21px;
+  padding:0 16px; font-size:14px; outline:none; background:var(--paper);}
+.sheet-input .send{width:42px; height:42px; border-radius:50%; border:none;
+  background:linear-gradient(135deg,#3F57B5,#2B356E); color:#fff; cursor:pointer; flex:0 0 42px;
+  display:flex; align-items:center; justify-content:center;}
+
+.screen{background:var(--paper);}
+.tabs{display:flex; background:#fff; border-bottom:1px solid var(--line); flex:0 0 auto;
+  position:sticky; top:0; z-index:30;}
+.tabs .t{flex:1; text-align:center; padding:12px 0 11px; font-size:14px; color:var(--sub);
+  font-weight:600; position:relative; cursor:pointer;}
+.tabs .t.on{color:var(--navy);}
+.tabs .t.on::after{content:""; position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+  width:26px; height:3px; border-radius:2px; background:linear-gradient(90deg,#3F57B5,#2B356E);}
+.pane{display:none; padding:14px 16px 24px;}
+.pane.on{display:block; animation:appear .35s ease both;}
+
+/* 分类 chips */
+.cats{display:flex; gap:8px; overflow-x:auto; padding-bottom:10px; scrollbar-width:none;}
+.cats::-webkit-scrollbar{display:none;}
+.cat{flex:0 0 auto; font-size:12.5px; padding:6px 14px; border-radius:16px; background:#fff;
+  border:1px solid var(--line); color:var(--sub); cursor:pointer;}
+.cat.on{background:linear-gradient(135deg,#3F57B5,#2B356E); color:#fff; border-color:transparent;}
+
+/* 新闻详情 */
+.article{background:#fff; border:1px solid var(--line); border-radius:16px; overflow:hidden;
+  box-shadow:var(--shadow-sm); margin-bottom:14px;}
+.article .hero{height:160px; background:linear-gradient(120deg,#1E2654,#3F57B5); position:relative;
+  display:flex; align-items:flex-end; padding:16px;}
+.article .hero .deco{position:absolute; right:-20px; top:-20px; width:150px; height:150px;
+  border-radius:50%; background:radial-gradient(circle,rgba(208,231,247,.3),transparent 70%);}
+.article .hero h2{color:#fff; font-size:19px; font-weight:700; line-height:1.4; z-index:2;
+  font-family:"Noto Serif SC",serif; text-shadow:0 2px 12px rgba(0,0,0,.3);}
+.article .body{padding:16px;}
+.article .meta{display:flex; gap:12px; font-size:12px; color:var(--muted); margin-bottom:12px;
+  padding-bottom:12px; border-bottom:1px dashed var(--line);}
+.article p{font-size:14px; line-height:1.85; color:var(--ink); margin-bottom:12px; text-align:justify;}
+.article p .drop{float:left; font-size:40px; line-height:.9; font-weight:700; color:var(--navy);
+  margin:2px 8px 0 0; font-family:"Noto Serif SC",serif;}
+.act-row{display:flex; gap:10px; margin-top:6px;}
+.act{flex:1; height:40px; border:1px solid var(--line); border-radius:12px; background:#fff;
+  display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; color:var(--sub);
+  cursor:pointer;}
+.act:active{background:var(--sky-3);}
+.act.on{color:#C0392B; border-color:#F3C9C2; background:#FDF1EF;}
+.reco{background:#fff; border:1px solid var(--line); border-radius:16px; padding:14px;
+  box-shadow:var(--shadow-sm);}
+.reco .rh{display:flex; align-items:center; gap:7px; font-size:14px; font-weight:700; color:var(--ink);
+  margin-bottom:12px;}
+.reco .rh .ai{font-size:10px; background:#FBF3DD; color:#9C7C2E; padding:2px 8px; border-radius:10px;}
+.reco .it{display:flex; gap:10px; padding:9px 0; border-top:1px solid var(--line); cursor:pointer;}
+.reco .it:first-of-type{border-top:none;}
+.reco .it .n{font-size:13px; color:var(--ink); line-height:1.45;}
+.reco .it .m{font-size:11px; color:var(--muted); margin-top:4px;}
+.reco .num{flex:0 0 22px; height:22px; border-radius:6px; background:var(--sky-2); color:var(--navy);
+  font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+
+/* 课程 */
+.player{border-radius:16px; overflow:hidden; background:#0c1024; position:relative; height:200px;
+  display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);}
+.player .bgi{position:absolute; inset:0; background:linear-gradient(120deg,#1E2654,#3F57B5); opacity:.85;}
+.player .play{width:62px; height:62px; border-radius:50%; background:rgba(255,255,255,.92);
+  display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;
+  box-shadow:0 8px 24px rgba(0,0,0,.3);}
+.player .play svg{width:26px; height:26px; color:var(--navy); margin-left:3px;}
+.player .cc{position:absolute; top:12px; right:12px; z-index:3; font-size:11px; color:#fff;
+  background:rgba(190,156,68,.9); padding:4px 9px; border-radius:10px; display:flex; gap:4px;
+  align-items:center; cursor:pointer;}
+.player .pbar{position:absolute; left:14px; right:14px; bottom:14px; z-index:3;}
+.player .ptrack{height:4px; border-radius:2px; background:rgba(255,255,255,.25);}
+.player .pfill{height:100%; width:34%; border-radius:2px; background:var(--gold);}
+.player .ptime{display:flex; justify-content:space-between; font-size:10px; color:rgba(255,255,255,.8);
+  margin-top:6px;}
+.cmeta{background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px; margin-top:14px;
+  box-shadow:var(--shadow-sm);}
+.cmeta h2{font-size:19px; font-weight:700; color:var(--ink); font-family:"Noto Serif SC",serif;}
+.cmeta .tags{display:flex; gap:8px; margin:10px 0 14px;}
+.minfo{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:6px;}
+.minfo .mi{display:flex; gap:8px; align-items:center; font-size:12.5px; color:var(--sub);}
+.minfo .mi svg{color:var(--navy); flex:0 0 auto;}
+.intro{font-size:13.5px; line-height:1.8; color:var(--ink); margin-top:12px; padding-top:12px;
+  border-top:1px dashed var(--line);}
+.res-title{font-size:14px; font-weight:700; color:var(--ink); margin:18px 0 10px; padding-left:11px;
+  position:relative;}
+.res-title::before{content:""; position:absolute; left:0; top:50%; transform:translateY(-50%);
+  width:4px; height:14px; border-radius:2px; background:linear-gradient(180deg,#3F57B5,#2B356E);}
+.res{display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--line);
+  border-radius:12px; padding:11px 13px; margin-bottom:9px; box-shadow:var(--shadow-sm);}
+.res .ft{flex:0 0 38px; height:38px; border-radius:9px; display:flex; align-items:center;
+  justify-content:center; color:#fff; font-size:10px; font-weight:700;}
+.ft.pdf{background:#C0392B;} .ft.ppt{background:#D27B2C;} .ft.mp4{background:#3F57B5;}
+.ft.mp3{background:#3F9A6B;} .ft.doc{background:#2C66C2;}
+.res .rn{flex:1;} .res .rn .rt{font-size:13.5px; color:var(--ink); font-weight:500;}
+.res .rn .rs{font-size:11px; color:var(--muted); margin-top:3px;}
+.res .dl{width:36px; height:36px; border-radius:50%; background:var(--sky-2); color:var(--navy);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 36px;}
+.res .dl:active{background:var(--sky);}
+
+/* 展馆 */
+.gal{border-radius:16px; overflow:hidden; box-shadow:var(--shadow); position:relative; height:210px;}
+.gslides{display:flex; height:100%; transition:transform .5s;}
+.gimg{min-width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff;}
+.gi1{background:linear-gradient(135deg,#2B356E,#475BA6);}
+.gi2{background:linear-gradient(135deg,#365E8C,#2E7C8C);}
+.gi3{background:linear-gradient(135deg,#5A4E86,#7E72B0);}
+.gimg svg{width:54px; height:54px; opacity:.55;}
+.gcap{position:absolute; left:0; right:0; bottom:0; padding:24px 16px 12px; z-index:2;
+  background:linear-gradient(transparent, rgba(12,16,36,.7)); color:#fff; font-size:12.5px;}
+.gnav{position:absolute; top:50%; transform:translateY(-50%); z-index:3; width:34px; height:34px;
+  border-radius:50%; background:rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center;
+  color:#fff; cursor:pointer;}
+.gnav.l{left:10px;} .gnav.r{right:10px;}
+.gdots{position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; gap:5px; z-index:3;}
+.gdots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);}
+.gdots i.on{background:#fff; width:14px; border-radius:3px;}
+.audio{display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--line);
+  border-radius:14px; padding:12px 14px; margin-top:14px; box-shadow:var(--shadow-sm);}
+.audio .ap{width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,#3F57B5,#2B356E);
+  display:flex; align-items:center; justify-content:center; color:#fff; cursor:pointer; flex:0 0 42px;}
+.audio .aw{flex:1; display:flex; align-items:center; gap:3px; height:28px;}
+.audio .aw i{flex:1; background:var(--sky); border-radius:2px; animation:wv 1.1s ease-in-out infinite;}
+@keyframes wv{0%,100%{height:7px}50%{height:22px}}
+.audio .at{font-size:11px; color:var(--muted); flex:0 0 auto;}
+.hall-intro{background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px;
+  margin-top:14px; box-shadow:var(--shadow-sm);}
+.hall-intro h2{font-size:19px; font-weight:700; color:var(--ink); font-family:"Noto Serif SC",serif;}
+.hall-intro p{font-size:13.5px; line-height:1.85; color:var(--ink); margin-top:10px; text-align:justify;}
+.poster-btn{margin-top:14px;}
+</style>
+</head><body>
+<div class="phone"><div class="notch"></div><div class="screen">
+<div class="statusbar"><span class="t">9:41</span><span class="time"></span><span class="right"><svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.4c2.3 0 4.4.9 6 2.4l-1.2 1.3C11.5 4.9 9.8 4.2 8 4.2s-3.5.7-4.8 1.9L2 4.8C3.6 3.3 5.7 2.4 8 2.4zm0 3.4c1.3 0 2.5.5 3.4 1.4l-1.3 1.3c-.6-.5-1.3-.8-2.1-.8s-1.6.3-2.1.8L4.6 7.2C5.5 6.3 6.7 5.8 8 5.8zM8 9l1.4 1.4L8 11.8 6.6 10.4z"/></svg><svg width="26" height="12" viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="21" height="10" rx="2.5" stroke="currentColor" stroke-width="1.2" opacity=".5"/><rect x="3" y="3" width="16" height="6" rx="1.2" fill="currentColor"/><rect x="23" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg></span></div>
+<div class="navbar">
+  <div class="nav-back" onclick="location.href='home.html'">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </div>
+  <div class="nav-title" id="navtitle">新闻资讯</div>
+</div>
+
+<div class="tabs">
+  <div class="t" data-tab="news" onclick="switchTab('news')">新闻资讯</div>
+  <div class="t" data-tab="course" onclick="switchTab('course')">在线课程</div>
+  <div class="t" data-tab="hall" onclick="switchTab('hall')">线上展馆</div>
+</div>
+
+<div class="view fade-in">
+
+  <!-- ===== 新闻 ===== -->
+  <div class="pane" id="pane-news">
+    <div class="cats">
+      <span class="cat on">全部</span><span class="cat">书院动态</span>
+      <span class="cat">活动通知</span><span class="cat">文化传承</span>
+    </div>
+    <div class="article">
+      <div class="hero"><div class="deco"></div>
+        <h2>中华文化书院举办王阳明<br>“知行合一”专题讲座</h2>
+      </div>
+      <div class="body">
+        <div class="meta"><span>📅 2026-06-05</span><span>👁 阅读 1,234</span><span class="pill">书院动态</span></div>
+        <p><span class="drop">六</span>月五日，贵州交通职业大学中华文化书院在明德讲堂举办“知行合一”阳明文化专题讲座，邀请省内知名学者主讲，全校师生代表三百余人参加。讲座深入阐释了王阳明在贵州龙场悟道的历史背景与“致良知”的思想精髓。</p>
+        <p>主讲人结合黔中文化与当代育人实践，指出阳明心学“知行合一”的理念，对于新时代青年学子立德修身、笃行实干具有重要的现实意义。现场互动热烈，师生纷纷表示受益匪浅。</p>
+        <p>据悉，本次讲座是书院“马院 + 书院”协同育人系列活动之一，后续还将依托云端书院平台陆续推出线上课程与线上展馆，让中华优秀传统文化以更便捷的方式走近师生。</p>
+        <div class="act-row">
+          <div class="act" onclick="like(this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-6 0v4H5l1.5 11h11L19 9z"/></svg><span>点赞</span></div>
+          <div class="act" onclick="collect(this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>收藏</span></div>
+          <div class="act" onclick="toast('已生成分享卡片')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg><span>分享</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="reco">
+      <div class="rh">智能相关推荐 <span class="ai">AI 推荐</span></div>
+      <div class="it" onclick="toast('打开资讯详情')"><div class="num">1</div><div><div class="n">“通途之路”研学品牌启动仪式在我校举行</div><div class="m">活动通知 · 2026-06-03</div></div></div>
+      <div class="it" onclick="toast('打开资讯详情')"><div class="num">2</div><div><div class="n">屯堡地戏走进校园：非遗活态传承公开课开讲</div><div class="m">文化传承 · 2026-06-01</div></div></div>
+      <div class="it" onclick="toast('打开资讯详情')"><div class="num">3</div><div><div class="n">阳明心学十二讲课程上线，欢迎选学</div><div class="m">书院动态 · 2026-05-28</div></div></div>
+    </div>
+  </div>
+
+  <!-- ===== 课程 ===== -->
+  <div class="pane" id="pane-course">
+    <div class="player">
+      <div class="bgi"></div>
+      <div class="cc" onclick="toast('AI 字幕已开启')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 11h3M7 14h6M14 11h3"/></svg> AI 字幕</div>
+      <div class="play" onclick="toast('开始在线学习')"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="pbar"><div class="ptrack"><div class="pfill"></div></div>
+        <div class="ptime"><span>04:12</span><span>12:30</span></div></div>
+    </div>
+    <div class="cmeta">
+      <h2>阳明心学十二讲</h2>
+      <div class="tags"><span class="pill">书院动态</span><span class="pill gold">AI 字幕</span><span class="pill">配套资源</span></div>
+      <div class="minfo">
+        <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>授课对象：全校学生</div>
+        <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>课程时长：12 课时</div>
+        <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>开课时间：2026-06</div>
+        <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>分类：阳明文化</div>
+      </div>
+      <div class="intro">本课程围绕王阳明“心即理”“知行合一”“致良知”三大命题展开，结合龙场悟道的黔中实践，带领学生走进阳明心学的思想世界，涵养家国情怀与笃行精神。</div>
+    </div>
+    <div class="res-title">配套资源下载</div>
+    <div class="res"><div class="ft pdf">PDF</div><div class="rn"><div class="rt">阳明心学讲义（第一讲）.pdf</div><div class="rs">PDF · 2.4 MB</div></div><div class="dl" onclick="toast('开始下载')"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12"/><polyline points="7 12 12 17 17 12"/><path d="M5 21h14"/></svg></div></div>
+    <div class="res"><div class="ft ppt">PPT</div><div class="rn"><div class="rt">知行合一·课堂课件.pptx</div><div class="rs">PPT · 6.1 MB</div></div><div class="dl" onclick="toast('开始下载')"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12"/><polyline points="7 12 12 17 17 12"/><path d="M5 21h14"/></svg></div></div>
+    <div class="res"><div class="ft mp3">MP3</div><div class="rn"><div class="rt">致良知·音频导读.mp3</div><div class="rs">MP3 · 18 MB</div></div><div class="dl" onclick="toast('开始下载')"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12"/><polyline points="7 12 12 17 17 12"/><path d="M5 21h14"/></svg></div></div>
+  </div>
+
+  <!-- ===== 展馆 ===== -->
+  <div class="pane" id="pane-hall">
+    <div class="gal">
+      <div class="gslides" id="gslides">
+        <div class="gimg gi1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/></svg></div>
+        <div class="gimg gi2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 3l2.5 5 5.5.8-4 3.9 1 5.5L12 21l-5-2.9 1-5.5-4-3.9 5.5-.8z"/></svg></div>
+        <div class="gimg gi3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg></div>
+      </div>
+      <div class="gnav l" onclick="gmove(-1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <div class="gnav r" onclick="gmove(1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="9 18 15 12 9 6"/></svg></div>
+      <div class="gdots" id="gdots"><i class="on"></i><i></i><i></i></div>
+      <div class="gcap">阳明先生像 · 龙场悟道（点击左右箭头浏览，支持双指放大）</div>
+    </div>
+    <div class="audio">
+      <div class="ap" onclick="toast('语音讲解播放中')"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+      <div class="aw"><i style="animation-delay:0.0s"></i><i style="animation-delay:0.06s"></i><i style="animation-delay:0.12s"></i><i style="animation-delay:0.18s"></i><i style="animation-delay:0.24s"></i><i style="animation-delay:0.3s"></i><i style="animation-delay:0.36s"></i><i style="animation-delay:0.42s"></i><i style="animation-delay:0.48s"></i><i style="animation-delay:0.54s"></i><i style="animation-delay:0.6s"></i><i style="animation-delay:0.66s"></i><i style="animation-delay:0.72s"></i><i style="animation-delay:0.78s"></i><i style="animation-delay:0.84s"></i><i style="animation-delay:0.9s"></i><i style="animation-delay:0.96s"></i><i style="animation-delay:1.02s"></i></div>
+      <div class="at">语音讲解 03:48</div>
+    </div>
+    <div class="hall-intro">
+      <h2>阳明文化馆</h2>
+      <p>王阳明谪居贵州龙场期间，于困顿中悟“格物致知”之旨，史称“龙场悟道”，由此奠定心学体系。本馆以图文、实景与多媒体相结合的方式，系统呈现阳明先生的生平、思想脉络及其在黔中大地的深远影响，引导师生在沉浸式浏览中体悟“知行合一”的精神品格。</p>
+      <button class="btn btn-gold poster-btn" onclick="toast('正在生成专属文化海报…')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M4 17l5-4 4 3 3-2 4 3"/></svg>
+        一键生成文化分享海报
+      </button>
+    </div>
+  </div>
+
+</div>
+
+
+<div class="ai-fab" onclick="openAI()">
+  <span class="pulse"></span>
+  <span class="ai-badge">AI</span>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a7 7 0 0 1 7 7c0 2-1 3.7-2.5 4.8V18a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-3.2A7 7 0 0 1 12 3z"/><path d="M9 21h6" stroke-linecap="round"/><circle cx="9.5" cy="10" r="1" fill="currentColor"/><circle cx="14.5" cy="10" r="1" fill="currentColor"/></svg>
+</div>
+<div class="mask" id="aimask" onclick="closeAI()"></div>
+<div class="sheet" id="aisheet">
+  <div class="sheet-head">
+    <div class="avt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a7 7 0 0 1 7 7c0 2-1 3.7-2.5 4.8V18a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-3.2A7 7 0 0 1 12 3z"/><circle cx="9.5" cy="10" r="1" fill="currentColor"/><circle cx="14.5" cy="10" r="1" fill="currentColor"/></svg></div>
+    <div><div class="sheet-title">书院文化助手</div><div class="sheet-sub">基于中华文化书院知识库 · AI 智能问答</div></div>
+  </div>
+  <div class="sheet-body" id="aibody">
+    <div class="bubble ai">你好！我是书院文化助手 📚 可以为你讲解阳明文化、屯堡文化、红色文化等。试试下面的问题：</div>
+    <div class="chips">
+      <span class="chip" onclick="ask('阳明文化')">什么是阳明文化？</span>
+      <span class="chip" onclick="ask('屯堡文化')">屯堡文化有何特色？</span>
+      <span class="chip" onclick="ask('红色文化')">贵州的红色文化</span>
+    </div>
+  </div>
+  <div class="sheet-input">
+    <input id="aiinput" placeholder="向书院文化助手提问…" onkeydown="if(event.key==='Enter')aiSend()">
+    <button class="send" onclick="aiSend()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+</div></div>
+<script>
+
+function setTime(){const d=new Date();const h=String(d.getHours()).padStart(2,'0');
+const m=String(d.getMinutes()).padStart(2,'0');
+document.querySelectorAll('.statusbar .t').forEach(e=>e.textContent=h+':'+m);}
+setTime(); setInterval(setTime,30000);
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;
+t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),1800);}
+
+function openAI(){document.getElementById('aimask').classList.add('show');
+document.getElementById('aisheet').classList.add('show');}
+function closeAI(){document.getElementById('aimask').classList.remove('show');
+document.getElementById('aisheet').classList.remove('show');}
+const AI_ANS={
+ '阳明文化':'王阳明在贵州龙场悟道，提出“知行合一”“致良知”。书院“阳明文化馆”系统呈现其生平、思想与黔中实践，建议先看《阳明心学十二讲》课程。',
+ '屯堡文化':'屯堡文化源于明代“调北征南”，保留了六百年前的江南遗风，地戏被誉为“戏剧活化石”。可前往“屯堡文化馆”沉浸浏览，并收听语音讲解。',
+ '红色文化':'贵州是长征转折之地，遵义会议在此召开。书院“红色文化馆”联动“长征精神与红色交通史”课程，传承红色基因。'
+};
+function ask(q){
+ const body=document.getElementById('aibody');
+ const me=document.createElement('div');me.className='bubble me';me.textContent=q;body.appendChild(me);
+ const ai=document.createElement('div');ai.className='bubble ai';ai.textContent='正在思考…';body.appendChild(ai);
+ body.scrollTop=body.scrollHeight;
+ setTimeout(()=>{ai.textContent=AI_ANS[q]||('关于“'+q+'”，我可以基于书院文化知识库为你解答。（演示）');
+   body.scrollTop=body.scrollHeight;},650);
+}
+function aiSend(){const i=document.getElementById('aiinput');const v=i.value.trim();
+ if(!v){toast('请输入问题');return;} i.value=''; ask(v);}
+
+const TITLES={news:'新闻资讯', course:'在线课程', hall:'线上展馆'};
+function switchTab(tab){
+  document.querySelectorAll('.tabs .t').forEach(t=>t.classList.toggle('on',t.dataset.tab===tab));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pane-'+tab).classList.add('on');
+  document.getElementById('navtitle').textContent=TITLES[tab];
+  document.querySelector('.view').scrollTop=0;
+}
+function like(b){b.classList.toggle('on'); b.querySelector('span').textContent=b.classList.contains('on')?'已赞':'点赞';
+  b.querySelector('svg').setAttribute('fill', b.classList.contains('on')?'#C0392B':'none');
+  if(b.classList.contains('on'))toast('点赞成功');}
+function collect(b){b.classList.toggle('on'); b.querySelector('span').textContent=b.classList.contains('on')?'已收藏':'收藏';
+  b.querySelector('svg').setAttribute('fill', b.classList.contains('on')?'#C0392B':'none');
+  if(b.classList.contains('on'))toast('收藏成功');}
+// 展馆轮播
+let gi=0; const gs=document.getElementById('gslides'); const gd=document.querySelectorAll('#gdots i');
+function gmove(d){gi=(gi+d+3)%3; gs.style.transform='translateX(-'+(gi*100)+'%)';
+  gd.forEach((x,i)=>x.classList.toggle('on',i===gi));}
+// 初始 tab
+const params=new URLSearchParams(location.search);
+switchTab(params.get('tab')||'news');
+</script>
+</body></html>

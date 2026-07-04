@@ -34,18 +34,18 @@
 
   <!-- 数据统计 -->
   <view wx:if="{{isLoggedIn}}" class="stats-card">
-    <view class="stat" bindtap="onTodo"><text class="stat-num">{{stats.favorites || 0}}</text><text class="stat-lbl">收藏</text></view>
+    <view class="stat" bindtap="onStatTap" data-type="favorites"><text class="stat-num">{{stats.favorites || 0}}</text><text class="stat-lbl">收藏</text></view>
     <view class="stat-dv"></view>
-    <view class="stat" bindtap="onTodo"><text class="stat-num">{{stats.enrolls || 0}}</text><text class="stat-lbl">报名</text></view>
+    <view class="stat" bindtap="onStatTap" data-type="enrolls"><text class="stat-num">{{stats.enrolls || 0}}</text><text class="stat-lbl">报名</text></view>
     <view class="stat-dv"></view>
-    <view class="stat" bindtap="onTodo"><text class="stat-num">{{stats.downloads || 0}}</text><text class="stat-lbl">下载</text></view>
+    <view class="stat" bindtap="onStatTap" data-type="downloads"><text class="stat-num">{{stats.downloads || 0}}</text><text class="stat-lbl">下载</text></view>
     <view class="stat-dv"></view>
-    <view class="stat" bindtap="onTodo"><view class="stat-ic"><icon name="footprint" size="26" color="#2B356E" /></view><text class="stat-lbl">足迹</text></view>
+    <view class="stat" bindtap="onStatTap" data-type="footprints"><view class="stat-ic"><icon name="footprint" size="26" color="#2B356E" /></view><text class="stat-lbl">足迹</text></view>
   </view>
 
   <!-- 功能菜单 -->
   <view class="menu">
-    <view class="menu-item" bindtap="onTodo">
+    <view class="menu-item" bindtap="onStatTap" data-type="badges">
       <view class="mi-ic mi-gold"><icon name="medal" size="20" color="#ffffff" /></view>
       <text class="mi-tx">文化徽章</text>
       <icon name="chevron-right" size="16" color="#C3CCE0" />

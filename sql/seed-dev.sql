@@ -169,3 +169,29 @@ INSERT IGNORE INTO `search_index` (`target_type`, `target_id`, `title`, `summary
 ('craft', 1, '苗族银饰·蝴蝶冠', '贵州苗族传统银饰', 1, '2026-01-01 00:00:00'),
 ('course', 1, '阳明心学十二讲', '系统讲授阳明心学', 1, '2026-06-01 00:00:00'),
 ('resource', 1, '阳明心学导读.pdf', 'PDF 学习资料', 1, '2026-01-01 00:00:00');
+
+-- 个人中心演示数据（测试学员 member_id=1）
+INSERT IGNORE INTO `favorite` (`member_id`, `target_type`, `target_id`) VALUES
+(1, 'news', 1),
+(1, 'hall', 1),
+(1, 'craft', 1),
+(1, 'course', 1);
+
+INSERT IGNORE INTO `enroll` (`id`, `activity_id`, `member_id`, `name`, `phone`, `college`, `status`, `voucher_code`) VALUES
+(1, 1, 1, '测试学员', '13800001234', '贵州交通职业大学 · 中华文化书院', 'approved', 'V20260001'),
+(2, 3, 1, '测试学员', '13800001234', '贵州交通职业大学 · 中华文化书院', 'pending', NULL);
+
+INSERT IGNORE INTO `download_record` (`member_id`, `resource_id`, `file_name`, `downloaded_at`) VALUES
+(1, 1, '阳明心学导读.pdf', '2026-06-10 14:20:00'),
+(1, 2, '长征精神学习课件.ppt', '2026-06-08 09:15:00');
+
+INSERT IGNORE INTO `event_log` (`member_id`, `event_type`, `target_type`, `target_id`, `created_at`) VALUES
+(1, 'view', 'news', 1, '2026-06-12 10:00:00'),
+(1, 'favorite', 'hall', 1, '2026-06-11 16:30:00'),
+(1, 'play', 'course', 1, '2026-06-10 20:00:00'),
+(1, 'download', 'resource', 1, '2026-06-10 14:20:00'),
+(1, 'enroll', 'activity', 1, '2026-06-09 11:00:00');
+
+INSERT IGNORE INTO `member_badge` (`member_id`, `badge_id`, `achieved_at`) VALUES
+(1, 1, '2026-06-01 08:00:00');
+

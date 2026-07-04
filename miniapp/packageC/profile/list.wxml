@@ -1,0 +1,26 @@
+<!-- packageC/profile/list.wxml — 个人中心子列表（数据驱动，复用占位样式） -->
+<view class="page">
+  <view wx:if="{{loading}}" class="placeholder">加载中…</view>
+  <view wx:elif="{{!list.length}}" class="placeholder">{{emptyText}}</view>
+  <view wx:else class="list">
+    <view
+      wx:for="{{list}}"
+      wx:key="id"
+      class="item"
+      bindtap="onItemTap"
+      data-route="{{item.route}}"
+    >
+      <view class="item-main">
+        <text class="item-title">{{item.title || item.name || item.fileName}}</text>
+        <text wx:if="{{item.subtitle}}" class="item-sub">{{item.subtitle}}</text>
+        <text wx:if="{{item.eventLabel}}" class="item-sub">{{item.eventLabel}} · {{item.targetTypeLabel || item.targetType}}</text>
+        <text wx:if="{{item.statusLabel}}" class="item-sub">状态：{{item.statusLabel}}</text>
+        <text wx:if="{{item.description && type === 'badges'}}" class="item-sub">{{item.description}}</text>
+      </view>
+      <text class="item-meta">{{item.createTime || item.downloadedAt || item.achievedAt || ''}}</text>
+      <view wx:if="{{type === 'badges'}}" class="badge-tag {{item.earned ? 'earned' : ''}}">
+        {{item.earned ? '已获得' : '未获得'}}
+      </view>
+    </view>
+  </view>
+</view>

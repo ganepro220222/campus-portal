@@ -3,6 +3,7 @@
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
   "usingComponents": {
-    "icon": "/components/icon/index"
+    "icon": "/components/icon/index",
+    "ai-assistant": "/components/ai-assistant/index"
   }
 }

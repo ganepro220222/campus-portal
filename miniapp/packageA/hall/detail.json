@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "展馆详情" }
+{
+  "navigationBarTitleText": "线上展馆",
+  "usingComponents": {
+    "ai-assistant": "/components/ai-assistant/index"
+  }
+}

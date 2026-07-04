@@ -1,1 +1,57 @@
-<view class="page"><view class="placeholder">新闻详情 — 开发中</view></view>
+<!-- packageA/news/detail.wxml -->
+<view class="detail-page">
+  <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="detail-wrap">
+
+      <!-- 文章 -->
+      <view class="article">
+        <view class="art-hero {{article.colorClass}}">
+          <view class="art-hero-deco"></view>
+          <view class="art-hero-title serif">{{article.title}}</view>
+        </view>
+        <view class="art-body">
+          <view class="art-meta">
+            <text>📅 {{article.date}}</text>
+            <text>👁 阅读 {{article.read}}</text>
+            <text class="pill">{{article.category}}</text>
+          </view>
+          <view class="art-p">
+            <text class="drop serif">{{article.drop}}</text>{{article.lead}}
+          </view>
+          <view class="art-p" wx:for="{{article.paras}}" wx:key="index">{{item}}</view>
+
+          <view class="act-row">
+            <view class="act {{liked ? 'act-on' : ''}}" bindtap="onLike">
+              <icon name="thumb" size="16" color="{{liked ? '#C0392B' : '#5A648A'}}" />
+              <text>{{liked ? '已赞' : '点赞'}}</text>
+            </view>
+            <view class="act {{collected ? 'act-on' : ''}}" bindtap="onCollect">
+              <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
+              <text>{{collected ? '已收藏' : '收藏'}}</text>
+            </view>
+            <view class="act" bindtap="onShare">
+              <icon name="share" size="16" color="#5A648A" />
+              <text>分享</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- AI 推荐 -->
+      <view class="reco">
+        <view class="reco-head">智能相关推荐<text class="reco-ai">AI 推荐</text></view>
+        <view class="reco-it" wx:for="{{reco}}" wx:key="id" data-id="{{item.id}}" bindtap="onReco">
+          <view class="reco-num">{{index + 1}}</view>
+          <view class="reco-txt">
+            <view class="reco-n">{{item.n}}</view>
+            <view class="reco-m">{{item.m}}</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="detail-bottom"></view>
+    </view>
+  </scroll-view>
+
+  <ai-assistant bottom="60" />
+</view>

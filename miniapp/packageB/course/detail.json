@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "课程详情" }
+{
+  "navigationBarTitleText": "在线课程",
+  "usingComponents": {
+    "ai-assistant": "/components/ai-assistant/index"
+  }
+}

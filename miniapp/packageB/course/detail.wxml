@@ -1,1 +1,50 @@
-<view class="page"><view class="placeholder">课程详情 — 开发中</view></view>
+<!-- packageB/course/detail.wxml -->
+<view class="detail-page">
+  <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="detail-wrap">
+
+      <!-- 播放器 -->
+      <view class="player">
+        <view class="player-bg"></view>
+        <view class="cc" bindtap="onCC">
+          <icon name="cc" size="13" color="#ffffff" /> AI 字幕
+        </view>
+        <view class="play" bindtap="onPlay"><icon name="play" size="26" color="#2B356E" /></view>
+        <view class="pbar">
+          <view class="ptrack"><view class="pfill"></view></view>
+          <view class="ptime"><text>04:12</text><text>12:30</text></view>
+        </view>
+      </view>
+
+      <!-- 课程信息 -->
+      <view class="cmeta">
+        <view class="cmeta-title serif">{{course.name}}</view>
+        <view class="cmeta-tags">
+          <text wx:for="{{course.tags}}" wx:key="*this" class="pill {{item === 'AI 字幕' ? 'gold' : ''}}">{{item}}</text>
+        </view>
+        <view class="minfo">
+          <view class="mi"><icon name="users" size="15" color="#2B356E" /><text>授课对象：{{course.audience}}</text></view>
+          <view class="mi"><icon name="clock" size="15" color="#2B356E" /><text>课程时长：{{course.duration}}</text></view>
+          <view class="mi"><icon name="calendar" size="15" color="#2B356E" /><text>开课时间：{{course.openTime}}</text></view>
+          <view class="mi"><icon name="book" size="15" color="#2B356E" /><text>分类：{{course.category}}</text></view>
+        </view>
+        <view class="intro">{{course.intro}}</view>
+      </view>
+
+      <!-- 配套资源 -->
+      <view class="res-title">配套资源下载</view>
+      <view class="res" wx:for="{{course.resources}}" wx:key="name">
+        <view class="ft ft-{{item.type}}">{{item.type}}</view>
+        <view class="res-info">
+          <view class="res-n">{{item.name}}</view>
+          <view class="res-s">{{item.size}}</view>
+        </view>
+        <view class="res-dl" bindtap="onDownload"><icon name="download" size="17" color="#2B356E" /></view>
+      </view>
+
+      <view class="detail-bottom"></view>
+    </view>
+  </scroll-view>
+
+  <ai-assistant bottom="60" />
+</view>

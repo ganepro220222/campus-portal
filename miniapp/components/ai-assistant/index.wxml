@@ -1,0 +1,45 @@
+<!-- AI 助手浮标 -->
+<view class="ai-fab" style="bottom: calc({{bottom}}rpx + env(safe-area-inset-bottom));" bindtap="open">
+  <view class="pulse"></view>
+  <view class="ai-badge">AI</view>
+  <icon name="robot" size="26" color="#ffffff" />
+</view>
+
+<!-- 遮罩 -->
+<view class="mask {{open ? 'show' : ''}}" bindtap="close" catchtouchmove="noop"></view>
+
+<!-- 底部抽屉 -->
+<view class="sheet {{open ? 'show' : ''}}">
+  <view class="sheet-head">
+    <view class="avt"><icon name="robot" size="20" color="#ffffff" /></view>
+    <view class="sheet-head-txt">
+      <view class="sheet-title">书院文化助手</view>
+      <view class="sheet-sub">基于中华文化书院知识库 · AI 智能问答</view>
+    </view>
+    <view class="sheet-close" bindtap="close">
+      <icon name="chevron-right" size="18" color="#8A93B2" sw="2.6" />
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="sheet-body" scroll-into-view="{{scrollTo}}" scroll-with-animation>
+    <block wx:for="{{messages}}" wx:key="index">
+      <view class="bubble {{item.role}}" id="m{{index}}">{{item.text}}</view>
+    </block>
+    <view class="chips" wx:if="{{firstAsk}}">
+      <view class="chip" wx:for="{{chips}}" wx:key="*this" data-q="{{item}}" bindtap="onChip">{{item}}</view>
+    </view>
+  </scroll-view>
+
+  <view class="sheet-input">
+    <input
+      class="ai-input"
+      value="{{input}}"
+      placeholder="向书院文化助手提问…"
+      placeholder-class="ai-ph"
+      confirm-type="send"
+      bindinput="onInput"
+      bindconfirm="send"
+    />
+    <view class="send" bindtap="send"><icon name="send" size="18" color="#ffffff" /></view>
+  </view>
+</view>

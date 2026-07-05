@@ -49,10 +49,12 @@
         </view>
       </view>
 
-      <button class="poster-btn" bindtap="onPoster">
-        <icon name="poster" size="18" color="#ffffff" />
-        <text>一键生成文化分享海报</text>
-      </button>
+      <view class="poster-btn-wrap">
+        <button class="poster-btn" bindtap="onPoster">
+          <icon name="poster" size="18" color="#ffffff" />
+          <text>一键生成文化分享海报</text>
+        </button>
+      </view>
 
       <view class="detail-bottom"></view>
     </view>

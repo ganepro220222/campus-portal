@@ -37,7 +37,9 @@
         "activity/enroll",
         "search/index",
         "college/list",
-        "profile/list"
+        "profile/list",
+        "feedback/index",
+        "about/index"
       ]
     },
     {

@@ -15,19 +15,31 @@ const ENROLL_STATUS = {
   rejected: '已拒绝'
 }
 
+// 各类型的图标与配色
+const TYPE_META = {
+  favorites:  { icon: 'heart',     cls: 'tc-rose' },
+  enrolls:    { icon: 'calendar',  cls: 'tc-blue' },
+  downloads:  { icon: 'download',  cls: 'tc-green' },
+  footprints: { icon: 'footprint', cls: 'tc-slate' },
+  badges:     { icon: 'medal',     cls: 'tc-gold' }
+}
+
 Page({
   data: {
     type: '',
     list: [],
     loading: true,
-    emptyText: '暂无数据'
+    emptyText: '暂无数据',
+    typeIcon: 'heart',
+    typeCls: 'tc-rose'
   },
 
   onLoad(options) {
     const type = options.type || 'favorites'
     const cfg = CONFIG[type] || CONFIG.favorites
+    const meta = TYPE_META[type] || TYPE_META.favorites
     wx.setNavigationBarTitle({ title: cfg.title })
-    this.setData({ type, emptyText: cfg.empty })
+    this.setData({ type, emptyText: cfg.empty, typeIcon: meta.icon, typeCls: meta.cls })
     this._load(type, cfg.api)
   },
 
@@ -50,6 +62,7 @@ Page({
           title: item.activityTitle,
           subtitle: item.activityLocation,
           statusLabel: ENROLL_STATUS[item.status] || item.status,
+          statusClass: item.status || 'pending',
           route: item.activityId ? `/packageC/activity/detail?id=${item.activityId}` : ''
         }
       }

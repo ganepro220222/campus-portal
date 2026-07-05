@@ -1,0 +1,57 @@
+<!-- packageC/about/index.wxml -->
+<view class="about-page">
+  <scroll-view scroll-y class="about-scroll" enhanced show-scrollbar="{{false}}">
+
+    <!-- 品牌头 -->
+    <view class="ab-hero">
+      <view class="ab-seal">
+        <image class="ab-seal-img" src="/assets/images/school-badge.png" mode="aspectFit" />
+      </view>
+      <view class="ab-name serif">云端书院</view>
+      <view class="ab-ver">版本 v{{version}}</view>
+      <view class="ab-org">贵州交通职业大学 · 中华文化书院</view>
+    </view>
+
+    <!-- 简介 -->
+    <view class="ab-card">
+      <view class="ab-title serif">书院简介</view>
+      <view class="ab-p">云端书院是“马院 + 书院”协同育人的线上思政平台，依托中华文化书院资源，将阳明文化、屯堡文化、红色文化与非遗技艺搬上云端，线上线下相结合，传承中华优秀传统文化，涵养师生家国情怀与笃行精神。</view>
+    </view>
+
+    <!-- 平台特色 -->
+    <view class="ab-card">
+      <view class="ab-title serif">平台特色</view>
+      <view class="feat" wx:for="{{features}}" wx:key="name">
+        <view class="feat-ic"><icon name="{{item.icon}}" size="20" color="#ffffff" /></view>
+        <view class="feat-body">
+          <text class="feat-name">{{item.name}}</text>
+          <text class="feat-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 联系我们 -->
+    <view class="ab-card ab-card-tight">
+      <view class="ab-title serif">联系我们</view>
+      <view class="c-row" bindtap="onCopy" data-val="贵州省贵阳市清镇职教城西区">
+        <view class="c-ic"><icon name="pin" size="18" color="#2B356E" /></view>
+        <view class="c-body"><text class="c-k">地址</text><text class="c-v">贵州省贵阳市清镇职教城西区</text></view>
+      </view>
+      <view class="c-row" bindtap="onCopy" data-val="0851-12345678">
+        <view class="c-ic"><icon name="megaphone" size="18" color="#2B356E" /></view>
+        <view class="c-body"><text class="c-k">电话</text><text class="c-v">0851-12345678</text></view>
+      </view>
+      <view class="c-row" bindtap="onCopy" data-val="shuyuan@gzjtzy.edu.cn">
+        <view class="c-ic"><icon name="send" size="18" color="#2B356E" /></view>
+        <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">shuyuan@gzjtzy.edu.cn</text></view>
+      </view>
+    </view>
+
+    <view class="ab-foot">
+      <text class="ab-slogan">传承中华优秀传统文化 · 培根铸魂启智润心</text>
+      <text class="ab-copy">© 2026 贵州交通职业大学中华文化书院</text>
+    </view>
+
+    <view class="ab-bottom"></view>
+  </scroll-view>
+</view>

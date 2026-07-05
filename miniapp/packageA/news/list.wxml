@@ -1,14 +1,48 @@
 <!-- packageA/news/list.wxml -->
-<view class="page">
-  <scroll-view scroll-x class="cat-bar">
-    <view wx:for="{{categories}}" wx:key="id" class="cat-tag {{currentCat===item.id?'cat-active':''}}" bindtap="switchCat" data-id="{{item.id}}">{{item.name}}</view>
+<view class="news-page">
+  <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
+    <view class="cats-inner">
+      <view
+        wx:for="{{categories}}"
+        wx:key="id"
+        class="cat {{currentCat === item.id ? 'cat-on' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="switchCat"
+      >{{item.name}}</view>
+    </view>
   </scroll-view>
-  <view wx:for="{{newsList}}" wx:key="id" class="news-card" bindtap="onCardTap" data-id="{{item.id}}">
-    <image class="news-cover" src="{{item.cover}}" mode="aspectFill" lazy-load />
-    <view class="news-info">
-      <text class="news-title">{{item.title}}</text>
-      <view class="news-meta"><text>{{item.categoryName}}</text><text>{{item.publishTime}}</text></view>
+
+  <view class="news-list">
+    <view
+      wx:for="{{newsList}}"
+      wx:key="id"
+      class="ncard"
+      bindtap="onCardTap"
+      data-id="{{item.id}}"
+    >
+      <view class="nthumb {{item.colorClass}}">
+        <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" class="nthumb-img" lazy-load />
+        <icon wx:else name="{{item.icon}}" size="30" color="rgba(255,255,255,0.92)" />
+      </view>
+      <view class="nbody">
+        <text class="ntitle">{{item.title}}</text>
+        <view class="nmeta">
+          <text class="pill">{{item.categoryName}}</text>
+          <view class="nmeta-r">
+            <view class="nread"><icon name="eye" size="12" color="#8A93B2" /><text>{{item.readText}}</text></view>
+            <text class="ndate">{{item.publishTime}}</text>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
-  <view wx:if="{{!hasMore && newsList.length}}" class="no-more">已加载全部</view>
+
+  <view wx:if="{{loading}}" class="list-tip">加载中…</view>
+  <view wx:elif="{{!hasMore && newsList.length}}" class="list-tip">— 已加载全部 —</view>
+  <view wx:elif="{{!newsList.length}}" class="empty-state">
+    <icon name="news" size="40" color="#C3CCE0" />
+    <text>暂无新闻</text>
+  </view>
+
+  <view class="list-bottom"></view>
 </view>

@@ -1,0 +1,51 @@
+<!-- packageC/feedback/index.wxml -->
+<view class="fb-page">
+  <scroll-view scroll-y class="fb-scroll" enhanced show-scrollbar="{{false}}">
+
+    <view class="fb-card">
+      <view class="fb-label">反馈类型</view>
+      <view class="fb-types">
+        <view
+          wx:for="{{types}}"
+          wx:key="*this"
+          class="fb-type {{typeIndex === index ? 'on' : ''}}"
+          data-i="{{index}}"
+          bindtap="onType"
+        >{{item}}</view>
+      </view>
+
+      <view class="fb-label">反馈内容<text class="req">*</text></view>
+      <textarea
+        class="fb-textarea"
+        placeholder="请描述你遇到的问题或建议，我们会认真对待每一条反馈…"
+        placeholder-class="fb-ph"
+        value="{{content}}"
+        bindinput="onContent"
+        maxlength="500"
+      />
+      <view class="fb-count">{{content.length}}/500</view>
+
+      <view class="fb-label">联系方式</view>
+      <input
+        class="fb-input"
+        placeholder="手机号 / 微信（选填，便于回复）"
+        placeholder-class="fb-ph"
+        value="{{contact}}"
+        bindinput="onContact"
+      />
+    </view>
+
+    <view class="fb-tip">
+      <icon name="chat" size="14" color="#BE9C44" />
+      <text>你的每一条建议都是我们优化云端书院的动力</text>
+    </view>
+
+    <view class="fb-pad"></view>
+  </scroll-view>
+
+  <view class="fb-bar">
+    <button class="fb-submit {{submitting ? 'ing' : ''}}" bindtap="onSubmit" disabled="{{submitting}}">
+      {{submitting ? '提交中…' : '提交反馈'}}
+    </button>
+  </view>
+</view>

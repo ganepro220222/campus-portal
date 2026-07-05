@@ -1,26 +1,39 @@
-<!-- packageC/profile/list.wxml — 个人中心子列表（数据驱动，复用占位样式） -->
-<view class="page">
-  <view wx:if="{{loading}}" class="placeholder">加载中…</view>
-  <view wx:elif="{{!list.length}}" class="placeholder">{{emptyText}}</view>
-  <view wx:else class="list">
+<!-- packageC/profile/list.wxml — 个人中心子列表（收藏/报名/下载/足迹/徽章） -->
+<view class="pl-page">
+  <view wx:if="{{loading}}" class="pl-state"><text>加载中…</text></view>
+
+  <view wx:elif="{{!list.length}}" class="empty-state">
+    <icon name="{{typeIcon}}" size="42" color="#C3CCE0" />
+    <text>{{emptyText}}</text>
+  </view>
+
+  <view wx:else class="pl-list">
     <view
       wx:for="{{list}}"
       wx:key="id"
-      class="item"
+      class="pl-item"
       bindtap="onItemTap"
       data-route="{{item.route}}"
     >
-      <view class="item-main">
-        <text class="item-title">{{item.title || item.name || item.fileName}}</text>
-        <text wx:if="{{item.subtitle}}" class="item-sub">{{item.subtitle}}</text>
-        <text wx:if="{{item.eventLabel}}" class="item-sub">{{item.eventLabel}} · {{item.targetTypeLabel || item.targetType}}</text>
-        <text wx:if="{{item.statusLabel}}" class="item-sub">状态：{{item.statusLabel}}</text>
-        <text wx:if="{{item.description && type === 'badges'}}" class="item-sub">{{item.description}}</text>
+      <view class="pl-ic {{typeCls}} {{type === 'badges' && !item.earned ? 'pl-ic-off' : ''}}">
+        <icon name="{{typeIcon}}" size="22" color="#ffffff" />
       </view>
-      <text class="item-meta">{{item.createTime || item.downloadedAt || item.achievedAt || ''}}</text>
-      <view wx:if="{{type === 'badges'}}" class="badge-tag {{item.earned ? 'earned' : ''}}">
-        {{item.earned ? '已获得' : '未获得'}}
+
+      <view class="pl-body">
+        <text class="pl-title">{{item.title || item.name || item.fileName}}</text>
+        <text wx:if="{{item.subtitle}}" class="pl-sub">{{item.subtitle}}</text>
+        <text wx:if="{{item.eventLabel}}" class="pl-sub">{{item.eventLabel}} · {{item.targetTypeLabel || item.targetType}}</text>
+        <text wx:if="{{item.description && type === 'badges'}}" class="pl-sub">{{item.description}}</text>
+        <text wx:if="{{item.createTime || item.downloadedAt || item.achievedAt}}" class="pl-time">{{item.createTime || item.downloadedAt || item.achievedAt}}</text>
+      </view>
+
+      <view class="pl-right">
+        <view wx:if="{{item.statusLabel}}" class="pl-status st-{{item.statusClass}}">{{item.statusLabel}}</view>
+        <view wx:elif="{{type === 'badges'}}" class="pl-badge {{item.earned ? 'on' : ''}}">{{item.earned ? '已获得' : '未获得'}}</view>
+        <icon wx:elif="{{item.route}}" name="chevron-right" size="16" color="#C3CCE0" />
       </view>
     </view>
   </view>
+
+  <view class="pl-bottom"></view>
 </view>

@@ -5,6 +5,11 @@
   <view class="stars"></view>
   <view class="wave-deco"></view>
 
+  <!-- 返回 / 关闭 -->
+  <view class="login-back" style="top: calc({{statusBarHeight}}px + 12rpx);" bindtap="onBack" hover-class="login-back-hover">
+    <icon name="chevron-left" size="22" color="#ffffff" sw="2.6" />
+  </view>
+
   <view class="login-inner">
     <view style="height: {{statusBarHeight}}px; flex-shrink: 0;"></view>
 

@@ -21,6 +21,7 @@ public class NewsService {
     private final NewsMapper newsMapper;
     private final CategoryService categoryService;
     private final EventLogService eventLogService;
+    private final PointService pointService;
 
     public Object list(String category, Long categoryId, Integer page, Integer size) {
         Map<Long, String> catMap = categoryService.nameMap("news");
@@ -47,6 +48,7 @@ public class NewsService {
         news.setViewCount(news.getViewCount() + 1);
         newsMapper.updateById(news);
         eventLogService.record("view", "news", id);
+        pointService.awardCurrentUser("view_news");
 
         Map<Long, String> catMap = categoryService.nameMap("news");
         String categoryName = categoryService.getName(news.getCategoryId(), catMap);

@@ -27,6 +27,7 @@ public class EnrollService {
     private final MemberProfileMapper memberProfileMapper;
     private final MessageMapper messageMapper;
     private final EventLogService eventLogService;
+    private final PointService pointService;
 
     /**
      * 提交报名（需登录且个人信息完整）
@@ -90,6 +91,7 @@ public class EnrollService {
 
         createEnrollMessage(memberId, activity, existing);
         eventLogService.record("enroll", "activity", activityId);
+        pointService.award(memberId, "enroll_activity");
         return toEnrollVo(existing, activity);
     }
 

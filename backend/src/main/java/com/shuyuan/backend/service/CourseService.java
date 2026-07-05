@@ -25,6 +25,7 @@ public class CourseService {
     private final CourseResourceMapper courseResourceMapper;
     private final ResourceMapper resourceMapper;
     private final CategoryService categoryService;
+    private final EventLogService eventLogService;
 
     public List<Map<String, Object>> list(String category) {
         Map<Long, String> catMap = categoryService.nameMap("course");
@@ -65,6 +66,7 @@ public class CourseService {
         m.put("subtitleUrl", course.getSubtitleUrl());
         m.put("tags", List.of(categoryName, hasSubtitle ? "AI 字幕" : "在线课程"));
         m.put("resources", loadLinkedResources(id));
+        eventLogService.record("view", "course", id);
         return m;
     }
 

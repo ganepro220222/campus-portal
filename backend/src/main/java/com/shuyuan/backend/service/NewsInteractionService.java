@@ -23,6 +23,7 @@ public class NewsInteractionService {
     private final NewsMapper newsMapper;
     private final LikeRecordMapper likeRecordMapper;
     private final FavoriteMapper favoriteMapper;
+    private final EventLogService eventLogService;
 
     @Transactional
     public Map<String, Object> toggleLike(Long newsId) {
@@ -48,6 +49,7 @@ public class NewsInteractionService {
             likeRecordMapper.insert(record);
             news.setLikeCount(news.getLikeCount() + 1);
             liked = true;
+            eventLogService.recordIfLoggedIn("like", "news", newsId);
         }
         newsMapper.updateById(news);
 
@@ -81,6 +83,7 @@ public class NewsInteractionService {
             favoriteMapper.insert(record);
             news.setFavoriteCount(news.getFavoriteCount() + 1);
             collected = true;
+            eventLogService.recordIfLoggedIn("favorite", "news", newsId);
         }
         newsMapper.updateById(news);
 

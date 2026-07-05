@@ -20,6 +20,7 @@ public class HallService {
     private final HallMapper hallMapper;
     private final HallMediaMapper hallMediaMapper;
     private final CategoryService categoryService;
+    private final EventLogService eventLogService;
 
     public List<Map<String, Object>> list(String category) {
         Map<Long, String> catMap = categoryService.nameMap("hall");
@@ -78,6 +79,7 @@ public class HallService {
         m.put("caption", caption);
         m.put("audioUrl", audio != null ? audio.getUrl() : null);
         m.put("audioTime", audio != null && audio.getCaption() != null ? audio.getCaption() : "语音讲解");
+        eventLogService.record("view", "hall", id);
         return m;
     }
 

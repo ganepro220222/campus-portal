@@ -23,6 +23,7 @@ public class ResourceService {
     private final ResourceMapper resourceMapper;
     private final DownloadRecordMapper downloadRecordMapper;
     private final CategoryService categoryService;
+    private final EventLogService eventLogService;
 
     public List<Map<String, Object>> list(String category, String fileType) {
         Map<Long, String> catMap = categoryService.nameMap("resource");
@@ -46,6 +47,7 @@ public class ResourceService {
     public Map<String, Object> detail(Long id) {
         Resource resource = requireResource(id);
         Map<Long, String> catMap = categoryService.nameMap("resource");
+        eventLogService.record("view", "resource", id);
         return toDetailVo(resource, catMap);
     }
 
@@ -61,6 +63,7 @@ public class ResourceService {
             record.setFileName(resource.getName());
             record.setDownloadedAt(LocalDateTime.now());
             downloadRecordMapper.insert(record);
+            eventLogService.record("download", "resource", id);
         }
         Resource update = new Resource();
         update.setId(id);

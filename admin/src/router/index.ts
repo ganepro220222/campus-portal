@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -35,6 +35,12 @@ const router = createRouter({
           name: 'Announcements',
           component: () => import('@/views/announcement/AnnouncementListView.vue'),
           meta: { title: '公告管理', permission: 'admin:super' }
+        },
+        {
+          path: 'feedbacks',
+          name: 'Feedbacks',
+          component: () => import('@/views/feedback/FeedbackListView.vue'),
+          meta: { title: '意见反馈', permission: 'admin:super' }
         },
         {
           path: 'news',
@@ -120,7 +126,8 @@ export const menuItems: MenuItem[] = [
   { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
   { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
   { path: '/banners', title: 'Banner 管理', icon: Picture, permissions: ['admin:super'] },
-  { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] }
+  { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] },
+  { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] }
 ]
 
 export function filterMenus(permissions: string[]) {

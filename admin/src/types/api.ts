@@ -47,6 +47,20 @@ export interface AnnouncementItem {
   activeNow?: boolean
 }
 
+export interface FeedbackItem {
+  id: number
+  memberId: number
+  memberNickname: string
+  type: string
+  content: string
+  contact?: string | null
+  images?: string[]
+  status: 'pending' | 'replied' | string
+  reply?: string | null
+  repliedAt?: string | null
+  createTime: string
+}
+
 export interface NewsItem {
   id: number
   title: string

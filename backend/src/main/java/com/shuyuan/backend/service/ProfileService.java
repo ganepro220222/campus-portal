@@ -26,6 +26,7 @@ public class ProfileService {
     private final EnrollMapper enrollMapper;
     private final DownloadRecordMapper downloadRecordMapper;
     private final EventLogMapper eventLogMapper;
+    private final PointRecordMapper pointRecordMapper;
     private final BadgeMapper badgeMapper;
     private final MemberBadgeMapper memberBadgeMapper;
     private final NewsMapper newsMapper;
@@ -244,12 +245,31 @@ public class ProfileService {
             return points >= (badge.getConditionValue() != null ? badge.getConditionValue() : 0);
         }
         if ("login_count".equals(badge.getConditionType())) {
-            return true;
+            int need = badge.getConditionValue() != null ? badge.getConditionValue() : 1;
+            long count = pointRecordMapper.selectCount(new LambdaQueryWrapper<PointRecord>()
+                    .eq(PointRecord::getMemberId, memberId)
+                    .eq(PointRecord::getAction, "login"));
+            return count >= need;
         }
         if ("enroll_count".equals(badge.getConditionType())) {
             long count = enrollMapper.selectCount(new LambdaQueryWrapper<Enroll>()
                     .eq(Enroll::getMemberId, memberId)
                     .in(Enroll::getStatus, "pending", "approved"));
+            return count >= (badge.getConditionValue() != null ? badge.getConditionValue() : 1);
+        }
+        if ("hall_count".equals(badge.getConditionType())) {
+            List<EventLog> logs = eventLogMapper.selectList(new LambdaQueryWrapper<EventLog>()
+                    .eq(EventLog::getMemberId, memberId)
+                    .eq(EventLog::getEventType, "view")
+                    .eq(EventLog::getTargetType, "hall")
+                    .isNotNull(EventLog::getTargetId));
+            long distinct = logs.stream().map(EventLog::getTargetId).distinct().count();
+            return distinct >= (badge.getConditionValue() != null ? badge.getConditionValue() : 1);
+        }
+        if ("course_count".equals(badge.getConditionType())) {
+            long count = pointRecordMapper.selectCount(new LambdaQueryWrapper<PointRecord>()
+                    .eq(PointRecord::getMemberId, memberId)
+                    .eq(PointRecord::getAction, "complete_course"));
             return count >= (badge.getConditionValue() != null ? badge.getConditionValue() : 1);
         }
         return false;

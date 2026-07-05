@@ -29,6 +29,7 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final ShuyuanProperties properties;
     private final LoginLockService loginLockService;
+    private final PointService pointService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Transactional
@@ -98,6 +99,8 @@ public class AuthService {
     }
 
     private LoginVO buildLogin(Member member) {
+        pointService.award(member.getId(), "login");
+        member = memberMapper.selectById(member.getId());
         String token = jwtUtils.createToken(member.getId(), member.getOpenid());
         MemberProfile profile = memberProfileMapper.selectById(member.getId());
         MemberVO vo = MemberVO.builder()

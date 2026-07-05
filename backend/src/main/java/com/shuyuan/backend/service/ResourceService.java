@@ -24,6 +24,7 @@ public class ResourceService {
     private final DownloadRecordMapper downloadRecordMapper;
     private final CategoryService categoryService;
     private final EventLogService eventLogService;
+    private final PointService pointService;
 
     public List<Map<String, Object>> list(String category, String fileType) {
         Map<Long, String> catMap = categoryService.nameMap("resource");
@@ -64,6 +65,7 @@ public class ResourceService {
             record.setDownloadedAt(LocalDateTime.now());
             downloadRecordMapper.insert(record);
             eventLogService.record("download", "resource", id);
+            pointService.award(memberId, "download_resource");
         }
         Resource update = new Resource();
         update.setId(id);

@@ -36,14 +36,31 @@
   justify-content: center;
 }
 .header-me:active { background: #F2F7FC; }
+/* 顶部标题：金色 ❖ 匾额式框衬 */
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+.ht-orn {
+  font-size: 20rpx;
+  line-height: 1;
+  color: #BE9C44;
+  opacity: 0.92;
+  text-shadow: 0 1rpx 2rpx rgba(150, 110, 30, 0.28);
+}
 .header-name {
-  font-size: 46rpx;
+  font-size: 47rpx;
   font-weight: 700;
   color: var(--navy);
   letter-spacing: 6rpx;
+  text-indent: 6rpx;
   white-space: nowrap;
   /* 楷体优先，书香气更足；无楷体时回退宋体 */
   font-family: "STKaiti", "KaiTi", "Kaiti SC", "楷体", "Noto Serif SC", "STSong", serif;
+  /* 加粗笔画去单薄 + 墨韵纵深（不支持描边的设备优雅降级）*/
+  -webkit-text-stroke: 0.5rpx var(--navy);
+  text-shadow: 0 1rpx 1rpx rgba(31, 40, 90, 0.16);
 }
 .bell-btn {
   position: absolute;

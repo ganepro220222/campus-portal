@@ -1,0 +1,86 @@
+/* packageC/feedback/index.wxss */
+.fb-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.fb-scroll { flex: 1; overflow: hidden; padding: 24rpx 28rpx 0; }
+
+.fb-card {
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  box-shadow: var(--shadow-sm);
+}
+.fb-label { font-size: 27rpx; font-weight: 600; color: var(--ink); margin-bottom: 18rpx; }
+.fb-label:not(:first-child) { margin-top: 30rpx; }
+.req { color: var(--color-danger); margin-left: 4rpx; }
+
+.fb-types { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.fb-type {
+  font-size: 25rpx;
+  color: var(--sub);
+  background: var(--sky-3);
+  border: 1rpx solid var(--line);
+  padding: 12rpx 30rpx;
+  border-radius: 30rpx;
+}
+.fb-type.on {
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  color: #fff;
+  border-color: transparent;
+}
+
+.fb-textarea {
+  width: 100%;
+  height: 240rpx;
+  background: var(--sky-3);
+  border: 1rpx solid var(--line);
+  border-radius: 18rpx;
+  padding: 22rpx;
+  font-size: 27rpx;
+  color: var(--ink);
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+.fb-ph { color: var(--muted); }
+.fb-count { text-align: right; font-size: 21rpx; color: var(--muted); margin-top: 10rpx; }
+
+.fb-input {
+  width: 100%;
+  height: 88rpx;
+  background: var(--sky-3);
+  border: 1rpx solid var(--line);
+  border-radius: 18rpx;
+  padding: 0 24rpx;
+  font-size: 27rpx;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.fb-tip {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin: 26rpx 4rpx 0;
+}
+.fb-tip text { font-size: 22rpx; color: var(--sub); }
+.fb-pad { height: 40rpx; }
+
+.fb-bar {
+  flex-shrink: 0;
+  padding: 16rpx 28rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.97);
+  border-top: 1rpx solid var(--line);
+}
+.fb-submit {
+  height: 92rpx;
+  line-height: 92rpx;
+  border-radius: 46rpx;
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  color: #fff;
+  font-size: 31rpx;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 12rpx 30rpx rgba(43, 53, 110, 0.32);
+}
+.fb-submit::after { border: none; }
+.fb-submit.ing { opacity: 0.7; }

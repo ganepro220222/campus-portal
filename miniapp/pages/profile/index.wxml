@@ -55,12 +55,12 @@
       <text class="mi-tx">文化徽章</text>
       <icon name="chevron-right" size="16" color="#C3CCE0" />
     </view>
-    <view class="menu-item" bindtap="onTodo">
+    <view class="menu-item" bindtap="onFeedback">
       <view class="mi-ic mi-blue"><icon name="chat" size="20" color="#ffffff" /></view>
       <text class="mi-tx">意见反馈</text>
       <icon name="chevron-right" size="16" color="#C3CCE0" />
     </view>
-    <view class="menu-item" bindtap="onTodo">
+    <view class="menu-item" bindtap="onAbout">
       <view class="mi-ic mi-slate"><icon name="grid" size="20" color="#ffffff" /></view>
       <text class="mi-tx">关于云端书院</text>
       <icon name="chevron-right" size="16" color="#C3CCE0" />

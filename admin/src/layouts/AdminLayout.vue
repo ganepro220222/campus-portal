@@ -143,7 +143,7 @@ async function onLogout() {
 
 .menu-scroll {
   flex: 1;
-  padding: 12px 12px 0;
+  padding: 12px 10px 0 15px;
 }
 
 .header {

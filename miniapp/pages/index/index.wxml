@@ -8,7 +8,11 @@
       <view class="header-me" bindtap="onProfileTap">
         <icon name="user-circle" size="25" color="#2B356E" />
       </view>
-      <text class="header-name">中华文化书院</text>
+      <view class="header-title">
+        <text class="ht-orn">❖</text>
+        <text class="header-name">中华文化书院</text>
+        <text class="ht-orn">❖</text>
+      </view>
       <view class="bell-btn" bindtap="onBellTap">
         <icon name="bell" size="22" color="#2B356E" />
         <view wx:if="{{hasNewAnnouncement}}" class="bell-dot"></view>

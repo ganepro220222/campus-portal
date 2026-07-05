@@ -70,6 +70,8 @@
 .c-v { font-size: 27rpx; color: var(--ink); font-weight: 500; margin-top: 4rpx; display: block; }
 
 .poster-btn {
+  width: 100%;
+  box-sizing: border-box;
   margin-top: 26rpx;
   height: 92rpx;
   border-radius: 20rpx;

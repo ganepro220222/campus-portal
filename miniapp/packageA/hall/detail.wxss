@@ -87,6 +87,8 @@
   text-align: justify;
 }
 .poster-btn {
+  width: 100%;
+  box-sizing: border-box;
   margin-top: 26rpx;
   height: 92rpx;
   border-radius: 20rpx;

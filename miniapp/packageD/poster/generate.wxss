@@ -155,6 +155,8 @@
   border-top: 1rpx solid var(--line);
 }
 .save-btn {
+  width: 100%;
+  box-sizing: border-box;
   height: 92rpx;
   line-height: 92rpx;
   border-radius: 46rpx;

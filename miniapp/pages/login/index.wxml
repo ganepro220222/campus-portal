@@ -20,8 +20,12 @@
 
     <!-- 校名 -->
     <view class="brand">
-      <view class="brand-zh serif">云端书院</view>
-      <view class="brand-div"></view>
+      <view class="brand-zh serif">云端<text class="brand-zh-gold">书</text>院</view>
+      <view class="brand-div">
+        <view class="brand-div-line"></view>
+        <text class="brand-div-orn">❖</text>
+        <view class="brand-div-line brand-div-line-r"></view>
+      </view>
       <view class="brand-sub serif">贵州交通职业大学 · 中华文化书院</view>
       <view class="brand-en">Guizhou Communications Polytechnic University</view>
     </view>

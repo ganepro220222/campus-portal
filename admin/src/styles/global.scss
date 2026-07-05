@@ -119,11 +119,74 @@ body,
 .el-button {
   font-weight: 600;
 }
+.el-table {
+  border-radius: 12px;
+  overflow: hidden;
+}
 .el-table th.el-table__cell {
   background: #f6f8fc !important;
   color: var(--brand-sub);
   font-weight: 600;
+  height: 50px;
+}
+.el-table td.el-table__cell {
+  padding: 11px 0;
+}
+.el-table tbody tr:hover > td.el-table__cell {
+  background: #f4f7fd !important;
 }
 .el-tag {
   border-radius: 6px;
+  font-weight: 600;
+}
+.el-button--primary {
+  box-shadow: 0 6px 16px rgba(43, 53, 110, 0.16);
+}
+
+/* 对话框 */
+.el-dialog {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(20, 26, 56, 0.28);
+}
+.el-dialog__header {
+  background: linear-gradient(135deg, #f6f8fc, #eef2fb);
+  border-bottom: 1px solid var(--brand-line);
+  padding: 18px 22px;
+  margin-right: 0;
+}
+.el-dialog__title {
+  font-weight: 700;
+  color: var(--brand-primary);
+}
+.el-dialog__body {
+  padding: 24px 22px;
+}
+
+/* 表单 / 输入 */
+.el-form-item__label {
+  color: var(--brand-sub);
+  font-weight: 500;
+}
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: 10px;
+}
+
+/* 分页 */
+.el-pagination {
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.pager {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 卡片头 */
+.el-card__header {
+  font-weight: 700;
+  color: var(--brand-primary);
 }

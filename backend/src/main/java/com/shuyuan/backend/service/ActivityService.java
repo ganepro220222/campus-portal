@@ -22,6 +22,7 @@ public class ActivityService {
 
     private final ActivityMapper activityMapper;
     private final EnrollService enrollService;
+    private final EventLogService eventLogService;
 
     public PageResult<Map<String, Object>> list(int page, int size) {
         Page<Activity> p = activityMapper.selectPage(new Page<>(page, size),
@@ -68,6 +69,7 @@ public class ActivityService {
         } else {
             m.put("enrollStatus", "none");
         }
+        eventLogService.record("view", "activity", id);
         return m;
     }
 

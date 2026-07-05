@@ -445,6 +445,7 @@ CREATE TABLE IF NOT EXISTS `member_subscribe_record` (
 CREATE TABLE IF NOT EXISTS `feedback` (
   `id`          BIGINT       NOT NULL AUTO_INCREMENT,
   `member_id`   BIGINT       NOT NULL,
+  `type`        VARCHAR(30)  NOT NULL DEFAULT '其他' COMMENT '功能建议/内容纠错/使用问题/其他',
   `content`     TEXT         NOT NULL COMMENT '反馈内容',
   `images`      JSON         DEFAULT NULL COMMENT '图片URL列表',
   `contact`     VARCHAR(100) DEFAULT NULL COMMENT '联系方式',

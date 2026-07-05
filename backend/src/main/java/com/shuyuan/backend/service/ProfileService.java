@@ -33,6 +33,7 @@ public class ProfileService {
     private final CraftMapper craftMapper;
     private final CourseMapper courseMapper;
     private final ResourceMapper resourceMapper;
+    private final ActivityMapper activityMapper;
     private final EnrollService enrollService;
 
     public MemberVO profile() {
@@ -215,6 +216,10 @@ public class ProfileService {
                 Resource r = resourceMapper.selectById(targetId);
                 yield r != null ? r.getName() : "";
             }
+            case "activity" -> {
+                Activity a = activityMapper.selectById(targetId);
+                yield a != null ? a.getTitle() : "";
+            }
             default -> "";
         };
     }
@@ -229,6 +234,7 @@ public class ProfileService {
             case "craft" -> "/packageA/craft/detail?id=" + targetId;
             case "course" -> "/packageB/course/detail?id=" + targetId;
             case "resource" -> "/packageB/resource/list";
+            case "activity" -> "/packageC/activity/detail?id=" + targetId;
             default -> "";
         };
     }

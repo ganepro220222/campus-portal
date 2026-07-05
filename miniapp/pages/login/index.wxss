@@ -115,26 +115,36 @@
   text-indent: 18rpx;
   text-shadow: 0 4rpx 28rpx rgba(0,0,0,.35);
 }
+/* 「书」字：金色镶边（呼应管理后台印章书字）*/
+.brand-zh-gold {
+  color: #ECCF82;
+  -webkit-text-stroke: 0.6rpx rgba(122, 90, 28, 0.55);
+  text-shadow:
+    0 1rpx 0 rgba(255, 247, 219, 0.45),
+    0 2rpx 16rpx rgba(190, 156, 68, 0.42),
+    0 4rpx 28rpx rgba(0, 0, 0, 0.35);
+}
+
+/* 分隔：线 — ❖ — 线（呼应管理后台登录）*/
 .brand-div {
-  width: 256rpx; height: 0;
-  margin: 26rpx auto 34rpx;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+  margin: 28rpx auto 34rpx;
 }
-.brand-div::before {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; top: 50%;
+.brand-div-line {
+  width: 92rpx;
   height: 1rpx;
-  background: linear-gradient(90deg, transparent, rgba(190,156,68,.85), transparent);
+  background: linear-gradient(90deg, transparent, rgba(190,156,68,.85));
 }
-.brand-div::after {
-  content: "❖";
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -78%);
+.brand-div-line-r {
+  background: linear-gradient(90deg, rgba(190,156,68,.85), transparent);
+}
+.brand-div-orn {
   color: #BE9C44;
   font-size: 22rpx;
-  padding: 0 14rpx;
+  line-height: 1;
 }
 .brand-sub {
   color: rgba(214,224,248,.92);

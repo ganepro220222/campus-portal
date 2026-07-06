@@ -1,0 +1,7 @@
+{
+  "name": "shuyuan",
+  "private": true,
+  "scripts": {
+    "check:prod-mock": "node scripts/check-no-prod-mock.js"
+  }
+}

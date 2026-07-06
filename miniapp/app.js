@@ -1,11 +1,12 @@
 // app.js
 const { getToken, clearToken } = require('./utils/auth')
+const { baseUrl } = require('./config/env')
 
 App({
   globalData: {
     userInfo: null,
     token: '',
-    baseUrl: 'http://localhost:8080/api/v1'
+    baseUrl
   },
 
   onLaunch() {

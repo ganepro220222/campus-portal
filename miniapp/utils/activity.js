@@ -1,6 +1,7 @@
 // utils/activity.js — 活动详情/报名数据映射
 
 const mock = require('../mock/defaults')
+const { useMock } = require('../config/env')
 
 const ENROLL_STATUS = {
   none: '',
@@ -11,8 +12,8 @@ const ENROLL_STATUS = {
 }
 
 function mergeActivityDetail(raw, fallback) {
-  const base = fallback || mock.activityDetail || {}
-  if (!raw) return { ...base }
+  const base = fallback || (useMock ? mock.activityDetail : {})
+  if (!raw) return useMock ? { ...base } : {}
   const quota = raw.quota != null ? raw.quota : base.quota
   const enrolledCount = raw.enrolledCount != null ? raw.enrolledCount : base.enrolledCount
   const full = raw.full != null

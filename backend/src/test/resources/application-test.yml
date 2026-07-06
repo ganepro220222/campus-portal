@@ -1,0 +1,28 @@
+# 测试 profile：PR3 接入单测/集成测时使用
+# CI 阶段 A 使用 -DskipTests；阶段 B 启用 mvn test 后激活本 profile
+spring:
+  datasource:
+    url: ${TEST_DB_URL:jdbc:mysql://localhost:3306/shuyuan_test?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai}
+    username: ${TEST_DB_USERNAME:root}
+    password: ${TEST_DB_PASSWORD:dev123456}
+  data:
+    redis:
+      host: ${TEST_REDIS_HOST:localhost}
+      port: ${TEST_REDIS_PORT:6379}
+      password: ${TEST_REDIS_PASSWORD:dev123456}
+      database: ${TEST_REDIS_DATABASE:1}
+
+shuyuan:
+  jwt:
+    secret: test-jwt-secret-for-ci-only-do-not-use-in-prod
+  wx:
+    dev-mode: true
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  level:
+    root: WARN
+    com.shuyuan: INFO

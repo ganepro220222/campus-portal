@@ -1,0 +1,48 @@
+# 生产环境配置模板 — 复制为 application-prod.yml 或通过环境变量注入
+# 注意：application-prod.yml 已在 .gitignore 中，切勿提交真实密钥
+#
+# 使用方式（二选一）：
+#   1. 复制本文件为 application-prod.yml，填入真实值（仅部署机本地）
+#   2. 设置 SPRING_PROFILES_ACTIVE=prod，并通过下方环境变量注入
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+
+shuyuan:
+  jwt:
+    secret: ${JWT_SECRET}
+    expire-days: ${JWT_EXPIRE_DAYS:7}
+  wx:
+    # 生产必须关闭 dev-mode，走真实微信登录
+    dev-mode: false
+    appid: ${WX_APPID}
+    secret: ${WX_SECRET}
+  login:
+    max-fail-attempts: ${LOGIN_MAX_FAIL_ATTEMPTS:5}
+    lock-minutes: ${LOGIN_LOCK_MINUTES:5}
+    fail-window-minutes: ${LOGIN_FAIL_WINDOW_MINUTES:15}
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  level:
+    root: WARN
+    com.shuyuan: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: none

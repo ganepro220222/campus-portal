@@ -1,0 +1,37 @@
+# 预发环境：敏感信息全部通过环境变量注入，禁止 dev 密码与 mock
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+
+shuyuan:
+  jwt:
+    secret: ${JWT_SECRET}
+    expire-days: ${JWT_EXPIRE_DAYS:7}
+  wx:
+    dev-mode: false
+    appid: ${WX_APPID:}
+    secret: ${WX_SECRET:}
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  level:
+    root: INFO
+    com.shuyuan: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: none

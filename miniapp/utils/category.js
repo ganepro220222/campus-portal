@@ -2,6 +2,7 @@
 
 const { get } = require('./request')
 const mock = require('../mock/defaults')
+const { useMock } = require('../config/env')
 
 function toCatNames(list) {
   if (!list || !list.length) return null
@@ -13,12 +14,13 @@ function toCatNames(list) {
 }
 
 async function loadCategoryNames(type) {
-  const fallback = (mock.categories && mock.categories[type]) || ['全部']
+  const mockFallback = (mock.categories && mock.categories[type]) || ['全部']
+  const fallback = useMock ? mockFallback : ['全部']
   try {
     const res = await get('/categories', { type })
     return toCatNames(res) || fallback
   } catch (err) {
-    console.warn('[category] 分类加载失败，使用默认', type, err)
+    console.warn('[category] 分类加载失败', type, err)
     return fallback
   }
 }

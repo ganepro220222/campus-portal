@@ -2,6 +2,7 @@
 
 const { formatCount } = require('./format')
 const mock = require('../mock/defaults')
+const { useMock } = require('../config/env')
 
 function formatDate(val) {
   if (!val) return ''
@@ -15,8 +16,8 @@ function splitParagraphs(content) {
 }
 
 function mergeNewsArticle(raw, fallback) {
-  const base = fallback || mock.newsDetail.article
-  if (!raw) return base
+  const base = fallback || (useMock ? mock.newsDetail.article : {})
+  if (!raw) return useMock ? base : {}
   const lead = raw.lead || raw.summary || base.lead
   const paras = raw.paras && raw.paras.length ? raw.paras : splitParagraphs(raw.content)
   return {
@@ -33,8 +34,8 @@ function mergeNewsArticle(raw, fallback) {
 }
 
 function mergeHallDetail(raw, fallback) {
-  const base = fallback || mock.hallDetail
-  if (!raw) return base
+  const base = fallback || (useMock ? mock.hallDetail : {})
+  if (!raw) return useMock ? base : {}
   const tpl = base.slides || []
   const slides = (raw.slides || tpl).map((s, i) => ({
     ...(tpl[i % tpl.length] || tpl[0] || {}),
@@ -52,8 +53,8 @@ function mergeHallDetail(raw, fallback) {
 }
 
 function mergeCourseDetail(raw, fallback) {
-  const base = fallback || mock.courseDetail
-  if (!raw) return base
+  const base = fallback || (useMock ? mock.courseDetail : {})
+  if (!raw) return useMock ? base : {}
   return {
     ...base,
     ...raw,
@@ -67,8 +68,8 @@ function mergeCourseDetail(raw, fallback) {
 }
 
 function mergeCraftDetail(raw, fallback) {
-  const base = fallback || mock.craftDetail || {}
-  if (!raw) return base
+  const base = fallback || (useMock ? mock.craftDetail : {})
+  if (!raw) return useMock ? base : {}
   return {
     ...base,
     ...raw,
@@ -81,8 +82,8 @@ function mergeCraftDetail(raw, fallback) {
 }
 
 function mergeResourceList(records, fallback) {
-  const base = fallback || mock.resources || []
-  const list = records && records.length ? records : base
+  const base = fallback || (useMock ? mock.resources : [])
+  const list = records && records.length ? records : (useMock ? base : [])
   return list.map((it) => ({
     ...it,
     fileSizeText: it.fileSizeText || formatFileSize(it.fileSizeKb)

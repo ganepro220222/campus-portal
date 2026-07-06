@@ -1,0 +1,72 @@
+# E1-1：推送/PR 自动编译、测试与构建检查
+# Backend: mvn test | Admin: typecheck + build | Miniapp: prod mock 门禁
+name: CI
+
+on:
+  push:
+    branches: [main, work]
+  pull_request:
+    branches: [main, work]
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # maven-wrapper.jar 未入库，CI 使用 setup-java 自带的 Maven
+      - name: Compile, test and package
+        run: mvn -B test
+
+  miniapp-guard:
+    name: Miniapp Mock Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check prod mock policy
+        run: npm run check:prod-mock
+
+  admin:
+    name: Admin
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build

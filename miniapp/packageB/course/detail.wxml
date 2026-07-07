@@ -19,6 +19,7 @@
       <!-- 课程信息 -->
       <view class="cmeta">
         <view class="cmeta-title serif">{{course.name}}</view>
+        <view wx:if="{{progressHint}}" class="progress-hint">{{progressHint}}</view>
         <view class="cmeta-tags">
           <text wx:for="{{course.tags}}" wx:key="*this" class="pill {{item === 'AI 字幕' ? 'gold' : ''}}">{{item}}</text>
         </view>

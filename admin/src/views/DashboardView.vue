@@ -13,6 +13,8 @@
       <div class="welcome-seal">书</div>
     </div>
 
+    <StatsPanel />
+
     <!-- 模块卡片 -->
     <div class="mod-grid">
       <div
@@ -31,14 +33,6 @@
         <el-icon class="mod-arrow"><ArrowRightBold /></el-icon>
       </div>
     </div>
-
-    <el-alert
-      class="notice"
-      title="数据看板与统计报表将在后续 Phase 6 接入 ECharts"
-      type="info"
-      :closable="false"
-      show-icon
-    />
   </div>
 </template>
 
@@ -49,6 +43,7 @@ import {
   Calendar, Picture, Bell, UserFilled, ArrowRightBold
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import StatsPanel from '@/components/StatsPanel.vue'
 
 const auth = useAuthStore()
 
@@ -193,9 +188,5 @@ const today = computed(() => {
 .mod-arrow {
   color: #c3cce0;
   transition: transform 0.16s ease, color 0.16s ease;
-}
-
-.notice {
-  border-radius: 12px;
 }
 </style>

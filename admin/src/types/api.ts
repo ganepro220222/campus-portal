@@ -61,6 +61,38 @@ export interface FeedbackItem {
   createTime: string
 }
 
+export interface StatsOverview {
+  date: string
+  pv: number
+  uv: number
+  dau: number
+  newMember: number
+  enrollCount: number
+}
+
+export interface StatsTrendItem {
+  date: string
+  pv: number
+  uv: number
+  dau: number
+  newMember: number
+  enrollCount: number
+}
+
+export interface StatsModuleItem {
+  module: string
+  moduleLabel: string
+  count: number
+}
+
+export interface StatsContentTopItem {
+  targetType: string
+  targetTypeLabel: string
+  targetId: number
+  title: string
+  viewCount: number
+}
+
 export interface NewsItem {
   id: number
   title: string

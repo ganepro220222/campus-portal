@@ -6,7 +6,7 @@
     </div>
 
     <p class="text-muted">
-      维护在线课程信息与上下架；视频/字幕暂以 CDN 地址配置，ASR 转写接入后可后台触发。
+      维护在线课程信息与上下架；支持 OSS 上传封面/视频/字幕，未配置 OSS 时可手动粘贴 CDN 地址。
     </p>
 
     <div class="toolbar">
@@ -83,8 +83,8 @@
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="封面 URL">
-          <el-input v-model="form.cover" placeholder="750×422 封面图地址" />
+        <el-form-item label="封面">
+          <OssUploadInput v-model="form.cover" scene="cover" accept="image/*" placeholder="上传封面或粘贴 CDN 地址" />
         </el-form-item>
         <el-form-item label="适合人群">
           <el-input v-model="form.targetAudience" maxlength="200" placeholder="如：全校学生" />
@@ -105,8 +105,8 @@
         <el-form-item label="课程介绍">
           <el-input v-model="form.intro" type="textarea" :rows="4" maxlength="2000" show-word-limit />
         </el-form-item>
-        <el-form-item label="视频 URL">
-          <el-input v-model="form.videoUrl" placeholder="MP4 视频 CDN 地址" />
+        <el-form-item label="课程视频">
+          <OssUploadInput v-model="form.videoUrl" scene="video" accept="video/mp4,video/quicktime" placeholder="上传 MP4 或粘贴 CDN 地址" />
         </el-form-item>
         <el-form-item label="配套资源">
           <el-select
@@ -142,8 +142,8 @@
               任务 {{ subtitleInfo.subtitleTaskId }}
             </span>
           </el-form-item>
-          <el-form-item label="字幕 URL">
-            <el-input v-model="subtitleUrlInput" placeholder=".vtt 字幕文件地址" />
+          <el-form-item label="字幕文件">
+            <OssUploadInput v-model="subtitleUrlInput" scene="subtitle" accept=".vtt,.srt" placeholder="上传 .vtt 或粘贴地址" />
           </el-form-item>
           <el-form-item>
             <el-button
@@ -186,6 +186,7 @@ import { fetchResourceOptions } from '@/api/resource'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CourseItem, ResourceOption } from '@/types/api'
 import type { SubtitleStatus } from '@/api/course'
+import OssUploadInput from '@/components/OssUploadInput.vue'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('course:write'))

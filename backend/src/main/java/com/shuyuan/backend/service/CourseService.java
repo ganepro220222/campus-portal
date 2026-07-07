@@ -26,6 +26,7 @@ public class CourseService {
     private final ResourceMapper resourceMapper;
     private final CategoryService categoryService;
     private final EventLogService eventLogService;
+    private final OssService ossService;
 
     public List<Map<String, Object>> list(String category) {
         Map<Long, String> catMap = categoryService.nameMap("course");
@@ -55,15 +56,16 @@ public class CourseService {
         Map<String, Object> m = new HashMap<>();
         m.put("id", course.getId());
         m.put("name", course.getName());
-        m.put("cover", course.getCover());
+        m.put("cover", ossService.signUrl(course.getCover()));
         m.put("intro", course.getIntro());
         m.put("category", categoryName);
         m.put("audience", course.getTargetAudience());
         m.put("targetAudience", course.getTargetAudience());
         m.put("duration", course.getDurationMinutes() != null ? course.getDurationMinutes() + " 分钟" : "");
         m.put("openTime", FormatUtils.formatDate(course.getStartTime()));
-        m.put("videoUrl", course.getVideoUrl());
-        m.put("subtitleUrl", course.getSubtitleUrl());
+        m.put("videoUrl", ossService.signUrl(course.getVideoUrl()));
+        m.put("subtitleUrl", ossService.signUrl(course.getSubtitleUrl()));
+        m.put("hasSubtitle", hasSubtitle);
         m.put("tags", List.of(categoryName, hasSubtitle ? "AI 字幕" : "在线课程"));
         m.put("resources", loadLinkedResources(id));
         eventLogService.record("view", "course", id);
@@ -111,7 +113,7 @@ public class CourseService {
         Map<String, Object> m = new HashMap<>();
         m.put("id", c.getId());
         m.put("name", c.getName());
-        m.put("cover", c.getCover());
+        m.put("cover", ossService.signUrl(c.getCover()));
         m.put("cat", categoryName);
         m.put("categoryName", categoryName);
         m.put("audience", c.getTargetAudience());

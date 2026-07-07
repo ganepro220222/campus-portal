@@ -1,61 +1,44 @@
-<!-- packageB/course/player.wxml -->
+// packageB/course/player.wxml — 真视频播放（验收 §2.6）
 <view class="player-page">
 
-  <!-- 播放器舞台 -->
   <view class="stage">
-    <view class="stage-bg"></view>
-    <view class="cc-badge {{cc ? 'cc-on' : ''}}" catchtap="onCC">
+    <video
+      wx:if="{{videoUrl}}"
+      id="courseVideo"
+      class="course-video"
+      src="{{videoUrl}}"
+      poster="{{cover}}"
+      initial-time="{{initialTime}}"
+      controls
+      show-center-play-btn
+      enable-play-gesture
+      object-fit="contain"
+      bindtimeupdate="onTimeUpdate"
+      bindended="onEnded"
+      bindplay="onPlay"
+      bindpause="onPause"
+      binderror="onVideoError"
+    />
+    <view wx:else class="video-empty">
+      <text class="video-empty-ic">▶</text>
+      <text>课程视频暂未配置</text>
+    </view>
+    <view wx:if="{{hasSubtitle}}" class="cc-badge {{cc ? 'cc-on' : ''}}" catchtap="onCC">
       <icon name="cc" size="13" color="#ffffff" /> AI 字幕
-    </view>
-    <view class="big-play" bindtap="togglePlay">
-      <view wx:if="{{playing}}" class="pause-ic"><view></view><view></view></view>
-      <icon wx:else name="play" size="30" color="#2B356E" />
-    </view>
-    <view class="pbar">
-      <view class="ptrack"><view class="pfill" style="width: {{progress}}%;"></view></view>
-      <view class="ptime"><text>{{curTimeText}}</text><text>{{totalTimeText}}</text></view>
     </view>
   </view>
 
-  <!-- AI 字幕条 -->
-  <view wx:if="{{cc}}" class="subtitle">
+  <view wx:if="{{cc && subtitleText}}" class="subtitle">
     <view class="sub-tag"><icon name="cc" size="12" color="#2B356E" /> AI</view>
-    <text class="sub-tx">{{subtitle}}</text>
+    <text class="sub-tx">{{subtitleText}}</text>
   </view>
 
   <scroll-view scroll-y class="player-scroll" enhanced show-scrollbar="{{false}}">
-    <!-- 当前课程 -->
     <view class="now serif">{{course.name}}</view>
-    <view class="now-sub">正在学习 · {{lessons[current].title}}</view>
-
-    <!-- 课程目录 -->
-    <view class="lessons">
-      <view class="lessons-head serif">课程目录 · 共 {{lessons.length}} 讲</view>
-      <view
-        wx:for="{{lessons}}"
-        wx:key="id"
-        class="lesson {{index === current ? 'lesson-on' : ''}}"
-        bindtap="selectLesson"
-        data-i="{{index}}"
-      >
-        <view class="l-idx">
-          <view wx:if="{{index === current && playing}}" class="eq">
-            <view class="eq-b" wx:for="{{[0,1,2]}}" wx:for-item="b" wx:key="*this" style="animation-delay: {{b*0.18}}s"></view>
-          </view>
-          <icon wx:elif="{{item.state === 'done'}}" name="thumb" size="18" color="#3F9A6B" />
-          <text wx:else class="l-num">{{index + 1}}</text>
-        </view>
-        <view class="l-body">
-          <text class="l-title">{{item.title}}</text>
-          <text class="l-state {{item.state === 'done' ? 'st-done' : ''}}">
-            {{index === current ? '正在播放' : (item.state === 'done' ? '已学完' : '未学习')}}
-          </text>
-        </view>
-        <text class="l-dur">{{item.state === 'done' && index !== current ? '已完成' : ''}}</text>
-        <view wx:if="{{index !== current}}" class="l-go"><icon name="play" size="15" color="#8A93B2" /></view>
-      </view>
+    <view class="now-sub">
+      {{completed ? '已完成学习' : (progressPercent > 0 ? '已学习 ' + progressPercent + '%' : '开始学习')}}
     </view>
-
+    <view wx:if="{{course.intro}}" class="intro">{{course.intro}}</view>
     <view class="player-bottom"></view>
   </scroll-view>
 

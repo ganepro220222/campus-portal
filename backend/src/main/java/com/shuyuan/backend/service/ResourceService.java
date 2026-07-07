@@ -25,6 +25,7 @@ public class ResourceService {
     private final CategoryService categoryService;
     private final EventLogService eventLogService;
     private final PointService pointService;
+    private final OssService ossService;
 
     public List<Map<String, Object>> list(String category, String fileType) {
         Map<Long, String> catMap = categoryService.nameMap("resource");
@@ -73,8 +74,8 @@ public class ResourceService {
         resourceMapper.updateById(update);
 
         Map<String, Object> m = new HashMap<>();
-        m.put("fileUrl", resource.getFileUrl());
-        m.put("previewUrl", resource.getPreviewUrl());
+        m.put("fileUrl", ossService.signUrl(resource.getFileUrl()));
+        m.put("previewUrl", ossService.signUrl(resource.getPreviewUrl()));
         m.put("fileType", resource.getFileType());
         m.put("name", resource.getName());
         return m;
@@ -102,8 +103,8 @@ public class ResourceService {
 
     private Map<String, Object> toDetailVo(Resource r, Map<Long, String> catMap) {
         Map<String, Object> m = toListItem(r, catMap);
-        m.put("fileUrl", r.getFileUrl());
-        m.put("previewUrl", r.getPreviewUrl());
+        m.put("fileUrl", ossService.signUrl(r.getFileUrl()));
+        m.put("previewUrl", ossService.signUrl(r.getPreviewUrl()));
         return m;
     }
 

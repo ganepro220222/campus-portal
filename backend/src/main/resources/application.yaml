@@ -2,6 +2,10 @@ spring:
   profiles:
     # 本地默认 dev；staging/prod 通过环境变量 SPRING_PROFILES_ACTIVE 注入
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 210MB
 
 server:
   port: ${SERVER_PORT:8080}
@@ -21,6 +25,15 @@ shuyuan:
     max-fail-attempts: 5
     lock-minutes: 5
     fail-window-minutes: 15
+  oss:
+    enabled: ${OSS_ENABLED:false}
+    endpoint: ${OSS_ENDPOINT:}
+    bucket: ${OSS_BUCKET:}
+    access-key: ${OSS_ACCESS_KEY:}
+    secret-key: ${OSS_SECRET_KEY:}
+    cdn-domain: ${OSS_CDN_DOMAIN:}
+    sign-expire-seconds: ${OSS_SIGN_EXPIRE_SECONDS:7200}
+    max-upload-bytes: ${OSS_MAX_UPLOAD_BYTES:209715200}
 
 mybatis-plus:
   configuration:

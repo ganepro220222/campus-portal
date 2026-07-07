@@ -57,8 +57,8 @@ async function handleUpload(options: UploadRequestOptions) {
     emit('update:modelValue', res.url)
     ElMessage.success('上传成功')
     options.onSuccess?.(res)
-  } catch (e) {
-    options.onError?.(e as Error)
+  } catch {
+    ElMessage.error('上传失败')
   } finally {
     uploading.value = false
   }

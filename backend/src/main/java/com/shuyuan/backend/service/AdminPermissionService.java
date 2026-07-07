@@ -38,6 +38,20 @@ public class AdminPermissionService {
         throw new BusinessException(403, "无操作权限");
     }
 
+    /** 满足任一权限即可 */
+    public void requireAny(String... permissions) {
+        Set<String> perms = AdminContext.getPermissions();
+        if (perms.contains("admin:super")) {
+            return;
+        }
+        for (String p : permissions) {
+            if (perms.contains(p)) {
+                return;
+            }
+        }
+        throw new BusinessException(403, "无操作权限");
+    }
+
     public Long requireAdminId() {
         Long adminId = AdminContext.getAdminId();
         if (adminId == null) {

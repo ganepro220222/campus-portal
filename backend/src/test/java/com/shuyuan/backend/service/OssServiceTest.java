@@ -1,0 +1,60 @@
+package com.shuyuan.backend.service;
+
+import com.shuyuan.backend.config.OssProperties;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
+/**
+ * OSS 白名单与未配置场景
+ */
+@ExtendWith(MockitoExtension.class)
+class OssServiceTest {
+
+    @Mock
+    private OssProperties ossProperties;
+
+    @InjectMocks
+    private OssService ossService;
+
+    @BeforeEach
+    void setUp() {
+        when(ossProperties.isEnabled()).thenReturn(false);
+    }
+
+    @Test
+    void signUrl_passthrough_whenDisabled() {
+        String raw = "https://cdn.example.com/videos/demo.mp4";
+        assertEquals(raw, ossService.signUrl(raw));
+    }
+
+    @Test
+    void upload_rejects_whenDisabled() {
+        MockMultipartFile file = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[]{1, 2});
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.upload("cover", file));
+        assertEquals(503, ex.getCode());
+    }
+
+    @Test
+    void upload_rejects_invalidExtension_whenEnabled() {
+        when(ossProperties.isEnabled()).thenReturn(true);
+        when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-test.aliyuncs.com");
+        when(ossProperties.getBucket()).thenReturn("bucket");
+        when(ossProperties.getAccessKey()).thenReturn("ak");
+        when(ossProperties.getSecretKey()).thenReturn("sk");
+        when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
+
+        MockMultipartFile file = new MockMultipartFile("file", "evil.php", "text/plain", new byte[]{1});
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.upload("cover", file));
+        assertEquals(400, ex.getCode());
+    }
+}

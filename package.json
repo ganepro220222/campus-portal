@@ -2,6 +2,8 @@
   "name": "shuyuan",
   "private": true,
   "scripts": {
-    "check:prod-mock": "node scripts/check-no-prod-mock.js"
+    "check:prod-mock": "node scripts/check-no-prod-mock.js",
+    "load:enroll": "node scripts/load/enroll-concurrent.mjs",
+    "load:browse": "node scripts/load/browse-load.mjs"
   }
 }

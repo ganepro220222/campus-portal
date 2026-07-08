@@ -16,6 +16,7 @@ const request = (url, method = 'GET', data = {}) => {
       url: app.globalData.baseUrl + url,
       method,
       data,
+      timeout: 10000,
       header: {
         'Content-Type': 'application/json',
         'Authorization': token ? ('Bearer ' + token) : ''

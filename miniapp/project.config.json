@@ -31,7 +31,7 @@
     }
   },
   "compileType": "miniprogram",
-  "libVersion": "3.16.2",
+  "libVersion": "3.5.8",
   "appid": "wx7ec4439b7700c860",
   "projectname": "shuyuan-miniapp",
   "condition": {},

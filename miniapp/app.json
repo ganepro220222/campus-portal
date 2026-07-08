@@ -74,7 +74,6 @@
   "usingComponents": {
     "icon": "/components/icon/index"
   },
-  "navigateToMiniProgramAppIdList": [],
   "permission": {
     "scope.writePhotosAlbum": {
       "desc": "保存文化海报到相册"

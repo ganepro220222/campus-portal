@@ -25,6 +25,7 @@ hs_err_pid*
 # Node (if added later)
 node_modules/
 npm-debug.log*
+/package-lock.json
 dist/
 build/
 

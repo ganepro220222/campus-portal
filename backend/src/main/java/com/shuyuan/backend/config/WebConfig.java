@@ -13,6 +13,7 @@ public class WebConfig implements WebMvcConfigurer {
     private final AuthInterceptor authInterceptor;
     private final AdminAuthInterceptor adminAuthInterceptor;
     private final AdminAuditInterceptor adminAuditInterceptor;
+    private final RateLimitInterceptor rateLimitInterceptor;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -33,5 +34,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(adminAuditInterceptor)
                 .addPathPatterns("/api/v1/admin/**")
                 .excludePathPatterns("/api/v1/admin/auth/login");
+        // 限流在鉴权之后，报名/AI 可按用户维度计数
+        registry.addInterceptor(rateLimitInterceptor).addPathPatterns("/api/**");
     }
 }

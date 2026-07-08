@@ -30,6 +30,9 @@ public class CollegeAppService {
         if (name == null || name.isBlank()) {
             return "";
         }
+        if (name.contains("马克思主义")) {
+            return "马院";
+        }
         String n = name.replace("学院", "").trim();
         if (n.isEmpty()) {
             return name.length() <= 2 ? name : name.substring(0, 2);

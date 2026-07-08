@@ -27,8 +27,8 @@ class CollegeAppServiceTest {
 
     @Test
     void deriveShort_stripsCollegeSuffix() {
+        assertEquals("马院", CollegeAppService.deriveShort("马克思主义学院"));
         assertEquals("轨道", CollegeAppService.deriveShort("轨道交通学院"));
-        assertEquals("马", CollegeAppService.deriveShort("马克思主义学院"));
     }
 
     @Test

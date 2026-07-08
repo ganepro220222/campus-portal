@@ -6,6 +6,7 @@ const {
   decorateHalls, decorateNews, decorateCourses, decorateBanners
 } = require('../../utils/decorate')
 const { openContentLink } = require('../../utils/navigate')
+const { getNavBarLayout } = require('../../utils/navbar')
 
 Page({
   data: {
@@ -17,12 +18,13 @@ Page({
     courseList:         decorateCourses(mock.coursesHome),
     hasNewAnnouncement: false,
     loading:            true,
-    statusBarHeight:    20
+    statusBarHeight:    20,
+    capsulePadding:     96
   },
 
   onLoad() {
-    const sys = wx.getSystemInfoSync()
-    this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
+    const nav = getNavBarLayout()
+    this.setData(nav)
     this._loadPage()
   },
 

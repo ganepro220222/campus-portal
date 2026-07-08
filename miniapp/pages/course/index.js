@@ -3,10 +3,12 @@ const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
 const { decorateCourseCards } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
+const { getNavBarLayout } = require('../../utils/navbar')
 
 Page({
   data: {
     statusBarHeight: 20,
+    capsulePadding: 96,
     cats: mock.categories.course,
     activeCat: 0,
     courseList: [],
@@ -14,8 +16,7 @@ Page({
   },
 
   onLoad() {
-    const sys = wx.getSystemInfoSync()
-    this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
+    this.setData(getNavBarLayout())
     loadCategoryNames('course').then(cats => {
       this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })
     })

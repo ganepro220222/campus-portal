@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "课程中心")
 @RestController
 @RequestMapping("/api/v1/courses")
 @RequiredArgsConstructor

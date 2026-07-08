@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "媒体上传")
 
 /**
  * 管理端媒体上传（OSS 中转兜底，大文件建议后续接 STS 直传）

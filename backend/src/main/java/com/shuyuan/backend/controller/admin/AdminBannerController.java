@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "Banner管理")
 @RestController
 @RequestMapping("/api/v1/admin/banners")
 @RequiredArgsConstructor

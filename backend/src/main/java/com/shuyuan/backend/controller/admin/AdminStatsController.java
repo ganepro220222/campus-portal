@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "统计看板")
 @RestController
 @RequestMapping("/api/v1/admin/stats")
 @RequiredArgsConstructor

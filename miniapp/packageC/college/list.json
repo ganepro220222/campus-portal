@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "学院矩阵" }
+{
+  "navigationBarTitleText": "学院矩阵",
+  "enablePullDownRefresh": true
+}

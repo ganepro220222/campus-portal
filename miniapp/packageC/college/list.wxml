@@ -13,6 +13,7 @@
         wx:key="id"
         class="col-card"
         bindtap="onCardTap"
+        data-id="{{item.id}}"
         data-name="{{item.name}}"
       >
         <view class="col-badge {{item.colorClass}}"><text class="cb-tx serif">{{item.short}}</text></view>

@@ -44,6 +44,15 @@ docker compose -f docker-compose.dev.yml down -v
 docker compose -f docker-compose.dev.yml up -d --build
 ```
 
+`seed-dev.sql` 已包含 `SET NAMES utf8mb4`，避免中文乱码。若仍出现乱码（全站标题变成 `ä¸­åŽ` 这类字符），在**不删库**的情况下可执行修复脚本：
+
+```bash
+type sql\patch-fix-charset.sql | docker compose -f docker-compose.dev.yml exec -T mysql mysql -uroot -pdev123456 --default-character-set=utf8mb4 shuyuan
+docker compose -f docker-compose.dev.yml restart backend
+```
+
+然后在微信开发者工具中 **编译 → 清缓存 → 重新编译**，各 Tab 页下拉刷新。
+
 **Dev login:** student `2021001` / password `Admin@123`. Admin console `admin` / `Admin@123`. WeChat login works in dev mode without AppID.
 
 **Login lock (§2.1):** 5 consecutive wrong passwords lock the account for 5 minutes (Redis). Clear dev locks: `docker exec shuyuan-redis-1 redis-cli -a dev123456 KEYS "login:*"`.

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -95,6 +95,12 @@ const router = createRouter({
           name: 'Knowledge',
           component: () => import('@/views/knowledge/KnowledgeListView.vue'),
           meta: { title: 'AI 知识库', permission: 'admin:super' }
+        },
+        {
+          path: 'colleges',
+          name: 'Colleges',
+          component: () => import('@/views/college/CollegeListView.vue'),
+          meta: { title: '学院矩阵', permission: 'admin:super' }
         }
       ]
     },
@@ -141,7 +147,8 @@ export const menuItems: MenuItem[] = [
   { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] },
   { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] },
   { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] },
-  { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] }
+  { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] },
+  { path: '/colleges', title: '学院矩阵', icon: School, permissions: ['admin:super'] }
 ]
 
 export function filterMenus(permissions: string[]) {

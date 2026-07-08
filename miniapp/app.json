@@ -37,6 +37,7 @@
         "activity/enroll",
         "search/index",
         "college/list",
+        "college/webview",
         "profile/list",
         "feedback/index",
         "about/index"

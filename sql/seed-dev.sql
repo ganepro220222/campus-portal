@@ -1,6 +1,8 @@
 -- sql/seed-dev.sql — 开发环境演示数据（在 init.sql 之后执行）
 -- 用法：mysql -uroot -pdev123456 shuyuan < sql/seed-dev.sql
 
+SET NAMES utf8mb4;
+
 USE shuyuan;
 
 -- 测试学员（学号 2021001，密码 Admin@123，与后台超管相同 BCrypt）
@@ -194,4 +196,18 @@ INSERT IGNORE INTO `event_log` (`member_id`, `event_type`, `target_type`, `targe
 
 INSERT IGNORE INTO `member_badge` (`member_id`, `badge_id`, `achieved_at`) VALUES
 (1, 1, '2026-06-01 08:00:00');
+
+-- 学院矩阵（手动录入演示数据，与小程序 mock 对齐）
+INSERT IGNORE INTO `college_app` (`id`, `name`, `description`, `sort`, `status`, `content_type`) VALUES
+(1,  '马克思主义学院', '马院 + 书院协同育人', 1,  1, 'manual'),
+(2,  '轨道交通学院',   '轨道牵引 · 智慧运维', 2,  1, 'manual'),
+(3,  '智能交通学院',   '车路协同 · 智慧出行', 3,  1, 'manual'),
+(4,  '汽车工程学院',   '新能源 · 智能网联',   4,  1, 'manual'),
+(5,  '路桥工程学院',   '通途之路 · 大国工匠', 5,  1, 'manual'),
+(6,  '交通运输学院',   '运输组织 · 物流管理', 6,  1, 'manual'),
+(7,  '航运航空学院',   '海空联运 · 蓝色梦想', 7,  1, 'manual'),
+(8,  '建筑工程学院',   '匠筑营造 · 品质人居', 8,  1, 'manual'),
+(9,  '信息工程学院',   '数字技术 · 智能应用', 9,  1, 'manual'),
+(10, '经济管理学院',   '经世致用 · 知行合一', 10, 1, 'manual'),
+(11, '人文艺术学院',   '以美育人 · 以文化人', 11, 1, 'manual');
 

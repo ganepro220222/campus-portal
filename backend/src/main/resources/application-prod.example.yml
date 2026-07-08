@@ -46,3 +46,10 @@ management:
     web:
       exposure:
         include: none
+
+# 生产环境关闭 Swagger UI，避免对外暴露接口结构
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

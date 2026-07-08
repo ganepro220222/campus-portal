@@ -60,3 +60,14 @@ management:
   endpoint:
     health:
       show-details: never
+
+# OpenAPI（dev/staging 默认开启；prod 在 profile 中关闭）
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    doc-expansion: none
+  show-actuator: false

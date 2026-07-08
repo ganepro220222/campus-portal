@@ -12,6 +12,7 @@ public class ShuyuanProperties {
     private Jwt jwt = new Jwt();
     private Wx wx = new Wx();
     private Login login = new Login();
+    private RateLimit rateLimit = new RateLimit();
 
     @Data
     public static class Login {
@@ -35,5 +36,21 @@ public class ShuyuanProperties {
         private boolean devMode = true;
         private String appid = "";
         private String secret = "";
+    }
+
+    /** 接口限流（Redis 固定窗口，E2-3） */
+    @Data
+    public static class RateLimit {
+        private boolean enabled = true;
+        /** 学号/账号登录：每 IP 每分钟 */
+        private int loginPerMinute = 10;
+        /** 微信登录：每 IP 每分钟 */
+        private int wxLoginPerMinute = 20;
+        /** 管理端登录：每 IP 每分钟 */
+        private int adminLoginPerMinute = 10;
+        /** 活动报名：每用户每分钟 */
+        private int enrollPerMinute = 5;
+        /** AI 问答（预留）：每用户每天 */
+        private int aiPerDay = 20;
     }
 }

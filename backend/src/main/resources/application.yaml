@@ -27,6 +27,13 @@ shuyuan:
     max-fail-attempts: 5
     lock-minutes: 5
     fail-window-minutes: 15
+  rate-limit:
+    enabled: true
+    login-per-minute: 10
+    wx-login-per-minute: 20
+    admin-login-per-minute: 10
+    enroll-per-minute: 5
+    ai-per-day: 20
   oss:
     enabled: ${OSS_ENABLED:false}
     endpoint: ${OSS_ENDPOINT:}

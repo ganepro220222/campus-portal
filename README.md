@@ -68,6 +68,12 @@ Vite dev server proxies `/api` to `http://localhost:8080`. Production build: `np
 
 Requires JDK 17+ on the host. Start only infra with compose, then `mvn spring-boot:run` in `backend/` (profile `dev`). Load seed manually if needed: `mysql ... < sql/seed-dev.sql`.
 
+## 相关文档
+
+- [环境变量说明](docs/运维/环境变量说明.md)
+- [部署手册 V1.0](docs/运维/部署手册_V1.0.md)
+- [管理员操作手册 V1.0](docs/运维/管理员操作手册_V1.0.md)
+
 ## License
 
 Private. All rights reserved.

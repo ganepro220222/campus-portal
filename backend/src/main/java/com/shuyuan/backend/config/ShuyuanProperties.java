@@ -13,6 +13,7 @@ public class ShuyuanProperties {
     private Wx wx = new Wx();
     private Login login = new Login();
     private RateLimit rateLimit = new RateLimit();
+    private Ai ai = new Ai();
 
     @Data
     public static class Login {
@@ -52,5 +53,17 @@ public class ShuyuanProperties {
         private int enrollPerMinute = 5;
         /** AI 问答（预留）：每用户每天 */
         private int aiPerDay = 20;
+    }
+
+    /** AI 问答（Phase 7） */
+    @Data
+    public static class Ai {
+        /** fallback=无 Key 时基于知识库片段作答；zhipu=智谱 GLM */
+        private String provider = "fallback";
+        private String apiKey = "";
+        private String baseUrl = "https://open.bigmodel.cn/api/paas/v4";
+        private String model = "glm-4-flash";
+        private int dailyLimit = 20;
+        private int maxChunks = 5;
     }
 }

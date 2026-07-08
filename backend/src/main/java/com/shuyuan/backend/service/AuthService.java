@@ -2,7 +2,6 @@ package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.common.exception.BusinessException;
-import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.dto.AccountLoginRequest;
 import com.shuyuan.backend.dto.WxLoginRequest;
 import com.shuyuan.backend.entity.Member;
@@ -27,14 +26,14 @@ public class AuthService {
     private final MemberAccountMapper memberAccountMapper;
     private final MemberProfileMapper memberProfileMapper;
     private final JwtUtils jwtUtils;
-    private final ShuyuanProperties properties;
     private final LoginLockService loginLockService;
     private final PointService pointService;
+    private final WxSessionService wxSessionService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Transactional
     public LoginVO wxLogin(WxLoginRequest req) {
-        String openid = resolveOpenid(req.getCode());
+        String openid = wxSessionService.resolveOpenid(req.getCode());
         Member member = memberMapper.selectOne(new LambdaQueryWrapper<Member>()
                 .eq(Member::getOpenid, openid)
                 .last("LIMIT 1"));
@@ -82,14 +81,6 @@ public class AuthService {
         checkMemberActive(member);
         loginLockService.onSuccess(LoginLockService.SCENE_MEMBER, accountKey);
         return buildLogin(member);
-    }
-
-    private String resolveOpenid(String code) {
-        if (properties.getWx().isDevMode()) {
-            return "dev_" + code;
-        }
-        // 生产环境需对接微信 code2session，此处留待配置 appid/secret 后实现
-        throw new BusinessException("微信登录暂未配置，请联系管理员");
     }
 
     private void checkMemberActive(Member member) {

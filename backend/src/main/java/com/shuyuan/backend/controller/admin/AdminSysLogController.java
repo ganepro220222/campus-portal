@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "操作日志")
 @RestController
 @RequestMapping("/api/v1/admin/sys-logs")
 @RequiredArgsConstructor

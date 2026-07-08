@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "意见反馈管理")
 @RestController
 @RequestMapping("/api/v1/admin/feedbacks")
 @RequiredArgsConstructor

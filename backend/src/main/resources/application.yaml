@@ -21,6 +21,8 @@ shuyuan:
     expire-days: 7
   wx:
     dev-mode: true
+    appid: ${WX_APPID:}
+    secret: ${WX_SECRET:}
   login:
     max-fail-attempts: 5
     lock-minutes: 5

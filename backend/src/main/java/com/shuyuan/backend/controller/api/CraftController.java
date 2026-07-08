@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "文创展示")
 @RestController
 @RequestMapping("/api/v1/crafts")
 @RequiredArgsConstructor

@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(name = "资源下载")
 @RestController
 @RequestMapping("/api/v1/resources")
 @RequiredArgsConstructor

@@ -15,6 +15,9 @@ import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "健康检查")
 
 /**
  * 健康检查接口：聚合 DB、Redis 与版本信息，供探活与运维使用。

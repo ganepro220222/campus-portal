@@ -34,6 +34,13 @@ shuyuan:
     admin-login-per-minute: 10
     enroll-per-minute: 5
     ai-per-day: 20
+  ai:
+    provider: ${AI_PROVIDER:fallback}
+    api-key: ${AI_API_KEY:}
+    base-url: ${AI_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+    model: ${AI_MODEL:glm-4-flash}
+    daily-limit: 20
+    max-chunks: 5
   oss:
     enabled: ${OSS_ENABLED:false}
     endpoint: ${OSS_ENDPOINT:}

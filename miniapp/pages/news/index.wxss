@@ -21,7 +21,7 @@
   align-items: center;
   justify-content: space-between;
   height: 80rpx;
-  padding: 6rpx 32rpx 4rpx;
+  padding: 6rpx 0 4rpx 32rpx;
 }
 .nav-title { font-size: 38rpx; font-weight: 700; color: var(--ink); }
 .nav-search {

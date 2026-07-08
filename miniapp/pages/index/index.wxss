@@ -12,7 +12,7 @@
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(20rpx);
-  padding: 12rpx 28rpx 20rpx;
+  padding: 12rpx 0 20rpx 28rpx;
   border-bottom: 1rpx solid #E7ECF6;
   box-shadow: 0 4rpx 28rpx rgba(31, 40, 90, 0.05);
 }

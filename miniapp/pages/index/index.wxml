@@ -2,7 +2,7 @@
 <view class="home-page">
 
   <!-- 吸顶 Header：我的 + 校名 + 铃铛 -->
-  <view class="header">
+  <view class="header" style="padding-right: {{capsulePadding}}px;">
     <view style="height: {{statusBarHeight}}px;"></view>
     <view class="header-row">
       <view class="header-me" bindtap="onProfileTap">

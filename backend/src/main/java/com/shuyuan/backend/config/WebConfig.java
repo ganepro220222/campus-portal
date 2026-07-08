@@ -12,6 +12,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final AuthInterceptor authInterceptor;
     private final AdminAuthInterceptor adminAuthInterceptor;
+    private final AdminAuditInterceptor adminAuditInterceptor;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -26,6 +27,10 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor).addPathPatterns("/api/**");
         registry.addInterceptor(adminAuthInterceptor)
+                .addPathPatterns("/api/v1/admin/**")
+                .excludePathPatterns("/api/v1/admin/auth/login");
+        // 审计在鉴权之后注册，afterCompletion 时仍可读到 AdminContext
+        registry.addInterceptor(adminAuditInterceptor)
                 .addPathPatterns("/api/v1/admin/**")
                 .excludePathPatterns("/api/v1/admin/auth/login");
     }

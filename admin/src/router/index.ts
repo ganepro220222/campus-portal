@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -83,6 +83,12 @@ const router = createRouter({
           name: 'Resources',
           component: () => import('@/views/resource/ResourceListView.vue'),
           meta: { title: '资源管理', permission: 'course:read' }
+        },
+        {
+          path: 'sys-logs',
+          name: 'SysLogs',
+          component: () => import('@/views/syslog/SysLogListView.vue'),
+          meta: { title: '操作日志', permission: 'admin:super' }
         }
       ]
     },
@@ -127,7 +133,8 @@ export const menuItems: MenuItem[] = [
   { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
   { path: '/banners', title: 'Banner 管理', icon: Picture, permissions: ['admin:super'] },
   { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] },
-  { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] }
+  { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] },
+  { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] }
 ]
 
 export function filterMenus(permissions: string[]) {

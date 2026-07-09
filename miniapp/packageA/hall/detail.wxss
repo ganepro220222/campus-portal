@@ -61,7 +61,12 @@
   padding-left: 4rpx;
   box-sizing: border-box;
 }
+.ap-on {
+  background: linear-gradient(135deg, #BE9C44, #9A7A2E);
+  padding-left: 0;
+}
 .aw { flex: 1; display: flex; align-items: center; gap: 6rpx; height: 56rpx; }
+.aw-paused .wv-bar { animation-play-state: paused; opacity: 0.55; }
 .wv-bar {
   flex: 1;
   background: var(--sky);

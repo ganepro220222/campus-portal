@@ -97,6 +97,18 @@
       </view>
     </view>
 
+    <!-- 虚拟文创展厅（第三方 VR，占位可换链接） -->
+    <view class="vr-banner wrap" bindtap="onVrHallTap">
+      <view class="vr-banner-inner">
+        <view class="vr-ic"><icon name="museum" size="28" color="#ffffff" /></view>
+        <view class="vr-text">
+          <text class="vr-title serif">虚拟文创展厅</text>
+          <text class="vr-sub">VR 沉浸式漫游 · 点击进入</text>
+        </view>
+        <icon name="chevron-right" size="18" color="rgba(255,255,255,0.85)" />
+      </view>
+    </view>
+
     <!-- 线上展馆 -->
     <view class="section wrap">
       <view class="sec-head">

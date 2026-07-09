@@ -203,6 +203,43 @@
   white-space: nowrap;
 }
 
+/* ── 虚拟文创展厅入口 ── */
+.vr-banner { margin-top: 24rpx; }
+.vr-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  padding: 28rpx 30rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #2B356E 0%, #4A5FA8 55%, #6B7EC8 100%);
+  box-shadow: 0 16rpx 40rpx rgba(43, 53, 110, 0.22);
+}
+.vr-banner:active { opacity: 0.92; }
+.vr-ic {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.vr-text { flex: 1; min-width: 0; }
+.vr-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 2rpx;
+}
+.vr-sub {
+  display: block;
+  font-size: 23rpx;
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: 8rpx;
+}
+
 /* ── 功能入口矩阵 ── */
 .entries-wrap {
   margin-top: 24rpx;

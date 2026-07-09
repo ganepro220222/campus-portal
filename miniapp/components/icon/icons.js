@@ -36,6 +36,7 @@ const ICONS = {
 
   /* ── 播放 / 媒体 ── */
   'play':        { i: '<path d="M8 5v14l11-7z"/>', m: 'fill' },
+  'pause':       { i: '<rect x="7" y="5" width="4" height="14" rx="1"/><rect x="13" y="5" width="4" height="14" rx="1"/>', m: 'fill' },
 
   /* ── 操作：赞 / 藏 / 享 / 海报 ── */
   'thumb':       { i: '<path d="M14 9V5a3 3 0 0 0-6 0v4H5l1.5 11h11L19 9z"/>', m: 'stroke', w: 2 },

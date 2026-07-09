@@ -7,6 +7,7 @@ const {
   hasActiveEnroll
 } = require('../../utils/activity')
 const { requireLogin } = require('../../utils/auth')
+const { requestSubscribe } = require('../../utils/subscribe')
 const mock = require('../../mock/defaults')
 
 Page({
@@ -85,6 +86,7 @@ Page({
 
     this.setData({ submitting: true })
     try {
+      await requestSubscribe('enroll_success', 'enrollSuccess')
       const payload = {}
       if (form.name.trim()) payload.name = form.name.trim()
       if (form.phone.trim()) payload.phone = form.phone.trim()

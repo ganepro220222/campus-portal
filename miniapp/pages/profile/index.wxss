@@ -116,6 +116,19 @@
 .mi-blue { background: linear-gradient(135deg, #4E7CC4, #2F5E92); }
 .mi-slate { background: linear-gradient(135deg, #5867B8, #39418A); }
 .mi-tx { flex: 1; font-size: 29rpx; color: #1F2547; }
+.mi-badge {
+  min-width: 36rpx;
+  height: 36rpx;
+  line-height: 36rpx;
+  padding: 0 10rpx;
+  border-radius: 18rpx;
+  background: #BE9C44;
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 700;
+  text-align: center;
+  margin-right: 8rpx;
+}
 
 /* 退出 */
 .logout-area { padding: 44rpx 32rpx 0; }

@@ -1,0 +1,63 @@
+/* packageC/message/index.wxss */
+.msg-page {
+  min-height: 100vh;
+  background: #F5F8FC;
+  display: flex;
+  flex-direction: column;
+}
+.msg-state { padding: 80rpx; text-align: center; color: var(--muted); }
+.msg-empty-sub { font-size: 24rpx; color: var(--muted); margin-top: 12rpx; display: block; }
+
+.msg-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 28rpx 8rpx;
+}
+.msg-unread-tip { font-size: 24rpx; color: var(--muted); }
+.msg-read-all { font-size: 24rpx; color: var(--navy); font-weight: 600; }
+
+.msg-scroll { flex: 1; height: calc(100vh - 80rpx); }
+.msg-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  margin: 0 28rpx 16rpx;
+  padding: 24rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 20rpx;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.msg-item.unread { border-color: #D6E4F8; background: #FAFCFF; }
+.msg-item:active { background: var(--sky-3); }
+.msg-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #BE9C44;
+  flex-shrink: 0;
+  margin-top: 10rpx;
+}
+.msg-body { flex: 1; min-width: 0; }
+.msg-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--ink);
+  display: block;
+}
+.msg-content {
+  font-size: 25rpx;
+  color: var(--sub);
+  line-height: 1.6;
+  margin-top: 10rpx;
+  display: block;
+}
+.msg-time {
+  font-size: 22rpx;
+  color: var(--muted);
+  margin-top: 12rpx;
+  display: block;
+}
+.msg-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }

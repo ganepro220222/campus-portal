@@ -25,9 +25,10 @@ public class EnrollService {
     private final ActivityMapper activityMapper;
     private final EnrollMapper enrollMapper;
     private final MemberProfileMapper memberProfileMapper;
-    private final MessageMapper messageMapper;
     private final EventLogService eventLogService;
     private final PointService pointService;
+    private final MessageService messageService;
+    private final SubscribeService subscribeService;
 
     /**
      * 提交报名（需登录且个人信息完整）
@@ -90,6 +91,7 @@ public class EnrollService {
         }
 
         createEnrollMessage(memberId, activity, existing);
+        subscribeService.sendEnrollSuccess(memberId, activity, existing);
         eventLogService.record("enroll", "activity", activityId);
         pointService.award(memberId, "enroll_activity");
         return toEnrollVo(existing, activity);
@@ -241,19 +243,11 @@ public class EnrollService {
         String content = "pending".equals(enroll.getStatus())
                 ? "您已提交活动「" + activity.getTitle() + "」的报名，请等待审核。"
                 : "您已成功报名活动「" + activity.getTitle() + "」，凭证码：" + enroll.getVoucherCode();
-        createMessage(memberId, title, content, "enroll", "activity", activity.getId());
+        messageService.create(memberId, title, content, "enroll", "activity", activity.getId());
     }
 
     private void createMessage(Long memberId, String title, String content, String type, String relatedType, Long relatedId) {
-        Message msg = new Message();
-        msg.setMemberId(memberId);
-        msg.setTitle(title);
-        msg.setContent(content);
-        msg.setType(type);
-        msg.setRelatedType(relatedType);
-        msg.setRelatedId(relatedId);
-        msg.setReadStatus(0);
-        messageMapper.insert(msg);
+        messageService.create(memberId, title, content, type, relatedType, relatedId);
     }
 
     private String generateVoucherCode() {

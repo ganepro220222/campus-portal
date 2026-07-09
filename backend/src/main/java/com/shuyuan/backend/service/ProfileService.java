@@ -36,6 +36,7 @@ public class ProfileService {
     private final ResourceMapper resourceMapper;
     private final ActivityMapper activityMapper;
     private final EnrollService enrollService;
+    private final MessageService messageService;
 
     public MemberVO profile() {
         Long memberId = requireMemberId();
@@ -72,6 +73,7 @@ public class ProfileService {
         m.put("enrolls", enrolls);
         m.put("downloads", downloads);
         m.put("points", member.getPoints() != null ? member.getPoints() : 0);
+        m.put("unreadMessages", messageService.unreadCount(memberId));
         return m;
     }
 

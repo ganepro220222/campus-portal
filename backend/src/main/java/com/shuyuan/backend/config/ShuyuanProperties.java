@@ -14,6 +14,7 @@ public class ShuyuanProperties {
     private Login login = new Login();
     private RateLimit rateLimit = new RateLimit();
     private Ai ai = new Ai();
+    private Subscribe subscribe = new Subscribe();
 
     @Data
     public static class Login {
@@ -65,5 +66,13 @@ public class ShuyuanProperties {
         private String model = "glm-4-flash";
         private int dailyLimit = 20;
         private int maxChunks = 5;
+    }
+
+    /** 微信订阅消息模板（生产环境在公众平台申请后填入） */
+    @Data
+    public static class Subscribe {
+        private String enrollSuccessTemplateId = "";
+        private String enrollApprovedTemplateId = "";
+        private String activityRemindTemplateId = "";
     }
 }

@@ -7,10 +7,8 @@ import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Enroll;
-import com.shuyuan.backend.entity.Message;
 import com.shuyuan.backend.mapper.ActivityMapper;
 import com.shuyuan.backend.mapper.EnrollMapper;
-import com.shuyuan.backend.mapper.MessageMapper;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.vo.EnrollExportRow;
 import jakarta.servlet.http.HttpServletResponse;
@@ -31,8 +29,9 @@ public class AdminEnrollService {
 
     private final EnrollMapper enrollMapper;
     private final ActivityMapper activityMapper;
-    private final MessageMapper messageMapper;
     private final AdminPermissionService adminPermissionService;
+    private final MessageService messageService;
+    private final SubscribeService subscribeService;
 
     public PageResult<Map<String, Object>> listByActivity(Long activityId, String status, int page, int size) {
         adminPermissionService.require("enroll:read");
@@ -64,11 +63,13 @@ public class AdminEnrollService {
         enrollMapper.updateById(update);
 
         Activity activity = activityMapper.selectById(enroll.getActivityId());
+        Enroll approved = enrollMapper.selectById(enrollId);
         notifyMember(enroll.getMemberId(), "报名审核通过",
                 "您报名的活动「" + (activity != null ? activity.getTitle() : "") + "」已审核通过。",
                 enroll.getActivityId());
+        subscribeService.sendEnrollApproved(enroll.getMemberId(), activity, approved);
 
-        return toVo(enrollMapper.selectById(enrollId));
+        return toVo(approved);
     }
 
     @Transactional
@@ -149,15 +150,7 @@ public class AdminEnrollService {
     }
 
     private void notifyMember(Long memberId, String title, String content, Long activityId) {
-        Message msg = new Message();
-        msg.setMemberId(memberId);
-        msg.setTitle(title);
-        msg.setContent(content);
-        msg.setType("enroll");
-        msg.setRelatedType("activity");
-        msg.setRelatedId(activityId);
-        msg.setReadStatus(0);
-        messageMapper.insert(msg);
+        messageService.create(memberId, title, content, "enroll", "activity", activityId);
     }
 
     private Map<String, Object> toVo(Enroll e) {

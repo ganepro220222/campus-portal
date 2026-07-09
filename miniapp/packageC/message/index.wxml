@@ -1,0 +1,37 @@
+<!-- packageC/message/index.wxml — 站内消息中心 -->
+<view class="msg-page">
+  <view wx:if="{{loading}}" class="msg-state"><text>加载中…</text></view>
+
+  <view wx:elif="{{!list.length}}" class="empty-state">
+    <icon name="bell" size="42" color="#C3CCE0" />
+    <text>暂无消息</text>
+    <text class="msg-empty-sub">报名结果、审核通知等将显示在这里</text>
+  </view>
+
+  <view wx:else>
+    <view wx:if="{{unreadCount > 0}}" class="msg-toolbar">
+      <text class="msg-unread-tip">{{unreadCount}} 条未读</text>
+      <text class="msg-read-all" bindtap="onReadAll">全部标为已读</text>
+    </view>
+
+    <scroll-view scroll-y class="msg-scroll" enhanced show-scrollbar="{{false}}">
+      <view
+        wx:for="{{list}}"
+        wx:key="id"
+        class="msg-item {{item.readStatus === 0 ? 'unread' : ''}}"
+        bindtap="onItemTap"
+        data-id="{{item.id}}"
+        data-route="{{item.route}}"
+      >
+        <view class="msg-dot" wx:if="{{item.readStatus === 0}}"></view>
+        <view class="msg-body">
+          <text class="msg-title">{{item.title}}</text>
+          <text class="msg-content">{{item.content}}</text>
+          <text class="msg-time">{{item.createdAt}}</text>
+        </view>
+        <icon wx:if="{{item.route}}" name="chevron-right" size="16" color="#C3CCE0" />
+      </view>
+      <view class="msg-bottom"></view>
+    </scroll-view>
+  </view>
+</view>

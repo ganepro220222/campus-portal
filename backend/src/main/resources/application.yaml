@@ -41,6 +41,10 @@ shuyuan:
     model: ${AI_MODEL:glm-4-flash}
     daily-limit: 20
     max-chunks: 5
+  subscribe:
+    enroll-success-template-id: ${WX_TMPL_ENROLL_SUCCESS:}
+    enroll-approved-template-id: ${WX_TMPL_ENROLL_APPROVED:}
+    activity-remind-template-id: ${WX_TMPL_ACTIVITY_REMIND:}
   oss:
     enabled: ${OSS_ENABLED:false}
     endpoint: ${OSS_ENDPOINT:}

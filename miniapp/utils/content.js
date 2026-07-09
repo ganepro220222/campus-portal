@@ -48,7 +48,8 @@ function mergeHallDetail(raw, fallback) {
     intro: raw.intro || base.intro,
     slides,
     caption: raw.caption || base.caption,
-    audioTime: raw.audioTime || base.audioTime
+    audioTime: raw.audioTime || base.audioTime,
+    audioUrl: raw.audioUrl || base.audioUrl || ''
   }
 }
 

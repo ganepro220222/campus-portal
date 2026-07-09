@@ -21,8 +21,14 @@ const configMap = {
 
 const config = configMap[ENV] || configMap.dev
 
+/** 第三方 VR 文创展厅（720云等），留空则首页入口提示「即将上线」 */
+const VR_HALL_URL = 'https://roma.720yun.com/vr/e830945711e60336/'
+const VR_HALL_TITLE = '虚拟文创展厅'
+
 module.exports = {
   ENV,
   baseUrl: config.baseUrl,
-  useMock: config.useMock
+  useMock: config.useMock,
+  vrHallUrl: VR_HALL_URL,
+  vrHallTitle: VR_HALL_TITLE
 }

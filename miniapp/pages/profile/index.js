@@ -5,7 +5,7 @@ const { get } = require('../../utils/request')
 Page({
   data: {
     userInfo:   null,
-    stats:      { favorites: 0, enrolls: 0, downloads: 0, points: 0 },
+    stats:      { favorites: 0, enrolls: 0, downloads: 0, points: 0, unreadMessages: 0 },
     isLoggedIn: false
   },
 
@@ -44,6 +44,14 @@ Page({
     const type = e.currentTarget.dataset.type
     if (!type) return
     wx.navigateTo({ url: `/packageC/profile/list?type=${type}` })
+  },
+
+  onMessages() {
+    if (!this.data.isLoggedIn) {
+      this.onLoginTap()
+      return
+    }
+    wx.navigateTo({ url: '/packageC/message/index' })
   },
 
   onAiChat() {

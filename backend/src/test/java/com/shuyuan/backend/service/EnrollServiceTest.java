@@ -36,11 +36,13 @@ class EnrollServiceTest {
     @Mock
     private MemberProfileMapper memberProfileMapper;
     @Mock
-    private MessageMapper messageMapper;
-    @Mock
     private EventLogService eventLogService;
     @Mock
     private PointService pointService;
+    @Mock
+    private MessageService messageService;
+    @Mock
+    private SubscribeService subscribeService;
 
     @InjectMocks
     private EnrollService enrollService;
@@ -73,6 +75,8 @@ class EnrollServiceTest {
         assertNotNull(result);
         verify(activityMapper).incrEnrolledCount(ACTIVITY_ID);
         verify(enrollMapper).insert(any(Enroll.class));
+        verify(messageService).create(eq(MEMBER_ID), anyString(), anyString(), eq("enroll"), eq("activity"), eq(ACTIVITY_ID));
+        verify(subscribeService).sendEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
         verify(eventLogService).record("enroll", "activity", ACTIVITY_ID);
         verify(pointService).award(MEMBER_ID, "enroll_activity");
     }

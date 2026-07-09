@@ -24,7 +24,10 @@ Page({
 
   onPreviewSlide(e) {
     const url = e.currentTarget.dataset.url
-    if (!url) return
+    if (!url) {
+      wx.showToast({ title: '展馆高清图即将上线', icon: 'none' })
+      return
+    }
     const urls = (this.data.hall.slides || [])
       .map(s => s.imageUrl)
       .filter(Boolean)

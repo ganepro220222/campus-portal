@@ -7,8 +7,8 @@
       <view class="gal">
         <swiper class="gslides" circular="{{slides.length > 1}}" bindchange="onGallery"
           indicator-dots="{{slides.length > 1}}" indicator-color="rgba(255,255,255,.4)" indicator-active-color="#ffffff">
-          <swiper-item wx:for="{{slides}}" wx:key="angleLabel" bindtap="onPreview" data-url="{{item.imageUrl}}">
-            <view class="gimg {{item.cls}}">
+          <swiper-item wx:for="{{slides}}" wx:key="angleLabel">
+            <view class="gimg {{item.cls}}" bindtap="onPreview" data-url="{{item.imageUrl}}">
               <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" class="gimg-img" />
               <icon wx:else name="{{item.icon}}" size="60" color="rgba(255,255,255,0.55)" />
             </view>

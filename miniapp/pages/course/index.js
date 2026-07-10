@@ -31,6 +31,8 @@ Page({
 
   onPullDownRefresh() { this._load().then(() => wx.stopPullDownRefresh()) },
 
+  onSearch() { wx.navigateTo({ url: '/packageC/search/index' }) },
+
   async _load() {
     this.setData({ loading: true })
     const cat = this.data.activeCat ? this.data.cats[this.data.activeCat] : undefined

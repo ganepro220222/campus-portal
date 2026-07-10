@@ -12,45 +12,20 @@
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(20rpx);
-  padding: 12rpx 0 20rpx 28rpx;
+  padding: 8rpx 28rpx 18rpx;
   border-bottom: 1rpx solid #E7ECF6;
   box-shadow: 0 4rpx 28rpx rgba(31, 40, 90, 0.05);
 }
-.header-row {
+
+/* 校名行（居中） */
+.header-titlebar {
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  height: 76rpx;
-}
-.header-me {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.header-me:active { background: #F2F7FC; }
-/* 顶部标题：金色 ❖ 匾额式框衬 */
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-}
-.ht-orn {
-  font-size: 20rpx;
-  line-height: 1;
-  color: #BE9C44;
-  opacity: 0.92;
-  text-shadow: 0 1rpx 2rpx rgba(150, 110, 30, 0.28);
+  height: 72rpx;
 }
 .header-name {
-  font-size: 47rpx;
+  font-size: 46rpx;
   font-weight: 700;
   color: var(--navy);
   letter-spacing: 6rpx;
@@ -62,23 +37,29 @@
   -webkit-text-stroke: 0.5rpx var(--navy);
   text-shadow: 0 1rpx 1rpx rgba(31, 40, 90, 0.16);
 }
-.bell-btn {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+
+/* 操作行：我的 · 搜索 · 铃铛 */
+.header-actionbar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 6rpx;
+}
+.header-icon {
+  position: relative;
+  flex-shrink: 0;
   width: 64rpx;
   height: 64rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
 }
-.bell-btn:active { background: #F2F7FC; }
+.header-icon:active { background: #F2F7FC; }
 .bell-dot {
   position: absolute;
-  top: 12rpx;
-  right: 14rpx;
+  top: 10rpx;
+  right: 12rpx;
   width: 14rpx;
   height: 14rpx;
   border-radius: 50%;
@@ -88,14 +69,15 @@
 
 /* 搜索框 */
 .search-bar {
-  margin-top: 16rpx;
-  height: 74rpx;
+  flex: 1;
+  min-width: 0;
+  height: 72rpx;
   background: #F2F7FC;
   border: 1rpx solid #E7ECF6;
-  border-radius: 37rpx;
+  border-radius: 36rpx;
   display: flex;
   align-items: center;
-  padding: 0 26rpx;
+  padding: 0 24rpx;
   gap: 14rpx;
 }
 .search-bar:active { background: #EDF3FB; }

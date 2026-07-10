@@ -19,10 +19,16 @@
 .nav-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 80rpx;
   padding: 6rpx 0 4rpx 32rpx;
 }
 .nav-title { font-size: 38rpx; font-weight: 700; color: var(--ink); }
+.nav-search {
+  width: 64rpx; height: 64rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.nav-search:active { background: var(--sky-3); }
 
 .cats { white-space: nowrap; padding: 6rpx 0 18rpx; }
 .cats-inner { display: inline-flex; gap: 16rpx; padding: 0 32rpx; }
@@ -34,6 +40,7 @@
   background: #fff;
   border: 1rpx solid var(--line);
   color: var(--sub);
+  transition: 0.15s;
 }
 .cat-on {
   background: linear-gradient(135deg, #3F57B5, #2B356E);

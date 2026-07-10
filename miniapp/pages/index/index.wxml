@@ -26,6 +26,9 @@
 
   <scroll-view class="scroll-body" scroll-y enhanced show-scrollbar="{{false}}">
 
+    <skeleton show="{{loading}}" type="home" count="5" />
+    <block wx:if="{{!loading}}">
+
     <!-- Banner 轮播 -->
     <view class="wrap">
       <swiper
@@ -195,6 +198,7 @@
     </view>
 
     <view class="scroll-bottom"></view>
+    </block>
   </scroll-view>
 
   <!-- AI 助手 -->

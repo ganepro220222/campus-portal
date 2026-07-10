@@ -1,0 +1,42 @@
+<!-- components/skeleton/index.wxml -->
+<view class="sk" wx:if="{{show}}">
+
+  <!-- 横向卡片列表（新闻 / 课程） -->
+  <block wx:if="{{type === 'list'}}">
+    <view class="sk-card" wx:for="{{items}}" wx:key="index">
+      <view class="sk-thumb sk-sh"></view>
+      <view class="sk-lines">
+        <view class="sk-line sk-sh" style="width: 90%;"></view>
+        <view class="sk-line sk-sh" style="width: 66%;"></view>
+        <view class="sk-line sk-sh sk-line-sm" style="width: 40%;"></view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 两列网格（展馆） -->
+  <block wx:elif="{{type === 'grid'}}">
+    <view class="sk-grid">
+      <view class="sk-gcard" wx:for="{{items}}" wx:key="index">
+        <view class="sk-gcover sk-sh"></view>
+        <view class="sk-line sk-sh" style="width: 72%; margin: 18rpx 20rpx 10rpx;"></view>
+        <view class="sk-line sk-sh sk-line-sm" style="width: 50%; margin: 0 20rpx 20rpx;"></view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 首页 -->
+  <block wx:elif="{{type === 'home'}}">
+    <view class="sk-banner sk-sh"></view>
+    <view class="sk-entries">
+      <view class="sk-entry" wx:for="{{items}}" wx:key="index">
+        <view class="sk-eico sk-sh"></view>
+        <view class="sk-line sk-sh sk-line-sm" style="width: 60rpx;"></view>
+      </view>
+    </view>
+    <view class="sk-line sk-sh" style="width: 220rpx; height: 34rpx; margin: 40rpx 0 20rpx;"></view>
+    <view class="sk-hrow">
+      <view class="sk-hcard sk-sh" wx:for="{{items}}" wx:key="index"></view>
+    </view>
+  </block>
+
+</view>

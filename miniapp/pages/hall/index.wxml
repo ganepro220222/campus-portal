@@ -25,6 +25,7 @@
 
   <!-- 展馆网格 -->
   <scroll-view scroll-y class="hall-scroll" enhanced show-scrollbar="{{false}}">
+    <skeleton show="{{loading && !hallList.length}}" type="grid" count="6" />
     <view class="hall-grid">
       <view
         wx:for="{{hallList}}"

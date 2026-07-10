@@ -1,0 +1,57 @@
+/* components/skeleton/index.wxss */
+.sk { padding: 24rpx 32rpx 0; }
+
+.sk-sh {
+  background: #EEF2F8;
+  background-image: linear-gradient(100deg, #EEF2F8 30%, #F7FAFD 50%, #EEF2F8 70%);
+  background-size: 220% 100%;
+  animation: sk-move 1.3s ease-in-out infinite;
+}
+@keyframes sk-move {
+  0%   { background-position: 220% 0; }
+  100% { background-position: -220% 0; }
+}
+
+.sk-line { height: 26rpx; border-radius: 8rpx; margin-bottom: 16rpx; }
+.sk-line-sm { height: 20rpx; }
+
+/* list */
+.sk-card {
+  display: flex;
+  gap: 20rpx;
+  background: #fff;
+  border: 1rpx solid #E7ECF6;
+  border-radius: 20rpx;
+  padding: 18rpx;
+  margin-bottom: 18rpx;
+  box-shadow: 0 4rpx 14rpx rgba(31, 40, 90, 0.08);
+}
+.sk-thumb { width: 184rpx; height: 132rpx; border-radius: 14rpx; flex-shrink: 0; }
+.sk-lines { flex: 1; padding: 10rpx 0; }
+
+/* grid */
+.sk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24rpx; }
+.sk-gcard {
+  background: #fff;
+  border: 1rpx solid #E7ECF6;
+  border-radius: 26rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 14rpx rgba(31, 40, 90, 0.08);
+}
+.sk-gcover { height: 180rpx; }
+
+/* home */
+.sk-banner { height: 316rpx; border-radius: 32rpx; margin-top: 24rpx; }
+.sk-entries {
+  display: flex;
+  justify-content: space-around;
+  background: #fff;
+  border: 1rpx solid #E7ECF6;
+  border-radius: 28rpx;
+  padding: 30rpx 12rpx;
+  margin-top: 24rpx;
+}
+.sk-entry { display: flex; flex-direction: column; align-items: center; gap: 14rpx; }
+.sk-eico { width: 100rpx; height: 100rpx; border-radius: 32rpx; }
+.sk-hrow { display: flex; gap: 22rpx; overflow: hidden; }
+.sk-hcard { width: 240rpx; height: 226rpx; border-radius: 24rpx; flex-shrink: 0; }

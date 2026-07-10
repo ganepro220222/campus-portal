@@ -25,6 +25,7 @@
 
   <!-- 课程列表 -->
   <scroll-view scroll-y class="course-scroll" enhanced show-scrollbar="{{false}}">
+    <skeleton show="{{loading && !courseList.length}}" type="list" count="6" />
     <view class="course-wrap">
       <view
         wx:for="{{courseList}}"

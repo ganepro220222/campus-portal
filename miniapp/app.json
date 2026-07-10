@@ -73,7 +73,8 @@
     ]
   },
   "usingComponents": {
-    "icon": "/components/icon/index"
+    "icon": "/components/icon/index",
+    "skeleton": "/components/skeleton/index"
   },
   "permission": {
     "scope.writePhotosAlbum": {

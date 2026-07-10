@@ -1,27 +1,26 @@
 <!-- pages/index/index.wxml -->
 <view class="home-page">
 
-  <!-- 吸顶 Header：我的 + 校名 + 铃铛 -->
-  <view class="header" style="padding-right: {{capsulePadding}}px;">
+  <!-- 吸顶 Header：校名居中 + （我的 · 搜索 · 铃铛）一行 -->
+  <view class="header">
     <view style="height: {{statusBarHeight}}px;"></view>
-    <view class="header-row">
-      <view class="header-me" bindtap="onProfileTap">
-        <icon name="user-circle" size="25" color="#2B356E" />
+    <!-- 校名（居中，标题较窄可避让胶囊） -->
+    <view class="header-titlebar">
+      <text class="header-name">中华文化书院</text>
+    </view>
+    <!-- 我的 + 搜索 + 铃铛（同一行，一左一右） -->
+    <view class="header-actionbar">
+      <view class="header-icon" bindtap="onProfileTap">
+        <icon name="user-circle" size="24" color="#2B356E" />
       </view>
-      <view class="header-title">
-        <text class="ht-orn">❖</text>
-        <text class="header-name">中华文化书院</text>
-        <text class="ht-orn">❖</text>
+      <view class="search-bar" bindtap="onSearchTap">
+        <icon name="search" size="17" color="#8A93B2" />
+        <text class="search-placeholder">搜索新闻、课程、展馆、资源…</text>
       </view>
-      <view class="bell-btn" bindtap="onBellTap">
+      <view class="header-icon" bindtap="onBellTap">
         <icon name="bell" size="22" color="#2B356E" />
         <view wx:if="{{hasNewAnnouncement}}" class="bell-dot"></view>
       </view>
-    </view>
-    <!-- 搜索框 -->
-    <view class="search-bar" bindtap="onSearchTap">
-      <icon name="search" size="17" color="#8A93B2" />
-      <text class="search-placeholder">搜索新闻、课程、展馆、资源…</text>
     </view>
   </view>
 

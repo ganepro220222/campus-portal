@@ -25,6 +25,11 @@ public class AdminHallController {
         return Result.ok(adminHallService.list(page, size));
     }
 
+    @GetMapping("/{id}")
+    public Result<Map<String, Object>> detail(@PathVariable Long id) {
+        return Result.ok(adminHallService.detail(id));
+    }
+
     @PostMapping
     public Result<Map<String, Object>> create(@RequestBody HallSaveRequest req) {
         return Result.ok(adminHallService.create(req));

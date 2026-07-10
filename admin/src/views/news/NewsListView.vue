@@ -85,8 +85,14 @@
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="封面 URL">
-          <el-input v-model="form.cover" placeholder="750×422 封面图 CDN 地址" />
+        <el-form-item label="封面图">
+          <OssUploadInput
+            v-model="form.cover"
+            scene="cover"
+            accept="image/*"
+            upload-label="上传封面"
+            done-text="封面已上传"
+          />
         </el-form-item>
         <el-form-item label="摘要">
           <el-input v-model="form.summary" type="textarea" :rows="2" maxlength="500" show-word-limit />
@@ -119,6 +125,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchCategories } from '@/api/category'
 import { createNews, fetchNews, publishNews, unpublishNews, updateNews } from '@/api/news'
+import OssUploadInput from '@/components/OssUploadInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, NewsItem } from '@/types/api'
 

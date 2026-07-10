@@ -19,8 +19,9 @@ function decorateHalls(list) {
   return (list || []).map((it, i) => ({
     ...it,
     colorClass: it.colorClass || HALL_COLORS[i % HALL_COLORS.length],
-    shortName: it.shortName || (it.name || '').replace(/馆$/, ''),
-    desc: it.desc || it.intro || ''
+    shortName: it.shortName || (it.name || '').replace(/馆$/, '').slice(0, 8),
+    desc: it.desc || it.intro || '',
+    vrReady: it.vrReady === true || (it.vrUrl && String(it.vrUrl).startsWith('https://'))
   }))
 }
 

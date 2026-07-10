@@ -126,8 +126,10 @@ CREATE TABLE IF NOT EXISTS `news` (
 CREATE TABLE IF NOT EXISTS `hall` (
   `id`          BIGINT       NOT NULL AUTO_INCREMENT,
   `name`        VARCHAR(100) NOT NULL COMMENT '展馆名称',
+  `short_name`  VARCHAR(50)  DEFAULT NULL COMMENT '列表短名称',
   `cover`       VARCHAR(500) DEFAULT NULL COMMENT '封面图',
   `intro`       TEXT         DEFAULT NULL COMMENT '简介',
+  `vr_url`      VARCHAR(500) DEFAULT NULL COMMENT '720云VR外链',
   `category_id` BIGINT       DEFAULT NULL,
   `sort`        INT          NOT NULL DEFAULT 0,
   `status`      TINYINT      NOT NULL DEFAULT 1 COMMENT '1上架 0下架',

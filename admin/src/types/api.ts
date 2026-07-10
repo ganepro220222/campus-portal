@@ -111,12 +111,24 @@ export interface NewsItem {
 export interface HallItem {
   id: number
   name: string
+  shortName?: string | null
   cover: string | null
   intro: string
+  vrUrl?: string | null
+  vrReady?: boolean
   categoryId: number | null
   categoryName: string
   sort: number
   status: number
+  slides?: HallSlideItem[]
+  audioUrl?: string | null
+  audioTime?: string | null
+}
+
+export interface HallSlideItem {
+  url: string
+  caption?: string
+  sort?: number
 }
 
 export interface CategoryOption {

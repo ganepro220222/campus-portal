@@ -37,7 +37,7 @@ export interface CraftSavePayload {
 
 export const PREVIEW_TYPE_OPTIONS = [
   { value: 'multi_image', label: '多角度图片' },
-  { value: 'model3d', label: '3D 模型（GLB）' }
+  { value: 'model3d', label: '3D 模型' }
 ]
 
 export function fetchCrafts(params: CraftQuery) {

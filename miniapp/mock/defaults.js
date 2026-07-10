@@ -10,31 +10,30 @@ module.exports = {
   // 各模块默认分类（接口 /categories 不可用时的兜底）
   categories: {
     news:   ['全部', '书院动态', '活动通知', '文化传承'],
-    hall:   ['全部', '传统文化', '红色文化', '非遗技艺', '校史校风'],
+    hall:   ['全部', '博物馆与校史', '红色教育', '研学服务', '素质教育', '文化艺术', '安全教育', '主题宣教'],
     course: ['全部', '阳明文化', '思政必修', '文化传承', '美育素养']
   },
 
   hallsHome: [
-    { id: 1, name: '阳明文化馆' },
-    { id: 2, name: '屯堡文化馆' },
-    { id: 3, name: '红色文化馆' },
-    { id: 4, name: '民族文化馆' },
-    { id: 5, name: '交通文化馆' },
-    { id: 6, name: '校史馆' }
+    { id: 1, name: '贵州交通博物馆·教育馆', shortName: '交通博物馆' },
+    { id: 2, name: '校史馆', shortName: '校史馆' },
+    { id: 3, name: '贵州交通红色教育基地', shortName: '红色教育基地' },
+    { id: 4, name: '交旅融合研学服务中心', shortName: '交旅研学' },
+    { id: 5, name: '学生素质发展中心', shortName: '素质发展中心' },
+    { id: 6, name: '学生科普体验中心', shortName: '科普体验中心' }
   ],
 
   hallsFull: [
-    { id: 1,  name: '阳明文化馆', cat: '传统文化', desc: '龙场悟道 · 知行合一' },
-    { id: 2,  name: '屯堡文化馆', cat: '传统文化', desc: '六百年江南遗风' },
-    { id: 3,  name: '红色文化馆', cat: '红色文化', desc: '长征转折 · 红色基因' },
-    { id: 4,  name: '民族文化馆', cat: '传统文化', desc: '多彩黔中 · 民族瑰宝' },
-    { id: 5,  name: '交通文化馆', cat: '校史校风', desc: '通途之路 · 交通报国' },
-    { id: 6,  name: '廉政文化馆', cat: '红色文化', desc: '清风正气 · 廉洁修身' },
-    { id: 7,  name: '非遗技艺馆', cat: '非遗技艺', desc: '活态传承 · 匠心独运' },
-    { id: 8,  name: '校史馆',     cat: '校史校风', desc: '栉风沐雨 · 弦歌不辍' },
-    { id: 9,  name: '书法艺术馆', cat: '非遗技艺', desc: '翰墨丹青 · 笔走龙蛇' },
-    { id: 10, name: '茶文化馆',   cat: '传统文化', desc: '黔茶飘香 · 茶道人生' },
-    { id: 11, name: '农耕文化馆', cat: '非遗技艺', desc: '二十四节气 · 农事智慧' }
+    { id: 1,  name: '贵州交通博物馆·教育馆', shortName: '交通博物馆', cat: '博物馆与校史', desc: '交通发展历程与教育成果展陈', vrUrl: 'https://roma.720yun.com/vr/515a9635070ca212/', vrReady: true },
+    { id: 2,  name: '校史馆', shortName: '校史馆', cat: '博物馆与校史', desc: '办学历程与重要里程碑', vrUrl: 'https://roma.720yun.com/vr/b5b7196093f3c25a/', vrReady: true },
+    { id: 3,  name: '贵州交通红色教育基地', shortName: '红色教育基地', cat: '红色教育', desc: '弘扬长征精神与交通红色基因', vrUrl: 'https://roma.720yun.com/vr/59e140eb05f9e134/', vrReady: true },
+    { id: 4,  name: '交旅融合研学服务中心', shortName: '交旅研学', cat: '研学服务', desc: '交旅融合主题研学服务', vrUrl: 'https://roma.720yun.com/vr/96cb6946cefd5b99/', vrReady: true },
+    { id: 5,  name: '学生素质发展中心', shortName: '素质发展中心', cat: '素质教育', desc: '学生综合素质培养成果展示', vrUrl: 'https://www.720yun.com/vr/374j5dyvrf2', vrReady: true },
+    { id: 6,  name: '学生科普体验中心', shortName: '科普体验中心', cat: '素质教育', desc: '交通科技与学生科普互动体验', vrUrl: 'https://www.720yun.com/vr/7a0j5dyksk9', vrReady: true },
+    { id: 7,  name: '文化千岛艺术馆', shortName: '千岛艺术馆', cat: '文化艺术', desc: '多元文化艺术作品线上展陈', vrUrl: 'https://www.720yun.com/vr/660j5dyvsv5', vrReady: true },
+    { id: 8,  name: '校园安全教育馆1', shortName: '校园安全教育馆', cat: '安全教育', desc: '校园安全常识与警示教育', vrReady: false },
+    { id: 9,  name: '西部山区道路运输安全警示教育基地', shortName: '西部山区安全基地', cat: '安全教育', desc: '山区道路运输安全警示教育', vrReady: false },
+    { id: 10, name: '节水宣传教育中心', shortName: '节水宣传中心', cat: '主题宣教', desc: '节水理念与宣传教育成果', vrUrl: 'https://www.720yun.com/vr/f7bj5pmOkO2', vrReady: true }
   ],
 
   newsHome: [
@@ -152,15 +151,18 @@ module.exports = {
   },
 
   hallDetail: {
-    name: '阳明文化馆',
+    name: '校史馆',
+    shortName: '校史馆',
+    vrUrl: 'https://roma.720yun.com/vr/b5b7196093f3c25a/',
+    vrReady: true,
     slides: [
       { cls: 'gi1', icon: 'museum' },
       { cls: 'gi2', icon: 'star' },
       { cls: 'gi3', icon: 'book' }
     ],
-    caption: '阳明先生像 · 龙场悟道（左右滑动浏览，支持双指放大）',
-    audioTime: '语音讲解 03:48',
-    intro: '王阳明谪居贵州龙场期间，于困顿中悟“格物致知”之旨，史称“龙场悟道”，由此奠定心学体系。本馆以图文、实景与多媒体相结合的方式，系统呈现阳明先生的生平、思想脉络及其在黔中大地的深远影响，引导师生在沉浸式浏览中体悟“知行合一”的精神品格。'
+    caption: '校史馆展陈（左右滑动浏览，支持双指放大）',
+    audioTime: '语音讲解',
+    intro: '回顾贵州交通职业大学办学历程与重要里程碑，传承校训校风。支持 VR 全景漫游与图文介绍，可在详情页进入 720 云沉浸式体验。'
   },
 
   courseDetail: {

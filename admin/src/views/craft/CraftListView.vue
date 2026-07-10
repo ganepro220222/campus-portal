@@ -6,7 +6,7 @@
     </div>
 
     <p class="text-muted">
-      维护工艺品中英文介绍、多角度鉴赏图或 3D 模型、咨询联系方式；下架后小程序不可见。
+      维护工艺品名称、介绍、展示图片或 3D 模型、咨询联系方式；上架后小程序「文化好物」中展示。
     </p>
 
     <div class="toolbar">
@@ -79,8 +79,15 @@
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="封面 URL">
-          <el-input v-model="form.cover" placeholder="750×750 封面图地址" />
+        <el-form-item label="封面图">
+          <OssUploadInput
+            v-model="form.cover"
+            scene="cover"
+            accept="image/*"
+            upload-label="上传封面"
+            done-text="封面已上传"
+            hint="用于列表卡片，建议正方形高清图"
+          />
         </el-form-item>
         <el-form-item label="展示方式" prop="previewType">
           <el-radio-group v-model="form.previewType">
@@ -89,25 +96,37 @@
             </el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="form.previewType === 'model3d'" label="GLB 模型" prop="model3dUrl">
-          <el-input v-model="form.model3dUrl" placeholder="glTF / GLB 模型 CDN 地址" />
-          <div class="form-tip">校方清单：启用 3D 时提供 GLB 模型；不启用可改用多角度图片</div>
+        <el-form-item v-if="form.previewType === 'model3d'" label="3D 模型" prop="model3dUrl">
+          <OssUploadInput
+            v-model="form.model3dUrl"
+            scene="model3d"
+            accept=".glb,.gltf"
+            upload-label="上传 3D 模型"
+            done-text="模型已上传"
+            hint="请上传校方提供的 3D 模型文件；也可改用「多角度图片」展示"
+          />
         </el-form-item>
         <el-form-item label="中文介绍" prop="introZh">
           <el-input v-model="form.introZh" type="textarea" :rows="3" maxlength="2000" show-word-limit />
         </el-form-item>
         <el-form-item label="英文介绍">
           <el-input v-model="form.introEn" type="textarea" :rows="3" maxlength="2000" show-word-limit />
-          <div class="form-tip">中英文独立维护，小程序端可切换展示</div>
+          <div class="form-tip">选填，用于双语展示</div>
         </el-form-item>
 
-        <el-divider content-position="left">多角度鉴赏图</el-divider>
+        <el-divider content-position="left">产品鉴赏图</el-divider>
         <div v-if="form.previewType === 'multi_image'" class="images-block">
-          <el-button type="primary" link :icon="Plus" @click="addImage">添加图片</el-button>
+          <el-button type="primary" link :icon="Plus" @click="addImage">添加一张图片</el-button>
           <el-table :data="form.images" size="small" border class="images-table">
-            <el-table-column label="图片 URL" min-width="220">
+            <el-table-column label="图片" min-width="200">
               <template #default="{ row }">
-                <el-input v-model="row.imageUrl" placeholder="高清图 CDN 地址" size="small" />
+                <OssUploadInput
+                  v-model="row.imageUrl"
+                  scene="image"
+                  accept="image/*"
+                  upload-label="上传图片"
+                  done-text="已上传"
+                />
               </template>
             </el-table-column>
             <el-table-column label="角度标签" width="120">
@@ -127,9 +146,9 @@
             </el-table-column>
           </el-table>
         </div>
-        <p v-else class="text-muted images-hint">3D 模式下可仍配置多角度图作为降级展示（可选）</p>
+        <p v-else class="text-muted images-hint">3D 模式下可额外添加图片作为备用展示（选填）</p>
 
-        <el-divider content-position="left">购买咨询</el-divider>
+        <el-divider content-position="left">合作与咨询</el-divider>
         <el-form-item label="联系电话">
           <el-input v-model="form.contact.phone" maxlength="20" placeholder="一键拨打" />
         </el-form-item>
@@ -175,6 +194,7 @@ import {
   updateCraft
 } from '@/api/craft'
 import type { CraftImagePayload } from '@/api/craft'
+import OssUploadInput from '@/components/OssUploadInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CraftItem } from '@/types/api'
 
@@ -221,7 +241,7 @@ const rules: FormRules = {
   model3dUrl: [{
     validator: (_rule, value, callback) => {
       if (form.previewType === 'model3d' && !value?.trim()) {
-        callback(new Error('请填写 GLB 模型地址'))
+        callback(new Error('请上传 3D 模型文件'))
       } else {
         callback()
       }

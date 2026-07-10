@@ -83,8 +83,14 @@
         <el-form-item label="活动名称" prop="title">
           <el-input v-model="form.title" maxlength="100" show-word-limit />
         </el-form-item>
-        <el-form-item label="封面 URL">
-          <el-input v-model="form.cover" placeholder="750×422 封面图地址" />
+        <el-form-item label="封面图">
+          <OssUploadInput
+            v-model="form.cover"
+            scene="cover"
+            accept="image/*"
+            upload-label="上传封面"
+            done-text="封面已上传"
+          />
         </el-form-item>
         <el-form-item label="简介">
           <el-input v-model="form.intro" type="textarea" :rows="3" maxlength="500" show-word-limit />
@@ -166,6 +172,7 @@ import {
   updateActivity
 } from '@/api/activity'
 import { useAuthStore } from '@/stores/auth'
+import OssUploadInput from '@/components/OssUploadInput.vue'
 import type { ActivityItem } from '@/types/api'
 
 const router = useRouter()

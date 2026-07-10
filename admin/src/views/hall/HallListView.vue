@@ -5,12 +5,22 @@
       <el-button v-if="canWrite" type="primary" :icon="Plus" @click="openDialog()">新建展馆</el-button>
     </div>
 
-    <p class="text-muted">维护 11 馆基础信息；下架（status=0）后小程序不可见，并会从搜索索引移除。</p>
+    <p class="text-muted">
+      维护 11 个 VR 展馆的名称、短名称、全景链接、轮播图文与语音讲解；下架后小程序不可见。
+    </p>
 
     <el-table v-loading="loading" :data="list" stripe border>
       <el-table-column prop="sort" label="排序" width="70" align="center" />
-      <el-table-column prop="name" label="展馆名称" min-width="140" />
-      <el-table-column prop="categoryName" label="分类" width="110" />
+      <el-table-column prop="name" label="展馆名称" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="shortName" label="短名称" width="120" show-overflow-tooltip />
+      <el-table-column label="VR" width="80" align="center">
+        <template #default="{ row }">
+          <el-tag size="small" :type="row.vrReady ? 'success' : 'info'">
+            {{ row.vrReady ? '已配置' : '待配置' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="categoryName" label="分类" width="120" />
       <el-table-column prop="intro" label="简介" min-width="200" show-overflow-tooltip />
       <el-table-column label="状态" width="90" align="center">
         <template #default="{ row }">
@@ -39,24 +49,87 @@
     <el-dialog
       v-model="dialogVisible"
       :title="editingId ? '编辑展馆' : '新建展馆'"
-      width="560px"
+      width="760px"
       destroy-on-close
+      top="3vh"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="108px">
         <el-form-item label="名称" prop="name">
-          <el-input v-model="form.name" maxlength="100" show-word-limit />
+          <el-input v-model="form.name" maxlength="100" show-word-limit placeholder="完整展馆名称" />
+        </el-form-item>
+        <el-form-item label="短名称">
+          <el-input v-model="form.shortName" maxlength="50" show-word-limit placeholder="列表卡片显示，如「交通博物馆」" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="封面 URL">
-          <el-input v-model="form.cover" placeholder="750×750 封面图" />
+        <el-form-item label="封面图">
+          <OssUploadInput
+            v-model="form.cover"
+            scene="cover"
+            accept="image/*"
+            upload-label="上传封面图"
+            done-text="封面已上传"
+            hint="建议正方形图片，用于列表卡片展示"
+          />
+        </el-form-item>
+        <el-form-item label="VR 全景链接">
+          <el-input v-model="form.vrUrl" placeholder="粘贴全景服务商提供的展馆链接（可向技术人员索取）" />
         </el-form-item>
         <el-form-item label="简介" prop="intro">
           <el-input v-model="form.intro" type="textarea" :rows="3" maxlength="500" show-word-limit />
         </el-form-item>
+
+        <el-divider content-position="left">轮播图文</el-divider>
+        <div class="slides-block">
+          <el-button type="primary" link :icon="Plus" @click="addSlide">添加图片</el-button>
+          <el-table :data="form.slides" size="small" border class="slides-table">
+            <el-table-column label="图片" min-width="200">
+              <template #default="{ row }">
+                <OssUploadInput
+                  v-model="row.url"
+                  scene="image"
+                  accept="image/*"
+                  upload-label="上传图片"
+                  done-text="已上传"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="图说" min-width="180">
+              <template #default="{ row }">
+                <el-input v-model="row.caption" placeholder="图片说明" size="small" maxlength="200" />
+              </template>
+            </el-table-column>
+            <el-table-column label="排序" width="90" align="center">
+              <template #default="{ row }">
+                <el-input-number v-model="row.sort" :min="0" :max="999" size="small" controls-position="right" />
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="70" align="center">
+              <template #default="{ $index }">
+                <el-button link type="danger" @click="removeSlide($index)">删</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <el-divider content-position="left">语音讲解</el-divider>
+        <el-form-item label="语音讲解">
+          <OssUploadInput
+            v-model="form.audioUrl"
+            scene="audio"
+            accept="audio/*"
+            upload-label="上传语音"
+            done-text="语音已上传"
+            hint="支持 MP3 等常见音频格式"
+          />
+        </el-form-item>
+        <el-form-item label="时长说明">
+          <el-input v-model="form.audioTime" placeholder="如：语音讲解 03:48" maxlength="50" />
+        </el-form-item>
+
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" :max="999" />
         </el-form-item>
@@ -81,9 +154,10 @@ import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { fetchCategories } from '@/api/category'
-import { createHall, fetchHalls, updateHall } from '@/api/hall'
+import { createHall, fetchHallDetail, fetchHalls, updateHall } from '@/api/hall'
+import OssUploadInput from '@/components/OssUploadInput.vue'
 import { useAuthStore } from '@/stores/auth'
-import type { CategoryOption, HallItem } from '@/types/api'
+import type { CategoryOption, HallItem, HallSlideItem } from '@/types/api'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('hall:write'))
@@ -101,11 +175,16 @@ const formRef = ref<FormInstance>()
 
 const form = reactive({
   name: '',
+  shortName: '',
   cover: '',
   intro: '',
+  vrUrl: '',
   categoryId: undefined as number | undefined,
   sort: 0,
-  status: 1
+  status: 1,
+  slides: [] as HallSlideItem[],
+  audioUrl: '',
+  audioTime: ''
 })
 
 const rules: FormRules = {
@@ -129,23 +208,46 @@ async function loadData() {
 
 function resetForm() {
   form.name = ''
+  form.shortName = ''
   form.cover = ''
   form.intro = ''
+  form.vrUrl = ''
   form.categoryId = categories.value[0]?.id
   form.sort = 0
   form.status = 1
+  form.slides = []
+  form.audioUrl = ''
+  form.audioTime = ''
 }
 
-function openDialog(row?: HallItem) {
+function addSlide() {
+  form.slides.push({ url: '', caption: '', sort: form.slides.length })
+}
+
+function removeSlide(index: number) {
+  form.slides.splice(index, 1)
+}
+
+async function openDialog(row?: HallItem) {
   resetForm()
   editingId.value = row?.id ?? null
-  if (row) {
-    form.name = row.name
-    form.cover = row.cover || ''
-    form.intro = row.intro || ''
-    form.categoryId = row.categoryId ?? undefined
-    form.sort = row.sort ?? 0
-    form.status = row.status ?? 1
+  if (row?.id) {
+    const detail = await fetchHallDetail(row.id)
+    form.name = detail.name
+    form.shortName = detail.shortName || ''
+    form.cover = detail.cover || ''
+    form.intro = detail.intro || ''
+    form.vrUrl = detail.vrUrl || ''
+    form.categoryId = detail.categoryId ?? undefined
+    form.sort = detail.sort ?? 0
+    form.status = detail.status ?? 1
+    form.slides = (detail.slides || []).map((s) => ({
+      url: s.url || '',
+      caption: s.caption || '',
+      sort: s.sort ?? 0
+    }))
+    form.audioUrl = detail.audioUrl || ''
+    form.audioTime = detail.audioTime || ''
   }
   dialogVisible.value = true
 }
@@ -155,7 +257,10 @@ async function onSave() {
   if (!valid) return
   saving.value = true
   try {
-    const payload = { ...form }
+    const payload = {
+      ...form,
+      slides: form.slides.filter((s) => s.url?.trim())
+    }
     if (editingId.value) {
       await updateHall(editingId.value, payload)
       ElMessage.success('已更新')
@@ -181,5 +286,13 @@ onMounted(async () => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.slides-block {
+  margin-bottom: 8px;
+}
+
+.slides-table {
+  margin-top: 8px;
 }
 </style>

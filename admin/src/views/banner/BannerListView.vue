@@ -55,8 +55,15 @@
         <el-form-item label="描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="2" maxlength="500" show-word-limit />
         </el-form-item>
-        <el-form-item label="图片 URL" prop="imageUrl">
-          <el-input v-model="form.imageUrl" placeholder="OSS/CDN 图片地址（可留空使用色块占位）" />
+        <el-form-item label="轮播图片">
+          <OssUploadInput
+            v-model="form.imageUrl"
+            scene="banner"
+            accept="image/*"
+            upload-label="上传图片"
+            done-text="图片已上传"
+            hint="可留空，小程序将使用色块占位"
+          />
         </el-form-item>
         <el-form-item label="跳转类型" prop="linkType">
           <el-select v-model="form.linkType" style="width: 100%">
@@ -67,7 +74,7 @@
         </el-form-item>
         <el-form-item v-if="form.linkType !== 'none'" label="跳转值" prop="linkValue">
           <el-input v-model="form.linkValue" placeholder="如 /packageA/news/detail?id=1" />
-          <div class="form-tip">page 类型填小程序路径；url 类型填 https 链接</div>
+          <div class="form-tip">小程序页面填内部路径；外部链接填完整网页地址</div>
         </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" :max="999" />
@@ -94,6 +101,7 @@ import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createBanner, fetchBanners, removeBanner, updateBanner } from '@/api/banner'
+import OssUploadInput from '@/components/OssUploadInput.vue'
 import type { BannerItem } from '@/types/api'
 
 const loading = ref(false)

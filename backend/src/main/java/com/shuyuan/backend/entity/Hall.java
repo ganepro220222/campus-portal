@@ -15,8 +15,10 @@ public class Hall {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String name;
+    private String shortName;
     private String cover;
     private String intro;
+    private String vrUrl;
     private Long categoryId;
     private Integer sort;
     private Integer status;

@@ -5,6 +5,10 @@ export function fetchHalls(page = 1, size = 20) {
   return get<PageResult<HallItem>>('/admin/halls', { page, size })
 }
 
+export function fetchHallDetail(id: number) {
+  return get<HallItem>(`/admin/halls/${id}`)
+}
+
 export function createHall(data: Partial<HallItem>) {
   return post<HallItem>('/admin/halls', data)
 }

@@ -7,7 +7,6 @@ const {
 } = require('../../utils/decorate')
 const { openContentLink } = require('../../utils/navigate')
 const { getNavBarLayout } = require('../../utils/navbar')
-const { vrHallUrl, vrHallTitle } = require('../../config/env')
 
 Page({
   data: {
@@ -95,15 +94,8 @@ Page({
   onNoticeTap() { wx.switchTab({ url: '/pages/news/index' }) },
   onSearchTap() { wx.navigateTo({ url: '/packageC/search/index' }) },
 
-  onVrHallTap() {
-    if (!vrHallUrl) {
-      wx.showToast({ title: '虚拟展厅即将上线', icon: 'none' })
-      return
-    }
-    wx.navigateTo({
-      url: '/packageC/college/webview?url=' + encodeURIComponent(vrHallUrl)
-        + '&title=' + encodeURIComponent(vrHallTitle || '虚拟展厅')
-    })
+  onCraftTap() {
+    wx.navigateTo({ url: '/packageA/craft/list' })
   },
 
   onEntryTap(e) {

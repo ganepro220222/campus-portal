@@ -72,8 +72,11 @@ public class HallService {
         Map<String, Object> m = new HashMap<>();
         m.put("id", hall.getId());
         m.put("name", hall.getName());
+        m.put("shortName", resolveShortName(hall));
         m.put("cover", hall.getCover());
         m.put("intro", hall.getIntro());
+        m.put("vrUrl", hall.getVrUrl());
+        m.put("vrReady", isVrReady(hall.getVrUrl()));
         m.put("cat", categoryService.getName(hall.getCategoryId(), catMap));
         m.put("categoryName", categoryService.getName(hall.getCategoryId(), catMap));
         m.put("slides", slides);
@@ -85,13 +88,34 @@ public class HallService {
         return m;
     }
 
+    static String resolveShortName(Hall hall) {
+        if (hall == null) {
+            return "";
+        }
+        if (hall.getShortName() != null && !hall.getShortName().isBlank()) {
+            return hall.getShortName().trim();
+        }
+        String name = hall.getName() != null ? hall.getName().trim() : "";
+        if (name.length() <= 8) {
+            return name;
+        }
+        return name.replaceAll("馆$", "");
+    }
+
+    static boolean isVrReady(String vrUrl) {
+        return vrUrl != null && !vrUrl.isBlank() && vrUrl.trim().startsWith("https://");
+    }
+
     private Map<String, Object> toListItem(Hall h, Map<Long, String> catMap) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", h.getId());
         m.put("name", h.getName());
+        m.put("shortName", resolveShortName(h));
         m.put("cover", h.getCover());
         m.put("intro", h.getIntro());
         m.put("desc", h.getIntro());
+        m.put("vrUrl", h.getVrUrl());
+        m.put("vrReady", isVrReady(h.getVrUrl()));
         m.put("cat", categoryService.getName(h.getCategoryId(), catMap));
         m.put("categoryName", categoryService.getName(h.getCategoryId(), catMap));
         return m;

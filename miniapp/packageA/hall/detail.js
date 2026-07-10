@@ -5,8 +5,9 @@ const { mergeHallDetail } = require('../../utils/content')
 
 Page({
   data: {
-    hall: mock.hallDetail,
+    hall: mergeHallDetail(null, mock.hallDetail),
     galleryIndex: 0,
+    currentCaption: mock.hallDetail.caption,
     waveBars: Array.from({ length: 16 }, (_, i) => (i * 0.06).toFixed(2)),
     audioPlaying: false
   },
@@ -16,7 +17,13 @@ Page({
     const id = opts && opts.id
     if (!id) return
     get(`/halls/${id}`).then(h => {
-      if (h) this.setData({ hall: mergeHallDetail(h) })
+      if (h) {
+        const hall = mergeHallDetail(h)
+        this.setData({
+          hall,
+          currentCaption: hall.currentCaption || hall.caption
+        })
+      }
     }).catch(err => {
       console.warn('[hall/detail] 详情加载失败', err)
     })
@@ -25,7 +32,12 @@ Page({
   onUnload() { this._stopAudio() },
   onHide() { this._stopAudio() },
 
-  onGallery(e) { this.setData({ galleryIndex: e.detail.current }) },
+  onGallery(e) {
+    const idx = e.detail.current
+    const slides = (this.data.hall && this.data.hall.slides) || []
+    const cap = (slides[idx] && slides[idx].caption) || this.data.hall.caption || '左右滑动浏览，支持双指放大'
+    this.setData({ galleryIndex: idx, currentCaption: cap })
+  },
 
   onPreviewSlide(e) {
     const url = e.currentTarget.dataset.url
@@ -37,6 +49,19 @@ Page({
       .map(s => s.imageUrl)
       .filter(Boolean)
     wx.previewImage({ current: url, urls: urls.length ? urls : [url] })
+  },
+
+  onEnterVr() {
+    const hall = this.data.hall || {}
+    const url = hall.vrUrl
+    if (!url || !hall.vrReady) {
+      wx.showToast({ title: 'VR 链接筹备中', icon: 'none' })
+      return
+    }
+    wx.navigateTo({
+      url: '/packageC/college/webview?url=' + encodeURIComponent(url)
+        + '&title=' + encodeURIComponent(hall.name || 'VR展厅')
+    })
   },
 
   onAudio() {

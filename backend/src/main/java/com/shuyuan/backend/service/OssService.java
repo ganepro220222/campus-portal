@@ -33,7 +33,8 @@ public class OssService {
             "video", Set.of("mp4", "mov"),
             "audio", Set.of("mp3", "m4a", "wav"),
             "document", Set.of("pdf", "doc", "docx", "ppt", "pptx"),
-            "subtitle", Set.of("vtt", "srt")
+            "subtitle", Set.of("vtt", "srt"),
+            "model3d", Set.of("glb", "gltf")
     );
 
     private final OssProperties ossProperties;
@@ -135,6 +136,7 @@ public class OssService {
             case "audio" -> "audio";
             case "file", "resource_file" -> "document";
             case "subtitle" -> "subtitle";
+            case "model3d", "model", "glb" -> "model3d";
             default -> scene.toLowerCase(Locale.ROOT);
         };
     }
@@ -145,6 +147,7 @@ public class OssService {
             case "audio" -> "audios";
             case "document" -> "files";
             case "subtitle" -> "subtitles";
+            case "model3d" -> "models";
             default -> "images";
         };
         String month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));

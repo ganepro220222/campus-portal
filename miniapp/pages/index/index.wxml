@@ -97,13 +97,13 @@
       </view>
     </view>
 
-    <!-- 虚拟文创展厅（第三方 VR，占位可换链接） -->
-    <view class="vr-banner wrap" bindtap="onVrHallTap">
-      <view class="vr-banner-inner">
-        <view class="vr-ic"><icon name="museum" size="28" color="#ffffff" /></view>
-        <view class="vr-text">
-          <text class="vr-title serif">虚拟文创展厅</text>
-          <text class="vr-sub">VR 沉浸式漫游 · 点击进入</text>
+    <!-- 文化好物（工艺品展示，无在线购买） -->
+    <view class="craft-banner wrap" bindtap="onCraftTap">
+      <view class="craft-banner-inner">
+        <view class="craft-ic"><icon name="medal" size="28" color="#ffffff" /></view>
+        <view class="craft-text">
+          <text class="craft-title serif">非遗文化好物</text>
+          <text class="craft-sub">工艺品鉴赏 · 咨询选购</text>
         </view>
         <icon name="chevron-right" size="18" color="rgba(255,255,255,0.85)" />
       </view>

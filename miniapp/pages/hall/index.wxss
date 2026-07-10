@@ -78,7 +78,30 @@
   text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.3);
 }
 .hcard-foot { padding: 16rpx 20rpx 20rpx; }
-.hcard-name { font-size: 27rpx; font-weight: 600; color: var(--ink); display: block; }
+.hcard-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+  min-height: 2.7em;
+}
+.hcard-vr {
+  display: inline-block;
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 16rpx;
+  background: rgba(63, 87, 181, 0.1);
+  color: #3F57B5;
+}
+.hcard-vr-off {
+  background: #F0F2F7;
+  color: #8A93B2;
+}
 .hcard-desc {
   font-size: 21rpx;
   color: var(--muted);

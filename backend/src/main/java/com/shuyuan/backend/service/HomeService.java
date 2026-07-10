@@ -71,6 +71,7 @@ public class HomeService {
         Map<String, Object> m = new HashMap<>();
         m.put("id", h.getId());
         m.put("name", h.getName());
+        m.put("shortName", HallService.resolveShortName(h));
         m.put("intro", h.getIntro());
         m.put("cover", h.getCover());
         m.put("categoryName", categoryService.getName(h.getCategoryId(), catMap));

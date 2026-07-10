@@ -91,12 +91,25 @@
             <el-option v-for="t in FILE_TYPE_OPTIONS" :key="t.value" :label="t.label" :value="t.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="文件 URL" prop="fileUrl">
-          <el-input v-model="form.fileUrl" placeholder="CDN 文件地址" />
-          <div class="form-tip">文件上传/OSS 将在后续版本接入，当前请填写 CDN 地址</div>
+        <el-form-item label="学习资料" prop="fileUrl">
+          <OssUploadInput
+            v-model="form.fileUrl"
+            scene="resource_file"
+            accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mp3"
+            upload-label="上传文件"
+            done-text="文件已上传"
+            hint="支持 PDF、Word、PPT、音视频等格式"
+          />
         </el-form-item>
-        <el-form-item label="预览 URL">
-          <el-input v-model="form.previewUrl" placeholder="PDF/视频在线预览地址，可与文件地址相同" />
+        <el-form-item label="在线预览">
+          <OssUploadInput
+            v-model="form.previewUrl"
+            scene="resource_file"
+            accept=".pdf,.mp4"
+            upload-label="上传预览文件"
+            done-text="预览文件已上传"
+            hint="选填；可与学习资料相同，用于在线预览"
+          />
         </el-form-item>
         <el-form-item label="大小(KB)">
           <el-input-number v-model="form.fileSizeKb" :min="1" :max="999999" />
@@ -133,6 +146,7 @@ import {
   updateResource
 } from '@/api/resource'
 import { useAuthStore } from '@/stores/auth'
+import OssUploadInput from '@/components/OssUploadInput.vue'
 import type { CategoryOption, ResourceItem } from '@/types/api'
 
 const auth = useAuthStore()

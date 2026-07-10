@@ -17,7 +17,16 @@
             </view>
           </swiper-item>
         </swiper>
-        <view class="gcap">{{hall.caption}}</view>
+        <view class="gcap">{{currentCaption}}</view>
+      </view>
+
+      <!-- VR 展厅入口 -->
+      <view class="vr-block">
+        <button class="vr-btn {{hall.vrReady ? '' : 'vr-btn-off'}}" bindtap="onEnterVr">
+          <icon name="museum" size="20" color="#ffffff" />
+          <text>{{hall.vrReady ? '进入 VR 展厅' : 'VR 链接筹备中'}}</text>
+        </button>
+        <text wx:if="{{hall.vrReady}}" class="vr-hint">720 云全景漫游 · 建议在 Wi-Fi 环境下体验</text>
       </view>
 
       <!-- 语音讲解 -->
@@ -35,6 +44,7 @@
       <!-- 展馆介绍 -->
       <view class="hall-intro">
         <view class="hi-title serif">{{hall.name}}</view>
+        <view wx:if="{{hall.shortName && hall.shortName !== hall.name}}" class="hi-sub">{{hall.shortName}}</view>
         <view class="hi-p">{{hall.intro}}</view>
         <view class="poster-btn-wrap">
           <button class="poster-btn" bindtap="onPoster">

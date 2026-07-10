@@ -204,18 +204,18 @@
 }
 
 /* ── 虚拟文创展厅入口 ── */
-.vr-banner { margin-top: 24rpx; }
-.vr-banner-inner {
+.craft-banner { margin-top: 24rpx; }
+.craft-banner-inner {
   display: flex;
   align-items: center;
   gap: 22rpx;
   padding: 28rpx 30rpx;
   border-radius: 28rpx;
-  background: linear-gradient(135deg, #2B356E 0%, #4A5FA8 55%, #6B7EC8 100%);
-  box-shadow: 0 16rpx 40rpx rgba(43, 53, 110, 0.22);
+  background: linear-gradient(135deg, #8C5A2B 0%, #BE9C44 55%, #D4B76A 100%);
+  box-shadow: 0 16rpx 40rpx rgba(140, 90, 43, 0.22);
 }
-.vr-banner:active { opacity: 0.92; }
-.vr-ic {
+.craft-banner:active { opacity: 0.92; }
+.craft-ic {
   width: 80rpx;
   height: 80rpx;
   border-radius: 24rpx;
@@ -225,18 +225,18 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.vr-text { flex: 1; min-width: 0; }
-.vr-title {
+.craft-text { flex: 1; min-width: 0; }
+.craft-title {
   display: block;
   font-size: 32rpx;
   font-weight: 700;
   color: #fff;
   letter-spacing: 2rpx;
 }
-.vr-sub {
+.craft-sub {
   display: block;
   font-size: 23rpx;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.88);
   margin-top: 8rpx;
 }
 

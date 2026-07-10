@@ -10,11 +10,10 @@ services:
       - mysql_data:/var/lib/mysql
       - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ./sql/seed-dev.sql:/docker-entrypoint-initdb.d/02-seed-dev.sql
-    command: >
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --init-connect=SET NAMES utf8mb4
-      --ngram-token-size=2
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --ngram-token-size=2
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pdev123456"]
       interval: 5s

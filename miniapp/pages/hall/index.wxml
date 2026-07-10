@@ -40,6 +40,7 @@
         <view class="hcard-foot">
           <text class="hcard-name">{{item.name}}</text>
           <text class="hcard-desc">{{item.desc}}</text>
+          <text class="hcard-vr {{item.vrReady ? '' : 'hcard-vr-off'}}">{{item.vrReady ? 'VR 可体验' : 'VR 筹备中'}}</text>
         </view>
       </view>
     </view>

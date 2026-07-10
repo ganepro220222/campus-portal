@@ -56,7 +56,7 @@
           <el-input v-model="form.content" type="textarea" :rows="3" maxlength="500" show-word-limit />
         </el-form-item>
         <el-form-item label="跳转链接">
-          <el-input v-model="form.linkUrl" placeholder="可选，https 或小程序页面路径" />
+          <el-input v-model="form.linkUrl" placeholder="选填，可填小程序内部页面路径" />
         </el-form-item>
         <el-form-item label="生效时间">
           <el-date-picker

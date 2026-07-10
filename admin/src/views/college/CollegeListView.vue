@@ -57,8 +57,15 @@
         <el-form-item label="简介" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" maxlength="200" show-word-limit />
         </el-form-item>
-        <el-form-item label="图标 URL" prop="iconUrl">
-          <el-input v-model="form.iconUrl" placeholder="可选，留空则使用色块徽章" />
+        <el-form-item label="学院图标">
+          <OssUploadInput
+            v-model="form.iconUrl"
+            scene="image"
+            accept="image/*"
+            upload-label="上传图标"
+            done-text="图标已上传"
+            hint="选填，留空则使用默认色块"
+          />
         </el-form-item>
         <el-form-item label="对接方式" prop="contentType">
           <el-select v-model="form.contentType" style="width: 100%">
@@ -77,12 +84,12 @@
           </el-form-item>
         </template>
         <template v-if="form.contentType === 'embed_h5' || form.contentType === 'api_sync'">
-          <el-form-item label="内容地址" prop="contentUrl">
-            <el-input v-model="form.contentUrl" placeholder="https:// 开头的 H5 或 API 地址" />
+          <el-form-item label="嵌入页面" prop="contentUrl">
+            <el-input v-model="form.contentUrl" placeholder="粘贴技术人员提供的网页地址" />
           </el-form-item>
         </template>
-        <el-form-item v-if="form.contentType === 'api_sync'" label="接口 Token" prop="apiToken">
-          <el-input v-model="form.apiToken" placeholder="可选，对方 API 鉴权用" show-password />
+        <el-form-item v-if="form.contentType === 'api_sync'" label="接口密钥" prop="apiToken">
+          <el-input v-model="form.apiToken" placeholder="选填，由技术人员配置" show-password />
         </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" :max="999" />
@@ -109,6 +116,7 @@ import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createCollege, deleteCollege, fetchColleges, updateCollege } from '@/api/college'
+import OssUploadInput from '@/components/OssUploadInput.vue'
 import type { CollegeAppItem } from '@/api/college'
 
 const loading = ref(false)

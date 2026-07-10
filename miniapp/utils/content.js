@@ -36,20 +36,27 @@ function mergeNewsArticle(raw, fallback) {
 function mergeHallDetail(raw, fallback) {
   const base = fallback || (useMock ? mock.hallDetail : {})
   if (!raw) return useMock ? base : {}
-  const tpl = base.slides || []
-  const slides = (raw.slides || tpl).map((s, i) => ({
-    ...(tpl[i % tpl.length] || tpl[0] || {}),
-    ...s
-  }))
+  const slides = (raw.slides && raw.slides.length)
+    ? raw.slides.map((s, i) => ({
+      cls: 'gi' + ((i % 3) + 1),
+      icon: 'museum',
+      ...s
+    }))
+    : (useMock ? (base.slides || []) : [{ cls: 'gi1', icon: 'museum' }])
+  const vrUrl = raw.vrUrl || base.vrUrl || ''
   return {
     ...base,
     ...raw,
     name: raw.name || base.name,
+    shortName: raw.shortName || base.shortName,
     intro: raw.intro || base.intro,
     slides,
     caption: raw.caption || base.caption,
+    currentCaption: raw.caption || base.caption,
     audioTime: raw.audioTime || base.audioTime,
-    audioUrl: raw.audioUrl || base.audioUrl || ''
+    audioUrl: raw.audioUrl || base.audioUrl || '',
+    vrUrl,
+    vrReady: raw.vrReady === true || (vrUrl && String(vrUrl).startsWith('https://'))
   }
 }
 

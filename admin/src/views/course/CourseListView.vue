@@ -6,7 +6,9 @@
     </div>
 
     <p class="text-muted">
-      维护在线课程信息与上下架；支持 OSS 上传封面/视频/字幕，未配置 OSS 时可手动粘贴 CDN 地址。
+    <p class="text-muted">
+      维护在线课程信息与上下架；支持上传封面、教学视频与字幕文件。
+    </p>
     </p>
 
     <div class="toolbar">
@@ -84,7 +86,15 @@
           </el-select>
         </el-form-item>
         <el-form-item label="封面">
-          <OssUploadInput v-model="form.cover" scene="cover" accept="image/*" placeholder="上传封面或粘贴 CDN 地址" />
+        <el-form-item label="封面图">
+          <OssUploadInput
+            v-model="form.cover"
+            scene="cover"
+            accept="image/*"
+            upload-label="上传封面"
+            done-text="封面已上传"
+          />
+        </el-form-item>
         </el-form-item>
         <el-form-item label="适合人群">
           <el-input v-model="form.targetAudience" maxlength="200" placeholder="如：全校学生" />
@@ -106,7 +116,16 @@
           <el-input v-model="form.intro" type="textarea" :rows="4" maxlength="2000" show-word-limit />
         </el-form-item>
         <el-form-item label="课程视频">
-          <OssUploadInput v-model="form.videoUrl" scene="video" accept="video/mp4,video/quicktime" placeholder="上传 MP4 或粘贴 CDN 地址" />
+        <el-form-item label="教学视频">
+          <OssUploadInput
+            v-model="form.videoUrl"
+            scene="video"
+            accept="video/mp4,video/quicktime"
+            upload-label="上传视频"
+            done-text="视频已上传"
+            hint="支持 MP4 格式，文件较大时请耐心等待"
+          />
+        </el-form-item>
         </el-form-item>
         <el-form-item label="配套资源">
           <el-select
@@ -143,7 +162,13 @@
             </span>
           </el-form-item>
           <el-form-item label="字幕文件">
-            <OssUploadInput v-model="subtitleUrlInput" scene="subtitle" accept=".vtt,.srt" placeholder="上传 .vtt 或粘贴地址" />
+            <OssUploadInput
+              v-model="subtitleUrlInput"
+              scene="subtitle"
+              accept=".vtt,.srt"
+              upload-label="上传字幕"
+              done-text="字幕已上传"
+            />
           </el-form-item>
           <el-form-item>
             <el-button
@@ -155,7 +180,7 @@
             <el-button v-if="canWrite" type="primary" :loading="subtitleSaving" @click="onSaveSubtitle">
               保存字幕地址
             </el-button>
-            <div class="form-tip">开发环境 ASR 未接入，触发后请手动填写字幕 URL 并保存</div>
+            <div class="form-tip">开发环境需手动上传字幕文件后保存</div>
           </el-form-item>
         </template>
       </el-form>
@@ -354,7 +379,7 @@ async function onTriggerSubtitle() {
   subtitleTriggering.value = true
   try {
     subtitleInfo.value = await triggerSubtitle(editingId.value)
-    ElMessage.success('已提交字幕任务（开发环境需手动填写 URL）')
+    ElMessage.success('已提交字幕任务（开发环境请上传字幕后保存）')
   } finally {
     subtitleTriggering.value = false
   }
@@ -363,7 +388,7 @@ async function onTriggerSubtitle() {
 async function onSaveSubtitle() {
   if (!editingId.value) return
   if (!subtitleUrlInput.value.trim()) {
-    ElMessage.warning('请填写字幕 URL')
+    ElMessage.warning('请先上传字幕文件')
     return
   }
   subtitleSaving.value = true

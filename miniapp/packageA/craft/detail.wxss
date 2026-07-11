@@ -6,6 +6,7 @@
 
 /* 图集 */
 .gal { border-radius: 28rpx; overflow: hidden; box-shadow: var(--shadow); position: relative; }
+.gal-3d { margin-bottom: 0; }
 .gslides { height: 460rpx; }
 .gimg { height: 460rpx; display: flex; align-items: center; justify-content: center; position: relative; }
 .gimg-img { width: 100%; height: 100%; }
@@ -31,18 +32,33 @@
   margin-top: 24rpx;
   box-shadow: var(--shadow-sm);
 }
-.ci-title { font-size: 38rpx; font-weight: 700; color: var(--ink); }
-.ci-tags { display: flex; gap: 14rpx; margin: 18rpx 0 22rpx; }
-.ci-zh { font-size: 27rpx; line-height: 1.9; color: var(--ink); text-align: justify; }
-.ci-en {
-  font-size: 22rpx;
-  line-height: 1.7;
-  color: var(--muted);
-  margin-top: 16rpx;
-  font-style: italic;
-  padding-top: 16rpx;
-  border-top: 1rpx dashed var(--line);
+.ci-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
 }
+.ci-title { font-size: 38rpx; font-weight: 700; color: var(--ink); flex: 1; }
+.lang-switch {
+  display: flex;
+  border: 1rpx solid var(--line);
+  border-radius: 16rpx;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.lang-btn {
+  padding: 10rpx 20rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+  background: #fff;
+}
+.lang-btn.lang-on {
+  background: var(--sky-2);
+  color: var(--navy);
+  font-weight: 700;
+}
+.ci-tags { display: flex; gap: 14rpx; margin: 18rpx 0 22rpx; }
+.ci-body { font-size: 27rpx; line-height: 1.9; color: var(--ink); text-align: justify; }
 
 /* 联系方式 */
 .contact {
@@ -68,6 +84,7 @@
 .c-body { flex: 1; min-width: 0; }
 .c-k { font-size: 22rpx; color: var(--muted); display: block; }
 .c-v { font-size: 27rpx; color: var(--ink); font-weight: 500; margin-top: 4rpx; display: block; }
+.c-act { font-size: 22rpx; color: var(--navy); font-weight: 600; flex-shrink: 0; }
 
 /* 海报按钮：居中、随内容宽度，上限不超过卡片 */
 .poster-btn-wrap {

@@ -115,6 +115,18 @@ module.exports = {
     introZh: '贵州苗族传统银饰，以蝴蝶妈妈为图腾，寓意生命与美好。',
     introEn: 'Traditional Miao silver headdress featuring butterfly motifs.',
     previewType: 'multi_image',
+    model3dUrl: '',
+    images: [{ imageUrl: '', angleLabel: '正面' }],
+    contact: { phone: '0851-12345678', wechat: 'shuyuan_craft', email: 'craft@gzjtzy.edu.cn' }
+  },
+
+  craftDetail3d: {
+    id: 3,
+    name: '屯堡石雕·地戏面具',
+    introZh: '屯堡传统石雕地戏面具，六百年非遗活态传承。',
+    introEn: 'Tunpu stone-carved opera mask, living heritage craft.',
+    previewType: 'model3d',
+    model3dUrl: 'https://mmbizwxaminiprogram-1258344707.cos.ap-guangzhou.myqcloud.com/xr-frame/demo/damage-helmet/index.glb',
     images: [{ imageUrl: '', angleLabel: '正面' }],
     contact: { phone: '0851-12345678', wechat: 'shuyuan_craft', email: 'craft@gzjtzy.edu.cn' }
   },

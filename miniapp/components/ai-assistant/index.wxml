@@ -14,7 +14,7 @@
     <view class="avt"><icon name="robot" size="20" color="#ffffff" /></view>
     <view class="sheet-head-txt">
       <view class="sheet-title">书院文化助手</view>
-      <view class="sheet-sub">基于中华文化书院知识库 · AI 智能问答</view>
+      <view class="sheet-sub">{{quotaText}}</view>
     </view>
     <view class="sheet-close" bindtap="close">
       <icon name="chevron-right" size="18" color="#8A93B2" sw="2.6" />

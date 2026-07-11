@@ -54,7 +54,7 @@ const modules = [
   { title: '课程管理', desc: '在线课程上下架、视频与 AI 字幕配置', path: '/courses', perm: 'course:read', icon: VideoCamera, grad: 'linear-gradient(135deg,#5A4E86,#7E72B0)' },
   { title: '资源管理', desc: 'PDF / 音视频资料上下架与下载统计', path: '/resources', perm: 'course:read', icon: FolderOpened, grad: 'linear-gradient(135deg,#3F6B4A,#5C9A6B)' },
   { title: '活动管理', desc: '活动发布、报名审核与 Excel 导出', path: '/activities', perm: 'enroll:read', icon: Calendar, grad: 'linear-gradient(135deg,#C0A24E,#9C7C2E)' },
-  { title: 'Banner 管理', desc: '首页轮播图配置与排序', path: '/banners', perm: 'admin:super', icon: Picture, grad: 'linear-gradient(135deg,#4E7CC4,#2F5E92)' },
+  { title: '首页轮播', desc: '首页轮播图配置与排序', path: '/banners', perm: 'admin:super', icon: Picture, grad: 'linear-gradient(135deg,#4E7CC4,#2F5E92)' },
   { title: '公告管理', desc: '首页公告通知条内容维护', path: '/announcements', perm: 'admin:super', icon: Bell, grad: 'linear-gradient(135deg,#6E8FCB,#46639E)' }
 ]
 

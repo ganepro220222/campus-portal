@@ -28,7 +28,7 @@ const router = createRouter({
           path: 'banners',
           name: 'Banners',
           component: () => import('@/views/banner/BannerListView.vue'),
-          meta: { title: 'Banner 管理', permission: 'admin:super' }
+          meta: { title: '首页轮播', permission: 'admin:super' }
         },
         {
           path: 'announcements',
@@ -165,7 +165,7 @@ export const menuItems: MenuItem[] = [
   { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
   { path: '/categories', title: '分类管理', icon: Menu, permissions: ['category:read'] },
   { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
-  { path: '/banners', title: 'Banner 管理', icon: Picture, permissions: ['admin:super'] },
+  { path: '/banners', title: '首页轮播', icon: Picture, permissions: ['admin:super'] },
   { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] },
   { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] },
   { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] },

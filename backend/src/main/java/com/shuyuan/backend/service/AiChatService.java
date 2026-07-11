@@ -32,8 +32,28 @@ public class AiChatService {
     private final ContentSafetyService contentSafetyService;
     private final KnowledgeService knowledgeService;
     private final AiClientService aiClientService;
+    private final RateLimitService rateLimitService;
     private final ShuyuanProperties properties;
     private final ObjectMapper objectMapper;
+
+    /** 当前用户今日 AI 问答剩余次数 */
+    public Map<String, Object> quota() {
+        int dailyLimit = properties.getRateLimit().getAiPerDay();
+        Long memberId = MemberContext.getMemberId();
+        Map<String, Object> m = new HashMap<>();
+        m.put("dailyLimit", dailyLimit);
+        if (memberId == null) {
+            m.put("needLogin", true);
+            m.put("used", 0);
+            m.put("remaining", 0);
+            return m;
+        }
+        int used = rateLimitService.getUserUsage("ai", memberId);
+        m.put("needLogin", false);
+        m.put("used", used);
+        m.put("remaining", Math.max(0, dailyLimit - used));
+        return m;
+    }
 
     @Transactional
     public Map<String, Object> createSession() {
@@ -94,7 +114,16 @@ public class AiChatService {
             s.put("excerpt", excerpt(c.getChunkText()));
             return s;
         }).toList());
+        vo.putAll(quotaFields());
         return vo;
+    }
+
+    private Map<String, Object> quotaFields() {
+        Map<String, Object> q = quota();
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("dailyLimit", q.get("dailyLimit"));
+        fields.put("remainingToday", q.get("remaining"));
+        return fields;
     }
 
     private AiMessage saveMessage(Long sessionId, String role, String content,

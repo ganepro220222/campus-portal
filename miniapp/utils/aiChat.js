@@ -2,15 +2,23 @@
 
 const { get, post } = require('./request')
 
-async function createSession() {
-  const session = await post('/ai/chat/sessions', {})
+function hasToken() {
+  const app = getApp()
+  return !!(app.globalData.token || wx.getStorageSync('token'))
+}
+
+async function createSession(options = {}) {
+  const session = await post('/ai/chat/sessions', {}, options)
   return session && session.id ? session.id : null
 }
 
 async function fetchQuota() {
   try {
-    return await get('/ai/chat/quota')
+    return await get('/ai/chat/quota', {}, { silent: true })
   } catch (e) {
+    if (hasToken()) {
+      return { needLogin: false, dailyLimit: 20, used: 0, remaining: 20, degraded: true }
+    }
     return { needLogin: true, dailyLimit: 20, used: 0, remaining: 0 }
   }
 }

@@ -40,7 +40,7 @@ Component({
         const quota = await fetchQuota()
         this._setQuota(quota)
         if (!quota.needLogin && !this.data.sessionId) {
-          const sessionId = await createSession()
+          const sessionId = await createSession({ silent: true })
           if (sessionId) {
             this.setData({ sessionId })
           }

@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/** 管理后台账号 CRUD：仅超管可操作，新建/重置密码后强制下次改密 */
 @Service
 @RequiredArgsConstructor
 public class AdminUserService {
@@ -64,6 +65,7 @@ public class AdminUserService {
                 }).toList();
     }
 
+    /** 新建账号；未传密码时生成临时密码并标记 must_change_password */
     @Transactional
     public Map<String, Object> create(AdminUserSaveRequest req) {
         adminPermissionService.require("admin:super");
@@ -96,6 +98,7 @@ public class AdminUserService {
         return vo;
     }
 
+    /** 更新资料；禁止自改角色/自禁用，且须保留至少一名启用超管 */
     @Transactional
     public Map<String, Object> update(Long id, AdminUserSaveRequest req) {
         adminPermissionService.require("admin:super");
@@ -134,6 +137,7 @@ public class AdminUserService {
         return toVo(sysUserMapper.selectById(id), sysRoleMapper.selectById(user.getRoleId()));
     }
 
+    /** 重置密码并强制下次登录改密 */
     @Transactional
     public Map<String, Object> resetPassword(Long id, AdminResetPasswordRequest req) {
         adminPermissionService.require("admin:super");

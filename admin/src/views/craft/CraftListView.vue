@@ -49,13 +49,13 @@
         <template #default="{ row }">
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
           <el-button
-            v-if="canWrite && row.status !== 1"
+            v-if="canPublish && row.status !== 1"
             link
             type="success"
             @click="onPublish(row)"
           >上架</el-button>
           <el-button
-            v-if="canWrite && row.status === 1"
+            v-if="canPublish && row.status === 1"
             link
             type="warning"
             @click="onUnpublish(row)"
@@ -217,6 +217,7 @@ import { FIELD_HINTS } from '@/utils/field-hints'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('hall:write'))
+const canPublish = computed(() => auth.can('hall:publish'))
 
 const loading = ref(false)
 const saving = ref(false)

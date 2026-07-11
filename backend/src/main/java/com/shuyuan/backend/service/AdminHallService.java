@@ -99,7 +99,7 @@ public class AdminHallService {
 
     @Transactional
     public Map<String, Object> publish(Long id) {
-        adminPermissionService.require("hall:write");
+        adminPermissionService.require("hall:publish");
         Hall hall = requireHall(id);
         if (hall.getStatus() != null && hall.getStatus() == 1) {
             throw new BusinessException(400, "展馆已上架");
@@ -113,7 +113,7 @@ public class AdminHallService {
 
     @Transactional
     public Map<String, Object> unpublish(Long id) {
-        adminPermissionService.require("hall:write");
+        adminPermissionService.require("hall:publish");
         Hall hall = requireHall(id);
         if (hall.getStatus() == null || hall.getStatus() != 1) {
             throw new BusinessException(400, "仅已上架展馆可下架");

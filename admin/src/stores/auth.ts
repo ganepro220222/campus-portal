@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi } from '@/api/auth'
+import { login as loginApi, changePassword as changePasswordApi } from '@/api/auth'
+import type { AdminLoginData } from '@/types/api'
 import { hasPermission } from '@/utils/permission'
 
 const TOKEN_KEY = 'shuyuan_admin_token'
@@ -13,6 +14,7 @@ export interface AdminProfile {
   roleId: number
   roleName: string
   permissions: string[]
+  mustChangePassword: boolean
 }
 
 /** 管理员登录态 */
@@ -22,11 +24,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!token.value)
   const displayName = computed(() => profile.value?.realName || profile.value?.username || '管理员')
+  const mustChangePassword = computed(() => !!profile.value?.mustChangePassword)
 
   function loadProfile(): AdminProfile | null {
     try {
       const raw = localStorage.getItem(PROFILE_KEY)
-      return raw ? JSON.parse(raw) : null
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as AdminProfile
+      return { ...parsed, mustChangePassword: !!parsed.mustChangePassword }
     } catch {
       return null
     }
@@ -45,8 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(username: string, password: string) {
-    const data = await loginApi(username, password)
+  function applyLogin(data: AdminLoginData) {
     token.value = data.token
     profile.value = {
       adminId: data.adminId,
@@ -54,9 +58,20 @@ export const useAuthStore = defineStore('auth', () => {
       realName: data.realName,
       roleId: data.roleId,
       roleName: data.roleName,
-      permissions: data.permissions || []
+      permissions: data.permissions || [],
+      mustChangePassword: !!data.mustChangePassword
     }
     persist()
+  }
+
+  async function login(username: string, password: string) {
+    const data = await loginApi(username, password)
+    applyLogin(data)
+  }
+
+  async function changePassword(oldPassword: string, newPassword: string) {
+    const data = await changePasswordApi(oldPassword, newPassword)
+    applyLogin(data)
   }
 
   function logout() {
@@ -69,5 +84,16 @@ export const useAuthStore = defineStore('auth', () => {
     return hasPermission(profile.value?.permissions || [], permission)
   }
 
-  return { token, profile, isLoggedIn, displayName, login, logout, can }
+  return {
+    token,
+    profile,
+    isLoggedIn,
+    displayName,
+    mustChangePassword,
+    login,
+    changePassword,
+    applyLogin,
+    logout,
+    can
+  }
 })

@@ -48,7 +48,7 @@
           </el-button>
         </el-form>
 
-        <p class="hint">默认超管 admin / Admin@123（开发环境）<br />连续 5 次密码错误将锁定 5 分钟</p>
+        <p class="hint">开发环境默认账号 admin / Admin@123<br />生产环境请使用独立超管账号，并禁用默认 admin<br />连续 5 次密码错误将锁定 5 分钟</p>
       </div>
     </div>
   </div>

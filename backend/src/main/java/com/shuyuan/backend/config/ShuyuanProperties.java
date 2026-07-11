@@ -29,7 +29,10 @@ public class ShuyuanProperties {
     @Data
     public static class Jwt {
         private String secret = "shuyuan-dev-jwt-secret";
+        /** 小程序会员 Token 有效期（天） */
         private int expireDays = 7;
+        /** 管理后台 Token 有效期（小时），默认 8 小时 */
+        private int adminExpireHours = 8;
     }
 
     @Data

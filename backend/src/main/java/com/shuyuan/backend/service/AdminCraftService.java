@@ -103,7 +103,7 @@ public class AdminCraftService {
 
     @Transactional
     public Map<String, Object> publish(Long id) {
-        adminPermissionService.require("hall:write");
+        adminPermissionService.require("hall:publish");
         Craft craft = requireCraft(id);
         if (craft.getStatus() != null && craft.getStatus() == 1) {
             throw new BusinessException(400, "文创已上架");
@@ -116,7 +116,7 @@ public class AdminCraftService {
 
     @Transactional
     public Map<String, Object> unpublish(Long id) {
-        adminPermissionService.require("hall:write");
+        adminPermissionService.require("hall:publish");
         Craft craft = requireCraft(id);
         if (craft.getStatus() == null || craft.getStatus() != 1) {
             throw new BusinessException(400, "仅已上架文创可下架");

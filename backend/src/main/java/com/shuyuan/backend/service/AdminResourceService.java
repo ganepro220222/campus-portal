@@ -82,7 +82,7 @@ public class AdminResourceService {
 
     @Transactional
     public Map<String, Object> publish(Long id) {
-        adminPermissionService.require("course:write");
+        adminPermissionService.require("course:publish");
         Resource resource = requireResource(id);
         if (resource.getStatus() != null && resource.getStatus() == 1) {
             throw new BusinessException(400, "资源已上架");
@@ -95,7 +95,7 @@ public class AdminResourceService {
 
     @Transactional
     public Map<String, Object> unpublish(Long id) {
-        adminPermissionService.require("course:write");
+        adminPermissionService.require("course:publish");
         Resource resource = requireResource(id);
         if (resource.getStatus() == null || resource.getStatus() != 1) {
             throw new BusinessException(400, "仅已上架资源可下架");

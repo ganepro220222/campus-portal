@@ -13,6 +13,8 @@ cd .. && npm run test:mock-guard && npm run check:prod-mock
 
 - [ ] 三项全部通过
 
+> **2026-07-11 自动化实测：** `mvn test` 124 passed · admin typecheck+build OK · mock-guard OK
+
 ## 1. 健康与基础
 
 - [ ] `GET http://localhost:8080/api/v1/health` → `status=UP`，`db`/`redis`=UP

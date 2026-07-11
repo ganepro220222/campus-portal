@@ -46,6 +46,13 @@ shuyuan:
     enroll-success-template-id: ${WX_TMPL_ENROLL_SUCCESS:}
     enroll-approved-template-id: ${WX_TMPL_ENROLL_APPROVED:}
     activity-remind-template-id: ${WX_TMPL_ACTIVITY_REMIND:}
+  alert:
+    enabled: ${ALERT_ENABLED:false}
+    webhook-url: ${ALERT_WEBHOOK_URL:}
+    window-minutes: ${ALERT_WINDOW_MINUTES:5}
+    error-rate-percent: ${ALERT_ERROR_RATE_PERCENT:1}
+    min-sample-size: ${ALERT_MIN_SAMPLE_SIZE:20}
+    cooldown-minutes: ${ALERT_COOLDOWN_MINUTES:15}
   oss:
     enabled: ${OSS_ENABLED:false}
     endpoint: ${OSS_ENDPOINT:}

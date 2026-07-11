@@ -1,9 +1,12 @@
-// components/ai-assistant/index.js — 书院文化问答浮标（对接后端前使用本地预设回复）
-const FAQ_REPLIES = {
-  '阳明文化': '王阳明在贵州龙场悟道，提出“知行合一”“致良知”。书院“阳明文化馆”系统呈现其生平、思想与黔中实践，建议先看《阳明心学十二讲》课程。',
-  '屯堡文化': '屯堡文化源于明代“调北征南”，保留了六百年前的江南遗风，地戏被誉为“戏剧活化石”。可前往“屯堡文化馆”沉浸浏览，并收听语音讲解。',
-  '红色文化': '贵州是长征转折之地，遵义会议在此召开。书院“红色文化馆”联动“长征精神与红色交通史”课程，传承红色基因。'
-}
+// components/ai-assistant/index.js — 书院文化助手浮标（对接后端 RAG + 每日配额）
+const {
+  createSession,
+  fetchQuota,
+  sendQuestion,
+  quotaSubtitle,
+  applyQuotaFromMessage,
+  resolveErrorAnswer
+} = require('../../utils/aiChat')
 
 Component({
   properties: {
@@ -13,42 +16,95 @@ Component({
     open: false,
     input: '',
     firstAsk: true,
-    chips: ['什么是阳明文化？', '屯堡文化有何特色？', '贵州的红色文化'],
+    chips: ['什么是阳明文化？', '屯堡文化有何特色？', '龙场悟道讲了什么？'],
     messages: [
-      { role: 'ai', text: '你好！我是书院文化助手 📚 可以为你讲解阳明文化、屯堡文化、红色文化等。试试下面的问题：' }
+      { role: 'ai', text: '你好！我是书院文化助手，可以基于书院知识库为你解答阳明文化、屯堡文化等问题。' }
     ],
-    scrollTo: ''
+    scrollTo: '',
+    sessionId: null,
+    quota: null,
+    quotaText: '登录后可使用 AI 智能问答',
+    loading: false
   },
   methods: {
-    open() { this.setData({ open: true }) },
+    async open() {
+      this.setData({ open: true })
+      await this._prepareSession()
+    },
     close() { this.setData({ open: false }) },
     noop() {},
     onInput(e) { this.setData({ input: e.detail.value }) },
 
+    async _prepareSession() {
+      try {
+        const quota = await fetchQuota()
+        this._setQuota(quota)
+        if (!quota.needLogin && !this.data.sessionId) {
+          const sessionId = await createSession()
+          if (sessionId) {
+            this.setData({ sessionId })
+          }
+        }
+      } catch (e) {
+        // 未登录或网络异常时保留提示文案
+      }
+    },
+
+    _setQuota(quota) {
+      this.setData({
+        quota,
+        quotaText: quotaSubtitle(quota)
+      })
+    },
+
     onChip(e) {
-      const q = e.currentTarget.dataset.q
-      this._ask(q.replace(/[？?]/g, '').replace(/^什么是|有何特色|贵州的/g, '') || q, q)
+      this._ask(e.currentTarget.dataset.q)
     },
 
     send() {
       const v = (this.data.input || '').trim()
-      if (!v) return
+      if (!v || this.data.loading) return
       this.setData({ input: '' })
-      this._ask(v, v)
+      this._ask(v)
     },
 
-    _ask(key, shown) {
-      const msgs = this.data.messages.concat([{ role: 'me', text: shown }, { role: 'ai', text: '正在思考…' }])
+    async _ask(shown) {
+      const quota = this.data.quota
+      if (quota && quota.needLogin) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      if (quota && quota.remaining <= 0) {
+        wx.showToast({ title: '今日次数已用完', icon: 'none', duration: 3500 })
+        return
+      }
+
+      const msgs = this.data.messages.concat([
+        { role: 'me', text: shown },
+        { role: 'ai', text: '正在思考…' }
+      ])
       const idx = msgs.length - 1
-      this.setData({ messages: msgs, firstAsk: false, scrollTo: 'm' + idx })
-      const matchKey = Object.keys(FAQ_REPLIES).find(k => key.indexOf(k) >= 0)
-      const answer = matchKey ? FAQ_REPLIES[matchKey]
-        : ('关于“' + shown + '”，暂未找到相关资料，请换个问法或稍后再试。')
-      setTimeout(() => {
+      this.setData({ messages: msgs, firstAsk: false, scrollTo: 'm' + idx, loading: true })
+
+      try {
+        if (!this.data.sessionId) {
+          const sessionId = await createSession()
+          if (!sessionId) throw new Error('no-session')
+          this.setData({ sessionId })
+        }
+        const res = await sendQuestion(this.data.sessionId, shown)
         const list = this.data.messages.slice()
-        list[idx] = { role: 'ai', text: answer }
-        this.setData({ messages: list, scrollTo: 'm' + idx })
-      }, 650)
+        list[idx] = { role: 'ai', text: res.content || '暂时无法回答，请换个问法试试。' }
+        this._setQuota(applyQuotaFromMessage(this.data.quota, res))
+        this.setData({ messages: list, scrollTo: 'm' + idx, loading: false })
+      } catch (e) {
+        const list = this.data.messages.slice()
+        list[idx] = { role: 'ai', text: resolveErrorAnswer(e, shown) }
+        if (e && e.code === 429) {
+          this._setQuota({ needLogin: false, dailyLimit: 20, used: 20, remaining: 0 })
+        }
+        this.setData({ messages: list, scrollTo: 'm' + idx, loading: false })
+      }
     }
   }
 })

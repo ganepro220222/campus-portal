@@ -5,7 +5,7 @@
     <view class="chat-intro">
       <view class="ci-avatar"><icon name="robot" size="32" color="#ffffff" /></view>
       <view class="ci-name serif">书院文化助手</view>
-      <view class="ci-desc">基于中华文化书院知识库 · AI 智能问答</view>
+      <view class="ci-desc">{{quotaText}}</view>
     </view>
 
     <view class="row {{item.role}}" wx:for="{{messages}}" wx:key="index" id="m{{index}}">

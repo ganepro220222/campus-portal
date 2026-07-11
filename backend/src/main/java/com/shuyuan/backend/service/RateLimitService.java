@@ -43,7 +43,33 @@ public class RateLimitService {
             redis.expire(redisKey, window);
         }
         if (count != null && count > limit) {
-            throw new BusinessException(429, "操作过于频繁，请稍后再试");
+            String message = "ai".equals(scene)
+                    ? "今日问答次数已用完，请明天再来"
+                    : "操作过于频繁，请稍后再试";
+            throw new BusinessException(429, message);
+        }
+    }
+
+    /** 查询用户在某场景下的已用次数（只读，不递增） */
+    public int getUserUsage(String scene, Long userId) {
+        if (userId == null) {
+            return 0;
+        }
+        return getUsage(scene, "u:" + userId);
+    }
+
+    int getUsage(String scene, String keySuffix) {
+        if (!properties.getRateLimit().isEnabled()) {
+            return 0;
+        }
+        String val = redis.opsForValue().get(PREFIX + scene + ":" + keySuffix);
+        if (val == null || val.isBlank()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(val.trim());
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 

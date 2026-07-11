@@ -1,8 +1,8 @@
 <template>
   <div class="page-card">
     <div class="page-header">
-      <h2>Banner 管理</h2>
-      <el-button type="primary" :icon="Plus" @click="openDialog()">新建 Banner</el-button>
+      <h2>首页轮播</h2>
+      <el-button type="primary" :icon="Plus" @click="openDialog()">新建轮播图</el-button>
     </div>
 
     <p class="text-muted">配置首页轮播图与跳转链接，保存后小程序端可在缓存刷新后展示（验收标准：5 分钟内同步）。</p>
@@ -44,7 +44,7 @@
 
     <el-dialog
       v-model="dialogVisible"
-      :title="editingId ? '编辑 Banner' : '新建 Banner'"
+      :title="editingId ? '编辑轮播图' : '新建轮播图'"
       width="560px"
       destroy-on-close
     >

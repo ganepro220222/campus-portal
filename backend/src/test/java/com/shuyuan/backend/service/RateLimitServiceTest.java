@@ -58,6 +58,24 @@ class RateLimitServiceTest {
     }
 
     @Test
+    void check_aiDailyLimitUsesFriendlyMessage() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(21L);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> rateLimitService.checkUser("ai", 9L, 20, Duration.ofDays(1)));
+        assertEquals(429, ex.getCode());
+        assertEquals("今日问答次数已用完，请明天再来", ex.getMessage());
+    }
+
+    @Test
+    void getUserUsage_readsRedisWithoutIncrement() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get("ratelimit:ai:u:3")).thenReturn("7");
+        assertEquals(7, rateLimitService.getUserUsage("ai", 3L));
+        verify(valueOps, never()).increment(anyString());
+    }
+
+    @Test
     void check_skipsWhenDisabled() {
         properties.getRateLimit().setEnabled(false);
         rateLimitService.checkIp("login", "127.0.0.1", 10, Duration.ofMinutes(1));

@@ -22,5 +22,9 @@ Page({
     const val = e.currentTarget.dataset.val
     if (!val) return
     wx.setClipboardData({ data: String(val), success() { wx.showToast({ title: '已复制', icon: 'none' }) } })
+  },
+
+  onPrivacy() {
+    wx.navigateTo({ url: '/packageC/legal/privacy' })
   }
 })

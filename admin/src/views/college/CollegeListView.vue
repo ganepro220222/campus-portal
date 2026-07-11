@@ -1,18 +1,18 @@
 <template>
   <div class="page-card">
     <div class="page-header">
-      <h2>学院矩阵</h2>
-      <el-button type="primary" :icon="Plus" @click="openDialog()">新增学院</el-button>
+      <h2>关联小程序</h2>
+      <el-button type="primary" :icon="Plus" @click="openDialog()">新增入口</el-button>
     </div>
 
     <p class="text-muted">
-      配置各二级学院入口与对接方式。保存并上架后，小程序「学院矩阵」页按排序展示。
+      配置兄弟小程序或 H5 入口与对接方式。保存并上架后，小程序「关联小程序」页按排序展示。
       若使用「小程序跳转」，须在 <code>miniapp/app.json</code> 的 <code>navigateToMiniProgramAppIdList</code> 中声明目标 AppID。
     </p>
 
     <el-table v-loading="loading" :data="list" stripe border>
       <el-table-column prop="sort" label="排序" width="70" align="center" />
-      <el-table-column prop="name" label="学院名称" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="name" label="名称" min-width="160" show-overflow-tooltip />
       <el-table-column label="对接方式" width="110" align="center">
         <template #default="{ row }">
           <el-tag size="small">{{ row.contentTypeLabel }}</el-tag>
@@ -46,12 +46,12 @@
 
     <el-dialog
       v-model="dialogVisible"
-      :title="editingId ? '编辑学院' : '新增学院'"
+      :title="editingId ? '编辑入口' : '新增入口'"
       width="640px"
       destroy-on-close
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="学院名称" prop="name">
+        <el-form-item label="名称" prop="name">
           <el-input v-model="form.name" maxlength="100" show-word-limit />
           <FieldHint :text="FIELD_HINTS.collegeName" />
         </el-form-item>
@@ -59,7 +59,7 @@
           <el-input v-model="form.description" type="textarea" :rows="3" maxlength="200" show-word-limit />
           <FieldHint :text="FIELD_HINTS.collegeDesc" />
         </el-form-item>
-        <el-form-item label="学院图标">
+        <el-form-item label="图标">
           <OssUploadInput
             v-model="form.iconUrl"
             scene="image"

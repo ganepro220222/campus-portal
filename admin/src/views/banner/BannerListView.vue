@@ -51,9 +51,11 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="form.title" maxlength="200" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.bannerTitle" />
         </el-form-item>
         <el-form-item label="描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="2" maxlength="500" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.bannerDesc" />
         </el-form-item>
         <el-form-item label="轮播图片">
           <CoverUploadField
@@ -101,8 +103,10 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createBanner, fetchBanners, removeBanner, updateBanner } from '@/api/banner'
 import CoverUploadField from '@/components/CoverUploadField.vue'
+import FieldHint from '@/components/FieldHint.vue'
 import type { BannerItem } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
+import { FIELD_HINTS } from '@/utils/field-hints'
 
 const loading = ref(false)
 const saving = ref(false)

@@ -46,7 +46,17 @@
   border-radius: 16rpx;
 }
 .ccard-foot { padding: 18rpx 20rpx 22rpx; }
-.ccard-name { font-size: 27rpx; font-weight: 700; color: var(--ink); display: block; }
+.ccard-name {
+  font-size: 27rpx;
+  font-weight: 700;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.35;
+  word-break: break-all;
+}
 .ccard-desc {
   font-size: 21rpx;
   color: var(--muted);

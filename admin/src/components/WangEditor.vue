@@ -91,16 +91,26 @@ onBeforeUnmount(() => {
   width: 100%;
   border: 1px solid var(--el-border-color);
   border-radius: 6px;
-  overflow: hidden;
+  /* 勿设 overflow:hidden，否则会裁切「网络图片」等工具栏浮层 */
+  overflow: visible;
 }
 
 .wang-toolbar {
   border-bottom: 1px solid var(--el-border-color-light);
+  overflow: visible;
 }
 
 .wang-body {
   min-height: v-bind(minHeight);
   overflow-y: hidden;
+}
+
+/* WangEditor 内置工具栏下拉/弹层 */
+:deep(.w-e-toolbar),
+:deep(.w-e-bar),
+:deep(.w-e-bar-item-menus-container),
+:deep(.w-e-drop-panel) {
+  overflow: visible;
 }
 
 .is-disabled {

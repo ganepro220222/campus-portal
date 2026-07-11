@@ -73,6 +73,7 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="108px">
         <el-form-item label="名称" prop="name">
           <el-input v-model="form.name" maxlength="100" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.craftName" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
@@ -105,6 +106,7 @@
         </el-form-item>
         <el-form-item label="中文介绍" prop="introZh">
           <el-input v-model="form.introZh" type="textarea" :rows="3" maxlength="2000" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.craftIntro" />
         </el-form-item>
         <el-form-item label="英文介绍">
           <el-input v-model="form.introEn" type="textarea" :rows="3" maxlength="2000" show-word-limit />
@@ -192,10 +194,12 @@ import {
 } from '@/api/craft'
 import type { CraftImagePayload } from '@/api/craft'
 import CoverUploadField from '@/components/CoverUploadField.vue'
+import FieldHint from '@/components/FieldHint.vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CraftItem } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
+import { FIELD_HINTS } from '@/utils/field-hints'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('hall:write'))

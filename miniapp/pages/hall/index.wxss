@@ -83,6 +83,10 @@
   font-size: 30rpx;
   font-weight: 700;
   text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .hcard-foot { padding: 16rpx 20rpx 20rpx; }
 .hcard-name {

@@ -77,6 +77,7 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="课程名称" prop="name">
           <el-input v-model="form.name" maxlength="200" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.courseName" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
@@ -108,6 +109,7 @@
         </el-form-item>
         <el-form-item label="课程介绍">
           <el-input v-model="form.intro" type="textarea" :rows="4" maxlength="2000" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.courseIntro" />
         </el-form-item>
         <el-form-item label="教学视频">
           <OssUploadInput
@@ -207,7 +209,9 @@ import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CourseItem, ResourceOption } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
 import CoverUploadField from '@/components/CoverUploadField.vue'
+import FieldHint from '@/components/FieldHint.vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
+import { FIELD_HINTS } from '@/utils/field-hints'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('course:write'))

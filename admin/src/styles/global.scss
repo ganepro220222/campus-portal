@@ -149,6 +149,13 @@ body,
   overflow: hidden;
   box-shadow: 0 24px 64px rgba(20, 26, 56, 0.28);
 }
+/* WangEditor 工具栏浮层（网络图片、插入链接等）挂在弹窗内，需允许溢出显示 */
+.el-dialog:has(.wang-editor) {
+  overflow: visible;
+}
+.el-dialog:has(.wang-editor) .el-dialog__body {
+  overflow: visible;
+}
 .el-dialog__header {
   background: linear-gradient(135deg, #f6f8fc, #eef2fb);
   border-bottom: 1px solid var(--brand-line);

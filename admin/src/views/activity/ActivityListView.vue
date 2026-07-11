@@ -82,6 +82,7 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="活动名称" prop="title">
           <el-input v-model="form.title" maxlength="100" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.activityTitle" />
         </el-form-item>
         <el-form-item label="封面图">
           <CoverUploadField
@@ -92,9 +93,11 @@
         </el-form-item>
         <el-form-item label="简介">
           <el-input v-model="form.intro" type="textarea" :rows="3" maxlength="500" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.activityIntro" />
         </el-form-item>
         <el-form-item label="活动地点">
           <el-input v-model="form.location" maxlength="100" />
+          <FieldHint :text="FIELD_HINTS.activityLocation" />
         </el-form-item>
         <el-form-item label="活动时间" required>
           <div class="time-row">
@@ -171,8 +174,10 @@ import {
 } from '@/api/activity'
 import { useAuthStore } from '@/stores/auth'
 import CoverUploadField from '@/components/CoverUploadField.vue'
+import FieldHint from '@/components/FieldHint.vue'
 import type { ActivityItem } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
+import { FIELD_HINTS } from '@/utils/field-hints'
 
 const router = useRouter()
 const auth = useAuthStore()

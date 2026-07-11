@@ -97,6 +97,18 @@ INSERT IGNORE INTO `hall` (`id`, `name`, `short_name`, `intro`, `vr_url`, `categ
 (10, '节水宣传教育中心', '节水宣传中心', '节水理念、技术与宣传教育成果展示。', 'https://www.720yun.com/vr/f7bj5pmOkO2', 18, 10, 1),
 (11, '新展馆筹备中', '敬请期待', '第 11 个展馆正在制作中，名称与 VR 链接确定后将上线。', NULL, 19, 11, 0);
 
+-- 沉浸式章节（校史馆示例）
+INSERT IGNORE INTO `hall_section` (`id`, `hall_id`, `title`, `sort`) VALUES
+(1, 2, '办学历程', 1),
+(2, 2, '重要里程碑', 2),
+(3, 2, '校训校风', 3);
+
+INSERT IGNORE INTO `hall_media` (`hall_id`, `section_id`, `media_type`, `url`, `caption`, `sort`) VALUES
+(2, 1, 'image', '', '建校初期校舍与首批师生合影', 1),
+(2, 1, 'image', '', '关键发展节点大事记展墙', 2),
+(2, 2, 'image', '', '升格本科与交通职业大学历程', 1),
+(2, 3, 'image', '', '校训释义与校园文化展示', 1);
+
 -- 课程
 INSERT IGNORE INTO `course` (`id`, `name`, `intro`, `category_id`, `target_audience`, `duration_minutes`, `start_time`, `subtitle_status`, `status`) VALUES
 (1, '阳明心学十二讲', '从龙场悟道到致良知，系统讲授阳明心学的精髓与当代价值。', 8, '全校学生', 540, '2026-06-01 00:00:00', 'ready', 1),

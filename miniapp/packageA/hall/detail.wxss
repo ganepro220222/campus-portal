@@ -173,3 +173,119 @@
   line-height: 1.3;
 }
 .poster-btn::after { border: none; }
+
+/* 沉浸式长卷 */
+.immersive {
+  margin-top: 24rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 28rpx;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.imm-head {
+  padding: 28rpx 28rpx 16rpx;
+  border-bottom: 1rpx dashed var(--line);
+}
+.imm-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--ink);
+}
+.imm-sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+}
+.imm-nav {
+  white-space: nowrap;
+  padding: 18rpx 20rpx;
+  border-bottom: 1rpx solid var(--line);
+}
+.imm-chip {
+  display: inline-block;
+  margin-right: 14rpx;
+  padding: 12rpx 24rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  color: var(--sub);
+  background: var(--sky-2);
+}
+.imm-chip-on {
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  color: #fff;
+  font-weight: 600;
+}
+.imm-body { padding: 8rpx 0 12rpx; }
+.imm-section { padding: 24rpx 28rpx 8rpx; }
+.imm-section + .imm-section {
+  border-top: 1rpx dashed var(--line);
+  margin-top: 8rpx;
+}
+.imm-sec-title {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-bottom: 18rpx;
+}
+.imm-sec-num {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 12rpx;
+  background: var(--sky-2);
+  color: var(--navy);
+  font-size: 24rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.imm-sec-text {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--ink);
+}
+.imm-card { margin-bottom: 22rpx; }
+.imm-img {
+  height: 320rpx;
+  border-radius: 22rpx;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.imm-photo { width: 100%; height: 100%; }
+.imm-cap {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--sub);
+}
+
+/* 底部阅读进度 */
+.scroll-progress {
+  position: fixed;
+  left: 28rpx;
+  right: 28rpx;
+  bottom: calc(108rpx + env(safe-area-inset-bottom));
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: rgba(43, 53, 110, 0.12);
+  overflow: visible;
+  z-index: 20;
+}
+.scroll-progress-bar {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #3F57B5, #BE9C44);
+  transition: width 0.15s ease;
+}
+.scroll-progress-text {
+  position: absolute;
+  right: 0;
+  top: -34rpx;
+  font-size: 20rpx;
+  color: var(--muted);
+}

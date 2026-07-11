@@ -1,6 +1,14 @@
 <!-- packageA/hall/detail.wxml -->
 <view class="detail-page">
-  <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
+  <scroll-view
+    scroll-y
+    class="detail-scroll"
+    enhanced
+    show-scrollbar="{{false}}"
+    scroll-into-view="{{scrollIntoView}}"
+    scroll-with-animation
+    bindscroll="onScroll"
+  >
     <view class="detail-wrap">
 
       <!-- 画廊轮播 -->
@@ -12,7 +20,7 @@
               bindtap="onPreviewSlide"
               data-url="{{item.imageUrl}}"
             >
-              <image wx:if="{{item.imageUrl}}" class="gimg-photo" src="{{item.imageUrl}}" mode="aspectFill" />
+              <image wx:if="{{item.imageUrl}}" class="gimg-photo" src="{{item.imageUrl}}" mode="aspectFill" lazy-load />
               <icon wx:else name="{{item.icon}}" size="54" color="rgba(255,255,255,0.55)" />
             </view>
           </swiper-item>
@@ -41,22 +49,75 @@
         <text class="at">{{hall.audioTime}}</text>
       </view>
 
-      <!-- 展馆介绍 -->
+      <!-- 展馆简介 -->
       <view class="hall-intro">
         <view class="hi-title serif">{{hall.name}}</view>
         <view wx:if="{{hall.shortName && hall.shortName !== hall.name}}" class="hi-sub">{{hall.shortName}}</view>
         <view class="hi-p">{{hall.intro}}</view>
-        <view class="poster-btn-wrap">
-          <button class="poster-btn" bindtap="onPoster">
-            <icon name="poster" size="18" color="#ffffff" />
-            <text>一键生成文化分享海报</text>
-          </button>
+      </view>
+
+      <!-- 沉浸式长卷：章节分区连续滚动 -->
+      <view wx:if="{{hall.hasImmersive}}" class="immersive">
+        <view class="imm-head">
+          <text class="imm-title serif">沉浸式浏览</text>
+          <text class="imm-sub">连续滚动 · 章节分区</text>
         </view>
+        <scroll-view scroll-x class="imm-nav" enhanced show-scrollbar="{{false}}">
+          <view
+            wx:for="{{hall.sections}}"
+            wx:key="anchorId"
+            class="imm-chip {{activeSectionId === item.anchorId ? 'imm-chip-on' : ''}}"
+            data-anchor="{{item.anchorId}}"
+            bindtap="onSectionTap"
+          >{{item.title}}</view>
+        </scroll-view>
+        <view class="imm-body">
+          <view
+            wx:for="{{hall.sections}}"
+            wx:key="anchorId"
+            id="{{item.anchorId}}"
+            class="imm-section"
+            data-anchor="{{item.anchorId}}"
+          >
+            <view class="imm-sec-title">
+              <view class="imm-sec-num">{{index + 1}}</view>
+              <text class="imm-sec-text serif">{{item.title}}</text>
+            </view>
+            <view
+              wx:for="{{item.items}}"
+              wx:for-item="media"
+              wx:key="caption"
+              class="imm-card"
+              bindtap="onPreviewSection"
+              data-url="{{media.imageUrl}}"
+              data-section="{{item.anchorId}}"
+            >
+              <view class="imm-img {{media.cls}}">
+                <image wx:if="{{media.imageUrl}}" src="{{media.imageUrl}}" mode="aspectFill" class="imm-photo" lazy-load />
+                <icon wx:else name="{{media.icon}}" size="48" color="rgba(255,255,255,0.55)" />
+              </view>
+              <view class="imm-cap">{{media.caption}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="poster-btn-wrap">
+        <button class="poster-btn" bindtap="onPoster">
+          <icon name="poster" size="18" color="#ffffff" />
+          <text>一键生成文化分享海报</text>
+        </button>
       </view>
 
       <view class="detail-bottom"></view>
     </view>
   </scroll-view>
+
+  <!-- 底部阅读进度 -->
+  <view wx:if="{{hall.hasImmersive}}" class="scroll-progress">
+    <view class="scroll-progress-bar" style="width: {{scrollProgress}}%;"></view>
+    <text class="scroll-progress-text">{{scrollProgress}}%</text>
+  </view>
 
   <ai-assistant bottom="60" />
 </view>

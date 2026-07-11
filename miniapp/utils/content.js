@@ -63,6 +63,17 @@ function mergeHallDetail(raw, fallback) {
       ...s
     }))
     : (useMock ? (base.slides || []) : [{ cls: 'gi1', icon: 'museum' }])
+  const sections = (raw.sections && raw.sections.length)
+    ? raw.sections.map((sec, si) => ({
+      ...sec,
+      anchorId: `section-${sec.id || si + 1}`,
+      items: (sec.items || []).map((item, ii) => ({
+        ...item,
+        cls: 'gi' + ((ii % 3) + 1),
+        icon: 'museum'
+      }))
+    }))
+    : (base.sections || [])
   const vrUrl = raw.vrUrl || base.vrUrl || ''
   return {
     ...base,
@@ -71,6 +82,8 @@ function mergeHallDetail(raw, fallback) {
     shortName: raw.shortName || base.shortName,
     intro: raw.intro || base.intro,
     slides,
+    sections,
+    hasImmersive: sections.length > 0,
     caption: raw.caption || base.caption,
     currentCaption: raw.caption || base.caption,
     audioTime: raw.audioTime || base.audioTime,

@@ -123,6 +123,13 @@ export interface HallItem {
   slides?: HallSlideItem[]
   audioUrl?: string | null
   audioTime?: string | null
+  sections?: HallSectionItem[]
+}
+
+export interface HallSectionItem {
+  title: string
+  sort?: number
+  items?: HallSlideItem[]
 }
 
 export interface HallSlideItem {

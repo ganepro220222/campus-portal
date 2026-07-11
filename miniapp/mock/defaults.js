@@ -172,6 +172,30 @@ module.exports = {
       { cls: 'gi2', icon: 'star' },
       { cls: 'gi3', icon: 'book' }
     ],
+    sections: [
+      {
+        id: 1,
+        title: '办学历程',
+        items: [
+          { imageUrl: '', caption: '建校初期校舍与首批师生合影' },
+          { imageUrl: '', caption: '关键发展节点大事记展墙' }
+        ]
+      },
+      {
+        id: 2,
+        title: '重要里程碑',
+        items: [
+          { imageUrl: '', caption: '升格本科与交通职业大学历程' }
+        ]
+      },
+      {
+        id: 3,
+        title: '校训校风',
+        items: [
+          { imageUrl: '', caption: '校训释义与校园文化展示' }
+        ]
+      }
+    ],
     caption: '校史馆展陈（左右滑动浏览，支持双指放大）',
     audioTime: '语音讲解',
     intro: '回顾贵州交通职业大学办学历程与重要里程碑，传承校训校风。支持 VR 全景漫游与图文介绍，可在详情页进入 720 云沉浸式体验。'

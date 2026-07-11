@@ -82,6 +82,42 @@
           <el-input v-model="form.intro" type="textarea" :rows="3" maxlength="500" show-word-limit />
         </el-form-item>
 
+        <el-divider content-position="left">沉浸式章节</el-divider>
+        <p class="text-muted section-tip">按章节组织长卷图文，小程序端连续滚动展示（验收 §2.4）</p>
+        <div class="sections-block">
+          <el-button type="primary" link :icon="Plus" @click="addSection">添加章节</el-button>
+          <div v-for="(section, sIdx) in form.sections" :key="sIdx" class="section-card">
+            <div class="section-head">
+              <el-input v-model="section.title" placeholder="章节标题，如「办学历程」" maxlength="100" />
+              <el-button link type="danger" @click="removeSection(sIdx)">删除章节</el-button>
+            </div>
+            <el-table :data="section.items" size="small" border class="slides-table">
+              <el-table-column label="图片" min-width="200">
+                <template #default="{ row }">
+                  <OssUploadInput
+                    v-model="row.url"
+                    scene="image"
+                    accept="image/*"
+                    upload-label="上传图片"
+                    done-text="已上传"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="图说" min-width="180">
+                <template #default="{ row }">
+                  <el-input v-model="row.caption" placeholder="图片说明" size="small" maxlength="200" />
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="70" align="center">
+                <template #default="{ $index }">
+                  <el-button link type="danger" @click="removeSectionItem(sIdx, $index)">删</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-button type="primary" link :icon="Plus" @click="addSectionItem(sIdx)">添加章节图片</el-button>
+          </div>
+        </div>
+
         <el-divider content-position="left">轮播图文</el-divider>
         <div class="slides-block">
           <el-button type="primary" link :icon="Plus" @click="addSlide">添加图片</el-button>
@@ -157,7 +193,7 @@ import { fetchCategories } from '@/api/category'
 import { createHall, fetchHallDetail, fetchHalls, updateHall } from '@/api/hall'
 import OssUploadInput from '@/components/OssUploadInput.vue'
 import { useAuthStore } from '@/stores/auth'
-import type { CategoryOption, HallItem, HallSlideItem } from '@/types/api'
+import type { CategoryOption, HallItem, HallSectionItem, HallSlideItem } from '@/types/api'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('hall:write'))
@@ -183,6 +219,7 @@ const form = reactive({
   sort: 0,
   status: 1,
   slides: [] as HallSlideItem[],
+  sections: [] as HallSectionItem[],
   audioUrl: '',
   audioTime: ''
 })
@@ -216,6 +253,7 @@ function resetForm() {
   form.sort = 0
   form.status = 1
   form.slides = []
+  form.sections = []
   form.audioUrl = ''
   form.audioTime = ''
 }
@@ -226,6 +264,24 @@ function addSlide() {
 
 function removeSlide(index: number) {
   form.slides.splice(index, 1)
+}
+
+function addSection() {
+  form.sections.push({ title: '', sort: form.sections.length, items: [] })
+}
+
+function removeSection(index: number) {
+  form.sections.splice(index, 1)
+}
+
+function addSectionItem(sectionIndex: number) {
+  const section = form.sections[sectionIndex]
+  if (!section.items) section.items = []
+  section.items.push({ url: '', caption: '', sort: section.items.length })
+}
+
+function removeSectionItem(sectionIndex: number, itemIndex: number) {
+  form.sections[sectionIndex].items?.splice(itemIndex, 1)
 }
 
 async function openDialog(row?: HallItem) {
@@ -246,6 +302,15 @@ async function openDialog(row?: HallItem) {
       caption: s.caption || '',
       sort: s.sort ?? 0
     }))
+    form.sections = (detail.sections || []).map((sec, idx) => ({
+      title: sec.title || '',
+      sort: sec.sort ?? idx,
+      items: (sec.items || []).map((it, i) => ({
+        url: it.url || '',
+        caption: it.caption || '',
+        sort: it.sort ?? i
+      }))
+    }))
     form.audioUrl = detail.audioUrl || ''
     form.audioTime = detail.audioTime || ''
   }
@@ -259,7 +324,14 @@ async function onSave() {
   try {
     const payload = {
       ...form,
-      slides: form.slides.filter((s) => s.url?.trim())
+      slides: form.slides.filter((s) => s.url?.trim()),
+      sections: form.sections
+        .filter((sec) => sec.title?.trim())
+        .map((sec, idx) => ({
+          title: sec.title.trim(),
+          sort: sec.sort ?? idx,
+          items: (sec.items || []).filter((it) => it.url?.trim())
+        }))
     }
     if (editingId.value) {
       await updateHall(editingId.value, payload)
@@ -294,5 +366,29 @@ onMounted(async () => {
 
 .slides-table {
   margin-top: 8px;
+}
+
+.section-tip {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.sections-block {
+  margin-bottom: 12px;
+}
+
+.section-card {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  background: var(--el-fill-color-blank);
+}
+
+.section-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
 }
 </style>

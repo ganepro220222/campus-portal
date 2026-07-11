@@ -42,6 +42,8 @@ curl -s http://localhost:8080/v3/api-docs/admin > openapi-admin.json
 
 交付前可在 staging 执行上述命令，将 JSON 附在测试报告或交付包中。
 
+**仓库归档：** 运行 `scripts/export-openapi.ps1` 可导出至 `docs/api/openapi/`（需在 dev/staging 后端启动后执行）。
+
 ## 5. 维护约定
 
 - 新增 Controller 后无需额外注解即可出现在文档中（SpringDoc 自动扫描）

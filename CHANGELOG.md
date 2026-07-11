@@ -9,12 +9,12 @@
 - 真机双端测试报告
 - 备份恢复演练记录
 
-### 本地收尾（2026-07-11）
-- dev 回归自检清单、甲方配合事项清单、Apifox 回归测试清单
-- 隐私政策/用户协议占位页（`packageC/legal/privacy`）
-- 「学院矩阵」UI 统一改为「关联小程序」
-- AI 知识库演示 seed（阳明心学、云端书院简介）
-- `PointServiceTest`、`EventLogServiceTest`
+### 本地收尾（2026-07-11 续）
+- 运维手册 / Runbook（`docs/运维/运维手册_V1.0.md`）
+- E2-1 告警：健康探活 + 5xx 错误率 Webhook（默认关闭，`ALERT_ENABLED` 开启）
+- `HealthProbeService` 抽取；`scripts/export-openapi.ps1` 归档 OpenAPI JSON
+- 管理员手册 §13 同步「关联小程序」
+- 单测增至 124 项（ApiErrorMetrics、OpsAlert、AlertWebhook）
 
 ---
 

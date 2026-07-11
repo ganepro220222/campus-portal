@@ -15,6 +15,7 @@ public class ShuyuanProperties {
     private RateLimit rateLimit = new RateLimit();
     private Ai ai = new Ai();
     private Subscribe subscribe = new Subscribe();
+    private Alert alert = new Alert();
 
     @Data
     public static class Login {
@@ -77,5 +78,21 @@ public class ShuyuanProperties {
         private String enrollSuccessTemplateId = "";
         private String enrollApprovedTemplateId = "";
         private String activityRemindTemplateId = "";
+    }
+
+    /** E2-1 低成本告警：钉钉 / 企业微信 Webhook */
+    @Data
+    public static class Alert {
+        /** 默认关闭；staging/prod 配置 webhook 后开启 */
+        private boolean enabled = false;
+        private String webhookUrl = "";
+        /** 错误率统计窗口（分钟），与定时任务周期一致 */
+        private int windowMinutes = 5;
+        /** 5xx 错误率阈值（百分比） */
+        private double errorRatePercent = 1.0;
+        /** 窗口内最少请求数，低于此值不告警（避免低流量误报） */
+        private int minSampleSize = 20;
+        /** 同类告警冷却时间（分钟） */
+        private int cooldownMinutes = 15;
     }
 }

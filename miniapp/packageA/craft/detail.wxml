@@ -3,8 +3,17 @@
   <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
     <view class="detail-wrap">
 
-      <!-- 图集 -->
-      <view class="gal">
+      <!-- 3D 立体展示（preview_type=model3d 且模型可用） -->
+      <view wx:if="{{show3d}}" class="gal gal-3d">
+        <craft-3d-viewer
+          model-url="{{detail.model3dUrl}}"
+          bind:error="on3dError"
+        />
+        <view class="gcap">拖动旋转 · {{detail.name}} · 3D 鉴赏</view>
+      </view>
+
+      <!-- 多角度图片轮播（默认 / 降级） -->
+      <view wx:if="{{showGallery}}" class="gal">
         <swiper class="gslides" circular="{{slides.length > 1}}" bindchange="onGallery"
           indicator-dots="{{slides.length > 1}}" indicator-color="rgba(255,255,255,.4)" indicator-active-color="#ffffff">
           <swiper-item wx:for="{{slides}}" wx:key="angleLabel">
@@ -19,33 +28,39 @@
 
       <!-- 介绍 -->
       <view class="craft-intro">
-        <view class="ci-title serif">{{detail.name}}</view>
+        <view class="ci-head">
+          <view class="ci-title serif">{{detail.name}}</view>
+          <view class="lang-switch">
+            <view class="lang-btn {{lang === 'zh' ? 'lang-on' : ''}}" data-lang="zh" bindtap="onLangSwitch">中文</view>
+            <view class="lang-btn {{lang === 'en' ? 'lang-on' : ''}}" data-lang="en" bindtap="onLangSwitch">EN</view>
+          </view>
+        </view>
         <view class="ci-tags">
           <text class="pill gold">非遗工艺</text>
-          <text wx:if="{{detail.previewType === 'model3d'}}" class="pill">3D 模型</text>
+          <text wx:if="{{show3d}}" class="pill">3D 模型</text>
+          <text wx:elif="{{detail.previewType === 'model3d'}}" class="pill">多图鉴赏</text>
           <text wx:else class="pill">多图鉴赏</text>
         </view>
-        <view class="ci-zh">{{detail.introZh}}</view>
-        <view wx:if="{{detail.introEn}}" class="ci-en">{{detail.introEn}}</view>
+        <view class="ci-body">{{lang === 'zh' ? detail.introZh : detail.introEn}}</view>
       </view>
 
       <!-- 联系方式 -->
       <view class="contact">
         <view class="contact-title serif">合作与咨询</view>
-        <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.phone}}">
+        <view class="c-row" bindtap="onPhone" data-val="{{detail.contact.phone}}">
           <view class="c-ic c-blue"><icon name="megaphone" size="18" color="#ffffff" /></view>
           <view class="c-body"><text class="c-k">电话</text><text class="c-v">{{detail.contact.phone}}</text></view>
-          <icon name="file" size="16" color="#C3CCE0" />
+          <text class="c-act">拨打</text>
         </view>
         <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.wechat}}">
           <view class="c-ic c-green"><icon name="wechat" size="18" color="#ffffff" /></view>
           <view class="c-body"><text class="c-k">微信</text><text class="c-v">{{detail.contact.wechat}}</text></view>
-          <icon name="file" size="16" color="#C3CCE0" />
+          <text class="c-act">复制</text>
         </view>
         <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.email}}">
           <view class="c-ic c-gold"><icon name="send" size="18" color="#ffffff" /></view>
           <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">{{detail.contact.email}}</text></view>
-          <icon name="file" size="16" color="#C3CCE0" />
+          <text class="c-act">复制</text>
         </view>
       </view>
 

@@ -1,4 +1,4 @@
-// packageA/craft/detail.js — 文创详情逻辑
+// packageA/craft/detail.js — 文创详情：3D/多图降级 + 中英文切换
 const { get } = require('../../utils/request')
 const { mergeCraftDetail } = require('../../utils/content')
 const mock = require('../../mock/defaults')
@@ -10,7 +10,10 @@ Page({
     craftId: null,
     detail: mock.craftDetail,
     slides: buildSlides(mock.craftDetail),
-    galleryIndex: 0
+    galleryIndex: 0,
+    lang: 'zh',
+    show3d: false,
+    showGallery: true
   },
 
   onLoad(opts) {
@@ -19,18 +22,51 @@ Page({
     if (id) this._loadDetail(id)
   },
 
+  _fallbackForId(id) {
+    if (String(id) === '3' && mock.craftDetail3d) return mock.craftDetail3d
+    return mock.craftDetail
+  },
+
+  _applyDetail(detail) {
+    const show3d = !!(detail && detail.canUse3d)
+    this.setData({
+      detail,
+      slides: buildSlides(detail),
+      galleryIndex: 0,
+      show3d,
+      showGallery: !show3d
+    })
+  },
+
   async _loadDetail(id) {
+    const fallback = this._fallbackForId(id)
     try {
       const raw = await get(`/crafts/${id}`).catch(() => null)
-      const detail = mergeCraftDetail(raw, mock.craftDetail)
-      this.setData({ detail, slides: buildSlides(detail) })
+      const detail = mergeCraftDetail(raw, fallback)
+      this._applyDetail(detail)
     } catch (err) {
       console.warn('[craft/detail] 加载失败', err)
-      this.setData({ detail: mock.craftDetail, slides: buildSlides(mock.craftDetail) })
+      this._applyDetail(mergeCraftDetail(null, fallback))
     }
   },
 
   onGallery(e) { this.setData({ galleryIndex: e.detail.current }) },
+
+  on3dError(e) {
+    console.warn('[craft/detail] 3D 降级', e && e.detail)
+    this.setData({ show3d: false, showGallery: true })
+    wx.showToast({ title: '已切换多图展示', icon: 'none' })
+  },
+
+  onLangSwitch(e) {
+    const lang = e.currentTarget.dataset.lang
+    if (!lang || lang === this.data.lang) return
+    if (lang === 'en' && !this.data.detail.introEn) {
+      wx.showToast({ title: '暂无英文介绍', icon: 'none' })
+      return
+    }
+    this.setData({ lang })
+  },
 
   onPreview(e) {
     const url = e.currentTarget.dataset.url
@@ -42,10 +78,22 @@ Page({
     wx.previewImage({ current: url, urls: urls.length ? urls : [url] })
   },
 
+  onPhone(e) {
+    const phone = e.currentTarget.dataset.val
+    if (!phone) return
+    wx.makePhoneCall({
+      phoneNumber: String(phone),
+      fail() { wx.showToast({ title: '拨号失败', icon: 'none' }) }
+    })
+  },
+
   onCopy(e) {
     const val = e.currentTarget.dataset.val
     if (!val) return
-    wx.setClipboardData({ data: String(val), success() { wx.showToast({ title: '已复制', icon: 'none' }) } })
+    wx.setClipboardData({
+      data: String(val),
+      success() { wx.showToast({ title: '已复制', icon: 'none' }) }
+    })
   },
 
   onPoster() {

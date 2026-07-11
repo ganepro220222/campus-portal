@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "文创详情",
   "usingComponents": {
-    "ai-assistant": "/components/ai-assistant/index"
+    "ai-assistant": "/components/ai-assistant/index",
+    "craft-3d-viewer": "/components/craft-3d-viewer/index"
   }
 }

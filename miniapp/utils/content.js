@@ -95,15 +95,28 @@ function mergeCourseDetail(raw, fallback) {
   }
 }
 
+/** 是否具备可用的 3D 模型地址（docs：preview_type=model3d 且 GLB URL 有效） */
+function hasCraftModel3d(previewType, model3dUrl) {
+  return previewType === 'model3d'
+    && !!model3dUrl
+    && /^https?:\/\//i.test(String(model3dUrl))
+}
+
 function mergeCraftDetail(raw, fallback) {
   const base = fallback || (useMock ? mock.craftDetail : {})
   if (!raw) return useMock ? base : {}
+  const previewType = raw.previewType || base.previewType || 'multi_image'
+  const model3dUrl = raw.model3dUrl || base.model3dUrl || ''
+  const canUse3d = hasCraftModel3d(previewType, model3dUrl)
   return {
     ...base,
     ...raw,
     name: raw.name || base.name,
     introZh: raw.introZh || base.introZh,
     introEn: raw.introEn || base.introEn,
+    previewType,
+    model3dUrl,
+    canUse3d,
     images: raw.images && raw.images.length ? raw.images : base.images,
     contact: raw.contact || base.contact
   }
@@ -131,6 +144,7 @@ module.exports = {
   mergeNewsArticle,
   mergeHallDetail,
   mergeCourseDetail,
+  hasCraftModel3d,
   mergeCraftDetail,
   mergeResourceList
 }

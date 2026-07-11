@@ -1,0 +1,42 @@
+<view class="viewer-shell" style="width:{{width}}px;height:{{height}}px;">
+  <xr-scene
+    disable-scroll
+    width="{{renderWidth}}"
+    height="{{renderHeight}}"
+    style="width:{{width}}px;height:{{height}}px;"
+    bind:ready="onSceneReady"
+    bind:error="onSceneError"
+  >
+    <xr-assets bind:loaded="onAssetsLoaded">
+      <xr-asset-load
+        wx:if="{{modelUrl}}"
+        type="gltf"
+        asset-id="craft-model"
+        src="{{modelUrl}}"
+        options="ignoreError: -1"
+      />
+    </xr-assets>
+    <xr-node>
+      <xr-gltf
+        wx:if="{{modelUrl}}"
+        model="craft-model"
+        position="0 0 0"
+        scale="{{modelScale}}"
+        rotation="0 30 0"
+      />
+    </xr-node>
+    <xr-node>
+      <xr-light type="ambient" color="1 1 1" intensity="0.85" />
+      <xr-light type="directional" rotation="40 60 0" color="1 1 1" intensity="1.1" />
+    </xr-node>
+    <xr-camera
+      position="0 1.1 3.2"
+      target="0 0.2 0"
+      clear-color="0.96 0.97 0.99 1"
+      camera-orbit-control
+    />
+  </xr-scene>
+  <view wx:if="{{loading}}" class="viewer-mask">
+    <text>3D 模型加载中…</text>
+  </view>
+</view>

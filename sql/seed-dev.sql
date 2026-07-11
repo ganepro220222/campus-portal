@@ -143,6 +143,9 @@ INSERT IGNORE INTO `craft` (`id`, `name`, `intro_zh`, `intro_en`, `category_id`,
 (2, '蜡染壁挂·山水阳明', '以蜡染工艺呈现龙场山水与阳明先生悟道意境。', 'Batik wall hanging depicting Yangming\'s enlightenment landscape.', 12, 'multi_image', 2, 1),
 (3, '屯堡石雕·地戏面具', '屯堡传统石雕地戏面具，六百年非遗活态传承。', 'Tunpu stone-carved opera mask, living heritage craft.', 12, 'model3d', 3, 1);
 
+UPDATE `craft` SET `model_3d_url` = 'https://mmbizwxaminiprogram-1258344707.cos.ap-guangzhou.myqcloud.com/xr-frame/demo/damage-helmet/index.glb'
+WHERE `id` = 3 AND (`model_3d_url` IS NULL OR `model_3d_url` = '');
+
 INSERT IGNORE INTO `craft_image` (`craft_id`, `image_url`, `angle_label`, `sort`) VALUES
 (1, 'https://cdn.example.com/craft/silver-1.jpg', '正面', 1),
 (1, 'https://cdn.example.com/craft/silver-2.jpg', '侧面', 2),

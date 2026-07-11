@@ -15,11 +15,29 @@ function splitParagraphs(content) {
   return String(content).split(/\n+/).map(s => s.trim()).filter(Boolean)
 }
 
+function isHtmlContent(content) {
+  if (!content) return false
+  return /<[a-z][\s\S]*>/i.test(String(content))
+}
+
+function stripUnsafeHtml(html) {
+  if (!html) return ''
+  return String(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/\son\w+="[^"]*"/gi, '')
+    .replace(/\son\w+='[^']*'/gi, '')
+}
+
 function mergeNewsArticle(raw, fallback) {
   const base = fallback || (useMock ? mock.newsDetail.article : {})
   if (!raw) return useMock ? base : {}
   const lead = raw.lead || raw.summary || base.lead
-  const paras = raw.paras && raw.paras.length ? raw.paras : splitParagraphs(raw.content)
+  const contentHtml = isHtmlContent(raw.content) ? stripUnsafeHtml(raw.content) : ''
+  const useRichText = !!contentHtml
+  const paras = useRichText
+    ? []
+    : (raw.paras && raw.paras.length ? raw.paras : splitParagraphs(raw.content))
   return {
     ...base,
     ...raw,
@@ -29,7 +47,9 @@ function mergeNewsArticle(raw, fallback) {
     read: raw.read || formatCount(raw.viewCount || raw.readCount || 0),
     lead,
     drop: raw.drop || (lead ? lead.charAt(0) : base.drop),
-    paras: paras.length ? paras : base.paras
+    contentHtml,
+    useRichText,
+    paras: paras.length ? paras : (useRichText ? [] : base.paras)
   }
 }
 
@@ -106,6 +126,8 @@ function formatFileSize(kb) {
 
 module.exports = {
   formatDate,
+  isHtmlContent,
+  stripUnsafeHtml,
   mergeNewsArticle,
   mergeHallDetail,
   mergeCourseDetail,

@@ -55,6 +55,27 @@
   margin-bottom: 22rpx;
   text-align: justify;
 }
+.art-lead {
+  font-size: 29rpx;
+  line-height: 1.9;
+  color: var(--sub);
+  margin-bottom: 22rpx;
+  padding-bottom: 22rpx;
+  border-bottom: 1rpx dashed var(--line);
+  text-align: justify;
+}
+.art-rich {
+  font-size: 29rpx;
+  line-height: 1.9;
+  color: var(--ink);
+  margin-bottom: 22rpx;
+  text-align: justify;
+}
+.art-rich image {
+  max-width: 100%;
+  border-radius: 12rpx;
+  margin: 16rpx 0;
+}
 .drop {
   float: left;
   font-size: 78rpx;

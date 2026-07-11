@@ -72,7 +72,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="editingId ? '编辑新闻' : '新建新闻'"
-      width="720px"
+      width="860px"
       destroy-on-close
       top="5vh"
     >
@@ -98,13 +98,12 @@
           <el-input v-model="form.summary" type="textarea" :rows="2" maxlength="500" show-word-limit />
         </el-form-item>
         <el-form-item label="正文" prop="content">
-          <el-input
+          <WangEditor
             v-model="form.content"
-            type="textarea"
-            :rows="10"
-            placeholder="正文内容，段落之间用空行分隔"
+            placeholder="撰写新闻正文，可插入图片与排版"
+            @change="onContentChange"
           />
-          <div class="form-tip">富文本编辑器（WangEditor）将在后续版本接入</div>
+          <div class="form-tip">正文支持图文排版；图片通过上传按钮插入，小程序端自动展示</div>
         </el-form-item>
         <el-form-item label="置顶">
           <el-switch v-model="form.isTop" :active-value="1" :inactive-value="0" />
@@ -126,6 +125,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchCategories } from '@/api/category'
 import { createNews, fetchNews, publishNews, unpublishNews, updateNews } from '@/api/news'
 import OssUploadInput from '@/components/OssUploadInput.vue'
+import WangEditor from '@/components/WangEditor.vue'
+import { isEditorContentEmpty } from '@/utils/editor'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, NewsItem } from '@/types/api'
 
@@ -157,7 +158,13 @@ const form = reactive({
 
 const rules: FormRules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入正文', trigger: 'blur' }]
+  content: [{
+    validator: (_rule, value, callback) => {
+      if (isEditorContentEmpty(value)) callback(new Error('请输入正文'))
+      else callback()
+    },
+    trigger: 'change'
+  }]
 }
 
 async function loadCategories() {
@@ -183,6 +190,10 @@ async function loadData() {
 function onFilter() {
   page.value = 1
   loadData()
+}
+
+function onContentChange() {
+  formRef.value?.validateField('content').catch(() => {})
 }
 
 function resetForm() {

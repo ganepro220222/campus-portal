@@ -8,7 +8,6 @@ const {
 } = require('../../utils/activity')
 const { requireLogin } = require('../../utils/auth')
 const { requestSubscribe } = require('../../utils/subscribe')
-const mock = require('../../mock/defaults')
 
 Page({
   data: {
@@ -47,7 +46,7 @@ Page({
         get(`/activities/${id}`).catch(() => null),
         get('/profile').catch(() => null)
       ])
-      const detail = mergeActivityDetail(raw, mock.activityDetail)
+      const detail = mergeActivityDetail(raw)
       const active = hasActiveEnroll(detail)
       let enrolledHint = ''
       if (detail.enrollStatus === 'pending') {

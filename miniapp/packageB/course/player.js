@@ -1,13 +1,13 @@
 // packageB/course/player.js — 真视频播放 + 进度上报（详细方案 Phase 3）
 const { get, post } = require('../../utils/request')
 const { requireLogin } = require('../../utils/auth')
-const mock = require('../../mock/defaults')
+const { mergeCourseDetail } = require('../../utils/content')
 
 const REPORT_INTERVAL_SEC = 20
 
 Page({
   data: {
-    course: mock.courseDetail,
+    course: mergeCourseDetail(null),
     videoUrl: '',
     cover: '',
     hasSubtitle: false,

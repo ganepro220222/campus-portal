@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /**
- * 生产构建门禁：禁止 prod 环境启用 mock 或危险 fallback
+ * 生产构建门禁：禁止 prod 环境启用 mock 或页面级静默 fallback
  */
 const fs = require('fs')
 const path = require('path')
 
 const root = path.join(__dirname, '..')
-const envFile = path.join(root, 'miniapp', 'config', 'env.js')
-const requestFile = path.join(root, 'miniapp', 'utils', 'request.js')
-const appFile = path.join(root, 'miniapp', 'app.js')
+const miniappRoot = path.join(root, 'miniapp')
+const envFile = path.join(miniappRoot, 'config', 'env.js')
+const requestFile = path.join(miniappRoot, 'utils', 'request.js')
+const appFile = path.join(miniappRoot, 'app.js')
 
 const errors = []
 
@@ -18,6 +19,20 @@ function read(filePath) {
     return ''
   }
   return fs.readFileSync(filePath, 'utf8')
+}
+
+function walkJsFiles(dir, acc = []) {
+  if (!fs.existsSync(dir)) return acc
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules') continue
+      walkJsFiles(full, acc)
+    } else if (entry.name.endsWith('.js')) {
+      acc.push(full)
+    }
+  }
+  return acc
 }
 
 const envContent = read(envFile)
@@ -48,14 +63,52 @@ if (activeEnv === 'prod') {
 
 // 2. 关键入口禁止 mock fallback 关键字
 const dangerousPatterns = [
-  { file: requestFile, content: requestContent, patterns: ['mockData', 'require(\'../mock', 'require("./mock', 'require(\'../../mock'] },
-  { file: appFile, content: appContent, patterns: ['require(\'./mock', 'require("./mock'] }
+  { file: requestFile, content: requestContent, patterns: ['mockData', "require('../mock", 'require("./mock', "require('../../mock"] },
+  { file: appFile, content: appContent, patterns: ["require('./mock", 'require("./mock'] }
 ]
 
 dangerousPatterns.forEach(({ file, content, patterns }) => {
   patterns.forEach((pattern) => {
     if (content.includes(pattern)) {
       errors.push(`${path.relative(root, file)} 含危险 mock 引用: ${pattern}`)
+    }
+  })
+})
+
+// 3. 页面级引用 mock/defaults 必须经 mockGuard 或已内置 useMock 守卫的工具模块
+const UTIL_GUARDED = new Set([
+  'utils/content.js',
+  'utils/activity.js',
+  'utils/category.js'
+])
+
+walkJsFiles(miniappRoot).forEach((filePath) => {
+  const rel = path.relative(miniappRoot, filePath).replace(/\\/g, '/')
+  if (rel.startsWith('mock/')) return
+  const content = read(filePath)
+  if (!content.includes('mock/defaults')) return
+  if (UTIL_GUARDED.has(rel)) return
+  if (!content.includes('mockGuard')) {
+    errors.push(`${rel} 引用了 mock/defaults 但未使用 mockGuard`)
+  }
+})
+
+// 4. 禁止明显的静默 fallback 写法（未配合 useMock / withListFallback）
+const SILENT_PATTERNS = [
+  /:\s*mock\.\w+/,
+  /\?\s*mock\.\w+/,
+  /:\s*decorate\w+\(mock\./,
+  /mergeActivityDetail\([^,]+,\s*mock\./
+]
+
+walkJsFiles(miniappRoot).forEach((filePath) => {
+  const rel = path.relative(miniappRoot, filePath).replace(/\\/g, '/')
+  if (rel.startsWith('mock/') || UTIL_GUARDED.has(rel)) return
+  const content = read(filePath)
+  if (!content.includes('mock/defaults') && !content.includes('mock.')) return
+  SILENT_PATTERNS.forEach((pattern) => {
+    if (pattern.test(content) && !content.includes('mockGuard') && !content.includes('useMock')) {
+      errors.push(`${rel} 可能存在静默 mock 回退: ${pattern}`)
     }
   })
 })

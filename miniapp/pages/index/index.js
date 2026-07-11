@@ -2,6 +2,7 @@
 const { get } = require('../../utils/request')
 const store   = require('../../store/index')
 const mock    = require('../../mock/defaults')
+const { withListFallback, mockOrEmpty } = require('../../utils/mockGuard')
 const {
   decorateHalls, decorateNews, decorateCourses, decorateBanners
 } = require('../../utils/decorate')
@@ -10,12 +11,12 @@ const { getNavBarLayout } = require('../../utils/navbar')
 
 Page({
   data: {
-    banners:            mock.banners,
+    banners:            mockOrEmpty(decorateBanners(mock.banners), []),
     bannerIndex:        0,
     announcements:      [],
-    hallList:           decorateHalls(mock.hallsHome),
-    newsList:           decorateNews(mock.newsHome),
-    courseList:         decorateCourses(mock.coursesHome),
+    hallList:           mockOrEmpty(decorateHalls(mock.hallsHome), []),
+    newsList:           mockOrEmpty(decorateNews(mock.newsHome), []),
+    courseList:         mockOrEmpty(decorateCourses(mock.coursesHome), []),
     hasNewAnnouncement: false,
     loading:            true,
     statusBarHeight:    20,
@@ -49,10 +50,10 @@ Page({
         get('/home/recommends').catch(() => ({}))
       ])
       const data = {
-        banners:    (banners && banners.length) ? decorateBanners(banners) : mock.banners,
-        hallList:   decorateHalls((recommends && recommends.halls && recommends.halls.length) ? recommends.halls : mock.hallsHome),
-        newsList:   decorateNews((recommends && recommends.news && recommends.news.length) ? recommends.news : mock.newsHome),
-        courseList: decorateCourses((recommends && recommends.courses && recommends.courses.length) ? recommends.courses : mock.coursesHome)
+        banners:    decorateBanners(withListFallback(banners, mock.banners)),
+        hallList:   decorateHalls(withListFallback(recommends && recommends.halls, mock.hallsHome)),
+        newsList:   decorateNews(withListFallback(recommends && recommends.news, mock.newsHome)),
+        courseList: decorateCourses(withListFallback(recommends && recommends.courses, mock.coursesHome))
       }
       store.setCache('home', data)
       this.setData({ ...data, loading: false })

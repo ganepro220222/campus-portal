@@ -1,13 +1,12 @@
 // packageA/news/detail.js
 const { get, post } = require('../../utils/request')
-const mock = require('../../mock/defaults')
 const { mergeNewsArticle } = require('../../utils/content')
 const { requireLogin } = require('../../utils/auth')
 
 Page({
   data: {
-    article: mock.newsDetail.article,
-    reco: mock.newsDetail.reco,
+    article: mergeNewsArticle(null),
+    reco: [],
     liked: false,
     collected: false,
     articleId: null
@@ -67,9 +66,7 @@ Page({
     })
   },
 
-  onShare() { wx.showToast({ title: '已生成分享卡片', icon: 'none' }) },
-
-  onReco(e) {
-    wx.navigateTo({ url: `/packageA/news/detail?id=${e.currentTarget.dataset.id}` })
+  onRecoTap(e) {
+    wx.navigateTo({ url: `./detail?id=${e.currentTarget.dataset.id}` })
   }
 })

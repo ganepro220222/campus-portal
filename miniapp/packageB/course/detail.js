@@ -1,12 +1,11 @@
 // packageB/course/detail.js
 const { get } = require('../../utils/request')
-const mock = require('../../mock/defaults')
 const { mergeCourseDetail } = require('../../utils/content')
 const { requireLogin } = require('../../utils/auth')
 const { formatDuration } = require('../../utils/format')
 
 Page({
-  data: { course: mock.courseDetail, progressHint: '' },
+  data: { course: mergeCourseDetail(null), progressHint: '' },
 
   onLoad(opts) {
     const id = opts && opts.id

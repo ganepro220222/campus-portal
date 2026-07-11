@@ -25,8 +25,14 @@ function withObjectFallback(apiData, mockData) {
   return {}
 }
 
+/** 页面 data 初始值：dev 用 mock，staging/prod 用空结构 */
+function mockOrEmpty(mockValue, emptyValue) {
+  return useMock ? mockValue : emptyValue
+}
+
 module.exports = {
   useMock,
   withListFallback,
-  withObjectFallback
+  withObjectFallback,
+  mockOrEmpty
 }

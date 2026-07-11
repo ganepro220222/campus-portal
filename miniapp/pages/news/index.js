@@ -1,6 +1,7 @@
 // pages/news/index.js
 const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
+const { withListFallback } = require('../../utils/mockGuard')
 const { decorateNewsFeed } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
 const { getNavBarLayout } = require('../../utils/navbar')
@@ -9,7 +10,7 @@ Page({
   data: {
     statusBarHeight: 20,
     capsulePadding: 96,
-    cats: mock.categories.news,
+    cats: ['全部'],
     activeCat: 0,
     newsList: [],
     loading: true
@@ -38,12 +39,12 @@ Page({
     const cat = this.data.activeCat ? this.data.cats[this.data.activeCat] : undefined
     try {
       const list = await get('/news', { category: cat }).catch(() => null)
-      const src = (list && list.length) ? list : mock.newsFull
+      const src = withListFallback(list, mock.newsFull)
       const filtered = cat ? src.filter(n => (n.category || n.categoryName) === cat) : src
       this.setData({ newsList: decorateNewsFeed(filtered), loading: false })
     } catch (err) {
       console.warn('[news] 资讯列表加载失败', err)
-      this.setData({ newsList: decorateNewsFeed(mock.newsFull), loading: false })
+      this.setData({ newsList: decorateNewsFeed(withListFallback(null, mock.newsFull)), loading: false })
     }
   },
 

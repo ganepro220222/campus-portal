@@ -7,7 +7,6 @@ const {
 } = require('../../utils/activity')
 const { requireLogin } = require('../../utils/auth')
 const { decorateActivities } = require('../../utils/decorate')
-const mock = require('../../mock/defaults')
 
 Page({
   data: {
@@ -39,7 +38,7 @@ Page({
     if (showLoading) this.setData({ loading: true })
     try {
       const raw = await get(`/activities/${id}`).catch(() => null)
-      const detail = mergeActivityDetail(raw, mock.activityDetail)
+      const detail = mergeActivityDetail(raw)
       const decorated = decorateActivities([detail])[0]
       const action = resolveDetailAction(detail, getApp().isLoggedIn())
       this.setData({

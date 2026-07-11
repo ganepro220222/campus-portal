@@ -1,6 +1,7 @@
-// packageC/college/list.js — 学院矩阵
+// packageC/college/list.js — 关联小程序矩阵
 const { request } = require('../../utils/request')
 const mock = require('../../mock/defaults')
+const { withListFallback } = require('../../utils/mockGuard')
 
 Page({
   data: {
@@ -20,9 +21,10 @@ Page({
     this.setData({ loading: true })
     try {
       const list = await request('/colleges', 'GET')
-      this.setData({ colleges: list || [], loading: false })
+      this.setData({ colleges: withListFallback(list, mock.colleges), loading: false })
     } catch (e) {
-      this.setData({ colleges: mock.colleges, loading: false })
+      console.warn('[college/list] 加载失败', e)
+      this.setData({ colleges: withListFallback(null, mock.colleges), loading: false })
     }
   },
 

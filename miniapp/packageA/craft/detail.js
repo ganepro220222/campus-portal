@@ -2,14 +2,15 @@
 const { get } = require('../../utils/request')
 const { mergeCraftDetail } = require('../../utils/content')
 const mock = require('../../mock/defaults')
+const { useMock } = require('../../utils/mockGuard')
 
 const COVER_CLASSES = ['gi1', 'gi2', 'gi3']
 
 Page({
   data: {
     craftId: null,
-    detail: mock.craftDetail,
-    slides: buildSlides(mock.craftDetail),
+    detail: mergeCraftDetail(null),
+    slides: [],
     galleryIndex: 0,
     lang: 'zh',
     show3d: false,
@@ -23,6 +24,7 @@ Page({
   },
 
   _fallbackForId(id) {
+    if (!useMock) return {}
     if (String(id) === '3' && mock.craftDetail3d) return mock.craftDetail3d
     return mock.craftDetail
   },

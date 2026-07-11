@@ -1,7 +1,6 @@
 // packageB/resource/list.js — 资源下载列表逻辑
 const { get } = require('../../utils/request')
 const { mergeResourceList } = require('../../utils/content')
-const mock = require('../../mock/defaults')
 
 // 文件类型 → 色标 / 标签 / 归类
 const FT = {

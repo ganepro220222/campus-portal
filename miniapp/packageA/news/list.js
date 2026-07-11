@@ -1,6 +1,7 @@
 // packageA/news/list.js
 const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
+const { withListFallback, useMock } = require('../../utils/mockGuard')
 const { decorateNewsFeed } = require('../../utils/decorate')
 
 Page({
@@ -18,7 +19,9 @@ Page({
     } catch (err) {
       console.warn('[news/list] 分类加载失败', err)
       this.setData({
-        categories: mock.categories.news.map((name, i) => ({ id: i, name }))
+        categories: useMock
+          ? mock.categories.news.map((name, i) => ({ id: i, name }))
+          : [{ id: 0, name: '全部' }]
       })
     }
   },
@@ -39,17 +42,22 @@ Page({
       const res = await get('/news', { page, size: 10, categoryId: this.data.currentCat || undefined })
       const records = (res && res.records) ? res.records : []
       const list = reset ? records : this.data.newsList.concat(records)
+      const displayList = list.length ? list : (reset ? withListFallback(null, mock.newsFull) : list)
       const hasMore = records.length === 10
       this.setData({
-        newsList: decorateNewsFeed(list.length ? list : (reset ? mock.newsFull : list)),
+        newsList: decorateNewsFeed(displayList),
         page: page + 1,
-        hasMore: list.length ? hasMore : false,
+        hasMore: displayList.length ? hasMore : false,
         loading: false
       })
     } catch (err) {
       console.warn('[news/list] 列表加载失败', err)
       if (reset) {
-        this.setData({ newsList: decorateNewsFeed(mock.newsFull), hasMore: false, loading: false })
+        this.setData({
+          newsList: decorateNewsFeed(withListFallback(null, mock.newsFull)),
+          hasMore: false,
+          loading: false
+        })
       } else {
         this.setData({ loading: false, hasMore: false })
       }

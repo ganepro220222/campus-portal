@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "check:prod-mock": "node scripts/check-no-prod-mock.js",
+    "test:mock-guard": "node scripts/test-mock-guard.js",
     "load:enroll": "node scripts/load/enroll-concurrent.mjs",
     "load:browse": "node scripts/load/browse-load.mjs"
   }

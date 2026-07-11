@@ -2,10 +2,11 @@
 const { get } = require('../../utils/request')
 const { mapSearchResults, buildRoute } = require('../../utils/search')
 const mock = require('../../mock/defaults')
+const { useMock } = require('../../utils/mockGuard')
 
 const HISTORY_KEY = 'search_history'
 
-// 接口不可用时的本地检索索引
+// 接口不可用时的本地检索索引（仅 dev mock 模式）
 function localIndex() {
   const idx = []
   ;(mock.newsFull || []).forEach(n => idx.push({ title: n.title, targetType: 'news', targetId: n.id, typeLabel: '新闻', sub: n.category }))
@@ -55,7 +56,7 @@ Page({
     } catch (err) {
       console.warn('[search] 搜索失败', err)
     }
-    if (!results.length) results = localSearch(q)
+    if (!results.length && useMock) results = localSearch(q)
     this.setData({ results, searched: true })
     this._saveHistory(q)
   },

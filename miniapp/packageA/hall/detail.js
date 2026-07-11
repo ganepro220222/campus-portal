@@ -2,12 +2,15 @@
 const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
 const { mergeHallDetail } = require('../../utils/content')
+const { useMock } = require('../../utils/mockGuard')
+
+const emptyHall = mergeHallDetail(null)
 
 Page({
   data: {
-    hall: mergeHallDetail(null, mock.hallDetail),
+    hall: emptyHall,
     galleryIndex: 0,
-    currentCaption: mock.hallDetail.caption,
+    currentCaption: '',
     waveBars: Array.from({ length: 16 }, (_, i) => (i * 0.06).toFixed(2)),
     audioPlaying: false,
     scrollProgress: 0,
@@ -20,12 +23,13 @@ Page({
     this._sectionObserver = null
     const id = opts && opts.id
     if (!id) {
-      this._initImmersive(mock.hallDetail)
+      if (useMock) this._initImmersive(mock.hallDetail)
       return
     }
     get(`/halls/${id}`).then(h => {
       if (h) {
-        const hall = mergeHallDetail(h, id === '2' ? mock.hallDetail : undefined)
+        const demoFallback = useMock && id === '2' ? mock.hallDetail : undefined
+        const hall = mergeHallDetail(h, demoFallback)
         this.setData({
           hall,
           currentCaption: hall.currentCaption || hall.caption

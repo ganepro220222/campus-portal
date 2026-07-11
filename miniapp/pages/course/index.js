@@ -1,6 +1,7 @@
 // pages/course/index.js
 const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
+const { withListFallback } = require('../../utils/mockGuard')
 const { decorateCourseCards } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
 const { getNavBarLayout } = require('../../utils/navbar')
@@ -9,7 +10,7 @@ Page({
   data: {
     statusBarHeight: 20,
     capsulePadding: 96,
-    cats: mock.categories.course,
+    cats: ['全部'],
     activeCat: 0,
     courseList: [],
     loading: true
@@ -38,12 +39,12 @@ Page({
     const cat = this.data.activeCat ? this.data.cats[this.data.activeCat] : undefined
     try {
       const list = await get('/courses', { category: cat }).catch(() => null)
-      const src = (list && list.length) ? list : mock.coursesFull
+      const src = withListFallback(list, mock.coursesFull)
       const filtered = cat ? src.filter(c => (c.cat || c.categoryName) === cat) : src
       this.setData({ courseList: decorateCourseCards(filtered), loading: false })
     } catch (err) {
       console.warn('[course] 课程列表加载失败', err)
-      this.setData({ courseList: decorateCourseCards(mock.coursesFull), loading: false })
+      this.setData({ courseList: decorateCourseCards(withListFallback(null, mock.coursesFull)), loading: false })
     }
   },
 

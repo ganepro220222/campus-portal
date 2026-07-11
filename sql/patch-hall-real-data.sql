@@ -94,10 +94,10 @@ UPDATE `hall` SET
 WHERE `id` = 7;
 
 UPDATE `hall` SET
-  `name` = '校园安全教育馆1',
+  `name` = '校园安全教育馆',
   `short_name` = '校园安全教育馆',
-  `intro` = '校园安全常识、应急演练与警示教育图文展陈，VR 链接筹备中。',
-  `vr_url` = NULL,
+  `intro` = '校园安全常识、应急演练与警示教育，支持 VR 全景漫游。',
+  `vr_url` = 'https://www.bafang720.com/tour/4220d0a68856dcb9',
   `category_id` = 17,
   `sort` = 8,
   `status` = 1
@@ -106,8 +106,8 @@ WHERE `id` = 8;
 UPDATE `hall` SET
   `name` = '西部山区道路运输安全警示教育基地',
   `short_name` = '西部山区安全基地',
-  `intro` = '面向山区道路运输场景的典型案例与安全警示教育，VR 链接筹备中。',
-  `vr_url` = NULL,
+  `intro` = '面向山区道路运输场景的典型案例与安全警示教育，支持 VR 全景漫游。',
+  `vr_url` = 'https://eqvrar.com/hcvr/692/?t=1567242165',
   `category_id` = 17,
   `sort` = 9,
   `status` = 1

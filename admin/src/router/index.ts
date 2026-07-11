@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School, Menu } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -97,6 +97,12 @@ const router = createRouter({
           meta: { title: 'AI 知识库', permission: 'admin:super' }
         },
         {
+          path: 'categories',
+          name: 'Categories',
+          component: () => import('@/views/category/CategoryListView.vue'),
+          meta: { title: '分类管理', permission: 'category:read' }
+        },
+        {
           path: 'colleges',
           name: 'Colleges',
           component: () => import('@/views/college/CollegeListView.vue'),
@@ -142,6 +148,7 @@ export const menuItems: MenuItem[] = [
   { path: '/crafts', title: '文创管理', icon: Goods, permissions: ['hall:read'] },
   { path: '/courses', title: '课程管理', icon: VideoCamera, permissions: ['course:read'] },
   { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
+  { path: '/categories', title: '分类管理', icon: Menu, permissions: ['category:read'] },
   { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
   { path: '/banners', title: 'Banner 管理', icon: Picture, permissions: ['admin:super'] },
   { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] },

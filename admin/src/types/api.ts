@@ -143,6 +143,17 @@ export interface CategoryOption {
   name: string
 }
 
+export interface CategoryItem {
+  id: number
+  type: CategoryType
+  name: string
+  sort: number
+  status: number
+  updateTime?: string
+}
+
+export type CategoryType = 'news' | 'hall' | 'craft' | 'course' | 'resource'
+
 /** 活动（后台） */
 export interface ActivityItem {
   id: number

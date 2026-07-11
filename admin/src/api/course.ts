@@ -47,6 +47,14 @@ export function updateCourse(id: number, data: CourseSavePayload) {
   return put<CourseItem>(`/admin/courses/${id}`, data)
 }
 
+export function publishCourse(id: number) {
+  return put<CourseItem>(`/admin/courses/${id}/publish`)
+}
+
+export function unpublishCourse(id: number) {
+  return put<CourseItem>(`/admin/courses/${id}/unpublish`)
+}
+
 export function triggerSubtitle(id: number) {
   return post<SubtitleStatus>(`/admin/courses/${id}/subtitle/trigger`)
 }

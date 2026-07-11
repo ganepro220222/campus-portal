@@ -1,4 +1,4 @@
-import { get, post, put } from './request'
+import { get, post, put, del } from './request'
 import type { NewsItem, PageResult } from '@/types/api'
 
 export interface NewsQuery {
@@ -26,4 +26,8 @@ export function publishNews(id: number) {
 
 export function unpublishNews(id: number) {
   return put<NewsItem>(`/admin/news/${id}/unpublish`)
+}
+
+export function removeNews(id: number) {
+  return del<void>(`/admin/news/${id}`)
 }

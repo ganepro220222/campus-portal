@@ -43,6 +43,16 @@ public class AdminCourseController {
         return Result.ok(adminCourseService.update(id, req));
     }
 
+    @PutMapping("/{id}/publish")
+    public Result<Map<String, Object>> publish(@PathVariable Long id) {
+        return Result.ok(adminCourseService.publish(id));
+    }
+
+    @PutMapping("/{id}/unpublish")
+    public Result<Map<String, Object>> unpublish(@PathVariable Long id) {
+        return Result.ok(adminCourseService.unpublish(id));
+    }
+
     @PostMapping("/{id}/subtitle/trigger")
     public Result<Map<String, Object>> triggerSubtitle(@PathVariable Long id) {
         return Result.ok(adminCourseService.triggerSubtitle(id));

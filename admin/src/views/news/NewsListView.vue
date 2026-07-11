@@ -40,7 +40,7 @@
       </el-table-column>
       <el-table-column prop="viewCount" label="阅读" width="80" align="center" />
       <el-table-column prop="publishTime" label="发布时间" width="160" />
-      <el-table-column label="操作" width="220" fixed="right" align="center">
+      <el-table-column label="操作" width="280" fixed="right" align="center">
         <template #default="{ row }">
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
           <el-button
@@ -55,6 +55,12 @@
             type="warning"
             @click="onUnpublish(row)"
           >下架</el-button>
+          <el-button
+            v-if="canWrite && row.status === 'draft'"
+            link
+            type="danger"
+            @click="onDelete(row)"
+          >删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -148,7 +154,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { AiPolishAction } from '@/api/ai'
 import { fetchCategories } from '@/api/category'
-import { createNews, fetchNews, publishNews, unpublishNews, updateNews } from '@/api/news'
+import { createNews, fetchNews, publishNews, removeNews, unpublishNews, updateNews } from '@/api/news'
 import AiAssistBar from '@/components/AiAssistBar.vue'
 import CoverUploadField from '@/components/CoverUploadField.vue'
 import FieldHint from '@/components/FieldHint.vue'
@@ -303,6 +309,13 @@ async function onUnpublish(row: NewsItem) {
   await ElMessageBox.confirm(`下架「${row.title}」？小程序端将不再展示。`, '下架确认', { type: 'warning' })
   await unpublishNews(row.id)
   ElMessage.success('已下架')
+  await loadData()
+}
+
+async function onDelete(row: NewsItem) {
+  await ElMessageBox.confirm(`删除草稿「${row.title}」？删除后不可恢复。`, '删除确认', { type: 'warning' })
+  await removeNews(row.id)
+  ElMessage.success('已删除')
   await loadData()
 }
 

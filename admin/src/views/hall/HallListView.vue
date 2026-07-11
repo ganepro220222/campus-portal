@@ -29,9 +29,21 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right" align="center">
+      <el-table-column label="操作" width="220" fixed="right" align="center">
         <template #default="{ row }">
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
+          <el-button
+            v-if="canWrite && row.status !== 1"
+            link
+            type="success"
+            @click="onPublish(row)"
+          >上架</el-button>
+          <el-button
+            v-if="canWrite && row.status === 1"
+            link
+            type="warning"
+            @click="onUnpublish(row)"
+          >下架</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -190,9 +202,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchCategories } from '@/api/category'
-import { createHall, fetchHallDetail, fetchHalls, updateHall } from '@/api/hall'
+import { createHall, fetchHallDetail, fetchHalls, publishHall, unpublishHall, updateHall } from '@/api/hall'
 import CoverUploadField from '@/components/CoverUploadField.vue'
 import FieldHint from '@/components/FieldHint.vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
@@ -354,6 +366,20 @@ async function onSave() {
   } finally {
     saving.value = false
   }
+}
+
+async function onPublish(row: HallItem) {
+  await ElMessageBox.confirm(`上架「${row.name}」？上架后小程序端可见，并同步搜索索引。`, '上架确认')
+  await publishHall(row.id)
+  ElMessage.success('已上架')
+  await loadData()
+}
+
+async function onUnpublish(row: HallItem) {
+  await ElMessageBox.confirm(`下架「${row.name}」？小程序端将不再展示。`, '下架确认', { type: 'warning' })
+  await unpublishHall(row.id)
+  ElMessage.success('已下架')
+  await loadData()
 }
 
 onMounted(async () => {

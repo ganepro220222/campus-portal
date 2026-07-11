@@ -94,6 +94,32 @@ public class AdminCourseService {
         return detail(id);
     }
 
+    @Transactional
+    public Map<String, Object> publish(Long id) {
+        adminPermissionService.require("course:write");
+        Course course = requireCourse(id);
+        if (course.getStatus() != null && course.getStatus() == 1) {
+            throw new BusinessException(400, "课程已上架");
+        }
+        course.setStatus(1);
+        courseMapper.updateById(course);
+        syncSearchIfOnline(courseMapper.selectById(id));
+        return detail(id);
+    }
+
+    @Transactional
+    public Map<String, Object> unpublish(Long id) {
+        adminPermissionService.require("course:write");
+        Course course = requireCourse(id);
+        if (course.getStatus() == null || course.getStatus() != 1) {
+            throw new BusinessException(400, "仅已上架课程可下架");
+        }
+        course.setStatus(0);
+        courseMapper.updateById(course);
+        searchIndexSyncService.removeCourse(id);
+        return detail(id);
+    }
+
     /** 触发字幕生成（ASR 未接入时标记 processing，管理员可手动补字幕 URL） */
     @Transactional
     public Map<String, Object> triggerSubtitle(Long id) {

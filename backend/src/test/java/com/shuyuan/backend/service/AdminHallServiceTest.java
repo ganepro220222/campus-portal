@@ -1,5 +1,6 @@
 package com.shuyuan.backend.service;
 
+import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.HallMediaItem;
 import com.shuyuan.backend.dto.HallSaveRequest;
 import com.shuyuan.backend.dto.HallSectionItem;
@@ -19,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -178,5 +180,58 @@ class AdminHallServiceTest {
         adminHallService.create(req);
 
         assertEquals("https://roma.720yun.com/vr/b5b7196093f3c25a/", captor.getValue().getVrUrl());
+    }
+
+    @Test
+    void publish_setsOnlineAndSyncsSearch() {
+        Hall offline = new Hall();
+        offline.setId(7L);
+        offline.setName("交通博物馆");
+        offline.setStatus(0);
+        Hall online = new Hall();
+        online.setId(7L);
+        online.setName("交通博物馆");
+        online.setStatus(1);
+        when(hallMapper.selectById(7L)).thenReturn(offline, online, online);
+        when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of());
+        when(hallMediaMapper.selectList(any())).thenReturn(List.of());
+        when(hallSectionMapper.selectList(any())).thenReturn(List.of());
+
+        adminHallService.publish(7L);
+
+        verify(searchIndexSyncService).syncHall(online);
+    }
+
+    @Test
+    void unpublish_setsOfflineAndRemovesSearch() {
+        Hall online = new Hall();
+        online.setId(8L);
+        online.setName("校史馆");
+        online.setStatus(1);
+        Hall offline = new Hall();
+        offline.setId(8L);
+        offline.setName("校史馆");
+        offline.setStatus(0);
+        when(hallMapper.selectById(8L)).thenReturn(online, offline, offline);
+        when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of());
+        when(hallMediaMapper.selectList(any())).thenReturn(List.of());
+        when(hallSectionMapper.selectList(any())).thenReturn(List.of());
+
+        adminHallService.unpublish(8L);
+
+        verify(searchIndexSyncService).removeHall(8L);
+    }
+
+    @Test
+    void publish_rejectsAlreadyOnline() {
+        Hall online = new Hall();
+        online.setId(9L);
+        online.setStatus(1);
+        when(hallMapper.selectById(9L)).thenReturn(online);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> adminHallService.publish(9L));
+
+        assertEquals(400, ex.getCode());
+        verify(searchIndexSyncService, never()).syncHall(any());
     }
 }

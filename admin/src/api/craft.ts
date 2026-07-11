@@ -55,3 +55,11 @@ export function createCraft(data: CraftSavePayload) {
 export function updateCraft(id: number, data: CraftSavePayload) {
   return put<CraftItem>(`/admin/crafts/${id}`, data)
 }
+
+export function publishCraft(id: number) {
+  return put<CraftItem>(`/admin/crafts/${id}/publish`)
+}
+
+export function unpublishCraft(id: number) {
+  return put<CraftItem>(`/admin/crafts/${id}/unpublish`)
+}

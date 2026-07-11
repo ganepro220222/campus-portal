@@ -15,8 +15,19 @@ const ACTIVITY_ICONS  = ['megaphone', 'flag', 'star', 'calendar']
 const CRAFT_COLORS    = ['hc1', 'hc5', 'hc3', 'hc2', 'hc4']
 const CRAFT_ICONS     = ['medal', 'star', 'museum', 'book', 'flag']
 
+function resolveCoverImageMode(coverFitMode) {
+  return coverFitMode === 'fit' ? 'aspectFit' : 'aspectFill'
+}
+
+function withCoverFields(it) {
+  return {
+    ...it,
+    coverImageMode: resolveCoverImageMode(it.coverFitMode)
+  }
+}
+
 function decorateHalls(list) {
-  return (list || []).map((it, i) => ({
+  return (list || []).map((it, i) => withCoverFields({
     ...it,
     colorClass: it.colorClass || HALL_COLORS[i % HALL_COLORS.length],
     shortName: it.shortName || (it.name || '').replace(/馆$/, '').slice(0, 8),
@@ -26,7 +37,7 @@ function decorateHalls(list) {
 }
 
 function decorateNews(list) {
-  return (list || []).map((it, i) => ({
+  return (list || []).map((it, i) => withCoverFields({
     ...it,
     categoryName: it.categoryName || it.category || '书院动态',
     publishTime: it.publishTime ? String(it.publishTime).slice(0, 10) : it.publishTime,
@@ -36,7 +47,7 @@ function decorateNews(list) {
 }
 
 function decorateNewsFeed(list) {
-  return (list || []).map((it, i) => ({
+  return (list || []).map((it, i) => withCoverFields({
     ...it,
     categoryName: it.categoryName || it.category || '书院动态',
     publishTime: it.publishTime ? String(it.publishTime).slice(0, 10) : it.publishTime,
@@ -47,7 +58,7 @@ function decorateNewsFeed(list) {
 }
 
 function decorateCourses(list) {
-  return (list || []).map((it, i) => ({
+  return (list || []).map((it, i) => withCoverFields({
     ...it,
     categoryName: it.categoryName || '文化课程',
     colorClass: it.colorClass || HALL_COLORS[i % HALL_COLORS.length],
@@ -56,7 +67,7 @@ function decorateCourses(list) {
 }
 
 function decorateCourseCards(list) {
-  return (list || []).map((it, i) => ({
+  return (list || []).map((it, i) => withCoverFields({
     ...it,
     colorClass: it.colorClass || COURSE_COLORS[i % COURSE_COLORS.length],
     icon: it.icon || COURSE_CARD_ICONS[i % COURSE_CARD_ICONS.length],
@@ -67,7 +78,7 @@ function decorateCourseCards(list) {
 }
 
 function decorateBanners(list) {
-  return (list || []).map((it, i) => ({
+  return (list || []).map((it, i) => withCoverFields({
     ...it,
     linkType: it.linkType || it.link_type,
     linkValue: it.linkValue || it.link_value,
@@ -76,7 +87,7 @@ function decorateBanners(list) {
 }
 
 function decorateActivities(list) {
-  return (list || []).map((it, i) => ({
+  return (list || []).map((it, i) => withCoverFields({
     ...it,
     colorClass: it.colorClass || ACTIVITY_COLORS[i % ACTIVITY_COLORS.length],
     icon: it.icon || ACTIVITY_ICONS[i % ACTIVITY_ICONS.length],
@@ -85,7 +96,7 @@ function decorateActivities(list) {
 }
 
 function decorateCrafts(list) {
-  return (list || []).map((it, i) => ({
+  return (list || []).map((it, i) => withCoverFields({
     ...it,
     colorClass: it.colorClass || CRAFT_COLORS[i % CRAFT_COLORS.length],
     icon: it.icon || CRAFT_ICONS[i % CRAFT_ICONS.length],
@@ -96,6 +107,7 @@ function decorateCrafts(list) {
 
 module.exports = {
   HALL_COLORS,
+  resolveCoverImageMode,
   decorateHalls,
   decorateCrafts,
   decorateNews,

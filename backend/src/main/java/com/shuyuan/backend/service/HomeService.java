@@ -62,6 +62,8 @@ public class HomeService {
         Map<String, Object> m = new HashMap<>();
         m.put("id", n.getId());
         m.put("title", n.getTitle());
+        m.put("cover", n.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(n.getCoverFitMode()));
         m.put("categoryName", categoryService.getName(n.getCategoryId(), catMap));
         m.put("publishTime", n.getPublishTime());
         return m;
@@ -74,6 +76,7 @@ public class HomeService {
         m.put("shortName", HallService.resolveShortName(h));
         m.put("intro", h.getIntro());
         m.put("cover", h.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(h.getCoverFitMode()));
         m.put("categoryName", categoryService.getName(h.getCategoryId(), catMap));
         return m;
     }
@@ -82,6 +85,8 @@ public class HomeService {
         Map<String, Object> m = new HashMap<>();
         m.put("id", c.getId());
         m.put("name", c.getName());
+        m.put("cover", c.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(c.getCoverFitMode()));
         m.put("categoryName", categoryService.getName(c.getCategoryId(), catMap));
         m.put("lessonCount", c.getDurationMinutes() != null ? Math.max(1, c.getDurationMinutes() / 45) : 0);
         m.put("audience", c.getTargetAudience());

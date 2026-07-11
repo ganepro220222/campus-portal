@@ -17,7 +17,7 @@
       >
         <view class="ccard-cover {{item.colorClass}}">
           <view wx:if="{{item.cover}}" class="ccard-bg">
-            <image src="{{item.cover}}" mode="aspectFill" class="ccard-img" />
+            <image src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ccard-img" />
           </view>
           <icon name="{{item.icon}}" size="46" color="rgba(255,255,255,0.9)" />
           <text wx:if="{{item.badge}}" class="ccard-badge">{{item.badge}}</text>

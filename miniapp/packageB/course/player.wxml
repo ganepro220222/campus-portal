@@ -9,6 +9,7 @@
       src="{{videoUrl}}"
       poster="{{cover}}"
       initial-time="{{initialTime}}"
+      direction="90"
       controls
       show-center-play-btn
       enable-play-gesture

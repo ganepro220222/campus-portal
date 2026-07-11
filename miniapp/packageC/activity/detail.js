@@ -43,7 +43,7 @@ Page({
       const decorated = decorateActivities([detail])[0]
       const action = resolveDetailAction(detail, getApp().isLoggedIn())
       this.setData({
-        detail,
+        detail: { ...detail, coverImageMode: decorated.coverImageMode },
         coverClass: decorated.colorClass || 'hc1',
         loading: false,
         actionType: action.actionType,

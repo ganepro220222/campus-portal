@@ -12,6 +12,7 @@ import com.shuyuan.backend.entity.Resource;
 import com.shuyuan.backend.mapper.CourseMapper;
 import com.shuyuan.backend.mapper.CourseResourceMapper;
 import com.shuyuan.backend.mapper.ResourceMapper;
+import com.shuyuan.backend.util.CoverFitMode;
 import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -162,6 +163,9 @@ public class AdminCourseService {
         if (req.getCover() != null) {
             course.setCover(req.getCover());
         }
+        if (req.getCoverFitMode() != null) {
+            course.setCoverFitMode(CoverFitMode.normalize(req.getCoverFitMode()));
+        }
         if (req.getCategoryId() != null) {
             course.setCategoryId(req.getCategoryId());
         }
@@ -261,6 +265,7 @@ public class AdminCourseService {
         m.put("id", c.getId());
         m.put("name", c.getName());
         m.put("cover", c.getCover());
+        m.put("coverFitMode", CoverFitMode.normalize(c.getCoverFitMode()));
         m.put("categoryId", c.getCategoryId());
         m.put("categoryName", categoryService.getName(c.getCategoryId(), catMap));
         m.put("targetAudience", c.getTargetAudience());

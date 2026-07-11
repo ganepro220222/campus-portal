@@ -7,6 +7,7 @@ public class ActivitySaveRequest {
 
     private String title;
     private String cover;
+    private String coverFitMode;
     private String intro;
     private String location;
     private String startTime;

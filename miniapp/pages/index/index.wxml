@@ -49,7 +49,7 @@
           <view class="bslide {{item.colorClass || 's1'}}">
             <view class="bslide-deco"></view>
             <view wx:if="{{item.imageUrl}}" class="bslide-bg">
-              <image src="{{item.imageUrl}}" mode="aspectFill" class="bslide-img" />
+              <image src="{{item.imageUrl}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="bslide-img" />
             </view>
             <view class="bslide-tag">{{item.category || '书院动态'}}</view>
             <view class="bslide-title serif">{{item.title}}</view>
@@ -128,7 +128,7 @@
           >
             <view class="hc-cover {{item.colorClass || 'hc1'}}">
               <view wx:if="{{item.cover}}" class="hc-bg">
-                <image src="{{item.cover}}" mode="aspectFill" class="hc-img" />
+                <image src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="hc-img" />
               </view>
               <view class="hc-corner"><icon name="museum" size="30" color="rgba(255,255,255,0.34)" /></view>
               <text class="hc-ct serif">{{item.shortName}}</text>
@@ -154,7 +154,7 @@
           data-id="{{item.id}}"
         >
           <view class="ncard-thumb {{item.colorClass || 'hc1'}}">
-            <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" class="ncard-img" />
+            <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ncard-img" />
             <icon wx:else name="{{item.icon}}" size="26" color="rgba(255,255,255,0.92)" />
           </view>
           <view class="ncard-body">
@@ -183,7 +183,7 @@
           data-id="{{item.id}}"
         >
           <view class="ccard-thumb {{item.colorClass || 'hc3'}}">
-            <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" class="ccard-img" />
+            <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ccard-img" />
             <icon wx:else name="{{item.icon}}" size="30" color="rgba(255,255,255,0.92)" />
           </view>
           <view class="ccard-body">

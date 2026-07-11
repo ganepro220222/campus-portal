@@ -84,12 +84,10 @@
           <el-input v-model="form.title" maxlength="100" show-word-limit />
         </el-form-item>
         <el-form-item label="封面图">
-          <OssUploadInput
+          <CoverUploadField
             v-model="form.cover"
-            scene="cover"
-            accept="image/*"
-            upload-label="上传封面"
-            done-text="封面已上传"
+            v-model:fit-mode="form.coverFitMode"
+            slot="activityHero"
           />
         </el-form-item>
         <el-form-item label="简介">
@@ -172,8 +170,9 @@ import {
   updateActivity
 } from '@/api/activity'
 import { useAuthStore } from '@/stores/auth'
-import OssUploadInput from '@/components/OssUploadInput.vue'
+import CoverUploadField from '@/components/CoverUploadField.vue'
 import type { ActivityItem } from '@/types/api'
+import type { CoverFitMode } from '@/utils/cover'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -194,6 +193,7 @@ const formRef = ref<FormInstance>()
 const form = reactive({
   title: '',
   cover: '',
+  coverFitMode: 'fill' as CoverFitMode,
   intro: '',
   location: '',
   startTime: '',
@@ -246,6 +246,7 @@ function onFilter() {
 function resetForm() {
   form.title = ''
   form.cover = ''
+  form.coverFitMode = 'fill'
   form.intro = ''
   form.location = ''
   form.startTime = ''
@@ -262,6 +263,7 @@ function openDialog(row?: ActivityItem) {
   if (row) {
     form.title = row.title
     form.cover = row.cover || ''
+    form.coverFitMode = row.coverFitMode === 'fit' ? 'fit' : 'fill'
     form.intro = row.intro || ''
     form.location = row.location || ''
     form.startTime = row.startTime || ''

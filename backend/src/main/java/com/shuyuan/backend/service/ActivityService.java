@@ -46,6 +46,7 @@ public class ActivityService {
         m.put("id", activity.getId());
         m.put("title", activity.getTitle());
         m.put("cover", activity.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(activity.getCoverFitMode()));
         m.put("intro", activity.getIntro());
         m.put("location", activity.getLocation());
         m.put("startTime", FormatUtils.formatDateTime(activity.getStartTime()));
@@ -78,6 +79,7 @@ public class ActivityService {
         m.put("id", a.getId());
         m.put("title", a.getTitle());
         m.put("cover", a.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(a.getCoverFitMode()));
         m.put("location", a.getLocation());
         m.put("startTime", FormatUtils.formatDateTime(a.getStartTime()));
         m.put("enrolledCount", a.getEnrolledCount());

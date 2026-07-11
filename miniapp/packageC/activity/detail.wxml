@@ -8,7 +8,7 @@
     <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
       <!-- 封面 -->
       <view class="hero {{coverClass}}">
-        <image wx:if="{{detail.cover}}" src="{{detail.cover}}" mode="aspectFill" class="hero-img" />
+        <image wx:if="{{detail.cover}}" src="{{detail.cover}}" mode="{{detail.coverImageMode || 'aspectFill'}}" class="hero-img" />
         <icon wx:else name="megaphone" size="48" color="rgba(255,255,255,0.85)" />
         <text class="hero-tag">{{detail.tag || '活动'}}</text>
       </view>

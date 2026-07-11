@@ -35,7 +35,7 @@
         data-id="{{item.id}}"
       >
         <view class="ccard-thumb {{item.colorClass}}">
-          <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" class="ccard-img" />
+          <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ccard-img" />
           <icon wx:else name="{{item.icon}}" size="34" color="rgba(255,255,255,0.92)" />
         </view>
         <view class="ccard-body">

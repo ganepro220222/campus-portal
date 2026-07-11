@@ -8,6 +8,7 @@ public class BannerSaveRequest {
     private String title;
     private String description;
     private String imageUrl;
+    private String coverFitMode;
     /** none / page / url */
     private String linkType;
     private String linkValue;

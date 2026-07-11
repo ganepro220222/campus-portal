@@ -21,7 +21,7 @@
       data-id="{{item.id}}"
     >
       <view class="nthumb {{item.colorClass}}">
-        <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" class="nthumb-img" lazy-load />
+        <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="nthumb-img" lazy-load />
         <icon wx:else name="{{item.icon}}" size="30" color="rgba(255,255,255,0.92)" />
       </view>
       <view class="nbody">

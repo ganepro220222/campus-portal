@@ -121,6 +121,9 @@ public class AdminHallService {
         if (req.getCover() != null) {
             hall.setCover(req.getCover().trim());
         }
+        if (req.getCoverFitMode() != null) {
+            hall.setCoverFitMode(com.shuyuan.backend.util.CoverFitMode.normalize(req.getCoverFitMode()));
+        }
         if (req.getIntro() != null) {
             hall.setIntro(req.getIntro());
         }
@@ -257,6 +260,7 @@ public class AdminHallService {
         m.put("name", h.getName());
         m.put("shortName", h.getShortName());
         m.put("cover", h.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(h.getCoverFitMode()));
         m.put("intro", h.getIntro());
         m.put("vrUrl", h.getVrUrl());
         m.put("vrReady", HallService.isVrReady(h.getVrUrl()));

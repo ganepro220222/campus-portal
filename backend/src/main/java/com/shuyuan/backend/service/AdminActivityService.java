@@ -114,6 +114,9 @@ public class AdminActivityService {
         if (req.getCover() != null) {
             activity.setCover(req.getCover());
         }
+        if (req.getCoverFitMode() != null) {
+            activity.setCoverFitMode(com.shuyuan.backend.util.CoverFitMode.normalize(req.getCoverFitMode()));
+        }
         if (req.getIntro() != null) {
             activity.setIntro(req.getIntro());
         }
@@ -152,6 +155,7 @@ public class AdminActivityService {
         m.put("id", a.getId());
         m.put("title", a.getTitle());
         m.put("cover", a.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(a.getCoverFitMode()));
         m.put("intro", a.getIntro());
         m.put("location", a.getLocation());
         m.put("startTime", FormatUtils.formatDateTime(a.getStartTime()));

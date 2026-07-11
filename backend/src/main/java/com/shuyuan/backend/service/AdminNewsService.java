@@ -8,6 +8,7 @@ import com.shuyuan.backend.dto.NewsSaveRequest;
 import com.shuyuan.backend.entity.News;
 import com.shuyuan.backend.mapper.NewsMapper;
 import com.shuyuan.backend.util.FormatUtils;
+import com.shuyuan.backend.util.CoverFitMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -121,6 +122,9 @@ public class AdminNewsService {
         if (req.getCover() != null) {
             news.setCover(req.getCover());
         }
+        if (req.getCoverFitMode() != null) {
+            news.setCoverFitMode(CoverFitMode.normalize(req.getCoverFitMode()));
+        }
         if (req.getSummary() != null) {
             news.setSummary(req.getSummary());
         }
@@ -141,6 +145,7 @@ public class AdminNewsService {
         m.put("id", n.getId());
         m.put("title", n.getTitle());
         m.put("cover", n.getCover());
+        m.put("coverFitMode", CoverFitMode.normalize(n.getCoverFitMode()));
         m.put("summary", n.getSummary());
         m.put("content", n.getContent());
         m.put("categoryId", n.getCategoryId());

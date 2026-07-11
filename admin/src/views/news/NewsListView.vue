@@ -94,12 +94,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="封面图">
-          <OssUploadInput
+          <CoverUploadField
             v-model="form.cover"
-            scene="cover"
-            accept="image/*"
-            upload-label="上传封面"
-            done-text="封面已上传"
+            v-model:fit-mode="form.coverFitMode"
+            slot="newsList"
           />
         </el-form-item>
         <el-form-item label="摘要">
@@ -149,8 +147,9 @@ import type { AiPolishAction } from '@/api/ai'
 import { fetchCategories } from '@/api/category'
 import { createNews, fetchNews, publishNews, unpublishNews, updateNews } from '@/api/news'
 import AiAssistBar from '@/components/AiAssistBar.vue'
-import OssUploadInput from '@/components/OssUploadInput.vue'
+import CoverUploadField from '@/components/CoverUploadField.vue'
 import WangEditor from '@/components/WangEditor.vue'
+import type { CoverFitMode } from '@/utils/cover'
 import { isEditorContentEmpty } from '@/utils/editor'
 import { pickFirstTitleSuggestion, plainTextToHtml, stripHtml } from '@/utils/html'
 import { useAuthStore } from '@/stores/auth'
@@ -180,6 +179,7 @@ const formRef = ref<FormInstance>()
 const form = reactive({
   title: '',
   cover: '',
+  coverFitMode: 'fill' as CoverFitMode,
   summary: '',
   content: '',
   categoryId: undefined as number | undefined,
@@ -245,6 +245,7 @@ function onBodyAiAdopt(payload: { action: AiPolishAction; text: string }) {
 function resetForm() {
   form.title = ''
   form.cover = ''
+  form.coverFitMode = 'fill'
   form.summary = ''
   form.content = ''
   form.categoryId = categories.value[0]?.id
@@ -257,6 +258,7 @@ function openDialog(row?: NewsItem) {
   if (row) {
     form.title = row.title
     form.cover = row.cover || ''
+    form.coverFitMode = (row.coverFitMode === 'fit' ? 'fit' : 'fill')
     form.summary = row.summary || ''
     form.content = row.content || ''
     form.categoryId = row.categoryId ?? undefined

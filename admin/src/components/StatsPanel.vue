@@ -20,6 +20,7 @@
       <div v-for="k in kpiCards" :key="k.label" class="kpi-card">
         <div class="kpi-val">{{ k.value }}</div>
         <div class="kpi-label">{{ k.label }}</div>
+        <div v-if="k.hint" class="kpi-hint">{{ k.hint }}</div>
       </div>
     </div>
 
@@ -76,11 +77,23 @@ const moduleChart = shallowRef<echarts.ECharts | null>(null)
 const kpiCards = computed(() => {
   const o = overview.value
   return [
-    { label: '今日 PV', value: o?.pv ?? '—' },
-    { label: '今日 UV', value: o?.uv ?? '—' },
-    { label: '今日 DAU', value: o?.dau ?? '—' },
-    { label: '今日新增用户', value: o?.newMember ?? '—' },
-    { label: '今日报名', value: o?.enrollCount ?? '—' }
+    {
+      label: '今日行为次数',
+      hint: '含内容浏览、报名等操作记录',
+      value: o?.pv ?? '—'
+    },
+    {
+      label: '今日来访用户',
+      hint: '当日有操作的登录用户数',
+      value: o?.uv ?? '—'
+    },
+    {
+      label: '今日活跃用户',
+      hint: '当日打开过小程序的登录用户',
+      value: o?.dau ?? '—'
+    },
+    { label: '今日新增用户', hint: '', value: o?.newMember ?? '—' },
+    { label: '今日报名', hint: '', value: o?.enrollCount ?? '—' }
   ]
 })
 
@@ -110,14 +123,14 @@ function renderTrend(data: { date: string; pv: number; uv: number; dau: number }
   }
   trendChart.value.setOption({
     tooltip: { trigger: 'axis' },
-    legend: { data: ['PV', 'UV', 'DAU'], bottom: 0 },
+    legend: { data: ['行为次数', '来访用户', '活跃用户'], bottom: 0 },
     grid: { left: 48, right: 16, top: 24, bottom: 48 },
     xAxis: { type: 'category', data: data.map((d) => d.date.slice(5)) },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: 'PV', type: 'line', smooth: true, data: data.map((d) => d.pv), color: '#3F57B5' },
-      { name: 'UV', type: 'line', smooth: true, data: data.map((d) => d.uv), color: '#5C9A6B' },
-      { name: 'DAU', type: 'line', smooth: true, data: data.map((d) => d.dau), color: '#C0A24E' }
+      { name: '行为次数', type: 'line', smooth: true, data: data.map((d) => d.pv), color: '#3F57B5' },
+      { name: '来访用户', type: 'line', smooth: true, data: data.map((d) => d.uv), color: '#5C9A6B' },
+      { name: '活跃用户', type: 'line', smooth: true, data: data.map((d) => d.dau), color: '#C0A24E' }
     ]
   })
 }
@@ -213,8 +226,15 @@ onBeforeUnmount(() => {
 }
 .kpi-label {
   font-size: 12px;
-  color: var(--brand-muted);
+  font-weight: 600;
+  color: var(--brand-ink);
   margin-top: 6px;
+}
+.kpi-hint {
+  font-size: 11px;
+  color: var(--brand-muted);
+  margin-top: 4px;
+  line-height: 1.4;
 }
 .chart-row {
   display: grid;

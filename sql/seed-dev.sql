@@ -14,7 +14,7 @@ UPDATE `sys_user` SET `password_hash` = '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsv
 WHERE `username` = 'admin';
 
 UPDATE `sys_role` SET `role_name` = '超级管理员',
-  `permissions` = '["admin:super","news:read","news:write","news:publish","hall:read","hall:write","course:read","course:write","enroll:read","enroll:export","stats:view"]'
+  `permissions` = '["admin:super","news:read","news:write","news:publish","hall:read","hall:write","course:read","course:write","enroll:read","enroll:export","stats:view","category:read","category:write"]'
 WHERE `id` = 1;
 
 INSERT IGNORE INTO `member_profile` (`member_id`, `real_name`, `college`, `phone`) VALUES

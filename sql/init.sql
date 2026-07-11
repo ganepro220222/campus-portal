@@ -660,8 +660,8 @@ CREATE TABLE IF NOT EXISTS `sys_config` (
 
 -- 角色（超管）
 INSERT IGNORE INTO `sys_role` (`id`, `role_name`, `permissions`) VALUES
-(1, '超级管理员', '["admin:super","news:read","news:write","news:publish","hall:read","hall:write","course:read","course:write","enroll:read","enroll:export","stats:view"]'),
-(2, '内容编辑', '["news:read","news:write","hall:read","hall:write","course:read","course:write"]'),
+(1, '超级管理员', '["admin:super","news:read","news:write","news:publish","hall:read","hall:write","course:read","course:write","enroll:read","enroll:export","stats:view","category:read","category:write"]'),
+(2, '内容编辑', '["news:read","news:write","hall:read","hall:write","course:read","course:write","category:read","category:write"]'),
 (3, '活动管理员', '["enroll:read","enroll:export"]');
 
 -- 默认超管账号（密码：Admin@123，BCrypt加密）

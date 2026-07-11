@@ -8,7 +8,8 @@ const app = getApp()
  * 参数 method HTTP 方法，默认 GET
  * 参数 data   请求体或查询参数对象
  */
-const request = (url, method = 'GET', data = {}) => {
+const request = (url, method = 'GET', data = {}, options = {}) => {
+  const silent = options.silent === true
   return new Promise((resolve, reject) => {
     const token = app.globalData.token || wx.getStorageSync('token') || ''
 
@@ -28,20 +29,24 @@ const request = (url, method = 'GET', data = {}) => {
           return
         }
         if (body.code === 401) {
-          // token 失效，跳登录（登录接口本身的 401 不触发 logout）
           if (!String(url).includes('/auth/')) {
             app.logout()
           }
-          wx.showToast({ title: body.message || '请先登录', icon: 'none', duration: 2500 })
+          if (!silent) {
+            wx.showToast({ title: body.message || '请先登录', icon: 'none', duration: 2500 })
+          }
           return reject(body)
         }
-        // 429：登录锁定等限流提示，延长展示时间
         const duration = body.code === 429 ? 3500 : 2500
-        wx.showToast({ title: body.message || '请求失败', icon: 'none', duration })
+        if (!silent) {
+          wx.showToast({ title: body.message || '请求失败', icon: 'none', duration })
+        }
         reject(body)
       },
       fail(err) {
-        wx.showToast({ title: '网络异常，请检查连接', icon: 'none' })
+        if (!silent) {
+          wx.showToast({ title: '网络异常，请检查连接', icon: 'none' })
+        }
         reject(err)
       }
     })
@@ -72,9 +77,9 @@ const upload = (url, filePath, name = 'file', formData = {}) => {
 }
 
 module.exports = {
-  get:    (url, data)        => request(url, 'GET', data),
-  post:   (url, data)        => request(url, 'POST', data),
-  put:    (url, data)        => request(url, 'PUT', data),
-  del:    (url)              => request(url, 'DELETE'),
+  get:    (url, data, options) => request(url, 'GET', data, options),
+  post:   (url, data, options) => request(url, 'POST', data, options),
+  put:    (url, data, options) => request(url, 'PUT', data, options),
+  del:    (url, options)       => request(url, 'DELETE', {}, options),
   upload: (url, fp, name, fd) => upload(url, fp, name, fd)
 }

@@ -32,7 +32,7 @@ Page({
       const quota = await fetchQuota()
       this._setQuota(quota)
       if (!quota.needLogin) {
-        const sessionId = await createSession()
+        const sessionId = await createSession({ silent: true })
         if (sessionId) {
           this.setData({ sessionId })
         }

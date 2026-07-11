@@ -4,6 +4,7 @@ import com.shuyuan.backend.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -32,6 +33,13 @@ public class GlobalExceptionHandler {
             }
         }
         return Result.fail(400, message);
+    }
+
+    /** 接口不存在（常见于后端未重启部署新路由） */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Result<Void> handleNoResource(NoResourceFoundException e) {
+        log.warn("接口不存在: {}", e.getResourcePath());
+        return Result.fail(404, "接口不存在，请确认后端已更新并重启");
     }
 
     /** 处理其他未预料的异常 */

@@ -56,13 +56,12 @@
           <el-input v-model="form.description" type="textarea" :rows="2" maxlength="500" show-word-limit />
         </el-form-item>
         <el-form-item label="轮播图片">
-          <OssUploadInput
+          <CoverUploadField
             v-model="form.imageUrl"
-            scene="banner"
-            accept="image/*"
+            v-model:fit-mode="form.coverFitMode"
+            slot="banner"
             upload-label="上传图片"
             done-text="图片已上传"
-            hint="可留空，小程序将使用色块占位"
           />
         </el-form-item>
         <el-form-item label="跳转类型" prop="linkType">
@@ -101,8 +100,9 @@ import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createBanner, fetchBanners, removeBanner, updateBanner } from '@/api/banner'
-import OssUploadInput from '@/components/OssUploadInput.vue'
+import CoverUploadField from '@/components/CoverUploadField.vue'
 import type { BannerItem } from '@/types/api'
+import type { CoverFitMode } from '@/utils/cover'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -118,6 +118,7 @@ const form = reactive({
   title: '',
   description: '',
   imageUrl: '',
+  coverFitMode: 'fill' as CoverFitMode,
   linkType: 'page',
   linkValue: '',
   sort: 0,
@@ -149,6 +150,7 @@ function resetForm() {
   form.title = ''
   form.description = ''
   form.imageUrl = ''
+  form.coverFitMode = 'fill'
   form.linkType = 'page'
   form.linkValue = ''
   form.sort = 0
@@ -162,6 +164,7 @@ function openDialog(row?: BannerItem) {
     form.title = row.title || ''
     form.description = row.description || ''
     form.imageUrl = row.imageUrl || ''
+    form.coverFitMode = row.coverFitMode === 'fit' ? 'fit' : 'fill'
     form.linkType = row.linkType || 'none'
     form.linkValue = row.linkValue || ''
     form.sort = row.sort ?? 0

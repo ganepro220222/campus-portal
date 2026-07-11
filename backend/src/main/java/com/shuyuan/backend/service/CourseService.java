@@ -57,6 +57,7 @@ public class CourseService {
         m.put("id", course.getId());
         m.put("name", course.getName());
         m.put("cover", ossService.signUrl(course.getCover()));
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(course.getCoverFitMode()));
         m.put("intro", course.getIntro());
         m.put("category", categoryName);
         m.put("audience", course.getTargetAudience());
@@ -114,6 +115,7 @@ public class CourseService {
         m.put("id", c.getId());
         m.put("name", c.getName());
         m.put("cover", ossService.signUrl(c.getCover()));
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(c.getCoverFitMode()));
         m.put("cat", categoryName);
         m.put("categoryName", categoryName);
         m.put("audience", c.getTargetAudience());

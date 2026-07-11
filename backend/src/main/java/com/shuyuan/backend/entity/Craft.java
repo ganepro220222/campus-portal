@@ -17,6 +17,7 @@ public class Craft {
     private Long id;
     private String name;
     private String cover;
+    private String coverFitMode;
     private Long categoryId;
     private String introZh;
     private String introEn;

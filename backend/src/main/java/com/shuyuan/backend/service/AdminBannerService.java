@@ -83,6 +83,9 @@ public class AdminBannerService {
         if (req.getImageUrl() != null) {
             b.setImageUrl(req.getImageUrl());
         }
+        if (req.getCoverFitMode() != null) {
+            b.setCoverFitMode(com.shuyuan.backend.util.CoverFitMode.normalize(req.getCoverFitMode()));
+        }
         if (req.getLinkType() != null) {
             b.setLinkType(req.getLinkType());
         }
@@ -103,6 +106,7 @@ public class AdminBannerService {
         m.put("title", b.getTitle());
         m.put("description", b.getDescription());
         m.put("imageUrl", b.getImageUrl());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(b.getCoverFitMode()));
         m.put("linkType", b.getLinkType());
         m.put("linkValue", b.getLinkValue());
         m.put("sort", b.getSort());

@@ -60,6 +60,7 @@ public class NewsService {
         m.put("id", news.getId());
         m.put("title", news.getTitle());
         m.put("cover", news.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(news.getCoverFitMode()));
         m.put("category", categoryName);
         m.put("categoryName", categoryName);
         m.put("publishTime", news.getPublishTime());
@@ -120,6 +121,7 @@ public class NewsService {
         m.put("id", n.getId());
         m.put("title", n.getTitle());
         m.put("cover", n.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(n.getCoverFitMode()));
         m.put("category", categoryName);
         m.put("categoryName", categoryName);
         m.put("publishTime", FormatUtils.formatDate(n.getPublishTime()));

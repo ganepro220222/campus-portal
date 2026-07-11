@@ -29,6 +29,7 @@ public class BannerService {
         m.put("title", b.getTitle());
         m.put("description", b.getDescription());
         m.put("imageUrl", b.getImageUrl());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(b.getCoverFitMode()));
         m.put("linkType", b.getLinkType());
         m.put("linkValue", b.getLinkValue());
         return m;

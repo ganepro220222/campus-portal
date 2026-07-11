@@ -130,6 +130,9 @@ public class AdminCraftService {
         if (req.getCover() != null) {
             craft.setCover(req.getCover().trim());
         }
+        if (req.getCoverFitMode() != null) {
+            craft.setCoverFitMode(com.shuyuan.backend.util.CoverFitMode.normalize(req.getCoverFitMode()));
+        }
         if (req.getCategoryId() != null) {
             craft.setCategoryId(req.getCategoryId());
         }
@@ -235,6 +238,7 @@ public class AdminCraftService {
         m.put("id", c.getId());
         m.put("name", c.getName());
         m.put("cover", c.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(c.getCoverFitMode()));
         m.put("categoryId", c.getCategoryId());
         m.put("categoryName", categoryService.getName(c.getCategoryId(), catMap));
         m.put("introZh", c.getIntroZh());

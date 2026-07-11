@@ -66,13 +66,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="封面图">
-          <OssUploadInput
+          <CoverUploadField
             v-model="form.cover"
-            scene="cover"
-            accept="image/*"
-            upload-label="上传封面图"
-            done-text="封面已上传"
-            hint="建议正方形图片，用于列表卡片展示"
+            v-model:fit-mode="form.coverFitMode"
+            slot="hallList"
           />
         </el-form-item>
         <el-form-item label="VR 全景链接">
@@ -191,9 +188,11 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { fetchCategories } from '@/api/category'
 import { createHall, fetchHallDetail, fetchHalls, updateHall } from '@/api/hall'
+import CoverUploadField from '@/components/CoverUploadField.vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, HallItem, HallSectionItem, HallSlideItem } from '@/types/api'
+import type { CoverFitMode } from '@/utils/cover'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('hall:write'))
@@ -213,6 +212,7 @@ const form = reactive({
   name: '',
   shortName: '',
   cover: '',
+  coverFitMode: 'fill' as CoverFitMode,
   intro: '',
   vrUrl: '',
   categoryId: undefined as number | undefined,
@@ -247,6 +247,7 @@ function resetForm() {
   form.name = ''
   form.shortName = ''
   form.cover = ''
+  form.coverFitMode = 'fill'
   form.intro = ''
   form.vrUrl = ''
   form.categoryId = categories.value[0]?.id
@@ -292,6 +293,7 @@ async function openDialog(row?: HallItem) {
     form.name = detail.name
     form.shortName = detail.shortName || ''
     form.cover = detail.cover || ''
+    form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
     form.intro = detail.intro || ''
     form.vrUrl = detail.vrUrl || ''
     form.categoryId = detail.categoryId ?? undefined

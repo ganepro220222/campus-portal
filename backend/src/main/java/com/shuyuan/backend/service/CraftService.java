@@ -73,6 +73,7 @@ public class CraftService {
         m.put("id", craft.getId());
         m.put("name", craft.getName());
         m.put("cover", craft.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(craft.getCoverFitMode()));
         m.put("introZh", craft.getIntroZh());
         m.put("introEn", craft.getIntroEn());
         m.put("previewType", craft.getPreviewType());
@@ -89,6 +90,7 @@ public class CraftService {
         m.put("id", c.getId());
         m.put("name", c.getName());
         m.put("cover", c.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(c.getCoverFitMode()));
         m.put("intro", c.getIntroZh());
         m.put("introZh", c.getIntroZh());
         m.put("categoryName", categoryService.getName(c.getCategoryId(), catMap));

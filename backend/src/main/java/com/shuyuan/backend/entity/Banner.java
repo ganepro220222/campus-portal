@@ -17,6 +17,7 @@ public class Banner {
     private String title;
     private String description;
     private String imageUrl;
+    private String coverFitMode;
     private String linkType;
     private String linkValue;
     private Integer sort;

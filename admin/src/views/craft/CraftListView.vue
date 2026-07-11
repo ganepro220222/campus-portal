@@ -80,13 +80,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="封面图">
-          <OssUploadInput
+          <CoverUploadField
             v-model="form.cover"
-            scene="cover"
-            accept="image/*"
-            upload-label="上传封面"
-            done-text="封面已上传"
-            hint="用于列表卡片，建议正方形高清图"
+            v-model:fit-mode="form.coverFitMode"
+            slot="craftList"
           />
         </el-form-item>
         <el-form-item label="展示方式" prop="previewType">
@@ -194,9 +191,11 @@ import {
   updateCraft
 } from '@/api/craft'
 import type { CraftImagePayload } from '@/api/craft'
+import CoverUploadField from '@/components/CoverUploadField.vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CraftItem } from '@/types/api'
+import type { CoverFitMode } from '@/utils/cover'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('hall:write'))
@@ -217,6 +216,7 @@ const formRef = ref<FormInstance>()
 const form = reactive({
   name: '',
   cover: '',
+  coverFitMode: 'fill' as CoverFitMode,
   categoryId: undefined as number | undefined,
   introZh: '',
   introEn: '',
@@ -278,6 +278,7 @@ function onFilter() {
 function resetForm() {
   form.name = ''
   form.cover = ''
+  form.coverFitMode = 'fill'
   form.categoryId = categories.value[0]?.id
   form.introZh = ''
   form.introEn = ''
@@ -304,6 +305,7 @@ async function openDialog(row?: CraftItem) {
     const detail = await fetchCraft(row.id)
     form.name = detail.name
     form.cover = detail.cover || ''
+    form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
     form.categoryId = detail.categoryId ?? undefined
     form.introZh = detail.introZh || ''
     form.introEn = detail.introEn || ''

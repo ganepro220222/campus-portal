@@ -16,6 +16,7 @@ public class News {
     private Long id;
     private String title;
     private String cover;
+    private String coverFitMode;
     private String content;
     private String summary;
     private Long categoryId;

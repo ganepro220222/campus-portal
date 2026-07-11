@@ -16,6 +16,7 @@ public class Activity {
     private Long id;
     private String title;
     private String cover;
+    private String coverFitMode;
     private String intro;
     private String location;
     private LocalDateTime startTime;

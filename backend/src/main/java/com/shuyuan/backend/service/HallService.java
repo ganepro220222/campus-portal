@@ -78,6 +78,7 @@ public class HallService {
         m.put("name", hall.getName());
         m.put("shortName", resolveShortName(hall));
         m.put("cover", hall.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(hall.getCoverFitMode()));
         m.put("intro", hall.getIntro());
         m.put("vrUrl", hall.getVrUrl());
         m.put("vrReady", isVrReady(hall.getVrUrl()));
@@ -154,6 +155,7 @@ public class HallService {
         m.put("name", h.getName());
         m.put("shortName", resolveShortName(h));
         m.put("cover", h.getCover());
+        m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(h.getCoverFitMode()));
         m.put("intro", h.getIntro());
         m.put("desc", h.getIntro());
         m.put("vrUrl", h.getVrUrl());

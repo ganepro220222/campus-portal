@@ -6,9 +6,7 @@
     </div>
 
     <p class="text-muted">
-    <p class="text-muted">
       维护在线课程信息与上下架；支持上传封面、教学视频与字幕文件。
-    </p>
     </p>
 
     <div class="toolbar">
@@ -85,16 +83,12 @@
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="封面">
         <el-form-item label="封面图">
-          <OssUploadInput
+          <CoverUploadField
             v-model="form.cover"
-            scene="cover"
-            accept="image/*"
-            upload-label="上传封面"
-            done-text="封面已上传"
+            v-model:fit-mode="form.coverFitMode"
+            slot="courseList"
           />
-        </el-form-item>
         </el-form-item>
         <el-form-item label="适合人群">
           <el-input v-model="form.targetAudience" maxlength="200" placeholder="如：全校学生" />
@@ -115,17 +109,16 @@
         <el-form-item label="课程介绍">
           <el-input v-model="form.intro" type="textarea" :rows="4" maxlength="2000" show-word-limit />
         </el-form-item>
-        <el-form-item label="课程视频">
         <el-form-item label="教学视频">
           <OssUploadInput
             v-model="form.videoUrl"
             scene="video"
             accept="video/mp4,video/quicktime"
+            preview="video"
             upload-label="上传视频"
             done-text="视频已上传"
             hint="支持 MP4 格式，文件较大时请耐心等待"
           />
-        </el-form-item>
         </el-form-item>
         <el-form-item label="配套资源">
           <el-select
@@ -166,6 +159,7 @@
               v-model="subtitleUrlInput"
               scene="subtitle"
               accept=".vtt,.srt"
+              preview="file"
               upload-label="上传字幕"
               done-text="字幕已上传"
             />
@@ -205,12 +199,14 @@ import {
   fetchSubtitleStatus,
   triggerSubtitle,
   updateCourse,
-  updateSubtitle
+  updateSubtitle,
+  type SubtitleStatus
 } from '@/api/course'
 import { fetchResourceOptions } from '@/api/resource'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CourseItem, ResourceOption } from '@/types/api'
-import type { SubtitleStatus } from '@/api/course'
+import type { CoverFitMode } from '@/utils/cover'
+import CoverUploadField from '@/components/CoverUploadField.vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
 
 const auth = useAuthStore()
@@ -245,6 +241,7 @@ const subtitleSaving = ref(false)
 const form = reactive({
   name: '',
   cover: '',
+  coverFitMode: 'fill' as CoverFitMode,
   categoryId: undefined as number | undefined,
   targetAudience: '',
   durationMinutes: undefined as number | undefined,
@@ -300,6 +297,7 @@ function onFilter() {
 function resetForm() {
   form.name = ''
   form.cover = ''
+  form.coverFitMode = 'fill'
   form.categoryId = categories.value[0]?.id
   form.targetAudience = '全校学生'
   form.durationMinutes = undefined
@@ -327,6 +325,7 @@ async function openDialog(row?: CourseItem) {
     const detail = await fetchCourse(row.id)
     form.name = detail.name
     form.cover = detail.cover || ''
+    form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
     form.categoryId = detail.categoryId ?? undefined
     form.targetAudience = detail.targetAudience || ''
     form.durationMinutes = detail.durationMinutes ?? undefined

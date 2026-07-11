@@ -29,6 +29,7 @@ export interface BannerItem {
   title: string
   description: string
   imageUrl: string | null
+  coverFitMode?: 'fill' | 'fit'
   linkType: string
   linkValue: string
   sort: number
@@ -97,6 +98,7 @@ export interface NewsItem {
   id: number
   title: string
   cover: string | null
+  coverFitMode?: 'fill' | 'fit'
   summary: string
   content: string
   categoryId: number | null
@@ -113,6 +115,7 @@ export interface HallItem {
   name: string
   shortName?: string | null
   cover: string | null
+  coverFitMode?: 'fill' | 'fit'
   intro: string
   vrUrl?: string | null
   vrReady?: boolean
@@ -159,6 +162,7 @@ export interface ActivityItem {
   id: number
   title: string
   cover: string | null
+  coverFitMode?: 'fill' | 'fit'
   intro: string
   location: string
   startTime: string
@@ -193,6 +197,7 @@ export interface CourseItem {
   id: number
   name: string
   cover: string | null
+  coverFitMode?: 'fill' | 'fit'
   categoryId: number | null
   categoryName: string
   targetAudience: string
@@ -239,6 +244,7 @@ export interface CraftItem {
   id: number
   name: string
   cover: string | null
+  coverFitMode?: 'fill' | 'fit'
   categoryId: number | null
   categoryName: string
   introZh: string

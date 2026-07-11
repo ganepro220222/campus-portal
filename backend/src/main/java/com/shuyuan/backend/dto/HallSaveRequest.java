@@ -10,6 +10,7 @@ public class HallSaveRequest {
     private String name;
     private String shortName;
     private String cover;
+    private String coverFitMode;
     private String intro;
     private String vrUrl;
     private Long categoryId;

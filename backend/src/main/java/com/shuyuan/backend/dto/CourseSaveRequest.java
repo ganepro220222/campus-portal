@@ -9,6 +9,7 @@ public class CourseSaveRequest {
 
     private String name;
     private String cover;
+    private String coverFitMode;
     private Long categoryId;
     private String targetAudience;
     private Integer durationMinutes;

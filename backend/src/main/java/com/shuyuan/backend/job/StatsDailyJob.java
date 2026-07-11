@@ -1,6 +1,7 @@
 package com.shuyuan.backend.job;
 
 import com.shuyuan.backend.service.StatsAggregationService;
+import com.shuyuan.backend.service.SearchIndexSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 public class StatsDailyJob {
 
     private final StatsAggregationService statsAggregationService;
+    private final SearchIndexSyncService searchIndexSyncService;
 
     @Scheduled(cron = "0 0 1 * * ?")
     public void aggregateYesterday() {
@@ -26,6 +28,11 @@ public class StatsDailyJob {
             log.info("每日统计聚合完成：{}", yesterday);
         } catch (Exception e) {
             log.error("每日统计聚合失败：{}", yesterday, e);
+        }
+        try {
+            searchIndexSyncService.syncAllPublished();
+        } catch (Exception e) {
+            log.error("search_index 全量同步失败", e);
         }
     }
 }

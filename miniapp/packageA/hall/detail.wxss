@@ -285,28 +285,19 @@
   word-break: break-all;
 }
 
-/* 底部阅读进度 */
-.scroll-progress {
+/* 顶部阅读进度：贴合导航栏下沿的细线，不遮挡任何交互元素 */
+.read-progress {
   position: fixed;
-  left: 28rpx;
-  right: 28rpx;
-  bottom: calc(108rpx + env(safe-area-inset-bottom));
-  height: 10rpx;
-  border-radius: 999rpx;
-  background: rgba(43, 53, 110, 0.12);
-  overflow: visible;
-  z-index: 20;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 6rpx;
+  background: rgba(43, 53, 110, 0.08);
+  z-index: 50;
 }
-.scroll-progress-bar {
+.read-progress-bar {
   height: 100%;
-  border-radius: 999rpx;
+  border-radius: 0 6rpx 6rpx 0;
   background: linear-gradient(90deg, #3F57B5, #BE9C44);
   transition: width 0.15s ease;
-}
-.scroll-progress-text {
-  position: absolute;
-  right: 0;
-  top: -34rpx;
-  font-size: 20rpx;
-  color: var(--muted);
 }

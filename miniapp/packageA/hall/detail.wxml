@@ -113,10 +113,9 @@
     </view>
   </scroll-view>
 
-  <!-- 底部阅读进度 -->
-  <view wx:if="{{hall.hasImmersive}}" class="scroll-progress">
-    <view class="scroll-progress-bar" style="width: {{scrollProgress}}%;"></view>
-    <text class="scroll-progress-text">{{scrollProgress}}%</text>
+  <!-- 顶部阅读进度：细线置顶，避让底部海报按钮与 AI 浮标 -->
+  <view wx:if="{{hall.hasImmersive}}" class="read-progress">
+    <view class="read-progress-bar" style="width: {{scrollProgress}}%;"></view>
   </view>
 
   <ai-assistant bottom="60" />

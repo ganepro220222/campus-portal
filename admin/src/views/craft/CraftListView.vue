@@ -145,12 +145,19 @@
                 <el-input v-model="row.angleLabel" placeholder="正面" size="small" />
               </template>
             </el-table-column>
-            <el-table-column label="排序" width="90" align="center">
+            <el-table-column label="排序" width="104" align="center">
               <template #default="{ row }">
-                <el-input-number v-model="row.sort" :min="0" :max="99" size="small" controls-position="right" />
+                <el-input-number
+                  v-model="row.sort"
+                  :min="0"
+                  :max="99"
+                  size="small"
+                  controls-position="right"
+                  style="width: 100%"
+                />
               </template>
             </el-table-column>
-            <el-table-column label="" width="60" align="center">
+            <el-table-column label="操作" width="64" align="center">
               <template #default="{ $index }">
                 <el-button link type="danger" @click="removeImage($index)">删</el-button>
               </template>

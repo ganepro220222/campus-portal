@@ -17,12 +17,12 @@
       />
       <el-date-picker
         v-model="dateRange"
+        class="date-range"
         type="daterange"
         range-separator="至"
         start-placeholder="开始日期"
         end-placeholder="结束日期"
         value-format="YYYY-MM-DD"
-        style="width: 260px"
         @change="onSearch"
       />
       <el-button type="primary" @click="onSearch">查询</el-button>
@@ -90,8 +90,14 @@ onMounted(loadData)
 .filters {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 12px;
   margin-bottom: 16px;
+}
+/* 日期区间控件固定为紧凑宽度，避免在 flex 行内被拉伸得过长 */
+.filters :deep(.date-range.el-date-editor) {
+  width: 340px;
+  flex: none;
 }
 .pager {
   margin-top: 16px;

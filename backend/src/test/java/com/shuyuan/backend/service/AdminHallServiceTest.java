@@ -2,8 +2,10 @@ package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.dto.HallMediaItem;
 import com.shuyuan.backend.dto.HallSaveRequest;
+import com.shuyuan.backend.dto.HallSectionItem;
 import com.shuyuan.backend.entity.Hall;
 import com.shuyuan.backend.entity.HallMedia;
+import com.shuyuan.backend.entity.HallSection;
 import com.shuyuan.backend.mapper.HallMapper;
 import com.shuyuan.backend.mapper.HallMediaMapper;
 import com.shuyuan.backend.mapper.HallSectionMapper;
@@ -78,8 +80,52 @@ class AdminHallServiceTest {
 
         adminHallService.create(req);
 
-        verify(hallMediaMapper).delete(any());
+        verify(hallMediaMapper, times(2)).delete(any());
         verify(hallMediaMapper, times(2)).insert(any(HallMedia.class));
+    }
+
+    @Test
+    void create_syncsSectionsWithMedia() {
+        HallSaveRequest req = new HallSaveRequest();
+        req.setName("校史馆");
+        req.setStatus(1);
+
+        HallSectionItem section = new HallSectionItem();
+        section.setTitle("办学历程");
+        section.setSort(1);
+        HallMediaItem item = new HallMediaItem();
+        item.setUrl("https://cdn.example.com/hall/sec.jpg");
+        item.setCaption("建校初期");
+        section.setItems(List.of(item));
+        req.setSections(List.of(section));
+
+        when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of());
+        doAnswer(inv -> {
+            Hall hall = inv.getArgument(0);
+            hall.setId(2L);
+            return 1;
+        }).when(hallMapper).insert(any(Hall.class));
+        doAnswer(inv -> {
+            HallSection sec = inv.getArgument(0);
+            sec.setId(1L);
+            return 1;
+        }).when(hallSectionMapper).insert(any(HallSection.class));
+
+        Hall saved = new Hall();
+        saved.setId(2L);
+        saved.setName("校史馆");
+        saved.setStatus(1);
+        saved.setSort(0);
+        when(hallMapper.selectById(2L)).thenReturn(saved);
+        when(hallMediaMapper.selectList(any())).thenReturn(List.of());
+        when(hallSectionMapper.selectList(any())).thenReturn(List.of());
+
+        adminHallService.create(req);
+
+        verify(hallSectionMapper).delete(any());
+        verify(hallSectionMapper).insert(any(HallSection.class));
+        verify(hallMediaMapper).delete(any());
+        verify(hallMediaMapper).insert(any(HallMedia.class));
     }
 
     @Test
@@ -100,6 +146,7 @@ class AdminHallServiceTest {
 
         verify(hallMediaMapper, never()).delete(any());
         verify(hallMediaMapper, never()).insert(any(HallMedia.class));
+        verify(hallSectionMapper, never()).delete(any());
     }
 
     @Test

@@ -22,4 +22,6 @@ public class HallSaveRequest {
     private String audioUrl;
     /** 语音时长说明，如「语音讲解 03:48」 */
     private String audioTime;
+    /** 沉浸式长卷章节（含章节内图文） */
+    private List<HallSectionItem> sections;
 }

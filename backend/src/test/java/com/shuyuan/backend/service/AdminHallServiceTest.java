@@ -6,6 +6,7 @@ import com.shuyuan.backend.entity.Hall;
 import com.shuyuan.backend.entity.HallMedia;
 import com.shuyuan.backend.mapper.HallMapper;
 import com.shuyuan.backend.mapper.HallMediaMapper;
+import com.shuyuan.backend.mapper.HallSectionMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -26,6 +27,8 @@ class AdminHallServiceTest {
     private HallMapper hallMapper;
     @Mock
     private HallMediaMapper hallMediaMapper;
+    @Mock
+    private HallSectionMapper hallSectionMapper;
     @Mock
     private CategoryService categoryService;
     @Mock
@@ -71,6 +74,7 @@ class AdminHallServiceTest {
         saved.setSort(0);
         when(hallMapper.selectById(10L)).thenReturn(saved);
         when(hallMediaMapper.selectList(any())).thenReturn(List.of());
+        when(hallSectionMapper.selectList(any())).thenReturn(List.of());
 
         adminHallService.create(req);
 
@@ -87,6 +91,7 @@ class AdminHallServiceTest {
         when(hallMapper.selectById(3L)).thenReturn(existing);
         when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of());
         when(hallMediaMapper.selectList(any())).thenReturn(List.of());
+        when(hallSectionMapper.selectList(any())).thenReturn(List.of());
 
         HallSaveRequest req = new HallSaveRequest();
         req.setName("校史馆（更新）");
@@ -121,6 +126,7 @@ class AdminHallServiceTest {
         saved.setSort(0);
         when(hallMapper.selectById(2L)).thenReturn(saved);
         when(hallMediaMapper.selectList(any())).thenReturn(List.of());
+        when(hallSectionMapper.selectList(any())).thenReturn(List.of());
 
         adminHallService.create(req);
 

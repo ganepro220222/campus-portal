@@ -1,4 +1,5 @@
 -- 封面展示模式：fill=裁切填满（默认） fit=完整显示
+-- 注：已并入 init.sql；仅旧库升级时执行
 ALTER TABLE `news` ADD COLUMN `cover_fit_mode` VARCHAR(16) NOT NULL DEFAULT 'fill' COMMENT '封面展示：fill/fit' AFTER `cover`;
 ALTER TABLE `course` ADD COLUMN `cover_fit_mode` VARCHAR(16) NOT NULL DEFAULT 'fill' COMMENT '封面展示：fill/fit' AFTER `cover`;
 ALTER TABLE `hall` ADD COLUMN `cover_fit_mode` VARCHAR(16) NOT NULL DEFAULT 'fill' COMMENT '封面展示：fill/fit' AFTER `cover`;

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
+/** 管理端登录鉴权与自助改密 */
 @Service
 @RequiredArgsConstructor
 public class AdminAuthService {
@@ -70,6 +71,7 @@ public class AdminAuthService {
                 .build();
     }
 
+    /** 校验原密码后更新，并清除 must_change_password 标记 */
     @Transactional
     public AdminLoginVO changePassword(Long adminId, String oldPassword, String newPassword) {
         if (oldPassword == null || oldPassword.isBlank() || newPassword == null || newPassword.isBlank()) {

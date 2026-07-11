@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/** 管理后台角色与权限矩阵：内置超管角色权限不可降级 */
 @Service
 @RequiredArgsConstructor
 public class AdminRoleService {
@@ -60,6 +61,7 @@ public class AdminRoleService {
         return toVo(sysRoleMapper.selectById(role.getId()), 0L);
     }
 
+    /** 更新角色；超管角色始终保留 admin:super 全集 */
     @Transactional
     public Map<String, Object> update(Long id, AdminRoleSaveRequest req) {
         adminPermissionService.require("admin:super");

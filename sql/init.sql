@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
   `role_id`       BIGINT       NOT NULL COMMENT '角色ID',
   `real_name`     VARCHAR(50)  DEFAULT NULL COMMENT '真实姓名',
   `status`        TINYINT      NOT NULL DEFAULT 1 COMMENT '状态：1启用 0禁用',
+  `must_change_password` TINYINT NOT NULL DEFAULT 0 COMMENT '是否须下次登录修改密码：1是 0否',
   `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted`    TINYINT      NOT NULL DEFAULT 0,
@@ -660,13 +661,14 @@ CREATE TABLE IF NOT EXISTS `sys_config` (
 
 -- 角色（超管）
 INSERT IGNORE INTO `sys_role` (`id`, `role_name`, `permissions`) VALUES
-(1, '超级管理员', '["admin:super","news:read","news:write","news:publish","hall:read","hall:write","course:read","course:write","enroll:read","enroll:export","stats:view","category:read","category:write"]'),
+(1, '超级管理员', '["admin:super","news:read","news:write","news:publish","hall:read","hall:write","hall:publish","course:read","course:write","course:publish","enroll:read","enroll:export","stats:view","category:read","category:write"]'),
 (2, '内容编辑', '["news:read","news:write","hall:read","hall:write","course:read","course:write","category:read","category:write"]'),
-(3, '活动管理员', '["enroll:read","enroll:export"]');
+(3, '活动管理员', '["enroll:read","enroll:export"]'),
+(4, '内容审核', '["news:read","news:publish","hall:read","hall:publish","course:read","course:publish","stats:view"]');
 
--- 默认超管账号（密码：Admin@123，BCrypt加密）
-INSERT IGNORE INTO `sys_user` (`id`, `username`, `password_hash`, `role_id`, `real_name`, `status`) VALUES
-(1, 'admin', '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm', 1, '超级管理员', 1);
+-- 默认超管账号（密码：Admin@123，BCrypt加密；生产须改密并建议禁用此账号）
+INSERT IGNORE INTO `sys_user` (`id`, `username`, `password_hash`, `role_id`, `real_name`, `status`, `must_change_password`) VALUES
+(1, 'admin', '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm', 1, '超级管理员', 1, 0);
 
 -- 积分规则
 INSERT IGNORE INTO `point_rule` (`action`, `points`, `daily_limit`, `status`) VALUES

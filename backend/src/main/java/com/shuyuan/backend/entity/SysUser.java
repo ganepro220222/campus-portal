@@ -19,6 +19,7 @@ public class SysUser {
     private Long roleId;
     private String realName;
     private Integer status;
+    private Integer mustChangePassword;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     @TableLogic

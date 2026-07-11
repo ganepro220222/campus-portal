@@ -96,7 +96,7 @@ public class AdminCourseService {
 
     @Transactional
     public Map<String, Object> publish(Long id) {
-        adminPermissionService.require("course:write");
+        adminPermissionService.require("course:publish");
         Course course = requireCourse(id);
         if (course.getStatus() != null && course.getStatus() == 1) {
             throw new BusinessException(400, "课程已上架");
@@ -109,7 +109,7 @@ public class AdminCourseService {
 
     @Transactional
     public Map<String, Object> unpublish(Long id) {
-        adminPermissionService.require("course:write");
+        adminPermissionService.require("course:publish");
         Course course = requireCourse(id);
         if (course.getStatus() == null || course.getStatus() != 1) {
             throw new BusinessException(400, "仅已上架课程可下架");

@@ -15,11 +15,13 @@ public class JwtUtils {
 
     private final SecretKey key;
     private final long expireMs;
+    private final long adminExpireMs;
 
     public JwtUtils(ShuyuanProperties properties) {
         String secret = properties.getJwt().getSecret();
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expireMs = properties.getJwt().getExpireDays() * 24L * 60 * 60 * 1000;
+        this.adminExpireMs = properties.getJwt().getAdminExpireHours() * 60L * 60 * 1000;
     }
 
     public String createToken(Long memberId, String openid) {
@@ -42,7 +44,7 @@ public class JwtUtils {
                 .claim("type", "admin")
                 .claim("roleId", roleId)
                 .issuedAt(now)
-                .expiration(new Date(now.getTime() + expireMs))
+                .expiration(new Date(now.getTime() + adminExpireMs))
                 .signWith(key)
                 .compact();
     }

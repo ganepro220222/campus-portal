@@ -22,6 +22,7 @@ shuyuan:
   jwt:
     secret: ${JWT_SECRET}
     expire-days: ${JWT_EXPIRE_DAYS:7}
+    admin-expire-hours: ${JWT_ADMIN_EXPIRE_HOURS:8}
   wx:
     # 生产必须关闭 dev-mode，走真实微信登录
     dev-mode: false

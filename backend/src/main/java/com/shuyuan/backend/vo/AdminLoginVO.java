@@ -16,4 +16,6 @@ public class AdminLoginVO {
     private Long roleId;
     private String roleName;
     private Set<String> permissions;
+    /** 是否须修改密码（首次登录或重置后） */
+    private Boolean mustChangePassword;
 }

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School, Menu } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School, Menu, User, Key } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -107,6 +107,18 @@ const router = createRouter({
           name: 'Colleges',
           component: () => import('@/views/college/CollegeListView.vue'),
           meta: { title: '学院矩阵', permission: 'admin:super' }
+        },
+        {
+          path: 'admin-users',
+          name: 'AdminUsers',
+          component: () => import('@/views/admin/AdminUserListView.vue'),
+          meta: { title: '账号管理', permission: 'admin:super' }
+        },
+        {
+          path: 'admin-roles',
+          name: 'AdminRoles',
+          component: () => import('@/views/admin/AdminRoleListView.vue'),
+          meta: { title: '角色权限', permission: 'admin:super' }
         }
       ]
     },
@@ -122,6 +134,9 @@ router.beforeEach((to) => {
   }
   if (!auth.isLoggedIn) {
     return { name: 'Login', query: { redirect: to.fullPath } }
+  }
+  if (auth.mustChangePassword && to.name !== 'Login') {
+    return true
   }
   const perm = to.meta.permission as string | undefined
   if (perm && !auth.can(perm)) {
@@ -155,7 +170,9 @@ export const menuItems: MenuItem[] = [
   { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] },
   { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] },
   { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] },
-  { path: '/colleges', title: '学院矩阵', icon: School, permissions: ['admin:super'] }
+  { path: '/colleges', title: '学院矩阵', icon: School, permissions: ['admin:super'] },
+  { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
+  { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] }
 ]
 
 export function filterMenus(permissions: string[]) {

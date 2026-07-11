@@ -19,6 +19,7 @@ shuyuan:
   jwt:
     secret: shuyuan-dev-jwt-secret-change-in-prod
     expire-days: 7
+    admin-expire-hours: 8
   wx:
     dev-mode: true
     appid: ${WX_APPID:}

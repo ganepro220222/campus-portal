@@ -22,6 +22,7 @@ export interface AdminLoginData {
   roleId: number
   roleName: string
   permissions: string[]
+  mustChangePassword?: boolean
 }
 
 export interface BannerItem {

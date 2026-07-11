@@ -42,6 +42,7 @@
             <span class="avatar">{{ initial }}</span>
             <span class="user-name">{{ auth.displayName }}</span>
           </div>
+          <el-button v-if="!auth.mustChangePassword" link type="primary" @click="openChangePassword">修改密码</el-button>
           <el-button type="danger" link @click="onLogout">退出</el-button>
         </div>
       </el-header>
@@ -54,21 +55,37 @@
         </router-view>
       </el-main>
     </el-container>
+
+    <ChangePasswordDialog v-model="pwdDialogVisible" :forced="auth.mustChangePassword" />
   </el-container>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Expand, Fold, HomeFilled } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { filterMenus } from '@/router'
+import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const collapsed = ref(false)
+const pwdDialogVisible = ref(false)
+
+watch(
+  () => auth.mustChangePassword,
+  (v) => {
+    if (v) pwdDialogVisible.value = true
+  },
+  { immediate: true }
+)
+
+function openChangePassword() {
+  pwdDialogVisible.value = true
+}
 
 const visibleMenus = computed(() =>
   filterMenus(auth.profile?.permissions || [])

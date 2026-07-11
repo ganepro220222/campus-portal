@@ -15,10 +15,16 @@
             <text>👁 阅读 {{article.read}}</text>
             <text class="pill">{{article.category}}</text>
           </view>
-          <view class="art-p">
+          <view wx:if="{{article.lead && !article.useRichText}}" class="art-p">
             <text class="drop serif">{{article.drop}}</text>{{article.lead}}
           </view>
-          <view class="art-p" wx:for="{{article.paras}}" wx:key="index">{{item}}</view>
+          <view wx:elif="{{article.lead && article.useRichText}}" class="art-lead">{{article.lead}}</view>
+          <view wx:if="{{article.useRichText}}" class="art-rich">
+            <rich-text nodes="{{article.contentHtml}}" />
+          </view>
+          <block wx:else>
+            <view class="art-p" wx:for="{{article.paras}}" wx:key="index">{{item}}</view>
+          </block>
 
           <view class="act-row">
             <view class="act {{liked ? 'act-on' : ''}}" bindtap="onLike">

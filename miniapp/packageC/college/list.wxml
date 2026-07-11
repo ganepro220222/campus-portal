@@ -3,8 +3,8 @@
   <scroll-view scroll-y class="college-scroll" enhanced show-scrollbar="{{false}}">
 
     <view class="college-intro">
-      <text class="ci-zh serif">学院矩阵</text>
-      <text class="ci-en">贵州交通职业大学 · 二级学院协同育人</text>
+      <text class="ci-zh serif">关联小程序</text>
+      <text class="ci-en">书院兄弟小程序互联入口</text>
     </view>
 
     <view class="college-grid">

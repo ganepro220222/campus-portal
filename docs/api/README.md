@@ -47,4 +47,5 @@ curl -s http://localhost:8080/v3/api-docs/admin > openapi-admin.json
 - 新增 Controller 后无需额外注解即可出现在文档中（SpringDoc 自动扫描）
 - Controller 已标注 `@Tag(name = "中文模块名")`，Swagger UI 分组显示中文
 - 变更路径或 breaking change 须同步更新 Apifox 回归集
+- **手工回归清单：** [回归测试清单.md](./回归测试清单.md)（P0/P1 接口与 AI 配额等）
 - 统一响应格式：`{ "code": 200, "message": "success", "data": {} }`

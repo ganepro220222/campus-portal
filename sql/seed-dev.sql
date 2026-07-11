@@ -212,7 +212,7 @@ INSERT IGNORE INTO `event_log` (`member_id`, `event_type`, `target_type`, `targe
 INSERT IGNORE INTO `member_badge` (`member_id`, `badge_id`, `achieved_at`) VALUES
 (1, 1, '2026-06-01 08:00:00');
 
--- 学院矩阵（手动录入演示数据，与小程序 mock 对齐）
+-- 关联小程序（手动录入演示数据，与小程序 mock 对齐；正式 AppID 待甲方提供）
 INSERT IGNORE INTO `college_app` (`id`, `name`, `description`, `sort`, `status`, `content_type`) VALUES
 (1,  '马克思主义学院', '马院 + 书院协同育人', 1,  1, 'manual'),
 (2,  '轨道交通学院',   '轨道牵引 · 智慧运维', 2,  1, 'manual'),
@@ -225,4 +225,16 @@ INSERT IGNORE INTO `college_app` (`id`, `name`, `description`, `sort`, `status`,
 (9,  '信息工程学院',   '数字技术 · 智能应用', 9,  1, 'manual'),
 (10, '经济管理学院',   '经世致用 · 知行合一', 10, 1, 'manual'),
 (11, '人文艺术学院',   '以美育人 · 以文化人', 11, 1, 'manual');
+
+-- AI 知识库演示资料（关键词检索，无 API Key 亦可演示 Fallback 回答）
+INSERT IGNORE INTO `knowledge_doc` (`id`, `title`, `file_url`, `source_type`, `char_count`, `chunk_count`, `status`, `uploaded_by`, `created_at`) VALUES
+(1, '阳明心学导读', 'manual://阳明心学导读', 'manual', 420, 3, 'ready', 1, '2026-07-01 10:00:00'),
+(2, '云端书院简介', 'manual://云端书院简介', 'manual', 380, 2, 'ready', 1, '2026-07-01 10:05:00');
+
+INSERT IGNORE INTO `knowledge_chunk` (`id`, `doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`) VALUES
+(1, 1, '阳明心学是明代思想家王阳明创立的哲学体系，核心命题为「心即理」「知行合一」「致良知」。书院课程与展馆中常以此阐释修身齐家、经世致用的育人理念。', 0, '阳明心学 知行合一 致良知', 72),
+(2, 1, '「知行合一」强调认识与实践不可分离：知是行的主意，行是知的功夫。云端书院将阳明文化融入思政课程、研学活动与线上展馆讲解，引导学生在实践中体悟传统文化。', 1, '知行合一 阳明文化 思政', 78),
+(3, 1, '参观建议：可先浏览「阳明文化」线上展馆，再学习配套课程《阳明心学入门》，结合书院组织的读书沙龙与研学活动加深理解。', 2, '阳明文化 展馆 课程', 58),
+(4, 2, '云端书院是贵州交通职业大学中华文化书院的线上思政平台，依托「马院+书院」协同育人模式，将新闻资讯、线上展馆、文创展示、课程学习、活动报名与 AI 文化问答整合于一体。', 0, '云端书院 中华文化书院 思政', 82),
+(5, 2, '平台特色包括：11 座沉浸式线上展馆、精品文化课程、非遗文创双语展示、活动在线报名，以及基于书院知识库的 AI 文化助手（每日限次，内容经安全审核）。', 1, '线上展馆 AI 文化助手 活动报名', 72);
 

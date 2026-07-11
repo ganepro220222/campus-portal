@@ -41,7 +41,8 @@
         "profile/list",
         "message/index",
         "feedback/index",
-        "about/index"
+        "about/index",
+        "legal/privacy"
       ]
     },
     {

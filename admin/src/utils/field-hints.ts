@@ -21,7 +21,7 @@ export const FIELD_HINTS = {
   activityLocation: '列表单行显示，建议 10–20 字。',
   categoryName: '分类标签较短即可，建议 4–10 字。',
   announcement: '首页公告条单行滚动，建议 20–40 字。',
-  collegeName: '学院矩阵卡片名，建议 8–16 字。',
+  collegeName: '关联小程序卡片名，建议 8–16 字。',
   collegeDesc: '卡片简介，建议 30–60 字。',
   resourceName: '资源列表展示，建议 12–30 字。',
   editorBody: '正文在详情页完整展示；列表仅显示标题。'

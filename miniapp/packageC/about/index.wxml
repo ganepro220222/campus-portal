@@ -47,6 +47,14 @@
       </view>
     </view>
 
+    <view class="ab-card ab-card-tight">
+      <view class="ab-title serif">法律信息</view>
+      <view class="legal-link" bindtap="onPrivacy">
+        <text class="legal-link-tx">隐私政策与用户协议</text>
+        <text class="legal-link-arr">›</text>
+      </view>
+    </view>
+
     <view class="ab-foot">
       <text class="ab-slogan">传承中华优秀传统文化 · 培根铸魂启智润心</text>
       <text class="ab-copy">© 2026 贵州交通职业大学中华文化书院</text>

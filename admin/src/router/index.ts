@@ -106,7 +106,7 @@ const router = createRouter({
           path: 'colleges',
           name: 'Colleges',
           component: () => import('@/views/college/CollegeListView.vue'),
-          meta: { title: '学院矩阵', permission: 'admin:super' }
+          meta: { title: '关联小程序', permission: 'admin:super' }
         },
         {
           path: 'admin-users',
@@ -170,7 +170,7 @@ export const menuItems: MenuItem[] = [
   { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] },
   { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] },
   { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] },
-  { path: '/colleges', title: '学院矩阵', icon: School, permissions: ['admin:super'] },
+  { path: '/colleges', title: '关联小程序', icon: School, permissions: ['admin:super'] },
   { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
   { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] }
 ]

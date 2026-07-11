@@ -97,6 +97,33 @@ public class AdminHallService {
         return detail(id);
     }
 
+    @Transactional
+    public Map<String, Object> publish(Long id) {
+        adminPermissionService.require("hall:write");
+        Hall hall = requireHall(id);
+        if (hall.getStatus() != null && hall.getStatus() == 1) {
+            throw new BusinessException(400, "展馆已上架");
+        }
+        hall.setStatus(1);
+        hallMapper.updateById(hall);
+        Hall saved = hallMapper.selectById(id);
+        searchIndexSyncService.syncHall(saved);
+        return detail(id);
+    }
+
+    @Transactional
+    public Map<String, Object> unpublish(Long id) {
+        adminPermissionService.require("hall:write");
+        Hall hall = requireHall(id);
+        if (hall.getStatus() == null || hall.getStatus() != 1) {
+            throw new BusinessException(400, "仅已上架展馆可下架");
+        }
+        hall.setStatus(0);
+        hallMapper.updateById(hall);
+        searchIndexSyncService.removeHall(id);
+        return detail(id);
+    }
+
     private Hall requireHall(Long id) {
         Hall hall = hallMapper.selectById(id);
         if (hall == null) {

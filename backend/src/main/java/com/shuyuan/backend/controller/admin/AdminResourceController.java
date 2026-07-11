@@ -42,4 +42,14 @@ public class AdminResourceController {
     public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody ResourceSaveRequest req) {
         return Result.ok(adminResourceService.update(id, req));
     }
+
+    @PutMapping("/{id}/publish")
+    public Result<Map<String, Object>> publish(@PathVariable Long id) {
+        return Result.ok(adminResourceService.publish(id));
+    }
+
+    @PutMapping("/{id}/unpublish")
+    public Result<Map<String, Object>> unpublish(@PathVariable Long id) {
+        return Result.ok(adminResourceService.unpublish(id));
+    }
 }

@@ -45,10 +45,22 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right" align="center">
+      <el-table-column label="操作" width="220" fixed="right" align="center">
         <template #default="{ row }">
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
-          <span v-else class="text-muted">—</span>
+          <el-button
+            v-if="canWrite && row.status !== 1"
+            link
+            type="success"
+            @click="onPublish(row)"
+          >上架</el-button>
+          <el-button
+            v-if="canWrite && row.status === 1"
+            link
+            type="warning"
+            @click="onUnpublish(row)"
+          >下架</el-button>
+          <span v-if="!canWrite" class="text-muted">—</span>
         </template>
       </el-table-column>
     </el-table>
@@ -183,13 +195,15 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchCategories } from '@/api/category'
 import {
   createCraft,
   fetchCraft,
   fetchCrafts,
   PREVIEW_TYPE_OPTIONS,
+  publishCraft,
+  unpublishCraft,
   updateCraft
 } from '@/api/craft'
 import type { CraftImagePayload } from '@/api/craft'
@@ -369,6 +383,20 @@ async function onSave() {
   } finally {
     saving.value = false
   }
+}
+
+async function onPublish(row: CraftItem) {
+  await ElMessageBox.confirm(`上架「${row.name}」？上架后小程序端可见，并同步搜索索引。`, '上架确认')
+  await publishCraft(row.id)
+  ElMessage.success('已上架')
+  await loadData()
+}
+
+async function onUnpublish(row: CraftItem) {
+  await ElMessageBox.confirm(`下架「${row.name}」？小程序端将不再展示。`, '下架确认', { type: 'warning' })
+  await unpublishCraft(row.id)
+  ElMessage.success('已下架')
+  await loadData()
 }
 
 onMounted(async () => {

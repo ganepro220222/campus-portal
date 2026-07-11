@@ -39,4 +39,14 @@ public class AdminHallController {
     public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody HallSaveRequest req) {
         return Result.ok(adminHallService.update(id, req));
     }
+
+    @PutMapping("/{id}/publish")
+    public Result<Map<String, Object>> publish(@PathVariable Long id) {
+        return Result.ok(adminHallService.publish(id));
+    }
+
+    @PutMapping("/{id}/unpublish")
+    public Result<Map<String, Object>> unpublish(@PathVariable Long id) {
+        return Result.ok(adminHallService.unpublish(id));
+    }
 }

@@ -80,6 +80,32 @@ public class AdminResourceService {
         return toVo(saved, categoryService.nameMap("resource"));
     }
 
+    @Transactional
+    public Map<String, Object> publish(Long id) {
+        adminPermissionService.require("course:write");
+        Resource resource = requireResource(id);
+        if (resource.getStatus() != null && resource.getStatus() == 1) {
+            throw new BusinessException(400, "资源已上架");
+        }
+        resource.setStatus(1);
+        resourceMapper.updateById(resource);
+        syncSearchIfOnline(resourceMapper.selectById(id));
+        return detail(id);
+    }
+
+    @Transactional
+    public Map<String, Object> unpublish(Long id) {
+        adminPermissionService.require("course:write");
+        Resource resource = requireResource(id);
+        if (resource.getStatus() == null || resource.getStatus() != 1) {
+            throw new BusinessException(400, "仅已上架资源可下架");
+        }
+        resource.setStatus(0);
+        resourceMapper.updateById(resource);
+        searchIndexSyncService.removeResource(id);
+        return detail(id);
+    }
+
     private Resource requireResource(Long id) {
         Resource resource = resourceMapper.selectById(id);
         if (resource == null) {

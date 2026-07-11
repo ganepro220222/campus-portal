@@ -46,4 +46,10 @@ public class AdminNewsController {
     public Result<Map<String, Object>> unpublish(@PathVariable Long id) {
         return Result.ok(adminNewsService.unpublish(id));
     }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        adminNewsService.delete(id);
+        return Result.ok();
+    }
 }

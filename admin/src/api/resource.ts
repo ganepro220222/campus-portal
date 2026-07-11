@@ -44,6 +44,14 @@ export function updateResource(id: number, data: ResourceSavePayload) {
   return put<ResourceItem>(`/admin/resources/${id}`, data)
 }
 
+export function publishResource(id: number) {
+  return put<ResourceItem>(`/admin/resources/${id}/publish`)
+}
+
+export function unpublishResource(id: number) {
+  return put<ResourceItem>(`/admin/resources/${id}/unpublish`)
+}
+
 /** 上架资源选项（供课程配套资源多选） */
 export async function fetchResourceOptions() {
   const res = await fetchResources({ page: 1, size: 200, status: 1 })

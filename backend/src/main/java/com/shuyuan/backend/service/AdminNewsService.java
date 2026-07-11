@@ -101,6 +101,17 @@ public class AdminNewsService {
         return toVo(newsMapper.selectById(id), categoryService.nameMap("news"));
     }
 
+    @Transactional
+    public void delete(Long id) {
+        adminPermissionService.require("news:write");
+        News news = requireNews(id);
+        if (!"draft".equals(news.getStatus())) {
+            throw new BusinessException(400, "仅草稿新闻可删除，请先下架");
+        }
+        newsMapper.deleteById(id);
+        searchIndexSyncService.removeNews(id);
+    }
+
     private News requireNews(Long id) {
         News news = newsMapper.selectById(id);
         if (news == null) {

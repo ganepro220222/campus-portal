@@ -16,3 +16,11 @@ export function createHall(data: Partial<HallItem>) {
 export function updateHall(id: number, data: Partial<HallItem>) {
   return put<HallItem>(`/admin/halls/${id}`, data)
 }
+
+export function publishHall(id: number) {
+  return put<HallItem>(`/admin/halls/${id}/publish`)
+}
+
+export function unpublishHall(id: number) {
+  return put<HallItem>(`/admin/halls/${id}/unpublish`)
+}

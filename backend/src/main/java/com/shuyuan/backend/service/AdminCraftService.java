@@ -101,6 +101,32 @@ public class AdminCraftService {
         return detail(id);
     }
 
+    @Transactional
+    public Map<String, Object> publish(Long id) {
+        adminPermissionService.require("hall:write");
+        Craft craft = requireCraft(id);
+        if (craft.getStatus() != null && craft.getStatus() == 1) {
+            throw new BusinessException(400, "文创已上架");
+        }
+        craft.setStatus(1);
+        craftMapper.updateById(craft);
+        syncSearchIfOnline(craftMapper.selectById(id));
+        return detail(id);
+    }
+
+    @Transactional
+    public Map<String, Object> unpublish(Long id) {
+        adminPermissionService.require("hall:write");
+        Craft craft = requireCraft(id);
+        if (craft.getStatus() == null || craft.getStatus() != 1) {
+            throw new BusinessException(400, "仅已上架文创可下架");
+        }
+        craft.setStatus(0);
+        craftMapper.updateById(craft);
+        searchIndexSyncService.removeCraft(id);
+        return detail(id);
+    }
+
     private Craft requireCraft(Long id) {
         Craft craft = craftMapper.selectById(id);
         if (craft == null) {

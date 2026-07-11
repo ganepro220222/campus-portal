@@ -22,9 +22,9 @@
     </div>
 
     <el-table v-loading="loading" :data="list" stripe border>
-      <el-table-column prop="username" label="登录账号" width="140" />
-      <el-table-column prop="realName" label="姓名" width="120" />
-      <el-table-column prop="roleName" label="角色" width="130" />
+      <el-table-column prop="username" label="登录账号" min-width="160" />
+      <el-table-column prop="realName" label="姓名" min-width="140" show-overflow-tooltip />
+      <el-table-column prop="roleName" label="角色" min-width="150" show-overflow-tooltip />
       <el-table-column label="状态" width="90" align="center">
         <template #default="{ row }">
           <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
@@ -38,8 +38,8 @@
           <span v-else>—</span>
         </template>
       </el-table-column>
-      <el-table-column prop="updateTime" label="更新时间" width="160" />
-      <el-table-column label="操作" width="260" fixed="right" align="center">
+      <el-table-column prop="updateTime" label="更新时间" min-width="170" />
+      <el-table-column label="操作" width="240" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
           <el-button link type="warning" @click="onResetPassword(row)">重置密码</el-button>

@@ -97,19 +97,30 @@ onBeforeUnmount(() => {
 
 .wang-toolbar {
   border-bottom: 1px solid var(--el-border-color-light);
+  background: #f8f9fc;
+  border-radius: 6px 6px 0 0;
   overflow: visible;
+}
+
+/* 工具栏按钮换行时更紧凑整齐 */
+:deep(.w-e-bar-item) {
+  padding: 4px 2px;
 }
 
 .wang-body {
   min-height: v-bind(minHeight);
-  overflow-y: hidden;
+  /* 勿用 overflow-y:hidden —— 会令 overflow-x 计算为 auto，裁切「网络图片」等浮层弹窗 */
+  overflow: visible;
 }
 
-/* WangEditor 内置工具栏下拉/弹层 */
+/* WangEditor 内置工具栏下拉 / 弹层（网络图片、字号、字体、行高等）需完整显示 */
 :deep(.w-e-toolbar),
 :deep(.w-e-bar),
 :deep(.w-e-bar-item-menus-container),
-:deep(.w-e-drop-panel) {
+:deep(.w-e-text-container),
+:deep(.w-e-drop-panel),
+:deep(.w-e-select-list),
+:deep(.w-e-modal) {
   overflow: visible;
 }
 

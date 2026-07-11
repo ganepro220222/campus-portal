@@ -78,6 +78,14 @@
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="88px">
         <el-form-item label="标题" prop="title">
+          <AiAssistBar
+            v-if="canWrite"
+            :source-text="titleAiSource"
+            :actions="['title']"
+            :min-length="8"
+            :result-rows="5"
+            @adopt="onTitleAiAdopt"
+          />
           <el-input v-model="form.title" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
@@ -95,15 +103,30 @@
           />
         </el-form-item>
         <el-form-item label="摘要">
+          <AiAssistBar
+            v-if="canWrite"
+            :source-text="summaryAiSource"
+            :actions="['summarize']"
+            :min-length="8"
+            :result-rows="4"
+            @adopt="onSummaryAiAdopt"
+          />
           <el-input v-model="form.summary" type="textarea" :rows="2" maxlength="500" show-word-limit />
         </el-form-item>
         <el-form-item label="正文" prop="content">
+          <AiAssistBar
+            v-if="canWrite"
+            :source-text="bodyAiSource"
+            :actions="['polish', 'expand']"
+            :min-length="8"
+            @adopt="onBodyAiAdopt"
+          />
           <WangEditor
             v-model="form.content"
             placeholder="撰写新闻正文，可插入图片与排版"
             @change="onContentChange"
           />
-          <div class="form-tip">正文支持图文排版；图片通过上传按钮插入，小程序端自动展示</div>
+          <div class="form-tip">正文支持图文排版；AI 润色/扩写结果需确认采纳后才会写入</div>
         </el-form-item>
         <el-form-item label="置顶">
           <el-switch v-model="form.isTop" :active-value="1" :inactive-value="0" />
@@ -122,17 +145,24 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { AiPolishAction } from '@/api/ai'
 import { fetchCategories } from '@/api/category'
 import { createNews, fetchNews, publishNews, unpublishNews, updateNews } from '@/api/news'
+import AiAssistBar from '@/components/AiAssistBar.vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
 import WangEditor from '@/components/WangEditor.vue'
 import { isEditorContentEmpty } from '@/utils/editor'
+import { pickFirstTitleSuggestion, plainTextToHtml, stripHtml } from '@/utils/html'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, NewsItem } from '@/types/api'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('news:write'))
 const canPublish = computed(() => auth.can('news:publish'))
+
+const bodyAiSource = computed(() => stripHtml(form.content))
+const summaryAiSource = computed(() => bodyAiSource.value || form.summary.trim())
+const titleAiSource = computed(() => bodyAiSource.value || form.summary.trim() || form.title.trim())
 
 const loading = ref(false)
 const saving = ref(false)
@@ -194,6 +224,22 @@ function onFilter() {
 
 function onContentChange() {
   formRef.value?.validateField('content').catch(() => {})
+}
+
+function onTitleAiAdopt(payload: { action: AiPolishAction; text: string }) {
+  if (payload.action !== 'title') return
+  form.title = pickFirstTitleSuggestion(payload.text)
+}
+
+function onSummaryAiAdopt(payload: { action: AiPolishAction; text: string }) {
+  if (payload.action !== 'summarize') return
+  form.summary = payload.text.slice(0, 500)
+}
+
+function onBodyAiAdopt(payload: { action: AiPolishAction; text: string }) {
+  if (payload.action !== 'polish' && payload.action !== 'expand') return
+  form.content = plainTextToHtml(payload.text)
+  onContentChange()
 }
 
 function resetForm() {

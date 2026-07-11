@@ -140,6 +140,11 @@
   z-index: 2;
   text-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.3);
   max-width: 92%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-all;
 }
 .bslide-desc {
   font-size: 23rpx;
@@ -147,6 +152,11 @@
   margin-top: 12rpx;
   z-index: 2;
   max-width: 90%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-all;
 }
 .bdots {
   display: flex;
@@ -329,12 +339,21 @@
   font-size: 27rpx;
   font-weight: 700;
   text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .hc-name {
   padding: 16rpx 20rpx;
   font-size: 25rpx;
   font-weight: 600;
   color: #1F2547;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.35;
 }
 
 /* ── 资讯 / 课程卡片 ── */

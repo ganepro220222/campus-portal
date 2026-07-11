@@ -87,6 +87,7 @@
             @adopt="onTitleAiAdopt"
           />
           <el-input v-model="form.title" maxlength="200" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.listTitle" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
@@ -110,6 +111,7 @@
             @adopt="onSummaryAiAdopt"
           />
           <el-input v-model="form.summary" type="textarea" :rows="2" maxlength="500" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.newsSummary" />
         </el-form-item>
         <el-form-item label="正文" prop="content">
           <AiAssistBar
@@ -125,6 +127,7 @@
             @change="onContentChange"
           />
           <div class="form-tip">正文支持图文排版；AI 润色/扩写结果需确认采纳后才会写入</div>
+          <FieldHint :text="FIELD_HINTS.editorBody" />
         </el-form-item>
         <el-form-item label="置顶">
           <el-switch v-model="form.isTop" :active-value="1" :inactive-value="0" />
@@ -148,8 +151,10 @@ import { fetchCategories } from '@/api/category'
 import { createNews, fetchNews, publishNews, unpublishNews, updateNews } from '@/api/news'
 import AiAssistBar from '@/components/AiAssistBar.vue'
 import CoverUploadField from '@/components/CoverUploadField.vue'
+import FieldHint from '@/components/FieldHint.vue'
 import WangEditor from '@/components/WangEditor.vue'
 import type { CoverFitMode } from '@/utils/cover'
+import { FIELD_HINTS } from '@/utils/field-hints'
 import { isEditorContentEmpty } from '@/utils/editor'
 import { pickFirstTitleSuggestion, plainTextToHtml, stripHtml } from '@/utils/html'
 import { useAuthStore } from '@/stores/auth'

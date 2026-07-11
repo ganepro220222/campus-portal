@@ -49,6 +49,7 @@
         </el-form-item>
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="form.name" maxlength="50" show-word-limit placeholder="如：书院动态" />
+          <FieldHint :text="FIELD_HINTS.categoryName" />
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="form.sort" :min="0" :max="999" />
@@ -82,7 +83,9 @@ import {
   type CategoryType
 } from '@/api/category'
 import { useAuthStore } from '@/stores/auth'
+import FieldHint from '@/components/FieldHint.vue'
 import type { CategoryItem } from '@/types/api'
+import { FIELD_HINTS } from '@/utils/field-hints'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('category:write'))

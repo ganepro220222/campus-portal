@@ -54,6 +54,7 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
         <el-form-item label="公告内容" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="3" maxlength="500" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.announcement" />
         </el-form-item>
         <el-form-item label="跳转链接">
           <el-input v-model="form.linkUrl" placeholder="选填，可填小程序内部页面路径" />
@@ -114,6 +115,8 @@ import {
   updateAnnouncement
 } from '@/api/announcement'
 import type { AnnouncementItem } from '@/types/api'
+import FieldHint from '@/components/FieldHint.vue'
+import { FIELD_HINTS } from '@/utils/field-hints'
 
 const loading = ref(false)
 const saving = ref(false)

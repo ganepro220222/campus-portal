@@ -53,9 +53,11 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="学院名称" prop="name">
           <el-input v-model="form.name" maxlength="100" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.collegeName" />
         </el-form-item>
         <el-form-item label="简介" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" maxlength="200" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.collegeDesc" />
         </el-form-item>
         <el-form-item label="学院图标">
           <OssUploadInput
@@ -117,7 +119,9 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createCollege, deleteCollege, fetchColleges, updateCollege } from '@/api/college'
 import OssUploadInput from '@/components/OssUploadInput.vue'
+import FieldHint from '@/components/FieldHint.vue'
 import type { CollegeAppItem } from '@/api/college'
+import { FIELD_HINTS } from '@/utils/field-hints'
 
 const loading = ref(false)
 const saving = ref(false)

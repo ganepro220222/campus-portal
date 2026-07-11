@@ -56,9 +56,11 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="108px">
         <el-form-item label="名称" prop="name">
           <el-input v-model="form.name" maxlength="100" show-word-limit placeholder="完整展馆名称" />
+          <FieldHint :text="FIELD_HINTS.hallName" />
         </el-form-item>
         <el-form-item label="短名称">
           <el-input v-model="form.shortName" maxlength="50" show-word-limit placeholder="列表卡片显示，如「交通博物馆」" />
+          <FieldHint :text="FIELD_HINTS.hallShortName" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
@@ -77,10 +79,12 @@
         </el-form-item>
         <el-form-item label="简介" prop="intro">
           <el-input v-model="form.intro" type="textarea" :rows="3" maxlength="500" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.hallIntro" />
         </el-form-item>
 
         <el-divider content-position="left">沉浸式章节</el-divider>
         <p class="text-muted section-tip">按章节组织长卷图文，小程序端连续滚动展示（验收 §2.4）</p>
+        <FieldHint :text="FIELD_HINTS.hallSectionTitle" />
         <div class="sections-block">
           <el-button type="primary" link :icon="Plus" @click="addSection">添加章节</el-button>
           <div v-for="(section, sIdx) in form.sections" :key="sIdx" class="section-card">
@@ -116,6 +120,7 @@
         </div>
 
         <el-divider content-position="left">轮播图文</el-divider>
+        <FieldHint :text="FIELD_HINTS.hallCaption" />
         <div class="slides-block">
           <el-button type="primary" link :icon="Plus" @click="addSlide">添加图片</el-button>
           <el-table :data="form.slides" size="small" border class="slides-table">
@@ -189,10 +194,12 @@ import { ElMessage } from 'element-plus'
 import { fetchCategories } from '@/api/category'
 import { createHall, fetchHallDetail, fetchHalls, updateHall } from '@/api/hall'
 import CoverUploadField from '@/components/CoverUploadField.vue'
+import FieldHint from '@/components/FieldHint.vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, HallItem, HallSectionItem, HallSlideItem } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
+import { FIELD_HINTS } from '@/utils/field-hints'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('hall:write'))

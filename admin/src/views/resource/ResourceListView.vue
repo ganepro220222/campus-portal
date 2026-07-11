@@ -80,6 +80,7 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="资源名称" prop="name">
           <el-input v-model="form.name" maxlength="200" show-word-limit />
+          <FieldHint :text="FIELD_HINTS.resourceName" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
@@ -147,7 +148,9 @@ import {
 } from '@/api/resource'
 import { useAuthStore } from '@/stores/auth'
 import OssUploadInput from '@/components/OssUploadInput.vue'
+import FieldHint from '@/components/FieldHint.vue'
 import type { CategoryOption, ResourceItem } from '@/types/api'
+import { FIELD_HINTS } from '@/utils/field-hints'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('course:write'))

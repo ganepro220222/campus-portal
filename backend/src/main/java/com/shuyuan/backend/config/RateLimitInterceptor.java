@@ -1,5 +1,6 @@
 package com.shuyuan.backend.config;
 
+import com.shuyuan.backend.common.context.AdminContext;
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.config.ShuyuanProperties.RateLimit;
 import com.shuyuan.backend.service.RateLimitService;
@@ -61,6 +62,17 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                 rateLimitService.checkUser("ai", memberId, cfg.getAiPerDay(), Duration.ofDays(1));
             } else {
                 rateLimitService.checkIp("ai", ip, cfg.getAiPerDay(), Duration.ofDays(1));
+            }
+            return true;
+        }
+        if (uri.endsWith("/api/v1/admin/ai/polish")) {
+            Long adminId = AdminContext.getAdminId();
+            if (adminId != null) {
+                rateLimitService.checkUser(
+                        "ai-polish",
+                        adminId,
+                        properties.getAi().getDailyLimit(),
+                        Duration.ofDays(1));
             }
         }
         return true;

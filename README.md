@@ -82,6 +82,9 @@ Requires JDK 17+ on the host. Start only infra with compose, then `mvn spring-bo
 - [环境变量说明](docs/运维/环境变量说明.md)
 - [部署手册 V1.0](docs/运维/部署手册_V1.0.md)
 - [管理员操作手册 V1.0](docs/运维/管理员操作手册_V1.0.md)
+- [账号交接说明 V1.0](docs/运维/账号交接说明_V1.0.md)
+- [备份恢复说明 V1.0](docs/运维/备份恢复说明_V1.0.md)
+- [正式测试报告 V1.0](docs/测试/正式测试报告_V1.0.md)
 
 ## License
 

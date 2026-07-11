@@ -7,20 +7,36 @@ import com.shuyuan.backend.entity.Hall;
 import com.shuyuan.backend.entity.News;
 import com.shuyuan.backend.entity.Resource;
 import com.shuyuan.backend.entity.SearchIndex;
+import com.shuyuan.backend.mapper.CourseMapper;
+import com.shuyuan.backend.mapper.CraftMapper;
+import com.shuyuan.backend.mapper.HallMapper;
+import com.shuyuan.backend.mapper.NewsMapper;
+import com.shuyuan.backend.mapper.ResourceMapper;
 import com.shuyuan.backend.mapper.SearchIndexMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * 搜索索引同步（内容发布/下架时调用，与 docs Phase 2 一致）
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SearchIndexSyncService {
 
     private final SearchIndexMapper searchIndexMapper;
+    private final NewsMapper newsMapper;
+    private final HallMapper hallMapper;
+    private final CourseMapper courseMapper;
+    private final CraftMapper craftMapper;
+    private final ResourceMapper resourceMapper;
 
     public void syncNews(News news) {
         if (news == null || !"published".equals(news.getStatus())) {
@@ -83,6 +99,72 @@ public class SearchIndexSyncService {
 
     public void removeCraft(Long craftId) {
         disable("craft", craftId);
+    }
+
+    /**
+     * 全量同步已发布内容至 search_index（定时任务兜底，修复漏同步或下架残留）
+     */
+    @Transactional
+    public int syncAllPublished() {
+        Set<String> activeKeys = new HashSet<>();
+
+        List<News> newsList = newsMapper.selectList(new LambdaQueryWrapper<News>()
+                .eq(News::getStatus, "published"));
+        for (News news : newsList) {
+            syncNews(news);
+            activeKeys.add(indexKey("news", news.getId()));
+        }
+
+        List<Hall> halls = hallMapper.selectList(new LambdaQueryWrapper<Hall>()
+                .eq(Hall::getStatus, 1));
+        for (Hall hall : halls) {
+            syncHall(hall);
+            activeKeys.add(indexKey("hall", hall.getId()));
+        }
+
+        List<Course> courses = courseMapper.selectList(new LambdaQueryWrapper<Course>()
+                .eq(Course::getStatus, 1));
+        for (Course course : courses) {
+            syncCourse(course);
+            activeKeys.add(indexKey("course", course.getId()));
+        }
+
+        List<Craft> crafts = craftMapper.selectList(new LambdaQueryWrapper<Craft>()
+                .eq(Craft::getStatus, 1));
+        for (Craft craft : crafts) {
+            syncCraft(craft);
+            activeKeys.add(indexKey("craft", craft.getId()));
+        }
+
+        List<Resource> resources = resourceMapper.selectList(new LambdaQueryWrapper<Resource>()
+                .eq(Resource::getStatus, 1));
+        for (Resource resource : resources) {
+            syncResource(resource);
+            activeKeys.add(indexKey("resource", resource.getId()));
+        }
+
+        int disabled = disableStaleEntries(activeKeys);
+        log.info("search_index 全量同步完成：活跃 {} 条，下架 {} 条", activeKeys.size(), disabled);
+        return activeKeys.size();
+    }
+
+    private int disableStaleEntries(Set<String> activeKeys) {
+        List<SearchIndex> enabled = searchIndexMapper.selectList(new LambdaQueryWrapper<SearchIndex>()
+                .eq(SearchIndex::getStatus, 1));
+        int disabled = 0;
+        for (SearchIndex row : enabled) {
+            String key = indexKey(row.getTargetType(), row.getTargetId());
+            if (!activeKeys.contains(key)) {
+                row.setStatus(0);
+                searchIndexMapper.updateById(row);
+                disabled++;
+            }
+        }
+        return disabled;
+    }
+
+    private static String indexKey(String type, Long id) {
+        return type + ":" + id;
     }
 
     private void upsert(String type, Long targetId, String title, String summary,

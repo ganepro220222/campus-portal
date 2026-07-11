@@ -3,6 +3,7 @@ package com.shuyuan.backend.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
+import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.News;
 import com.shuyuan.backend.mapper.NewsMapper;
@@ -22,6 +23,7 @@ public class NewsService {
     private final CategoryService categoryService;
     private final EventLogService eventLogService;
     private final PointService pointService;
+    private final ViewCountService viewCountService;
 
     public Object list(String category, Long categoryId, Integer page, Integer size) {
         Map<Long, String> catMap = categoryService.nameMap("news");
@@ -40,13 +42,14 @@ public class NewsService {
         return list.stream().map(n -> toListItem(n, catMap)).toList();
     }
 
-    public Map<String, Object> detail(Long id) {
+    public Map<String, Object> detail(Long id, String clientIp) {
         News news = newsMapper.selectById(id);
         if (news == null || !"published".equals(news.getStatus())) {
             throw new BusinessException(404, "资讯不存在");
         }
-        news.setViewCount(news.getViewCount() + 1);
-        newsMapper.updateById(news);
+        viewCountService.recordView("news", id, MemberContext.getMemberId(), clientIp);
+        int viewCount = viewCountService.getDisplayCount("news", id,
+                news.getViewCount() != null ? news.getViewCount() : 0);
         eventLogService.record("view", "news", id);
         pointService.awardCurrentUser("view_news");
 
@@ -65,9 +68,9 @@ public class NewsService {
         m.put("categoryName", categoryName);
         m.put("publishTime", news.getPublishTime());
         m.put("date", FormatUtils.formatDate(news.getPublishTime()));
-        m.put("viewCount", news.getViewCount());
-        m.put("read", FormatUtils.formatCount(news.getViewCount()));
-        m.put("readCount", news.getViewCount());
+        m.put("viewCount", viewCount);
+        m.put("read", FormatUtils.formatCount(viewCount));
+        m.put("readCount", viewCount);
         m.put("summary", news.getSummary());
         m.put("lead", lead);
         m.put("drop", FormatUtils.firstChar(lead));

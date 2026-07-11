@@ -3,6 +3,8 @@ package com.shuyuan.backend.controller.api;
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.service.NewsInteractionService;
 import com.shuyuan.backend.service.NewsService;
+import com.shuyuan.backend.util.HttpRequestUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,8 +30,8 @@ public class NewsController {
     }
 
     @GetMapping("/{id}")
-    public Result<Map<String, Object>> detail(@PathVariable Long id) {
-        return Result.ok(newsService.detail(id));
+    public Result<Map<String, Object>> detail(@PathVariable Long id, HttpServletRequest request) {
+        return Result.ok(newsService.detail(id, HttpRequestUtils.resolveClientIp(request)));
     }
 
     @GetMapping("/{id}/related")

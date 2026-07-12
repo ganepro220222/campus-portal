@@ -1,0 +1,10 @@
+<!-- components/nav-bar/index.wxml -->
+<view class="nb" style="background: {{bg}};">
+  <view class="nb-status" style="height: {{statusBarHeight}}px;"></view>
+  <view class="nb-row" style="height: {{navContentHeight}}px;">
+    <view wx:if="{{back}}" class="nb-back" bindtap="onBack" hover-class="nb-back-hover">
+      <icon name="chevron-left" size="22" color="{{color}}" sw="2.6" />
+    </view>
+    <text class="nb-title" style="color: {{color}};">{{title}}</text>
+  </view>
+</view>

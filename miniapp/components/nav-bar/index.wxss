@@ -1,0 +1,33 @@
+/* components/nav-bar/index.wxss */
+.nb {
+  width: 100%;
+}
+.nb-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nb-back {
+  position: absolute;
+  left: 8rpx;
+  top: 0;
+  bottom: 0;
+  width: 68rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.nb-back-hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.nb-title {
+  max-width: 60%;
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

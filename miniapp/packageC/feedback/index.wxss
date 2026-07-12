@@ -72,13 +72,16 @@
   border-top: 1rpx solid var(--line);
 }
 .fb-submit {
-  height: 92rpx;
-  line-height: 92rpx;
-  border-radius: 46rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: 44rpx;
   background: linear-gradient(135deg, #3F57B5, #2B356E);
   color: #fff;
-  font-size: 31rpx;
-  font-weight: 700;
+  font-size: 30rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
   border: none;
   box-shadow: 0 12rpx 30rpx rgba(43, 53, 110, 0.32);
 }

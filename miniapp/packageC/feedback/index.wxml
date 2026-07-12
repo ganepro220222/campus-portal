@@ -1,5 +1,6 @@
 <!-- packageC/feedback/index.wxml -->
 <view class="fb-page">
+  <nav-bar title="意见反馈" />
   <scroll-view scroll-y class="fb-scroll" enhanced show-scrollbar="{{false}}">
 
     <view class="fb-card">

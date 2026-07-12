@@ -1,8 +1,10 @@
 /* packageC/feedback/index.wxss */
 .fb-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
-.fb-scroll { flex: 1; overflow: hidden; padding: 24rpx 28rpx 0; }
+/* 横向内边距放到内容层：scroll-view 的右侧 padding 会被微信滚动容器忽略，导致右侧内容贴边被截 */
+.fb-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
 
 .fb-card {
+  margin: 0 28rpx;
   background: #fff;
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
@@ -59,7 +61,7 @@
   display: flex;
   align-items: center;
   gap: 10rpx;
-  margin: 26rpx 4rpx 0;
+  margin: 26rpx 32rpx 0;
 }
 .fb-tip text { font-size: 22rpx; color: var(--sub); }
 .fb-pad { height: 40rpx; }

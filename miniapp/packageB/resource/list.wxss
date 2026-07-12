@@ -37,7 +37,7 @@
 .rc-on { background: linear-gradient(135deg, #3F57B5, #2B356E); color: #fff; border-color: transparent; }
 
 /* 列表 */
-.res-scroll { flex: 1; overflow: hidden; padding: 24rpx 28rpx 0; }
+.res-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
 .res {
   display: flex;
   align-items: center;
@@ -46,7 +46,7 @@
   border: 1rpx solid var(--line);
   border-radius: 22rpx;
   padding: 22rpx 24rpx;
-  margin-bottom: 16rpx;
+  margin: 0 28rpx 16rpx;
   box-shadow: var(--shadow-sm);
 }
 .ft {

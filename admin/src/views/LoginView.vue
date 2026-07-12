@@ -5,7 +5,7 @@
       <div class="brand-side">
         <div class="stars"></div>
         <div class="brand-inner">
-          <div class="seal">书</div>
+          <div class="seal"><img :src="shuMark" alt="书" /></div>
           <h1 class="brand-title">云端书院</h1>
           <div class="brand-divider"><span></span>❖<span></span></div>
           <p class="brand-sub">贵州交通职业大学 · 中华文化书院</p>
@@ -61,6 +61,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { Document, Calendar, VideoCamera } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import shuMark from '@/assets/brand-shu.png'
 
 const route = useRoute()
 const router = useRouter()
@@ -146,12 +147,15 @@ async function onSubmit() {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
   border: 2px solid rgba(201, 162, 39, 0.75);
-  color: #f0dca0;
-  font-size: 34px;
-  line-height: 62px;
-  text-align: center;
-  font-family: KaiTi, STKaiti, serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-shadow: 0 0 32px rgba(150, 180, 235, 0.35);
+}
+.seal img {
+  height: 40px;
+  width: auto;
+  display: block;
 }
 .brand-title {
   margin: 22px 0 0;

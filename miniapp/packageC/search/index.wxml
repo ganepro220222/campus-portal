@@ -14,6 +14,7 @@
   </view>
 
   <scroll-view scroll-y class="search-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="s-pad">
 
     <!-- 未搜索：热门 + 历史 -->
     <block wx:if="{{!searched}}">
@@ -59,5 +60,6 @@
     </block>
 
     <view class="list-bottom"></view>
+    </view>
   </scroll-view>
 </view>

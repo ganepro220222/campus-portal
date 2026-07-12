@@ -3,14 +3,14 @@
     <!-- 欢迎横幅 -->
     <div class="welcome">
       <div class="welcome-txt">
-        <h2>{{ greeting }}，{{ auth.displayName }} 👋</h2>
+        <h2>{{ greeting }}，{{ auth.displayName }}<el-icon class="greet-ic"><component :is="greetingIcon" /></el-icon></h2>
         <p>欢迎回到云端书院管理后台 · {{ today }}</p>
       </div>
       <div class="welcome-role">
         <el-icon><UserFilled /></el-icon>
         <span>{{ auth.profile?.roleName || '管理员' }}</span>
       </div>
-      <div class="welcome-seal">书</div>
+      <img class="welcome-seal" :src="shuWatermark" alt="" />
     </div>
 
     <StatsPanel />
@@ -40,10 +40,12 @@
 import { computed } from 'vue'
 import {
   Document, OfficeBuilding, Goods, VideoCamera, FolderOpened,
-  Calendar, Picture, Bell, UserFilled, ArrowRightBold
+  Calendar, Picture, Bell, UserFilled, ArrowRightBold,
+  Sunrise, Sunny, Sunset, Moon, MoonNight
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import StatsPanel from '@/components/StatsPanel.vue'
+import shuWatermark from '@/assets/brand-shu-white.png'
 
 const auth = useAuthStore()
 
@@ -67,6 +69,15 @@ const greeting = computed(() => {
   if (h < 14) return '中午好'
   if (h < 18) return '下午好'
   return '晚上好'
+})
+
+const greetingIcon = computed(() => {
+  const h = new Date().getHours()
+  if (h < 6) return MoonNight
+  if (h < 11) return Sunrise
+  if (h < 16) return Sunny
+  if (h < 19) return Sunset
+  return Moon
 })
 
 const today = computed(() => {
@@ -103,6 +114,13 @@ const today = computed(() => {
     margin: 0 0 8px;
     font-size: 24px;
     font-weight: 700;
+    display: flex;
+    align-items: center;
+  }
+  .greet-ic {
+    margin-left: 12px;
+    font-size: 24px;
+    color: #F2C879;
   }
   p {
     margin: 0;
@@ -123,13 +141,13 @@ const today = computed(() => {
 }
 .welcome-seal {
   position: absolute;
-  right: -10px;
-  bottom: -30px;
-  font-size: 160px;
-  line-height: 1;
-  font-family: KaiTi, STKaiti, serif;
-  color: rgba(255, 255, 255, 0.06);
+  right: 18px;
+  bottom: -22px;
+  height: 178px;
+  width: auto;
+  opacity: 0.07;
   z-index: 1;
+  pointer-events: none;
 }
 
 /* 模块卡片 */

@@ -46,7 +46,12 @@
         <icon name="chevron-right" size="16" color="#C3CCE0" />
       </view>
 
-      <view wx:if="{{!results.length}}" class="empty-state">
+      <view wx:if="{{errorText}}" class="empty-state">
+        <icon name="search" size="40" color="#C3CCE0" />
+        <text>{{errorText}}</text>
+      </view>
+
+      <view wx:elif="{{!results.length}}" class="empty-state">
         <icon name="search" size="40" color="#C3CCE0" />
         <text>未找到「{{keyword}}」相关内容</text>
       </view>

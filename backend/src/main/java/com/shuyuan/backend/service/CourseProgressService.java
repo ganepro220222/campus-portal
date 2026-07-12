@@ -50,23 +50,22 @@ public class CourseProgressService {
         Long memberId = requireMemberId();
         requirePublishedCourse(courseId);
 
-        int position = req.getLastPositionSeconds();
-        int total = req.getTotalDurationSeconds() != null && req.getTotalDurationSeconds() > 0
+        int incomingPosition = req.getLastPositionSeconds() != null ? Math.max(0, req.getLastPositionSeconds()) : 0;
+        int incomingTotal = req.getTotalDurationSeconds() != null && req.getTotalDurationSeconds() > 0
                 ? req.getTotalDurationSeconds()
                 : 0;
-        BigDecimal percent = calcPercent(position, total);
-        boolean completedNow = percent.compareTo(COMPLETE_THRESHOLD) >= 0;
 
         CourseProgress existing = findProgress(memberId, courseId);
         boolean wasCompleted = existing != null && existing.getCompleted() != null && existing.getCompleted() == 1;
+        ProgressSnapshot snapshot = mergeProgress(existing, incomingPosition, incomingTotal, wasCompleted);
 
         CourseProgress row = existing != null ? existing : new CourseProgress();
         row.setMemberId(memberId);
         row.setCourseId(courseId);
-        row.setLastPositionSeconds(position);
-        row.setTotalDurationSeconds(total);
-        row.setProgressPercent(percent);
-        row.setCompleted(completedNow ? 1 : 0);
+        row.setLastPositionSeconds(snapshot.position());
+        row.setTotalDurationSeconds(snapshot.total());
+        row.setProgressPercent(snapshot.percent());
+        row.setCompleted(snapshot.completed() ? 1 : 0);
         row.setUpdatedAt(LocalDateTime.now());
 
         if (existing == null) {
@@ -75,13 +74,48 @@ public class CourseProgressService {
             courseProgressMapper.updateById(row);
         }
 
-        if (completedNow && !wasCompleted) {
-            pointService.award(memberId, "complete_course");
+        if (snapshot.newlyCompleted()) {
+            pointService.awardCourseComplete(memberId, courseId);
             eventLogService.record("complete", "course", courseId);
         }
 
         return toVo(row);
     }
+
+    /**
+     * 合并上报与历史进度：位置/百分比只增不减，completed 单向递进。
+     */
+    ProgressSnapshot mergeProgress(CourseProgress existing, int incomingPosition, int incomingTotal,
+                                   boolean wasCompleted) {
+        int existingPos = existing != null && existing.getLastPositionSeconds() != null
+                ? existing.getLastPositionSeconds() : 0;
+        int existingTotal = existing != null && existing.getTotalDurationSeconds() != null
+                ? existing.getTotalDurationSeconds() : 0;
+        BigDecimal existingPercent = existing != null && existing.getProgressPercent() != null
+                ? existing.getProgressPercent() : BigDecimal.ZERO;
+
+        int position = Math.max(existingPos, incomingPosition);
+        int total = incomingTotal > 0 ? incomingTotal : existingTotal;
+
+        BigDecimal percent;
+        boolean completedNow;
+        if (total > 0) {
+            percent = calcPercent(position, total);
+            if (existingPercent.compareTo(percent) > 0) {
+                percent = existingPercent;
+            }
+            completedNow = percent.compareTo(COMPLETE_THRESHOLD) >= 0;
+        } else {
+            percent = existingPercent;
+            completedNow = false;
+        }
+
+        boolean completed = wasCompleted || completedNow;
+        boolean newlyCompleted = completedNow && !wasCompleted;
+        return new ProgressSnapshot(position, total, percent, completed, newlyCompleted);
+    }
+
+    record ProgressSnapshot(int position, int total, BigDecimal percent, boolean completed, boolean newlyCompleted) {}
 
     private CourseProgress findProgress(Long memberId, Long courseId) {
         return courseProgressMapper.selectOne(new LambdaQueryWrapper<CourseProgress>()

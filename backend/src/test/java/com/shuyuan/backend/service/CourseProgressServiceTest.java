@@ -73,7 +73,7 @@ class CourseProgressServiceTest {
         Map<String, Object> vo = courseProgressService.reportProgress(COURSE_ID, req);
 
         assertEquals(true, vo.get("completed"));
-        verify(pointService).award(MEMBER_ID, "complete_course");
+        verify(pointService).awardCourseComplete(MEMBER_ID, COURSE_ID);
         verify(eventLogService).record("complete", "course", COURSE_ID);
     }
 
@@ -109,5 +109,48 @@ class CourseProgressServiceTest {
         courseProgressService.reportProgress(COURSE_ID, req);
 
         verify(pointService, never()).award(anyLong(), anyString());
+        verify(pointService, never()).awardCourseComplete(anyLong(), anyLong());
+    }
+
+    @Test
+    void reportProgress_doesNotRollbackCompleted_whenZeroTotalReported() {
+        stubPublishedCourse();
+        CourseProgress existing = new CourseProgress();
+        existing.setId(1L);
+        existing.setMemberId(MEMBER_ID);
+        existing.setCourseId(COURSE_ID);
+        existing.setCompleted(1);
+        existing.setLastPositionSeconds(540);
+        existing.setTotalDurationSeconds(600);
+        existing.setProgressPercent(new BigDecimal("95.00"));
+
+        when(courseProgressMapper.selectOne(any())).thenReturn(existing);
+        doReturn(1).when(courseProgressMapper).updateById(any(CourseProgress.class));
+
+        CourseProgressRequest req = new CourseProgressRequest();
+        req.setLastPositionSeconds(100);
+        req.setTotalDurationSeconds(0);
+
+        Map<String, Object> vo = courseProgressService.reportProgress(COURSE_ID, req);
+
+        assertEquals(true, vo.get("completed"));
+        assertEquals(new BigDecimal("95.00"), vo.get("progressPercent"));
+        assertEquals(600, vo.get("totalDurationSeconds"));
+        verify(pointService, never()).awardCourseComplete(anyLong(), anyLong());
+    }
+
+    @Test
+    void mergeProgress_neverDecreasesCompletedFlag() {
+        CourseProgress existing = new CourseProgress();
+        existing.setCompleted(1);
+        existing.setProgressPercent(new BigDecimal("95.00"));
+        existing.setTotalDurationSeconds(600);
+        existing.setLastPositionSeconds(540);
+
+        var snapshot = courseProgressService.mergeProgress(existing, 0, 0, true);
+
+        assertTrue(snapshot.completed());
+        assertFalse(snapshot.newlyCompleted());
+        assertEquals(new BigDecimal("95.00"), snapshot.percent());
     }
 }

@@ -98,6 +98,30 @@ class PointServiceTest {
         com.shuyuan.backend.common.context.MemberContext.clear();
     }
 
+    @Test
+    void awardCourseComplete_isIdempotentPerCourse() {
+        when(pointRecordMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+
+        pointService.awardCourseComplete(8L, 12L);
+
+        verify(pointRuleMapper, never()).selectOne(any(LambdaQueryWrapper.class));
+        verify(pointRecordMapper, never()).insert(any(PointRecord.class));
+    }
+
+    @Test
+    void awardCourseComplete_writesRemarkOnce() {
+        when(pointRecordMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(pointRuleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(activeRule("complete_course", 20, 1));
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+
+        pointService.awardCourseComplete(8L, 12L);
+
+        ArgumentCaptor<PointRecord> captor = ArgumentCaptor.forClass(PointRecord.class);
+        verify(pointRecordMapper).insert(captor.capture());
+        assertEquals("course:12", captor.getValue().getRemark());
+    }
+
     private static PointRule activeRule(String action, int points, int dailyLimit) {
         PointRule rule = new PointRule();
         rule.setAction(action);

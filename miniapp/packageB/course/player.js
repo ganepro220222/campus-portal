@@ -26,6 +26,7 @@ Page({
     this._courseId = id
     this._lastReportSec = 0
     this._vttCues = []
+    this._videoErrorRetries = 0
 
     Promise.all([
       get(`/courses/${id}`),
@@ -94,7 +95,34 @@ Page({
   },
 
   onVideoError() {
+    if (this._videoErrorRetries < 2) {
+      this._videoErrorRetries += 1
+      this._reloadSignedUrls(true)
+      return
+    }
     wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
+  },
+
+  async _reloadSignedUrls(silent) {
+    try {
+      const course = await get(`/courses/${this._courseId}`)
+      if (!course || !course.videoUrl) {
+        throw new Error('no-video')
+      }
+      this.setData({
+        videoUrl: course.videoUrl,
+        subtitleUrl: course.subtitleUrl || '',
+        hasSubtitle: !!course.hasSubtitle && !!course.subtitleUrl
+      })
+      if (course.subtitleUrl) {
+        this._loadVtt(course.subtitleUrl)
+      }
+      if (!silent) {
+        wx.showToast({ title: '已刷新视频地址', icon: 'none' })
+      }
+    } catch (e) {
+      wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
+    }
   },
 
   onCC() {
@@ -128,8 +156,9 @@ Page({
 
   _flushProgress(force) {
     if (!force || !this._courseId) return
-    const pos = this._currentPosition != null ? this._currentPosition : (this.data.initialTime || 0)
     const total = this._currentDuration || 0
+    if (total <= 0) return
+    const pos = this._currentPosition != null ? this._currentPosition : (this.data.initialTime || 0)
     this._reportProgress(pos, total)
   },
 
@@ -140,6 +169,12 @@ Page({
       success: (res) => {
         if (typeof res.data === 'string') {
           this._vttCues = this._parseVtt(res.data)
+        }
+      },
+      fail: () => {
+        if (this._videoErrorRetries < 2) {
+          this._videoErrorRetries += 1
+          this._reloadSignedUrls(true)
         }
       }
     })

@@ -39,11 +39,29 @@ public class PointService {
         }
     }
 
-    /**
-     * 按规则为用户加分：校验启用状态、Redis 每日次数、写流水并更新余额。
-     */
     @Transactional
     public void award(Long memberId, String action) {
+        awardWithRemark(memberId, action, null);
+    }
+
+    /** 课程完成积分：每用户每课程仅奖励一次（remark=course:{id}） */
+    @Transactional
+    public void awardCourseComplete(Long memberId, Long courseId) {
+        if (memberId == null || courseId == null) {
+            return;
+        }
+        String remark = "course:" + courseId;
+        Long prior = pointRecordMapper.selectCount(new LambdaQueryWrapper<PointRecord>()
+                .eq(PointRecord::getMemberId, memberId)
+                .eq(PointRecord::getAction, "complete_course")
+                .eq(PointRecord::getRemark, remark));
+        if (prior != null && prior > 0) {
+            return;
+        }
+        awardWithRemark(memberId, "complete_course", remark);
+    }
+
+    private void awardWithRemark(Long memberId, String action, String remark) {
         if (memberId == null || action == null || action.isBlank()) {
             return;
         }
@@ -63,6 +81,7 @@ public class PointService {
         record.setMemberId(memberId);
         record.setAction(action);
         record.setPoints(rule.getPoints());
+        record.setRemark(remark);
         record.setCreatedAt(LocalDateTime.now());
         pointRecordMapper.insert(record);
 

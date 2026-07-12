@@ -83,6 +83,7 @@ public class PointService {
         }
         int dailyLimit = rule.getDailyLimit() != null ? rule.getDailyLimit() : 1;
         if (!tryConsumeDailyQuota(memberId, action, dailyLimit)) {
+            badgeGrantService.checkAndGrant(memberId);
             return;
         }
 

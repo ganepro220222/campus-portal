@@ -30,7 +30,7 @@
           <text class="res-s">{{item.categoryName}} · {{item.fileSizeText}}</text>
         </view>
       </view>
-      <view class="res-dl" catchtap="onDownload" data-name="{{item.name}}">
+      <view class="res-dl" catchtap="onDownload" data-id="{{item.id}}" data-name="{{item.name}}" data-file-type="{{item.fileType}}">
         <icon name="download" size="18" color="#2B356E" />
       </view>
     </view>

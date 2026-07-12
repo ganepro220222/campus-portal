@@ -16,6 +16,7 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -28,14 +29,19 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class OssService {
 
-    private static final Map<String, Set<String>> SCENE_EXTENSIONS = Map.of(
-            "image", Set.of("jpg", "jpeg", "png", "webp", "gif"),
-            "video", Set.of("mp4", "mov"),
-            "audio", Set.of("mp3", "m4a", "wav"),
-            "document", Set.of("pdf", "doc", "docx", "ppt", "pptx"),
-            "subtitle", Set.of("vtt", "srt"),
-            "model3d", Set.of("glb", "gltf")
-    );
+    private static final Map<String, Set<String>> SCENE_EXTENSIONS = buildSceneExtensions();
+
+    private static Map<String, Set<String>> buildSceneExtensions() {
+        Map<String, Set<String>> map = new HashMap<>();
+        map.put("image", Set.of("jpg", "jpeg", "png", "webp", "gif"));
+        map.put("video", Set.of("mp4", "mov"));
+        map.put("audio", Set.of("mp3", "m4a", "wav"));
+        map.put("document", Set.of("pdf", "doc", "docx", "ppt", "pptx"));
+        map.put("resource_file", Set.of("pdf", "doc", "docx", "ppt", "pptx", "mp4", "mp3"));
+        map.put("subtitle", Set.of("vtt", "srt"));
+        map.put("model3d", Set.of("glb", "gltf"));
+        return Map.copyOf(map);
+    }
 
     private final OssProperties ossProperties;
 
@@ -134,7 +140,8 @@ public class OssService {
             case "cover", "hall", "craft", "news", "banner" -> "image";
             case "course", "resource" -> "video";
             case "audio" -> "audio";
-            case "file", "resource_file" -> "document";
+            case "file" -> "document";
+            case "resource_file" -> "resource_file";
             case "subtitle" -> "subtitle";
             case "model3d", "model", "glb" -> "model3d";
             default -> scene.toLowerCase(Locale.ROOT);
@@ -142,16 +149,29 @@ public class OssService {
     }
 
     private String buildObjectKey(String scene, String ext) {
-        String folder = switch (normalizeScene(scene)) {
+        String normalized = normalizeScene(scene);
+        String folder = switch (normalized) {
             case "video" -> "videos";
             case "audio" -> "audios";
             case "document" -> "files";
+            case "resource_file" -> resourceFileFolder(ext);
             case "subtitle" -> "subtitles";
             case "model3d" -> "models";
             default -> "images";
         };
         String month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
         return folder + "/" + month + "/" + UUID.randomUUID().toString().replace("-", "") + "." + ext.toLowerCase(Locale.ROOT);
+    }
+
+    private String resourceFileFolder(String ext) {
+        if (!StringUtils.hasText(ext)) {
+            return "files";
+        }
+        return switch (ext.toLowerCase(Locale.ROOT)) {
+            case "mp4", "mov" -> "videos";
+            case "mp3", "m4a", "wav" -> "audios";
+            default -> "files";
+        };
     }
 
     private String buildPublicUrl(String objectKey) {

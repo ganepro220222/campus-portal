@@ -76,6 +76,22 @@ class RateLimitServiceTest {
     }
 
     @Test
+    void checkUserCalendarDay_usesDateInKey() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+        rateLimitService.checkUserCalendarDay("ai", 5L, 20);
+        verify(valueOps).increment(org.mockito.ArgumentMatchers.matches("ratelimit:ai:u:5:\\d{4}-\\d{2}-\\d{2}"));
+    }
+
+    @Test
+    void getUserCalendarDayUsage_readsDatedKey() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.get(org.mockito.ArgumentMatchers.matches("ratelimit:ai:u:3:\\d{4}-\\d{2}-\\d{2}")))
+                .thenReturn("4");
+        assertEquals(4, rateLimitService.getUserCalendarDayUsage("ai", 3L));
+    }
+
+    @Test
     void check_skipsWhenDisabled() {
         properties.getRateLimit().setEnabled(false);
         rateLimitService.checkIp("login", "127.0.0.1", 10, Duration.ofMinutes(1));

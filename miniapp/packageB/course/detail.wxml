@@ -34,13 +34,13 @@
 
       <!-- 配套资源 -->
       <view class="res-title">配套资源下载</view>
-      <view class="res" wx:for="{{course.resources}}" wx:key="name">
-        <view class="ft ft-{{item.type}}">{{item.type}}</view>
+      <view class="res" wx:for="{{course.resources}}" wx:key="id">
+        <view class="ft ft-{{item.fileType || item.type}}">{{item.fileType || item.type}}</view>
         <view class="res-info">
           <view class="res-n">{{item.name}}</view>
-          <view class="res-s">{{item.size}}</view>
+          <view class="res-s">{{item.fileSizeText || item.size}}</view>
         </view>
-        <view class="res-dl" bindtap="onDownload"><icon name="download" size="17" color="#2B356E" /></view>
+        <view class="res-dl" bindtap="onDownload" data-id="{{item.id}}" data-name="{{item.name}}" data-file-type="{{item.fileType || item.type}}"><icon name="download" size="17" color="#2B356E" /></view>
       </view>
 
       <view class="detail-bottom"></view>

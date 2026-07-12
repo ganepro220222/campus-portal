@@ -75,4 +75,36 @@ class OssServiceTest {
             assertNotEquals(400, ex.getCode(), "glb 扩展名应通过白名单校验");
         }
     }
+
+    @Test
+    void upload_acceptsResourceFileMp4_whenEnabled_withoutCallingCloud() {
+        when(ossProperties.isEnabled()).thenReturn(true);
+        when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-test.aliyuncs.com");
+        when(ossProperties.getBucket()).thenReturn("bucket");
+        when(ossProperties.getAccessKey()).thenReturn("ak");
+        when(ossProperties.getSecretKey()).thenReturn("sk");
+        when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
+
+        MockMultipartFile file = new MockMultipartFile("file", "lecture.mp4", "video/mp4", new byte[]{1, 2});
+        try {
+            ossService.upload("resource_file", file);
+        } catch (com.shuyuan.backend.common.exception.BusinessException ex) {
+            assertNotEquals(400, ex.getCode(), "resource_file 场景应允许 mp4");
+        }
+    }
+
+    @Test
+    void upload_rejectsResourceFilePhp_whenEnabled() {
+        when(ossProperties.isEnabled()).thenReturn(true);
+        when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-test.aliyuncs.com");
+        when(ossProperties.getBucket()).thenReturn("bucket");
+        when(ossProperties.getAccessKey()).thenReturn("ak");
+        when(ossProperties.getSecretKey()).thenReturn("sk");
+        when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
+
+        MockMultipartFile file = new MockMultipartFile("file", "evil.php", "text/plain", new byte[]{1});
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.upload("resource_file", file));
+        assertEquals(400, ex.getCode());
+    }
 }

@@ -61,7 +61,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         if (uri.matches(".*/api/v1/ai/chat/sessions/\\d+/messages")) {
             Long memberId = MemberContext.getMemberId();
             if (memberId != null) {
-                rateLimitService.checkUser("ai", memberId, cfg.getAiPerDay(), Duration.ofDays(1));
+                rateLimitService.checkUserCalendarDay("ai", memberId, cfg.getAiPerDay());
             } else {
                 rateLimitService.checkIp("ai", ip, cfg.getAiPerDay(), Duration.ofDays(1));
             }

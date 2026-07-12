@@ -26,6 +26,7 @@
       value="{{input}}"
       placeholder="向书院文化助手提问…"
       placeholder-class="ci-ph"
+      maxlength="500"
       confirm-type="send"
       bindinput="onInput"
       bindconfirm="send"

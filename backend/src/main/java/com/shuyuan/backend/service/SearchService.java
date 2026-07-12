@@ -3,6 +3,7 @@ package com.shuyuan.backend.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
+import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.SearchIndex;
 import com.shuyuan.backend.mapper.SearchIndexMapper;
 import com.shuyuan.backend.util.FormatUtils;
@@ -18,6 +19,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SearchService {
 
+    static final int MAX_PAGE_SIZE = 50;
+    static final int MAX_KEYWORD_LENGTH = 100;
+
     private final SearchIndexMapper searchIndexMapper;
 
     /**
@@ -25,9 +29,14 @@ public class SearchService {
      */
     public PageResult<Map<String, Object>> search(String keyword, String types, int page, int size) {
         if (keyword == null || keyword.isBlank()) {
-            return new PageResult<>(List.of(), 0, page, size);
+            return new PageResult<>(List.of(), 0, normalizePage(page), normalizeSize(size));
         }
         String q = keyword.trim();
+        if (q.length() > MAX_KEYWORD_LENGTH) {
+            throw new BusinessException(400, "搜索关键词过长，请控制在" + MAX_KEYWORD_LENGTH + "字以内");
+        }
+        int safePage = normalizePage(page);
+        int safeSize = normalizeSize(size);
         List<String> typeList = parseTypes(types);
 
         LambdaQueryWrapper<SearchIndex> qw = new LambdaQueryWrapper<SearchIndex>()
@@ -40,9 +49,20 @@ public class SearchService {
         }
         qw.orderByDesc(SearchIndex::getPublishTime);
 
-        Page<SearchIndex> p = searchIndexMapper.selectPage(new Page<>(page, size), qw);
+        Page<SearchIndex> p = searchIndexMapper.selectPage(new Page<>(safePage, safeSize), qw);
         List<Map<String, Object>> records = p.getRecords().stream().map(this::toVo).toList();
-        return new PageResult<>(records, p.getTotal(), page, size);
+        return new PageResult<>(records, p.getTotal(), safePage, safeSize);
+    }
+
+    int normalizePage(int page) {
+        return page < 1 ? 1 : page;
+    }
+
+    int normalizeSize(int size) {
+        if (size < 1) {
+            return 10;
+        }
+        return Math.min(size, MAX_PAGE_SIZE);
     }
 
     private List<String> parseTypes(String types) {

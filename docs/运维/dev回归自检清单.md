@@ -15,7 +15,7 @@ cd .. && npm run test:mock-guard && npm run check:prod-mock
 
 - [ ] 三项全部通过
 
-> **2026-07-12 自动化实测：** `mvn test` 166 passed · admin typecheck+build OK · mock-guard OK  
+> **2026-07-12 自动化实测：** `mvn test` 173 passed · admin typecheck+build OK · mock-guard OK  
 > `check:release-env` 仅在切 `ENV=prod` + 正式域名后执行，dev 分支失败正常。
 
 ## 1. 健康与基础
@@ -37,7 +37,7 @@ cd .. && npm run test:mock-guard && npm run check:prod-mock
 | 首页 | Banner、推荐、公告、搜索入口 | |
 | 新闻 | 列表、详情、点赞/收藏 | |
 | 展馆 | 11 馆列表；有 VR 的馆可点「进入 VR」 | |
-| 课程 | 列表、详情、播放器、进度上报 | |
+| 课程 | 列表、详情、播放器、进度上报；快速退出不将已完成回退 | |
 | 资源 | 登录后点下载 → 个人中心下载记录 +1；列表 downloadCount 即时 +1（文档类打开成功后） | |
 | 活动 | 报名、名额满提示 | |
 | 个人中心 | 收藏/报名/足迹/消息/徽章 | |

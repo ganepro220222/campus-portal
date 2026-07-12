@@ -29,6 +29,7 @@ Page({
     keyword: '',
     results: [],
     searched: false,
+    errorText: '',
     hotTags: ['阳明文化', '屯堡地戏', '红色交通', '非遗银饰', '知行合一'],
     history: []
   },
@@ -41,23 +42,29 @@ Page({
   onConfirm() { this.doSearch(this.data.keyword) },
   onTag(e) { this.doSearch(e.currentTarget.dataset.k) },
 
-  onClear() { this.setData({ keyword: '', results: [], searched: false }) },
+  onClear() { this.setData({ keyword: '', results: [], searched: false, errorText: '' }) },
 
   async doSearch(keyword) {
     const q = (keyword || '').trim()
-    this.setData({ keyword: q })
+    this.setData({ keyword: q, errorText: '' })
     if (!q) { this.setData({ results: [], searched: false }); return }
 
     let results = []
+    let failed = false
     try {
-      const res = await get('/search', { q, types: 'news,hall,craft,course,resource', page: 1, size: 20 }).catch(() => null)
+      const res = await get('/search', { q, types: 'news,hall,craft,course,resource', page: 1, size: 20 })
       const records = (res && res.records) ? res.records : []
       results = mapSearchResults(records)
     } catch (err) {
       console.warn('[search] 搜索失败', err)
+      failed = true
+    }
+    if (failed && !useMock) {
+      this.setData({ results: [], searched: true, errorText: '搜索失败，请稍后重试' })
+      return
     }
     if (!results.length && useMock) results = localSearch(q)
-    this.setData({ results, searched: true })
+    this.setData({ results, searched: true, errorText: '' })
     this._saveHistory(q)
   },
 

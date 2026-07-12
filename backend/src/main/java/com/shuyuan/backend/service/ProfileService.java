@@ -26,7 +26,6 @@ public class ProfileService {
     private final EnrollMapper enrollMapper;
     private final DownloadRecordMapper downloadRecordMapper;
     private final EventLogMapper eventLogMapper;
-    private final PointRecordMapper pointRecordMapper;
     private final BadgeMapper badgeMapper;
     private final MemberBadgeMapper memberBadgeMapper;
     private final NewsMapper newsMapper;
@@ -37,6 +36,7 @@ public class ProfileService {
     private final ActivityMapper activityMapper;
     private final EnrollService enrollService;
     private final MessageService messageService;
+    private final BadgeGrantService badgeGrantService;
 
     public MemberVO profile() {
         Long memberId = requireMemberId();
@@ -142,11 +142,10 @@ public class ProfileService {
         return result;
     }
 
-    /** 徽章墙（已获/未获） */
+    /** 徽章墙（已获/未获）；earned 以 member_badge 为唯一真源，查询前补授予未写入记录 */
     public List<Map<String, Object>> badges() {
         Long memberId = requireMemberId();
-        Member member = memberMapper.selectById(memberId);
-        int points = member != null && member.getPoints() != null ? member.getPoints() : 0;
+        badgeGrantService.checkAndGrant(memberId);
 
         List<Badge> all = badgeMapper.selectList(new LambdaQueryWrapper<Badge>()
                 .eq(Badge::getStatus, 1)
@@ -162,8 +161,7 @@ public class ProfileService {
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Badge badge : all) {
-            boolean earned = earnedIds.contains(badge.getId())
-                    || isBadgeConditionMet(badge, points, memberId);
+            boolean earned = earnedIds.contains(badge.getId());
             Map<String, Object> m = new HashMap<>();
             m.put("id", badge.getId());
             m.put("name", badge.getName());
@@ -240,41 +238,6 @@ public class ProfileService {
             case "activity" -> "/packageC/activity/detail?id=" + targetId;
             default -> "";
         };
-    }
-
-    private boolean isBadgeConditionMet(Badge badge, int points, Long memberId) {
-        if ("points".equals(badge.getConditionType())) {
-            return points >= (badge.getConditionValue() != null ? badge.getConditionValue() : 0);
-        }
-        if ("login_count".equals(badge.getConditionType())) {
-            int need = badge.getConditionValue() != null ? badge.getConditionValue() : 1;
-            long count = pointRecordMapper.selectCount(new LambdaQueryWrapper<PointRecord>()
-                    .eq(PointRecord::getMemberId, memberId)
-                    .eq(PointRecord::getAction, "login"));
-            return count >= need;
-        }
-        if ("enroll_count".equals(badge.getConditionType())) {
-            long count = enrollMapper.selectCount(new LambdaQueryWrapper<Enroll>()
-                    .eq(Enroll::getMemberId, memberId)
-                    .in(Enroll::getStatus, "pending", "approved"));
-            return count >= (badge.getConditionValue() != null ? badge.getConditionValue() : 1);
-        }
-        if ("hall_count".equals(badge.getConditionType())) {
-            List<EventLog> logs = eventLogMapper.selectList(new LambdaQueryWrapper<EventLog>()
-                    .eq(EventLog::getMemberId, memberId)
-                    .eq(EventLog::getEventType, "view")
-                    .eq(EventLog::getTargetType, "hall")
-                    .isNotNull(EventLog::getTargetId));
-            long distinct = logs.stream().map(EventLog::getTargetId).distinct().count();
-            return distinct >= (badge.getConditionValue() != null ? badge.getConditionValue() : 1);
-        }
-        if ("course_count".equals(badge.getConditionType())) {
-            long count = pointRecordMapper.selectCount(new LambdaQueryWrapper<PointRecord>()
-                    .eq(PointRecord::getMemberId, memberId)
-                    .eq(PointRecord::getAction, "complete_course"));
-            return count >= (badge.getConditionValue() != null ? badge.getConditionValue() : 1);
-        }
-        return false;
     }
 
     private String targetTypeLabel(String type) {

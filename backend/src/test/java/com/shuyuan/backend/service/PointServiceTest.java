@@ -19,6 +19,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -73,6 +74,21 @@ class PointServiceTest {
         verify(pointRecordMapper, never()).insert(any(PointRecord.class));
         verify(memberMapper, never()).addPointsDelta(anyLong(), anyInt());
         verify(valueOps).decrement(anyString());
+        verify(badgeGrantService).checkAndGrant(8L);
+    }
+
+    @Test
+    void award_releasesQuotaWhenAddPointsFails() {
+        when(pointRuleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(activeRule("view_news", 2, 5));
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+        doThrow(new RuntimeException("db"))
+                .when(memberMapper).addPointsDelta(anyLong(), anyInt());
+
+        assertThrows(RuntimeException.class, () -> pointService.award(8L, "view_news"));
+
+        verify(valueOps).decrement(anyString());
+        verify(badgeGrantService, never()).checkAndGrant(anyLong());
     }
 
     @Test

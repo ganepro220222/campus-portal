@@ -19,7 +19,7 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 
 ## 旧库升级（已有数据、结构落后时）
 
-按顺序执行，**已执行过的补丁可跳过**（重复 `ADD COLUMN` 会报错）。
+按顺序执行；**已并入 init.sql 的补丁可跳过**。`patch-admin-account-security.sql` 与 `patch-point-record-unique.sql` 已做幂等，可重复执行。
 
 | 顺序 | 文件 | 用途 | 是否已并入 init.sql |
 |------|------|------|---------------------|
@@ -27,7 +27,7 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 | 2 | `patch-banner-columns.sql` | Banner 补 title/description | ✅ 已并入 |
 | 3 | `patch-cover-fit-mode.sql` | 封面 fill/fit 字段 | ✅ 已并入 |
 | 4 | `patch-feedback-type.sql` | 反馈 type 字段 | ✅ 已并入 |
-| 5 | `patch-admin-account-security.sql` | 首次改密 + 发布权细分 + 内容审核角色 | 部分已并入（`must_change_password`、角色 4） |
+| 5 | `patch-admin-account-security.sql` | 首次改密 + 发布权细分 + 内容审核角色 | 部分已并入（`must_change_password`、角色 4）；**可重复执行** |
 | 6 | `patch-category-permissions.sql` | 旧库角色补 category 权限 | — |
 | 7 | `patch-hall-sections.sql` | 校史馆章节 seed | seed-dev 已含 |
 | 8 | `patch-hall-vr.sql` | 展馆 VR 链接数据修正 | 仅数据 |
@@ -64,8 +64,16 @@ docker exec shuyuan-mysql-1 sh -c "mysql -uroot -pdev123456 shuyuan < /tmp/patch
 
 1. 优先使用最新 `init.sql` 建新库；旧库按上表顺序打补丁。
 2. `patch-admin-account-security.sql` 末尾注释：新建独立超管后应 **禁用默认 `admin` 账号**。
-3. 打补丁后重启后端：`docker compose -f docker-compose.dev.yml up -d backend`。
-4. 结构变更后建议在管理后台点几个列表页（新闻、展馆、课程）确认无 500。
+3. 打补丁后验收默认超管改密标记（期望 `must_change_password = 1`）：
+
+```sql
+SELECT username, status, must_change_password
+FROM sys_user
+WHERE username = 'admin';
+```
+
+4. 打补丁后重启后端：`docker compose -f docker-compose.dev.yml up -d backend`。
+5. 结构变更后建议在管理后台点几个列表页（新闻、展馆、课程）确认无 500。
 
 ---
 

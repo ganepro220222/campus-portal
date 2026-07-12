@@ -203,7 +203,7 @@ flowchart LR
 | ☐ | 启动后端 | Docker `--env-file` 或 systemd | `GET /api/v1/health` → UP |
 | ☐ | 构建管理端 | `cd admin && npm ci && npm run build` | `dist/` 产物 |
 | ☐ | 配置 Nginx | HTTPS、反代 `/api/`、静态 `/admin/` | 见部署手册 §5.5 |
-| ☐ | 关闭 dev 项 | `wx.dev-mode=false`；**阻断**：生产禁用 `admin/Admin@123`（启动自检）且默认超管 `must_change_password=1` | 安全清单 §8 |
+| ☐ | 关闭 dev 项 | `wx.dev-mode=false`；**阻断**：prod/staging 禁用 `admin/Admin@123`（启动自检）且默认超管 `must_change_password=1` | 安全清单 §8；验收 SQL 见 `sql/README.md` |
 | ☐ | 开启告警（可选） | `ALERT_ENABLED` + Webhook | 运维手册 §3.3 演练 |
 
 ---

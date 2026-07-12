@@ -197,6 +197,7 @@ flowchart LR
 |---|------|-----------|------|
 | ☐ | 执行建表 | `sql/init.sql`（**禁止**生产导入 `seed-dev.sql`） | 表数量与文档一致 |
 | ☐ | 执行补丁 | 按 `sql/README.md` 顺序执行 `patch-*.sql` | 无报错 |
+| ☐ | point_record 唯一键（**仅旧库**） | 先 `patch-point-record-unique-cleanup.sql` Step1–3，再 `patch-point-record-unique.sql`；新库跳过 | Step1 无重复或已清理 |
 | ☐ | 配置 `.env` | `SPRING_PROFILES_ACTIVE=prod`，JWT/DB/Redis/WX/OSS 等 | 对照环境变量说明 §6 清单 |
 | ☐ | 构建后端 | `docker build` 或 `mvn package` | 镜像 / JAR 版本号记录 |
 | ☐ | 启动后端 | Docker `--env-file` 或 systemd | `GET /api/v1/health` → UP |
@@ -347,6 +348,7 @@ flowchart LR
 | DNS 平台找错 | 解析不生效 | D1 明确「能加记录的后台」 |
 | 只备案不配置微信合法域名 | 体验版报「不在合法域名列表」 | §八 与 §5.4 同步 |
 | 生产仍用 `seed-dev` 数据 | 测试账号泄露 | 乙方严禁生产导入 seed |
+| 旧库直接加 `point_record` 唯一键 | 迁移失败或积分审计不一致 | 先跑 cleanup Step1–3，再跑幂等 patch（见 `sql/README.md`） |
 | E1 师生导入未开发 | 校方无法批量导学生 | 上线前乙方确认或提供过渡方案 |
 | 管理员密码未改 | 安全风险 | F2 创建后强制改密 |
 

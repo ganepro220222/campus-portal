@@ -1,5 +1,6 @@
 <!-- components/nav-bar/index.wxml -->
-<view class="nb" style="background: {{bg}};">
+<!-- 固定顶栏 + 等高占位：可直接放在任意页面顶部，兼容容器滚动与页面滚动 -->
+<view class="nb-fixed" style="background: {{bg}};">
   <view class="nb-status" style="height: {{statusBarHeight}}px;"></view>
   <view class="nb-row" style="height: {{navContentHeight}}px;">
     <view wx:if="{{back}}" class="nb-back" bindtap="onBack" hover-class="nb-back-hover">
@@ -8,3 +9,4 @@
     <text class="nb-title" style="color: {{color}};">{{title}}</text>
   </view>
 </view>
+<view class="nb-holder" style="height: {{statusBarHeight + navContentHeight}}px;"></view>

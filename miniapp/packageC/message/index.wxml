@@ -1,5 +1,6 @@
 <!-- packageC/message/index.wxml — 站内消息中心 -->
 <view class="msg-page">
+  <nav-bar title="消息中心" />
   <view wx:if="{{loading}}" class="msg-state"><text>加载中…</text></view>
 
   <view wx:elif="{{!list.length}}" class="empty-state">
@@ -8,7 +9,7 @@
     <text class="msg-empty-sub">报名结果、审核通知等将显示在这里</text>
   </view>
 
-  <view wx:else>
+  <view wx:else class="msg-main">
     <view wx:if="{{unreadCount > 0}}" class="msg-toolbar">
       <text class="msg-unread-tip">{{unreadCount}} 条未读</text>
       <text class="msg-read-all" bindtap="onReadAll">全部标为已读</text>

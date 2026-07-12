@@ -1,5 +1,6 @@
 <!-- packageA/craft/list.wxml -->
 <view class="craft-page">
+  <nav-bar title="文创展示" />
   <scroll-view scroll-y class="craft-scroll" enhanced show-scrollbar="{{false}}">
 
     <view class="craft-intro">

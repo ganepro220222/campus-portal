@@ -1,6 +1,6 @@
 /* packageC/about/index.wxss */
-.about-page { height: 100vh; background: #F5F8FC; }
-.about-scroll { height: 100%; overflow: hidden; }
+.about-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.about-scroll { flex: 1; overflow: hidden; }
 
 /* 品牌头 */
 .ab-hero {

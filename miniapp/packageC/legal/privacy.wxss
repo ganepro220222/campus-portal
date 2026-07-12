@@ -1,6 +1,6 @@
 /* packageC/legal/privacy.wxss */
-.legal-page { min-height: 100vh; background: #F5F8FC; }
-.legal-scroll { height: 100vh; padding: 24rpx 28rpx; box-sizing: border-box; }
+.legal-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.legal-scroll { flex: 1; padding: 24rpx 28rpx; box-sizing: border-box; }
 .legal-card {
   background: #fff;
   border-radius: 24rpx;

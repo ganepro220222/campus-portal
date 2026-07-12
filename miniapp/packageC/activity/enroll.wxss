@@ -1,11 +1,13 @@
 /* packageC/activity/enroll.wxss — 高保真视觉 */
 .enroll-page {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #F5F8FC;
 }
 
 .enroll-scroll {
-  height: 100vh;
+  flex: 1;
 }
 
 .state-box {

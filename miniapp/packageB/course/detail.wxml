@@ -1,5 +1,6 @@
 <!-- packageB/course/detail.wxml -->
 <view class="detail-page">
+  <nav-bar title="在线课程" />
   <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
     <view class="detail-wrap">
 

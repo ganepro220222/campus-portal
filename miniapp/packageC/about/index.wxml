@@ -1,5 +1,6 @@
 <!-- packageC/about/index.wxml -->
 <view class="about-page">
+  <nav-bar title="关于云端书院" />
   <scroll-view scroll-y class="about-scroll" enhanced show-scrollbar="{{false}}">
 
     <!-- 品牌头 -->

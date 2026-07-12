@@ -1,5 +1,6 @@
 <!-- pages/profile/index.wxml -->
 <view class="profile-page">
+  <nav-bar title="我的" />
 
   <!-- 顶部头区 -->
   <view class="hero">

@@ -30,6 +30,7 @@ Page({
     type: '',
     list: [],
     loading: true,
+    navTitle: '我的',
     emptyText: '暂无数据',
     typeIcon: 'heart',
     typeCls: 'tc-rose'
@@ -39,8 +40,7 @@ Page({
     const type = options.type || 'favorites'
     const cfg = CONFIG[type] || CONFIG.favorites
     const meta = TYPE_META[type] || TYPE_META.favorites
-    wx.setNavigationBarTitle({ title: cfg.title })
-    this.setData({ type, emptyText: cfg.empty, typeIcon: meta.icon, typeCls: meta.cls })
+    this.setData({ type, navTitle: cfg.title, emptyText: cfg.empty, typeIcon: meta.icon, typeCls: meta.cls })
     this._load(type, cfg.api)
   },
 

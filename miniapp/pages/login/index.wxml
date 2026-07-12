@@ -2,7 +2,7 @@
 <view class="login-page">
   <view class="glow"></view>
   <view class="stars"></view>
-  <view class="wave-deco" wx:if="{{!changePasswordMode}}"></view>
+  <view class="wave-deco"></view>
 
   <view class="login-back" style="top: calc({{statusBarHeight}}px + 12rpx);" bindtap="onBack" hover-class="login-back-hover">
     <icon name="chevron-left" size="22" color="#ffffff" sw="2.6" />
@@ -103,7 +103,7 @@
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
           class="field-input"
-          placeholder="新密码（至少8位，含字母和数字）"
+          placeholder="请输入新密码"
           placeholder-class="field-ph"
           password
           value="{{newPassword}}"
@@ -116,7 +116,7 @@
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
           class="field-input"
-          placeholder="确认新密码"
+          placeholder="请再次输入新密码"
           placeholder-class="field-ph"
           password
           value="{{confirmPassword}}"
@@ -125,6 +125,8 @@
           maxlength="50"
         />
       </view>
+
+      <view class="cp-policy">新密码须至少 8 位，且包含字母与数字</view>
 
       <button class="lbtn lbtn-primary" bindtap="onChangePassword" loading="{{loading}}" disabled="{{loading}}">
         <text class="lbtn-tx">确认修改</text>

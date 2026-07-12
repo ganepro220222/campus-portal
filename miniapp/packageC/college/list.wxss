@@ -1,6 +1,6 @@
 /* packageC/college/list.wxss */
-.college-page { height: 100vh; background: linear-gradient(180deg, #EAF1FB 0, #F5F8FC 240rpx); }
-.college-scroll { height: 100%; overflow: hidden; }
+.college-page { height: 100vh; display: flex; flex-direction: column; background: linear-gradient(180deg, #EAF1FB 0, #F5F8FC 240rpx); }
+.college-scroll { flex: 1; overflow: hidden; }
 
 .college-intro { padding: 28rpx 32rpx 4rpx; }
 .ci-zh { font-size: 34rpx; font-weight: 700; color: var(--ink); display: block; }

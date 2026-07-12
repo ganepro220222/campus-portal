@@ -1,1 +1,3 @@
-{ "navigationBarTitleText": "文创展示" }
+{
+  "navigationStyle": "custom"
+}

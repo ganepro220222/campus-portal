@@ -1,5 +1,6 @@
 <!-- packageC/search/index.wxml -->
 <view class="search-page">
+  <nav-bar title="全局搜索" />
 
   <!-- 搜索栏 -->
   <view class="sbar">

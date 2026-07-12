@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "在线课程",
+  "navigationStyle": "custom",
   "usingComponents": {
     "ai-assistant": "/components/ai-assistant/index"
   }

@@ -10,7 +10,8 @@ INSERT IGNORE INTO `member` (`id`, `openid`, `nickname`, `points`, `status`) VAL
 (1, 'acct:2021001', '测试学员', 28, 1);
 
 -- 超管密码同步为 Admin@123（与 init.sql 旧哈希不一致时用 UPDATE 修正）
-UPDATE `sys_user` SET `password_hash` = '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm'
+UPDATE `sys_user` SET `password_hash` = '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm',
+  `must_change_password` = 1
 WHERE `username` = 'admin';
 
 UPDATE `sys_role` SET `role_name` = '超级管理员',

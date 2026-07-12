@@ -35,17 +35,27 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         try {
             String token = auth.substring(7);
             Long adminId = jwtUtils.getAdminId(token);
-            Long roleId = jwtUtils.getAdminRoleId(token);
-            if (adminId == null || roleId == null) {
+            Long tokenRoleId = jwtUtils.getAdminRoleId(token);
+            if (adminId == null || tokenRoleId == null) {
                 throw new BusinessException(401, "无效的管理员令牌");
             }
             SysUser user = sysUserMapper.selectById(adminId);
             if (user == null || user.getStatus() == null || user.getStatus() != 1) {
                 throw new BusinessException(403, "管理员账号不可用");
             }
+            Long roleId = user.getRoleId();
+            if (roleId == null) {
+                throw new BusinessException(403, "管理员账号未分配角色");
+            }
+            if (!roleId.equals(tokenRoleId)) {
+                throw new BusinessException(401, "权限已变更，请重新登录");
+            }
             SysRole role = sysRoleMapper.selectById(roleId);
+            if (role == null) {
+                throw new BusinessException(403, "管理员角色不可用");
+            }
             AdminContext.set(adminId, roleId,
-                    adminPermissionService.parsePermissions(role != null ? role.getPermissions() : null));
+                    adminPermissionService.parsePermissions(role.getPermissions()));
             if (mustChangePassword(user) && !isAllowedWhenMustChangePassword(request)) {
                 throw new BusinessException(403, "请先修改密码后再操作");
             }

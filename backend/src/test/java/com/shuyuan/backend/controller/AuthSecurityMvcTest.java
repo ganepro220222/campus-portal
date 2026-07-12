@@ -6,6 +6,7 @@ import com.shuyuan.backend.config.AdminAuthInterceptor;
 import com.shuyuan.backend.controller.admin.AdminAuthController;
 import com.shuyuan.backend.controller.admin.AdminBannerController;
 import com.shuyuan.backend.controller.api.AuthController;
+import com.shuyuan.backend.entity.SysRole;
 import com.shuyuan.backend.entity.SysUser;
 import com.shuyuan.backend.mapper.SysRoleMapper;
 import com.shuyuan.backend.mapper.SysUserMapper;
@@ -99,6 +100,7 @@ class AuthSecurityMvcTest {
         SysUser user = new SysUser();
         user.setId(1L);
         user.setStatus(0);
+        user.setRoleId(2L);
         when(sysUserMapper.selectById(1L)).thenReturn(user);
 
         adminMockMvc.perform(get("/api/v1/admin/banners")
@@ -108,13 +110,31 @@ class AuthSecurityMvcTest {
     }
 
     @Test
+    void adminApi_roleChangedInDb_rejectsStaleToken() throws Exception {
+        when(jwtUtils.getAdminId("token")).thenReturn(1L);
+        when(jwtUtils.getAdminRoleId("token")).thenReturn(1L);
+        SysUser user = new SysUser();
+        user.setId(1L);
+        user.setStatus(1);
+        user.setRoleId(2L);
+        when(sysUserMapper.selectById(1L)).thenReturn(user);
+
+        adminMockMvc.perform(get("/api/v1/admin/banners")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.message").value("权限已变更，请重新登录"));
+    }
+
+    @Test
     void adminApi_mustChangePassword_blocksWriteButAllowsRead() throws Exception {
         when(jwtUtils.getAdminId("token")).thenReturn(1L);
         when(jwtUtils.getAdminRoleId("token")).thenReturn(2L);
         SysUser user = activeUserWithMustChangePassword();
+        user.setRoleId(2L);
         when(sysUserMapper.selectById(1L)).thenReturn(user);
-        when(sysRoleMapper.selectById(2L)).thenReturn(null);
-        when(adminPermissionService.parsePermissions(null)).thenReturn(java.util.Set.of());
+        when(sysRoleMapper.selectById(2L)).thenReturn(editorRole());
+        when(adminPermissionService.parsePermissions("[]")).thenReturn(java.util.Set.of());
 
         adminMockMvc.perform(get("/api/v1/admin/banners")
                         .header("Authorization", "Bearer token"))
@@ -136,9 +156,10 @@ class AuthSecurityMvcTest {
         when(jwtUtils.getAdminId("token")).thenReturn(1L);
         when(jwtUtils.getAdminRoleId("token")).thenReturn(2L);
         SysUser user = activeUserWithMustChangePassword();
+        user.setRoleId(2L);
         when(sysUserMapper.selectById(1L)).thenReturn(user);
-        when(sysRoleMapper.selectById(2L)).thenReturn(null);
-        when(adminPermissionService.parsePermissions(null)).thenReturn(java.util.Set.of());
+        when(sysRoleMapper.selectById(2L)).thenReturn(editorRole());
+        when(adminPermissionService.parsePermissions("[]")).thenReturn(java.util.Set.of());
         when(adminAuthService.changePassword(anyLong(), anyString(), anyString()))
                 .thenReturn(AdminLoginVO.builder().token("new-token").mustChangePassword(false).build());
 
@@ -154,6 +175,14 @@ class AuthSecurityMvcTest {
                         .content("{\"oldPassword\":\"old\",\"newPassword\":\"NewPass123456\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+    }
+
+    private static SysRole editorRole() {
+        SysRole role = new SysRole();
+        role.setId(2L);
+        role.setRoleName("内容编辑");
+        role.setPermissions("[]");
+        return role;
     }
 
     private static SysUser activeUserWithMustChangePassword() {

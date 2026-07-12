@@ -67,7 +67,7 @@ class OssServiceTest {
         when(ossProperties.getSecretKey()).thenReturn("sk");
         when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
 
-        MockMultipartFile file = new MockMultipartFile("file", "craft.glb", "model/gltf-binary", new byte[]{1, 2});
+        MockMultipartFile file = new MockMultipartFile("file", "craft.glb", "model/gltf-binary", "glTF".getBytes());
         // 未 mock OSS 客户端，会在实际上传时失败；此处仅验证场景白名单不拦截 glb
         try {
             ossService.upload("model3d", file);
@@ -85,12 +85,34 @@ class OssServiceTest {
         when(ossProperties.getSecretKey()).thenReturn("sk");
         when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
 
-        MockMultipartFile file = new MockMultipartFile("file", "lecture.mp4", "video/mp4", new byte[]{1, 2});
+        byte[] mp4Header = new byte[12];
+        mp4Header[4] = 'f';
+        mp4Header[5] = 't';
+        mp4Header[6] = 'y';
+        mp4Header[7] = 'p';
+        MockMultipartFile file = new MockMultipartFile("file", "lecture.mp4", "video/mp4", mp4Header);
         try {
             ossService.upload("resource_file", file);
         } catch (com.shuyuan.backend.common.exception.BusinessException ex) {
             assertNotEquals(400, ex.getCode(), "resource_file 场景应允许 mp4");
         }
+    }
+
+    @Test
+    void upload_rejectsJpegExtensionWithHtmlContent_whenEnabled() {
+        when(ossProperties.isEnabled()).thenReturn(true);
+        when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-test.aliyuncs.com");
+        when(ossProperties.getBucket()).thenReturn("bucket");
+        when(ossProperties.getAccessKey()).thenReturn("ak");
+        when(ossProperties.getSecretKey()).thenReturn("sk");
+        when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "fake.jpg", "image/jpeg", "<html>".getBytes());
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.upload("cover", file));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("不匹配"));
     }
 
     @Test

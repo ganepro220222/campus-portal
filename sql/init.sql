@@ -676,7 +676,7 @@ INSERT IGNORE INTO `sys_role` (`id`, `role_name`, `permissions`) VALUES
 
 -- 默认超管账号（密码：Admin@123，BCrypt加密；生产须改密并建议禁用此账号）
 INSERT IGNORE INTO `sys_user` (`id`, `username`, `password_hash`, `role_id`, `real_name`, `status`, `must_change_password`) VALUES
-(1, 'admin', '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm', 1, '超级管理员', 1, 0);
+(1, 'admin', '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm', 1, '超级管理员', 1, 1);
 
 -- 积分规则
 INSERT IGNORE INTO `point_rule` (`action`, `points`, `daily_limit`, `status`) VALUES

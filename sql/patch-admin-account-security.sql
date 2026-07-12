@@ -20,3 +20,7 @@ INSERT IGNORE INTO `sys_role` (`id`, `role_name`, `permissions`) VALUES
 
 -- 生产环境建议：新建独立超管后执行
 -- UPDATE `sys_user` SET `status` = 0 WHERE `username` = 'admin';
+
+-- 默认超管首次登录须改密（与 init.sql 对齐）
+UPDATE `sys_user` SET `must_change_password` = 1
+WHERE `username` = 'admin' AND (`must_change_password` IS NULL OR `must_change_password` = 0);

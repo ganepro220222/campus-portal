@@ -1,23 +1,34 @@
 // pages/login/index.js
-const { wxLogin, bindWxAccount } = require('../../utils/auth')
-const { post }    = require('../../utils/request')
+const { wxLogin, bindWxAccount, applyLoginData, handlePostLogin, getToken } = require('../../utils/auth')
+const { post } = require('../../utils/request')
 
 Page({
   data: {
     studentNo: '',
     password: '',
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: '',
     loading: false,
     statusBarHeight: 20,
     bindMode: false,
+    changePasswordMode: false,
     wxBindToken: ''
   },
 
-  onLoad() {
+  onLoad(options) {
     const sys = wx.getSystemInfoSync()
     this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
+    if (options.mode === 'changePassword' && getToken()) {
+      this.setData({ changePasswordMode: true })
+    }
   },
 
   onBack() {
+    if (this.data.changePasswordMode) {
+      wx.showToast({ title: '请先完成密码修改', icon: 'none' })
+      return
+    }
     if (this.data.bindMode) {
       this.setData({ bindMode: false, wxBindToken: '', studentNo: '', password: '' })
       return
@@ -47,7 +58,7 @@ Page({
         wx.showToast({ title: '请绑定学号', icon: 'none' })
         return
       }
-      this._loginSuccess()
+      this._afterLogin(data)
     } catch (err) {
       wx.showToast({ title: '登录失败，请重试', icon: 'none' })
     } finally {
@@ -63,8 +74,8 @@ Page({
     if (this.data.loading) return
     this.setData({ loading: true })
     try {
-      await bindWxAccount(wxBindToken, studentNo.trim(), password)
-      this._loginSuccess()
+      const data = await bindWxAccount(wxBindToken, studentNo.trim(), password)
+      this._afterLogin(data)
     } catch {
       // request.js 统一错误提示
     } finally {
@@ -75,15 +86,16 @@ Page({
   async onAccountLogin() {
     const { studentNo, password } = this.data
     if (!studentNo.trim()) return wx.showToast({ title: '请输入学号/账号', icon: 'none' })
-    if (!password)          return wx.showToast({ title: '请输入密码', icon: 'none' })
+    if (!password) return wx.showToast({ title: '请输入密码', icon: 'none' })
     if (this.data.loading) return
     this.setData({ loading: true })
     try {
       const data = await post('/auth/account-login', { studentNo: studentNo.trim(), password })
-      const { setToken, setUserInfo } = require('../../utils/auth')
-      setToken(data.token)
-      setUserInfo(data.member)
-      getApp().globalData.token = data.token
+      applyLoginData(data)
+      if (data.mustChangePassword) {
+        this._enterChangePasswordMode()
+        return
+      }
       if (data.wxBound === false) {
         wx.showModal({
           title: '绑定微信',
@@ -109,6 +121,52 @@ Page({
       // 错误 toast 由 request.js 统一处理
     } finally {
       this.setData({ loading: false })
+    }
+  },
+
+  async onChangePassword() {
+    const { oldPassword, newPassword, confirmPassword } = this.data
+    if (!oldPassword) return wx.showToast({ title: '请输入当前密码', icon: 'none' })
+    if (!newPassword) return wx.showToast({ title: '请输入新密码', icon: 'none' })
+    if (newPassword.length < 8) return wx.showToast({ title: '新密码至少8位', icon: 'none' })
+    if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      return wx.showToast({ title: '新密码须含字母和数字', icon: 'none' })
+    }
+    if (newPassword !== confirmPassword) {
+      return wx.showToast({ title: '两次输入不一致', icon: 'none' })
+    }
+    if (this.data.loading) return
+    this.setData({ loading: true })
+    try {
+      const data = await post('/auth/change-password', { oldPassword, newPassword })
+      applyLoginData(data)
+      wx.showToast({ title: '修改成功', icon: 'success' })
+      this.setData({ changePasswordMode: false })
+      setTimeout(() => this._loginSuccess(), 500)
+    } catch {
+      // request.js 统一错误提示
+    } finally {
+      this.setData({ loading: false })
+    }
+  },
+
+  _enterChangePasswordMode() {
+    if (!getToken()) return false
+    this.setData({
+      changePasswordMode: true,
+      oldPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+      password: '',
+      bindMode: false
+    })
+    wx.showToast({ title: '请修改初始密码', icon: 'none' })
+    return true
+  },
+
+  _afterLogin(data) {
+    if (handlePostLogin(data, () => this._loginSuccess())) {
+      this._enterChangePasswordMode()
     }
   },
 

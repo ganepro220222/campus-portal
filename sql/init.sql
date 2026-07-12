@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS `member_account` (
   `username`      VARCHAR(50) DEFAULT NULL COMMENT '账号名',
   `password_hash` VARCHAR(100) NOT NULL COMMENT 'BCrypt 密码',
   `status`        TINYINT     NOT NULL DEFAULT 1,
+  `must_change_password` TINYINT NOT NULL DEFAULT 0 COMMENT '是否须下次登录修改密码：1是 0否',
   `create_time`   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time`   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted`    TINYINT     NOT NULL DEFAULT 0,

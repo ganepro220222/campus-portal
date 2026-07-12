@@ -37,6 +37,15 @@ function applyLoginData(data) {
   }
 }
 
+/** 登录成功后：若须改密由当前页切换模式（不跳转新页面） */
+function handlePostLogin(data, onDone) {
+  if (data && data.mustChangePassword) {
+    return true
+  }
+  onDone && onDone()
+  return false
+}
+
 /**
  * 微信授权登录；若 needBind 为 true，返回数据供页面引导绑定学号
  */
@@ -114,5 +123,6 @@ const requireLogin = (callback) => {
 
 module.exports = {
   getToken, setToken, clearToken, setUserInfo, getUserInfo,
-  wxLogin, bindWxAccount, bindWxAuthenticated, requireLogin
+  wxLogin, bindWxAccount, bindWxAuthenticated, requireLogin,
+  applyLoginData, handlePostLogin
 }

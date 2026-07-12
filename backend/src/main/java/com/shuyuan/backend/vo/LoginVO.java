@@ -15,4 +15,6 @@ public class LoginVO {
     private String wxBindToken;
     /** 当前账号是否已绑定微信（学号登录响应） */
     private Boolean wxBound;
+    /** 是否须修改初始密码（导入账号首次登录） */
+    private Boolean mustChangePassword;
 }

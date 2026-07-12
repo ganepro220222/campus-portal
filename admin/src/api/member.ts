@@ -16,12 +16,20 @@ export interface MemberItem {
   createTime: string
 }
 
+export interface MemberImportErrorRow {
+  rowNum: number
+  studentNo: string
+  realName: string
+  reason: string
+}
+
 export interface MemberImportResult {
   totalRows: number
   successCount: number
   skippedCount: number
   failedCount: number
   errors: string[]
+  errorRows?: MemberImportErrorRow[]
 }
 
 export function fetchMembers(keyword?: string, status?: number, page = 1, size = 20) {
@@ -50,6 +58,20 @@ export async function downloadMemberImportTemplate() {
   const a = document.createElement('a')
   a.href = url
   a.download = '师生导入模板.xlsx'
+  a.click()
+  window.URL.revokeObjectURL(url)
+}
+
+export async function downloadMemberImportErrors(rows: MemberImportErrorRow[]) {
+  const auth = useAuthStore()
+  const res = await axios.post('/api/v1/admin/members/import-errors/export', rows, {
+    responseType: 'blob',
+    headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
+  })
+  const url = window.URL.createObjectURL(res.data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = '师生导入失败明细.xlsx'
   a.click()
   window.URL.revokeObjectURL(url)
 }

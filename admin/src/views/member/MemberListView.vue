@@ -4,6 +4,11 @@
       <h2>师生账号</h2>
       <div class="header-actions">
         <el-button @click="onDownloadTemplate">下载导入模板</el-button>
+        <el-button
+          v-if="lastImportErrors.length"
+          type="warning"
+          @click="onDownloadErrors"
+        >导出上次失败明细</el-button>
         <el-upload
           :show-file-list="false"
           accept=".xlsx,.xls"
@@ -15,8 +20,15 @@
     </div>
 
     <p class="text-muted">
-      由校方导入学号账号，初始密码默认身份证后 6 位（无身份证则取学号后 6 位）。学生首次微信登录须绑定学号。
+      由校方导入学号账号，初始密码默认身份证后 6 位（无身份证则取学号后 6 位）。学生首次登录须修改初始密码；微信登录须绑定学号。
     </p>
+
+    <el-alert type="info" :closable="false" show-icon class="import-hint">
+      <template #title>导入格式说明</template>
+      <p>仅 <strong>学号</strong>、<strong>姓名</strong> 必填；学院/年级/手机号/身份证可选。</p>
+      <p>校方内部表不必逐格手抄：在 Excel 中将表头改为系统识别的列名即可直接导入（如「学生学号」→「学号」、「院系」→「学院」）。</p>
+      <p>支持的表头别名见《师生 Excel 导入说明》；导入失败可导出明细 Excel 逐行核对。</p>
+    </el-alert>
 
     <div class="toolbar">
       <el-input v-model="keyword" placeholder="学号 / 姓名" clearable style="width: 220px" @keyup.enter="loadData" />
@@ -80,10 +92,12 @@ import { onMounted, ref } from 'vue'
 import type { UploadRequestOptions } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+  downloadMemberImportErrors,
   downloadMemberImportTemplate,
   fetchMembers,
   importMembers,
   updateMemberStatus,
+  type MemberImportErrorRow,
   type MemberItem
 } from '@/api/member'
 
@@ -94,6 +108,7 @@ const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
 const statusFilter = ref<number | undefined>()
+const lastImportErrors = ref<MemberImportErrorRow[]>([])
 
 async function loadData() {
   loading.value = true
@@ -110,13 +125,19 @@ async function onDownloadTemplate() {
   await downloadMemberImportTemplate()
 }
 
+async function onDownloadErrors() {
+  await downloadMemberImportErrors(lastImportErrors.value)
+}
+
 async function onImport(options: UploadRequestOptions) {
   try {
     const result = await importMembers(options.file as File)
+    lastImportErrors.value = result.errorRows ?? []
     const msg = `导入完成：成功 ${result.successCount}，跳过 ${result.skippedCount}，失败 ${result.failedCount}`
     if (result.errors?.length) {
+      const extra = result.failedCount > 0 ? '\n\n可点击「导出上次失败明细」下载 Excel 核对。' : ''
       await ElMessageBox.alert(
-        result.errors.join('\n'),
+        result.errors.join('\n') + extra,
         msg,
         { confirmButtonText: '知道了' }
       )
@@ -144,10 +165,18 @@ onMounted(loadData)
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .toolbar {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
+}
+.import-hint {
+  margin-bottom: 16px;
+}
+.import-hint p {
+  margin: 4px 0;
+  line-height: 1.5;
 }
 </style>

@@ -3,6 +3,7 @@ package com.shuyuan.backend.controller.admin;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.service.AdminMemberService;
+import com.shuyuan.backend.vo.MemberImportErrorRow;
 import com.shuyuan.backend.vo.MemberImportResult;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "师生账号")
@@ -38,6 +40,12 @@ public class AdminMemberController {
     @PostMapping("/import")
     public Result<MemberImportResult> importExcel(@RequestParam("file") MultipartFile file) {
         return Result.ok(adminMemberService.importExcel(file));
+    }
+
+    @PostMapping("/import-errors/export")
+    public void exportImportErrors(@RequestBody List<MemberImportErrorRow> rows, HttpServletResponse response)
+            throws IOException {
+        adminMemberService.writeImportErrorReport(rows, response);
     }
 
     @PutMapping("/{id}/status")

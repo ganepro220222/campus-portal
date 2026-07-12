@@ -2,6 +2,7 @@ package com.shuyuan.backend.controller.api;
 
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.dto.AccountLoginRequest;
+import com.shuyuan.backend.dto.MemberChangePasswordRequest;
 import com.shuyuan.backend.dto.WxBindRequest;
 import com.shuyuan.backend.dto.WxLoginRequest;
 import com.shuyuan.backend.service.AuthService;
@@ -40,5 +41,10 @@ public class AuthController {
     @PostMapping("/account-login")
     public Result<LoginVO> accountLogin(@Valid @RequestBody AccountLoginRequest req) {
         return Result.ok(authService.accountLogin(req));
+    }
+
+    @PostMapping("/change-password")
+    public Result<LoginVO> changePassword(@Valid @RequestBody MemberChangePasswordRequest req) {
+        return Result.ok(authService.changePassword(req.getOldPassword(), req.getNewPassword()));
     }
 }

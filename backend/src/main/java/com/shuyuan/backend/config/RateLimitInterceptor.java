@@ -2,8 +2,9 @@ package com.shuyuan.backend.config;
 
 import com.shuyuan.backend.common.context.AdminContext;
 import com.shuyuan.backend.common.context.MemberContext;
-import com.shuyuan.backend.config.ShuyuanProperties.RateLimit;
+import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.service.RateLimitService;
+import com.shuyuan.backend.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private final RateLimitService rateLimitService;
     private final ShuyuanProperties properties;
+    private final ClientIpResolver clientIpResolver;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -32,8 +34,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
         String uri = request.getRequestURI();
-        String ip = resolveClientIp(request);
-        RateLimit cfg = properties.getRateLimit();
+        String ip = clientIpResolver.resolve(request);
+        ShuyuanProperties.RateLimit cfg = properties.getRateLimit();
 
         if (uri.endsWith("/api/v1/auth/account-login")) {
             rateLimitService.checkIp("login", ip, cfg.getLoginPerMinute(), Duration.ofMinutes(1));
@@ -76,18 +78,5 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             }
         }
         return true;
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            int comma = forwarded.indexOf(',');
-            return (comma > 0 ? forwarded.substring(0, comma) : forwarded).trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr();
     }
 }

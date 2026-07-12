@@ -24,6 +24,7 @@ import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 import { ElMessage } from 'element-plus'
 import { uploadFile } from '@/api/upload'
+import { sanitizeRichHtml } from '@/utils/html'
 
 const props = withDefaults(defineProps<{
   modelValue?: string
@@ -46,7 +47,7 @@ const editorRef = shallowRef<IDomEditor>()
 const html = shallowRef(props.modelValue || '')
 
 watch(() => props.modelValue, (v) => {
-  const next = v || ''
+  const next = sanitizeRichHtml(v || '')
   if (next !== html.value) html.value = next
 })
 
@@ -76,7 +77,7 @@ function onCreated(editor: IDomEditor) {
 }
 
 function onChange(editor: IDomEditor) {
-  const val = editor.getHtml()
+  const val = sanitizeRichHtml(editor.getHtml())
   emit('update:modelValue', val)
   emit('change', val)
 }

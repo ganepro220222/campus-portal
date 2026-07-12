@@ -20,6 +20,12 @@ shuyuan:
     dev-mode: false
     appid: ${WX_APPID:}
     secret: ${WX_SECRET:}
+  cors:
+    allowed-origin-patterns:
+      - https://staging.example.edu.cn
+      - http://localhost:5173
+  security:
+    trust-forwarded-headers: true
 
 mybatis-plus:
   configuration:

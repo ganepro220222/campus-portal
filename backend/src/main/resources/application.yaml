@@ -53,6 +53,10 @@ shuyuan:
     error-rate-percent: ${ALERT_ERROR_RATE_PERCENT:1}
     min-sample-size: ${ALERT_MIN_SAMPLE_SIZE:20}
     cooldown-minutes: ${ALERT_COOLDOWN_MINUTES:15}
+  cors:
+    allowed-origin-patterns: []
+  security:
+    trust-forwarded-headers: false
   oss:
     enabled: ${OSS_ENABLED:false}
     endpoint: ${OSS_ENDPOINT:}

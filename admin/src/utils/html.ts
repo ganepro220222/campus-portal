@@ -1,3 +1,14 @@
+/** 富文本入库前基础净化：去除 script/iframe、事件属性与 javascript: 链接 */
+export function sanitizeRichHtml(html?: string): string {
+  if (!html) return ''
+  let out = html
+  out = out.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+  out = out.replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
+  out = out.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+  out = out.replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '')
+  return out
+}
+
 /** 将 HTML 转为纯文本（用于 AI 输入） */
 export function stripHtml(html?: string): string {
   if (!html) return ''

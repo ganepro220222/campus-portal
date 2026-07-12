@@ -16,6 +16,8 @@ public class ShuyuanProperties {
     private Ai ai = new Ai();
     private Subscribe subscribe = new Subscribe();
     private Alert alert = new Alert();
+    private Cors cors = new Cors();
+    private Security security = new Security();
 
     @Data
     public static class Login {
@@ -94,5 +96,24 @@ public class ShuyuanProperties {
         private int minSampleSize = 20;
         /** 同类告警冷却时间（分钟） */
         private int cooldownMinutes = 15;
+    }
+
+    /** staging/prod CORS 白名单（dev 仍允许 *） */
+    @Data
+    public static class Cors {
+        private java.util.List<String> allowedOriginPatterns = java.util.List.of();
+    }
+
+    /** 反代与客户端 IP 解析 */
+    @Data
+    public static class Security {
+        /** 为 true 且 remoteAddr 属于 trustedProxies 时才读取转发头 */
+        private boolean trustForwardedHeaders = false;
+        private java.util.List<String> trustedProxies = java.util.List.of(
+                "127.0.0.1",
+                "::1",
+                "10.0.0.0/8",
+                "172.16.0.0/12",
+                "192.168.0.0/16");
     }
 }

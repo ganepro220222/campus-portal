@@ -21,6 +21,22 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/echarts')) return 'echarts'
+          if (id.includes('node_modules/@wangeditor')) return 'wangeditor'
+          if (id.includes('node_modules/element-plus')) return 'element-plus'
+          if (
+            id.includes('node_modules/vue/')
+            || id.includes('node_modules/vue-router')
+            || id.includes('node_modules/pinia')
+          ) {
+            return 'vue-vendor'
+          }
+        }
+      }
+    }
   }
 })

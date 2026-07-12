@@ -11,6 +11,7 @@ const envFile = path.join(miniappRoot, 'config', 'env.js')
 const requestFile = path.join(miniappRoot, 'utils', 'request.js')
 const appFile = path.join(miniappRoot, 'app.js')
 
+const releaseMode = process.argv.includes('--release')
 const errors = []
 
 function read(filePath) {
@@ -58,6 +59,17 @@ if (activeEnv === 'prod') {
   }
   if (/localhost/i.test(envContent.match(/prod\s*:\s*\{[\s\S]*?\}/)?.[0] || '')) {
     errors.push('prod baseUrl 不应使用 localhost')
+  }
+}
+
+if (releaseMode) {
+  if (activeEnv !== 'prod') {
+    errors.push('发布检查（--release）要求 config/env.js 中 ENV=prod')
+  }
+  const prodUrlMatch = envContent.match(/prod\s*:\s*\{[\s\S]*?baseUrl\s*:\s*['"]([^'"]+)['"]/)
+  const prodUrl = prodUrlMatch ? prodUrlMatch[1] : ''
+  if (!prodUrl || /localhost|example\.edu\.cn/i.test(prodUrl)) {
+    errors.push('发布检查要求 prod.baseUrl 为正式域名（非 localhost / example.edu.cn 占位）')
   }
 }
 

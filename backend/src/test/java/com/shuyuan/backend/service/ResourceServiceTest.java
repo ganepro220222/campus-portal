@@ -86,6 +86,7 @@ class ResourceServiceTest {
 
         var ex = assertThrows(BusinessException.class, () -> resourceService.download(RESOURCE_ID));
         assertEquals(404, ex.getCode());
+        assertTrue(ex.getMessage().contains("资源不存在"));
 
         ArgumentCaptor<DownloadRecord> captor = ArgumentCaptor.forClass(DownloadRecord.class);
         verify(downloadRecordMapper).insert(captor.capture());

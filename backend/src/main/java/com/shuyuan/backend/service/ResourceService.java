@@ -53,7 +53,7 @@ public class ResourceService {
         return toDetailVo(resource, catMap);
     }
 
-    /** 记录下载并返回文件地址（需登录，用于下载记录与积分） */
+    /** 记录下载并返回文件地址（需登录；调用本接口即记下载，与文件是否成功打开无关） */
     @Transactional
     public Map<String, Object> download(Long id) {
         Long memberId = requireMemberId();

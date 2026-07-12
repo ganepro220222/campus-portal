@@ -121,6 +121,7 @@ async function openDownloadedResource(data) {
 
 /**
  * 登录后请求下载接口并打开文件
+ * 口径：POST /download 成功即记下载记录；onRecorded 在客户端打开流程成功后触发（用于列表计数 UI）
  * @param {number|string} resourceId
  * @param {{ onRecorded?: Function }} options 下载记录成功后的回调（如刷新列表计数）
  */

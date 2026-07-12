@@ -8,6 +8,7 @@ import com.shuyuan.backend.mapper.MemberMapper;
 import com.shuyuan.backend.mapper.PointRecordMapper;
 import com.shuyuan.backend.mapper.PointRuleMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,10 +59,14 @@ public class PointService {
         if (prior != null && prior > 0) {
             return;
         }
-        awardWithRemark(memberId, "complete_course", remark);
+        awardWithRemark(memberId, "complete_course", remark, true);
     }
 
     private void awardWithRemark(Long memberId, String action, String remark) {
+        awardWithRemark(memberId, action, remark, false);
+    }
+
+    private void awardWithRemark(Long memberId, String action, String remark, boolean idempotentByRemark) {
         if (memberId == null || action == null || action.isBlank()) {
             return;
         }
@@ -83,7 +88,14 @@ public class PointService {
         record.setPoints(rule.getPoints());
         record.setRemark(remark);
         record.setCreatedAt(LocalDateTime.now());
-        pointRecordMapper.insert(record);
+        try {
+            pointRecordMapper.insert(record);
+        } catch (DataIntegrityViolationException ex) {
+            if (idempotentByRemark) {
+                return;
+            }
+            throw ex;
+        }
 
         memberMapper.addPointsDelta(memberId, rule.getPoints());
         badgeGrantService.checkAndGrant(memberId);

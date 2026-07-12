@@ -12,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -26,6 +27,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 class PointServiceTest {
@@ -120,6 +122,21 @@ class PointServiceTest {
         ArgumentCaptor<PointRecord> captor = ArgumentCaptor.forClass(PointRecord.class);
         verify(pointRecordMapper).insert(captor.capture());
         assertEquals("course:12", captor.getValue().getRemark());
+    }
+
+    @Test
+    void awardCourseComplete_ignoresDuplicateKeyOnConcurrentInsert() {
+        when(pointRecordMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(pointRuleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(activeRule("complete_course", 20, 1));
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+        doThrow(new DuplicateKeyException("uk_member_action_remark"))
+                .when(pointRecordMapper).insert(any(PointRecord.class));
+
+        pointService.awardCourseComplete(8L, 12L);
+
+        verify(memberMapper, never()).addPointsDelta(anyLong(), anyInt());
+        verify(badgeGrantService, never()).checkAndGrant(anyLong());
     }
 
     private static PointRule activeRule(String action, int points, int dailyLimit) {

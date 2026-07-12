@@ -406,7 +406,8 @@ CREATE TABLE IF NOT EXISTS `point_record` (
   `remark`     VARCHAR(200) DEFAULT NULL,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_member_id` (`member_id`)
+  KEY `idx_member_id` (`member_id`),
+  UNIQUE KEY `uk_member_action_remark` (`member_id`, `action`, `remark`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积分流水';
 
 CREATE TABLE IF NOT EXISTS `badge` (

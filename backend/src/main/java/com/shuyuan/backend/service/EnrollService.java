@@ -142,7 +142,11 @@ public class EnrollService {
         }
     }
 
-    /** 我的报名记录 */
+    /**
+     * 我的报名记录（小程序个人中心）。
+     * <p>产品口径：仅返回有效报名（pending / approved / rejected），排除 cancelled。
+     * 用户主动取消或活动取消级联的报名不在此列表展示，改由站内消息告知。
+     */
     public List<Map<String, Object>> myEnrolls() {
         Long memberId = requireMemberId();
         List<Enroll> list = enrollMapper.selectList(new LambdaQueryWrapper<Enroll>()

@@ -9,6 +9,7 @@ const CONFIG = {
   badges:     { title: '文化徽章',   api: '/profile/badges',     empty: '暂无徽章数据' }
 }
 
+// 有效报名状态；cancelled 由后端排除，不在「我的报名」列表返回
 const ENROLL_STATUS = {
   pending: '待审核',
   approved: '已通过',
@@ -58,6 +59,7 @@ Page({
     return list.map(item => {
       if (type === 'enrolls') {
         const statusLabel = ENROLL_STATUS[item.status] || item.status
+        // 活动已取消但报名仍为 rejected 时，后端会附带 activityStatusLabel
         const activityHint = item.activityStatusLabel || ''
         return {
           ...item,

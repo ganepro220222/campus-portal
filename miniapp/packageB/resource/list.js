@@ -69,7 +69,7 @@ Page({
 
   onDownload(e) {
     const id = e.currentTarget.dataset.id
-    if (!id) {
+    if (id == null || id === '') {
       wx.showToast({ title: '资源信息无效', icon: 'none' })
       return
     }
@@ -79,7 +79,8 @@ Page({
   },
 
   _bumpDownloadCount(id) {
-    const bump = (it) => (it.id === id
+    const key = String(id)
+    const bump = (it) => (String(it.id) === key
       ? { ...it, downloadCount: (it.downloadCount || 0) + 1 }
       : it)
     this.setData({

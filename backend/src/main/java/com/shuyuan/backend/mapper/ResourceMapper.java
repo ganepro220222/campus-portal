@@ -11,6 +11,6 @@ public interface ResourceMapper extends BaseMapper<Resource> {
 
     /** 原子递增下载次数 */
     @Update("UPDATE resource SET download_count = download_count + 1 "
-            + "WHERE id = #{id} AND is_deleted = 0")
+            + "WHERE id = #{id} AND status = 1 AND is_deleted = 0")
     int incrDownloadCount(@Param("id") Long id);
 }

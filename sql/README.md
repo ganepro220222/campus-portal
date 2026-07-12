@@ -36,6 +36,7 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 | 11 | `patch-hall-vr-links-20260711.sql` | 校园安全教育馆、西部山区安全基地 VR 链接 | 仅数据 |
 | 12 | `patch-point-record-unique-cleanup.sql` | **旧库** `point_record` 重复流水查重/清理（加唯一键前） | — |
 | 13 | `patch-point-record-unique.sql` | **旧库** 添加 `uk_member_action_remark`（幂等，可重复执行） | ✅ 已并入 init.sql |
+| 14 | `patch-sys-config-miniapp.sql` | AI 助手欢迎语/推荐问题、搜索热词配置项 | ✅ 已并入 init.sql |
 
 #### `point_record` 唯一键（旧库必读）
 

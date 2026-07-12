@@ -704,6 +704,9 @@ INSERT IGNORE INTO `sys_config` (`config_key`, `config_value`, `remark`) VALUES
 ('site_logo',       '',                           'Logo图片URL'),
 ('ai_daily_limit',  '20',                         '每用户每日AI问答次数上限'),
 ('ai_cache_ttl',    '86400',                      'AI答案缓存时长（秒）'),
+('ai_assistant_welcome', '你好！我是书院文化助手，可以基于书院知识库为你解答文化相关问题。', 'AI 助手欢迎语'),
+('ai_assistant_chips',   '["什么是阳明文化？","屯堡文化有何特色？","龙场悟道讲了什么？"]', 'AI 助手推荐问题'),
+('search_hot_tags',      '["阳明文化","屯堡地戏","红色交通","非遗银饰","知行合一"]', '搜索热词'),
 ('wx_appid',        '',                           '微信小程序AppID'),
 ('wx_secret',       '',                           '微信小程序Secret');
 

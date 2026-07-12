@@ -58,14 +58,16 @@
         />
       </view>
 
-      <button class="lbtn lbtn-primary" bindtap="onAccountLogin" loading="{{loading}}" disabled="{{loading}}">
+      <button class="lbtn lbtn-primary" bindtap="{{bindMode ? 'onBindWxAccount' : 'onAccountLogin'}}" loading="{{loading}}" disabled="{{loading}}">
         <icon name="login" size="18" color="#2B356E" />
-        <text class="lbtn-tx">登 录</text>
+        <text class="lbtn-tx">{{bindMode ? '绑定学号并登录' : '登 录'}}</text>
       </button>
+
+      <view wx:if="{{bindMode}}" class="bind-tip">首次微信登录须绑定校方导入的学号账号</view>
 
       <view class="divider">其他登录方式</view>
 
-      <button class="lbtn lbtn-ghost" bindtap="onWxLogin" loading="{{loading}}" disabled="{{loading}}">
+      <button class="lbtn lbtn-ghost" bindtap="onWxLogin" loading="{{loading}}" disabled="{{loading}}" wx:if="{{!bindMode}}">
         <icon name="wechat" size="20" color="#ffffff" />
         <text class="lbtn-tx">微信授权登录</text>
       </button>

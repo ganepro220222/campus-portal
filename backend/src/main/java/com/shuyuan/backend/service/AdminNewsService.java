@@ -9,6 +9,7 @@ import com.shuyuan.backend.entity.News;
 import com.shuyuan.backend.mapper.NewsMapper;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.util.CoverFitMode;
+import com.shuyuan.backend.util.RichHtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -140,7 +141,7 @@ public class AdminNewsService {
             news.setSummary(req.getSummary());
         }
         if (req.getContent() != null) {
-            news.setContent(req.getContent());
+            news.setContent(RichHtmlSanitizer.sanitize(req.getContent()));
         }
         if (req.getCategoryId() != null) {
             news.setCategoryId(req.getCategoryId());

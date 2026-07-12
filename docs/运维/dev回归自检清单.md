@@ -9,13 +9,14 @@
 cd backend && mvn test
 cd admin && npm run typecheck && npm run build
 cd .. && npm run test:mock-guard && npm run check:prod-mock
-# 发布前额外执行（尚未接入 CI）：
+# 发布前额外执行（尚未接入 CI；dev 下失败属预期，见环境变量说明 §5）：
 # npm run check:release-env
 ```
 
 - [ ] 三项全部通过
 
-> **2026-07-12 自动化实测：** `mvn test` 147 passed · admin typecheck+build OK · mock-guard OK
+> **2026-07-12 自动化实测：** `mvn test` 152 passed · admin typecheck+build OK · mock-guard OK  
+> `check:release-env` 仅在切 `ENV=prod` + 正式域名后执行，dev 分支失败正常。
 
 ## 1. 健康与基础
 

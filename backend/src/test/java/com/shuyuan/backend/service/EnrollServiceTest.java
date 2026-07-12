@@ -138,6 +138,38 @@ class EnrollServiceTest {
         assertEquals(401, ex.getCode());
     }
 
+    @Test
+    void voucher_requiresApprovedAndPublishedActivity() {
+        Enroll pending = new Enroll();
+        pending.setId(30L);
+        pending.setMemberId(MEMBER_ID);
+        pending.setActivityId(ACTIVITY_ID);
+        pending.setStatus("pending");
+
+        when(enrollMapper.selectById(30L)).thenReturn(pending);
+
+        BusinessException pendingEx = assertThrows(BusinessException.class,
+                () -> enrollService.voucher(30L));
+        assertEquals(400, pendingEx.getCode());
+
+        Enroll approved = new Enroll();
+        approved.setId(31L);
+        approved.setMemberId(MEMBER_ID);
+        approved.setActivityId(ACTIVITY_ID);
+        approved.setStatus("approved");
+        approved.setVoucherCode("SY123");
+
+        Activity cancelled = publishedActivity(10, 1);
+        cancelled.setStatus("cancelled");
+
+        when(enrollMapper.selectById(31L)).thenReturn(approved);
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(cancelled);
+
+        BusinessException activityEx = assertThrows(BusinessException.class,
+                () -> enrollService.voucher(31L));
+        assertTrue(activityEx.getMessage().contains("活动已取消"));
+    }
+
     private Activity publishedActivity(int quota, int enrolled) {
         Activity activity = new Activity();
         activity.setId(ACTIVITY_ID);

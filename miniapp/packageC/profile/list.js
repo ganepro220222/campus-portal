@@ -57,13 +57,17 @@ Page({
   _normalize(type, list) {
     return list.map(item => {
       if (type === 'enrolls') {
+        const statusLabel = ENROLL_STATUS[item.status] || item.status
+        const activityHint = item.activityStatusLabel || ''
         return {
           ...item,
           title: item.activityTitle,
           subtitle: item.activityLocation,
-          statusLabel: ENROLL_STATUS[item.status] || item.status,
+          statusLabel: activityHint ? `${statusLabel} · ${activityHint}` : statusLabel,
           statusClass: item.status || 'pending',
-          route: item.activityId ? `/packageC/activity/detail?id=${item.activityId}` : ''
+          route: item.activityStatus === 'cancelled' || !item.activityId
+            ? ''
+            : `/packageC/activity/detail?id=${item.activityId}`
         }
       }
       if (type === 'footprints') {

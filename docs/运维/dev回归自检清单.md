@@ -15,7 +15,7 @@ cd .. && npm run test:mock-guard && npm run check:prod-mock
 
 - [ ] 三项全部通过
 
-> **2026-07-12 自动化实测：** `mvn test` 152 passed · admin typecheck+build OK · mock-guard OK  
+> **2026-07-12 自动化实测：** `mvn test` 157 passed · admin typecheck+build OK · mock-guard OK  
 > `check:release-env` 仅在切 `ENV=prod` + 正式域名后执行，dev 分支失败正常。
 
 ## 1. 健康与基础
@@ -63,6 +63,18 @@ Swagger：`http://localhost:8080/swagger-ui.html`
 - [ ] `GET /api/v1/ai/chat/quota`（带 token）返回 `remaining`
 - [ ] 报名接口满员时返回业务错误码（非 500）
 
+## 5.1 小程序 `request.js` 错误态（HTTP 对齐后建议抽测）
+
+> 后端错误响应为 **HTTP 4xx/5xx + `body.code`**；小程序在 `success` 回调内按 `body.code` 分支，一般可正常工作，但建议每次发版前抽测。
+
+| 场景 | 预期 |
+|------|------|
+| 未登录收藏 / 报名 | HTTP 401，`body.code=401`，提示并引导登录 |
+| 报名限流（快速重复提交） | HTTP 429，`body.code=429`，toast 约 3.5s |
+| 管理端越权（普通角色调超管接口） | HTTP 403，`body.code=403` |
+| 不存在接口 | HTTP 404，`body.code=404` |
+| 后端 500（可临时停 DB 模拟） | 小程序 toast「请求失败」或「网络异常」，页面不白屏 |
+
 ## 6. 已知 dev 限制（不算 FAIL）
 
 - 微信订阅消息不会真发到手机（无模板 ID）
@@ -72,4 +84,4 @@ Swagger：`http://localhost:8080/swagger-ui.html`
 
 ---
 
-*修订：2026-07-11 初稿*
+*修订：2026-07-11 初稿；2026-07-12 增补小程序 HTTP 错误态抽测 §5.1*

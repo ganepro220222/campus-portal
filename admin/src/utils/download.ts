@@ -21,13 +21,18 @@ function parseFilename(header?: string): string | null {
 /**
  * 下载二进制文件（Excel 等），不走 JSON 响应拦截器
  */
-export async function downloadFile(url: string, fallbackName = 'download.xlsx') {
+export async function downloadFile(
+  url: string,
+  fallbackName = 'download.xlsx',
+  params?: Record<string, unknown>
+) {
   const auth = useAuthStore()
   try {
     const res = await axios.get(url, {
       baseURL: '/api/v1',
       responseType: 'blob',
       timeout: 60000,
+      params,
       headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
     })
 

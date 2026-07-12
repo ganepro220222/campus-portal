@@ -121,6 +121,27 @@ public class EnrollService {
         createMessage(memberId, "报名已取消", "您已取消活动「" + activity.getTitle() + "」的报名。", "enroll", "activity", activityId);
     }
 
+    /** 活动取消时，将待审/已通过报名同步取消并释放名额、通知学员 */
+    @Transactional
+    public void onActivityCancelled(Activity activity) {
+        if (activity == null || activity.getId() == null) {
+            return;
+        }
+        List<Enroll> active = enrollMapper.selectList(new LambdaQueryWrapper<Enroll>()
+                .eq(Enroll::getActivityId, activity.getId())
+                .in(Enroll::getStatus, List.of("pending", "approved")));
+        for (Enroll enroll : active) {
+            Enroll update = new Enroll();
+            update.setId(enroll.getId());
+            update.setStatus("cancelled");
+            enrollMapper.updateById(update);
+            activityMapper.decrEnrolledCount(activity.getId());
+            createMessage(enroll.getMemberId(), "活动已取消",
+                    "您报名的活动「" + activity.getTitle() + "」已取消，报名同步关闭。",
+                    "enroll", "activity", activity.getId());
+        }
+    }
+
     /** 我的报名记录 */
     public List<Map<String, Object>> myEnrolls() {
         Long memberId = requireMemberId();
@@ -137,6 +158,8 @@ public class EnrollService {
                 m.put("activityCover", activity.getCover());
                 m.put("activityStartTime", FormatUtils.formatDateTime(activity.getStartTime()));
                 m.put("activityLocation", activity.getLocation());
+                m.put("activityStatus", activity.getStatus());
+                m.put("activityStatusLabel", activityStatusLabel(activity.getStatus()));
             }
             return m;
         }).toList();
@@ -149,10 +172,13 @@ public class EnrollService {
         if (enroll == null || !memberId.equals(enroll.getMemberId())) {
             throw new BusinessException(404, "凭证不存在");
         }
-        if ("cancelled".equals(enroll.getStatus()) || "rejected".equals(enroll.getStatus())) {
-            throw new BusinessException(400, "当前报名状态无法查看凭证");
+        if (!"approved".equals(enroll.getStatus())) {
+            throw new BusinessException(400, "仅已通过报名可查看凭证");
         }
         Activity activity = activityMapper.selectById(enroll.getActivityId());
+        if (activity == null || !"published".equals(activity.getStatus())) {
+            throw new BusinessException(400, "活动已取消或不可用，无法查看凭证");
+        }
         Map<String, Object> m = new HashMap<>();
         m.put("enrollId", enroll.getId());
         m.put("voucherCode", enroll.getVoucherCode());
@@ -280,5 +306,16 @@ public class EnrollService {
             throw new BusinessException(401, "请先登录");
         }
         return memberId;
+    }
+
+    private String activityStatusLabel(String status) {
+        if (status == null) {
+            return "";
+        }
+        return switch (status) {
+            case "cancelled" -> "活动已取消";
+            case "published" -> "";
+            default -> "";
+        };
     }
 }

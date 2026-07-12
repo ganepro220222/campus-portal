@@ -5,6 +5,7 @@ import com.shuyuan.backend.config.AdminAuditInterceptor;
 import com.shuyuan.backend.config.AdminAuthInterceptor;
 import com.shuyuan.backend.controller.admin.AdminBannerController;
 import com.shuyuan.backend.dto.BannerSaveRequest;
+import com.shuyuan.backend.entity.SysRole;
 import com.shuyuan.backend.entity.SysUser;
 import com.shuyuan.backend.mapper.SysRoleMapper;
 import com.shuyuan.backend.mapper.SysUserMapper;
@@ -120,9 +121,10 @@ class AdminAuditInterceptorMvcTest {
         user.setId(1L);
         user.setStatus(1);
         user.setMustChangePassword(1);
+        user.setRoleId(2L);
         when(sysUserMapper.selectById(1L)).thenReturn(user);
-        when(sysRoleMapper.selectById(2L)).thenReturn(null);
-        when(adminPermissionService.parsePermissions(null)).thenReturn(java.util.Set.of());
+        when(sysRoleMapper.selectById(2L)).thenReturn(editorRole());
+        when(adminPermissionService.parsePermissions("[]")).thenReturn(java.util.Set.of());
 
         adminMockMvc.perform(post("/api/v1/admin/banners")
                         .header("Authorization", "Bearer token")
@@ -143,8 +145,17 @@ class AdminAuditInterceptorMvcTest {
         user.setId(1L);
         user.setStatus(1);
         user.setMustChangePassword(0);
+        user.setRoleId(2L);
         when(sysUserMapper.selectById(1L)).thenReturn(user);
-        when(sysRoleMapper.selectById(2L)).thenReturn(null);
-        when(adminPermissionService.parsePermissions(null)).thenReturn(java.util.Set.of());
+        when(sysRoleMapper.selectById(2L)).thenReturn(editorRole());
+        when(adminPermissionService.parsePermissions("[]")).thenReturn(java.util.Set.of());
+    }
+
+    private static SysRole editorRole() {
+        SysRole role = new SysRole();
+        role.setId(2L);
+        role.setRoleName("内容编辑");
+        role.setPermissions("[]");
+        return role;
     }
 }

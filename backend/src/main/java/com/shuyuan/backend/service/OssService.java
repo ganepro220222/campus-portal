@@ -5,11 +5,13 @@ import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.OssProperties;
+import com.shuyuan.backend.util.UploadContentInspector;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -96,13 +98,16 @@ public class OssService {
         String objectKey = buildObjectKey(scene, ext);
 
         OSS client = null;
-        try (InputStream in = file.getInputStream()) {
+        try (InputStream raw = file.getInputStream();
+             BufferedInputStream in = new BufferedInputStream(raw)) {
+            in.mark(64);
+            byte[] header = in.readNBytes(64);
+            String contentType = UploadContentInspector.inspect(ext, header);
+            in.reset();
             client = buildClient();
             ObjectMetadata meta = new ObjectMetadata();
             meta.setContentLength(file.getSize());
-            if (StringUtils.hasText(file.getContentType())) {
-                meta.setContentType(file.getContentType());
-            }
+            meta.setContentType(contentType);
             client.putObject(ossProperties.getBucket(), objectKey, in, meta);
         } catch (IOException e) {
             throw new BusinessException(500, "读取上传文件失败");

@@ -75,7 +75,8 @@
   },
   "usingComponents": {
     "icon": "/components/icon/index",
-    "skeleton": "/components/skeleton/index"
+    "skeleton": "/components/skeleton/index",
+    "nav-bar": "/components/nav-bar/index"
   },
   "permission": {
     "scope.writePhotosAlbum": {

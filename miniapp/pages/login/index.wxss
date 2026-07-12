@@ -262,7 +262,24 @@
 .bind-tip.muted {
   color: rgba(214, 224, 248, 0.75);
 }
+/* 改密模式：徽记 + 标题 + 表单整体垂直居中（上下 auto 外边距成组居中） */
+.cp-badge {
+  margin-top: auto;
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1rpx solid rgba(255, 255, 255, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12rpx 34rpx rgba(8, 12, 30, 0.35);
+}
 .brand.compact {
-  margin-top: 80rpx;
-  margin-bottom: 48rpx;
+  margin-top: 30rpx;
+  margin-bottom: 44rpx;
+}
+.login-form.cp-form {
+  margin-top: 0;
+  margin-bottom: auto;
 }

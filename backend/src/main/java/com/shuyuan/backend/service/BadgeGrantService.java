@@ -1,10 +1,10 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.entity.*;
 import com.shuyuan.backend.mapper.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -51,7 +51,11 @@ public class BadgeGrantService {
             mb.setMemberId(memberId);
             mb.setBadgeId(badge.getId());
             mb.setAchievedAt(LocalDateTime.now());
-            memberBadgeMapper.insert(mb);
+            try {
+                memberBadgeMapper.insert(mb);
+            } catch (DataIntegrityViolationException ex) {
+                // 并发请求已写入同一 (member_id, badge_id)，视为授予成功
+            }
             owned.add(badge.getId());
         }
     }

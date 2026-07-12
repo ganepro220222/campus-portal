@@ -6,6 +6,7 @@ import com.shuyuan.backend.entity.PointRule;
 import com.shuyuan.backend.mapper.MemberMapper;
 import com.shuyuan.backend.mapper.PointRecordMapper;
 import com.shuyuan.backend.mapper.PointRuleMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -15,8 +16,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,8 +28,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
@@ -48,6 +52,13 @@ class PointServiceTest {
 
     @InjectMocks
     private PointService pointService;
+
+    @AfterEach
+    void clearTransactionSynchronization() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clear();
+        }
+    }
 
     @Test
     void award_writesRecordAndUpdatesBalanceWhenWithinDailyLimit() {
@@ -89,6 +100,60 @@ class PointServiceTest {
 
         verify(valueOps).decrement(anyString());
         verify(badgeGrantService, never()).checkAndGrant(anyLong());
+    }
+
+    @Test
+    void award_releasesQuotaWhenCheckAndGrantFails() {
+        when(pointRuleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(activeRule("view_news", 2, 5));
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+        doThrow(new RuntimeException("badge"))
+                .when(badgeGrantService).checkAndGrant(anyLong());
+
+        assertThrows(RuntimeException.class, () -> pointService.award(8L, "view_news"));
+
+        verify(valueOps).decrement(anyString());
+    }
+
+    @Test
+    void award_doesNotReleaseQuotaOnTransactionCommit() {
+        TransactionSynchronizationManager.initSynchronization();
+        when(pointRuleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(activeRule("view_news", 2, 5));
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+
+        pointService.award(8L, "view_news");
+        triggerAfterCompletion(TransactionSynchronization.STATUS_COMMITTED);
+
+        verify(valueOps, never()).decrement(anyString());
+    }
+
+    @Test
+    void award_releasesQuotaOnTransactionRollbackViaAfterCompletion() {
+        TransactionSynchronizationManager.initSynchronization();
+        when(pointRuleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(activeRule("view_news", 2, 5));
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+
+        pointService.award(8L, "view_news");
+        triggerAfterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+        verify(valueOps, times(1)).decrement(anyString());
+    }
+
+    @Test
+    void award_doesNotDoubleReleaseQuotaWhenCatchAndAfterCompletionBothRun() {
+        TransactionSynchronizationManager.initSynchronization();
+        when(pointRuleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(activeRule("view_news", 2, 5));
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+        doThrow(new RuntimeException("db"))
+                .when(memberMapper).addPointsDelta(anyLong(), anyInt());
+
+        assertThrows(RuntimeException.class, () -> pointService.award(8L, "view_news"));
+        triggerAfterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+        verify(valueOps, times(1)).decrement(anyString());
     }
 
     @Test
@@ -163,5 +228,12 @@ class PointServiceTest {
         rule.setDailyLimit(dailyLimit);
         rule.setStatus(1);
         return rule;
+    }
+
+    private static void triggerAfterCompletion(int status) {
+        List<TransactionSynchronization> syncs = TransactionSynchronizationManager.getSynchronizations();
+        for (TransactionSynchronization sync : syncs) {
+            sync.afterCompletion(status);
+        }
     }
 }

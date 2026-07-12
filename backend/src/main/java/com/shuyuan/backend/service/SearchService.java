@@ -35,15 +35,21 @@ public class SearchService {
         if (q.length() > MAX_KEYWORD_LENGTH) {
             throw new BusinessException(400, "搜索关键词过长，请控制在" + MAX_KEYWORD_LENGTH + "字以内");
         }
+        if (isWildcardOnly(q)) {
+            int safePage = normalizePage(page);
+            int safeSize = normalizeSize(size);
+            return new PageResult<>(List.of(), 0, safePage, safeSize);
+        }
         int safePage = normalizePage(page);
         int safeSize = normalizeSize(size);
         List<String> typeList = parseTypes(types);
+        String likePattern = toLikePattern(q);
 
         LambdaQueryWrapper<SearchIndex> qw = new LambdaQueryWrapper<SearchIndex>()
                 .eq(SearchIndex::getStatus, 1)
-                .and(w -> w.like(SearchIndex::getTitle, q)
-                        .or().like(SearchIndex::getSummary, q)
-                        .or().like(SearchIndex::getKeywords, q));
+                .and(w -> w.apply("title LIKE {0} ESCAPE '\\\\'", likePattern)
+                        .or().apply("summary LIKE {0} ESCAPE '\\\\'", likePattern)
+                        .or().apply("keywords LIKE {0} ESCAPE '\\\\'", likePattern));
         if (!typeList.isEmpty()) {
             qw.in(SearchIndex::getTargetType, typeList);
         }
@@ -63,6 +69,34 @@ public class SearchService {
             return 10;
         }
         return Math.min(size, MAX_PAGE_SIZE);
+    }
+
+    /** 转义 LIKE 通配符，供 ESCAPE '\\' 使用 */
+    static String toLikePattern(String keyword) {
+        String escaped = escapeLike(keyword);
+        return "%" + escaped + "%";
+    }
+
+    static boolean isWildcardOnly(String keyword) {
+        for (int i = 0; i < keyword.length(); i++) {
+            char c = keyword.charAt(i);
+            if (c != '%' && c != '_' && !Character.isWhitespace(c)) {
+                return false;
+            }
+        }
+        return !keyword.isEmpty();
+    }
+
+    private static String escapeLike(String raw) {
+        StringBuilder sb = new StringBuilder(raw.length() * 2);
+        for (int i = 0; i < raw.length(); i++) {
+            char c = raw.charAt(i);
+            if (c == '\\' || c == '%' || c == '_') {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        return sb.toString();
     }
 
     private List<String> parseTypes(String types) {

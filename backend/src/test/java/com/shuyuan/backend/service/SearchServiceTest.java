@@ -16,8 +16,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 class SearchServiceTest {
@@ -57,5 +59,17 @@ class SearchServiceTest {
         assertTrue(result.getRecords().isEmpty());
         assertEquals(1, result.getPage());
         assertEquals(10, result.getSize());
+    }
+
+    @Test
+    void search_returnsEmptyForWildcardOnlyKeyword() {
+        var result = searchService.search("%%%", null, 1, 20);
+        assertTrue(result.getRecords().isEmpty());
+        verify(searchIndexMapper, never()).selectPage(any(Page.class), any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    void toLikePattern_escapesPercentAndUnderscore() {
+        assertEquals("%a\\%b\\_c%", SearchService.toLikePattern("a%b_c"));
     }
 }

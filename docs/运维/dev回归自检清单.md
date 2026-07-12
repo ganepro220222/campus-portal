@@ -15,7 +15,7 @@ cd .. && npm run test:mock-guard && npm run check:prod-mock
 
 - [ ] 三项全部通过
 
-> **2026-07-12 自动化实测：** `mvn test` 173 passed · admin typecheck+build OK · mock-guard OK  
+> **2026-07-12 自动化实测：** `mvn test` 176 passed · admin typecheck+build OK · mock-guard OK  
 > `check:release-env` 仅在切 `ENV=prod` + 正式域名后执行，dev 分支失败正常。
 
 ## 1. 健康与基础

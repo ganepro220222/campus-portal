@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-@Tag(name = "学院矩阵管理")
+@Tag(name = "关联小程序管理")
 @RestController
 @RequestMapping("/api/v1/admin/colleges")
 @RequiredArgsConstructor

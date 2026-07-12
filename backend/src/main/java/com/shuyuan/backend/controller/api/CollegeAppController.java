@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
-@Tag(name = "学院矩阵")
+@Tag(name = "关联小程序")
 @RestController
 @RequestMapping("/api/v1/colleges")
 @RequiredArgsConstructor

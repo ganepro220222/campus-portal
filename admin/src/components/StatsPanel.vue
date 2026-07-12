@@ -48,7 +48,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-import * as echarts from 'echarts'
+import type { ECharts } from 'echarts'
 import { ElMessage } from 'element-plus'
 import {
   exportStatsMonth,
@@ -71,8 +71,17 @@ const exportMonth = ref(new Date().toISOString().slice(0, 7))
 
 const trendRef = ref<HTMLElement | null>(null)
 const moduleRef = ref<HTMLElement | null>(null)
-const trendChart = shallowRef<echarts.ECharts | null>(null)
-const moduleChart = shallowRef<echarts.ECharts | null>(null)
+const trendChart = shallowRef<ECharts | null>(null)
+const moduleChart = shallowRef<ECharts | null>(null)
+
+let echartsModule: typeof import('echarts') | null = null
+
+async function ensureEcharts() {
+  if (!echartsModule) {
+    echartsModule = await import('echarts')
+  }
+  return echartsModule
+}
 
 const kpiCards = computed(() => {
   const o = overview.value
@@ -109,15 +118,16 @@ async function loadData() {
     ])
     overview.value = ov
     topList.value = top
-    renderTrend(trend)
-    renderModules(modules)
+    await renderTrend(trend)
+    await renderModules(modules)
   } finally {
     loading.value = false
   }
 }
 
-function renderTrend(data: { date: string; pv: number; uv: number; dau: number }[]) {
+async function renderTrend(data: { date: string; pv: number; uv: number; dau: number }[]) {
   if (!trendRef.value) return
+  const echarts = await ensureEcharts()
   if (!trendChart.value) {
     trendChart.value = echarts.init(trendRef.value)
   }
@@ -135,8 +145,9 @@ function renderTrend(data: { date: string; pv: number; uv: number; dau: number }
   })
 }
 
-function renderModules(data: { moduleLabel: string; count: number }[]) {
+async function renderModules(data: { moduleLabel: string; count: number }[]) {
   if (!moduleRef.value) return
+  const echarts = await ensureEcharts()
   if (!moduleChart.value) {
     moduleChart.value = echarts.init(moduleRef.value)
   }

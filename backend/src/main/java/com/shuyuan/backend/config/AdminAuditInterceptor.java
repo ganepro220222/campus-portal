@@ -2,6 +2,7 @@ package com.shuyuan.backend.config;
 
 import com.shuyuan.backend.common.context.AdminContext;
 import com.shuyuan.backend.service.AdminAuditLogService;
+import com.shuyuan.backend.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class AdminAuditInterceptor implements HandlerInterceptor {
 
     private final AdminAuditLogService adminAuditLogService;
+    private final ClientIpResolver clientIpResolver;
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
@@ -34,7 +36,7 @@ public class AdminAuditInterceptor implements HandlerInterceptor {
         }
         String uri = request.getRequestURI();
         String action = buildAction(method, uri);
-        adminAuditLogService.record(adminId, action, uri, resolveClientIp(request));
+        adminAuditLogService.record(adminId, action, uri, clientIpResolver.resolve(request));
     }
 
     private String buildAction(String method, String uri) {
@@ -55,18 +57,5 @@ public class AdminAuditInterceptor implements HandlerInterceptor {
             default -> method.toUpperCase();
         };
         return path.isEmpty() ? verb : verb + " · " + path;
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            int comma = forwarded.indexOf(',');
-            return (comma > 0 ? forwarded.substring(0, comma) : forwarded).trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr();
     }
 }

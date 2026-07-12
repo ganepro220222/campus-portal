@@ -46,6 +46,9 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
             SysRole role = sysRoleMapper.selectById(roleId);
             AdminContext.set(adminId, roleId,
                     adminPermissionService.parsePermissions(role != null ? role.getPermissions() : null));
+            if (mustChangePassword(user) && !isAllowedWhenMustChangePassword(request)) {
+                throw new BusinessException(403, "请先修改密码后再操作");
+            }
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
@@ -58,5 +61,21 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
         AdminContext.clear();
+    }
+
+    private boolean mustChangePassword(SysUser user) {
+        return user.getMustChangePassword() != null && user.getMustChangePassword() == 1;
+    }
+
+    /** 须改密账号仅允许读操作与改密接口 */
+    private boolean isAllowedWhenMustChangePassword(HttpServletRequest request) {
+        String method = request.getMethod();
+        if ("GET".equalsIgnoreCase(method)
+                || "HEAD".equalsIgnoreCase(method)
+                || "OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
+        return "PUT".equalsIgnoreCase(method)
+                && "/api/v1/admin/auth/change-password".equals(request.getRequestURI());
     }
 }

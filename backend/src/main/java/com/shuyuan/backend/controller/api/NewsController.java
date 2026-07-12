@@ -3,7 +3,7 @@ package com.shuyuan.backend.controller.api;
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.service.NewsInteractionService;
 import com.shuyuan.backend.service.NewsService;
-import com.shuyuan.backend.util.HttpRequestUtils;
+import com.shuyuan.backend.util.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +20,7 @@ public class NewsController {
 
     private final NewsService newsService;
     private final NewsInteractionService newsInteractionService;
+    private final ClientIpResolver clientIpResolver;
 
     @GetMapping
     public Result<Object> list(@RequestParam(required = false) String category,
@@ -31,7 +32,7 @@ public class NewsController {
 
     @GetMapping("/{id}")
     public Result<Map<String, Object>> detail(@PathVariable Long id, HttpServletRequest request) {
-        return Result.ok(newsService.detail(id, HttpRequestUtils.resolveClientIp(request)));
+        return Result.ok(newsService.detail(id, clientIpResolver.resolve(request)));
     }
 
     @GetMapping("/{id}/related")

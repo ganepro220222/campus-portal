@@ -148,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref } from 'vue'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -158,7 +158,7 @@ import { createNews, fetchNews, publishNews, removeNews, unpublishNews, updateNe
 import AiAssistBar from '@/components/AiAssistBar.vue'
 import CoverUploadField from '@/components/CoverUploadField.vue'
 import FieldHint from '@/components/FieldHint.vue'
-import WangEditor from '@/components/WangEditor.vue'
+const WangEditor = defineAsyncComponent(() => import('@/components/WangEditor.vue'))
 import type { CoverFitMode } from '@/utils/cover'
 import { FIELD_HINTS } from '@/utils/field-hints'
 import { isEditorContentEmpty } from '@/utils/editor'

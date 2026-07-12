@@ -32,6 +32,12 @@ shuyuan:
     max-fail-attempts: ${LOGIN_MAX_FAIL_ATTEMPTS:5}
     lock-minutes: ${LOGIN_LOCK_MINUTES:5}
     fail-window-minutes: ${LOGIN_FAIL_WINDOW_MINUTES:15}
+  cors:
+    allowed-origin-patterns:
+      - https://shuyuan.gzcpu.edu.cn
+      - https://gzcpu.edu.cn
+  security:
+    trust-forwarded-headers: true
 
 mybatis-plus:
   configuration:

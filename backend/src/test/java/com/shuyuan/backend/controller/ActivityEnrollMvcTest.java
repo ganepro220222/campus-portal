@@ -5,6 +5,7 @@ import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.controller.api.ActivityController;
 import com.shuyuan.backend.dto.EnrollRequest;
 import com.shuyuan.backend.service.ActivityService;
+import com.shuyuan.backend.service.ApiErrorMetrics;
 import com.shuyuan.backend.service.EnrollService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,7 @@ class ActivityEnrollMvcTest {
     void setUp() {
         ActivityController controller = new ActivityController(activityService, enrollService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(new ApiErrorMetrics()))
                 .build();
     }
 
@@ -51,7 +52,7 @@ class ActivityEnrollMvcTest {
         mockMvc.perform(post("/api/v1/activities/1/enroll")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401))
                 .andExpect(jsonPath("$.message").value("请先登录"));
     }

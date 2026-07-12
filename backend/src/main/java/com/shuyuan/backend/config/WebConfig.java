@@ -2,6 +2,7 @@ package com.shuyuan.backend.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -14,11 +15,16 @@ public class WebConfig implements WebMvcConfigurer {
     private final AdminAuthInterceptor adminAuthInterceptor;
     private final AdminAuditInterceptor adminAuditInterceptor;
     private final RateLimitInterceptor rateLimitInterceptor;
+    private final ShuyuanProperties properties;
+    private final Environment environment;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        String[] origins = CorsOriginPolicy.resolveAllowedOriginPatterns(
+                environment.getActiveProfiles(),
+                properties.getCors().getAllowedOriginPatterns());
         registry.addMapping("/api/**")
-                .allowedOriginPatterns("*")
+                .allowedOriginPatterns(origins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);

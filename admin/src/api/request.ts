@@ -18,30 +18,39 @@ http.interceptors.request.use((config) => {
   return config
 })
 
-http.interceptors.response.use(
-  (res) => {
-    const body = res.data as ApiResult
-    if (body.code === 200) {
-      return body.data as never
+function rejectApiBody(body: ApiResult, config?: AxiosRequestConfig): Promise<never> {
+  if (body.code === 401) {
+    const auth = useAuthStore()
+    // 登录页密码错误不清理会话
+    if (!config?.url?.includes('/admin/auth/login')) {
+      auth.logout()
+      router.push({ name: 'Login' })
     }
-    if (body.code === 401) {
-      const auth = useAuthStore()
-      // 登录页密码错误不清理会话
-      if (!res.config.url?.includes('/admin/auth/login')) {
-        auth.logout()
-        router.push({ name: 'Login' })
-      }
-      ElMessage.error(body.message || '登录已过期')
-      return Promise.reject(body)
-    }
-    if (body.code === 429) {
-      ElMessage.warning({ message: body.message || '操作过于频繁', duration: 4000 })
-      return Promise.reject(body)
-    }
-    ElMessage.error(body.message || '请求失败')
+    ElMessage.error(body.message || '登录已过期')
     return Promise.reject(body)
-  },
+  }
+  if (body.code === 429) {
+    ElMessage.warning({ message: body.message || '操作过于频繁', duration: 4000 })
+    return Promise.reject(body)
+  }
+  ElMessage.error(body.message || '请求失败')
+  return Promise.reject(body)
+}
+
+function dispatchApiBody(body: ApiResult, config?: AxiosRequestConfig) {
+  if (body.code === 200) {
+    return body.data as never
+  }
+  return rejectApiBody(body, config)
+}
+
+http.interceptors.response.use(
+  (res) => dispatchApiBody(res.data as ApiResult, res.config),
   (err) => {
+    const body = err.response?.data as ApiResult | undefined
+    if (body && typeof body.code === 'number') {
+      return rejectApiBody(body, err.config)
+    }
     ElMessage.error('网络异常，请检查后端服务')
     return Promise.reject(err)
   }

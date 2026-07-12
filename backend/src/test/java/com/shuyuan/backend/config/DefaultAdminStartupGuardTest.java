@@ -8,9 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DefaultAdminStartupGuardTest {
 
     @Test
-    void isProdProfile_onlyProd() {
-        assertTrue(DefaultAdminStartupGuard.isProdProfile(new String[] {"prod"}));
-        assertFalse(DefaultAdminStartupGuard.isProdProfile(new String[] {"staging"}));
-        assertFalse(DefaultAdminStartupGuard.isProdProfile(new String[] {"dev"}));
+    void requiresDefaultAdminGuard_matchesGuardedProfiles() {
+        assertTrue(DefaultAdminStartupGuard.requiresDefaultAdminGuard(new String[] {"prod"}));
+        assertTrue(DefaultAdminStartupGuard.requiresDefaultAdminGuard(new String[] {"staging"}));
+        assertFalse(DefaultAdminStartupGuard.requiresDefaultAdminGuard(new String[] {"dev"}));
+        assertFalse(DefaultAdminStartupGuard.requiresDefaultAdminGuard(new String[] {"docker", "test"}));
+        assertFalse(DefaultAdminStartupGuard.requiresDefaultAdminGuard(new String[0]));
     }
 }

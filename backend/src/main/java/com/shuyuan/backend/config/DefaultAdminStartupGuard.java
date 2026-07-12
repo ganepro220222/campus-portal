@@ -11,10 +11,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-
 /**
- * 生产环境启动门禁：禁止启用中的默认超管口令 admin/Admin@123。
+ * 生产/预发环境启动门禁：禁止启用中的默认超管口令 admin/Admin@123。
  */
 @Slf4j
 @Component
@@ -30,7 +28,7 @@ public class DefaultAdminStartupGuard implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (!isProdProfile(environment.getActiveProfiles())) {
+        if (!requiresDefaultAdminGuard(environment.getActiveProfiles())) {
             return;
         }
         SysUser admin = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
@@ -38,20 +36,17 @@ public class DefaultAdminStartupGuard implements ApplicationRunner {
                 .eq(SysUser::getStatus, 1)
                 .last("LIMIT 1"));
         if (admin == null) {
-            log.info("生产环境未检测到启用的默认 admin 账号，跳过默认口令校验");
+            log.info("生产/预发环境未检测到启用的默认 admin 账号，跳过默认口令校验");
             return;
         }
         if (passwordEncoder.matches(DEFAULT_ADMIN_PASSWORD, admin.getPasswordHash())) {
             throw new IllegalStateException(
-                    "生产环境禁止使用默认超管口令 admin/Admin@123，请重置强密码、禁用该账号或创建新的超管后再启动");
+                    "生产/预发环境禁止使用默认超管口令 admin/Admin@123，请重置强密码、禁用该账号或创建新的超管后再启动");
         }
-        log.info("生产环境默认超管口令校验通过");
+        log.info("生产/预发环境默认超管口令校验通过");
     }
 
-    static boolean isProdProfile(String[] profiles) {
-        if (profiles == null) {
-            return false;
-        }
-        return Arrays.stream(profiles).anyMatch(p -> "prod".equalsIgnoreCase(p));
+    static boolean requiresDefaultAdminGuard(String[] profiles) {
+        return DeploymentSecurityRules.requiresGuardedValidation(profiles);
     }
 }

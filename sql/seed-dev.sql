@@ -17,6 +17,18 @@ UPDATE `sys_role` SET `role_name` = '超级管理员',
   `permissions` = '["admin:super","news:read","news:write","news:publish","hall:read","hall:write","hall:publish","course:read","course:write","course:publish","enroll:read","enroll:export","stats:view","category:read","category:write"]'
 WHERE `id` = 1;
 
+UPDATE `sys_role` SET `role_name` = '内容编辑',
+  `permissions` = '["news:read","news:write","hall:read","hall:write","course:read","course:write","category:read","category:write"]'
+WHERE `id` = 2;
+
+UPDATE `sys_role` SET `role_name` = '活动管理员',
+  `permissions` = '["enroll:read","enroll:export"]'
+WHERE `id` = 3;
+
+UPDATE `sys_role` SET `role_name` = '内容审核',
+  `permissions` = '["news:read","news:publish","hall:read","hall:publish","course:read","course:publish","stats:view"]'
+WHERE `id` = 4;
+
 INSERT IGNORE INTO `member_profile` (`member_id`, `real_name`, `college`, `phone`) VALUES
 (1, '测试学员', '贵州交通职业大学 · 中华文化书院', '13800001234')
 ON DUPLICATE KEY UPDATE `phone` = VALUES(`phone`), `real_name` = VALUES(`real_name`);
@@ -48,9 +60,9 @@ INSERT IGNORE INTO `category` (`id`, `type`, `name`, `sort`, `status`) VALUES
 
 -- Banner
 INSERT IGNORE INTO `banner` (`id`, `title`, `description`, `image_url`, `link_type`, `link_value`, `sort`, `status`) VALUES
-(1, '王阳明“知行合一”专题讲座圆满举行', '名家云集，共探黔中阳明心学的当代价值', NULL, 'page', '/packageA/news/detail?id=1', 1, 1),
-(2, '“通途之路”研学品牌正式启动', '线上承载 · 线下研学，打造协同育人新格局', NULL, 'page', '/pages/hall/index', 2, 1),
-(3, '屯堡地戏走进校园 · 六百年非遗活态传承', '沉浸式线上展馆同步上线，可听语音讲解', NULL, 'page', '/pages/course/index', 3, 1);
+(1, '王阳明“知行合一”专题讲座圆满举行', '名家云集，共探黔中阳明心学的当代价值', NULL, 'news', '1', 1, 1),
+(2, '“通途之路”研学品牌正式启动', '线上承载 · 线下研学，打造协同育人新格局', NULL, 'fixed', 'hall', 2, 1),
+(3, '屯堡地戏走进校园 · 六百年非遗活态传承', '沉浸式线上展馆同步上线，可听语音讲解', NULL, 'fixed', 'course', 3, 1);
 
 -- 公告
 INSERT IGNORE INTO `announcement` (`id`, `content`, `sort`, `status`, `start_time`, `end_time`) VALUES

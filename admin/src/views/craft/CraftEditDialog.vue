@@ -51,9 +51,17 @@
       </el-form-item>
 
       <el-divider content-position="left">产品鉴赏图</el-divider>
-      <div v-if="form.previewType === 'multi_image'" class="images-block">
+      <div class="images-block">
+        <p class="text-muted images-hint">
+          <template v-if="form.previewType === 'multi_image'">
+            上传多角度高清图，小程序按排序轮播展示；建议标注角度标签（如正面、侧面）
+          </template>
+          <template v-else>
+            选填：3D 模型不可用时自动切换为多图轮播；建议上传 2–4 张各角度备用图
+          </template>
+        </p>
         <el-button type="primary" link :icon="Plus" @click="addImage">添加一张图片</el-button>
-        <el-table :data="form.images" size="small" border class="images-table">
+        <el-table v-if="form.images.length" :data="form.images" size="small" border class="images-table">
           <el-table-column label="图片" min-width="200">
             <template #default="{ row }">
               <OssUploadInput
@@ -88,8 +96,8 @@
             </template>
           </el-table-column>
         </el-table>
+        <p v-else class="text-muted images-empty">暂未添加，点击上方「添加一张图片」</p>
       </div>
-      <p v-else class="text-muted images-hint">3D 模式下可额外添加图片作为备用展示（选填）</p>
 
       <el-divider content-position="left">合作与咨询</el-divider>
       <el-form-item label="联系电话">
@@ -196,7 +204,13 @@ async function handleSave() {
 }
 
 .images-hint {
-  margin: 0 0 16px 108px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.images-empty {
+  margin: 8px 0 0;
   font-size: 13px;
 }
 </style>

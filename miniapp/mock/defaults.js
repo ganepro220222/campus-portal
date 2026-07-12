@@ -2,9 +2,9 @@
 
 module.exports = {
   banners: [
-    { id: 1, title: '王阳明“知行合一”专题讲座圆满举行', description: '名家云集，共探黔中阳明心学的当代价值', colorClass: 's1', category: '书院动态', linkType: 'page', linkValue: '/packageA/news/detail?id=1' },
-    { id: 2, title: '“通途之路”研学品牌正式启动', description: '线上承载 · 线下研学，打造协同育人新格局', colorClass: 's2', category: '通途之路', linkType: 'page', linkValue: '/pages/hall/index' },
-    { id: 3, title: '屯堡地戏走进校园 · 六百年非遗活态传承', description: '沉浸式线上展馆同步上线，可听语音讲解', colorClass: 's3', category: '文化传承', linkType: 'page', linkValue: '/pages/course/index' }
+    { id: 1, title: '王阳明“知行合一”专题讲座圆满举行', description: '名家云集，共探黔中阳明心学的当代价值', colorClass: 's1', category: '书院动态', linkType: 'news', linkValue: '1' },
+    { id: 2, title: '“通途之路”研学品牌正式启动', description: '线上承载 · 线下研学，打造协同育人新格局', colorClass: 's2', category: '通途之路', linkType: 'fixed', linkValue: 'hall' },
+    { id: 3, title: '屯堡地戏走进校园 · 六百年非遗活态传承', description: '沉浸式线上展馆同步上线，可听语音讲解', colorClass: 's3', category: '文化传承', linkType: 'fixed', linkValue: 'course' }
   ],
 
   // 各模块默认分类（接口 /categories 不可用时的兜底）

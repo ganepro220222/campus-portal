@@ -11,6 +11,7 @@
       <el-scrollbar class="menu-scroll">
         <el-menu
           :default-active="route.path"
+          :default-openeds="defaultOpeneds"
           :collapse="collapsed"
           :collapse-transition="false"
           background-color="transparent"
@@ -18,10 +19,22 @@
           active-text-color="#F0DCA0"
           router
         >
-          <el-menu-item v-for="item in visibleMenus" :key="item.path" :index="item.path">
-            <el-icon><component :is="item.icon" /></el-icon>
-            <template #title>{{ item.title }}</template>
-          </el-menu-item>
+          <template v-for="node in visibleMenus" :key="isMenuGroup(node) ? node.key : node.path">
+            <el-menu-item v-if="!isMenuGroup(node)" :index="node.path">
+              <el-icon><component :is="node.icon" /></el-icon>
+              <template #title>{{ node.title }}</template>
+            </el-menu-item>
+            <el-sub-menu v-else :index="node.key">
+              <template #title>
+                <el-icon><component :is="node.icon" /></el-icon>
+                <span>{{ node.title }}</span>
+              </template>
+              <el-menu-item v-for="child in node.children" :key="child.path" :index="child.path">
+                <el-icon><component :is="child.icon" /></el-icon>
+                <template #title>{{ child.title }}</template>
+              </el-menu-item>
+            </el-sub-menu>
+          </template>
         </el-menu>
       </el-scrollbar>
     </el-aside>
@@ -66,7 +79,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Expand, Fold, HomeFilled } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { filterMenus } from '@/router'
+import { filterMenus, isMenuGroup, type MenuGroup } from '@/router'
 import shuMark from '@/assets/brand-shu.png'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 
@@ -90,6 +103,14 @@ function openChangePassword() {
 
 const visibleMenus = computed(() =>
   filterMenus(auth.profile?.permissions || [])
+)
+
+const defaultOpeneds = computed(() =>
+  visibleMenus.value
+    .filter((node): node is MenuGroup =>
+      isMenuGroup(node) && node.children.some((child) => child.path === route.path)
+    )
+    .map((node) => node.key)
 )
 
 const initial = computed(() => (auth.displayName || '管').trim().charAt(0))
@@ -269,6 +290,17 @@ async function onLogout() {
   margin-bottom: 6px;
   border-radius: 10px;
   color: #c8cce0;
+}
+:deep(.el-sub-menu__title) {
+  height: 48px;
+  line-height: 48px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  color: #c8cce0;
+}
+:deep(.el-sub-menu__title:hover) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 :deep(.el-menu-item:hover) {
   background: rgba(255, 255, 255, 0.08);

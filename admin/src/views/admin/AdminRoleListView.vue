@@ -46,11 +46,15 @@
         <el-form-item label="权限" prop="permissions">
           <div v-if="isBuiltinSuper" class="text-muted">内置超级管理员拥有全部权限，不可修改。</div>
           <div v-else class="perm-matrix">
-            <div v-for="group in catalog" :key="group.group" class="perm-group">
+            <div
+              v-for="group in visibleGroups"
+              :key="group.group"
+              class="perm-group"
+            >
               <div class="perm-group-title">{{ group.group }}</div>
               <el-checkbox-group v-model="form.permissions">
                 <el-checkbox
-                  v-for="p in visiblePermissions(group)"
+                  v-for="p in group.permissions"
                   :key="p.key"
                   :value="p.key"
                 >
@@ -98,6 +102,15 @@ const form = reactive({
 })
 
 const isBuiltinSuper = computed(() => editingId.value === 1)
+
+const visibleGroups = computed(() =>
+  catalog.value
+    .map((group) => ({
+      ...group,
+      permissions: visiblePermissions(group)
+    }))
+    .filter((group) => group.permissions.length > 0)
+)
 
 function visiblePermissions(group: PermissionGroup): PermissionEntry[] {
   if (isBuiltinSuper.value) return group.permissions

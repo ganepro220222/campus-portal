@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School, Menu, User, Key, UserFilled, ChatLineRound } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School, Menu, User, Key, UserFilled, ChatLineRound, Collection, Setting } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -168,30 +168,93 @@ export interface MenuItem {
   permissions: string[]
 }
 
-export const menuItems: MenuItem[] = [
+export interface MenuGroup {
+  key: string
+  title: string
+  icon: Component
+  children: MenuItem[]
+}
+
+export type MenuNode = MenuItem | MenuGroup
+
+export function isMenuGroup(node: MenuNode): node is MenuGroup {
+  return 'children' in node
+}
+
+export const menuItems: MenuNode[] = [
   { path: '/dashboard', title: '首页概览', icon: Odometer, permissions: [] },
-  { path: '/news', title: '新闻管理', icon: Document, permissions: ['news:read'] },
-  { path: '/halls', title: '展馆管理', icon: OfficeBuilding, permissions: ['hall:read'] },
-  { path: '/crafts', title: '文创管理', icon: Goods, permissions: ['hall:read'] },
-  { path: '/courses', title: '课程管理', icon: VideoCamera, permissions: ['course:read'] },
-  { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
-  { path: '/categories', title: '分类管理', icon: Menu, permissions: ['category:read'] },
-  { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
-  { path: '/banners', title: '首页轮播', icon: Picture, permissions: ['admin:super'] },
-  { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] },
-  { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] },
-  { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] },
-  { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] },
-  { path: '/ai-assistant-config', title: 'AI 助手配置', icon: ChatLineRound, permissions: ['admin:super'] },
-  { path: '/members', title: '师生账号', icon: UserFilled, permissions: ['admin:super'] },
-  { path: '/colleges', title: '关联小程序', icon: School, permissions: ['admin:super'] },
-  { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
-  { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] }
+  {
+    key: 'content',
+    title: '内容运营',
+    icon: Collection,
+    children: [
+      { path: '/news', title: '新闻管理', icon: Document, permissions: ['news:read'] },
+      { path: '/halls', title: '展馆管理', icon: OfficeBuilding, permissions: ['hall:read'] },
+      { path: '/crafts', title: '文创管理', icon: Goods, permissions: ['hall:read'] },
+      { path: '/courses', title: '课程管理', icon: VideoCamera, permissions: ['course:read'] },
+      { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
+      { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
+      { path: '/categories', title: '分类管理', icon: Menu, permissions: ['category:read'] }
+    ]
+  },
+  {
+    key: 'home',
+    title: '首页配置',
+    icon: Picture,
+    children: [
+      { path: '/banners', title: '首页轮播', icon: Picture, permissions: ['admin:super'] },
+      { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] }
+    ]
+  },
+  {
+    key: 'user',
+    title: '用户服务',
+    icon: UserFilled,
+    children: [
+      { path: '/members', title: '师生账号', icon: UserFilled, permissions: ['admin:super'] },
+      { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] }
+    ]
+  },
+  {
+    key: 'ai',
+    title: '智能助手',
+    icon: ChatLineRound,
+    children: [
+      { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] },
+      { path: '/ai-assistant-config', title: 'AI 助手配置', icon: ChatLineRound, permissions: ['admin:super'] }
+    ]
+  },
+  {
+    key: 'system',
+    title: '系统管理',
+    icon: Setting,
+    children: [
+      { path: '/colleges', title: '关联小程序', icon: School, permissions: ['admin:super'] },
+      { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
+      { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] },
+      { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] }
+    ]
+  }
 ]
 
+function isMenuVisible(item: MenuItem, permissions: string[]) {
+  if (!item.permissions.length) return true
+  return hasAnyPermission(permissions, item.permissions)
+}
+
 export function filterMenus(permissions: string[]) {
-  return menuItems.filter((m) => {
-    if (!m.permissions.length) return true
-    return hasAnyPermission(permissions, m.permissions)
-  })
+  const result: MenuNode[] = []
+  for (const node of menuItems) {
+    if (isMenuGroup(node)) {
+      const children = node.children.filter((item) => isMenuVisible(item, permissions))
+      if (children.length) {
+        result.push({ ...node, children })
+      }
+      continue
+    }
+    if (isMenuVisible(node, permissions)) {
+      result.push(node)
+    }
+  }
+  return result
 }

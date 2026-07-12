@@ -33,6 +33,7 @@ export interface BannerItem {
   coverFitMode?: 'fill' | 'fit'
   linkType: string
   linkValue: string
+  linkLabel?: string
   sort: number
   status: number
 }

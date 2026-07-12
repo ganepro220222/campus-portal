@@ -7,6 +7,7 @@ import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.BannerSaveRequest;
 import com.shuyuan.backend.entity.Banner;
 import com.shuyuan.backend.mapper.BannerMapper;
+import com.shuyuan.backend.util.BannerLinkPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ public class AdminBannerService {
 
     private final BannerMapper bannerMapper;
     private final AdminPermissionService adminPermissionService;
+    private final BannerLinkPolicy bannerLinkPolicy;
 
     public PageResult<Map<String, Object>> list(int page, int size) {
         adminPermissionService.require("admin:super");
@@ -31,6 +33,7 @@ public class AdminBannerService {
 
     public Map<String, Object> create(BannerSaveRequest req) {
         adminPermissionService.require("admin:super");
+        bannerLinkPolicy.validate(req.getLinkType(), req.getLinkValue());
         Banner banner = fromRequest(req);
         bannerMapper.insert(banner);
         return toVo(bannerMapper.selectById(banner.getId()));
@@ -38,6 +41,7 @@ public class AdminBannerService {
 
     public Map<String, Object> update(Long id, BannerSaveRequest req) {
         adminPermissionService.require("admin:super");
+        bannerLinkPolicy.validate(req.getLinkType(), req.getLinkValue());
         Banner existing = requireBanner(id);
         applyRequest(existing, req);
         bannerMapper.updateById(existing);
@@ -109,6 +113,7 @@ public class AdminBannerService {
         m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(b.getCoverFitMode()));
         m.put("linkType", b.getLinkType());
         m.put("linkValue", b.getLinkValue());
+        m.put("linkLabel", bannerLinkPolicy.resolveLabel(b.getLinkType(), b.getLinkValue()));
         m.put("sort", b.getSort());
         m.put("status", b.getStatus());
         return m;

@@ -620,7 +620,7 @@ CREATE TABLE IF NOT EXISTS `banner` (
   `description` VARCHAR(500) DEFAULT NULL COMMENT '副标题/描述',
   `image_url`   VARCHAR(500) DEFAULT NULL COMMENT '图片URL',
   `cover_fit_mode` VARCHAR(16) NOT NULL DEFAULT 'fill' COMMENT '轮播图展示：fill/fit',
-  `link_type`   VARCHAR(20)  NOT NULL DEFAULT 'none' COMMENT 'none/page/url',
+  `link_type`   VARCHAR(20)  NOT NULL DEFAULT 'none' COMMENT 'none/url/page(旧)/fixed/news/course/hall/activity/craft',
   `link_value`  VARCHAR(500) DEFAULT NULL COMMENT '跳转值（页面路径或URL）',
   `sort`        INT          NOT NULL DEFAULT 0,
   `status`      TINYINT      NOT NULL DEFAULT 1,

@@ -1,5 +1,6 @@
 <!-- packageC/activity/detail.wxml — 活动详情 -->
 <view class="detail-page">
+  <nav-bar title="活动详情" />
   <view wx:if="{{loading}}" class="state-box">
     <text class="state-text">加载中…</text>
   </view>

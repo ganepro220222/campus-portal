@@ -1,9 +1,11 @@
 /* packageA/craft/list.wxss */
 .craft-page {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(180deg, #EAF1FB 0, #F5F8FC 240rpx);
 }
-.craft-scroll { height: 100%; overflow: hidden; }
+.craft-scroll { flex: 1; overflow: hidden; }
 
 .craft-intro { padding: 28rpx 32rpx 4rpx; }
 .ci-zh { font-size: 34rpx; font-weight: 700; color: var(--ink); display: block; }

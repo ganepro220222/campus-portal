@@ -1,5 +1,6 @@
 <!-- packageD/ai-chat/index.wxml -->
 <view class="chat-page">
+  <nav-bar title="AI 文化问答" />
   <scroll-view scroll-y class="chat-body" scroll-into-view="{{scrollTo}}" scroll-with-animation enhanced show-scrollbar="{{false}}">
 
     <view class="chat-intro">

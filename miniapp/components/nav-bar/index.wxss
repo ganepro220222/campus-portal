@@ -1,6 +1,14 @@
 /* components/nav-bar/index.wxss */
-.nb {
+.nb-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+.nb-holder {
   width: 100%;
+  flex-shrink: 0;
 }
 .nb-row {
   position: relative;

@@ -283,3 +283,9 @@
   margin-top: 0;
   margin-bottom: auto;
 }
+.cp-policy {
+  margin: 2rpx 6rpx 20rpx;
+  color: rgba(214, 224, 248, 0.62);
+  font-size: 22rpx;
+  letter-spacing: 0.5rpx;
+}

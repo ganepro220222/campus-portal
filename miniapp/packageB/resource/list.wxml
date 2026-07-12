@@ -1,5 +1,6 @@
 <!-- packageB/resource/list.wxml -->
 <view class="res-page">
+  <nav-bar title="资源下载" />
 
   <view class="res-top">
     <view class="res-search">

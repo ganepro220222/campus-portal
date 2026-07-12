@@ -1,1 +1,3 @@
-{ "navigationBarTitleText": "关于云端书院" }
+{
+  "navigationStyle": "custom"
+}

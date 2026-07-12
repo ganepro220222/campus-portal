@@ -1,1 +1,3 @@
-{ "navigationBarTitleText": "生成海报" }
+{
+  "navigationStyle": "custom"
+}

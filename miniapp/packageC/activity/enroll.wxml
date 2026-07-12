@@ -1,5 +1,6 @@
 <!-- packageC/activity/enroll.wxml — 活动报名 -->
 <view class="enroll-page">
+  <nav-bar title="活动报名" />
   <view wx:if="{{loading}}" class="state-box">
     <text class="state-text">加载中…</text>
   </view>

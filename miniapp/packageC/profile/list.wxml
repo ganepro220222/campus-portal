@@ -1,5 +1,6 @@
 <!-- packageC/profile/list.wxml — 个人中心子列表（收藏/报名/下载/足迹/徽章） -->
 <view class="pl-page">
+  <nav-bar title="{{navTitle}}" />
   <view wx:if="{{loading}}" class="pl-state"><text>加载中…</text></view>
 
   <view wx:elif="{{!list.length}}" class="empty-state">

@@ -1,9 +1,15 @@
 /* packageC/message/index.wxss */
 .msg-page {
-  min-height: 100vh;
+  height: 100vh;
   background: #F5F8FC;
   display: flex;
   flex-direction: column;
+}
+.msg-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .msg-state { padding: 80rpx; text-align: center; color: var(--muted); }
 .msg-empty-sub { font-size: 24rpx; color: var(--muted); margin-top: 12rpx; display: block; }
@@ -17,7 +23,7 @@
 .msg-unread-tip { font-size: 24rpx; color: var(--muted); }
 .msg-read-all { font-size: 24rpx; color: var(--navy); font-weight: 600; }
 
-.msg-scroll { flex: 1; height: calc(100vh - 80rpx); }
+.msg-scroll { flex: 1; min-height: 0; }
 .msg-item {
   display: flex;
   align-items: flex-start;

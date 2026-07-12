@@ -9,6 +9,7 @@ const { getNavBarLayout } = require('../../utils/navbar')
 Page({
   data: {
     statusBarHeight: 20,
+    navContentHeight: 44,
     capsulePadding: 96,
     cats: ['全部'],
     activeCat: 0,

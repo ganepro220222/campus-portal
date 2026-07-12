@@ -20,6 +20,7 @@ Page({
     hasNewAnnouncement: false,
     loading:            true,
     statusBarHeight:    20,
+    navContentHeight:   44,
     capsulePadding:     96
   },
 

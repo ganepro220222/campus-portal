@@ -135,6 +135,7 @@ class PointServiceTest {
 
         pointService.awardCourseComplete(8L, 12L);
 
+        verify(valueOps).decrement(anyString());
         verify(memberMapper, never()).addPointsDelta(anyLong(), anyInt());
         verify(badgeGrantService, never()).checkAndGrant(anyLong());
     }

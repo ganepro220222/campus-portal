@@ -34,6 +34,18 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 | 9 | `patch-hall-real-data.sql` | 展馆真实数据补充 | 仅数据 |
 | 10 | `patch-loadtest.sql` | 压测专用数据 | 非日常 |
 | 11 | `patch-hall-vr-links-20260711.sql` | 校园安全教育馆、西部山区安全基地 VR 链接 | 仅数据 |
+| 12 | `patch-point-record-unique-cleanup.sql` | **旧库** `point_record` 重复流水查重/清理（加唯一键前） | — |
+| 13 | `patch-point-record-unique.sql` | **旧库** 添加 `uk_member_action_remark`（幂等，可重复执行） | ✅ 已并入 init.sql |
+
+#### `point_record` 唯一键（旧库必读）
+
+**新库**：`init.sql` 已含 `uk_member_action_remark`，**勿**再跑 12、13。
+
+**旧库升级**（尤其曾存在课程完成重复发放风险时）：
+
+1. 执行 `patch-point-record-unique-cleanup.sql` **Step 1** 查重；有结果则 **Step 2** 审计 → **Step 3** 删重复（保留最小 `id`）。
+2. **Step 4** 按 Step 2 汇总决定是否扣回 `member.points`（须业务/运维确认，脚本内为注释模板）。
+3. 无重复或清理完成后，执行 `patch-point-record-unique.sql`（已判断索引是否存在，重复执行安全）。
 
 ### Docker 一键执行示例
 

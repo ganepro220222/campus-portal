@@ -66,7 +66,9 @@ public class ActivityService {
         if (enroll != null && !"cancelled".equals(enroll.getStatus())) {
             m.put("enrollStatus", enroll.getStatus());
             m.put("enrollId", enroll.getId());
-            m.put("voucherCode", enroll.getVoucherCode());
+            if ("approved".equals(enroll.getStatus())) {
+                m.put("voucherCode", enroll.getVoucherCode());
+            }
         } else {
             m.put("enrollStatus", "none");
         }

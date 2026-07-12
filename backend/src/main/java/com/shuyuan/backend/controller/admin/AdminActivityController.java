@@ -65,7 +65,10 @@ public class AdminActivityController {
     }
 
     @GetMapping("/{id}/enrolls/export")
-    public void exportEnrolls(@PathVariable Long id, HttpServletResponse response) throws IOException {
-        adminEnrollService.exportExcel(id, response);
+    public void exportEnrolls(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "audit") String scope,
+            HttpServletResponse response) throws IOException {
+        adminEnrollService.exportExcel(id, scope, response);
     }
 }

@@ -9,6 +9,7 @@ import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Enroll;
 import com.shuyuan.backend.mapper.ActivityMapper;
 import com.shuyuan.backend.mapper.EnrollMapper;
+import com.shuyuan.backend.util.EnrollExportScope;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.vo.EnrollExportRow;
 import jakarta.servlet.http.HttpServletResponse;
@@ -101,14 +102,20 @@ public class AdminEnrollService {
     }
 
     /** 导出 Excel 报名名单 */
-    public void exportExcel(Long activityId, HttpServletResponse response) throws IOException {
+    public void exportExcel(Long activityId, String scope, HttpServletResponse response) throws IOException {
         adminPermissionService.require("enroll:export");
         Activity activity = requireActivity(activityId);
+        String normalizedScope = EnrollExportScope.normalize(scope);
 
-        List<Enroll> list = enrollMapper.selectList(new LambdaQueryWrapper<Enroll>()
+        LambdaQueryWrapper<Enroll> qw = new LambdaQueryWrapper<Enroll>()
                 .eq(Enroll::getActivityId, activityId)
                 .ne(Enroll::getStatus, "cancelled")
-                .orderByDesc(Enroll::getCreateTime));
+                .orderByDesc(Enroll::getCreateTime);
+        if (EnrollExportScope.CHECKIN.equals(normalizedScope)) {
+            qw.eq(Enroll::getStatus, "approved");
+        }
+
+        List<Enroll> list = enrollMapper.selectList(qw);
 
         List<EnrollExportRow> rows = list.stream().map(e -> {
             EnrollExportRow row = new EnrollExportRow();
@@ -122,14 +129,18 @@ public class AdminEnrollService {
             return row;
         }).toList();
 
-        String fileName = URLEncoder.encode("活动报名_" + activity.getId() + ".xlsx", StandardCharsets.UTF_8)
+        String filePrefix = EnrollExportScope.CHECKIN.equals(normalizedScope)
+                ? "活动报名_签到名单_"
+                : "活动报名_审核台账_";
+        String fileName = URLEncoder.encode(filePrefix + activity.getId() + ".xlsx", StandardCharsets.UTF_8)
                 .replace("+", "%20");
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setCharacterEncoding("utf-8");
         response.setHeader("Content-Disposition", "attachment;filename*=utf-8''" + fileName);
 
+        String sheetName = EnrollExportScope.CHECKIN.equals(normalizedScope) ? "签到名单" : "报名审核台账";
         EasyExcel.write(response.getOutputStream(), EnrollExportRow.class)
-                .sheet("报名名单")
+                .sheet(sheetName)
                 .doWrite(rows);
     }
 

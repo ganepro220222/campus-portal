@@ -23,6 +23,7 @@ public class AdminActivityService {
 
     private final ActivityMapper activityMapper;
     private final AdminPermissionService adminPermissionService;
+    private final EnrollService enrollService;
 
     public PageResult<Map<String, Object>> list(String status, int page, int size) {
         adminPermissionService.require("enroll:read");
@@ -90,6 +91,7 @@ public class AdminActivityService {
         }
         activity.setStatus("cancelled");
         activityMapper.updateById(activity);
+        enrollService.onActivityCancelled(activityMapper.selectById(id));
         return toVo(activityMapper.selectById(id));
     }
 

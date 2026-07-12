@@ -13,8 +13,14 @@
         type="primary"
         :icon="Download"
         :loading="exporting"
-        @click="onExport"
-      >导出 Excel</el-button>
+        @click="onExport('audit')"
+      >导出审核台账</el-button>
+      <el-button
+        v-if="canExport"
+        :icon="Download"
+        :loading="exporting"
+        @click="onExport('checkin')"
+      >导出签到名单</el-button>
     </div>
 
     <div v-if="activity" class="activity-brief">
@@ -202,12 +208,14 @@ async function onRejectConfirm() {
   }
 }
 
-async function onExport() {
+async function onExport(scope: 'audit' | 'checkin') {
   exporting.value = true
   try {
+    const suffix = scope === 'checkin' ? '签到名单' : '审核台账'
     await downloadFile(
       `/admin/activities/${activityId.value}/enrolls/export`,
-      `活动报名_${activityId.value}.xlsx`
+      `活动报名_${suffix}_${activityId.value}.xlsx`,
+      { scope }
     )
   } finally {
     exporting.value = false

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School, Menu, User, Key } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School, Menu, User, Key, UserFilled, ChatLineRound } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -109,6 +109,18 @@ const router = createRouter({
           meta: { title: '关联小程序', permission: 'admin:super' }
         },
         {
+          path: 'members',
+          name: 'Members',
+          component: () => import('@/views/member/MemberListView.vue'),
+          meta: { title: '师生账号', permission: 'admin:super' }
+        },
+        {
+          path: 'ai-assistant-config',
+          name: 'AiAssistantConfig',
+          component: () => import('@/views/ai-assistant/AiAssistantConfigView.vue'),
+          meta: { title: 'AI 助手配置', permission: 'admin:super' }
+        },
+        {
           path: 'admin-users',
           name: 'AdminUsers',
           component: () => import('@/views/admin/AdminUserListView.vue'),
@@ -170,6 +182,8 @@ export const menuItems: MenuItem[] = [
   { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] },
   { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] },
   { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] },
+  { path: '/ai-assistant-config', title: 'AI 助手配置', icon: ChatLineRound, permissions: ['admin:super'] },
+  { path: '/members', title: '师生账号', icon: UserFilled, permissions: ['admin:super'] },
   { path: '/colleges', title: '关联小程序', icon: School, permissions: ['admin:super'] },
   { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
   { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] }

@@ -3,6 +3,7 @@ const { get } = require('../../utils/request')
 const { mapSearchResults, buildRoute } = require('../../utils/search')
 const mock = require('../../mock/defaults')
 const { useMock } = require('../../utils/mockGuard')
+const { loadMiniappConfig, DEFAULT_MINIAPP_CONFIG } = require('../../utils/miniappConfig')
 
 const HISTORY_KEY = 'search_history'
 
@@ -30,12 +31,17 @@ Page({
     results: [],
     searched: false,
     errorText: '',
-    hotTags: ['阳明文化', '屯堡地戏', '红色交通', '非遗银饰', '知行合一'],
+    hotTags: DEFAULT_MINIAPP_CONFIG.searchHotTags,
     history: []
   },
 
   onLoad() {
     this.setData({ history: wx.getStorageSync(HISTORY_KEY) || [] })
+    loadMiniappConfig().then((cfg) => {
+      if (cfg && cfg.searchHotTags && cfg.searchHotTags.length) {
+        this.setData({ hotTags: cfg.searchHotTags })
+      }
+    }).catch(() => {})
   },
 
   onInput(e) { this.setData({ keyword: e.detail.value }) },

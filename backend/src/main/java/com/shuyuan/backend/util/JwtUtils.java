@@ -36,6 +36,28 @@ public class JwtUtils {
                 .compact();
     }
 
+    /** 微信绑定短期凭证（仅含 openid，有效期 10 分钟） */
+    public String createWxBindToken(String openid) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject("wx_bind")
+                .claim("type", "wx_bind")
+                .claim("openid", openid)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + 10L * 60 * 1000))
+                .signWith(key)
+                .compact();
+    }
+
+    public String parseWxBindOpenid(String token) {
+        Claims claims = parse(token);
+        if (!"wx_bind".equals(claims.get("type", String.class))) {
+            return null;
+        }
+        String openid = claims.get("openid", String.class);
+        return openid == null || openid.isBlank() ? null : openid.trim();
+    }
+
     /** 管理员 JWT（payload 含 adminId、roleId） */
     public String createAdminToken(Long adminId, Long roleId) {
         Date now = new Date();

@@ -7,6 +7,7 @@ const {
   applyQuotaFromMessage,
   resolveErrorAnswer
 } = require('../../utils/aiChat')
+const { loadMiniappConfig, DEFAULT_MINIAPP_CONFIG } = require('../../utils/miniappConfig')
 
 const QUESTION_MAX = 500
 
@@ -18,9 +19,9 @@ Component({
     open: false,
     input: '',
     firstAsk: true,
-    chips: ['什么是阳明文化？', '屯堡文化有何特色？', '龙场悟道讲了什么？'],
+    chips: DEFAULT_MINIAPP_CONFIG.aiAssistantChips,
     messages: [
-      { role: 'ai', text: '你好！我是书院文化助手，可以基于书院知识库为你解答阳明文化、屯堡文化等问题。' }
+      { role: 'ai', text: DEFAULT_MINIAPP_CONFIG.aiAssistantWelcome }
     ],
     scrollTo: '',
     sessionId: null,
@@ -31,11 +32,24 @@ Component({
   methods: {
     async open() {
       this.setData({ open: true })
+      await this._loadPublicConfig()
       await this._prepareSession()
     },
     close() { this.setData({ open: false }) },
     noop() {},
     onInput(e) { this.setData({ input: e.detail.value }) },
+
+    async _loadPublicConfig() {
+      try {
+        const cfg = await loadMiniappConfig()
+        this.setData({
+          chips: cfg.aiAssistantChips,
+          messages: [{ role: 'ai', text: cfg.aiAssistantWelcome }]
+        })
+      } catch (e) {
+        // 保留默认文案
+      }
+    },
 
     async _prepareSession() {
       try {

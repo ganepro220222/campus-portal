@@ -28,9 +28,17 @@ const getUserInfo = () => {
   return app.globalData.userInfo || wx.getStorageSync(USER_KEY) || null
 }
 
+function applyLoginData(data) {
+  if (data && data.token) {
+    setToken(data.token)
+    setUserInfo(data.member)
+    const app = getApp()
+    app.globalData.token = data.token
+  }
+}
+
 /**
- * 微信授权登录
- * 调用 wx.login 获取 code，发送到后端换取 token
+ * 微信授权登录；若 needBind 为 true，返回数据供页面引导绑定学号
  */
 const wxLogin = () => {
   return new Promise((resolve, reject) => {
@@ -40,10 +48,39 @@ const wxLogin = () => {
         const { post } = require('./request')
         post('/auth/wx-login', { code: loginRes.code })
           .then(data => {
-            setToken(data.token)
-            setUserInfo(data.member)
-            const app = getApp()
-            app.globalData.token = data.token
+            if (data && data.needBind) {
+              resolve(data)
+              return
+            }
+            applyLoginData(data)
+            resolve(data)
+          })
+          .catch(reject)
+      },
+      fail: reject
+    })
+  })
+}
+
+/** 微信首次登录绑定学号 */
+const bindWxAccount = (wxBindToken, studentNo, password) => {
+  const { post } = require('./request')
+  return post('/auth/wx-bind', { wxBindToken, studentNo, password }).then(data => {
+    applyLoginData(data)
+    return data
+  })
+}
+
+/** 已登录用户补充绑定微信 */
+const bindWxAuthenticated = () => {
+  return new Promise((resolve, reject) => {
+    wx.login({
+      success(loginRes) {
+        if (!loginRes.code) return reject(new Error('wx.login 失败'))
+        const { post } = require('./request')
+        post('/auth/wx-bind-authenticated', { code: loginRes.code })
+          .then(data => {
+            applyLoginData(data)
             resolve(data)
           })
           .catch(reject)
@@ -75,4 +112,7 @@ const requireLogin = (callback) => {
   })
 }
 
-module.exports = { getToken, setToken, clearToken, setUserInfo, getUserInfo, wxLogin, requireLogin }
+module.exports = {
+  getToken, setToken, clearToken, setUserInfo, getUserInfo,
+  wxLogin, bindWxAccount, bindWxAuthenticated, requireLogin
+}

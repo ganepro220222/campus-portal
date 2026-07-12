@@ -7,7 +7,7 @@ USE shuyuan;
 
 -- 测试学员（学号 2021001，密码 Admin@123，与后台超管相同 BCrypt）
 INSERT IGNORE INTO `member` (`id`, `openid`, `nickname`, `points`, `status`) VALUES
-(1, 'dev_test', '测试学员', 28, 1);
+(1, 'acct:2021001', '测试学员', 28, 1);
 
 -- 超管密码同步为 Admin@123（与 init.sql 旧哈希不一致时用 UPDATE 修正）
 UPDATE `sys_user` SET `password_hash` = '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm'

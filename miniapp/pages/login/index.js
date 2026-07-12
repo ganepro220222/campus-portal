@@ -1,5 +1,5 @@
 // pages/login/index.js
-const { wxLogin } = require('../../utils/auth')
+const { wxLogin, bindWxAccount } = require('../../utils/auth')
 const { post }    = require('../../utils/request')
 
 Page({
@@ -7,7 +7,9 @@ Page({
     studentNo: '',
     password: '',
     loading: false,
-    statusBarHeight: 20
+    statusBarHeight: 20,
+    bindMode: false,
+    wxBindToken: ''
   },
 
   onLoad() {
@@ -16,6 +18,10 @@ Page({
   },
 
   onBack() {
+    if (this.data.bindMode) {
+      this.setData({ bindMode: false, wxBindToken: '', studentNo: '', password: '' })
+      return
+    }
     const pages = getCurrentPages()
     if (pages.length > 1) {
       wx.navigateBack()
@@ -28,12 +34,19 @@ Page({
     this.setData({ [e.currentTarget.dataset.field]: e.detail.value })
   },
 
-  // 微信授权登录
   async onWxLogin() {
     if (this.data.loading) return
     this.setData({ loading: true })
     try {
-      await wxLogin()
+      const data = await wxLogin()
+      if (data && data.needBind) {
+        this.setData({
+          bindMode: true,
+          wxBindToken: data.wxBindToken || ''
+        })
+        wx.showToast({ title: '请绑定学号', icon: 'none' })
+        return
+      }
       this._loginSuccess()
     } catch (err) {
       wx.showToast({ title: '登录失败，请重试', icon: 'none' })
@@ -42,7 +55,23 @@ Page({
     }
   },
 
-  // 学号密码登录（失败次数由后端 Redis 计数，§2.1）
+  async onBindWxAccount() {
+    const { studentNo, password, wxBindToken } = this.data
+    if (!wxBindToken) return wx.showToast({ title: '请重新微信登录', icon: 'none' })
+    if (!studentNo.trim()) return wx.showToast({ title: '请输入学号/账号', icon: 'none' })
+    if (!password) return wx.showToast({ title: '请输入密码', icon: 'none' })
+    if (this.data.loading) return
+    this.setData({ loading: true })
+    try {
+      await bindWxAccount(wxBindToken, studentNo.trim(), password)
+      this._loginSuccess()
+    } catch {
+      // request.js 统一错误提示
+    } finally {
+      this.setData({ loading: false })
+    }
+  },
+
   async onAccountLogin() {
     const { studentNo, password } = this.data
     if (!studentNo.trim()) return wx.showToast({ title: '请输入学号/账号', icon: 'none' })
@@ -55,6 +84,26 @@ Page({
       setToken(data.token)
       setUserInfo(data.member)
       getApp().globalData.token = data.token
+      if (data.wxBound === false) {
+        wx.showModal({
+          title: '绑定微信',
+          content: '绑定后可使用微信一键登录，是否现在绑定？',
+          confirmText: '绑定',
+          success: async (res) => {
+            if (res.confirm) {
+              try {
+                const { bindWxAuthenticated } = require('../../utils/auth')
+                await bindWxAuthenticated()
+                wx.showToast({ title: '绑定成功', icon: 'success' })
+              } catch {
+                // 忽略，已学号登录成功
+              }
+            }
+            this._loginSuccess()
+          }
+        })
+        return
+      }
       this._loginSuccess()
     } catch {
       // 错误 toast 由 request.js 统一处理

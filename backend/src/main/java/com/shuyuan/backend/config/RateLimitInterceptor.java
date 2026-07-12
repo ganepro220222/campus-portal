@@ -41,7 +41,9 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             rateLimitService.checkIp("login", ip, cfg.getLoginPerMinute(), Duration.ofMinutes(1));
             return true;
         }
-        if (uri.endsWith("/api/v1/auth/wx-login")) {
+        if (uri.endsWith("/api/v1/auth/wx-login")
+                || uri.endsWith("/api/v1/auth/wx-bind")
+                || uri.endsWith("/api/v1/auth/wx-bind-authenticated")) {
             rateLimitService.checkIp("wx-login", ip, cfg.getWxLoginPerMinute(), Duration.ofMinutes(1));
             return true;
         }

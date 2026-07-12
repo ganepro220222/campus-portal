@@ -251,3 +251,11 @@
   letter-spacing: 1rpx;
   margin-top: 6rpx;
 }
+
+.bind-tip {
+  margin-top: 16rpx;
+  text-align: center;
+  color: rgba(255, 220, 160, .9);
+  font-size: 22rpx;
+  line-height: 1.6;
+}

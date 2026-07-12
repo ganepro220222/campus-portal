@@ -7,6 +7,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 接口限流：Redis 固定窗口计数（E2-3）
@@ -31,6 +33,19 @@ public class RateLimitService {
             return;
         }
         check(scene, "u:" + userId, limit, window);
+    }
+
+    /** 按自然日限流（key 含 yyyy-MM-dd，TTL 至次日 0 点） */
+    public void checkUserCalendarDay(String scene, Long userId, int limit) {
+        if (userId == null) {
+            return;
+        }
+        LocalDate today = LocalDate.now();
+        Duration untilMidnight = Duration.between(LocalDateTime.now(), today.plusDays(1).atStartOfDay());
+        if (untilMidnight.isZero() || untilMidnight.isNegative()) {
+            untilMidnight = Duration.ofMinutes(1);
+        }
+        check(scene, calendarDayKeySuffix(userId, today), limit, untilMidnight);
     }
 
     void check(String scene, String keySuffix, int limit, Duration window) {
@@ -58,6 +73,14 @@ public class RateLimitService {
         return getUsage(scene, "u:" + userId);
     }
 
+    /** 查询用户当日（自然日）已用次数 */
+    public int getUserCalendarDayUsage(String scene, Long userId) {
+        if (userId == null) {
+            return 0;
+        }
+        return getUsage(scene, calendarDayKeySuffix(userId, LocalDate.now()));
+    }
+
     int getUsage(String scene, String keySuffix) {
         if (!properties.getRateLimit().isEnabled()) {
             return 0;
@@ -75,5 +98,9 @@ public class RateLimitService {
 
     private String normalize(String value) {
         return value == null ? "unknown" : value.trim();
+    }
+
+    private String calendarDayKeySuffix(Long userId, LocalDate day) {
+        return "u:" + userId + ":" + day;
     }
 }

@@ -53,25 +53,25 @@ public class ResourceService {
         return toDetailVo(resource, catMap);
     }
 
-    /** 记录下载并返回文件地址 */
+    /** 记录下载并返回文件地址（需登录，用于下载记录与积分） */
     @Transactional
     public Map<String, Object> download(Long id) {
+        Long memberId = requireMemberId();
         Resource resource = requireResource(id);
-        Long memberId = MemberContext.getMemberId();
-        if (memberId != null) {
-            DownloadRecord record = new DownloadRecord();
-            record.setMemberId(memberId);
-            record.setResourceId(id);
-            record.setFileName(resource.getName());
-            record.setDownloadedAt(LocalDateTime.now());
-            downloadRecordMapper.insert(record);
-            eventLogService.record("download", "resource", id);
-            pointService.award(memberId, "download_resource");
+
+        DownloadRecord record = new DownloadRecord();
+        record.setMemberId(memberId);
+        record.setResourceId(id);
+        record.setFileName(resource.getName());
+        record.setDownloadedAt(LocalDateTime.now());
+        downloadRecordMapper.insert(record);
+        eventLogService.record("download", "resource", id);
+        pointService.award(memberId, "download_resource");
+
+        int affected = resourceMapper.incrDownloadCount(id);
+        if (affected == 0) {
+            throw new BusinessException(404, "资源不存在");
         }
-        Resource update = new Resource();
-        update.setId(id);
-        update.setDownloadCount((resource.getDownloadCount() != null ? resource.getDownloadCount() : 0) + 1);
-        resourceMapper.updateById(update);
 
         Map<String, Object> m = new HashMap<>();
         m.put("fileUrl", ossService.signUrl(resource.getFileUrl()));
@@ -116,5 +116,13 @@ public class ResourceService {
             return String.format("%.1f MB", kb / 1024.0);
         }
         return kb + " KB";
+    }
+
+    private Long requireMemberId() {
+        Long memberId = MemberContext.getMemberId();
+        if (memberId == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+        return memberId;
     }
 }

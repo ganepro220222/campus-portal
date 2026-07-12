@@ -2,6 +2,7 @@
 const { get } = require('../../utils/request')
 const { mergeCourseDetail } = require('../../utils/content')
 const { requireLogin } = require('../../utils/auth')
+const { downloadResource } = require('../../utils/resourceDownload')
 const { formatDuration } = require('../../utils/format')
 
 Page({
@@ -44,5 +45,12 @@ Page({
     wx.showToast({ title: this.data.course.hasSubtitle ? '播放器内可开关字幕' : '暂无字幕', icon: 'none' })
   },
 
-  onDownload() { wx.showToast({ title: '请在学习页下载配套资源', icon: 'none' }) }
+  onDownload(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) {
+      wx.showToast({ title: '演示数据无法下载，请连接后端', icon: 'none' })
+      return
+    }
+    downloadResource(id)
+  }
 })

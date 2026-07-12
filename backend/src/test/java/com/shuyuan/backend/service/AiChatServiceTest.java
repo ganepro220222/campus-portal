@@ -68,7 +68,7 @@ class AiChatServiceTest {
         chunk.setChunkText("阳明心学强调知行合一。");
         when(knowledgeService.retrieve("阳明文化", 5)).thenReturn(List.of(chunk));
         when(aiClientService.chat(any(), any())).thenReturn("根据书院资料，阳明心学强调知行合一。");
-        when(rateLimitService.getUserUsage("ai", 1L)).thenReturn(3);
+        when(rateLimitService.getUserCalendarDayUsage("ai", 1L)).thenReturn(3);
 
         AiChatRequest req = new AiChatRequest();
         req.setQuestion("阳明文化");
@@ -83,7 +83,7 @@ class AiChatServiceTest {
     @Test
     void quota_returnsRemainingForLoggedInUser() {
         com.shuyuan.backend.common.context.MemberContext.setMemberId(2L);
-        when(rateLimitService.getUserUsage("ai", 2L)).thenReturn(5);
+        when(rateLimitService.getUserCalendarDayUsage("ai", 2L)).thenReturn(5);
 
         var result = aiChatService.quota();
 

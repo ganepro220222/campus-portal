@@ -8,6 +8,8 @@ const {
   resolveErrorAnswer
 } = require('../../utils/aiChat')
 
+const QUESTION_MAX = 500
+
 Page({
   data: {
     sessionId: null,
@@ -63,6 +65,10 @@ Page({
   },
 
   async _ask(shown) {
+    if (shown.length > QUESTION_MAX) {
+      wx.showToast({ title: '问题过长，请控制在500字以内', icon: 'none' })
+      return
+    }
     const quota = this.data.quota
     if (quota && quota.needLogin) {
       wx.showToast({ title: '请先登录', icon: 'none' })

@@ -1,6 +1,7 @@
 // packageB/resource/list.js — 资源下载列表逻辑
 const { get } = require('../../utils/request')
 const { mergeResourceList } = require('../../utils/content')
+const { downloadResource } = require('../../utils/resourceDownload')
 
 // 文件类型 → 色标 / 标签 / 归类
 const FT = {
@@ -67,7 +68,23 @@ Page({
   },
 
   onDownload(e) {
-    const name = e.currentTarget.dataset.name || ''
-    wx.showToast({ title: '开始下载 ' + name, icon: 'none' })
+    const id = e.currentTarget.dataset.id
+    if (!id) {
+      wx.showToast({ title: '资源信息无效', icon: 'none' })
+      return
+    }
+    downloadResource(id, {
+      onRecorded: () => this._bumpDownloadCount(id)
+    })
+  },
+
+  _bumpDownloadCount(id) {
+    const bump = (it) => (it.id === id
+      ? { ...it, downloadCount: (it.downloadCount || 0) + 1 }
+      : it)
+    this.setData({
+      all: this.data.all.map(bump)
+    })
+    this._applyFilter()
   }
 })

@@ -17,25 +17,17 @@
   box-shadow: 0 4rpx 28rpx rgba(31, 40, 90, 0.05);
 }
 
-/* 校名行（居中） */
+/* 校名行（居中）——书法字改用图片，规避 Android/鸿蒙无楷体的回退问题 */
 .header-titlebar {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 72rpx;
+  box-sizing: border-box;
+  min-height: 72rpx; /* 回退值；实际高度由 JS 按胶囊几何注入 */
 }
-.header-name {
-  font-size: 46rpx;
-  font-weight: 700;
-  color: var(--navy);
-  letter-spacing: 6rpx;
-  text-indent: 6rpx;
-  white-space: nowrap;
-  /* 楷体优先，书香气更足；无楷体时回退宋体 */
-  font-family: "STKaiti", "KaiTi", "Kaiti SC", "楷体", "Noto Serif SC", "STSong", serif;
-  /* 加粗笔画去单薄 + 墨韵纵深（不支持描边的设备优雅降级）*/
-  -webkit-text-stroke: 0.5rpx var(--navy);
-  text-shadow: 0 1rpx 1rpx rgba(31, 40, 90, 0.16);
+.header-name-img {
+  height: 52rpx;
+  width: auto;
 }
 
 /* 操作行：我的 · 搜索 · 铃铛 */

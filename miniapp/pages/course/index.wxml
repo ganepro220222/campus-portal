@@ -4,7 +4,7 @@
   <!-- 自定义顶栏 -->
   <view class="nav">
     <view style="height: {{statusBarHeight}}px;"></view>
-    <view class="nav-row" style="padding-right: {{capsulePadding}}px;">
+    <view class="nav-row" style="height: {{navContentHeight}}px; padding-right: {{capsulePadding}}px;">
       <text class="nav-title serif">课程中心</text>
       <view class="nav-search" bindtap="onSearch">
         <icon name="search" size="20" color="#1F2547" />

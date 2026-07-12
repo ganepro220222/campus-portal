@@ -4,9 +4,9 @@
   <!-- 吸顶 Header：校名居中 + （我的 · 搜索 · 铃铛）一行 -->
   <view class="header">
     <view style="height: {{statusBarHeight}}px;"></view>
-    <!-- 校名（居中，标题较窄可避让胶囊） -->
-    <view class="header-titlebar">
-      <text class="header-name">中华文化书院</text>
+    <!-- 校名（书法字·图片，跨机型显示一致；高度随胶囊几何对齐） -->
+    <view class="header-titlebar" style="height: {{navContentHeight}}px;">
+      <image class="header-name-img" src="/assets/images/home-title-calligraphy.png" mode="heightFix" />
     </view>
     <!-- 我的 + 搜索 + 铃铛（同一行，一左一右） -->
     <view class="header-actionbar">

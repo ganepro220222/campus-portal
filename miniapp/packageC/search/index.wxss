@@ -28,7 +28,8 @@
 .sbtn { flex-shrink: 0; font-size: 28rpx; font-weight: 600; color: var(--navy); }
 
 /* 内容 */
-.search-scroll { flex: 1; overflow: hidden; padding: 24rpx 28rpx 0; }
+.search-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
+.s-pad { padding: 0 28rpx; }
 .sec { margin-bottom: 34rpx; }
 .sec-h { font-size: 28rpx; font-weight: 700; color: var(--ink); }
 .sec-h-row { display: flex; align-items: center; justify-content: space-between; }

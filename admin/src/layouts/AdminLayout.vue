@@ -2,7 +2,7 @@
   <el-container class="admin-layout">
     <el-aside :width="collapsed ? '68px' : '232px'" class="aside">
       <div class="logo" @click="router.push('/dashboard')">
-        <span class="logo-seal">书</span>
+        <span class="logo-seal"><img :src="shuMark" alt="书" /></span>
         <span v-show="!collapsed" class="logo-text">
           <span class="logo-zh">云端书院</span>
           <span class="logo-en">管理后台</span>
@@ -67,6 +67,7 @@ import { Expand, Fold, HomeFilled } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { filterMenus } from '@/router'
+import shuMark from '@/assets/brand-shu.png'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 
 const route = useRoute()
@@ -131,13 +132,15 @@ async function onLogout() {
   border-radius: 50%;
   background: rgba(201, 162, 39, 0.14);
   border: 1.5px solid rgba(201, 162, 39, 0.7);
-  color: #f0dca0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: KaiTi, STKaiti, serif;
-  font-size: 20px;
   flex-shrink: 0;
+}
+.logo-seal img {
+  height: 23px;
+  width: auto;
+  display: block;
 }
 
 .logo-text {

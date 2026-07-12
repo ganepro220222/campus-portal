@@ -28,6 +28,19 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 | 3 | `patch-cover-fit-mode.sql` | 封面 fill/fit 字段 | ✅ 已并入 |
 | 4 | `patch-feedback-type.sql` | 反馈 type 字段 | ✅ 已并入 |
 | 5 | `patch-admin-account-security.sql` | 首次改密 + 发布权细分 + 内容审核角色 | 部分已并入（`must_change_password`、角色 4）；**可重复执行** |
+
+#### `patch-admin-account-security.sql`（旧库必读）
+
+**新库**：`init.sql` 已含 `must_change_password=1` 与角色 4，**勿**依赖本 patch 建表。
+
+**旧库升级**：即使 `sys_user.must_change_password` **列已存在**，也**建议再执行**本 patch，原因：
+
+1. 幂等 DDL 会跳过已存在的列，不会报错；
+2. 后续的 `UPDATE sys_role ...` 仍会补齐发布权细分与「内容审核」角色；
+3. 末尾 `UPDATE sys_user SET must_change_password = 1 WHERE username='admin'` 会修正旧库中默认 admin 仍为 `0` 的情况。
+
+> 常见误区：「字段已经有了就不用跑 patch」—— 会漏掉**数据修正**，导致默认 admin 不强制首次改密（若口令仍是 `Admin@123`，prod/staging 启动门禁会拦截启动）。
+
 | 6 | `patch-category-permissions.sql` | 旧库角色补 category 权限 | — |
 | 7 | `patch-hall-sections.sql` | 校史馆章节 seed | seed-dev 已含 |
 | 8 | `patch-hall-vr.sql` | 展馆 VR 链接数据修正 | 仅数据 |

@@ -1,6 +1,8 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.shuyuan.backend.common.context.MemberContext;
+import com.shuyuan.backend.dto.AccountLoginRequest;
 import com.shuyuan.backend.dto.WxBindRequest;
 import com.shuyuan.backend.dto.WxLoginRequest;
 import com.shuyuan.backend.entity.Member;
@@ -20,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -87,6 +90,49 @@ class AuthServiceTest {
         ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
         verify(memberMapper).updateById(captor.capture());
         assertEquals("wx_new", captor.getValue().getOpenid());
+    }
+
+    @Test
+    void accountLogin_flagsMustChangePassword() {
+        Member member = importedMember();
+        MemberAccount account = importedAccount(member.getId());
+        account.setMustChangePassword(1);
+        when(memberAccountMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(account);
+        when(memberMapper.selectById(9L)).thenReturn(member, member);
+        when(memberProfileMapper.selectById(9L)).thenReturn(new MemberProfile());
+        when(jwtUtils.createToken(9L, "acct:2024001")).thenReturn("jwt");
+
+        AccountLoginRequest req = new AccountLoginRequest();
+        req.setStudentNo("2024001");
+        req.setPassword("Admin@123");
+
+        LoginVO vo = authService.accountLogin(req);
+
+        assertTrue(vo.getMustChangePassword());
+    }
+
+    @Test
+    void changePassword_clearsMustChangeFlag() {
+        Member member = importedMember();
+        MemberAccount account = importedAccount(member.getId());
+        account.setId(1L);
+        account.setMustChangePassword(1);
+        MemberContext.setMemberId(9L);
+        try {
+            when(memberMapper.selectById(9L)).thenReturn(member, member);
+            when(memberAccountMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(account);
+            when(memberProfileMapper.selectById(9L)).thenReturn(new MemberProfile());
+            when(jwtUtils.createToken(9L, "acct:2024001")).thenReturn("jwt2");
+
+            LoginVO vo = authService.changePassword("Admin@123", "NewPass1");
+
+            assertFalse(vo.getMustChangePassword());
+            ArgumentCaptor<MemberAccount> captor = ArgumentCaptor.forClass(MemberAccount.class);
+            verify(memberAccountMapper).updateById(captor.capture());
+            assertEquals(0, captor.getValue().getMustChangePassword());
+        } finally {
+            MemberContext.clear();
+        }
     }
 
     private static WxLoginRequest wxRequest(String code) {

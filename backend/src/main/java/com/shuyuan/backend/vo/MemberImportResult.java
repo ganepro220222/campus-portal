@@ -14,4 +14,6 @@ public class MemberImportResult {
     private int skippedCount;
     private int failedCount;
     private List<String> errors;
+    /** 结构化失败明细，可导出 Excel 核对 */
+    private List<MemberImportErrorRow> errorRows;
 }

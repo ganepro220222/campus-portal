@@ -15,6 +15,7 @@ import com.shuyuan.backend.mapper.MemberMapper;
 import com.shuyuan.backend.mapper.MemberProfileMapper;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.util.StudentPasswordPolicy;
+import com.shuyuan.backend.vo.MemberImportErrorRow;
 import com.shuyuan.backend.vo.MemberImportResult;
 import com.shuyuan.backend.vo.MemberImportRow;
 import jakarta.servlet.http.HttpServletResponse;
@@ -115,7 +116,21 @@ public class AdminMemberService {
                 .skippedCount(acc.skippedCount)
                 .failedCount(acc.failedCount)
                 .errors(acc.errors)
+                .errorRows(acc.errorRows)
                 .build();
+    }
+
+    public void writeImportErrorReport(List<MemberImportErrorRow> rows, HttpServletResponse response) throws IOException {
+        adminPermissionService.require("admin:super");
+        if (rows == null || rows.isEmpty()) {
+            throw new BusinessException(400, "没有可导出的失败记录");
+        }
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        String fileName = URLEncoder.encode("师生导入失败明细.xlsx", StandardCharsets.UTF_8).replace("+", "%20");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + fileName);
+        EasyExcel.write(response.getOutputStream(), MemberImportErrorRow.class)
+                .sheet("失败明细")
+                .doWrite(rows);
     }
 
     public void writeImportTemplate(HttpServletResponse response) throws IOException {
@@ -151,11 +166,11 @@ public class AdminMemberService {
         String studentNo = trim(row.getStudentNo());
         String realName = trim(row.getRealName());
         if (studentNo == null || studentNo.isBlank()) {
-            acc.fail("第" + rowNum + "行：学号不能为空");
+            acc.fail(rowNum, row, "学号不能为空");
             return;
         }
         if (realName == null || realName.isBlank()) {
-            acc.fail("第" + rowNum + "行：姓名不能为空");
+            acc.fail(rowNum, row, "姓名不能为空");
             return;
         }
         Long exists = memberAccountMapper.selectCount(new LambdaQueryWrapper<MemberAccount>()
@@ -181,6 +196,7 @@ public class AdminMemberService {
             account.setUsername(studentNo);
             account.setPasswordHash(passwordEncoder.encode(plainPassword));
             account.setStatus(1);
+            account.setMustChangePassword(1);
             memberAccountMapper.insert(account);
 
             MemberProfile profile = new MemberProfile();
@@ -193,9 +209,9 @@ public class AdminMemberService {
 
             acc.success();
         } catch (BusinessException e) {
-            acc.fail("第" + rowNum + "行：" + e.getMessage());
+            acc.fail(rowNum, row, e.getMessage());
         } catch (Exception e) {
-            acc.fail("第" + rowNum + "行：写入失败");
+            acc.fail(rowNum, row, "写入失败");
         }
     }
 
@@ -247,6 +263,7 @@ public class AdminMemberService {
         int skippedCount;
         int failedCount;
         final List<String> errors = new ArrayList<>();
+        final List<MemberImportErrorRow> errorRows = new ArrayList<>();
 
         void success() {
             successCount++;
@@ -256,10 +273,16 @@ public class AdminMemberService {
             skippedCount++;
         }
 
-        void fail(String message) {
+        void fail(int rowNum, MemberImportRow row, String message) {
             failedCount++;
             if (errors.size() < MAX_ERROR_LINES) {
-                errors.add(message);
+                errors.add("第" + rowNum + "行：" + message);
+                MemberImportErrorRow err = new MemberImportErrorRow();
+                err.setRowNum(rowNum);
+                err.setStudentNo(trim(row.getStudentNo()));
+                err.setRealName(trim(row.getRealName()));
+                err.setReason(message);
+                errorRows.add(err);
             }
         }
     }

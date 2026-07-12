@@ -19,6 +19,7 @@ public class MemberAccount {
     private String username;
     private String passwordHash;
     private Integer status;
+    private Integer mustChangePassword;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     @TableLogic

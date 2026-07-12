@@ -13,6 +13,7 @@ import com.shuyuan.backend.mapper.MemberAccountMapper;
 import com.shuyuan.backend.mapper.MemberMapper;
 import com.shuyuan.backend.mapper.MemberProfileMapper;
 import com.shuyuan.backend.util.JwtUtils;
+import com.shuyuan.backend.util.MemberPasswordPolicy;
 import com.shuyuan.backend.util.StudentPasswordPolicy;
 import com.shuyuan.backend.vo.LoginVO;
 import com.shuyuan.backend.vo.MemberVO;
@@ -112,9 +113,44 @@ public class AuthService {
         }
         checkMemberActive(member);
         loginLockService.onSuccess(LoginLockService.SCENE_MEMBER, accountKey);
-        LoginVO vo = buildLogin(member);
-        vo.setWxBound(!StudentPasswordPolicy.isPlaceholderOpenid(member.getOpenid()));
-        return vo;
+        return buildLogin(member);
+    }
+
+    /** 师生自助改密（导入账号首次登录须完成） */
+    @Transactional
+    public LoginVO changePassword(String oldPassword, String newPassword) {
+        Long memberId = MemberContext.getMemberId();
+        if (memberId == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+        if (oldPassword == null || oldPassword.isBlank() || newPassword == null || newPassword.isBlank()) {
+            throw new BusinessException(400, "请填写原密码与新密码");
+        }
+        MemberPasswordPolicy.validate(newPassword);
+        if (oldPassword.equals(newPassword)) {
+            throw new BusinessException(400, "新密码不能与原密码相同");
+        }
+
+        Member member = memberMapper.selectById(memberId);
+        if (member == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+        checkMemberActive(member);
+
+        MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
+                .eq(MemberAccount::getMemberId, memberId)
+                .last("LIMIT 1"));
+        if (account == null || account.getStatus() == null || account.getStatus() != 1) {
+            throw new BusinessException(403, "账号不可用");
+        }
+        if (!passwordEncoder.matches(oldPassword, account.getPasswordHash())) {
+            throw new BusinessException(400, "原密码不正确");
+        }
+
+        account.setPasswordHash(passwordEncoder.encode(newPassword));
+        account.setMustChangePassword(0);
+        memberAccountMapper.updateById(account);
+        return buildLogin(member);
     }
 
     private MemberAccount verifyAccountCredentials(String accountKey, String password) {
@@ -159,6 +195,12 @@ public class AuthService {
         member = memberMapper.selectById(member.getId());
         String token = jwtUtils.createToken(member.getId(), member.getOpenid());
         MemberProfile profile = memberProfileMapper.selectById(member.getId());
+        MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
+                .eq(MemberAccount::getMemberId, member.getId())
+                .last("LIMIT 1"));
+        boolean mustChange = account != null
+                && account.getMustChangePassword() != null
+                && account.getMustChangePassword() == 1;
         MemberVO vo = MemberVO.builder()
                 .id(member.getId())
                 .nickname(member.getNickname())
@@ -171,6 +213,7 @@ public class AuthService {
                 .member(vo)
                 .needBind(false)
                 .wxBound(!StudentPasswordPolicy.isPlaceholderOpenid(member.getOpenid()))
+                .mustChangePassword(mustChange)
                 .build();
     }
 }

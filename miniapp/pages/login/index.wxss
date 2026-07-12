@@ -259,3 +259,10 @@
   font-size: 22rpx;
   line-height: 1.6;
 }
+.bind-tip.muted {
+  color: rgba(214, 224, 248, 0.75);
+}
+.brand.compact {
+  margin-top: 80rpx;
+  margin-bottom: 48rpx;
+}

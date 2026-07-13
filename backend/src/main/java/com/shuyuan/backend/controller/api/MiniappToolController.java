@@ -2,6 +2,7 @@ package com.shuyuan.backend.controller.api;
 
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.service.WxQrcodeService;
+import com.shuyuan.backend.util.WxacodePathPolicy;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,7 +39,7 @@ public class MiniappToolController {
         m.put("available", true);
         m.put("contentType", "image/png");
         m.put("imageBase64", Base64.getEncoder().encodeToString(png));
-        m.put("path", path);
+        m.put("path", WxacodePathPolicy.validateAndNormalize(path));
         return Result.ok(m);
     }
 }

@@ -2,7 +2,10 @@ package com.shuyuan.backend.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.ShuyuanProperties;
+import com.shuyuan.backend.util.BoundedTtlCache;
+import com.shuyuan.backend.util.WxacodePathPolicy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +15,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 微信小程序码（getwxacode），dev-mode 或未配置凭证时返回 null 供调用方降级。
@@ -31,7 +33,7 @@ public class WxQrcodeService {
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
-    private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    private final BoundedTtlCache<String, byte[]> cache;
 
     public WxQrcodeService(WxAccessTokenService accessTokenService,
                            ShuyuanProperties properties,
@@ -39,10 +41,14 @@ public class WxQrcodeService {
         this.accessTokenService = accessTokenService;
         this.properties = properties;
         this.objectMapper = objectMapper;
+        ShuyuanProperties.Wx wx = properties.getWx();
+        this.cache = new BoundedTtlCache<>(wx.getWxacodeCacheMaxEntries(), wx.getWxacodeCacheTtlSeconds() * 1000L);
     }
 
-    /** @return PNG bytes，不可用时返回 null */
+    /** @return PNG bytes，不可用时返回 null；非法 path 抛 400 */
     public byte[] getWxaCode(String path, int width) {
+        String scenePath = WxacodePathPolicy.validateAndNormalize(path);
+        int w = clampWidth(width);
         if (properties.getWx().isDevMode()) {
             return null;
         }
@@ -50,13 +56,10 @@ public class WxQrcodeService {
         if (token == null || token.isBlank()) {
             return null;
         }
-        String scenePath = normalizePath(path);
-        int w = clampWidth(width);
         String cacheKey = scenePath + "|" + w;
-        CacheEntry hit = cache.get(cacheKey);
-        long now = System.currentTimeMillis();
-        if (hit != null && now < hit.expiresAtMs) {
-            return hit.bytes;
+        byte[] hit = cache.get(cacheKey);
+        if (hit != null) {
+            return hit;
         }
         try {
             String url = String.format(WXACODE_URL, token);
@@ -79,23 +82,19 @@ public class WxQrcodeService {
                 log.warn("[wx] getwxacode 失败: {}", new String(bytes));
                 return null;
             }
-            cache.put(cacheKey, new CacheEntry(bytes, now + 3_600_000L));
+            cache.put(cacheKey, bytes);
             return bytes;
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("[wx] getwxacode 请求异常: {}", e.getMessage());
             return null;
         }
     }
 
-    private static String normalizePath(String path) {
-        if (path == null || path.isBlank()) {
-            return "pages/index/index";
-        }
-        String p = path.trim();
-        if (p.startsWith("/")) {
-            p = p.substring(1);
-        }
-        return p;
+    /** 测试用：当前缓存条目数 */
+    int cacheSize() {
+        return cache.size();
     }
 
     private static int clampWidth(int width) {
@@ -119,6 +118,4 @@ public class WxQrcodeService {
         }
         return false;
     }
-
-    private record CacheEntry(byte[] bytes, long expiresAtMs) {}
 }

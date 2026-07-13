@@ -24,6 +24,8 @@ shuyuan:
     dev-mode: true
     appid: ${WX_APPID:}
     secret: ${WX_SECRET:}
+    wxacode-cache-max-entries: 64
+    wxacode-cache-ttl-seconds: 3600
   login:
     max-fail-attempts: 5
     lock-minutes: 5
@@ -35,6 +37,7 @@ shuyuan:
     admin-login-per-minute: 10
     enroll-per-minute: 5
     ai-per-day: 20
+    wxacode-per-minute: 30
   ai:
     provider: ${AI_PROVIDER:fallback}
     api-key: ${AI_API_KEY:}

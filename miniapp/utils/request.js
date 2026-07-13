@@ -1,6 +1,40 @@
 // utils/request.js — 统一 HTTP 请求封装
 
-const app = getApp()
+const { baseUrl: configBaseUrl } = require('../config/env')
+
+function getRuntimeApp() {
+  try {
+    return getApp()
+  } catch (e) {
+    return null
+  }
+}
+
+function resolveBaseUrl() {
+  const app = getRuntimeApp()
+  if (app && app.globalData && app.globalData.baseUrl) {
+    return app.globalData.baseUrl
+  }
+  return configBaseUrl
+}
+
+function resolveToken() {
+  const app = getRuntimeApp()
+  if (app && app.globalData && app.globalData.token) {
+    return app.globalData.token
+  }
+  return wx.getStorageSync('token') || ''
+}
+
+function logoutIfNeeded(url) {
+  if (String(url).includes('/auth/')) {
+    return
+  }
+  const app = getRuntimeApp()
+  if (app && typeof app.logout === 'function') {
+    app.logout()
+  }
+}
 
 /*
  * 核心请求函数
@@ -11,10 +45,10 @@ const app = getApp()
 const request = (url, method = 'GET', data = {}, options = {}) => {
   const silent = options.silent === true
   return new Promise((resolve, reject) => {
-    const token = app.globalData.token || wx.getStorageSync('token') || ''
+    const token = resolveToken()
 
     wx.request({
-      url: app.globalData.baseUrl + url,
+      url: resolveBaseUrl() + url,
       method,
       data,
       timeout: 10000,
@@ -29,9 +63,7 @@ const request = (url, method = 'GET', data = {}, options = {}) => {
           return
         }
         if (body.code === 401) {
-          if (!String(url).includes('/auth/')) {
-            app.logout()
-          }
+          logoutIfNeeded(url)
           if (!silent) {
             wx.showToast({ title: body.message || '请先登录', icon: 'none', duration: 2500 })
           }
@@ -59,9 +91,9 @@ const request = (url, method = 'GET', data = {}, options = {}) => {
  */
 const upload = (url, filePath, name = 'file', formData = {}) => {
   return new Promise((resolve, reject) => {
-    const token = app.globalData.token || wx.getStorageSync('token') || ''
+    const token = resolveToken()
     wx.uploadFile({
-      url: app.globalData.baseUrl + url,
+      url: resolveBaseUrl() + url,
       filePath,
       name,
       formData,
@@ -81,5 +113,9 @@ module.exports = {
   post:   (url, data, options) => request(url, 'POST', data, options),
   put:    (url, data, options) => request(url, 'PUT', data, options),
   del:    (url, options)       => request(url, 'DELETE', {}, options),
-  upload: (url, fp, name, fd) => upload(url, fp, name, fd)
+  upload: (url, fp, name, fd) => upload(url, fp, name, fd),
+  // 供单测校验：不在模块顶层缓存 getApp()
+  _getRuntimeApp: getRuntimeApp,
+  _resolveBaseUrl: resolveBaseUrl,
+  _resolveToken: resolveToken
 }

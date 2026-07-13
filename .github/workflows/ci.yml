@@ -66,6 +66,9 @@ jobs:
       - name: Navigate appids sync test
         run: npm run test:sync-navigate-appids
 
+      - name: Release gate regression test
+        run: npm run test:release-gate
+
   admin:
     name: Admin
     runs-on: ubuntu-latest

@@ -85,7 +85,6 @@ public class AiChatService {
         return messages.stream().map(this::messageVo).toList();
     }
 
-    @Transactional
     public Map<String, Object> chat(Long sessionId, AiChatRequest req) {
         Long memberId = requireMemberId();
         requireOwnedSession(sessionId, memberId);
@@ -103,6 +102,12 @@ public class AiChatService {
             safetyStatus = "blocked";
         }
 
+        return saveChatTurn(sessionId, question, answer, chunks, safetyStatus);
+    }
+
+    @Transactional
+    protected Map<String, Object> saveChatTurn(Long sessionId, String question, String answer,
+                                             List<KnowledgeChunk> chunks, String safetyStatus) {
         saveMessage(sessionId, "user", question, null, "pass");
         AiMessage assistant = saveMessage(sessionId, "assistant", answer, chunks, safetyStatus);
 

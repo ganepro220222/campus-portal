@@ -3,10 +3,13 @@ package com.shuyuan.backend.controller.admin;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.dto.ActivitySaveRequest;
+import com.shuyuan.backend.dto.ValidationGroups.Create;
+import com.shuyuan.backend.dto.ValidationGroups.Update;
 import com.shuyuan.backend.service.AdminActivityService;
 import com.shuyuan.backend.service.AdminEnrollService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -36,12 +39,13 @@ public class AdminActivityController {
     }
 
     @PostMapping
-    public Result<Map<String, Object>> create(@RequestBody ActivitySaveRequest req) {
+    public Result<Map<String, Object>> create(@Validated(Create.class) @RequestBody ActivitySaveRequest req) {
         return Result.ok(adminActivityService.create(req));
     }
 
     @PutMapping("/{id}")
-    public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody ActivitySaveRequest req) {
+    public Result<Map<String, Object>> update(@PathVariable Long id,
+                                              @Validated(Update.class) @RequestBody ActivitySaveRequest req) {
         return Result.ok(adminActivityService.update(id, req));
     }
 

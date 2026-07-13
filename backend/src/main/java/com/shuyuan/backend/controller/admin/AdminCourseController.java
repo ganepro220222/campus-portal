@@ -4,8 +4,11 @@ import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.dto.CourseSaveRequest;
 import com.shuyuan.backend.dto.SubtitleUpdateRequest;
+import com.shuyuan.backend.dto.ValidationGroups.Create;
+import com.shuyuan.backend.dto.ValidationGroups.Update;
 import com.shuyuan.backend.service.AdminCourseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -34,12 +37,13 @@ public class AdminCourseController {
     }
 
     @PostMapping
-    public Result<Map<String, Object>> create(@RequestBody CourseSaveRequest req) {
+    public Result<Map<String, Object>> create(@Validated(Create.class) @RequestBody CourseSaveRequest req) {
         return Result.ok(adminCourseService.create(req));
     }
 
     @PutMapping("/{id}")
-    public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody CourseSaveRequest req) {
+    public Result<Map<String, Object>> update(@PathVariable Long id,
+                                              @Validated(Update.class) @RequestBody CourseSaveRequest req) {
         return Result.ok(adminCourseService.update(id, req));
     }
 

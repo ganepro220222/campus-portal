@@ -13,6 +13,7 @@ import com.shuyuan.backend.mapper.SysRoleMapper;
 import com.shuyuan.backend.mapper.SysUserMapper;
 import com.shuyuan.backend.util.AdminPasswordPolicy;
 import com.shuyuan.backend.util.FormatUtils;
+import com.shuyuan.backend.util.TokenVersionSupport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -151,6 +152,7 @@ public class AdminUserService {
         }
         user.setPasswordHash(passwordEncoder.encode(plain));
         user.setMustChangePassword(1);
+        user.setTokenVersion(TokenVersionSupport.bump(user.getTokenVersion()));
         sysUserMapper.updateById(user);
         Map<String, Object> vo = toVo(sysUserMapper.selectById(id), sysRoleMapper.selectById(user.getRoleId()));
         vo.put("temporaryPassword", plain);

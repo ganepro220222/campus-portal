@@ -24,12 +24,13 @@ public class JwtUtils {
         this.adminExpireMs = properties.getJwt().getAdminExpireHours() * 60L * 60 * 1000;
     }
 
-    public String createToken(Long memberId, String openid) {
+    public String createToken(Long memberId, String openid, int tokenVersion) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(memberId))
                 .claim("type", "member")
                 .claim("openid", openid)
+                .claim("tokenVersion", tokenVersion)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expireMs))
                 .signWith(key)
@@ -58,13 +59,14 @@ public class JwtUtils {
         return openid == null || openid.isBlank() ? null : openid.trim();
     }
 
-    /** 管理员 JWT（payload 含 adminId、roleId） */
-    public String createAdminToken(Long adminId, Long roleId) {
+    /** 管理员 JWT（payload 含 adminId、roleId、tokenVersion） */
+    public String createAdminToken(Long adminId, Long roleId, int tokenVersion) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(adminId))
                 .claim("type", "admin")
                 .claim("roleId", roleId)
+                .claim("tokenVersion", tokenVersion)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + adminExpireMs))
                 .signWith(key)
@@ -102,5 +104,15 @@ public class JwtUtils {
             return null;
         }
         return Long.valueOf(roleId.toString());
+    }
+
+    /** 无 claim 时视为 0，兼容历史 token */
+    public int getTokenVersion(String token) {
+        Claims claims = parse(token);
+        Object version = claims.get("tokenVersion");
+        if (version == null) {
+            return 0;
+        }
+        return Integer.parseInt(version.toString());
     }
 }

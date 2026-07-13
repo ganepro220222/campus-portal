@@ -5,19 +5,35 @@ package com.shuyuan.backend.common.context;
  */
 public final class MemberContext {
 
-    private static final ThreadLocal<Long> MEMBER_ID = new ThreadLocal<>();
+    private static final ThreadLocal<MemberSession> SESSION = new ThreadLocal<>();
 
     private MemberContext() {}
 
+    public static void set(MemberSession session) {
+        SESSION.set(session);
+    }
+
+    /** @deprecated 测试或遗留代码；生产路径请使用 {@link #set(MemberSession)} */
+    @Deprecated
     public static void setMemberId(Long memberId) {
-        MEMBER_ID.set(memberId);
+        if (memberId == null) {
+            SESSION.remove();
+        } else {
+            SESSION.set(new MemberSession(memberId, false));
+        }
     }
 
     public static Long getMemberId() {
-        return MEMBER_ID.get();
+        MemberSession session = SESSION.get();
+        return session != null ? session.memberId() : null;
+    }
+
+    public static boolean mustChangePassword() {
+        MemberSession session = SESSION.get();
+        return session != null && session.mustChangePassword();
     }
 
     public static void clear() {
-        MEMBER_ID.remove();
+        SESSION.remove();
     }
 }

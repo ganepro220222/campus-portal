@@ -15,6 +15,7 @@ import com.shuyuan.backend.mapper.MemberProfileMapper;
 import com.shuyuan.backend.util.JwtUtils;
 import com.shuyuan.backend.util.MemberPasswordPolicy;
 import com.shuyuan.backend.util.StudentPasswordPolicy;
+import com.shuyuan.backend.util.TokenVersionSupport;
 import com.shuyuan.backend.vo.LoginVO;
 import com.shuyuan.backend.vo.MemberVO;
 import lombok.RequiredArgsConstructor;
@@ -150,7 +151,11 @@ public class AuthService {
         account.setPasswordHash(passwordEncoder.encode(newPassword));
         account.setMustChangePassword(0);
         memberAccountMapper.updateById(account);
-        return buildLogin(member);
+
+        member.setTokenVersion(TokenVersionSupport.bump(member.getTokenVersion()));
+        memberMapper.updateById(member);
+
+        return buildLogin(memberMapper.selectById(memberId));
     }
 
     private MemberAccount verifyAccountCredentials(String accountKey, String password) {
@@ -193,7 +198,8 @@ public class AuthService {
     private LoginVO buildLogin(Member member) {
         pointService.award(member.getId(), "login");
         member = memberMapper.selectById(member.getId());
-        String token = jwtUtils.createToken(member.getId(), member.getOpenid());
+        int tokenVersion = TokenVersionSupport.current(member.getTokenVersion());
+        String token = jwtUtils.createToken(member.getId(), member.getOpenid(), tokenVersion);
         MemberProfile profile = memberProfileMapper.selectById(member.getId());
         MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
                 .eq(MemberAccount::getMemberId, member.getId())

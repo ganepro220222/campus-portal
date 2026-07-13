@@ -127,6 +127,25 @@ class AuthSecurityMvcTest {
     }
 
     @Test
+    void adminApi_staleTokenVersion_returns401() throws Exception {
+        when(jwtUtils.getAdminId("token")).thenReturn(1L);
+        when(jwtUtils.getAdminRoleId("token")).thenReturn(2L);
+        when(jwtUtils.getTokenVersion("token")).thenReturn(0);
+        SysUser user = new SysUser();
+        user.setId(1L);
+        user.setStatus(1);
+        user.setRoleId(2L);
+        user.setTokenVersion(3);
+        when(sysUserMapper.selectById(1L)).thenReturn(user);
+
+        adminMockMvc.perform(get("/api/v1/admin/banners")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.message").value("登录已失效，请重新登录"));
+    }
+
+    @Test
     void adminApi_mustChangePassword_blocksWriteButAllowsRead() throws Exception {
         when(jwtUtils.getAdminId("token")).thenReturn(1L);
         when(jwtUtils.getAdminRoleId("token")).thenReturn(2L);

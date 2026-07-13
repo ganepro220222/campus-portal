@@ -45,6 +45,7 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 | 7 | `patch-hall-sections.sql` | 校史馆章节 seed | seed-dev 已含 |
 | 8 | `patch-hall-vr.sql` | 展馆 VR 链接数据修正 | 仅数据 |
 | 9 | `patch-hall-real-data.sql` | 展馆真实数据补充 | 仅数据 |
+| 10 | `patch-token-version.sql` | JWT `token_version`（改密后旧 token 失效） | ✅ 已并入；**可重复执行** |
 | 10 | `patch-loadtest.sql` | 压测专用数据 | 非日常 |
 | 11 | `patch-hall-vr-links-20260711.sql` | 校园安全教育馆、西部山区安全基地 VR 链接 | 仅数据 |
 | 12 | `patch-point-record-unique-cleanup.sql` | **旧库** `point_record` 重复流水查重/清理（加唯一键前） | — |

@@ -1,4 +1,4 @@
-import { get, post, put } from './request'
+import { get, post, put, del } from './request'
 import type { PageResult, ResourceItem } from '@/types/api'
 
 export interface ResourceQuery {
@@ -50,6 +50,10 @@ export function publishResource(id: number) {
 
 export function unpublishResource(id: number) {
   return put<ResourceItem>(`/admin/resources/${id}/unpublish`)
+}
+
+export function removeResource(id: number) {
+  return del<void>(`/admin/resources/${id}`)
 }
 
 /** 上架资源选项（供课程配套资源多选） */

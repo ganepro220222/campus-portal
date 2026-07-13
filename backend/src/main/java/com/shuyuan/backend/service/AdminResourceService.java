@@ -106,6 +106,17 @@ public class AdminResourceService {
         return detail(id);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        adminPermissionService.require("course:write");
+        Resource resource = requireResource(id);
+        if (resource.getStatus() != null && resource.getStatus() == 1) {
+            throw new BusinessException(400, "请先下架资源，再删除到回收站");
+        }
+        resourceMapper.deleteById(id);
+        searchIndexSyncService.removeResource(id);
+    }
+
     private Resource requireResource(Long id) {
         Resource resource = resourceMapper.selectById(id);
         if (resource == null) {

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, ChatDotSquare, List, Reading, Connection, Grid, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, ChatDotSquare, List, Reading, Connection, Grid, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets, DeleteFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -95,6 +95,12 @@ const router = createRouter({
           name: 'ContentDocs',
           component: () => import('@/views/content/ContentDocView.vue'),
           meta: { title: '内容配置', permission: 'admin:super' }
+        },
+        {
+          path: 'recycle-bin',
+          name: 'RecycleBin',
+          component: () => import('@/views/content/RecycleBinView.vue'),
+          meta: { title: '回收站', permission: 'admin:super' }
         },
         {
           path: 'knowledge',
@@ -200,7 +206,8 @@ export const menuItems: MenuNode[] = [
       { path: '/courses', title: '课程管理', icon: VideoCamera, permissions: ['course:read'] },
       { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
       { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
-      { path: '/categories', title: '分类管理', icon: Grid, permissions: ['category:read'] }
+      { path: '/categories', title: '分类管理', icon: Grid, permissions: ['category:read'] },
+      { path: '/recycle-bin', title: '回收站', icon: DeleteFilled, permissions: ['admin:super'] }
     ]
   },
   {

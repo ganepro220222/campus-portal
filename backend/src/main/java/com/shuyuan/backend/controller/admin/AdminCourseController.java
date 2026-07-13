@@ -71,4 +71,10 @@ public class AdminCourseController {
     public Result<Map<String, Object>> updateSubtitle(@PathVariable Long id, @RequestBody SubtitleUpdateRequest req) {
         return Result.ok(adminCourseService.updateSubtitle(id, req));
     }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        adminCourseService.delete(id);
+        return Result.ok();
+    }
 }

@@ -75,4 +75,10 @@ public class AdminActivityController {
             HttpServletResponse response) throws IOException {
         adminEnrollService.exportExcel(id, scope, response);
     }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        adminActivityService.delete(id);
+        return Result.ok();
+    }
 }

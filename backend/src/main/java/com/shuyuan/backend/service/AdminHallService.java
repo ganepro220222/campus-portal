@@ -124,6 +124,17 @@ public class AdminHallService {
         return detail(id);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        adminPermissionService.require("hall:write");
+        Hall hall = requireHall(id);
+        if (hall.getStatus() != null && hall.getStatus() == 1) {
+            throw new BusinessException(400, "请先下架展馆，再删除到回收站");
+        }
+        hallMapper.deleteById(id);
+        searchIndexSyncService.removeHall(id);
+    }
+
     private Hall requireHall(Long id) {
         Hall hall = hallMapper.selectById(id);
         if (hall == null) {

@@ -60,6 +60,12 @@
             type="warning"
             @click="onUnpublish(row)"
           >下架</el-button>
+          <el-button
+            v-if="canWrite && row.status !== 1"
+            link
+            type="danger"
+            @click="onDelete(row)"
+          >删除</el-button>
           <span v-if="!canWrite" class="text-muted">—</span>
         </template>
       </el-table-column>
@@ -114,7 +120,8 @@ const {
   openDialog,
   onSave,
   onPublish,
-  onUnpublish
+  onUnpublish,
+  onDelete
 } = useCraftList()
 </script>
 

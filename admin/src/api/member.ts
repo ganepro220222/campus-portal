@@ -48,6 +48,11 @@ export function updateMemberStatus(id: number, status: number) {
   return put<MemberItem>(`/admin/members/${id}/status?status=${status}`)
 }
 
+/** 清退：脱敏并禁用账号，保留历史统计外键，不物理删除 */
+export function anonymizeMember(id: number) {
+  return put<MemberItem>(`/admin/members/${id}/anonymize`)
+}
+
 export async function downloadMemberImportTemplate() {
   const auth = useAuthStore()
   const res = await axios.get('/api/v1/admin/members/import-template', {

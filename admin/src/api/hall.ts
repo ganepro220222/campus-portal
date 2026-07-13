@@ -1,4 +1,4 @@
-import { get, post, put } from './request'
+import { get, post, put, del } from './request'
 import type { HallItem, PageResult } from '@/types/api'
 
 export function fetchHalls(page = 1, size = 20) {
@@ -23,4 +23,8 @@ export function publishHall(id: number) {
 
 export function unpublishHall(id: number) {
   return put<HallItem>(`/admin/halls/${id}/unpublish`)
+}
+
+export function removeHall(id: number) {
+  return del<void>(`/admin/halls/${id}`)
 }

@@ -3,8 +3,11 @@ package com.shuyuan.backend.controller.admin;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.dto.HallSaveRequest;
+import com.shuyuan.backend.dto.ValidationGroups.Create;
+import com.shuyuan.backend.dto.ValidationGroups.Update;
 import com.shuyuan.backend.service.AdminHallService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -31,12 +34,13 @@ public class AdminHallController {
     }
 
     @PostMapping
-    public Result<Map<String, Object>> create(@RequestBody HallSaveRequest req) {
+    public Result<Map<String, Object>> create(@Validated(Create.class) @RequestBody HallSaveRequest req) {
         return Result.ok(adminHallService.create(req));
     }
 
     @PutMapping("/{id}")
-    public Result<Map<String, Object>> update(@PathVariable Long id, @RequestBody HallSaveRequest req) {
+    public Result<Map<String, Object>> update(@PathVariable Long id,
+                                              @Validated(Update.class) @RequestBody HallSaveRequest req) {
         return Result.ok(adminHallService.update(id, req));
     }
 

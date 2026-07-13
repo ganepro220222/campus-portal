@@ -9,7 +9,8 @@
     "test:deploy-env": "node scripts/test-deploy-env.js",
     "test:mock-guard": "node scripts/test-mock-guard.js",
     "test:sync-navigate-appids": "node scripts/test-sync-navigate-appids.js",
-    "preflight:local": "npm run test:deploy-env && npm run check:deploy-env && npm run test:mock-guard && npm run test:sync-navigate-appids",
+    "test:release-gate": "node scripts/test-release-gate.js",
+    "preflight:local": "npm run test:deploy-env && npm run check:deploy-env && npm run test:mock-guard && npm run test:sync-navigate-appids && npm run test:release-gate",
     "load:enroll": "node scripts/load/enroll-concurrent.mjs",
     "load:browse": "node scripts/load/browse-load.mjs"
   }

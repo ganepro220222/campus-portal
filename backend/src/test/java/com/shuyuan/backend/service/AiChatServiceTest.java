@@ -14,10 +14,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.verify;
@@ -67,7 +69,11 @@ class AiChatServiceTest {
         chunk.setDocId(2L);
         chunk.setChunkText("阳明心学强调知行合一。");
         when(knowledgeService.retrieve("阳明文化", 5)).thenReturn(List.of(chunk));
-        when(aiClientService.chat(any(), any())).thenReturn("根据书院资料，阳明心学强调知行合一。");
+        when(aiClientService.chat(any(), any())).thenAnswer(invocation -> {
+            assertFalse(TransactionSynchronizationManager.isActualTransactionActive(),
+                    "外部 AI 调用不应处于数据库事务中");
+            return "根据书院资料，阳明心学强调知行合一。";
+        });
         when(rateLimitService.getUserCalendarDayUsage("ai", 1L)).thenReturn(3);
 
         AiChatRequest req = new AiChatRequest();

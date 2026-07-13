@@ -54,11 +54,26 @@ class ResourceServiceTest {
     }
 
     @Test
+    void detail_doesNotExposeSignedFileUrls() {
+        Resource resource = activeResource();
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(resource);
+        when(categoryService.nameMap("resource")).thenReturn(Map.of());
+
+        Map<String, Object> result = resourceService.detail(RESOURCE_ID);
+
+        assertEquals(true, result.get("hasFile"));
+        assertFalse(result.containsKey("fileUrl"));
+        assertFalse(result.containsKey("previewUrl"));
+        verify(ossService, never()).signUrl(anyString());
+        verify(ossService, never()).signMediaUrl(anyString());
+    }
+
+    @Test
     void download_recordsAndIncrementsAtomically() {
         Resource resource = activeResource();
         when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(resource);
         when(resourceMapper.incrDownloadCount(RESOURCE_ID)).thenReturn(1);
-        when(ossService.signUrl(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        when(ossService.signMediaUrl(anyString())).thenAnswer(inv -> inv.getArgument(0));
 
         Map<String, Object> result = resourceService.download(RESOURCE_ID);
 

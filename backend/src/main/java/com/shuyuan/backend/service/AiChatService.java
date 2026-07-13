@@ -1,8 +1,6 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.ShuyuanProperties;
@@ -21,7 +19,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,8 +30,8 @@ public class AiChatService {
     private final KnowledgeService knowledgeService;
     private final AiClientService aiClientService;
     private final RateLimitService rateLimitService;
+    private final AiChatPersistenceService aiChatPersistenceService;
     private final ShuyuanProperties properties;
-    private final ObjectMapper objectMapper;
 
     /** 当前用户今日 AI 问答剩余次数 */
     public Map<String, Object> quota() {
@@ -102,23 +99,8 @@ public class AiChatService {
             safetyStatus = "blocked";
         }
 
-        return saveChatTurn(sessionId, question, answer, chunks, safetyStatus);
-    }
-
-    @Transactional
-    protected Map<String, Object> saveChatTurn(Long sessionId, String question, String answer,
-                                             List<KnowledgeChunk> chunks, String safetyStatus) {
-        saveMessage(sessionId, "user", question, null, "pass");
-        AiMessage assistant = saveMessage(sessionId, "assistant", answer, chunks, safetyStatus);
-
-        Map<String, Object> vo = messageVo(assistant);
-        vo.put("sources", chunks.stream().map(c -> {
-            Map<String, Object> s = new HashMap<>();
-            s.put("chunkId", c.getId());
-            s.put("docId", c.getDocId());
-            s.put("excerpt", excerpt(c.getChunkText()));
-            return s;
-        }).toList());
+        Map<String, Object> vo = aiChatPersistenceService.saveChatTurn(
+                sessionId, question, answer, chunks, safetyStatus);
         vo.putAll(quotaFields());
         return vo;
     }
@@ -129,26 +111,6 @@ public class AiChatService {
         fields.put("dailyLimit", q.get("dailyLimit"));
         fields.put("remainingToday", q.get("remaining"));
         return fields;
-    }
-
-    private AiMessage saveMessage(Long sessionId, String role, String content,
-                                  List<KnowledgeChunk> chunks, String safetyStatus) {
-        AiMessage msg = new AiMessage();
-        msg.setSessionId(sessionId);
-        msg.setRole(role);
-        msg.setContent(content);
-        msg.setSafetyStatus(safetyStatus);
-        msg.setCreatedAt(LocalDateTime.now());
-        if (chunks != null && !chunks.isEmpty()) {
-            List<Long> ids = chunks.stream().map(KnowledgeChunk::getId).collect(Collectors.toList());
-            try {
-                msg.setSourceChunkIds(objectMapper.writeValueAsString(ids));
-            } catch (JsonProcessingException ignored) {
-                msg.setSourceChunkIds("[]");
-            }
-        }
-        aiMessageMapper.insert(msg);
-        return msg;
     }
 
     private AiSession requireOwnedSession(Long sessionId, Long memberId) {
@@ -183,12 +145,5 @@ public class AiChatService {
         m.put("safetyStatus", msg.getSafetyStatus());
         m.put("createdAt", FormatUtils.formatDateTime(msg.getCreatedAt()));
         return m;
-    }
-
-    private String excerpt(String text) {
-        if (text == null) {
-            return "";
-        }
-        return text.length() > 120 ? text.substring(0, 120) + "…" : text;
     }
 }

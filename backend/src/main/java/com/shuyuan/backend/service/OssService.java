@@ -68,6 +68,11 @@ public class OssService {
      * 将库中存储的地址转为可访问 URL；OSS 未启用时原样返回（便于本地 dev 手填 CDN 地址）
      */
     public String signUrl(String stored) {
+        return signUrl(stored, ossProperties.getSignExpireSeconds());
+    }
+
+    /** 按场景指定签名有效期（秒），用于视频/资料等敏感媒体 */
+    public String signUrl(String stored, int expireSeconds) {
         if (!StringUtils.hasText(stored)) {
             return stored;
         }
@@ -78,14 +83,24 @@ public class OssService {
         if (!StringUtils.hasText(objectKey)) {
             return stored;
         }
-        return signObjectKey(objectKey);
+        int ttl = expireSeconds > 0 ? expireSeconds : ossProperties.getSignExpireSeconds();
+        return signObjectKey(objectKey, ttl);
+    }
+
+    /** 视频/字幕/资料文件：使用较短有效期 */
+    public String signMediaUrl(String stored) {
+        return signUrl(stored, ossProperties.getMediaSignExpireSeconds());
     }
 
     private String signObjectKey(String objectKey) {
+        return signObjectKey(objectKey, ossProperties.getSignExpireSeconds());
+    }
+
+    private String signObjectKey(String objectKey, int expireSeconds) {
         OSS client = null;
         try {
             client = buildClient();
-            Date expire = new Date(System.currentTimeMillis() + ossProperties.getSignExpireSeconds() * 1000L);
+            Date expire = new Date(System.currentTimeMillis() + expireSeconds * 1000L);
             String signed = client.generatePresignedUrl(ossProperties.getBucket(), objectKey, expire).toString();
             return rewriteCdnHost(signed);
         } catch (BusinessException e) {

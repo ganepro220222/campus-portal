@@ -2,6 +2,7 @@ package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.dto.CourseProgressRequest;
 import com.shuyuan.backend.entity.Course;
 import com.shuyuan.backend.entity.CourseProgress;
@@ -11,11 +12,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -37,8 +38,10 @@ class CourseProgressServiceTest {
     private PointService pointService;
     @Mock
     private EventLogService eventLogService;
+    @Mock
+    private RateLimitService rateLimitService;
 
-    @InjectMocks
+    private ShuyuanProperties properties;
     private CourseProgressService courseProgressService;
 
     private static final Long MEMBER_ID = 9L;
@@ -47,6 +50,11 @@ class CourseProgressServiceTest {
     @BeforeEach
     void setUp() {
         MemberContext.setMemberId(MEMBER_ID);
+        properties = new ShuyuanProperties();
+        properties.getRateLimit().setCourseCompletePerHour(5);
+        courseProgressService = new CourseProgressService(
+                courseProgressMapper, courseMapper, pointService, eventLogService,
+                rateLimitService, properties);
     }
 
     @AfterEach
@@ -81,6 +89,8 @@ class CourseProgressServiceTest {
 
         when(courseProgressMapper.selectOne(any())).thenReturn(existing);
         doReturn(1).when(courseProgressMapper).updateById(any(CourseProgress.class));
+        when(rateLimitService.tryAcquireUser(eq("course-complete"), eq(MEMBER_ID), eq(5), eq(Duration.ofHours(1))))
+                .thenReturn(true);
 
         CourseProgressRequest req = new CourseProgressRequest();
         req.setLastPositionSeconds(540);
@@ -90,6 +100,35 @@ class CourseProgressServiceTest {
 
         assertEquals(true, vo.get("completed"));
         verify(pointService).awardCourseComplete(MEMBER_ID, COURSE_ID);
+        verify(eventLogService).record("complete", "course", COURSE_ID);
+    }
+
+    @Test
+    void reportProgress_skipsPointsWhenHourlyCompleteLimitExceeded() {
+        stubPublishedCourse();
+        CourseProgress existing = new CourseProgress();
+        existing.setId(1L);
+        existing.setMemberId(MEMBER_ID);
+        existing.setCourseId(COURSE_ID);
+        existing.setLastPositionSeconds(300);
+        existing.setTotalDurationSeconds(600);
+        existing.setProgressPercent(new BigDecimal("50.00"));
+        existing.setCompleted(0);
+        existing.setUpdatedAt(LocalDateTime.now().minusMinutes(3));
+
+        when(courseProgressMapper.selectOne(any())).thenReturn(existing);
+        doReturn(1).when(courseProgressMapper).updateById(any(CourseProgress.class));
+        when(rateLimitService.tryAcquireUser(eq("course-complete"), eq(MEMBER_ID), eq(5), eq(Duration.ofHours(1))))
+                .thenReturn(false);
+
+        CourseProgressRequest req = new CourseProgressRequest();
+        req.setLastPositionSeconds(540);
+        req.setTotalDurationSeconds(600);
+
+        Map<String, Object> vo = courseProgressService.reportProgress(COURSE_ID, req);
+
+        assertEquals(true, vo.get("completed"));
+        verify(pointService, never()).awardCourseComplete(anyLong(), anyLong());
         verify(eventLogService).record("complete", "course", COURSE_ID);
     }
 

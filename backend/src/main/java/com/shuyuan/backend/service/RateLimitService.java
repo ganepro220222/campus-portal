@@ -35,6 +35,26 @@ public class RateLimitService {
         check(scene, "u:" + userId, limit, window);
     }
 
+    /**
+     * 尝试占用用户配额：未超限则递增并返回 true；超限返回 false 且不抛异常。
+     * 用于课程完成积分等「可降级」场景。
+     */
+    public boolean tryAcquireUser(String scene, Long userId, int limit, Duration window) {
+        if (userId == null || !properties.getRateLimit().isEnabled() || limit <= 0) {
+            return true;
+        }
+        String redisKey = PREFIX + scene + ":u:" + userId;
+        Long count = redis.opsForValue().increment(redisKey);
+        if (count != null && count == 1L) {
+            redis.expire(redisKey, window);
+        }
+        if (count != null && count > limit) {
+            redis.opsForValue().decrement(redisKey);
+            return false;
+        }
+        return true;
+    }
+
     /** 按自然日限流（key 含 yyyy-MM-dd，TTL 至次日 0 点） */
     public void checkUserCalendarDay(String scene, Long userId, int limit) {
         if (userId == null) {

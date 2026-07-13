@@ -10,6 +10,7 @@ import com.shuyuan.backend.mapper.ResourceMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -74,8 +75,8 @@ public class ResourceService {
         }
 
         Map<String, Object> m = new HashMap<>();
-        m.put("fileUrl", ossService.signUrl(resource.getFileUrl()));
-        m.put("previewUrl", ossService.signUrl(resource.getPreviewUrl()));
+        m.put("fileUrl", ossService.signMediaUrl(resource.getFileUrl()));
+        m.put("previewUrl", ossService.signMediaUrl(resource.getPreviewUrl()));
         m.put("fileType", resource.getFileType());
         m.put("name", resource.getName());
         return m;
@@ -103,8 +104,8 @@ public class ResourceService {
 
     private Map<String, Object> toDetailVo(Resource r, Map<Long, String> catMap) {
         Map<String, Object> m = toListItem(r, catMap);
-        m.put("fileUrl", ossService.signUrl(r.getFileUrl()));
-        m.put("previewUrl", ossService.signUrl(r.getPreviewUrl()));
+        m.put("hasFile", StringUtils.hasText(r.getFileUrl()));
+        m.put("hasPreview", StringUtils.hasText(r.getPreviewUrl()));
         return m;
     }
 

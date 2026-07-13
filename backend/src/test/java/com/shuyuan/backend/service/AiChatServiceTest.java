@@ -16,14 +16,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AiChatServiceTest {
@@ -40,6 +40,8 @@ class AiChatServiceTest {
     private AiClientService aiClientService;
     @Mock
     private RateLimitService rateLimitService;
+    @Mock
+    private AiChatPersistenceService aiChatPersistenceService;
 
     private ShuyuanProperties properties;
     @InjectMocks
@@ -53,11 +55,12 @@ class AiChatServiceTest {
         properties.getRateLimit().setAiPerDay(20);
         aiChatService = new AiChatService(
                 aiSessionMapper, aiMessageMapper, contentSafetyService,
-                knowledgeService, aiClientService, rateLimitService, properties, new ObjectMapper());
+                knowledgeService, aiClientService, rateLimitService,
+                aiChatPersistenceService, properties);
     }
 
     @Test
-    void chat_persistsAssistantReply() {
+    void chat_delegatesPersistenceToSeparateBean() {
         com.shuyuan.backend.common.context.MemberContext.setMemberId(1L);
         AiSession session = new AiSession();
         session.setId(9L);
@@ -76,13 +79,20 @@ class AiChatServiceTest {
         });
         when(rateLimitService.getUserCalendarDayUsage("ai", 1L)).thenReturn(3);
 
+        Map<String, Object> persisted = new HashMap<>();
+        persisted.put("role", "assistant");
+        persisted.put("content", "根据书院资料，阳明心学强调知行合一。");
+        when(aiChatPersistenceService.saveChatTurn(eq(9L), eq("阳明文化"), anyString(), anyList(), eq("pass")))
+                .thenReturn(persisted);
+
         AiChatRequest req = new AiChatRequest();
         req.setQuestion("阳明文化");
         var result = aiChatService.chat(9L, req);
 
         assertEquals("assistant", result.get("role"));
         assertEquals(17, result.get("remainingToday"));
-        verify(aiMessageMapper, atLeast(2)).insert(any(AiMessage.class));
+        verify(aiChatPersistenceService).saveChatTurn(eq(9L), eq("阳明文化"), anyString(), anyList(), eq("pass"));
+        verify(aiMessageMapper, never()).insert(any(AiMessage.class));
         com.shuyuan.backend.common.context.MemberContext.clear();
     }
 

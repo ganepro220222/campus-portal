@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.Course;
 import com.shuyuan.backend.entity.CourseResource;
@@ -11,6 +12,7 @@ import com.shuyuan.backend.mapper.ResourceMapper;
 import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,13 +47,11 @@ public class CourseService {
     }
 
     public Map<String, Object> detail(Long id) {
-        Course course = courseMapper.selectById(id);
-        if (course == null || course.getStatus() == null || course.getStatus() != 1) {
-            throw new BusinessException(404, "课程不存在");
-        }
+        Course course = requirePublishedCourse(id);
         Map<Long, String> catMap = categoryService.nameMap("course");
         String categoryName = categoryService.getName(course.getCategoryId(), catMap);
         boolean hasSubtitle = "ready".equals(course.getSubtitleStatus());
+        boolean hasVideo = StringUtils.hasText(course.getVideoUrl());
 
         Map<String, Object> m = new HashMap<>();
         m.put("id", course.getId());
@@ -64,12 +64,32 @@ public class CourseService {
         m.put("targetAudience", course.getTargetAudience());
         m.put("duration", course.getDurationMinutes() != null ? course.getDurationMinutes() + " 分钟" : "");
         m.put("openTime", FormatUtils.formatDate(course.getStartTime()));
-        m.put("videoUrl", ossService.signUrl(course.getVideoUrl()));
-        m.put("subtitleUrl", ossService.signUrl(course.getSubtitleUrl()));
+        m.put("hasVideo", hasVideo);
         m.put("hasSubtitle", hasSubtitle);
         m.put("tags", List.of(categoryName, hasSubtitle ? "AI 字幕" : "在线课程"));
         m.put("resources", loadLinkedResources(id));
         eventLogService.record("view", "course", id);
+        return m;
+    }
+
+    /** 登录后获取课程视频/字幕短时签名地址 */
+    public Map<String, Object> play(Long id) {
+        requireMemberId();
+        Course course = requirePublishedCourse(id);
+        boolean hasSubtitle = "ready".equals(course.getSubtitleStatus());
+        boolean hasVideo = StringUtils.hasText(course.getVideoUrl());
+
+        Map<String, Object> m = new HashMap<>();
+        m.put("courseId", course.getId());
+        m.put("hasVideo", hasVideo);
+        m.put("hasSubtitle", hasSubtitle);
+        if (hasVideo) {
+            m.put("videoUrl", ossService.signMediaUrl(course.getVideoUrl()));
+        }
+        if (hasSubtitle && StringUtils.hasText(course.getSubtitleUrl())) {
+            m.put("subtitleUrl", ossService.signMediaUrl(course.getSubtitleUrl()));
+        }
+        eventLogService.record("play", "course", id);
         return m;
     }
 
@@ -125,5 +145,21 @@ public class CourseService {
         m.put("tagGold", hasSubtitle);
         m.put("desc", c.getIntro());
         return m;
+    }
+
+    private Course requirePublishedCourse(Long id) {
+        Course course = courseMapper.selectById(id);
+        if (course == null || course.getStatus() == null || course.getStatus() != 1) {
+            throw new BusinessException(404, "课程不存在");
+        }
+        return course;
+    }
+
+    private Long requireMemberId() {
+        Long memberId = MemberContext.getMemberId();
+        if (memberId == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+        return memberId;
     }
 }

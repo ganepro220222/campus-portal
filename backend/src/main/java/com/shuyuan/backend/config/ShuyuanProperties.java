@@ -67,6 +67,10 @@ public class ShuyuanProperties {
         private int aiPerDay = 20;
         /** 公开小程序码：每 IP 每分钟 */
         private int wxacodePerMinute = 30;
+        /** 课程进度上报：每用户每分钟 */
+        private int progressPerMinute = 60;
+        /** 课程完成积分：每用户每小时最多完成门数（超出仍记完成但不发分） */
+        private int courseCompletePerHour = 5;
     }
 
     /** AI 问答（Phase 7） */

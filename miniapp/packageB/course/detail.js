@@ -32,7 +32,7 @@ Page({
       wx.showToast({ title: '课程信息加载中', icon: 'none' })
       return
     }
-    if (!this.data.course.videoUrl) {
+    if (!this.data.course.hasVideo) {
       wx.showToast({ title: '课程视频暂未配置', icon: 'none' })
       return
     }

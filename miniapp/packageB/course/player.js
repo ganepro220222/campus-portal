@@ -28,28 +28,32 @@ Page({
     this._vttCues = []
     this._videoErrorRetries = 0
 
-    Promise.all([
-      get(`/courses/${id}`),
-      get(`/courses/${id}/progress`).catch(() => null)
-    ]).then(([course, progress]) => {
-      if (!course) return
-      const initialTime = progress && progress.lastPositionSeconds ? progress.lastPositionSeconds : 0
-      this.setData({
-        course,
-        videoUrl: course.videoUrl || '',
-        cover: course.cover || '',
-        hasSubtitle: !!course.hasSubtitle && !!course.subtitleUrl,
-        subtitleUrl: course.subtitleUrl || '',
-        initialTime,
-        progressPercent: progress && progress.progressPercent ? Number(progress.progressPercent) : 0,
-        completed: !!(progress && progress.completed)
+    requireLogin(() => {
+      Promise.all([
+        get(`/courses/${id}`),
+        get(`/courses/${id}/play`),
+        get(`/courses/${id}/progress`).catch(() => null)
+      ]).then(([course, play, progress]) => {
+        if (!course) return
+        const initialTime = progress && progress.lastPositionSeconds ? progress.lastPositionSeconds : 0
+        const media = play || {}
+        this.setData({
+          course,
+          videoUrl: media.videoUrl || '',
+          cover: course.cover || '',
+          hasSubtitle: !!media.hasSubtitle && !!media.subtitleUrl,
+          subtitleUrl: media.subtitleUrl || '',
+          initialTime,
+          progressPercent: progress && progress.progressPercent ? Number(progress.progressPercent) : 0,
+          completed: !!(progress && progress.completed)
+        })
+        if (media.subtitleUrl) {
+          this._loadVtt(media.subtitleUrl)
+        }
+      }).catch(err => {
+        console.warn('[course/player] 加载失败', err)
+        wx.showToast({ title: '课程加载失败', icon: 'none' })
       })
-      if (course.subtitleUrl) {
-        this._loadVtt(course.subtitleUrl)
-      }
-    }).catch(err => {
-      console.warn('[course/player] 加载失败', err)
-      wx.showToast({ title: '课程加载失败', icon: 'none' })
     })
   },
 
@@ -105,17 +109,17 @@ Page({
 
   async _reloadSignedUrls(silent) {
     try {
-      const course = await get(`/courses/${this._courseId}`)
-      if (!course || !course.videoUrl) {
+      const play = await get(`/courses/${this._courseId}/play`)
+      if (!play || !play.videoUrl) {
         throw new Error('no-video')
       }
       this.setData({
-        videoUrl: course.videoUrl,
-        subtitleUrl: course.subtitleUrl || '',
-        hasSubtitle: !!course.hasSubtitle && !!course.subtitleUrl
+        videoUrl: play.videoUrl,
+        subtitleUrl: play.subtitleUrl || '',
+        hasSubtitle: !!play.hasSubtitle && !!play.subtitleUrl
       })
-      if (course.subtitleUrl) {
-        this._loadVtt(course.subtitleUrl)
+      if (play.subtitleUrl) {
+        this._loadVtt(play.subtitleUrl)
       }
       if (!silent) {
         wx.showToast({ title: '已刷新视频地址', icon: 'none' })

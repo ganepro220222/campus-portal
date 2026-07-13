@@ -33,6 +33,7 @@ class OssServiceTest {
     void signUrl_passthrough_whenDisabled() {
         String raw = "https://cdn.example.com/videos/demo.mp4";
         assertEquals(raw, ossService.signUrl(raw));
+        assertEquals(raw, ossService.signMediaUrl(raw));
     }
 
     @Test

@@ -20,8 +20,10 @@ public class OssProperties {
     private String secretKey = "";
     /** CDN 加速域名，用于拼接对外访问地址 */
     private String cdnDomain = "";
-    /** 签名 URL 有效期（秒），默认 2 小时 */
+    /** 封面等公开元数据签名 URL 有效期（秒），默认 2 小时 */
     private int signExpireSeconds = 7200;
+    /** 视频/字幕/资料下载类签名 URL 有效期（秒），默认 15 分钟 */
+    private int mediaSignExpireSeconds = 900;
     /** 后台中转上传单文件上限（字节），默认 200MB */
     private long maxUploadBytes = 200L * 1024 * 1024;
 }

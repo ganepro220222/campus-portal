@@ -97,4 +97,19 @@ class RateLimitServiceTest {
         rateLimitService.checkIp("login", "127.0.0.1", 10, Duration.ofMinutes(1));
         verify(valueOps, never()).increment(anyString());
     }
+
+    @Test
+    void tryAcquireUser_returnsTrueWithinLimit() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+        assertEquals(true, rateLimitService.tryAcquireUser("course-complete", 9L, 5, Duration.ofHours(1)));
+    }
+
+    @Test
+    void tryAcquireUser_returnsFalseAndRollsBackWhenExceeded() {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(6L);
+        assertEquals(false, rateLimitService.tryAcquireUser("course-complete", 9L, 5, Duration.ofHours(1)));
+        verify(valueOps).decrement(anyString());
+    }
 }

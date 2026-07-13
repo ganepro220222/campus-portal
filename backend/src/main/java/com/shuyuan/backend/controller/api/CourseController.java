@@ -31,6 +31,11 @@ public class CourseController {
         return Result.ok(courseService.detail(id));
     }
 
+    @GetMapping("/{id}/play")
+    public Result<Map<String, Object>> play(@PathVariable Long id) {
+        return Result.ok(courseService.play(id));
+    }
+
     @GetMapping("/{id}/progress")
     public Result<Map<String, Object>> progress(@PathVariable Long id) {
         return Result.ok(courseProgressService.getProgress(id));

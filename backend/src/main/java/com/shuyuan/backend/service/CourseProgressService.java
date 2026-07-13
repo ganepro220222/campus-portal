@@ -3,6 +3,7 @@ package com.shuyuan.backend.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.dto.CourseProgressRequest;
 import com.shuyuan.backend.entity.Course;
 import com.shuyuan.backend.entity.CourseProgress;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +31,8 @@ public class CourseProgressService {
     private final CourseMapper courseMapper;
     private final PointService pointService;
     private final EventLogService eventLogService;
+    private final RateLimitService rateLimitService;
+    private final ShuyuanProperties properties;
 
     public Map<String, Object> getProgress(Long courseId) {
         Course course = requirePublishedCourse(courseId);
@@ -85,7 +89,11 @@ public class CourseProgressService {
         }
 
         if (newlyCompleted) {
-            pointService.awardCourseComplete(memberId, courseId);
+            int hourlyLimit = properties.getRateLimit().getCourseCompletePerHour();
+            if (rateLimitService.tryAcquireUser(
+                    "course-complete", memberId, hourlyLimit, Duration.ofHours(1))) {
+                pointService.awardCourseComplete(memberId, courseId);
+            }
             eventLogService.record("complete", "course", courseId);
         }
 

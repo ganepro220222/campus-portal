@@ -74,6 +74,15 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             }
             return true;
         }
+        if (uri.matches(".*/api/v1/courses/\\d+/progress")) {
+            Long memberId = MemberContext.getMemberId();
+            if (memberId != null) {
+                rateLimitService.checkUser("course-progress", memberId, cfg.getProgressPerMinute(), Duration.ofMinutes(1));
+            } else {
+                rateLimitService.checkIp("course-progress", ip, cfg.getProgressPerMinute(), Duration.ofMinutes(1));
+            }
+            return true;
+        }
         if (uri.endsWith("/api/v1/admin/ai/polish")) {
             Long adminId = AdminContext.getAdminId();
             if (adminId != null) {

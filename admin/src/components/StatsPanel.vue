@@ -18,6 +18,7 @@
 
     <div v-loading="loading" class="kpi-row">
       <div v-for="k in kpiCards" :key="k.label" class="kpi-card">
+        <span class="kpi-accent" :style="{ background: k.accent }"></span>
         <div class="kpi-val">{{ k.value }}</div>
         <div class="kpi-label">{{ k.label }}</div>
         <div v-if="k.hint" class="kpi-hint">{{ k.hint }}</div>
@@ -89,20 +90,23 @@ const kpiCards = computed(() => {
     {
       label: '今日行为次数',
       hint: '含内容浏览、报名等操作记录',
-      value: o?.pv ?? '—'
+      value: o?.pv ?? '—',
+      accent: '#3F57B5'
     },
     {
       label: '今日来访用户',
       hint: '当日有操作的登录用户数',
-      value: o?.uv ?? '—'
+      value: o?.uv ?? '—',
+      accent: '#5C9A6B'
     },
     {
       label: '今日活跃用户',
       hint: '当日打开过小程序的登录用户',
-      value: o?.dau ?? '—'
+      value: o?.dau ?? '—',
+      accent: '#C0A24E'
     },
-    { label: '今日新增用户', hint: '', value: o?.newMember ?? '—' },
-    { label: '今日报名', hint: '', value: o?.enrollCount ?? '—' }
+    { label: '今日新增用户', hint: '', value: o?.newMember ?? '—', accent: '#4E7CC4' },
+    { label: '今日报名', hint: '', value: o?.enrollCount ?? '—', accent: '#A0505A' }
   ]
 })
 
@@ -224,11 +228,28 @@ onBeforeUnmount(() => {
   margin-bottom: 18px;
 }
 .kpi-card {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, #f8faff 0%, #f2f6fc 100%);
   border: 1px solid #e8edf5;
   border-radius: 12px;
-  padding: 16px;
+  padding: 18px 16px 16px;
   text-align: center;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 26px rgba(31, 40, 90, 0.10);
+}
+.kpi-accent {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 46px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  opacity: 0.9;
 }
 .kpi-val {
   font-size: 26px;

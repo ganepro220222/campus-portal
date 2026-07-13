@@ -2,7 +2,7 @@
   <el-container class="admin-layout">
     <el-aside :width="collapsed ? '68px' : '232px'" class="aside">
       <div class="logo" @click="router.push('/dashboard')">
-        <span class="logo-seal"><img :src="shuMark" alt="书" /></span>
+        <span class="logo-seal"><img :src="sealMark" alt="印" /></span>
         <span v-show="!collapsed" class="logo-text">
           <span class="logo-zh">云端书院</span>
           <span class="logo-en">管理后台</span>
@@ -80,7 +80,7 @@ import { Expand, Fold, HomeFilled } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { filterMenus, isMenuGroup, type MenuGroup } from '@/router'
-import shuMark from '@/assets/brand-shu.png'
+import sealMark from '@/assets/brand-seal.png'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 
 const route = useRoute()
@@ -150,17 +150,19 @@ async function onLogout() {
 .logo-seal {
   width: 38px;
   height: 38px;
-  border-radius: 50%;
-  background: rgba(201, 162, 39, 0.14);
-  border: 1.5px solid rgba(201, 162, 39, 0.7);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid rgba(201, 162, 39, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 0 14px rgba(201, 162, 39, 0.22);
 }
 .logo-seal img {
-  height: 23px;
-  width: auto;
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
   display: block;
 }
 

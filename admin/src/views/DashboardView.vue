@@ -45,7 +45,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import StatsPanel from '@/components/StatsPanel.vue'
-import shuWatermark from '@/assets/brand-shu-white.png'
+import shuWatermark from '@/assets/brand-seal-white.png'
 
 const auth = useAuthStore()
 
@@ -141,11 +141,11 @@ const today = computed(() => {
 }
 .welcome-seal {
   position: absolute;
-  right: 18px;
-  bottom: -22px;
-  height: 178px;
+  right: 24px;
+  bottom: -8px;
+  height: 150px;
   width: auto;
-  opacity: 0.07;
+  opacity: 0.08;
   z-index: 1;
   pointer-events: none;
 }

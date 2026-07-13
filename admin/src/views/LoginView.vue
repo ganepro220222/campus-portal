@@ -5,7 +5,7 @@
       <div class="brand-side">
         <div class="stars"></div>
         <div class="brand-inner">
-          <div class="seal"><img :src="shuMark" alt="书" /></div>
+          <div class="seal"><img :src="sealMark" alt="中华文化书院印" /></div>
           <h1 class="brand-title">云端书院</h1>
           <div class="brand-divider"><span></span>❖<span></span></div>
           <p class="brand-sub">贵州交通职业大学 · 中华文化书院</p>
@@ -61,7 +61,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { Document, Calendar, VideoCamera } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
-import shuMark from '@/assets/brand-shu.png'
+import sealMark from '@/assets/brand-seal.png'
 
 const route = useRoute()
 const router = useRouter()
@@ -141,20 +141,22 @@ async function onSubmit() {
   z-index: 2;
   flex: 1;
 }
+/* 钤印：金色篆书「书」印 + 方形金环 + 光晕 */
 .seal {
-  width: 66px;
-  height: 66px;
-  border-radius: 50%;
+  width: 68px;
+  height: 68px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.06);
-  border: 2px solid rgba(201, 162, 39, 0.75);
+  border: 2px solid rgba(201, 162, 39, 0.78);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 32px rgba(150, 180, 235, 0.35);
+  box-shadow: 0 0 30px rgba(201, 162, 39, 0.30), 0 0 20px rgba(150, 180, 235, 0.28);
 }
 .seal img {
-  height: 40px;
-  width: auto;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
   display: block;
 }
 .brand-title {

@@ -66,10 +66,11 @@
           <OssUploadInput
             v-model="form.iconUrl"
             scene="image"
-            accept="image/*"
+            accept=".png,.jpg,.jpeg"
             upload-label="上传图标"
             done-text="图标已上传"
-            hint="选填，留空则使用默认色块"
+            aspect-hint="建议 1:1 正方形，PNG/JPG，边长 200–512px"
+            hint="选填，留空则使用默认色块。微信无法自动获取对方小程序 logo，请上传对方官方图标（正方形效果最佳）。"
           />
         </el-form-item>
         <el-form-item label="对接方式" prop="contentType">

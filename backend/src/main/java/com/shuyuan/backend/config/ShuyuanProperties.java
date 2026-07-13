@@ -133,5 +133,9 @@ public class ShuyuanProperties {
         private String accessKeySecret = "";
         private String appKey = "";
         private String region = "cn-shanghai";
+        /** 每轮 ASR 轮询最大任务数 */
+        private int pollBatchSize = 50;
+        /** processing 超时（小时）后自动 failed */
+        private int pollTimeoutHours = 24;
     }
 }

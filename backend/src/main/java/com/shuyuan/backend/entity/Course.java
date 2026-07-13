@@ -26,6 +26,14 @@ public class Course {
     private String subtitleUrl;
     private String subtitleStatus;
     private String subtitleTaskId;
+    /** ASR 任务开始时间 */
+    private java.time.LocalDateTime subtitleAsrStartedAt;
+    /** 最近一次 ASR 轮询时间 */
+    private java.time.LocalDateTime subtitleAsrLastPollAt;
+    /** ASR 轮询次数 */
+    private Integer subtitleAsrAttemptCount;
+    /** ASR 最近一次错误（运维排查，不暴露给小程序） */
+    private String subtitleAsrLastError;
     private Integer status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

@@ -65,13 +65,53 @@ class AdminCourseServiceSubtitleTest {
         course.setSubtitleStatus("none");
         when(courseMapper.selectById(10L)).thenReturn(course, course);
         when(asrService.isConfigured()).thenReturn(true);
-        when(ossService.signUrl("videos/demo.mp4")).thenReturn("https://cdn.example.com/videos/demo.mp4");
+        when(ossService.signTrustedVideoUrlForAsr("videos/demo.mp4"))
+                .thenReturn("https://cdn.example.com/videos/demo.mp4");
         when(asrService.submit("https://cdn.example.com/videos/demo.mp4")).thenReturn("task-abc");
 
         adminCourseService.triggerSubtitle(10L);
 
         verify(courseMapper).updateById(org.mockito.ArgumentMatchers.argThat((Course u) ->
                 "processing".equals(u.getSubtitleStatus())
-                        && "task-abc".equals(u.getSubtitleTaskId())));
+                        && "task-abc".equals(u.getSubtitleTaskId())
+                        && u.getSubtitleAsrStartedAt() != null
+                        && Integer.valueOf(0).equals(u.getSubtitleAsrAttemptCount())));
+    }
+
+    @Test
+    void triggerSubtitle_rejectsUntrustedVideoUrl() {
+        Course course = new Course();
+        course.setId(11L);
+        course.setVideoUrl("https://evil.example.com/videos/a.mp4");
+        course.setSubtitleStatus("none");
+        when(courseMapper.selectById(11L)).thenReturn(course);
+        when(asrService.isConfigured()).thenReturn(true);
+        when(ossService.signTrustedVideoUrlForAsr("https://evil.example.com/videos/a.mp4"))
+                .thenThrow(new BusinessException(400, "视频地址域名不在允许范围内"));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> adminCourseService.triggerSubtitle(11L));
+
+        assertEquals(400, ex.getCode());
+        verify(asrService, never()).submit(any());
+        verify(courseMapper, never()).updateById(any(Course.class));
+    }
+
+    @Test
+    void triggerSubtitle_rejectsWhenOssDisabledForAsr() {
+        Course course = new Course();
+        course.setId(12L);
+        course.setVideoUrl("videos/demo.mp4");
+        course.setSubtitleStatus("none");
+        when(courseMapper.selectById(12L)).thenReturn(course);
+        when(asrService.isConfigured()).thenReturn(true);
+        when(ossService.signTrustedVideoUrlForAsr("videos/demo.mp4"))
+                .thenThrow(new BusinessException(503, "ASR 字幕生成要求 OSS 已启用"));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> adminCourseService.triggerSubtitle(12L));
+
+        assertEquals(503, ex.getCode());
+        verify(asrService, never()).submit(any());
     }
 }

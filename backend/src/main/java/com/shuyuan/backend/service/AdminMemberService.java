@@ -1,8 +1,6 @@
 package com.shuyuan.backend.service;
 
 import com.alibaba.excel.EasyExcel;
-import com.alibaba.excel.context.AnalysisContext;
-import com.alibaba.excel.read.listener.ReadListener;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
@@ -85,29 +83,57 @@ public class AdminMemberService {
         }
 
         ImportAccumulator acc = new ImportAccumulator();
+        List<Map<Integer, String>> rows;
         try {
-            EasyExcel.read(file.getInputStream(), MemberImportRow.class, new ReadListener<MemberImportRow>() {
-                @Override
-                public void invoke(MemberImportRow row, AnalysisContext context) {
-                    acc.totalRows++;
-                    if (acc.totalRows > MAX_IMPORT_ROWS) {
-                        throw new BusinessException(400, "单次导入不得超过 " + MAX_IMPORT_ROWS + " 行");
-                    }
-                    int rowNum = context.readRowHolder().getRowIndex() + 1;
-                    processRow(row, rowNum, acc);
-                }
-
-                @Override
-                public void doAfterAllAnalysed(AnalysisContext context) {
-                    // no-op
-                }
-            }).sheet().doRead();
-        } catch (BusinessException e) {
-            throw e;
-        } catch (IOException e) {
-            throw new BusinessException(400, "读取 Excel 失败");
+            // 以「无模型 + 首行不作为表头」方式读取，避免 EasyExcel 把多别名当成多级表头；
+            // 表头改由 HEADER_ALIAS 归一化匹配，兼容校方内部表的多种列名写法。
+            rows = EasyExcel.read(file.getInputStream()).sheet().headRowNumber(0).doReadSync();
         } catch (Exception e) {
-            throw new BusinessException(400, "导入失败：" + e.getMessage());
+            throw new BusinessException(400, "读取 Excel 失败：" + e.getMessage());
+        }
+        if (rows == null || rows.isEmpty()) {
+            throw new BusinessException(400, "Excel 内容为空，请下载导入模板参照填写");
+        }
+
+        // 第 1 行为表头：按别名归一化映射「列序号 -> 字段名」
+        Map<Integer, String> colToField = new HashMap<>();
+        rows.get(0).forEach((idx, header) -> {
+            String field = MemberImportRow.HEADER_ALIAS.get(MemberImportRow.normalizeHeader(header));
+            if (field != null) {
+                colToField.put(idx, field);
+            }
+        });
+        if (!colToField.containsValue("studentNo") || !colToField.containsValue("realName")) {
+            throw new BusinessException(400, "表头缺少「学号」或「姓名」列，请下载导入模板参照填写");
+        }
+
+        for (int i = 1; i < rows.size(); i++) {
+            Map<Integer, String> raw = rows.get(i);
+            if (raw == null || raw.values().stream().allMatch(v -> v == null || v.isBlank())) {
+                continue; // 跳过整行空白
+            }
+            acc.totalRows++;
+            if (acc.totalRows > MAX_IMPORT_ROWS) {
+                throw new BusinessException(400, "单次导入不得超过 " + MAX_IMPORT_ROWS + " 行");
+            }
+            MemberImportRow row = new MemberImportRow();
+            raw.forEach((idx, val) -> {
+                String field = colToField.get(idx);
+                if (field == null || val == null) {
+                    return;
+                }
+                String v = val.trim();
+                switch (field) {
+                    case "studentNo" -> row.setStudentNo(v);
+                    case "realName" -> row.setRealName(v);
+                    case "college" -> row.setCollege(v);
+                    case "grade" -> row.setGrade(v);
+                    case "phone" -> row.setPhone(v);
+                    case "idCard" -> row.setIdCard(v);
+                    default -> { }
+                }
+            });
+            processRow(row, i + 1, acc);
         }
 
         return MemberImportResult.builder()
@@ -138,9 +164,18 @@ public class AdminMemberService {
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         String fileName = URLEncoder.encode("师生导入模板.xlsx", StandardCharsets.UTF_8).replace("+", "%20");
         response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + fileName);
-        EasyExcel.write(response.getOutputStream(), MemberImportRow.class)
+        // 单行标准表头 + 一行示例数据（此前用多别名 @ExcelProperty 会被 EasyExcel 当成多级表头，
+        // 导致模板出现 7 行叠加表头且导入自动把前 6 行数据当表头吞掉）
+        List<List<String>> head = new ArrayList<>();
+        for (String h : MemberImportRow.TEMPLATE_HEADERS) {
+            head.add(List.of(h));
+        }
+        List<List<String>> sample = List.of(
+                List.of("2024001", "示例学生", "示例学院", "2024", "13800000000", "520101200001011234"));
+        EasyExcel.write(response.getOutputStream())
+                .head(head)
                 .sheet("师生账号")
-                .doWrite(List.of(sampleRow()));
+                .doWrite(sample);
     }
 
     @Transactional
@@ -240,17 +275,6 @@ public class AdminMemberService {
             throw new BusinessException(404, "用户不存在");
         }
         return member;
-    }
-
-    private static MemberImportRow sampleRow() {
-        MemberImportRow row = new MemberImportRow();
-        row.setStudentNo("2024001");
-        row.setRealName("示例学生");
-        row.setCollege("示例学院");
-        row.setGrade("2024");
-        row.setPhone("13800000000");
-        row.setIdCard("520101200001011234");
-        return row;
     }
 
     private static String trim(String s) {

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, List, Reading, School, Menu, User, Key, UserFilled, ChatLineRound, Collection, Setting } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, ChatDotSquare, List, Reading, Connection, Grid, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -186,7 +186,7 @@ export const menuItems: MenuNode[] = [
   {
     key: 'content',
     title: '内容运营',
-    icon: Collection,
+    icon: Collection, // 内容运营（内容集合）
     children: [
       { path: '/news', title: '新闻管理', icon: Document, permissions: ['news:read'] },
       { path: '/halls', title: '展馆管理', icon: OfficeBuilding, permissions: ['hall:read'] },
@@ -194,13 +194,13 @@ export const menuItems: MenuNode[] = [
       { path: '/courses', title: '课程管理', icon: VideoCamera, permissions: ['course:read'] },
       { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
       { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
-      { path: '/categories', title: '分类管理', icon: Menu, permissions: ['category:read'] }
+      { path: '/categories', title: '分类管理', icon: Grid, permissions: ['category:read'] }
     ]
   },
   {
     key: 'home',
     title: '首页配置',
-    icon: Picture,
+    icon: Monitor, // 首页配置（首页展示屏）
     children: [
       { path: '/banners', title: '首页轮播', icon: Picture, permissions: ['admin:super'] },
       { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] }
@@ -209,19 +209,19 @@ export const menuItems: MenuNode[] = [
   {
     key: 'user',
     title: '用户服务',
-    icon: UserFilled,
+    icon: Service, // 用户服务
     children: [
-      { path: '/members', title: '师生账号', icon: UserFilled, permissions: ['admin:super'] },
+      { path: '/members', title: '师生账号', icon: Postcard, permissions: ['admin:super'] },
       { path: '/feedbacks', title: '意见反馈', icon: ChatDotRound, permissions: ['admin:super'] }
     ]
   },
   {
     key: 'ai',
     title: '智能助手',
-    icon: ChatLineRound,
+    icon: MagicStick, // 智能助手
     children: [
       { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] },
-      { path: '/ai-assistant-config', title: 'AI 助手配置', icon: ChatLineRound, permissions: ['admin:super'] }
+      { path: '/ai-assistant-config', title: 'AI 助手配置', icon: ChatDotSquare, permissions: ['admin:super'] }
     ]
   },
   {
@@ -229,7 +229,7 @@ export const menuItems: MenuNode[] = [
     title: '系统管理',
     icon: Setting,
     children: [
-      { path: '/colleges', title: '关联小程序', icon: School, permissions: ['admin:super'] },
+      { path: '/colleges', title: '关联小程序', icon: Connection, permissions: ['admin:super'] },
       { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
       { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] },
       { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] }

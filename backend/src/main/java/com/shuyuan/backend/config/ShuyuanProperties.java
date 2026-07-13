@@ -45,6 +45,10 @@ public class ShuyuanProperties {
         private boolean devMode = true;
         private String appid = "";
         private String secret = "";
+        /** 小程序码内存缓存最大条数 */
+        private int wxacodeCacheMaxEntries = 64;
+        /** 小程序码缓存 TTL（秒） */
+        private int wxacodeCacheTtlSeconds = 3600;
     }
 
     /** 接口限流（Redis 固定窗口，E2-3） */
@@ -61,6 +65,8 @@ public class ShuyuanProperties {
         private int enrollPerMinute = 5;
         /** AI 问答（预留）：每用户每天 */
         private int aiPerDay = 20;
+        /** 公开小程序码：每 IP 每分钟 */
+        private int wxacodePerMinute = 30;
     }
 
     /** AI 问答（Phase 7） */

@@ -30,12 +30,17 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
         String method = request.getMethod();
-        if (!"POST".equalsIgnoreCase(method)) {
-            return true;
-        }
         String uri = request.getRequestURI();
         String ip = clientIpResolver.resolve(request);
         ShuyuanProperties.RateLimit cfg = properties.getRateLimit();
+
+        if (uri.endsWith("/api/v1/miniapp/wxacode")) {
+            rateLimitService.checkIp("wxacode", ip, cfg.getWxacodePerMinute(), Duration.ofMinutes(1));
+            return true;
+        }
+        if (!"POST".equalsIgnoreCase(method)) {
+            return true;
+        }
 
         if (uri.endsWith("/api/v1/auth/account-login")) {
             rateLimitService.checkIp("login", ip, cfg.getLoginPerMinute(), Duration.ofMinutes(1));

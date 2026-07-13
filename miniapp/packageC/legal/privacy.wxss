@@ -8,9 +8,13 @@
   margin: 0 28rpx 24rpx;
   border: 1rpx solid #E8EDF5;
 }
-.legal-title { font-size: 34rpx; font-weight: 700; color: #2B356E; }
-.legal-meta { font-size: 22rpx; color: #8A93B2; margin: 8rpx 0 20rpx; }
-.legal-h { font-size: 28rpx; font-weight: 600; color: #2B356E; margin: 24rpx 0 12rpx; }
-.legal-p { font-size: 26rpx; line-height: 1.75; color: #4A5568; margin-bottom: 12rpx; }
+.legal-title { font-size: 34rpx; font-weight: 700; color: #2B356E; margin-bottom: 16rpx; }
+.legal-rt {
+  display: block;
+  font-size: 26rpx;
+  line-height: 1.75;
+  color: #4A5568;
+}
+.legal-loading { text-align: center; color: #8A93B2; font-size: 26rpx; padding: 80rpx 0; }
 .legal-foot { text-align: center; font-size: 22rpx; color: #8A93B2; padding: 16rpx 0 40rpx; }
 .legal-bottom { height: env(safe-area-inset-bottom); }

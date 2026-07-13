@@ -22,4 +22,9 @@ public class PublicConfigController {
     public Result<Map<String, Object>> miniapp() {
         return Result.ok(sysConfigService.getMiniappPublicConfig());
     }
+
+    @GetMapping("/documents")
+    public Result<Map<String, Object>> documents() {
+        return Result.ok(sysConfigService.getContentDocs());
+    }
 }

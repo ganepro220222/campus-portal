@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, ChatDotSquare, List, Reading, Connection, Grid, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, ChatDotSquare, List, Reading, Connection, Grid, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -89,6 +89,12 @@ const router = createRouter({
           name: 'SysLogs',
           component: () => import('@/views/syslog/SysLogListView.vue'),
           meta: { title: '操作日志', permission: 'admin:super' }
+        },
+        {
+          path: 'content-docs',
+          name: 'ContentDocs',
+          component: () => import('@/views/content/ContentDocView.vue'),
+          meta: { title: '协议内容', permission: 'admin:super' }
         },
         {
           path: 'knowledge',
@@ -232,6 +238,7 @@ export const menuItems: MenuNode[] = [
       { path: '/colleges', title: '关联小程序', icon: Connection, permissions: ['admin:super'] },
       { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
       { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] },
+      { path: '/content-docs', title: '协议内容', icon: Tickets, permissions: ['admin:super'] },
       { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] }
     ]
   }

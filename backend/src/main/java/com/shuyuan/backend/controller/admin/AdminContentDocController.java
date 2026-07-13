@@ -22,13 +22,21 @@ public class AdminContentDocController {
     @GetMapping
     public Result<Map<String, Object>> get() {
         adminPermissionService.require("admin:super");
-        return Result.ok(sysConfigService.getContentDocs());
+        return Result.ok(combined());
     }
 
     @PutMapping
     public Result<Map<String, Object>> save(@RequestBody ContentDocSaveRequest req) {
         adminPermissionService.require("admin:super");
         sysConfigService.saveContentDocs(req.getPrivacy(), req.getAgreement());
-        return Result.ok(sysConfigService.getContentDocs());
+        sysConfigService.saveAboutConfig(req.getIntro(), req.getAddress(), req.getPhone(),
+                req.getEmail(), req.getIcp());
+        return Result.ok(combined());
+    }
+
+    private Map<String, Object> combined() {
+        Map<String, Object> m = new java.util.HashMap<>(sysConfigService.getContentDocs());
+        m.put("about", sysConfigService.getAboutConfig());
+        return m;
     }
 }

@@ -11,4 +11,15 @@ public class ContentDocSaveRequest {
     private String privacy;
 
     private String agreement;
+
+    // 关于页
+    private String intro;
+
+    private String address;
+
+    private String phone;
+
+    private String email;
+
+    private String icp;
 }

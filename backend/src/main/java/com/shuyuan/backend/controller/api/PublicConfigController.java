@@ -27,4 +27,9 @@ public class PublicConfigController {
     public Result<Map<String, Object>> documents() {
         return Result.ok(sysConfigService.getContentDocs());
     }
+
+    @GetMapping("/about")
+    public Result<Map<String, Object>> about() {
+        return Result.ok(sysConfigService.getAboutConfig());
+    }
 }

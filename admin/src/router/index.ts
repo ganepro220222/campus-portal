@@ -94,7 +94,7 @@ const router = createRouter({
           path: 'content-docs',
           name: 'ContentDocs',
           component: () => import('@/views/content/ContentDocView.vue'),
-          meta: { title: '协议内容', permission: 'admin:super' }
+          meta: { title: '内容配置', permission: 'admin:super' }
         },
         {
           path: 'knowledge',
@@ -238,7 +238,7 @@ export const menuItems: MenuNode[] = [
       { path: '/colleges', title: '关联小程序', icon: Connection, permissions: ['admin:super'] },
       { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
       { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] },
-      { path: '/content-docs', title: '协议内容', icon: Tickets, permissions: ['admin:super'] },
+      { path: '/content-docs', title: '内容配置', icon: Tickets, permissions: ['admin:super'] },
       { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] }
     ]
   }

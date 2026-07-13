@@ -21,6 +21,18 @@ public class SysConfigService {
     public static final String SEARCH_HOT_TAGS = "search_hot_tags";
     public static final String DOC_PRIVACY = "doc_privacy";
     public static final String DOC_AGREEMENT = "doc_agreement";
+    public static final String ABOUT_INTRO = "about_intro";
+    public static final String CONTACT_ADDRESS = "contact_address";
+    public static final String CONTACT_PHONE = "contact_phone";
+    public static final String CONTACT_EMAIL = "contact_email";
+    public static final String ABOUT_ICP = "about_icp";
+
+    private static final String DEFAULT_ABOUT_INTRO =
+            "云端书院是“马院 + 书院”协同育人的线上思政平台，依托中华文化书院资源，将阳明文化、屯堡文化、"
+            + "红色文化与非遗技艺搬上云端，线上线下相结合，传承中华优秀传统文化，涵养师生家国情怀与笃行精神。";
+    private static final String DEFAULT_ADDRESS = "贵州省贵阳市清镇职教城西区";
+    private static final String DEFAULT_PHONE = "0851-12345678";
+    private static final String DEFAULT_EMAIL = "shuyuan@gzjtzy.edu.cn";
 
     private static final String DEFAULT_PRIVACY =
             "<p>贵州交通职业大学中华文化书院（「我们」）重视您的个人信息保护。本政策说明云端书院小程序如何收集、使用与保护您的信息。</p>"
@@ -93,6 +105,26 @@ public class SysConfigService {
     public void saveContentDocs(String privacy, String agreement) {
         upsert(DOC_PRIVACY, privacy == null ? "" : privacy, "隐私政策");
         upsert(DOC_AGREEMENT, agreement == null ? "" : agreement, "用户协议");
+    }
+
+    /** 关于页可配置内容（简介、联系方式、备案号）。 */
+    public Map<String, Object> getAboutConfig() {
+        Map<String, Object> m = new HashMap<>();
+        m.put("intro", getString(ABOUT_INTRO, DEFAULT_ABOUT_INTRO));
+        m.put("address", getString(CONTACT_ADDRESS, DEFAULT_ADDRESS));
+        m.put("phone", getString(CONTACT_PHONE, DEFAULT_PHONE));
+        m.put("email", getString(CONTACT_EMAIL, DEFAULT_EMAIL));
+        m.put("icp", getString(ABOUT_ICP, ""));
+        return m;
+    }
+
+    @Transactional
+    public void saveAboutConfig(String intro, String address, String phone, String email, String icp) {
+        upsert(ABOUT_INTRO, intro == null ? "" : intro, "书院简介");
+        upsert(CONTACT_ADDRESS, address == null ? "" : address, "联系地址");
+        upsert(CONTACT_PHONE, phone == null ? "" : phone, "联系电话");
+        upsert(CONTACT_EMAIL, email == null ? "" : email, "联系邮箱");
+        upsert(ABOUT_ICP, icp == null ? "" : icp, "备案号");
     }
 
     public Map<String, Object> getAiAssistantAdminConfig() {

@@ -16,7 +16,7 @@
     <!-- 简介 -->
     <view class="ab-card">
       <view class="ab-title serif">书院简介</view>
-      <view class="ab-p">云端书院是“马院 + 书院”协同育人的线上思政平台，依托中华文化书院资源，将阳明文化、屯堡文化、红色文化与非遗技艺搬上云端，线上线下相结合，传承中华优秀传统文化，涵养师生家国情怀与笃行精神。</view>
+      <view class="ab-p">{{intro}}</view>
     </view>
 
     <!-- 平台特色 -->
@@ -34,17 +34,17 @@
     <!-- 联系我们 -->
     <view class="ab-card ab-card-tight">
       <view class="ab-title serif">联系我们</view>
-      <view class="c-row" bindtap="onCopy" data-val="贵州省贵阳市清镇职教城西区">
+      <view wx:if="{{address}}" class="c-row" bindtap="onCopy" data-val="{{address}}">
         <view class="c-ic"><icon name="pin" size="18" color="#2B356E" /></view>
-        <view class="c-body"><text class="c-k">地址</text><text class="c-v">贵州省贵阳市清镇职教城西区</text></view>
+        <view class="c-body"><text class="c-k">地址</text><text class="c-v">{{address}}</text></view>
       </view>
-      <view class="c-row" bindtap="onCopy" data-val="0851-12345678">
+      <view wx:if="{{phone}}" class="c-row" bindtap="onCopy" data-val="{{phone}}">
         <view class="c-ic"><icon name="megaphone" size="18" color="#2B356E" /></view>
-        <view class="c-body"><text class="c-k">电话</text><text class="c-v">0851-12345678</text></view>
+        <view class="c-body"><text class="c-k">电话</text><text class="c-v">{{phone}}</text></view>
       </view>
-      <view class="c-row" bindtap="onCopy" data-val="shuyuan@gzjtzy.edu.cn">
+      <view wx:if="{{email}}" class="c-row" bindtap="onCopy" data-val="{{email}}">
         <view class="c-ic"><icon name="send" size="18" color="#2B356E" /></view>
-        <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">shuyuan@gzjtzy.edu.cn</text></view>
+        <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">{{email}}</text></view>
       </view>
     </view>
 
@@ -59,6 +59,7 @@
     <view class="ab-foot">
       <text class="ab-slogan">传承中华优秀传统文化 · 培根铸魂启智润心</text>
       <text class="ab-copy">© 2026 贵州交通职业大学中华文化书院</text>
+      <text wx:if="{{icp}}" class="ab-icp">{{icp}}</text>
     </view>
 
     <view class="ab-bottom"></view>

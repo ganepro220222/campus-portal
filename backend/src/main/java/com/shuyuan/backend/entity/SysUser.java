@@ -20,6 +20,8 @@ public class SysUser {
     private String realName;
     private Integer status;
     private Integer mustChangePassword;
+    /** 改密/重置密码后递增，用于使旧 JWT 失效 */
+    private Integer tokenVersion;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     @TableLogic

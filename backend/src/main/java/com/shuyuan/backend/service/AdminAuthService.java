@@ -9,6 +9,7 @@ import com.shuyuan.backend.mapper.SysRoleMapper;
 import com.shuyuan.backend.mapper.SysUserMapper;
 import com.shuyuan.backend.util.AdminPasswordPolicy;
 import com.shuyuan.backend.util.JwtUtils;
+import com.shuyuan.backend.util.TokenVersionSupport;
 import com.shuyuan.backend.vo.AdminLoginVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -58,7 +59,8 @@ public class AdminAuthService {
         SysRole role = sysRoleMapper.selectById(user.getRoleId());
         Set<String> permissions = adminPermissionService.parsePermissions(
                 role != null ? role.getPermissions() : null);
-        String token = jwtUtils.createAdminToken(user.getId(), user.getRoleId());
+        String token = jwtUtils.createAdminToken(user.getId(), user.getRoleId(),
+                TokenVersionSupport.current(user.getTokenVersion()));
         return AdminLoginVO.builder()
                 .token(token)
                 .adminId(user.getId())
@@ -92,12 +94,14 @@ public class AdminAuthService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setMustChangePassword(0);
+        user.setTokenVersion(TokenVersionSupport.bump(user.getTokenVersion()));
         sysUserMapper.updateById(user);
 
         SysRole role = sysRoleMapper.selectById(user.getRoleId());
         Set<String> permissions = adminPermissionService.parsePermissions(
                 role != null ? role.getPermissions() : null);
-        String token = jwtUtils.createAdminToken(user.getId(), user.getRoleId());
+        String token = jwtUtils.createAdminToken(user.getId(), user.getRoleId(),
+                TokenVersionSupport.current(user.getTokenVersion()));
         return AdminLoginVO.builder()
                 .token(token)
                 .adminId(user.getId())

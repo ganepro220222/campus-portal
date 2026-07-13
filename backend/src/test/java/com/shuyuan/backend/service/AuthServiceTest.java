@@ -77,7 +77,7 @@ class AuthServiceTest {
         when(memberMapper.selectById(9L)).thenReturn(member, member);
         when(memberMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
         when(memberProfileMapper.selectById(9L)).thenReturn(new MemberProfile());
-        when(jwtUtils.createToken(9L, "wx_new")).thenReturn("jwt");
+        when(jwtUtils.createToken(9L, "wx_new", 0)).thenReturn("jwt");
 
         WxBindRequest req = new WxBindRequest();
         req.setWxBindToken("bind-token");
@@ -100,7 +100,7 @@ class AuthServiceTest {
         when(memberAccountMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(account);
         when(memberMapper.selectById(9L)).thenReturn(member, member);
         when(memberProfileMapper.selectById(9L)).thenReturn(new MemberProfile());
-        when(jwtUtils.createToken(9L, "acct:2024001")).thenReturn("jwt");
+        when(jwtUtils.createToken(9L, "acct:2024001", 0)).thenReturn("jwt");
 
         AccountLoginRequest req = new AccountLoginRequest();
         req.setStudentNo("2024001");
@@ -112,6 +112,30 @@ class AuthServiceTest {
     }
 
     @Test
+    void changePassword_bumpsTokenVersion() {
+        Member member = importedMember();
+        member.setTokenVersion(0);
+        MemberAccount account = importedAccount(member.getId());
+        account.setId(1L);
+        account.setMustChangePassword(1);
+        MemberContext.setMemberId(9L);
+        try {
+            when(memberMapper.selectById(9L)).thenReturn(member, member, member);
+            when(memberAccountMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(account);
+            when(memberProfileMapper.selectById(9L)).thenReturn(new MemberProfile());
+            when(jwtUtils.createToken(9L, "acct:2024001", 1)).thenReturn("jwt2");
+
+            authService.changePassword("Admin@123", "NewPass1");
+
+            ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
+            verify(memberMapper).updateById(memberCaptor.capture());
+            assertEquals(1, memberCaptor.getValue().getTokenVersion());
+        } finally {
+            MemberContext.clear();
+        }
+    }
+
+    @Test
     void changePassword_clearsMustChangeFlag() {
         Member member = importedMember();
         MemberAccount account = importedAccount(member.getId());
@@ -119,10 +143,10 @@ class AuthServiceTest {
         account.setMustChangePassword(1);
         MemberContext.setMemberId(9L);
         try {
-            when(memberMapper.selectById(9L)).thenReturn(member, member);
+            when(memberMapper.selectById(9L)).thenReturn(member, member, member);
             when(memberAccountMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(account);
             when(memberProfileMapper.selectById(9L)).thenReturn(new MemberProfile());
-            when(jwtUtils.createToken(9L, "acct:2024001")).thenReturn("jwt2");
+            when(jwtUtils.createToken(9L, "acct:2024001", 1)).thenReturn("jwt2");
 
             LoginVO vo = authService.changePassword("Admin@123", "NewPass1");
 

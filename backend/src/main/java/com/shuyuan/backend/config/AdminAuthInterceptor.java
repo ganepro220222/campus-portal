@@ -8,6 +8,7 @@ import com.shuyuan.backend.mapper.SysRoleMapper;
 import com.shuyuan.backend.mapper.SysUserMapper;
 import com.shuyuan.backend.service.AdminPermissionService;
 import com.shuyuan.backend.util.JwtUtils;
+import com.shuyuan.backend.util.TokenVersionSupport;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,9 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
             SysUser user = sysUserMapper.selectById(adminId);
             if (user == null || user.getStatus() == null || user.getStatus() != 1) {
                 throw new BusinessException(403, "管理员账号不可用");
+            }
+            if (TokenVersionSupport.current(user.getTokenVersion()) != jwtUtils.getTokenVersion(token)) {
+                throw new BusinessException(401, "登录已失效，请重新登录");
             }
             Long roleId = user.getRoleId();
             if (roleId == null) {

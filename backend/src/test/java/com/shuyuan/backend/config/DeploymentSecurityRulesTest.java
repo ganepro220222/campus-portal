@@ -3,6 +3,7 @@ package com.shuyuan.backend.config;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -89,6 +90,58 @@ class DeploymentSecurityRulesTest {
     void validateJwtSecret_rejectsShortSecret() {
         assertThrows(IllegalStateException.class, () ->
                 DeploymentSecurityRules.validateJwtSecret("too-short"));
+    }
+
+    @Test
+    void validateJwtSecret_rejectsPlaceholder() {
+        assertThrows(IllegalStateException.class, () ->
+                DeploymentSecurityRules.validateJwtSecret(
+                        DeploymentSecurityRules.PLACEHOLDER_JWT_SECRET));
+    }
+
+    @Test
+    void validateWxCredentials_rejectsPlaceholder() {
+        assertThrows(IllegalStateException.class, () ->
+                DeploymentSecurityRules.validateWxCredentials(
+                        DeploymentSecurityRules.PLACEHOLDER_WX_APPID,
+                        DeploymentSecurityRules.PLACEHOLDER_WX_SECRET));
+    }
+
+    @Test
+    void validateGuardedDeployment_prodRejectsPlaceholderWx() {
+        assertThrows(IllegalStateException.class, () ->
+                DeploymentSecurityRules.validateGuardedDeployment(
+                        new String[] {"prod"},
+                        STRONG_SECRET,
+                        false,
+                        DeploymentSecurityRules.PLACEHOLDER_WX_APPID,
+                        DeploymentSecurityRules.PLACEHOLDER_WX_SECRET));
+    }
+
+    @Test
+    void extractJdbcHost_parsesHostNotQueryLocalhost() {
+        assertEquals("rds.aliyuncs.com",
+                DeploymentSecurityRules.extractJdbcHost(
+                        "jdbc:mysql://rds.aliyuncs.com:3306/shuyuan?foo=localhost"));
+        assertEquals("::1",
+                DeploymentSecurityRules.extractJdbcHost("jdbc:mysql://[::1]:3306/shuyuan"));
+    }
+
+    @Test
+    void validateNonGuardedProfile_rejectsRemoteDbEvenWhenUrlContainsLocalhostInQuery() {
+        assertThrows(IllegalStateException.class, () ->
+                DeploymentSecurityRules.validateNonGuardedProfileUsesLocalInfraOnly(
+                        new String[] {"dev"},
+                        "jdbc:mysql://rds.aliyuncs.com:3306/shuyuan?redirect=localhost",
+                        "localhost"));
+    }
+
+    @Test
+    void validateNonGuardedProfile_allowsIpv6LoopbackDatasource() {
+        assertDoesNotThrow(() -> DeploymentSecurityRules.validateNonGuardedProfileUsesLocalInfraOnly(
+                new String[] {"dev"},
+                "jdbc:mysql://[::1]:3306/shuyuan",
+                "localhost"));
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.shuyuan.backend.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.asr.AsrJobResult;
 import com.shuyuan.backend.asr.AsrJobState;
+import com.shuyuan.backend.asr.SubtitleAsrPollPolicy;
 import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.entity.Course;
 import com.shuyuan.backend.mapper.CourseMapper;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -31,21 +31,20 @@ public class SubtitleAsrService {
             return;
         }
         int batchSize = Math.max(1, shuyuanProperties.getAsr().getPollBatchSize());
+        int timeoutHours = Math.max(1, shuyuanProperties.getAsr().getPollTimeoutHours());
         List<Course> tasks = courseMapper.selectList(new LambdaQueryWrapper<Course>()
                 .eq(Course::getSubtitleStatus, "processing")
                 .isNotNull(Course::getSubtitleTaskId)
                 .ne(Course::getSubtitleTaskId, "")
+                .notLikeRight(Course::getSubtitleTaskId, "stub-")
+                .and(w -> w.apply(SubtitleAsrPollPolicy.pollDueCondition())
+                        .or()
+                        .apply(SubtitleAsrPollPolicy.timedOutCondition(timeoutHours)))
                 .orderByAsc(Course::getSubtitleAsrLastPollAt)
                 .last("LIMIT " + batchSize));
         for (Course course : tasks) {
-            if (course.getSubtitleTaskId() != null && course.getSubtitleTaskId().startsWith("stub-")) {
-                continue;
-            }
             if (isTimedOut(course)) {
                 markFailed(course.getId(), "ASR 任务超时");
-                continue;
-            }
-            if (shouldSkipPoll(course)) {
                 continue;
             }
             try {
@@ -85,29 +84,6 @@ public class SubtitleAsrService {
         update.setSubtitleAsrLastError(null);
         courseMapper.updateById(update);
         log.info("[subtitle-asr] 课程 {} 字幕已就绪", course.getId());
-    }
-
-    private boolean shouldSkipPoll(Course course) {
-        LocalDateTime last = course.getSubtitleAsrLastPollAt();
-        if (last == null) {
-            return false;
-        }
-        int attempts = course.getSubtitleAsrAttemptCount() != null ? course.getSubtitleAsrAttemptCount() : 0;
-        long minSeconds = minPollIntervalSeconds(attempts);
-        return Duration.between(last, LocalDateTime.now()).getSeconds() < minSeconds;
-    }
-
-    private long minPollIntervalSeconds(int attempts) {
-        if (attempts < 3) {
-            return 120;
-        }
-        if (attempts < 6) {
-            return 300;
-        }
-        if (attempts < 12) {
-            return 600;
-        }
-        return 1800;
     }
 
     private boolean isTimedOut(Course course) {

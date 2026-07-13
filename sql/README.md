@@ -51,6 +51,31 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 | 12 | `patch-point-record-unique-cleanup.sql` | **旧库** `point_record` 重复流水查重/清理（加唯一键前） | — |
 | 13 | `patch-point-record-unique.sql` | **旧库** 添加 `uk_member_action_remark`（幂等，可重复执行） | ✅ 已并入 init.sql |
 | 14 | `patch-sys-config-miniapp.sql` | AI 助手欢迎语/推荐问题、搜索热词配置项 | ✅ 已并入 init.sql |
+| 15 | `patch-subtitle-asr-poll.sql` | 课程 ASR 轮询元数据字段（`subtitle_asr_*`） | ✅ 已并入 init.sql；**可重复执行** |
+
+#### `patch-subtitle-asr-poll.sql`（旧库 ASR 字幕必读）
+
+**新库**：`init.sql` 已含 `subtitle_asr_started_at` 等 4 列，**勿**再跑本 patch。
+
+**旧库升级**（自 aab2175 及之后引入 ASR 轮询元数据的版本）：
+
+1. 执行 `patch-subtitle-asr-poll.sql`（逐列幂等，部分列已存在时会补齐缺失列）。
+2. 验收 SQL（应返回 **4** 行）：
+
+```sql
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND table_name = 'course'
+  AND column_name IN (
+    'subtitle_asr_started_at',
+    'subtitle_asr_last_poll_at',
+    'subtitle_asr_attempt_count',
+    'subtitle_asr_last_error'
+  );
+```
+
+3. 重启后端后，在管理端打开课程列表 / 触发字幕，确认无 `Unknown column subtitle_asr_*` 报错。
 
 #### `point_record` 唯一键（旧库必读）
 

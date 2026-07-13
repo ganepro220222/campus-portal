@@ -197,3 +197,29 @@ body,
   font-weight: 700;
   color: var(--brand-primary);
 }
+
+/* 折叠侧边栏时的悬浮子菜单（挂在 body 上，需全局深色化以匹配侧栏，避免浅字浅底看不清） */
+.el-menu--popup {
+  background: #2b356e !important;
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 14px 34px rgba(20, 26, 56, 0.42);
+}
+.el-menu--popup .el-menu-item,
+.el-menu--popup .el-sub-menu__title {
+  color: #dfe3f2;
+  height: 42px;
+  line-height: 42px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+.el-menu--popup .el-menu-item:hover,
+.el-menu--popup .el-sub-menu__title:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff;
+}
+.el-menu--popup .el-menu-item.is-active {
+  color: #f0dca0;
+  background: rgba(240, 220, 160, 0.14);
+  font-weight: 600;
+}

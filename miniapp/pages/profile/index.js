@@ -66,9 +66,8 @@ Page({
     wx.navigateTo({ url: '/packageC/about/index' })
   },
 
-  // 尚未实现的菜单项
-  onTodo() {
-    wx.showToast({ title: '功能开发中，敬请期待', icon: 'none' })
+  onColleges() {
+    wx.navigateTo({ url: '/packageC/college/list' })
   },
 
   onLogout() {

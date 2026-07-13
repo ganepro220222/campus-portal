@@ -188,7 +188,7 @@ export function useCourseList() {
     subtitleTriggering.value = true
     try {
       subtitleInfo.value = await triggerSubtitle(editingId.value)
-      ElMessage.success('已提交字幕任务（开发环境请上传字幕后保存）')
+      ElMessage.success('已提交 ASR 字幕任务，请稍后刷新状态或手动上传字幕')
     } finally {
       subtitleTriggering.value = false
     }

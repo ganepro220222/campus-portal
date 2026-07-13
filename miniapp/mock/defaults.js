@@ -90,6 +90,13 @@ module.exports = {
     { id: 11, name: '人文艺术学院', short: '人文', en: 'Humanities',       desc: '以美育人 · 以文化人', colorClass: 'hc5' }
   ],
 
+  /** 首页协同育人横滑（jump 类型演示） */
+  collegesHome: [
+    { id: 1, name: '马克思主义学院', short: '马院', en: '小程序跳转', desc: '马院协同育人', colorClass: 'hc3', contentType: 'jump', appid: 'wxPLACEHOLDER001', path: 'pages/index/index' },
+    { id: 2, name: '轨道交通学院', short: '轨道', en: '小程序跳转', desc: '智慧运维', colorClass: 'hc1', contentType: 'jump', appid: 'wxPLACEHOLDER002', path: 'pages/index/index' },
+    { id: 3, name: '智能交通学院', short: '智交', en: '小程序跳转', desc: '智慧出行', colorClass: 'hc2', contentType: 'jump', appid: 'wxPLACEHOLDER003', path: 'pages/index/index' }
+  ],
+
   activityDetail: {
     id: 1,
     title: '“知行合一”阳明文化专题讲座',

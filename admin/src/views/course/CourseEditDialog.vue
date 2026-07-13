@@ -105,7 +105,7 @@
             :loading="subtitleTriggering"
             :disabled="!form.videoUrl"
             @click="emit('trigger-subtitle')"
-          >触发字幕生成</el-button>
+          >触发 ASR 生成</el-button>
           <el-button
             v-if="canWrite"
             type="primary"
@@ -114,7 +114,7 @@
           >
             保存字幕地址
           </el-button>
-          <div class="form-tip">开发环境需手动上传字幕文件后保存</div>
+          <div class="form-tip">ASR 未配置时可手动上传 VTT/SRT 后保存；配置 ASR_* 环境变量后触发将自动轮询生成</div>
         </el-form-item>
       </template>
     </el-form>

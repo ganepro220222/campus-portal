@@ -45,6 +45,27 @@ jobs:
       - name: Check prod mock policy
         run: npm run check:prod-mock
 
+  deploy-env-guard:
+    name: Deploy Env Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Deploy env unit tests
+        run: npm run test:deploy-env
+
+      - name: Staging default config check
+        run: npm run check:deploy-env
+
+      - name: Navigate appids sync test
+        run: npm run test:sync-navigate-appids
+
   admin:
     name: Admin
     runs-on: ubuntu-latest

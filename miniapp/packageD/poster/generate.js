@@ -1,4 +1,6 @@
 // packageD/poster/generate.js — 文化分享海报生成
+const { get } = require('../../utils/request')
+
 const TEMPLATES = [
   { key: 'blue', name: '阳明蓝', c1: '#1E2654', c2: '#3F57B5', accent: '#BE9C44' },
   { key: 'ink',  name: '屯堡墨', c1: '#141A38', c2: '#2E3A66', accent: '#C9A24E' },
@@ -52,8 +54,17 @@ Page({
   },
 
   // 绘制海报到离屏 canvas，返回临时图片路径
-  _render() {
+  async _render() {
     const { tpl, title, subtitle } = this.data
+    let qrBase64 = null
+    try {
+      const wxacode = await get('/miniapp/wxacode', { path: 'pages/index/index', width: 280 })
+      if (wxacode && wxacode.available && wxacode.imageBase64) {
+        qrBase64 = wxacode.imageBase64
+      }
+    } catch (e) {
+      console.warn('[poster] 小程序码获取失败，使用占位图', e)
+    }
     return new Promise((resolve, reject) => {
       wx.createSelectorQuery().in(this).select('#posterCanvas').fields({ node: true, size: true }).exec((res) => {
         if (!res || !res[0] || !res[0].node) return reject(new Error('canvas not ready'))
@@ -107,17 +118,35 @@ Page({
           ctx.font = '13px sans-serif'
           ctx.fillText(subtitle, W / 2, ty + 34)
 
-          // 底部二维码占位
-          drawQR(ctx, W / 2 - 32, H - 108, 64, tpl.accent)
-          ctx.fillStyle = 'rgba(255,255,255,0.75)'
-          ctx.font = '11px sans-serif'
-          ctx.fillText('长按识别小程序码 · 云端书院', W / 2, H - 26)
+          const finishPoster = () => {
+            ctx.fillStyle = 'rgba(255,255,255,0.75)'
+            ctx.font = '11px sans-serif'
+            ctx.fillText('长按识别小程序码 · 云端书院', W / 2, H - 26)
+            wx.canvasToTempFilePath({
+              canvas,
+              success: (r) => resolve(r.tempFilePath),
+              fail: reject
+            })
+          }
 
-          wx.canvasToTempFilePath({
-            canvas,
-            success: (r) => resolve(r.tempFilePath),
-            fail: reject
-          })
+          if (qrBase64) {
+            const qrImg = canvas.createImage()
+            qrImg.onload = () => {
+              const qs = 64, qx = W / 2 - qs / 2, qy = H - 108
+              ctx.fillStyle = '#ffffff'
+              strokeFillRoundRect(ctx, qx - 6, qy - 6, qs + 12, qs + 12, 8)
+              ctx.drawImage(qrImg, qx, qy, qs, qs)
+              finishPoster()
+            }
+            qrImg.onerror = () => {
+              drawQR(ctx, W / 2 - 32, H - 108, 64, tpl.accent)
+              finishPoster()
+            }
+            qrImg.src = 'data:image/png;base64,' + qrBase64
+          } else {
+            drawQR(ctx, W / 2 - 32, H - 108, 64, tpl.accent)
+            finishPoster()
+          }
         }
 
         // 徽记（尽力加载品牌图，失败则画金环占位）

@@ -57,6 +57,11 @@
       <text class="mi-tx">AI 文化问答</text>
       <icon name="chevron-right" size="16" color="#C3CCE0" />
     </view>
+    <view class="menu-item" bindtap="onColleges">
+      <view class="mi-ic mi-gold"><icon name="grid" size="20" color="#ffffff" /></view>
+      <text class="mi-tx">关联小程序</text>
+      <icon name="chevron-right" size="16" color="#C3CCE0" />
+    </view>
     <view class="menu-item" bindtap="onStatTap" data-type="badges">
       <view class="mi-ic mi-gold"><icon name="medal" size="20" color="#ffffff" /></view>
       <text class="mi-tx">文化徽章</text>

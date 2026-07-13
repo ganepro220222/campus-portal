@@ -48,4 +48,22 @@ class CollegeAppServiceTest {
         assertEquals("轨道", list.get(0).get("short"));
         assertTrue(list.get(0).containsKey("colorClass"));
     }
+
+    @Test
+    void listHomeJump_filtersJumpType() {
+        CollegeApp jump = new CollegeApp();
+        jump.setId(2L);
+        jump.setName("马克思主义学院");
+        jump.setDescription("协同育人");
+        jump.setSort(1);
+        jump.setStatus(1);
+        jump.setContentType("jump");
+        jump.setAppid("wxTEST");
+        when(collegeAppMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(jump));
+
+        var list = collegeAppService.listHomeJump();
+        assertEquals(1, list.size());
+        assertEquals("jump", list.get(0).get("contentType"));
+        assertEquals("wxTEST", list.get(0).get("appid"));
+    }
 }

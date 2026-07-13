@@ -57,6 +57,12 @@ shuyuan:
     allowed-origin-patterns: []
   security:
     trust-forwarded-headers: false
+  asr:
+    provider: ${ASR_PROVIDER:none}
+    access-key-id: ${ASR_ACCESS_KEY_ID:}
+    access-key-secret: ${ASR_ACCESS_KEY_SECRET:}
+    app-key: ${ASR_APP_KEY:}
+    region: ${ASR_REGION:cn-shanghai}
   oss:
     enabled: ${OSS_ENABLED:false}
     endpoint: ${OSS_ENDPOINT:}

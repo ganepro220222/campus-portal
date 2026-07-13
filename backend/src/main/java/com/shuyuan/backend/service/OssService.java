@@ -126,6 +126,35 @@ public class OssService {
         );
     }
 
+    /** 上传文本内容（如 ASR 生成的 VTT） */
+    public Map<String, String> uploadText(String scene, String ext, String content, String contentType) {
+        if (!isEnabled()) {
+            throw new BusinessException(503, "对象存储未配置，无法保存字幕文件");
+        }
+        if (content == null || content.isBlank()) {
+            throw new BusinessException(400, "字幕内容为空");
+        }
+        byte[] bytes = content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        validateExtension(scene, ext);
+        String objectKey = buildObjectKey(scene, ext);
+        OSS client = null;
+        try {
+            client = buildClient();
+            ObjectMetadata meta = new ObjectMetadata();
+            meta.setContentLength(bytes.length);
+            meta.setContentType(StringUtils.hasText(contentType) ? contentType : "text/vtt; charset=utf-8");
+            client.putObject(ossProperties.getBucket(), objectKey,
+                    new java.io.ByteArrayInputStream(bytes), meta);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(500, "上传字幕至对象存储失败");
+        } finally {
+            shutdownQuietly(client);
+        }
+        return Map.of("url", buildPublicUrl(objectKey), "objectKey", objectKey);
+    }
+
     private void validateExtension(String scene, String ext) {
         String normalizedScene = normalizeScene(scene);
         Set<String> allowed = SCENE_EXTENSIONS.get(normalizedScene);

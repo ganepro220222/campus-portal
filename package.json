@@ -4,6 +4,8 @@
   "scripts": {
     "check:prod-mock": "node scripts/check-no-prod-mock.js",
     "check:release-env": "node scripts/check-no-prod-mock.js --release",
+    "check:deploy-env": "node scripts/check-deploy-env.js",
+    "test:deploy-env": "node scripts/test-deploy-env.js",
     "test:mock-guard": "node scripts/test-mock-guard.js",
     "load:enroll": "node scripts/load/enroll-concurrent.mjs",
     "load:browse": "node scripts/load/browse-load.mjs"

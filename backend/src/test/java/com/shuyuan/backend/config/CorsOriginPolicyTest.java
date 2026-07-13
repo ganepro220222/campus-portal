@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CorsOriginPolicyTest {
@@ -36,7 +38,31 @@ class CorsOriginPolicyTest {
     @Test
     void resolveAllowedOriginPatterns_stagingFallbackWhenEmpty() {
         assertArrayEquals(
-                new String[] {"http://localhost:5173"},
+                new String[0],
                 CorsOriginPolicy.resolveAllowedOriginPatterns(new String[] {"staging"}, List.of()));
+    }
+
+    @Test
+    void validateGuardedCorsOrigins_rejectsLocalhostOnStaging() {
+        assertThrows(IllegalStateException.class, () ->
+                CorsOriginPolicy.validateGuardedCorsOrigins(
+                        new String[] {"staging"},
+                        List.of("https://admin.example.com", "http://localhost:5173")));
+    }
+
+    @Test
+    void validateGuardedCorsOrigins_rejectsPlaceholderOnProd() {
+        assertThrows(IllegalStateException.class, () ->
+                CorsOriginPolicy.validateGuardedCorsOrigins(
+                        new String[] {"prod"},
+                        List.of("https://staging.example.edu.cn")));
+    }
+
+    @Test
+    void validateGuardedCorsOrigins_skipsDev() {
+        assertDoesNotThrow(() ->
+                CorsOriginPolicy.validateGuardedCorsOrigins(
+                        new String[] {"dev"},
+                        List.of("http://localhost:5173", "*")));
     }
 }

@@ -40,7 +40,7 @@
           <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="260" fixed="right" align="center">
+      <el-table-column label="操作" width="320" fixed="right" align="center">
         <template #default="{ row }">
           <el-button v-if="canWrite && row.status !== 'cancelled'" link type="primary" @click="openDialog(row)">
             编辑
@@ -58,6 +58,12 @@
             @click="onCancel(row)"
           >取消活动</el-button>
           <el-button v-if="canEnroll" link type="primary" @click="goEnrolls(row)">报名管理</el-button>
+          <el-button
+            v-if="canWrite && row.status !== 'published'"
+            link
+            type="danger"
+            @click="onDelete(row)"
+          >删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -170,6 +176,7 @@ import {
   createActivity,
   fetchActivities,
   publishActivity,
+  removeActivity,
   updateActivity
 } from '@/api/activity'
 import { useAuthStore } from '@/stores/auth'
@@ -316,6 +323,17 @@ async function onCancel(row: ActivityItem) {
   )
   await cancelActivity(row.id)
   ElMessage.success('活动已取消')
+  await loadData()
+}
+
+async function onDelete(row: ActivityItem) {
+  await ElMessageBox.confirm(
+    `删除「${row.title}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
+    '删除确认',
+    { type: 'warning' }
+  )
+  await removeActivity(row.id)
+  ElMessage.success('已移入回收站')
   await loadData()
 }
 

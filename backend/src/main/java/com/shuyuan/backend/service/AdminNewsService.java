@@ -106,8 +106,8 @@ public class AdminNewsService {
     public void delete(Long id) {
         adminPermissionService.require("news:write");
         News news = requireNews(id);
-        if (!"draft".equals(news.getStatus())) {
-            throw new BusinessException(400, "仅草稿新闻可删除，请先下架");
+        if ("published".equals(news.getStatus())) {
+            throw new BusinessException(400, "请先下架已发布新闻，再删除到回收站");
         }
         newsMapper.deleteById(id);
         searchIndexSyncService.removeNews(id);

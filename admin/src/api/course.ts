@@ -1,4 +1,4 @@
-import { get, post, put } from './request'
+import { get, post, put, del } from './request'
 import type { CourseItem, PageResult } from '@/types/api'
 
 export interface CourseQuery {
@@ -65,4 +65,8 @@ export function fetchSubtitleStatus(id: number) {
 
 export function updateSubtitle(id: number, subtitleUrl: string) {
   return put<SubtitleStatus>(`/admin/courses/${id}/subtitle`, { subtitleUrl })
+}
+
+export function removeCourse(id: number) {
+  return del<void>(`/admin/courses/${id}`)
 }

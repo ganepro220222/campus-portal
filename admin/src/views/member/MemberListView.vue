@@ -57,12 +57,12 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="170" />
-      <el-table-column label="操作" width="120" fixed="right" align="center">
+      <el-table-column label="操作" width="170" fixed="right" align="center">
         <template #default="{ row }">
           <el-button
             v-if="row.status === 1"
             link
-            type="danger"
+            type="warning"
             @click="onToggleStatus(row, 0)"
           >禁用</el-button>
           <el-button
@@ -71,6 +71,13 @@
             type="primary"
             @click="onToggleStatus(row, 1)"
           >启用</el-button>
+          <el-button
+            v-if="row.studentNo"
+            link
+            type="danger"
+            @click="onAnonymize(row)"
+          >清退</el-button>
+          <el-tag v-else type="info" size="small" effect="plain">已清退</el-tag>
         </template>
       </el-table-column>
     </el-table>
@@ -94,6 +101,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   downloadMemberImportErrors,
   downloadMemberImportTemplate,
+  anonymizeMember,
   fetchMembers,
   importMembers,
   updateMemberStatus,
@@ -155,6 +163,18 @@ async function onToggleStatus(row: MemberItem, status: number) {
   await ElMessageBox.confirm(`确定${action}学号 ${row.studentNo} 吗？`, '确认')
   await updateMemberStatus(row.id, status)
   ElMessage.success(`${action}成功`)
+  await loadData()
+}
+
+async function onAnonymize(row: MemberItem) {
+  await ElMessageBox.confirm(
+    `清退将脱敏「${row.realName}（${row.studentNo}）」的姓名、学号、手机号并禁止其登录；` +
+      `报名、积分、学习等历史记录会保留用于统计，但账号信息不可再恢复。确定清退吗？`,
+    '清退确认',
+    { type: 'warning', confirmButtonText: '确定清退', confirmButtonClass: 'el-button--danger' }
+  )
+  await anonymizeMember(row.id)
+  ElMessage.success('已清退')
   await loadData()
 }
 

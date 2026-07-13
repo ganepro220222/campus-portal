@@ -177,6 +177,17 @@ public class AdminCourseService {
         return subtitleStatus(id);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        adminPermissionService.require("course:write");
+        Course course = requireCourse(id);
+        if (course.getStatus() != null && course.getStatus() == 1) {
+            throw new BusinessException(400, "请先下架课程，再删除到回收站");
+        }
+        courseMapper.deleteById(id);
+        searchIndexSyncService.removeCourse(id);
+    }
+
     private Course requireCourse(Long id) {
         Course course = courseMapper.selectById(id);
         if (course == null) {

@@ -51,4 +51,10 @@ public class AdminCraftController {
     public Result<Map<String, Object>> unpublish(@PathVariable Long id) {
         return Result.ok(adminCraftService.unpublish(id));
     }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        adminCraftService.delete(id);
+        return Result.ok();
+    }
 }

@@ -68,6 +68,12 @@
             type="warning"
             @click="onUnpublish(row)"
           >下架</el-button>
+          <el-button
+            v-if="canWrite && row.status !== 1"
+            link
+            type="danger"
+            @click="onDelete(row)"
+          >删除</el-button>
           <span v-if="!canWrite" class="text-muted">—</span>
         </template>
       </el-table-column>
@@ -157,6 +163,7 @@ import {
   fetchResources,
   FILE_TYPE_OPTIONS,
   publishResource,
+  removeResource,
   unpublishResource,
   updateResource
 } from '@/api/resource'
@@ -295,6 +302,17 @@ async function onUnpublish(row: ResourceItem) {
   await ElMessageBox.confirm(`下架「${row.name}」？小程序端将不再可下载。`, '下架确认', { type: 'warning' })
   await unpublishResource(row.id)
   ElMessage.success('已下架')
+  await loadData()
+}
+
+async function onDelete(row: ResourceItem) {
+  await ElMessageBox.confirm(
+    `删除「${row.name}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
+    '删除确认',
+    { type: 'warning' }
+  )
+  await removeResource(row.id)
+  ElMessage.success('已移入回收站')
   await loadData()
 }
 

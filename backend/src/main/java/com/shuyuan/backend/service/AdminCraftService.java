@@ -127,6 +127,17 @@ public class AdminCraftService {
         return detail(id);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        adminPermissionService.require("hall:write");
+        Craft craft = requireCraft(id);
+        if (craft.getStatus() != null && craft.getStatus() == 1) {
+            throw new BusinessException(400, "请先下架文创，再删除到回收站");
+        }
+        craftMapper.deleteById(id);
+        searchIndexSyncService.removeCraft(id);
+    }
+
     private Craft requireCraft(Long id) {
         Craft craft = craftMapper.selectById(id);
         if (craft == null) {

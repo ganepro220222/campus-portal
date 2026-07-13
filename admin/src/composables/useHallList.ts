@@ -2,7 +2,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import type { FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchCategories } from '@/api/category'
-import { createHall, fetchHallDetail, fetchHalls, publishHall, unpublishHall, updateHall } from '@/api/hall'
+import { createHall, fetchHallDetail, fetchHalls, publishHall, removeHall, unpublishHall, updateHall } from '@/api/hall'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, HallItem, HallSectionItem, HallSlideItem } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
@@ -150,6 +150,17 @@ export function useHallList() {
     await loadData()
   }
 
+  async function onDelete(row: HallItem) {
+    await ElMessageBox.confirm(
+      `删除「${row.name}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
+      '删除确认',
+      { type: 'warning' }
+    )
+    await removeHall(row.id)
+    ElMessage.success('已移入回收站')
+    await loadData()
+  }
+
   onMounted(async () => {
     await loadCategories()
     await loadData()
@@ -173,6 +184,7 @@ export function useHallList() {
     openDialog,
     onSave,
     onPublish,
-    onUnpublish
+    onUnpublish,
+    onDelete
   }
 }

@@ -1,4 +1,4 @@
-import { get, post, put } from './request'
+import { get, post, put, del } from './request'
 import type { CraftItem, PageResult } from '@/types/api'
 
 export interface CraftQuery {
@@ -62,4 +62,8 @@ export function publishCraft(id: number) {
 
 export function unpublishCraft(id: number) {
   return put<CraftItem>(`/admin/crafts/${id}/unpublish`)
+}
+
+export function removeCraft(id: number) {
+  return del<void>(`/admin/crafts/${id}`)
 }

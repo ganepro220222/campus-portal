@@ -95,6 +95,16 @@ public class AdminActivityService {
         return toVo(activityMapper.selectById(id));
     }
 
+    @Transactional
+    public void delete(Long id) {
+        adminPermissionService.require("admin:super");
+        Activity activity = requireActivity(id);
+        if ("published".equals(activity.getStatus())) {
+            throw new BusinessException(400, "请先取消或结束活动，再删除到回收站");
+        }
+        activityMapper.deleteById(id);
+    }
+
     private Activity requireActivity(Long id) {
         Activity activity = activityMapper.selectById(id);
         if (activity == null) {

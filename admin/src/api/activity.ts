@@ -1,4 +1,4 @@
-import { get, post, put } from './request'
+import { get, post, put, del } from './request'
 import type { ActivityItem, EnrollItem, PageResult } from '@/types/api'
 
 export interface ActivityQuery {
@@ -48,6 +48,10 @@ export function publishActivity(id: number) {
 
 export function cancelActivity(id: number) {
   return put<ActivityItem>(`/admin/activities/${id}/cancel`)
+}
+
+export function removeActivity(id: number) {
+  return del<void>(`/admin/activities/${id}`)
 }
 
 export function fetchEnrolls(activityId: number, params: EnrollQuery) {

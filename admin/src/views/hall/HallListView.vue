@@ -44,6 +44,12 @@
             type="warning"
             @click="onUnpublish(row)"
           >下架</el-button>
+          <el-button
+            v-if="canWrite && row.status !== 1"
+            link
+            type="danger"
+            @click="onDelete(row)"
+          >删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -94,7 +100,8 @@ const {
   openDialog,
   onSave,
   onPublish,
-  onUnpublish
+  onUnpublish,
+  onDelete
 } = useHallList()
 </script>
 

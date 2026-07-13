@@ -197,6 +197,46 @@ public class AdminMemberService {
         return toVo(memberMapper.selectById(memberId));
     }
 
+    /**
+     * 清退（匿名化）：脱敏账号 PII 并禁用登录，但保留 member / 各业务外键行，
+     * 以维护报名、积分、浏览等历史统计的完整性——不做物理删除。
+     */
+    @Transactional
+    public Map<String, Object> anonymize(Long memberId) {
+        adminPermissionService.require("admin:super");
+        Member member = requireMember(memberId);
+
+        // 主账号脱敏 + 禁用 + 递增 tokenVersion 使旧 JWT 立即失效
+        member.setNickname("已清退用户");
+        member.setAvatar(null);
+        member.setStatus(0);
+        member.setTokenVersion((member.getTokenVersion() == null ? 0 : member.getTokenVersion()) + 1);
+        memberMapper.updateById(member);
+
+        // 登录账号：清空学号 / 用户名（释放学号可再次导入），随机化密码彻底锁定
+        MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
+                .eq(MemberAccount::getMemberId, memberId)
+                .last("LIMIT 1"));
+        if (account != null) {
+            account.setStudentNo(null);
+            account.setUsername(null);
+            account.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+            account.setStatus(0);
+            account.setMustChangePassword(0);
+            memberAccountMapper.updateById(account);
+        }
+
+        // 资料表：脱敏姓名 / 手机号，保留学院、年级等非直接身份字段用于聚合统计
+        MemberProfile profile = memberProfileMapper.selectById(memberId);
+        if (profile != null) {
+            profile.setRealName("已清退");
+            profile.setPhone(null);
+            memberProfileMapper.updateById(profile);
+        }
+
+        return toVo(memberMapper.selectById(memberId));
+    }
+
     private void processRow(MemberImportRow row, int rowNum, ImportAccumulator acc) {
         String studentNo = trim(row.getStudentNo());
         String realName = trim(row.getRealName());

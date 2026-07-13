@@ -8,6 +8,7 @@ import {
   fetchCourses,
   fetchSubtitleStatus,
   publishCourse,
+  removeCourse,
   triggerSubtitle,
   unpublishCourse,
   updateCourse,
@@ -225,6 +226,17 @@ export function useCourseList() {
     await loadData()
   }
 
+  async function onDelete(row: CourseItem) {
+    await ElMessageBox.confirm(
+      `删除「${row.name}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
+      '删除确认',
+      { type: 'warning' }
+    )
+    await removeCourse(row.id)
+    ElMessage.success('已移入回收站')
+    await loadData()
+  }
+
   onMounted(async () => {
     await Promise.all([loadCategories(), loadResourceOptions()])
     await loadData()
@@ -259,6 +271,7 @@ export function useCourseList() {
     onTriggerSubtitle,
     onSaveSubtitle,
     onPublish,
-    onUnpublish
+    onUnpublish,
+    onDelete
   }
 }

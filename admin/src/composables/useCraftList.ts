@@ -7,6 +7,7 @@ import {
   fetchCraft,
   fetchCrafts,
   publishCraft,
+  removeCraft,
   unpublishCraft,
   updateCraft
 } from '@/api/craft'
@@ -191,6 +192,17 @@ export function useCraftList() {
     await loadData()
   }
 
+  async function onDelete(row: CraftItem) {
+    await ElMessageBox.confirm(
+      `删除「${row.name}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
+      '删除确认',
+      { type: 'warning' }
+    )
+    await removeCraft(row.id)
+    ElMessage.success('已移入回收站')
+    await loadData()
+  }
+
   onMounted(async () => {
     await loadCategories()
     await loadData()
@@ -217,6 +229,7 @@ export function useCraftList() {
     openDialog,
     onSave,
     onPublish,
-    onUnpublish
+    onUnpublish,
+    onDelete
   }
 }

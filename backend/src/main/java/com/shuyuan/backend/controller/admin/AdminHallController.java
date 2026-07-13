@@ -53,4 +53,10 @@ public class AdminHallController {
     public Result<Map<String, Object>> unpublish(@PathVariable Long id) {
         return Result.ok(adminHallService.unpublish(id));
     }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        adminHallService.delete(id);
+        return Result.ok();
+    }
 }

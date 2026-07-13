@@ -52,4 +52,10 @@ public class AdminMemberController {
     public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestParam int status) {
         return Result.ok(adminMemberService.updateStatus(id, status));
     }
+
+    /** 清退：脱敏并禁用账号，保留历史统计外键，不物理删除 */
+    @PutMapping("/{id}/anonymize")
+    public Result<Map<String, Object>> anonymize(@PathVariable Long id) {
+        return Result.ok(adminMemberService.anonymize(id));
+    }
 }

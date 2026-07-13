@@ -56,7 +56,7 @@
             @click="onUnpublish(row)"
           >下架</el-button>
           <el-button
-            v-if="canWrite && row.status === 'draft'"
+            v-if="canWrite && row.status !== 'published'"
             link
             type="danger"
             @click="onDelete(row)"
@@ -313,9 +313,13 @@ async function onUnpublish(row: NewsItem) {
 }
 
 async function onDelete(row: NewsItem) {
-  await ElMessageBox.confirm(`删除草稿「${row.title}」？删除后不可恢复。`, '删除确认', { type: 'warning' })
+  await ElMessageBox.confirm(
+    `删除「${row.title}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
+    '删除确认',
+    { type: 'warning' }
+  )
   await removeNews(row.id)
-  ElMessage.success('已删除')
+  ElMessage.success('已移入回收站')
   await loadData()
 }
 

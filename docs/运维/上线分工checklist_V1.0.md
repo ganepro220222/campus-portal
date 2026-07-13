@@ -199,6 +199,7 @@ flowchart LR
 | ☐ | 执行建表 | `sql/init.sql`（**禁止**生产导入 `seed-dev.sql`） | 表数量与文档一致 |
 | ☐ | 执行补丁 | 按 `sql/README.md` 顺序执行 `patch-*.sql` | 无报错 |
 | ☐ | point_record 唯一键（**仅旧库**） | 先 `patch-point-record-unique-cleanup.sql` Step1–3，再 `patch-point-record-unique.sql`；新库跳过 | Step1 无重复或已清理 |
+| ☐ | ASR 轮询字段（**仅旧库**） | 执行 `patch-subtitle-asr-poll.sql`；新库跳过 | 验收 SQL 返回 4 列（见 `sql/README.md` §15） |
 | ☐ | 配置 `.env` | `SPRING_PROFILES_ACTIVE=prod`，JWT/DB/Redis/WX/OSS 等；**禁止**沿用 `.env.example` 的 `dev` | 对照环境变量说明 §6 清单 |
 | ☐ | 全量发布门禁 | `npm run check:release-all -- --env <部署机.env>` | 脚本退出码 0 |
 | ☐ | CORS（分域时） | 白名单不含 `localhost` / `example.edu.cn` / `*` | 同源反代可留空 |

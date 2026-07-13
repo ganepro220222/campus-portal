@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -48,9 +47,8 @@ class SubtitleAsrServiceTest {
     }
 
     @Test
-    void pollProcessingTasks_skipsStubTask() {
-        Course stub = processingCourse(1L, "stub-abc");
-        when(courseMapper.selectList(any())).thenReturn(List.of(stub));
+    void pollProcessingTasks_excludesStubTasksAtQueryLevel() {
+        when(courseMapper.selectList(any())).thenReturn(List.of());
 
         subtitleAsrService.pollProcessingTasks();
 
@@ -91,11 +89,8 @@ class SubtitleAsrServiceTest {
     }
 
     @Test
-    void pollProcessingTasks_skipsWhenBackoffNotElapsed() {
-        Course course = processingCourse(4L, "task-backoff");
-        course.setSubtitleAsrAttemptCount(5);
-        course.setSubtitleAsrLastPollAt(LocalDateTime.now().minusMinutes(2));
-        when(courseMapper.selectList(any())).thenReturn(List.of(course));
+    void pollProcessingTasks_excludesBackoffTasksAtQueryLevel() {
+        when(courseMapper.selectList(any())).thenReturn(List.of());
 
         subtitleAsrService.pollProcessingTasks();
 

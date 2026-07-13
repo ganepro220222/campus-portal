@@ -11,11 +11,30 @@ public final class DeploymentSecurityRules {
 
     public static final String DEV_JWT_SECRET_YAML = "shuyuan-dev-jwt-secret-change-in-prod";
     public static final String DEV_JWT_SECRET_DEFAULT = "shuyuan-dev-jwt-secret";
+    public static final String PLACEHOLDER_JWT_SECRET = "your-jwt-secret-at-least-32-chars";
+    public static final String PLACEHOLDER_WX_APPID = "your-wx-appid";
+    public static final String PLACEHOLDER_WX_SECRET = "your-wx-secret";
     private static final int MIN_JWT_SECRET_LENGTH = 32;
 
     private static final Set<String> DEV_JWT_SECRETS = Set.of(
             DEV_JWT_SECRET_YAML,
             DEV_JWT_SECRET_DEFAULT
+    );
+
+    private static final Set<String> PLACEHOLDER_VALUES = Set.of(
+            PLACEHOLDER_JWT_SECRET,
+            "your-db-password",
+            "your-redis-password",
+            PLACEHOLDER_WX_APPID,
+            PLACEHOLDER_WX_SECRET
+    );
+
+    private static final Set<String> LOCAL_DB_HOSTS = Set.of(
+            "localhost", "127.0.0.1", "::1", "mysql"
+    );
+
+    private static final Set<String> LOCAL_REDIS_HOSTS = Set.of(
+            "localhost", "127.0.0.1", "::1", "redis"
     );
 
     private static final Set<String> GUARDED_PROFILES = Set.of("prod", "staging");
@@ -67,6 +86,9 @@ public final class DeploymentSecurityRules {
         if (DEV_JWT_SECRETS.contains(trimmed)) {
             throw new IllegalStateException("生产/预发环境禁止使用开发默认 JWT_SECRET");
         }
+        if (isPlaceholderValue(trimmed)) {
+            throw new IllegalStateException("生产/预发环境禁止使用 .env.example 占位 JWT_SECRET");
+        }
     }
 
     static void validateWxCredentials(String wxAppId, String wxSecret) {
@@ -76,6 +98,60 @@ public final class DeploymentSecurityRules {
         if (wxSecret == null || wxSecret.isBlank()) {
             throw new IllegalStateException("生产环境必须配置 WX_SECRET");
         }
+        if (isPlaceholderValue(wxAppId)) {
+            throw new IllegalStateException("生产环境禁止使用 .env.example 占位 WX_APPID");
+        }
+        if (isPlaceholderValue(wxSecret)) {
+            throw new IllegalStateException("生产环境禁止使用 .env.example 占位 WX_SECRET");
+        }
+    }
+
+    static boolean isPlaceholderValue(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        return PLACEHOLDER_VALUES.contains(value.trim());
+    }
+
+    static String extractJdbcHost(String datasourceUrl) {
+        if (datasourceUrl == null || datasourceUrl.isBlank()) {
+            return "";
+        }
+        String trimmed = datasourceUrl.trim();
+        int schemeEnd = trimmed.indexOf("://");
+        if (schemeEnd < 0) {
+            return "";
+        }
+        String rest = trimmed.substring(schemeEnd + 3);
+        if (rest.startsWith("[")) {
+            int endBracket = rest.indexOf(']');
+            if (endBracket > 0) {
+                return rest.substring(1, endBracket).toLowerCase(Locale.ROOT);
+            }
+            return "";
+        }
+        int end = rest.length();
+        int slash = rest.indexOf('/');
+        if (slash >= 0) {
+            end = Math.min(end, slash);
+        }
+        int question = rest.indexOf('?');
+        if (question >= 0) {
+            end = Math.min(end, question);
+        }
+        int colon = rest.indexOf(':');
+        if (colon >= 0) {
+            end = Math.min(end, colon);
+        }
+        return rest.substring(0, end).trim().toLowerCase(Locale.ROOT);
+    }
+
+    static boolean isLocalDbHost(String host) {
+        return host != null && LOCAL_DB_HOSTS.contains(host.toLowerCase(Locale.ROOT));
+    }
+
+    static boolean isLocalRedisHost(String host) {
+        return host != null && LOCAL_REDIS_HOSTS.contains(host.trim().toLowerCase(Locale.ROOT));
     }
 
     /**
@@ -109,23 +185,17 @@ public final class DeploymentSecurityRules {
     }
 
     static boolean isRemoteDatasource(String datasourceUrl) {
-        if (datasourceUrl == null || datasourceUrl.isBlank()) {
+        String host = extractJdbcHost(datasourceUrl);
+        if (host.isEmpty()) {
             return false;
         }
-        String lower = datasourceUrl.toLowerCase(Locale.ROOT);
-        return !lower.contains("localhost")
-                && !lower.contains("127.0.0.1")
-                && !lower.contains("://mysql:");
+        return !isLocalDbHost(host);
     }
 
     static boolean isRemoteRedis(String redisHost) {
         if (redisHost == null || redisHost.isBlank()) {
             return false;
         }
-        String lower = redisHost.trim().toLowerCase(Locale.ROOT);
-        return !"localhost".equals(lower)
-                && !"127.0.0.1".equals(lower)
-                && !"::1".equals(lower)
-                && !"redis".equals(lower);
+        return !isLocalRedisHost(redisHost);
     }
 }

@@ -8,12 +8,12 @@ import com.shuyuan.backend.entity.Course;
 import com.shuyuan.backend.entity.CourseProgress;
 import com.shuyuan.backend.mapper.CourseMapper;
 import com.shuyuan.backend.mapper.CourseProgressMapper;
+import com.shuyuan.backend.util.CourseProgressGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,22 +25,20 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CourseProgressService {
 
-    private static final BigDecimal COMPLETE_THRESHOLD = new BigDecimal("90.00");
-
     private final CourseProgressMapper courseProgressMapper;
     private final CourseMapper courseMapper;
     private final PointService pointService;
     private final EventLogService eventLogService;
 
     public Map<String, Object> getProgress(Long courseId) {
-        requirePublishedCourse(courseId);
+        Course course = requirePublishedCourse(courseId);
         Long memberId = MemberContext.getMemberId();
         if (memberId == null) {
-            return emptyProgress(courseId);
+            return emptyProgress(course.getId());
         }
         CourseProgress progress = findProgress(memberId, courseId);
         if (progress == null) {
-            return emptyProgress(courseId);
+            return emptyProgress(course.getId());
         }
         return toVo(progress);
     }
@@ -48,7 +46,8 @@ public class CourseProgressService {
     @Transactional
     public Map<String, Object> reportProgress(Long courseId, CourseProgressRequest req) {
         Long memberId = requireMemberId();
-        requirePublishedCourse(courseId);
+        Course course = requirePublishedCourse(courseId);
+        LocalDateTime now = LocalDateTime.now();
 
         int incomingPosition = req.getLastPositionSeconds() != null ? Math.max(0, req.getLastPositionSeconds()) : 0;
         int incomingTotal = req.getTotalDurationSeconds() != null && req.getTotalDurationSeconds() > 0
@@ -56,8 +55,19 @@ public class CourseProgressService {
                 : 0;
 
         CourseProgress existing = findProgress(memberId, courseId);
+        if (incomingTotal > 0) {
+            CourseProgressGuard.validateTotalDuration(course, incomingTotal);
+            CourseProgressGuard.validatePositionReport(existing, incomingPosition, incomingTotal, now);
+        }
+
         boolean wasCompleted = existing != null && existing.getCompleted() != null && existing.getCompleted() == 1;
-        ProgressSnapshot snapshot = mergeProgress(existing, incomingPosition, incomingTotal, wasCompleted);
+        ProgressSnapshot snapshot = mergeProgress(existing, incomingPosition, incomingTotal);
+
+        boolean reachedThreshold = snapshot.percent().compareTo(CourseProgressGuard.COMPLETE_THRESHOLD) >= 0;
+        boolean canComplete = CourseProgressGuard.eligibleForCompletion(
+                course, existing, snapshot.percent(), snapshot.total(), now);
+        boolean completed = wasCompleted || (reachedThreshold && canComplete);
+        boolean newlyCompleted = !wasCompleted && reachedThreshold && canComplete;
 
         CourseProgress row = existing != null ? existing : new CourseProgress();
         row.setMemberId(memberId);
@@ -65,8 +75,8 @@ public class CourseProgressService {
         row.setLastPositionSeconds(snapshot.position());
         row.setTotalDurationSeconds(snapshot.total());
         row.setProgressPercent(snapshot.percent());
-        row.setCompleted(snapshot.completed() ? 1 : 0);
-        row.setUpdatedAt(LocalDateTime.now());
+        row.setCompleted(completed ? 1 : 0);
+        row.setUpdatedAt(now);
 
         if (existing == null) {
             courseProgressMapper.insert(row);
@@ -74,7 +84,7 @@ public class CourseProgressService {
             courseProgressMapper.updateById(row);
         }
 
-        if (snapshot.newlyCompleted()) {
+        if (newlyCompleted) {
             pointService.awardCourseComplete(memberId, courseId);
             eventLogService.record("complete", "course", courseId);
         }
@@ -83,10 +93,9 @@ public class CourseProgressService {
     }
 
     /**
-     * 合并上报与历史进度：位置/百分比只增不减，completed 单向递进。
+     * 合并上报与历史进度：位置/百分比只增不减。
      */
-    ProgressSnapshot mergeProgress(CourseProgress existing, int incomingPosition, int incomingTotal,
-                                   boolean wasCompleted) {
+    ProgressSnapshot mergeProgress(CourseProgress existing, int incomingPosition, int incomingTotal) {
         int existingPos = existing != null && existing.getLastPositionSeconds() != null
                 ? existing.getLastPositionSeconds() : 0;
         int existingTotal = existing != null && existing.getTotalDurationSeconds() != null
@@ -98,24 +107,19 @@ public class CourseProgressService {
         int total = incomingTotal > 0 ? incomingTotal : existingTotal;
 
         BigDecimal percent;
-        boolean completedNow;
         if (total > 0) {
             percent = calcPercent(position, total);
             if (existingPercent.compareTo(percent) > 0) {
                 percent = existingPercent;
             }
-            completedNow = percent.compareTo(COMPLETE_THRESHOLD) >= 0;
         } else {
             percent = existingPercent;
-            completedNow = false;
         }
 
-        boolean completed = wasCompleted || completedNow;
-        boolean newlyCompleted = completedNow && !wasCompleted;
-        return new ProgressSnapshot(position, total, percent, completed, newlyCompleted);
+        return new ProgressSnapshot(position, total, percent);
     }
 
-    record ProgressSnapshot(int position, int total, BigDecimal percent, boolean completed, boolean newlyCompleted) {}
+    record ProgressSnapshot(int position, int total, BigDecimal percent) {}
 
     private CourseProgress findProgress(Long memberId, Long courseId) {
         return courseProgressMapper.selectOne(new LambdaQueryWrapper<CourseProgress>()
@@ -124,11 +128,12 @@ public class CourseProgressService {
                 .last("LIMIT 1"));
     }
 
-    private void requirePublishedCourse(Long courseId) {
+    private Course requirePublishedCourse(Long courseId) {
         Course course = courseMapper.selectById(courseId);
         if (course == null || course.getStatus() == null || course.getStatus() != 1) {
             throw new BusinessException(404, "课程不存在");
         }
+        return course;
     }
 
     private Long requireMemberId() {
@@ -140,11 +145,7 @@ public class CourseProgressService {
     }
 
     private BigDecimal calcPercent(int position, int total) {
-        if (total <= 0) {
-            return BigDecimal.ZERO;
-        }
-        double raw = Math.min(100.0, position * 100.0 / total);
-        return BigDecimal.valueOf(raw).setScale(2, RoundingMode.HALF_UP);
+        return CourseProgressGuard.calcPercent(position, total);
     }
 
     private Map<String, Object> emptyProgress(Long courseId) {

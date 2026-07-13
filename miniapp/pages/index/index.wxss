@@ -313,6 +313,9 @@
   flex-shrink: 0;
 }
 .hall-card:active { transform: translateY(-4rpx); }
+/* 协同育人 ≤2 个时铺满整行，避免单张卡片孤零零留白 */
+.halls-inner.inner-fill { white-space: normal; }
+.hall-card.card-fill { width: auto; flex: 1 1 0; min-width: 0; }
 .hc-cover {
   position: relative;
   height: 150rpx;

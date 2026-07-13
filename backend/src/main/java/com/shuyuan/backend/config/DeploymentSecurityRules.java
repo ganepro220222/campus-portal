@@ -77,4 +77,55 @@ public final class DeploymentSecurityRules {
             throw new IllegalStateException("生产环境必须配置 WX_SECRET");
         }
     }
+
+    /**
+     * dev/docker 等非 guarded profile 若连接远程 DB/Redis，拒绝启动，避免绕过 staging/prod 门禁。
+     */
+    public static void validateNonGuardedProfileUsesLocalInfraOnly(String[] activeProfiles,
+                                                                   String datasourceUrl,
+                                                                   String redisHost) {
+        if (requiresGuardedValidation(activeProfiles) || hasTestProfile(activeProfiles)) {
+            return;
+        }
+        if (!isRemoteDatasource(datasourceUrl) && !isRemoteRedis(redisHost)) {
+            return;
+        }
+        throw new IllegalStateException(
+                "检测到非 guarded profile（dev/docker/空）连接远程 DB/Redis，"
+                        + "请将 SPRING_PROFILES_ACTIVE 设为 staging 或 prod；"
+                        + "当前 profiles=" + Arrays.toString(activeProfiles));
+    }
+
+    static boolean hasTestProfile(String[] activeProfiles) {
+        if (activeProfiles == null) {
+            return false;
+        }
+        for (String profile : activeProfiles) {
+            if ("test".equalsIgnoreCase(profile)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean isRemoteDatasource(String datasourceUrl) {
+        if (datasourceUrl == null || datasourceUrl.isBlank()) {
+            return false;
+        }
+        String lower = datasourceUrl.toLowerCase(Locale.ROOT);
+        return !lower.contains("localhost")
+                && !lower.contains("127.0.0.1")
+                && !lower.contains("://mysql:");
+    }
+
+    static boolean isRemoteRedis(String redisHost) {
+        if (redisHost == null || redisHost.isBlank()) {
+            return false;
+        }
+        String lower = redisHost.trim().toLowerCase(Locale.ROOT);
+        return !"localhost".equals(lower)
+                && !"127.0.0.1".equals(lower)
+                && !"::1".equals(lower)
+                && !"redis".equals(lower);
+    }
 }

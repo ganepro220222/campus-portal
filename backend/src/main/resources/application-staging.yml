@@ -20,10 +20,11 @@ shuyuan:
     dev-mode: false
     appid: ${WX_APPID:}
     secret: ${WX_SECRET:}
+  # 前后端分域部署时通过环境变量注入，例如：
+  # SHUYUAN_CORS_ALLOWED_ORIGIN_PATTERNS=https://admin-staging.example.edu.cn
+  # 同源 Nginx 反代（推荐）可留空，浏览器不触发跨域
   cors:
-    allowed-origin-patterns:
-      - https://staging.example.edu.cn
-      - http://localhost:5173
+    allowed-origin-patterns: []
   security:
     trust-forwarded-headers: true
 

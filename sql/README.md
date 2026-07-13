@@ -85,7 +85,17 @@ FROM sys_user
 WHERE username = 'admin';
 ```
 
-4. 打补丁后重启后端：`docker compose -f docker-compose.dev.yml up -d backend`。
+4. 打补丁后重启后端（**勿**使用 `docker-compose.dev.yml`，该文件仅本地开发）：
+
+```bash
+# Docker 部署（推荐，替换为部署机真实 .env 路径）
+docker restart shuyuan-api
+# 或首次启动见 docs/运维/部署手册_V1.0.md §5.3
+
+# systemd 部署
+sudo systemctl restart shuyuan-backend
+```
+
 5. 结构变更后建议在管理后台点几个列表页（新闻、展馆、课程）确认无 500。
 
 ---

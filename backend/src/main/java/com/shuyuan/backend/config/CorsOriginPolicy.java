@@ -10,7 +10,7 @@ import java.util.Locale;
 public final class CorsOriginPolicy {
 
     private static final String[] PERMISSIVE = {"*"};
-    private static final String[] STAGING_FALLBACK = {"http://localhost:5173"};
+    private static final String[] RESTRICTED_EMPTY = new String[0];
 
     private CorsOriginPolicy() {
     }
@@ -33,8 +33,34 @@ public final class CorsOriginPolicy {
             return PERMISSIVE;
         }
         if (configured == null || configured.isEmpty()) {
-            return STAGING_FALLBACK;
+            return RESTRICTED_EMPTY;
         }
         return configured.toArray(new String[0]);
+    }
+
+    public static void validateGuardedCorsOrigins(String[] activeProfiles, List<String> configured) {
+        if (!requiresRestrictedCors(activeProfiles) || configured == null) {
+            return;
+        }
+        for (String origin : configured) {
+            validateSingleOriginPattern(origin);
+        }
+    }
+
+    static void validateSingleOriginPattern(String origin) {
+        if (origin == null || origin.isBlank()) {
+            return;
+        }
+        String trimmed = origin.trim();
+        String lower = trimmed.toLowerCase(Locale.ROOT);
+        if ("*".equals(trimmed)) {
+            throw new IllegalStateException("staging/prod CORS 禁止使用通配符 *");
+        }
+        if (lower.contains("localhost") || lower.contains("127.0.0.1")) {
+            throw new IllegalStateException("staging/prod CORS 禁止包含 localhost: " + origin);
+        }
+        if (lower.contains("example.edu.cn")) {
+            throw new IllegalStateException("staging/prod CORS 禁止使用占位域名 example.edu.cn: " + origin);
+        }
     }
 }

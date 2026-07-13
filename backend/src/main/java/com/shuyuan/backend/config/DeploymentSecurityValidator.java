@@ -30,6 +30,9 @@ public class DeploymentSecurityValidator implements ApplicationRunner {
                 properties.getWx().isDevMode(),
                 properties.getWx().getAppid(),
                 properties.getWx().getSecret());
+        CorsOriginPolicy.validateGuardedCorsOrigins(
+                profiles,
+                properties.getCors().getAllowedOriginPatterns());
         log.info("部署安全校验通过，activeProfiles={}", String.join(",", profiles));
     }
 }

@@ -90,4 +90,46 @@ class DeploymentSecurityRulesTest {
         assertThrows(IllegalStateException.class, () ->
                 DeploymentSecurityRules.validateJwtSecret("too-short"));
     }
+
+    @Test
+    void validateNonGuardedProfile_allowsLocalDev() {
+        assertDoesNotThrow(() -> DeploymentSecurityRules.validateNonGuardedProfileUsesLocalInfraOnly(
+                new String[] {"dev"},
+                "jdbc:mysql://localhost:3306/shuyuan",
+                "localhost"));
+    }
+
+    @Test
+    void validateNonGuardedProfile_allowsDockerCompose() {
+        assertDoesNotThrow(() -> DeploymentSecurityRules.validateNonGuardedProfileUsesLocalInfraOnly(
+                new String[] {"docker"},
+                "jdbc:mysql://mysql:3306/shuyuan",
+                "redis"));
+    }
+
+    @Test
+    void validateNonGuardedProfile_skipsTestProfile() {
+        assertDoesNotThrow(() -> DeploymentSecurityRules.validateNonGuardedProfileUsesLocalInfraOnly(
+                new String[] {"test"},
+                "jdbc:mysql://rds.example.com:3306/shuyuan_test",
+                "redis.example.com"));
+    }
+
+    @Test
+    void validateNonGuardedProfile_rejectsRemoteDbWithDevProfile() {
+        assertThrows(IllegalStateException.class, () ->
+                DeploymentSecurityRules.validateNonGuardedProfileUsesLocalInfraOnly(
+                        new String[] {"dev"},
+                        "jdbc:mysql://rds.example.com:3306/shuyuan",
+                        "localhost"));
+    }
+
+    @Test
+    void validateNonGuardedProfile_rejectsRemoteRedisWithEmptyProfiles() {
+        assertThrows(IllegalStateException.class, () ->
+                DeploymentSecurityRules.validateNonGuardedProfileUsesLocalInfraOnly(
+                        new String[0],
+                        "jdbc:mysql://localhost:3306/shuyuan",
+                        "redis.prod.internal"));
+    }
 }

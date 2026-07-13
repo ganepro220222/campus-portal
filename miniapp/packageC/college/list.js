@@ -57,7 +57,12 @@ Page({
       return
     }
     if (type === 'api_sync') {
-      wx.showToast({ title: '接口同步功能建设中', icon: 'none' })
+      wx.showModal({
+        title: '接口同步（预留）',
+        content: '该入口已预留，待甲方提供对方 API 文档并完成对接后启用。当前请使用「小程序跳转」或「手动录入」方式。',
+        showCancel: false,
+        confirmText: '知道了'
+      })
       return
     }
     wx.showModal({

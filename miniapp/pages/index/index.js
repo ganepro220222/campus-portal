@@ -17,6 +17,7 @@ Page({
     hallList:           mockOrEmpty(decorateHalls(mock.hallsHome), []),
     newsList:           mockOrEmpty(decorateNews(mock.newsHome), []),
     courseList:         mockOrEmpty(decorateCourses(mock.coursesHome), []),
+    collegeList:        [],
     hasNewAnnouncement: false,
     loading:            true,
     statusBarHeight:    20,
@@ -46,15 +47,17 @@ Page({
     const cached = store.getCache('home')
     if (cached) { this.setData({ ...cached, loading: false }); return }
     try {
-      const [banners, recommends] = await Promise.all([
+      const [banners, recommends, colleges] = await Promise.all([
         get('/banners').catch(() => []),
-        get('/home/recommends').catch(() => ({}))
+        get('/home/recommends').catch(() => ({})),
+        get('/colleges/home').catch(() => [])
       ])
       const data = {
         banners:    decorateBanners(withListFallback(banners, mock.banners)),
         hallList:   decorateHalls(withListFallback(recommends && recommends.halls, mock.hallsHome)),
         newsList:   decorateNews(withListFallback(recommends && recommends.news, mock.newsHome)),
-        courseList: decorateCourses(withListFallback(recommends && recommends.courses, mock.coursesHome))
+        courseList: decorateCourses(withListFallback(recommends && recommends.courses, mock.coursesHome)),
+        collegeList: withListFallback(colleges, mock.collegesHome || [])
       }
       store.setCache('home', data)
       this.setData({ ...data, loading: false })
@@ -110,5 +113,24 @@ Page({
 
   onHallTap(e) { wx.navigateTo({ url: `/packageA/hall/detail?id=${e.currentTarget.dataset.id}` }) },
   onNewsCardTap(e) { wx.navigateTo({ url: `/packageA/news/detail?id=${e.currentTarget.dataset.id}` }) },
-  onCourseCardTap(e) { wx.navigateTo({ url: `/packageB/course/detail?id=${e.currentTarget.dataset.id}` }) }
+  onCourseCardTap(e) { wx.navigateTo({ url: `/packageB/course/detail?id=${e.currentTarget.dataset.id}` }) },
+
+  onCollegeMore() {
+    wx.navigateTo({ url: '/packageC/college/list' })
+  },
+
+  onCollegeTap(e) {
+    const id = e.currentTarget.dataset.id
+    const item = (this.data.collegeList || []).find(c => String(c.id) === String(id))
+    if (!item) return
+    if (!item.appid) {
+      wx.showToast({ title: '未配置目标小程序', icon: 'none' })
+      return
+    }
+    wx.navigateToMiniProgram({
+      appId: item.appid,
+      path: item.path || '',
+      fail: () => wx.showToast({ title: '跳转失败，请检查 AppID 是否已关联', icon: 'none', duration: 3000 })
+    })
+  }
 })

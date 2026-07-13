@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +33,8 @@ public class AdminCourseService {
     private final CategoryService categoryService;
     private final AdminPermissionService adminPermissionService;
     private final SearchIndexSyncService searchIndexSyncService;
+    private final AsrService asrService;
+    private final OssService ossService;
 
     public PageResult<Map<String, Object>> list(Long categoryId, Integer status, int page, int size) {
         adminPermissionService.require("course:read");
@@ -120,7 +121,7 @@ public class AdminCourseService {
         return detail(id);
     }
 
-    /** 触发字幕生成（ASR 未接入时标记 processing，管理员可手动补字幕 URL） */
+    /** 触发字幕生成（提交 ASR 任务，轮询完成后写入 subtitle_url） */
     @Transactional
     public Map<String, Object> triggerSubtitle(Long id) {
         adminPermissionService.require("course:write");
@@ -131,7 +132,11 @@ public class AdminCourseService {
         if ("processing".equals(course.getSubtitleStatus())) {
             throw new BusinessException(400, "字幕任务进行中，请勿重复提交");
         }
-        String taskId = "stub-" + UUID.randomUUID().toString().substring(0, 8);
+        if (!asrService.isConfigured()) {
+            throw new BusinessException(503, "ASR 未配置，请设置 ASR_ACCESS_KEY_ID / ASR_ACCESS_KEY_SECRET / ASR_APP_KEY，或手动上传字幕后保存");
+        }
+        String mediaUrl = ossService.signUrl(course.getVideoUrl());
+        String taskId = asrService.submit(mediaUrl);
         Course update = new Course();
         update.setId(id);
         update.setSubtitleStatus("processing");

@@ -15,6 +15,7 @@ import java.util.Map;
 public class CollegeAppService {
 
     private static final String[] COLOR_CLASSES = {"hc1", "hc2", "hc3", "hc4", "hc5"};
+    private static final int HOME_JUMP_LIMIT = 6;
 
     private final CollegeAppMapper collegeAppMapper;
 
@@ -23,6 +24,17 @@ public class CollegeAppService {
                 .eq(CollegeApp::getStatus, 1)
                 .orderByAsc(CollegeApp::getSort)
                 .orderByAsc(CollegeApp::getId));
+        return list.stream().map(this::toMiniappVo).toList();
+    }
+
+    /** 首页横滑：仅返回 jump 类型、已上架条目（最多 6 条） */
+    public List<Map<String, Object>> listHomeJump() {
+        List<CollegeApp> list = collegeAppMapper.selectList(new LambdaQueryWrapper<CollegeApp>()
+                .eq(CollegeApp::getStatus, 1)
+                .eq(CollegeApp::getContentType, "jump")
+                .orderByAsc(CollegeApp::getSort)
+                .orderByAsc(CollegeApp::getId)
+                .last("LIMIT " + HOME_JUMP_LIMIT));
         return list.stream().map(this::toMiniappVo).toList();
     }
 
@@ -54,7 +66,7 @@ public class CollegeAppService {
             return "H5 嵌入";
         }
         if ("api_sync".equals(type)) {
-            return "接口同步";
+            return "接口同步（预留）";
         }
         return type;
     }

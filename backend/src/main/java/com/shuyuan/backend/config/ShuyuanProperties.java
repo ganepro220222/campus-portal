@@ -18,6 +18,7 @@ public class ShuyuanProperties {
     private Alert alert = new Alert();
     private Cors cors = new Cors();
     private Security security = new Security();
+    private Asr asr = new Asr();
 
     @Data
     public static class Login {
@@ -115,5 +116,16 @@ public class ShuyuanProperties {
                 "10.0.0.0/8",
                 "172.16.0.0/12",
                 "192.168.0.0/16");
+    }
+
+    /** 课程字幕 ASR（阿里云录音文件识别） */
+    @Data
+    public static class Asr {
+        /** none | aliyun */
+        private String provider = "none";
+        private String accessKeyId = "";
+        private String accessKeySecret = "";
+        private String appKey = "";
+        private String region = "cn-shanghai";
     }
 }

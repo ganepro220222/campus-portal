@@ -23,4 +23,9 @@ public class CollegeAppController {
     public Result<List<Map<String, Object>>> list() {
         return Result.ok(collegeAppService.listActive());
     }
+
+    @GetMapping("/home")
+    public Result<List<Map<String, Object>>> home() {
+        return Result.ok(collegeAppService.listHomeJump());
+    }
 }

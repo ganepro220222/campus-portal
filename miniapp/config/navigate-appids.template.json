@@ -1,0 +1,15 @@
+{
+  "_comment": "兄弟小程序 AppID 清单。复制为 navigate-appids.json 填入真实值后执行：node scripts/sync-navigate-appids.js",
+  "appIds": [
+    {
+      "appId": "wxPLACEHOLDER_COLLEGE_01",
+      "name": "马克思主义学院兄弟小程序",
+      "note": "待甲方提供正式 AppID 后替换"
+    },
+    {
+      "appId": "wxPLACEHOLDER_COLLEGE_02",
+      "name": "轨道交通学院兄弟小程序",
+      "note": "待甲方提供正式 AppID 后替换"
+    }
+  ]
+}

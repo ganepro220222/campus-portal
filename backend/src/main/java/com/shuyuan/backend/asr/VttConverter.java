@@ -28,7 +28,8 @@ final class VttConverter {
             for (JsonNode s : sentences) {
                 long begin = s.path("BeginTime").asLong(s.path("begin_time").asLong(0));
                 long end = s.path("EndTime").asLong(s.path("end_time").asLong(begin + 1000));
-                String text = s.path("Text").asText(s.path("text").asText("")).trim();
+                String text = VttCueSanitizer.sanitize(
+                        s.path("Text").asText(s.path("text").asText("")));
                 if (text.isEmpty()) {
                     continue;
                 }

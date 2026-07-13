@@ -36,6 +36,13 @@ class OssServiceTest {
     }
 
     @Test
+    void signTrustedVideoUrlForAsr_rejectsWhenDisabled() {
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.signTrustedVideoUrlForAsr("videos/demo.mp4"));
+        assertEquals(503, ex.getCode());
+    }
+
+    @Test
     void upload_rejects_whenDisabled() {
         MockMultipartFile file = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[]{1, 2});
         var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,

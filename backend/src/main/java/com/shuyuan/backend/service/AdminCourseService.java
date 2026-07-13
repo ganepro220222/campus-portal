@@ -135,12 +135,16 @@ public class AdminCourseService {
         if (!asrService.isConfigured()) {
             throw new BusinessException(503, "ASR 未配置，请设置 ASR_ACCESS_KEY_ID / ASR_ACCESS_KEY_SECRET / ASR_APP_KEY，或手动上传字幕后保存");
         }
-        String mediaUrl = ossService.signUrl(course.getVideoUrl());
+        String mediaUrl = ossService.signTrustedVideoUrlForAsr(course.getVideoUrl());
         String taskId = asrService.submit(mediaUrl);
         Course update = new Course();
         update.setId(id);
         update.setSubtitleStatus("processing");
         update.setSubtitleTaskId(taskId);
+        update.setSubtitleAsrStartedAt(java.time.LocalDateTime.now());
+        update.setSubtitleAsrLastPollAt(null);
+        update.setSubtitleAsrAttemptCount(0);
+        update.setSubtitleAsrLastError(null);
         courseMapper.updateById(update);
         return subtitleStatus(id);
     }

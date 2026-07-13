@@ -5,6 +5,7 @@ import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.OssProperties;
+import com.shuyuan.backend.util.CourseVideoUrlPolicy;
 import com.shuyuan.backend.util.UploadContentInspector;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,14 @@ public class OssService {
     }
 
     /**
+     * ASR 等安全敏感场景：校验可信 videos/ objectKey 后签名。
+     */
+    public String signTrustedVideoUrlForAsr(String stored) {
+        String objectKey = CourseVideoUrlPolicy.resolveTrustedVideoObjectKey(stored, ossProperties, isEnabled());
+        return signObjectKey(objectKey);
+    }
+
+    /**
      * 将库中存储的地址转为可访问 URL；OSS 未启用时原样返回（便于本地 dev 手填 CDN 地址）
      */
     public String signUrl(String stored) {
@@ -69,12 +78,18 @@ public class OssService {
         if (!StringUtils.hasText(objectKey)) {
             return stored;
         }
+        return signObjectKey(objectKey);
+    }
+
+    private String signObjectKey(String objectKey) {
         OSS client = null;
         try {
             client = buildClient();
             Date expire = new Date(System.currentTimeMillis() + ossProperties.getSignExpireSeconds() * 1000L);
             String signed = client.generatePresignedUrl(ossProperties.getBucket(), objectKey, expire).toString();
             return rewriteCdnHost(signed);
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             throw new BusinessException(500, "生成文件访问地址失败");
         } finally {

@@ -66,6 +66,8 @@ shuyuan:
     access-key-secret: ${ASR_ACCESS_KEY_SECRET:}
     app-key: ${ASR_APP_KEY:}
     region: ${ASR_REGION:cn-shanghai}
+    poll-batch-size: ${ASR_POLL_BATCH_SIZE:50}
+    poll-timeout-hours: ${ASR_POLL_TIMEOUT_HOURS:24}
   oss:
     enabled: ${OSS_ENABLED:false}
     endpoint: ${OSS_ENDPOINT:}

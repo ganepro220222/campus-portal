@@ -15,6 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -58,6 +60,9 @@ class EnrollServiceTest {
     @AfterEach
     void tearDown() {
         MemberContext.clear();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clear();
+        }
     }
 
     @Test
@@ -79,6 +84,29 @@ class EnrollServiceTest {
         verify(subscribeService).sendEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
         verify(eventLogService).record("enroll", "activity", ACTIVITY_ID);
         verify(pointService).award(MEMBER_ID, "enroll_activity");
+    }
+
+    @Test
+    void enroll_deferredSubscribeUntilAfterCommit() {
+        Activity activity = publishedActivity(10, 3);
+        EnrollRequest req = enrollRequest();
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(null);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
+        when(activityMapper.incrEnrolledCount(ACTIVITY_ID)).thenReturn(1);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            enrollService.enroll(ACTIVITY_ID, req);
+            verify(subscribeService, never()).sendEnrollSuccess(anyLong(), any(), any());
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCommit();
+            }
+            verify(subscribeService).sendEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
+        } finally {
+            TransactionSynchronizationManager.clear();
+        }
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Enroll;
 import com.shuyuan.backend.mapper.ActivityMapper;
 import com.shuyuan.backend.mapper.EnrollMapper;
+import com.shuyuan.backend.util.AfterCommit;
 import com.shuyuan.backend.util.EnrollExportScope;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.vo.EnrollExportRow;
@@ -68,7 +69,10 @@ public class AdminEnrollService {
         notifyMember(enroll.getMemberId(), "报名审核通过",
                 "您报名的活动「" + (activity != null ? activity.getTitle() : "") + "」已审核通过。",
                 enroll.getActivityId());
-        subscribeService.sendEnrollApproved(enroll.getMemberId(), activity, approved);
+        final Long notifyMemberId = enroll.getMemberId();
+        final Activity notifyActivity = activity;
+        final Enroll notifyEnroll = approved;
+        AfterCommit.run(() -> subscribeService.sendEnrollApproved(notifyMemberId, notifyActivity, notifyEnroll));
 
         return toVo(approved);
     }

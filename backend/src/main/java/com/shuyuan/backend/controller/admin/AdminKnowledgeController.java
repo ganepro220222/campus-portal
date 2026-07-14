@@ -57,6 +57,12 @@ public class AdminKnowledgeController {
         return Result.ok(knowledgeService.docStatus(id));
     }
 
+    /** 启用 / 停用（停用后不参与 AI 检索，保留文档可随时启用） */
+    @PutMapping("/{id}/enabled")
+    public Result<Map<String, Object>> setEnabled(@PathVariable Long id, @RequestParam boolean enabled) {
+        return Result.ok(knowledgeService.setEnabled(id, enabled));
+    }
+
     /** 查看分段 */
     @GetMapping("/{id}/chunks")
     public Result<List<Map<String, Object>>> chunks(@PathVariable Long id) {

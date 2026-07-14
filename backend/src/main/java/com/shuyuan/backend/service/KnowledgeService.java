@@ -91,6 +91,8 @@ public class KnowledgeService {
         if (parts.isEmpty()) {
             throw new BusinessException(400, "正文过短，无法入库");
         }
+        // 保留停用意图：停用中的文档编辑后仍停用，不因编辑被静默重新启用
+        boolean wasDisabled = "disabled".equals(doc.getStatus());
         knowledgeChunkMapper.delete(new LambdaQueryWrapper<KnowledgeChunk>().eq(KnowledgeChunk::getDocId, id));
         rebuildChunks(id, parts);
 
@@ -98,7 +100,30 @@ public class KnowledgeService {
         doc.setContent(content);
         doc.setCharCount(content.length());
         doc.setChunkCount(parts.size());
-        doc.setStatus("ready");
+        doc.setStatus(wasDisabled ? "disabled" : "ready");
+        knowledgeDocMapper.updateById(doc);
+        return toDocVo(doc);
+    }
+
+    /**
+     * 启用/停用：停用后不参与 AI 检索（retrieve 只取 ready），但保留文档与分段，可随时启用。
+     * 仅在 ready ↔ disabled 之间切换，避免对处理中/失败态做无意义变更。
+     */
+    @Transactional
+    public Map<String, Object> setEnabled(Long id, boolean enabled) {
+        adminPermissionService.require("admin:super");
+        KnowledgeDoc doc = requireDoc(id);
+        if (enabled) {
+            if (!"disabled".equals(doc.getStatus())) {
+                throw new BusinessException(400, "该文档当前不是停用状态");
+            }
+            doc.setStatus("ready");
+        } else {
+            if (!"ready".equals(doc.getStatus())) {
+                throw new BusinessException(400, "仅「已就绪」文档可停用");
+            }
+            doc.setStatus("disabled");
+        }
         knowledgeDocMapper.updateById(doc);
         return toDocVo(doc);
     }
@@ -278,6 +303,7 @@ public class KnowledgeService {
         }
         return switch (status) {
             case "ready" -> "已就绪";
+            case "disabled" -> "已停用";
             case "processing" -> "处理中";
             case "failed" -> "失败";
             default -> status;

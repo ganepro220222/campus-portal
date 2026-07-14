@@ -45,9 +45,18 @@
       <el-table-column prop="charCount" label="字数" width="90" align="center" />
       <el-table-column label="状态" width="100" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.status === 'ready' ? 'success' : 'warning'" size="small">
+          <el-tag :type="statusTagType(row.status)" size="small">
             {{ row.statusLabel }}
           </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="参与检索" width="100" align="center">
+        <template #default="{ row }">
+          <el-switch
+            :model-value="row.status === 'ready'"
+            :disabled="row.status !== 'ready' && row.status !== 'disabled'"
+            @change="(val: string | number | boolean) => onToggleEnabled(row, val === true)"
+          />
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="录入时间" width="170" />
@@ -82,6 +91,17 @@
           <el-input v-model="form.title" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="正文" prop="content">
+          <div class="content-toolbar">
+            <el-upload
+              :auto-upload="false"
+              :show-file-list="false"
+              accept=".txt,text/plain"
+              :on-change="onPickTxt"
+            >
+              <el-button link type="primary" :icon="Upload">从 txt 文件导入</el-button>
+            </el-upload>
+            <span class="content-toolbar-tip">仅 .txt（UTF-8 编码），导入后可在下方编辑核对再入库</span>
+          </div>
           <el-input v-model="form.content" type="textarea" :rows="12" maxlength="20000" show-word-limit />
           <el-alert
             v-if="contentRecoveredHint"
@@ -118,19 +138,27 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormInstance, FormRules, UploadFile } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search } from '@element-plus/icons-vue'
+import { Plus, Search, Upload } from '@element-plus/icons-vue'
 import {
   createKnowledgeDoc,
   deleteKnowledgeDoc,
   fetchKnowledgeChunks,
   fetchKnowledgeDocDetail,
   fetchKnowledgeDocs,
+  setKnowledgeDocEnabled,
   testKnowledgeRetrieve,
   updateKnowledgeDoc
 } from '@/api/knowledge'
 import type { KnowledgeChunkItem, KnowledgeDocItem, KnowledgeHit } from '@/api/knowledge'
+
+function statusTagType(status: string) {
+  if (status === 'ready') return 'success'
+  if (status === 'disabled') return 'info'
+  if (status === 'failed') return 'danger'
+  return 'warning'
+}
 
 const loading = ref(false)
 const saving = ref(false)
@@ -244,6 +272,46 @@ async function onTest() {
   }
 }
 
+async function onToggleEnabled(row: KnowledgeDocItem, enabled: boolean) {
+  try {
+    await setKnowledgeDocEnabled(row.id, enabled)
+    ElMessage.success(enabled ? '已启用，将参与 AI 检索' : '已停用，不再参与 AI 检索')
+    await loadData()
+  } catch {
+    await loadData() // 失败时重载，让开关回到服务端真实状态
+  }
+}
+
+/** 本地读取 .txt（UTF-8）回填录入表单，管理员核对后再入库——不经服务端，无解析风险 */
+function onPickTxt(uploadFile: UploadFile) {
+  const raw = uploadFile.raw
+  if (!raw) return
+  if (!/\.txt$/i.test(raw.name)) {
+    ElMessage.warning('仅支持 .txt 文件')
+    return
+  }
+  if (raw.size > 2 * 1024 * 1024) {
+    ElMessage.warning('文件不超过 2MB')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    const text = String(reader.result || '').trim()
+    if (!text) {
+      ElMessage.warning('文件内容为空')
+      return
+    }
+    if (!form.title.trim()) {
+      form.title = raw.name.replace(/\.txt$/i, '').slice(0, 200)
+    }
+    form.content = text.slice(0, 20000)
+    contentRecoveredHint.value = false
+    ElMessage.success('已读取，请核对后入库')
+  }
+  reader.onerror = () => ElMessage.error('文件读取失败')
+  reader.readAsText(raw, 'utf-8')
+}
+
 async function onDelete(row: KnowledgeDocItem) {
   await ElMessageBox.confirm(`确定删除「${row.title}」？删除后不可恢复。`, '删除确认', { type: 'warning' })
   await deleteKnowledgeDoc(row.id)
@@ -258,6 +326,8 @@ loadData()
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .form-tip { font-size: 12px; color: var(--el-text-color-secondary); margin-top: 6px; line-height: 1.5; }
 .content-recovered-alert { margin-top: 8px; }
+.content-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.content-toolbar-tip { font-size: 12px; color: var(--el-text-color-secondary); }
 
 .kb-test {
   background: var(--el-fill-color-lighter);

@@ -2,12 +2,42 @@
   <div class="page-card">
     <div class="page-header">
       <h2>AI 知识库</h2>
-      <el-button type="primary" :icon="Plus" @click="openDialog()">录入资料</el-button>
+      <el-button type="primary" :icon="Plus" @click="openCreate()">录入资料</el-button>
     </div>
 
     <p class="text-muted">
-      录入书院文化文本后自动切分入库，小程序 AI 问答将基于这些资料作答。状态为「已就绪」后可被检索。
+      录入书院文化文本后自动切分入库，小程序 AI 问答将基于这些资料作答。状态为「已就绪」后可被检索；
+      编辑后会重新切分入库。
     </p>
+
+    <!-- 检索自测「试问」 -->
+    <div class="kb-test">
+      <div class="kb-test-bar">
+        <el-input
+          v-model="testQuery"
+          placeholder="输入一个问题，测试会命中哪些资料片段（如：什么是知行合一？）"
+          clearable
+          @keyup.enter="onTest"
+        >
+          <template #prepend>试问</template>
+        </el-input>
+        <el-button type="primary" :icon="Search" :loading="testing" @click="onTest">检索</el-button>
+      </div>
+      <div v-if="tested" class="kb-test-result">
+        <el-empty v-if="!hits.length" description="未命中任何片段（可调整措辞，或补充相关资料后再试）" :image-size="70" />
+        <div v-else>
+          <div class="kb-test-hint">命中 {{ hits.length }} 个片段，按相关度排序：</div>
+          <div v-for="(h, i) in hits" :key="i" class="kb-hit">
+            <div class="kb-hit-head">
+              <span class="kb-hit-title">{{ h.docTitle }}</span>
+              <el-tag size="small" type="info" effect="plain">第 {{ h.chunkIndex + 1 }} 段</el-tag>
+              <el-tag size="small" type="success" effect="plain">相关度 {{ h.score }}</el-tag>
+            </div>
+            <div class="kb-hit-text">{{ h.chunkText }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <el-table v-loading="loading" :data="list" stripe border>
       <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
@@ -21,8 +51,10 @@
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="录入时间" width="170" />
-      <el-table-column label="操作" width="100" fixed="right" align="center">
+      <el-table-column label="操作" width="200" fixed="right" align="center">
         <template #default="{ row }">
+          <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+          <el-button link type="primary" @click="openChunks(row)">查看分段</el-button>
           <el-button link type="danger" @click="onDelete(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -38,19 +70,40 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" title="录入知识库资料" width="640px" destroy-on-close>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
+    <!-- 录入 / 编辑 -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingId ? '编辑知识库资料' : '录入知识库资料'"
+      width="640px"
+      destroy-on-close
+    >
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px" v-loading="detailLoading">
         <el-form-item label="标题" prop="title">
           <el-input v-model="form.title" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="正文" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="12" maxlength="20000" show-word-limit />
+          <div class="form-tip">保存后将自动按约 500 字/段重新切分入库，原有分段会被替换。</div>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="onSave">入库</el-button>
+        <el-button type="primary" :loading="saving" @click="onSave">{{ editingId ? '保存并重新入库' : '入库' }}</el-button>
       </template>
+    </el-dialog>
+
+    <!-- 查看分段 -->
+    <el-dialog v-model="chunksVisible" :title="`分段预览 · ${chunksTitle}`" width="720px" destroy-on-close>
+      <div v-loading="chunksLoading" class="kb-chunks">
+        <el-empty v-if="!chunksLoading && !chunks.length" description="暂无分段" :image-size="70" />
+        <div v-for="c in chunks" :key="c.chunkIndex" class="kb-chunk">
+          <div class="kb-chunk-head">
+            <el-tag size="small" type="info">第 {{ c.chunkIndex + 1 }} 段</el-tag>
+            <span class="kb-chunk-meta">{{ c.charCount }} 字</span>
+          </div>
+          <div class="kb-chunk-text">{{ c.chunkText }}</div>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -59,9 +112,17 @@
 import { reactive, ref } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
-import { createKnowledgeDoc, deleteKnowledgeDoc, fetchKnowledgeDocs } from '@/api/knowledge'
-import type { KnowledgeDocItem } from '@/api/knowledge'
+import { Plus, Search } from '@element-plus/icons-vue'
+import {
+  createKnowledgeDoc,
+  deleteKnowledgeDoc,
+  fetchKnowledgeChunks,
+  fetchKnowledgeDocDetail,
+  fetchKnowledgeDocs,
+  testKnowledgeRetrieve,
+  updateKnowledgeDoc
+} from '@/api/knowledge'
+import type { KnowledgeChunkItem, KnowledgeDocItem, KnowledgeHit } from '@/api/knowledge'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -69,13 +130,28 @@ const list = ref<KnowledgeDocItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
+
 const dialogVisible = ref(false)
+const detailLoading = ref(false)
+const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
 const form = reactive({ title: '', content: '' })
 const rules: FormRules = {
   title: [{ required: true, message: '请填写标题', trigger: 'blur' }],
   content: [{ required: true, message: '请填写正文', trigger: 'blur' }]
 }
+
+// 试问
+const testQuery = ref('')
+const testing = ref(false)
+const tested = ref(false)
+const hits = ref<KnowledgeHit[]>([])
+
+// 分段预览
+const chunksVisible = ref(false)
+const chunksLoading = ref(false)
+const chunksTitle = ref('')
+const chunks = ref<KnowledgeChunkItem[]>([])
 
 async function loadData() {
   loading.value = true
@@ -88,18 +164,40 @@ async function loadData() {
   }
 }
 
-function openDialog() {
+function openCreate() {
+  editingId.value = null
   form.title = ''
   form.content = ''
   dialogVisible.value = true
+}
+
+async function openEdit(row: KnowledgeDocItem) {
+  editingId.value = row.id
+  form.title = row.title
+  form.content = ''
+  dialogVisible.value = true
+  detailLoading.value = true
+  try {
+    const detail = await fetchKnowledgeDocDetail(row.id)
+    form.title = detail.title
+    form.content = detail.content || ''
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 async function onSave() {
   await formRef.value?.validate()
   saving.value = true
   try {
-    await createKnowledgeDoc({ title: form.title.trim(), content: form.content.trim() })
-    ElMessage.success('资料已入库')
+    const payload = { title: form.title.trim(), content: form.content.trim() }
+    if (editingId.value) {
+      await updateKnowledgeDoc(editingId.value, payload)
+      ElMessage.success('已保存并重新入库')
+    } else {
+      await createKnowledgeDoc(payload)
+      ElMessage.success('资料已入库')
+    }
     dialogVisible.value = false
     await loadData()
   } finally {
@@ -107,8 +205,35 @@ async function onSave() {
   }
 }
 
+async function openChunks(row: KnowledgeDocItem) {
+  chunksTitle.value = row.title
+  chunks.value = []
+  chunksVisible.value = true
+  chunksLoading.value = true
+  try {
+    chunks.value = await fetchKnowledgeChunks(row.id)
+  } finally {
+    chunksLoading.value = false
+  }
+}
+
+async function onTest() {
+  const q = testQuery.value.trim()
+  if (!q) {
+    ElMessage.warning('请先输入一个问题')
+    return
+  }
+  testing.value = true
+  try {
+    hits.value = await testKnowledgeRetrieve(q, 5)
+    tested.value = true
+  } finally {
+    testing.value = false
+  }
+}
+
 async function onDelete(row: KnowledgeDocItem) {
-  await ElMessageBox.confirm(`确定删除「${row.title}」？`, '删除确认')
+  await ElMessageBox.confirm(`确定删除「${row.title}」？删除后不可恢复。`, '删除确认', { type: 'warning' })
   await deleteKnowledgeDoc(row.id)
   ElMessage.success('已删除')
   await loadData()
@@ -117,6 +242,48 @@ async function onDelete(row: KnowledgeDocItem) {
 loadData()
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.form-tip { font-size: 12px; color: var(--el-text-color-secondary); margin-top: 6px; line-height: 1.5; }
+
+.kb-test {
+  background: var(--el-fill-color-lighter);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.kb-test-bar { display: flex; gap: 10px; }
+.kb-test-bar .el-input { flex: 1; }
+.kb-test-result { margin-top: 12px; }
+.kb-test-hint { font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 8px; }
+.kb-hit {
+  background: #fff;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.kb-hit-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.kb-hit-title { font-weight: 600; color: var(--el-text-color-primary); font-size: 13px; }
+.kb-hit-text {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kb-chunks { max-height: 60vh; overflow-y: auto; }
+.kb-chunk {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.kb-chunk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.kb-chunk-meta { font-size: 12px; color: var(--el-text-color-secondary); }
+.kb-chunk-text { font-size: 13px; color: var(--el-text-color-regular); line-height: 1.7; white-space: pre-wrap; }
 </style>

@@ -593,6 +593,7 @@ CREATE TABLE IF NOT EXISTS `knowledge_doc` (
   `title`       VARCHAR(200) NOT NULL COMMENT '文档标题',
   `file_url`    VARCHAR(500) NOT NULL COMMENT '原文件OSS URL',
   `source_type` VARCHAR(20)  NOT NULL DEFAULT 'upload' COMMENT 'upload/manual',
+  `content`     LONGTEXT     DEFAULT NULL COMMENT '手动录入原始正文（供编辑回填）',
   `char_count`  INT          DEFAULT NULL COMMENT '总字符数',
   `chunk_count` INT          DEFAULT NULL COMMENT '分段数',
   `status`      VARCHAR(20)  NOT NULL DEFAULT 'processing' COMMENT 'processing/ready/failed',

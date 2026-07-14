@@ -13,6 +13,8 @@ export interface KnowledgeDocItem {
 
 export interface KnowledgeDocDetail extends KnowledgeDocItem {
   content: string
+  /** 正文是否由历史分段近似还原（旧库无 content 时为 true） */
+  contentRecovered?: boolean
 }
 
 export interface KnowledgeChunkItem {

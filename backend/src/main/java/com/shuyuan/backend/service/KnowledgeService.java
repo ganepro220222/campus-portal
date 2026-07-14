@@ -30,6 +30,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class KnowledgeService {
 
+    private static final int DEFAULT_RETRIEVE_TOP_K = 5;
+    private static final int MAX_RETRIEVE_TOP_K = 20;
+
     private final KnowledgeDocMapper knowledgeDocMapper;
     private final KnowledgeChunkMapper knowledgeChunkMapper;
     private final AdminPermissionService adminPermissionService;
@@ -119,11 +122,14 @@ public class KnowledgeService {
         KnowledgeDoc doc = requireDoc(id);
         Map<String, Object> m = toDocVo(doc);
         String content = doc.getContent();
+        boolean contentRecovered = false;
         if (content == null || content.isBlank()) {
             List<KnowledgeChunk> chunks = chunksOf(id);
             content = TextChunker.join(chunks.stream().map(KnowledgeChunk::getChunkText).toList());
+            contentRecovered = true;
         }
         m.put("content", content);
+        m.put("contentRecovered", contentRecovered);
         return m;
     }
 
@@ -144,8 +150,7 @@ public class KnowledgeService {
     /** 检索自测「试问」：返回命中的片段及所属文档、得分（用于调优）。 */
     public List<Map<String, Object>> testRetrieve(String question, int topK) {
         adminPermissionService.require("admin:super");
-        int k = topK <= 0 ? 5 : Math.min(topK, 20);
-        List<KnowledgeChunk> hits = retrieve(question, k);
+        List<KnowledgeChunk> hits = retrieve(question, topK);
         if (hits.isEmpty()) {
             return List.of();
         }
@@ -204,8 +209,12 @@ public class KnowledgeService {
         }
         return scored.stream()
                 .sorted(Comparator.comparingDouble(KnowledgeChunk::getScore).reversed())
-                .limit(topK)
+                .limit(clampTopK(topK))
                 .toList();
+    }
+
+    private int clampTopK(int topK) {
+        return topK <= 0 ? DEFAULT_RETRIEVE_TOP_K : Math.min(topK, MAX_RETRIEVE_TOP_K);
     }
 
     private double scoreChunk(KnowledgeChunk chunk, Set<String> queryTokens) {

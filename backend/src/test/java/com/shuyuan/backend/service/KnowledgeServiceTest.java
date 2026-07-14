@@ -37,7 +37,7 @@ class KnowledgeServiceTest {
 
     @BeforeEach
     void setUp() {
-        doNothing().when(adminPermissionService).require("admin:super");
+        lenient().doNothing().when(adminPermissionService).require("admin:super");
         knowledgeService = new KnowledgeService(
                 knowledgeDocMapper, knowledgeChunkMapper, adminPermissionService);
     }
@@ -101,6 +101,7 @@ class KnowledgeServiceTest {
         Map<String, Object> detail = knowledgeService.docDetail(7L);
 
         assertEquals("原始正文", detail.get("content"));
+        assertEquals(false, detail.get("contentRecovered"));
         verify(knowledgeChunkMapper, never()).selectList(any());
     }
 
@@ -121,6 +122,44 @@ class KnowledgeServiceTest {
         String content = (String) detail.get("content");
         assertTrue(content.startsWith(part0.substring(0, 20)));
         assertTrue(content.contains(part1.substring(50)));
+        assertEquals(true, detail.get("contentRecovered"));
+    }
+
+    @Test
+    void retrieve_clampsNegativeTopKWithoutThrowing() {
+        KnowledgeDoc ready = doc(1L, "心学纲要", "正文");
+        ready.setStatus("ready");
+        when(knowledgeDocMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(ready));
+
+        KnowledgeChunk hit = chunk(1L, 0, "知行合一强调实践与认知统一");
+        when(knowledgeChunkMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(hit));
+
+        List<KnowledgeChunk> results = assertDoesNotThrow(() -> knowledgeService.retrieve("知行合一", -1));
+
+        assertEquals(1, results.size());
+    }
+
+    @Test
+    void retrieve_capsTopKAtTwenty() {
+        KnowledgeDoc ready = doc(1L, "资料", "正文");
+        ready.setStatus("ready");
+        when(knowledgeDocMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(ready));
+
+        List<KnowledgeChunk> chunks = new java.util.ArrayList<>();
+        for (int i = 0; i < 25; i++) {
+            KnowledgeChunk c = chunk(1L, i, "关键词片段内容" + i);
+            c.setKeywords("关键词");
+            chunks.add(c);
+        }
+        when(knowledgeChunkMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(chunks);
+
+        List<KnowledgeChunk> results = knowledgeService.retrieve("关键词", 100);
+
+        assertEquals(20, results.size());
     }
 
     @Test

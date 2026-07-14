@@ -239,6 +239,83 @@ class KnowledgeServiceTest {
         assertEquals(404, ex.getCode());
     }
 
+    @Test
+    void setEnabled_disablesReadyDoc() {
+        KnowledgeDoc ready = doc(10L, "可停用", "正文");
+        ready.setStatus("ready");
+        when(knowledgeDocMapper.selectById(10L)).thenReturn(ready);
+
+        Map<String, Object> vo = knowledgeService.setEnabled(10L, false);
+
+        ArgumentCaptor<KnowledgeDoc> cap = ArgumentCaptor.forClass(KnowledgeDoc.class);
+        verify(knowledgeDocMapper).updateById(cap.capture());
+        assertEquals("disabled", cap.getValue().getStatus());
+        assertEquals("disabled", vo.get("status"));
+        assertEquals("已停用", vo.get("statusLabel"));
+    }
+
+    @Test
+    void setEnabled_enablesDisabledDoc() {
+        KnowledgeDoc disabled = doc(11L, "可启用", "正文");
+        disabled.setStatus("disabled");
+        when(knowledgeDocMapper.selectById(11L)).thenReturn(disabled);
+
+        Map<String, Object> vo = knowledgeService.setEnabled(11L, true);
+
+        ArgumentCaptor<KnowledgeDoc> cap = ArgumentCaptor.forClass(KnowledgeDoc.class);
+        verify(knowledgeDocMapper).updateById(cap.capture());
+        assertEquals("ready", cap.getValue().getStatus());
+        assertEquals("ready", vo.get("status"));
+        assertEquals("已就绪", vo.get("statusLabel"));
+    }
+
+    @Test
+    void setEnabled_rejectsProcessingOrFailed() {
+        KnowledgeDoc processing = doc(12L, "处理中", "正文");
+        processing.setStatus("processing");
+        when(knowledgeDocMapper.selectById(12L)).thenReturn(processing);
+
+        BusinessException disableEx = assertThrows(BusinessException.class,
+                () -> knowledgeService.setEnabled(12L, false));
+        assertEquals(400, disableEx.getCode());
+        verify(knowledgeDocMapper, never()).updateById(any(KnowledgeDoc.class));
+
+        KnowledgeDoc failed = doc(13L, "失败", "正文");
+        failed.setStatus("failed");
+        when(knowledgeDocMapper.selectById(13L)).thenReturn(failed);
+
+        BusinessException enableEx = assertThrows(BusinessException.class,
+                () -> knowledgeService.setEnabled(13L, true));
+        assertEquals(400, enableEx.getCode());
+        verify(knowledgeDocMapper, never()).updateById(any(KnowledgeDoc.class));
+    }
+
+    @Test
+    void updateTextDoc_keepsDisabledStatus() {
+        KnowledgeDoc disabled = doc(14L, "停用资料", "旧正文");
+        disabled.setStatus("disabled");
+        when(knowledgeDocMapper.selectById(14L)).thenReturn(disabled);
+
+        KnowledgeDocSaveRequest req = request("新标题", "更新后的正文内容。".repeat(40));
+        Map<String, Object> vo = knowledgeService.updateTextDoc(14L, req);
+
+        ArgumentCaptor<KnowledgeDoc> cap = ArgumentCaptor.forClass(KnowledgeDoc.class);
+        verify(knowledgeDocMapper).updateById(cap.capture());
+        assertEquals("disabled", cap.getValue().getStatus());
+        assertEquals("disabled", vo.get("status"));
+    }
+
+    @Test
+    void retrieve_ignoresDisabledDocs() {
+        when(knowledgeDocMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of());
+
+        List<KnowledgeChunk> results = knowledgeService.retrieve("知行合一", 5);
+
+        assertTrue(results.isEmpty());
+        verify(knowledgeChunkMapper, never()).selectList(any());
+    }
+
     private KnowledgeDocSaveRequest request(String title, String content) {
         KnowledgeDocSaveRequest req = new KnowledgeDocSaveRequest();
         req.setTitle(title);

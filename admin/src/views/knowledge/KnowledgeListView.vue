@@ -282,6 +282,17 @@ async function onToggleEnabled(row: KnowledgeDocItem, enabled: boolean) {
   }
 }
 
+/** 检测 UTF-8 误读产生的替换符（常见于 GBK/ANSI txt 按 UTF-8 读取） */
+function looksLikeEncodingMismatch(text: string): boolean {
+  if (!text) return false
+  let replacementCount = 0
+  for (const ch of text) {
+    if (ch === '\uFFFD') replacementCount++
+  }
+  if (replacementCount === 0) return false
+  return replacementCount >= 5 || replacementCount / text.length >= 0.005
+}
+
 /** 本地读取 .txt（UTF-8）回填录入表单，管理员核对后再入库——不经服务端，无解析风险 */
 function onPickTxt(uploadFile: UploadFile) {
   const raw = uploadFile.raw
@@ -306,7 +317,11 @@ function onPickTxt(uploadFile: UploadFile) {
     }
     form.content = text.slice(0, 20000)
     contentRecoveredHint.value = false
-    ElMessage.success('已读取，请核对后入库')
+    if (looksLikeEncodingMismatch(text)) {
+      ElMessage.warning('疑似非 UTF-8 编码（出现乱码替换符），请核对正文或改用 UTF-8 保存后再导入')
+    } else {
+      ElMessage.success('已读取，请核对后入库')
+    }
   }
   reader.onerror = () => ElMessage.error('文件读取失败')
   reader.readAsText(raw, 'utf-8')

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.shuyuan.backend.config.ShuyuanProperties;
+import com.shuyuan.backend.dto.SubscribeOutboxPayload;
 import com.shuyuan.backend.dto.SubscribeRecordRequest;
 import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Enroll;
@@ -86,14 +87,7 @@ public class SubscribeService {
         if (activity == null || enroll == null) {
             return;
         }
-        String title = "pending".equals(enroll.getStatus()) ? "报名已提交" : "报名成功";
-        String page = "packageC/activity/detail?id=" + activity.getId();
-        Map<String, String> data = new HashMap<>();
-        data.put("thing1", trim(activity.getTitle(), 20));
-        data.put("phrase2", trim(title, 5));
-        data.put("character_string3", trim(enroll.getVoucherCode(), 32));
-        data.put("time4", FormatUtils.formatDateTime(activity.getStartTime()));
-        send(memberId, SCENE_ENROLL_SUCCESS, page, data);
+        deliverForScene(memberId, SCENE_ENROLL_SUCCESS, toPayload(activity, enroll));
     }
 
     /** 审核通过后发送 */
@@ -101,15 +95,50 @@ public class SubscribeService {
         if (activity == null) {
             return;
         }
-        String page = "packageC/activity/detail?id=" + activity.getId();
-        Map<String, String> data = new HashMap<>();
-        data.put("thing1", trim(activity.getTitle(), 20));
-        data.put("phrase2", trim("审核通过", 5));
-        if (enroll != null && enroll.getVoucherCode() != null) {
-            data.put("character_string3", trim(enroll.getVoucherCode(), 32));
+        deliverForScene(memberId, SCENE_ENROLL_APPROVED, toPayload(activity, enroll));
+    }
+
+    /** outbox worker 入口：按场景投递并返回结果 */
+    public SubscribeSendOutcome deliverForScene(Long memberId, String scene, SubscribeOutboxPayload payload) {
+        if (memberId == null || payload == null || payload.getActivityId() == null) {
+            return SubscribeSendOutcome.PERMANENT_FAILURE;
         }
-        data.put("time4", FormatUtils.formatDateTime(activity.getStartTime()));
-        send(memberId, SCENE_ENROLL_APPROVED, page, data);
+        String page = "packageC/activity/detail?id=" + payload.getActivityId();
+        return deliver(memberId, scene, page, buildKeywordData(scene, payload));
+    }
+
+    private SubscribeOutboxPayload toPayload(Activity activity, Enroll enroll) {
+        SubscribeOutboxPayload payload = new SubscribeOutboxPayload();
+        payload.setActivityId(activity.getId());
+        if (enroll != null) {
+            payload.setEnrollId(enroll.getId());
+            payload.setEnrollStatus(enroll.getStatus());
+            payload.setVoucherCode(enroll.getVoucherCode());
+        }
+        payload.setActivityTitle(activity.getTitle());
+        payload.setActivityStartTime(FormatUtils.formatDateTime(activity.getStartTime()));
+        return payload;
+    }
+
+    private Map<String, String> buildKeywordData(String scene, SubscribeOutboxPayload payload) {
+        Map<String, String> data = new HashMap<>();
+        data.put("thing1", trim(payload.getActivityTitle(), 20));
+        data.put("phrase2", trim(resolvePhrase2(scene, payload), 5));
+        if (payload.getVoucherCode() != null && !payload.getVoucherCode().isBlank()) {
+            data.put("character_string3", trim(payload.getVoucherCode(), 32));
+        }
+        data.put("time4", payload.getActivityStartTime() != null ? payload.getActivityStartTime() : "");
+        return data;
+    }
+
+    private String resolvePhrase2(String scene, SubscribeOutboxPayload payload) {
+        if (SCENE_ENROLL_APPROVED.equals(scene)) {
+            return "审核通过";
+        }
+        if ("pending".equals(payload.getEnrollStatus())) {
+            return "报名已提交";
+        }
+        return "报名成功";
     }
 
     /** 返回小程序 requestSubscribeMessage 所需模板 ID */
@@ -128,7 +157,7 @@ public class SubscribeService {
         return m;
     }
 
-    private void send(Long memberId, String scene, String page, Map<String, String> keywordData) {
+    private SubscribeSendOutcome deliver(Long memberId, String scene, String page, Map<String, String> keywordData) {
         MemberSubscribeRecord record = subscribeRecordMapper.selectOne(
                 new LambdaQueryWrapper<MemberSubscribeRecord>()
                         .eq(MemberSubscribeRecord::getMemberId, memberId)
@@ -137,38 +166,58 @@ public class SubscribeService {
                         .last("LIMIT 1"));
         if (record == null) {
             log.debug("[subscribe] 无可用授权 memberId={} scene={}", memberId, scene);
-            return;
+            return SubscribeSendOutcome.SKIPPED_NO_AUTH;
         }
         Member member = memberMapper.selectById(memberId);
         if (member == null || member.getOpenid() == null || member.getOpenid().isBlank()) {
-            return;
+            return SubscribeSendOutcome.SKIPPED_NO_OPENID;
         }
         String templateId = resolveTemplateId(scene, record.getTemplateId());
         if (templateId == null || templateId.isBlank()) {
             log.debug("[subscribe] 未配置模板 scene={}", scene);
-            return;
+            return SubscribeSendOutcome.SKIPPED_NO_TEMPLATE;
         }
         try {
-            boolean sent = dispatchSubscribeMessage(member.getOpenid(), templateId, page, keywordData);
-            if (sent) {
+            DispatchResult result = dispatchSubscribeMessage(member.getOpenid(), templateId, page, keywordData);
+            if (result.sent()) {
                 subscribeRecordMapper.decrAvailable(record.getId());
+                return SubscribeSendOutcome.SENT;
             }
+            if (result.permanentFailure()) {
+                return SubscribeSendOutcome.PERMANENT_FAILURE;
+            }
+            return SubscribeSendOutcome.RETRYABLE_FAILURE;
         } catch (Exception e) {
             log.warn("[subscribe] 发送失败 scene={} memberId={}: {}", scene, memberId, e.getMessage());
+            return SubscribeSendOutcome.RETRYABLE_FAILURE;
         }
     }
 
-    private boolean dispatchSubscribeMessage(String openid, String templateId, String page,
-                                             Map<String, String> keywordData) throws Exception {
+    private record DispatchResult(boolean sent, boolean permanentFailure) {
+        static DispatchResult success() {
+            return new DispatchResult(true, false);
+        }
+
+        static DispatchResult retryable() {
+            return new DispatchResult(false, false);
+        }
+
+        static DispatchResult permanent() {
+            return new DispatchResult(false, true);
+        }
+    }
+
+    private DispatchResult dispatchSubscribeMessage(String openid, String templateId, String page,
+                                                    Map<String, String> keywordData) throws Exception {
         if (properties.getWx().isDevMode()) {
             log.info("[subscribe][dev] openid={} template={} page={} data={}",
                     openid, templateId, page, keywordData);
-            return true;
+            return DispatchResult.success();
         }
         String token = accessTokenService.getAccessToken();
         if (token == null) {
             log.warn("[subscribe] 无 access_token，跳过发送");
-            return false;
+            return DispatchResult.retryable();
         }
         ObjectNode body = objectMapper.createObjectNode();
         body.put("touser", openid);
@@ -194,10 +243,20 @@ public class SubscribeService {
         JsonNode root = objectMapper.readTree(response.body());
         int errcode = root.path("errcode").asInt(-1);
         if (errcode == 0) {
-            return true;
+            return DispatchResult.success();
         }
         log.warn("[subscribe] 微信返回 errcode={} errmsg={}", errcode, root.path("errmsg").asText(""));
-        return false;
+        if (isPermanentWxError(errcode)) {
+            return DispatchResult.permanent();
+        }
+        return DispatchResult.retryable();
+    }
+
+    private boolean isPermanentWxError(int errcode) {
+        return switch (errcode) {
+            case 40003, 43101, 47003, 20001 -> true;
+            default -> false;
+        };
     }
 
     private String resolveTemplateId(String scene, String recordTemplateId) {

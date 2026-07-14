@@ -49,6 +49,10 @@ shuyuan:
     enroll-success-template-id: ${WX_TMPL_ENROLL_SUCCESS:}
     enroll-approved-template-id: ${WX_TMPL_ENROLL_APPROVED:}
     activity-remind-template-id: ${WX_TMPL_ACTIVITY_REMIND:}
+    outbox-batch-size: ${SUBSCRIBE_OUTBOX_BATCH_SIZE:50}
+    outbox-max-attempts: ${SUBSCRIBE_OUTBOX_MAX_ATTEMPTS:10}
+    outbox-stale-minutes: ${SUBSCRIBE_OUTBOX_STALE_MINUTES:5}
+    outbox-retry-base-seconds: ${SUBSCRIBE_OUTBOX_RETRY_BASE_SECONDS:30}
   alert:
     enabled: ${ALERT_ENABLED:false}
     webhook-url: ${ALERT_WEBHOOK_URL:}

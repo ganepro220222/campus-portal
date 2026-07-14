@@ -91,6 +91,14 @@ public class ShuyuanProperties {
         private String enrollSuccessTemplateId = "";
         private String enrollApprovedTemplateId = "";
         private String activityRemindTemplateId = "";
+        /** 发件箱每轮最大处理条数 */
+        private int outboxBatchSize = 50;
+        /** 发件箱最大重试次数 */
+        private int outboxMaxAttempts = 10;
+        /** processing 超时（分钟）后重置为 pending */
+        private int outboxStaleMinutes = 5;
+        /** 重试退避基数（秒） */
+        private int outboxRetryBaseSeconds = 30;
     }
 
     /** E2-1 低成本告警：钉钉 / 企业微信 Webhook */

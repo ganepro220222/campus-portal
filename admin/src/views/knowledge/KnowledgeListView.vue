@@ -83,7 +83,15 @@
         </el-form-item>
         <el-form-item label="正文" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="12" maxlength="20000" show-word-limit />
-          <div class="form-tip">保存后将自动按约 500 字/段重新切分入库，原有分段会被替换。</div>
+          <el-alert
+            v-if="contentRecoveredHint"
+            class="content-recovered-alert"
+            type="warning"
+            :closable="false"
+            show-icon
+            title="该正文由历史分段近似还原，可能与原始录入不完全一致，保存前请核对。"
+          />
+          <div v-else class="form-tip">保存后将自动按约 500 字/段重新切分入库，原有分段会被替换。</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -136,6 +144,7 @@ const detailLoading = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
 const form = reactive({ title: '', content: '' })
+const contentRecoveredHint = ref(false)
 const rules: FormRules = {
   title: [{ required: true, message: '请填写标题', trigger: 'blur' }],
   content: [{ required: true, message: '请填写正文', trigger: 'blur' }]
@@ -166,6 +175,7 @@ async function loadData() {
 
 function openCreate() {
   editingId.value = null
+  contentRecoveredHint.value = false
   form.title = ''
   form.content = ''
   dialogVisible.value = true
@@ -173,6 +183,7 @@ function openCreate() {
 
 async function openEdit(row: KnowledgeDocItem) {
   editingId.value = row.id
+  contentRecoveredHint.value = false
   form.title = row.title
   form.content = ''
   dialogVisible.value = true
@@ -181,6 +192,7 @@ async function openEdit(row: KnowledgeDocItem) {
     const detail = await fetchKnowledgeDocDetail(row.id)
     form.title = detail.title
     form.content = detail.content || ''
+    contentRecoveredHint.value = detail.contentRecovered === true
   } finally {
     detailLoading.value = false
   }
@@ -245,6 +257,7 @@ loadData()
 <style scoped lang="scss">
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .form-tip { font-size: 12px; color: var(--el-text-color-secondary); margin-top: 6px; line-height: 1.5; }
+.content-recovered-alert { margin-top: 8px; }
 
 .kb-test {
   background: var(--el-fill-color-lighter);

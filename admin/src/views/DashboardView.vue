@@ -41,6 +41,7 @@ import { computed } from 'vue'
 import {
   Document, OfficeBuilding, Goods, VideoCamera, FolderOpened,
   Calendar, Picture, Bell, UserFilled, ArrowRightBold,
+  DeleteFilled, Postcard, Connection, Tickets,
   Sunrise, Sunny, Sunset, Moon, MoonNight
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
@@ -56,8 +57,12 @@ const modules = [
   { title: '课程管理', desc: '在线课程上下架、视频与 AI 字幕配置', path: '/courses', perm: 'course:read', icon: VideoCamera, grad: 'linear-gradient(135deg,#5A4E86,#7E72B0)' },
   { title: '资源管理', desc: 'PDF / 音视频资料上下架与下载统计', path: '/resources', perm: 'course:read', icon: FolderOpened, grad: 'linear-gradient(135deg,#3F6B4A,#5C9A6B)' },
   { title: '活动管理', desc: '活动发布、报名审核与 Excel 导出', path: '/activities', perm: 'enroll:read', icon: Calendar, grad: 'linear-gradient(135deg,#C0A24E,#9C7C2E)' },
+  { title: '回收站', desc: '已删除内容的恢复与彻底删除', path: '/recycle-bin', perm: 'admin:super', icon: DeleteFilled, grad: 'linear-gradient(135deg,#7C869E,#565F7C)' },
   { title: '首页轮播', desc: '首页轮播图配置与排序', path: '/banners', perm: 'admin:super', icon: Picture, grad: 'linear-gradient(135deg,#4E7CC4,#2F5E92)' },
-  { title: '公告管理', desc: '首页公告通知条内容维护', path: '/announcements', perm: 'admin:super', icon: Bell, grad: 'linear-gradient(135deg,#6E8FCB,#46639E)' }
+  { title: '公告管理', desc: '首页公告通知条内容维护', path: '/announcements', perm: 'admin:super', icon: Bell, grad: 'linear-gradient(135deg,#6E8FCB,#46639E)' },
+  { title: '师生账号', desc: '学号账号导入、启用禁用与清退', path: '/members', perm: 'admin:super', icon: Postcard, grad: 'linear-gradient(135deg,#2E8C86,#256E72)' },
+  { title: '关联小程序', desc: '协同育人小程序入口与图标维护', path: '/colleges', perm: 'admin:super', icon: Connection, grad: 'linear-gradient(135deg,#8A6BB0,#5E4A86)' },
+  { title: '内容配置', desc: '关于页信息与隐私 / 用户协议', path: '/content-docs', perm: 'admin:super', icon: Tickets, grad: 'linear-gradient(135deg,#C67A4E,#9C5A2E)' }
 ]
 
 const visibleModules = computed(() => modules.filter((m) => !m.perm || auth.can(m.perm)))

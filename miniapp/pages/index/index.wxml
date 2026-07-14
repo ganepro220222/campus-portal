@@ -213,10 +213,12 @@
             data-id="{{item.id}}"
           >
             <view class="hc-cover {{item.colorClass || 'hc1'}}">
-              <view wx:if="{{item.iconUrl}}" class="hc-bg">
-                <image src="{{item.iconUrl}}" mode="aspectFill" class="hc-img" />
+              <view class="hc-corner">
+                <view wx:if="{{item.iconUrl}}" class="hc-logo">
+                  <image src="{{item.iconUrl}}" mode="aspectFit" class="hc-logo-img" />
+                </view>
+                <icon wx:else name="grid" size="28" color="rgba(255,255,255,0.34)" />
               </view>
-              <view class="hc-corner"><icon name="grid" size="28" color="rgba(255,255,255,0.34)" /></view>
               <text class="hc-ct serif">{{item.short}}</text>
             </view>
             <view class="hc-name">{{item.name}}</view>

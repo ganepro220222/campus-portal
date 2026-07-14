@@ -14,11 +14,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -78,5 +81,39 @@ class AdminEnrollServiceTest {
         verify(response).setHeader(eq("Content-Disposition"), headerCaptor.capture());
         assertTrue(headerCaptor.getValue().contains("%E7%AD%BE%E5%88%B0%E5%90%8D%E5%8D%95"));
         assertTrue(body.size() > 0);
+    }
+
+    @Test
+    void approve_deferredSubscribeUntilAfterCommit() {
+        Enroll pending = new Enroll();
+        pending.setId(11L);
+        pending.setMemberId(88L);
+        pending.setActivityId(5L);
+        pending.setStatus("pending");
+
+        Activity activity = new Activity();
+        activity.setId(5L);
+        activity.setTitle("讲座");
+
+        Enroll approved = new Enroll();
+        approved.setId(11L);
+        approved.setMemberId(88L);
+        approved.setActivityId(5L);
+        approved.setStatus("approved");
+
+        when(enrollMapper.selectById(11L)).thenReturn(pending, approved);
+        when(activityMapper.selectById(5L)).thenReturn(activity);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            adminEnrollService.approve(11L);
+            verify(subscribeService, never()).sendEnrollApproved(anyLong(), any(), any());
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCommit();
+            }
+            verify(subscribeService).sendEnrollApproved(eq(88L), eq(activity), eq(approved));
+        } finally {
+            TransactionSynchronizationManager.clear();
+        }
     }
 }

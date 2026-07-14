@@ -34,6 +34,7 @@ public class AdminEnrollService {
     private final AdminPermissionService adminPermissionService;
     private final MessageService messageService;
     private final SubscribeService subscribeService;
+    private final AfterCommit afterCommit;
 
     public PageResult<Map<String, Object>> listByActivity(Long activityId, String status, int page, int size) {
         adminPermissionService.require("enroll:read");
@@ -72,7 +73,7 @@ public class AdminEnrollService {
         final Long notifyMemberId = enroll.getMemberId();
         final Activity notifyActivity = activity;
         final Enroll notifyEnroll = approved;
-        AfterCommit.run(() -> subscribeService.sendEnrollApproved(notifyMemberId, notifyActivity, notifyEnroll));
+        afterCommit.run(() -> subscribeService.sendEnrollApproved(notifyMemberId, notifyActivity, notifyEnroll));
 
         return toVo(approved);
     }

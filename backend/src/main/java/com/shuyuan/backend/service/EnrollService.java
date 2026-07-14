@@ -30,6 +30,7 @@ public class EnrollService {
     private final PointService pointService;
     private final MessageService messageService;
     private final SubscribeService subscribeService;
+    private final AfterCommit afterCommit;
 
     /**
      * 提交报名（需登录且个人信息完整）
@@ -95,7 +96,7 @@ public class EnrollService {
         final Long notifyMemberId = memberId;
         final Activity notifyActivity = activity;
         final Enroll notifyEnroll = existing;
-        AfterCommit.run(() -> subscribeService.sendEnrollSuccess(notifyMemberId, notifyActivity, notifyEnroll));
+        afterCommit.run(() -> subscribeService.sendEnrollSuccess(notifyMemberId, notifyActivity, notifyEnroll));
         eventLogService.record("enroll", "activity", activityId);
         pointService.award(memberId, "enroll_activity");
         return toEnrollVo(existing, activity);

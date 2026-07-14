@@ -7,16 +7,12 @@ import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Enroll;
 import com.shuyuan.backend.entity.MemberProfile;
 import com.shuyuan.backend.mapper.*;
-import com.shuyuan.backend.util.AfterCommit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -44,9 +40,8 @@ class EnrollServiceTest {
     @Mock
     private MessageService messageService;
     @Mock
-    private SubscribeService subscribeService;
+    private SubscribeOutboxService subscribeOutboxService;
 
-    private AfterCommit afterCommit;
     private EnrollService enrollService;
 
     private static final Long MEMBER_ID = 100L;
@@ -55,18 +50,14 @@ class EnrollServiceTest {
     @BeforeEach
     void setUp() {
         MemberContext.setMemberId(MEMBER_ID);
-        afterCommit = new AfterCommit(Runnable::run);
         enrollService = new EnrollService(
                 activityMapper, enrollMapper, memberProfileMapper,
-                eventLogService, pointService, messageService, subscribeService, afterCommit);
+                eventLogService, pointService, messageService, subscribeOutboxService);
     }
 
     @AfterEach
     void tearDown() {
         MemberContext.clear();
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.clear();
-        }
     }
 
     @Test
@@ -85,13 +76,13 @@ class EnrollServiceTest {
         verify(activityMapper).incrEnrolledCount(ACTIVITY_ID);
         verify(enrollMapper).insert(any(Enroll.class));
         verify(messageService).create(eq(MEMBER_ID), anyString(), anyString(), eq("enroll"), eq("activity"), eq(ACTIVITY_ID));
-        verify(subscribeService).sendEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
+        verify(subscribeOutboxService).enqueueEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
         verify(eventLogService).record("enroll", "activity", ACTIVITY_ID);
         verify(pointService).award(MEMBER_ID, "enroll_activity");
     }
 
     @Test
-    void enroll_deferredSubscribeUntilAfterCommit() {
+    void enroll_enqueuesOutboxInSameTransaction() {
         Activity activity = publishedActivity(10, 3);
         EnrollRequest req = enrollRequest();
 
@@ -100,17 +91,10 @@ class EnrollServiceTest {
         when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
         when(activityMapper.incrEnrolledCount(ACTIVITY_ID)).thenReturn(1);
 
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            enrollService.enroll(ACTIVITY_ID, req);
-            verify(subscribeService, never()).sendEnrollSuccess(anyLong(), any(), any());
-            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
-                sync.afterCommit();
-            }
-            verify(subscribeService).sendEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
-        } finally {
-            TransactionSynchronizationManager.clear();
-        }
+        enrollService.enroll(ACTIVITY_ID, req);
+
+        verify(subscribeOutboxService).enqueueEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
+        verifyNoMoreInteractions(subscribeOutboxService);
     }
 
     @Test
@@ -127,6 +111,7 @@ class EnrollServiceTest {
                 () -> enrollService.enroll(ACTIVITY_ID, enrollRequest()));
         assertEquals(409, ex.getCode());
         verify(activityMapper, never()).incrEnrolledCount(anyLong());
+        verify(subscribeOutboxService, never()).enqueueEnrollSuccess(anyLong(), any(), any());
     }
 
     @Test
@@ -142,6 +127,7 @@ class EnrollServiceTest {
                 () -> enrollService.enroll(ACTIVITY_ID, enrollRequest()));
         assertEquals(409, ex.getCode());
         assertTrue(ex.getMessage().contains("名额已满"));
+        verify(subscribeOutboxService, never()).enqueueEnrollSuccess(anyLong(), any(), any());
     }
 
     @Test

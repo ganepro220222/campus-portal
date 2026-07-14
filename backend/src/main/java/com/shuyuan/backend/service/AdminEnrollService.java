@@ -9,7 +9,6 @@ import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Enroll;
 import com.shuyuan.backend.mapper.ActivityMapper;
 import com.shuyuan.backend.mapper.EnrollMapper;
-import com.shuyuan.backend.util.AfterCommit;
 import com.shuyuan.backend.util.EnrollExportScope;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.vo.EnrollExportRow;
@@ -33,8 +32,7 @@ public class AdminEnrollService {
     private final ActivityMapper activityMapper;
     private final AdminPermissionService adminPermissionService;
     private final MessageService messageService;
-    private final SubscribeService subscribeService;
-    private final AfterCommit afterCommit;
+    private final SubscribeOutboxService subscribeOutboxService;
 
     public PageResult<Map<String, Object>> listByActivity(Long activityId, String status, int page, int size) {
         adminPermissionService.require("enroll:read");
@@ -70,10 +68,7 @@ public class AdminEnrollService {
         notifyMember(enroll.getMemberId(), "报名审核通过",
                 "您报名的活动「" + (activity != null ? activity.getTitle() : "") + "」已审核通过。",
                 enroll.getActivityId());
-        final Long notifyMemberId = enroll.getMemberId();
-        final Activity notifyActivity = activity;
-        final Enroll notifyEnroll = approved;
-        afterCommit.run(() -> subscribeService.sendEnrollApproved(notifyMemberId, notifyActivity, notifyEnroll));
+        subscribeOutboxService.enqueueEnrollApproved(enroll.getMemberId(), activity, approved);
 
         return toVo(approved);
     }

@@ -27,7 +27,7 @@ class SubscribeOutboxServiceTest {
     @Mock
     private SubscribeOutboxMapper outboxMapper;
     @Mock
-    private SubscribeService subscribeService;
+    private SubscribeOutboxProcessor outboxProcessor;
 
     private SubscribeOutboxService outboxService;
     private ShuyuanProperties properties;
@@ -35,12 +35,10 @@ class SubscribeOutboxServiceTest {
     @BeforeEach
     void setUp() {
         properties = new ShuyuanProperties();
-        properties.getSubscribe().setOutboxMaxAttempts(3);
-        properties.getSubscribe().setOutboxRetryBaseSeconds(10);
-        properties.getSubscribe().setOutboxStaleMinutes(5);
         properties.getSubscribe().setOutboxBatchSize(10);
+        properties.getSubscribe().setOutboxStaleMinutes(5);
         outboxService = new SubscribeOutboxService(
-                outboxMapper, subscribeService, new ObjectMapper(), properties);
+                outboxMapper, outboxProcessor, new ObjectMapper(), properties);
     }
 
     @Test
@@ -58,91 +56,45 @@ class SubscribeOutboxServiceTest {
         assertEquals(SubscribeOutboxService.STATUS_PENDING, row.getStatus());
         assertNotNull(row.getPayloadJson());
         assertTrue(row.getPayloadJson().contains("\"activityId\":5"));
-        verifyNoInteractions(subscribeService);
+        verifyNoInteractions(outboxProcessor);
     }
 
     @Test
-    void pollPending_marksSentOnSuccess() {
-        SubscribeOutbox pending = pendingRow(1L, 88L, payloadJson());
-        when(outboxMapper.resetStaleProcessing(anyInt())).thenReturn(0);
+    void pollPending_delegatesToProcessorBean() {
+        SubscribeOutbox pending = pendingRow(1L);
+        when(outboxMapper.resetStaleProcessing(5)).thenReturn(0);
         when(outboxMapper.selectList(any())).thenReturn(List.of(pending));
-        when(outboxMapper.claimPending(1L)).thenReturn(1);
-        when(outboxMapper.selectById(1L)).thenReturn(claimedRow(pending));
-        when(subscribeService.deliverForScene(eq(88L), eq(SubscribeService.SCENE_ENROLL_SUCCESS), any()))
-                .thenReturn(SubscribeSendOutcome.SENT);
 
         outboxService.pollPending();
 
-        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
-        verify(outboxMapper).updateById(cap.capture());
-        assertEquals(SubscribeOutboxService.STATUS_SENT, cap.getValue().getStatus());
-        assertNotNull(cap.getValue().getSentAt());
+        verify(outboxMapper).resetStaleProcessing(5);
+        verify(outboxProcessor).processOne(1L);
     }
 
     @Test
-    void pollPending_marksSkippedWhenNoAuth() {
-        SubscribeOutbox pending = pendingRow(2L, 88L, payloadJson());
-        when(outboxMapper.resetStaleProcessing(anyInt())).thenReturn(0);
+    void pollPending_releasesProcessingWhenProcessorThrows() {
+        SubscribeOutbox pending = pendingRow(2L);
+        when(outboxMapper.resetStaleProcessing(5)).thenReturn(0);
         when(outboxMapper.selectList(any())).thenReturn(List.of(pending));
-        when(outboxMapper.claimPending(2L)).thenReturn(1);
-        when(outboxMapper.selectById(2L)).thenReturn(claimedRow(pending));
-        when(subscribeService.deliverForScene(anyLong(), anyString(), any()))
-                .thenReturn(SubscribeSendOutcome.SKIPPED_NO_AUTH);
+        doThrow(new RuntimeException("db timeout")).when(outboxProcessor).processOne(2L);
+        when(outboxMapper.releaseProcessingToRetry(eq(2L), contains("db timeout"))).thenReturn(1);
 
         outboxService.pollPending();
 
-        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
-        verify(outboxMapper).updateById(cap.capture());
-        assertEquals(SubscribeOutboxService.STATUS_SKIPPED, cap.getValue().getStatus());
+        verify(outboxMapper).releaseProcessingToRetry(eq(2L), contains("db timeout"));
     }
 
     @Test
-    void pollPending_schedulesRetryOnRetryableFailure() {
-        SubscribeOutbox pending = pendingRow(3L, 88L, payloadJson());
-        when(outboxMapper.resetStaleProcessing(anyInt())).thenReturn(0);
-        when(outboxMapper.selectList(any())).thenReturn(List.of(pending));
-        when(outboxMapper.claimPending(3L)).thenReturn(1);
-        when(outboxMapper.selectById(3L)).thenReturn(claimedRow(pending));
-        when(subscribeService.deliverForScene(anyLong(), anyString(), any()))
-                .thenReturn(SubscribeSendOutcome.RETRYABLE_FAILURE);
+    void pollPending_callsResetStaleBeforeSelectingDueRows() {
+        when(outboxMapper.resetStaleProcessing(5)).thenReturn(2);
+        when(outboxMapper.selectList(any())).thenReturn(List.of());
 
         outboxService.pollPending();
 
-        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
-        verify(outboxMapper).updateById(cap.capture());
-        assertEquals(SubscribeOutboxService.STATUS_PENDING, cap.getValue().getStatus());
-        assertNotNull(cap.getValue().getNextRetryAt());
-        assertTrue(cap.getValue().getNextRetryAt().isAfter(LocalDateTime.now()));
-    }
-
-    @Test
-    void pollPending_marksFailedWhenAttemptsExceeded() {
-        SubscribeOutbox pending = pendingRow(4L, 88L, payloadJson());
-        pending.setAttemptCount(4);
-        when(outboxMapper.resetStaleProcessing(anyInt())).thenReturn(0);
-        when(outboxMapper.selectList(any())).thenReturn(List.of(pending));
-        when(outboxMapper.claimPending(4L)).thenReturn(1);
-        when(outboxMapper.selectById(4L)).thenReturn(claimedRow(pending));
-
-        outboxService.pollPending();
-
-        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
-        verify(outboxMapper).updateById(cap.capture());
-        assertEquals(SubscribeOutboxService.STATUS_FAILED, cap.getValue().getStatus());
-        verify(subscribeService, never()).deliverForScene(anyLong(), anyString(), any());
-    }
-
-    @Test
-    void pollPending_skipsWhenClaimFails() {
-        SubscribeOutbox pending = pendingRow(5L, 88L, payloadJson());
-        when(outboxMapper.resetStaleProcessing(anyInt())).thenReturn(0);
-        when(outboxMapper.selectList(any())).thenReturn(List.of(pending));
-        when(outboxMapper.claimPending(5L)).thenReturn(0);
-
-        outboxService.pollPending();
-
-        verify(outboxMapper, never()).updateById(any(SubscribeOutbox.class));
-        verify(subscribeService, never()).deliverForScene(anyLong(), anyString(), any());
+        var inOrder = inOrder(outboxMapper, outboxProcessor);
+        inOrder.verify(outboxMapper).resetStaleProcessing(5);
+        inOrder.verify(outboxMapper).selectList(any());
+        verifyNoInteractions(outboxProcessor);
     }
 
     private Activity activity(Long id, String title) {
@@ -161,41 +113,13 @@ class SubscribeOutboxServiceTest {
         return enroll;
     }
 
-    private SubscribeOutbox pendingRow(Long id, Long memberId, String payloadJson) {
+    private SubscribeOutbox pendingRow(Long id) {
         SubscribeOutbox row = new SubscribeOutbox();
         row.setId(id);
-        row.setMemberId(memberId);
+        row.setMemberId(88L);
         row.setScene(SubscribeService.SCENE_ENROLL_SUCCESS);
-        row.setPayloadJson(payloadJson);
         row.setStatus(SubscribeOutboxService.STATUS_PENDING);
-        row.setAttemptCount(0);
         row.setNextRetryAt(LocalDateTime.now().minusSeconds(1));
         return row;
-    }
-
-    private SubscribeOutbox claimedRow(SubscribeOutbox base) {
-        SubscribeOutbox row = new SubscribeOutbox();
-        row.setId(base.getId());
-        row.setMemberId(base.getMemberId());
-        row.setScene(base.getScene());
-        row.setPayloadJson(base.getPayloadJson());
-        row.setStatus(SubscribeOutboxService.STATUS_PROCESSING);
-        row.setAttemptCount(base.getAttemptCount() != null ? base.getAttemptCount() + 1 : 1);
-        return row;
-    }
-
-    private String payloadJson() {
-        SubscribeOutboxPayload payload = new SubscribeOutboxPayload();
-        payload.setActivityId(5L);
-        payload.setEnrollId(11L);
-        payload.setActivityTitle("讲座");
-        payload.setActivityStartTime("2026-07-15 10:00");
-        payload.setEnrollStatus("approved");
-        payload.setVoucherCode("SY001");
-        try {
-            return new ObjectMapper().writeValueAsString(payload);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

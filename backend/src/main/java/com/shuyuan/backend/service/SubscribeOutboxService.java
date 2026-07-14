@@ -13,7 +13,6 @@ import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,7 +32,7 @@ public class SubscribeOutboxService {
     public static final String STATUS_FAILED = "failed";
 
     private final SubscribeOutboxMapper outboxMapper;
-    private final SubscribeService subscribeService;
+    private final SubscribeOutboxProcessor outboxProcessor;
     private final ObjectMapper objectMapper;
     private final ShuyuanProperties properties;
 
@@ -53,7 +52,12 @@ public class SubscribeOutboxService {
         enqueue(memberId, SubscribeService.SCENE_ENROLL_APPROVED, toPayload(activity, enroll));
     }
 
-    /** 轮询待发/超时 processing 记录并投递 */
+    /**
+     * 轮询待发记录并投递。
+     *
+     * <p>单条处理通过独立 {@link SubscribeOutboxProcessor} Bean 执行（非 self-invocation）；
+     * 异常时立即将 processing 释放为 pending，stale 超时作为兜底。
+     */
     public void pollPending() {
         ShuyuanProperties.Subscribe cfg = properties.getSubscribe();
         int staleMinutes = Math.max(1, cfg.getOutboxStaleMinutes());
@@ -69,43 +73,12 @@ public class SubscribeOutboxService {
 
         for (SubscribeOutbox row : due) {
             try {
-                processOne(row.getId());
+                outboxProcessor.processOne(row.getId());
             } catch (Exception e) {
-                log.warn("[subscribe-outbox] 处理 id={} 异常: {}", row.getId(), e.getMessage());
+                log.warn("[subscribe-outbox] 处理 id={} memberId={} scene={} attempt={} 异常: {}",
+                        row.getId(), row.getMemberId(), row.getScene(), row.getAttemptCount(), e.getMessage());
+                releaseProcessingToRetry(row.getId(), "处理异常: " + e.getMessage());
             }
-        }
-    }
-
-    @Transactional
-    protected void processOne(Long outboxId) {
-        if (outboxMapper.claimPending(outboxId) == 0) {
-            return;
-        }
-        SubscribeOutbox row = outboxMapper.selectById(outboxId);
-        if (row == null) {
-            return;
-        }
-
-        int maxAttempts = Math.max(1, properties.getSubscribe().getOutboxMaxAttempts());
-        if (row.getAttemptCount() != null && row.getAttemptCount() > maxAttempts) {
-            markFailed(row, "超过最大重试次数");
-            return;
-        }
-
-        SubscribeOutboxPayload payload = parsePayload(row.getPayloadJson());
-        if (payload == null) {
-            markFailed(row, "payload 解析失败");
-            return;
-        }
-
-        SubscribeSendOutcome outcome = subscribeService.deliverForScene(
-                row.getMemberId(), row.getScene(), payload);
-        switch (outcome) {
-            case SENT -> markSent(row);
-            case SKIPPED_NO_AUTH, SKIPPED_NO_OPENID, SKIPPED_NO_TEMPLATE -> markSkipped(row, outcome.name());
-            case PERMANENT_FAILURE -> markFailed(row, "微信返回不可重试错误");
-            case RETRYABLE_FAILURE -> scheduleRetry(row, "发送失败，等待重试");
-            default -> scheduleRetry(row, "未知投递结果");
         }
     }
 
@@ -120,6 +93,13 @@ public class SubscribeOutboxService {
         outboxMapper.insert(row);
         log.debug("[subscribe-outbox] enqueued memberId={} scene={} activityId={}",
                 memberId, scene, payload.getActivityId());
+    }
+
+    private void releaseProcessingToRetry(Long outboxId, String reason) {
+        int updated = outboxMapper.releaseProcessingToRetry(outboxId, truncate(reason));
+        if (updated > 0) {
+            log.debug("[subscribe-outbox] released id={} to pending after exception", outboxId);
+        }
     }
 
     private SubscribeOutboxPayload toPayload(Activity activity, Enroll enroll) {
@@ -141,70 +121,6 @@ public class SubscribeOutboxService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("序列化订阅发件箱 payload 失败", e);
         }
-    }
-
-    private SubscribeOutboxPayload parsePayload(String json) {
-        if (json == null || json.isBlank()) {
-            return null;
-        }
-        try {
-            return objectMapper.readValue(json, SubscribeOutboxPayload.class);
-        } catch (JsonProcessingException e) {
-            log.warn("[subscribe-outbox] payload 解析失败: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    private void markSent(SubscribeOutbox row) {
-        SubscribeOutbox update = new SubscribeOutbox();
-        update.setId(row.getId());
-        update.setStatus(STATUS_SENT);
-        update.setSentAt(LocalDateTime.now());
-        update.setLockedAt(null);
-        update.setLastError(null);
-        outboxMapper.updateById(update);
-    }
-
-    private void markSkipped(SubscribeOutbox row, String reason) {
-        SubscribeOutbox update = new SubscribeOutbox();
-        update.setId(row.getId());
-        update.setStatus(STATUS_SKIPPED);
-        update.setLastError(truncate(reason));
-        update.setLockedAt(null);
-        outboxMapper.updateById(update);
-        log.debug("[subscribe-outbox] skipped id={} reason={}", row.getId(), reason);
-    }
-
-    private void markFailed(SubscribeOutbox row, String reason) {
-        SubscribeOutbox update = new SubscribeOutbox();
-        update.setId(row.getId());
-        update.setStatus(STATUS_FAILED);
-        update.setLastError(truncate(reason));
-        update.setLockedAt(null);
-        outboxMapper.updateById(update);
-        log.warn("[subscribe-outbox] failed id={} memberId={} scene={} reason={}",
-                row.getId(), row.getMemberId(), row.getScene(), reason);
-    }
-
-    private void scheduleRetry(SubscribeOutbox row, String reason) {
-        int attempt = row.getAttemptCount() != null ? row.getAttemptCount() : 1;
-        int maxAttempts = Math.max(1, properties.getSubscribe().getOutboxMaxAttempts());
-        if (attempt >= maxAttempts) {
-            markFailed(row, truncate(reason) + " (已达最大重试)");
-            return;
-        }
-        int baseSeconds = Math.max(5, properties.getSubscribe().getOutboxRetryBaseSeconds());
-        long delaySeconds = Math.min(3600L, (long) baseSeconds * (1L << Math.min(attempt - 1, 10)));
-
-        SubscribeOutbox update = new SubscribeOutbox();
-        update.setId(row.getId());
-        update.setStatus(STATUS_PENDING);
-        update.setLastError(truncate(reason));
-        update.setNextRetryAt(LocalDateTime.now().plusSeconds(delaySeconds));
-        update.setLockedAt(null);
-        outboxMapper.updateById(update);
-        log.debug("[subscribe-outbox] retry scheduled id={} attempt={} delaySec={}",
-                row.getId(), attempt, delaySeconds);
     }
 
     private String truncate(String value) {

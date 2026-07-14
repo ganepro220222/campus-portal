@@ -81,6 +81,17 @@ class SubscribeServiceDeliverTest {
         verify(subscribeRecordMapper).decrAvailable(9L);
     }
 
+    @Test
+    void deliverForScene_returnsRetryableWhenQueryThrows() {
+        when(subscribeRecordMapper.selectOne(any())).thenThrow(new RuntimeException("db down"));
+
+        SubscribeSendOutcome outcome = subscribeService.deliverForScene(
+                4L, SubscribeService.SCENE_ENROLL_SUCCESS, payload());
+
+        assertEquals(SubscribeSendOutcome.RETRYABLE_FAILURE, outcome);
+        verify(subscribeRecordMapper, never()).decrAvailable(anyLong());
+    }
+
     private MemberSubscribeRecord authRecord() {
         MemberSubscribeRecord record = new MemberSubscribeRecord();
         record.setAvailableCount(1);

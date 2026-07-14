@@ -32,4 +32,16 @@ public interface SubscribeOutboxMapper extends BaseMapper<SubscribeOutbox> {
               AND locked_at < DATE_SUB(NOW(), INTERVAL #{staleMinutes} MINUTE)
             """)
     int resetStaleProcessing(@Param("staleMinutes") int staleMinutes);
+
+    @Update("""
+            UPDATE subscribe_outbox
+            SET status = 'pending',
+                next_retry_at = NOW(),
+                locked_at = NULL,
+                last_error = #{reason},
+                update_time = NOW()
+            WHERE id = #{id}
+              AND status = 'processing'
+            """)
+    int releaseProcessingToRetry(@Param("id") Long id, @Param("reason") String reason);
 }

@@ -201,7 +201,7 @@
     <view wx:if="{{collegeList.length}}" class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">协同育人</view>
-        <view wx:if="{{collegeList.length > 3}}" class="sec-more" bindtap="onCollegeMore">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
+        <view class="sec-more" bindtap="onCollegeMore">全部<icon name="chevron-right" size="13" color="#8A93B2" /></view>
       </view>
       <view class="app-list">
         <view

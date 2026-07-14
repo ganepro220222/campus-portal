@@ -158,26 +158,26 @@ public class SubscribeService {
     }
 
     private SubscribeSendOutcome deliver(Long memberId, String scene, String page, Map<String, String> keywordData) {
-        MemberSubscribeRecord record = subscribeRecordMapper.selectOne(
-                new LambdaQueryWrapper<MemberSubscribeRecord>()
-                        .eq(MemberSubscribeRecord::getMemberId, memberId)
-                        .eq(MemberSubscribeRecord::getScene, scene)
-                        .gt(MemberSubscribeRecord::getAvailableCount, 0)
-                        .last("LIMIT 1"));
-        if (record == null) {
-            log.debug("[subscribe] 无可用授权 memberId={} scene={}", memberId, scene);
-            return SubscribeSendOutcome.SKIPPED_NO_AUTH;
-        }
-        Member member = memberMapper.selectById(memberId);
-        if (member == null || member.getOpenid() == null || member.getOpenid().isBlank()) {
-            return SubscribeSendOutcome.SKIPPED_NO_OPENID;
-        }
-        String templateId = resolveTemplateId(scene, record.getTemplateId());
-        if (templateId == null || templateId.isBlank()) {
-            log.debug("[subscribe] 未配置模板 scene={}", scene);
-            return SubscribeSendOutcome.SKIPPED_NO_TEMPLATE;
-        }
         try {
+            MemberSubscribeRecord record = subscribeRecordMapper.selectOne(
+                    new LambdaQueryWrapper<MemberSubscribeRecord>()
+                            .eq(MemberSubscribeRecord::getMemberId, memberId)
+                            .eq(MemberSubscribeRecord::getScene, scene)
+                            .gt(MemberSubscribeRecord::getAvailableCount, 0)
+                            .last("LIMIT 1"));
+            if (record == null) {
+                log.debug("[subscribe] 无可用授权 memberId={} scene={}", memberId, scene);
+                return SubscribeSendOutcome.SKIPPED_NO_AUTH;
+            }
+            Member member = memberMapper.selectById(memberId);
+            if (member == null || member.getOpenid() == null || member.getOpenid().isBlank()) {
+                return SubscribeSendOutcome.SKIPPED_NO_OPENID;
+            }
+            String templateId = resolveTemplateId(scene, record.getTemplateId());
+            if (templateId == null || templateId.isBlank()) {
+                log.debug("[subscribe] 未配置模板 scene={}", scene);
+                return SubscribeSendOutcome.SKIPPED_NO_TEMPLATE;
+            }
             DispatchResult result = dispatchSubscribeMessage(member.getOpenid(), templateId, page, keywordData);
             if (result.sent()) {
                 subscribeRecordMapper.decrAvailable(record.getId());

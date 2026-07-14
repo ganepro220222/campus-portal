@@ -18,6 +18,7 @@ Page({
     newsList:           mockOrEmpty(decorateNews(mock.newsHome), []),
     courseList:         mockOrEmpty(decorateCourses(mock.coursesHome), []),
     collegeList:        [],
+    collegeHome:        [],
     hasNewAnnouncement: false,
     loading:            true,
     statusBarHeight:    20,
@@ -52,12 +53,14 @@ Page({
         get('/home/recommends').catch(() => ({})),
         get('/colleges/home').catch(() => [])
       ])
+      const collegeAll = withListFallback(colleges, mock.collegesHome || [])
       const data = {
         banners:    decorateBanners(withListFallback(banners, mock.banners)),
         hallList:   decorateHalls(withListFallback(recommends && recommends.halls, mock.hallsHome)),
         newsList:   decorateNews(withListFallback(recommends && recommends.news, mock.newsHome)),
         courseList: decorateCourses(withListFallback(recommends && recommends.courses, mock.coursesHome)),
-        collegeList: withListFallback(colleges, mock.collegesHome || [])
+        collegeList: collegeAll,
+        collegeHome: collegeAll.slice(0, 3)
       }
       store.setCache('home', data)
       this.setData({ ...data, loading: false })

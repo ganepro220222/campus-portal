@@ -197,34 +197,33 @@
       </view>
     </view>
 
-    <!-- 协同育人 · 关联小程序（置于书院自有内容之后；≤2 个宽卡铺满，≥3 个横滑） -->
+    <!-- 协同育人 · 关联小程序（App 入口横条；1→N 统一，首页至多 3 条，余下进「更多」） -->
     <view wx:if="{{collegeList.length}}" class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">协同育人</view>
-        <view wx:if="{{collegeList.length > 2}}" class="sec-more" bindtap="onCollegeMore">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
+        <view wx:if="{{collegeList.length > 3}}" class="sec-more" bindtap="onCollegeMore">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
       </view>
-      <scroll-view scroll-x="{{collegeList.length > 2}}" class="halls-scroll" enhanced show-scrollbar="{{false}}">
-        <view class="halls-inner {{collegeList.length <= 2 ? 'inner-fill' : ''}}">
-          <view
-            wx:for="{{collegeList}}"
-            wx:key="id"
-            class="hall-card college-card {{collegeList.length <= 2 ? 'card-fill' : ''}}"
-            bindtap="onCollegeTap"
-            data-id="{{item.id}}"
-          >
-            <view class="hc-cover {{item.colorClass || 'hc1'}}">
-              <view class="hc-corner">
-                <view wx:if="{{item.iconUrl}}" class="hc-logo">
-                  <image src="{{item.iconUrl}}" mode="aspectFit" class="hc-logo-img" />
-                </view>
-                <icon wx:else name="grid" size="28" color="rgba(255,255,255,0.34)" />
-              </view>
-              <text class="hc-ct serif">{{item.short}}</text>
-            </view>
-            <view class="hc-name">{{item.name}}</view>
+      <view class="app-list">
+        <view
+          wx:for="{{collegeHome}}"
+          wx:key="id"
+          class="app-row"
+          hover-class="app-row-hover"
+          hover-stay-time="60"
+          bindtap="onCollegeTap"
+          data-id="{{item.id}}"
+        >
+          <view class="app-icon {{item.colorClass || 'hc1'}}">
+            <image wx:if="{{item.iconUrl}}" src="{{item.iconUrl}}" mode="aspectFit" class="app-icon-img" />
+            <text wx:else class="app-icon-seal serif">{{item.short}}</text>
           </view>
+          <view class="app-body">
+            <view class="app-name">{{item.name}}</view>
+            <view class="app-tag">协同小程序 · 点击打开</view>
+          </view>
+          <view class="app-open">打开<icon name="chevron-right" size="12" color="#2B356E" /></view>
         </view>
-      </scroll-view>
+      </view>
     </view>
 
     <view class="scroll-bottom"></view>

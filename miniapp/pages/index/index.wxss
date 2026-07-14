@@ -313,9 +313,6 @@
   flex-shrink: 0;
 }
 .hall-card:active { transform: translateY(-4rpx); }
-/* 协同育人 ≤2 个时铺满整行（单张封顶居中，避免拉成整屏长条） */
-.halls-inner.inner-fill { white-space: normal; justify-content: center; }
-.hall-card.card-fill { width: auto; flex: 1 1 0; min-width: 0; max-width: 360rpx; }
 .hc-cover {
   position: relative;
   height: 150rpx;
@@ -324,20 +321,7 @@
   align-items: flex-end;
   overflow: hidden;
 }
-.hc-corner { position: absolute; right: 14rpx; top: 12rpx; z-index: 2; }
-/* 关联小程序图标：右上角清晰白底方形角标，aspectFit 不惧比例 */
-.hc-logo {
-  width: 60rpx;
-  height: 60rpx;
-  border-radius: 14rpx;
-  background: rgba(255, 255, 255, 0.94);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.16);
-}
-.hc-logo-img { width: 48rpx; height: 48rpx; }
+.hc-corner { position: absolute; right: 14rpx; top: 12rpx; }
 .hc-ct {
   position: relative;
   z-index: 2;

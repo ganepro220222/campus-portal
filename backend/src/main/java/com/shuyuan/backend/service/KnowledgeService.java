@@ -62,6 +62,7 @@ public class KnowledgeService {
         doc.setTitle(title);
         doc.setFileUrl("manual://" + title);
         doc.setSourceType("manual");
+        doc.setContent(content);
         doc.setCharCount(content.length());
         doc.setChunkCount(parts.size());
         doc.setStatus("processing");
@@ -69,20 +70,103 @@ public class KnowledgeService {
         doc.setCreatedAt(LocalDateTime.now());
         knowledgeDocMapper.insert(doc);
 
+        rebuildChunks(doc.getId(), parts);
+
+        doc.setStatus("ready");
+        knowledgeDocMapper.updateById(doc);
+        return toDocVo(doc);
+    }
+
+    /** 编辑：更新标题/正文并重新分段入库（关键词检索无需嵌入，重建成本低）。 */
+    @Transactional
+    public Map<String, Object> updateTextDoc(Long id, KnowledgeDocSaveRequest req) {
+        adminPermissionService.require("admin:super");
+        KnowledgeDoc doc = requireDoc(id);
+        String title = req.getTitle().trim();
+        String content = req.getContent().trim();
+        List<String> parts = TextChunker.split(content);
+        if (parts.isEmpty()) {
+            throw new BusinessException(400, "正文过短，无法入库");
+        }
+        knowledgeChunkMapper.delete(new LambdaQueryWrapper<KnowledgeChunk>().eq(KnowledgeChunk::getDocId, id));
+        rebuildChunks(id, parts);
+
+        doc.setTitle(title);
+        doc.setContent(content);
+        doc.setCharCount(content.length());
+        doc.setChunkCount(parts.size());
+        doc.setStatus("ready");
+        knowledgeDocMapper.updateById(doc);
+        return toDocVo(doc);
+    }
+
+    private void rebuildChunks(Long docId, List<String> parts) {
         int index = 0;
         for (String part : parts) {
             KnowledgeChunk chunk = new KnowledgeChunk();
-            chunk.setDocId(doc.getId());
+            chunk.setDocId(docId);
             chunk.setChunkText(part);
             chunk.setChunkIndex(index++);
             chunk.setKeywords(extractKeywords(part));
             chunk.setCharCount(part.length());
             knowledgeChunkMapper.insert(chunk);
         }
+    }
 
-        doc.setStatus("ready");
-        knowledgeDocMapper.updateById(doc);
-        return toDocVo(doc);
+    /** 编辑回填：返回标题 + 原始正文（旧数据无 content 时由分段近似还原）。 */
+    public Map<String, Object> docDetail(Long id) {
+        adminPermissionService.require("admin:super");
+        KnowledgeDoc doc = requireDoc(id);
+        Map<String, Object> m = toDocVo(doc);
+        String content = doc.getContent();
+        if (content == null || content.isBlank()) {
+            List<KnowledgeChunk> chunks = chunksOf(id);
+            content = TextChunker.join(chunks.stream().map(KnowledgeChunk::getChunkText).toList());
+        }
+        m.put("content", content);
+        return m;
+    }
+
+    /** 查看分段：返回该文档的所有片段（序号、正文、关键词、字数）。 */
+    public List<Map<String, Object>> listChunks(Long id) {
+        adminPermissionService.require("admin:super");
+        requireDoc(id);
+        return chunksOf(id).stream().map(c -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("chunkIndex", c.getChunkIndex());
+            m.put("chunkText", c.getChunkText());
+            m.put("keywords", c.getKeywords());
+            m.put("charCount", c.getCharCount());
+            return m;
+        }).toList();
+    }
+
+    /** 检索自测「试问」：返回命中的片段及所属文档、得分（用于调优）。 */
+    public List<Map<String, Object>> testRetrieve(String question, int topK) {
+        adminPermissionService.require("admin:super");
+        int k = topK <= 0 ? 5 : Math.min(topK, 20);
+        List<KnowledgeChunk> hits = retrieve(question, k);
+        if (hits.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> docIds = hits.stream().map(KnowledgeChunk::getDocId).collect(Collectors.toSet());
+        Map<Long, String> titleMap = knowledgeDocMapper.selectBatchIds(docIds).stream()
+                .collect(Collectors.toMap(KnowledgeDoc::getId, KnowledgeDoc::getTitle));
+        return hits.stream().map(c -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("docId", c.getDocId());
+            m.put("docTitle", titleMap.getOrDefault(c.getDocId(), "（已删除）"));
+            m.put("chunkIndex", c.getChunkIndex());
+            m.put("chunkText", c.getChunkText());
+            m.put("score", c.getScore());
+            return m;
+        }).toList();
+    }
+
+    private List<KnowledgeChunk> chunksOf(Long docId) {
+        return knowledgeChunkMapper.selectList(new LambdaQueryWrapper<KnowledgeChunk>()
+                .eq(KnowledgeChunk::getDocId, docId)
+                .orderByAsc(KnowledgeChunk::getChunkIndex));
     }
 
     @Transactional

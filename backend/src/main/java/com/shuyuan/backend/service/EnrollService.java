@@ -6,6 +6,7 @@ import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.EnrollRequest;
 import com.shuyuan.backend.entity.*;
 import com.shuyuan.backend.mapper.*;
+import com.shuyuan.backend.util.AfterCommit;
 import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -91,7 +92,10 @@ public class EnrollService {
         }
 
         createEnrollMessage(memberId, activity, existing);
-        subscribeService.sendEnrollSuccess(memberId, activity, existing);
+        final Long notifyMemberId = memberId;
+        final Activity notifyActivity = activity;
+        final Enroll notifyEnroll = existing;
+        AfterCommit.run(() -> subscribeService.sendEnrollSuccess(notifyMemberId, notifyActivity, notifyEnroll));
         eventLogService.record("enroll", "activity", activityId);
         pointService.award(memberId, "enroll_activity");
         return toEnrollVo(existing, activity);

@@ -5,13 +5,15 @@ import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Enroll;
 import com.shuyuan.backend.mapper.ActivityMapper;
 import com.shuyuan.backend.mapper.EnrollMapper;
+import com.shuyuan.backend.util.AfterCommit;
 import com.shuyuan.backend.util.EnrollExportScope;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -20,7 +22,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,8 +45,23 @@ class AdminEnrollServiceTest {
     @Mock
     private SubscribeService subscribeService;
 
-    @InjectMocks
+    private AfterCommit afterCommit;
     private AdminEnrollService adminEnrollService;
+
+    @BeforeEach
+    void setUp() {
+        afterCommit = new AfterCommit(Runnable::run);
+        adminEnrollService = new AdminEnrollService(
+                enrollMapper, activityMapper, adminPermissionService,
+                messageService, subscribeService, afterCommit);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clear();
+        }
+    }
 
     @Test
     void exportExcel_checkinScope_writesCheckinFilename() throws IOException {
@@ -85,6 +104,59 @@ class AdminEnrollServiceTest {
 
     @Test
     void approve_deferredSubscribeUntilAfterCommit() {
+        stubApproveSuccess();
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            adminEnrollService.approve(11L);
+            verify(subscribeService, never()).sendEnrollApproved(anyLong(), any(), any());
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCommit();
+            }
+            verify(subscribeService).sendEnrollApproved(eq(88L), any(Activity.class), any(Enroll.class));
+        } finally {
+            TransactionSynchronizationManager.clear();
+        }
+    }
+
+    @Test
+    void approve_rollbackDoesNotSendSubscribe() {
+        stubApproveSuccess();
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            adminEnrollService.approve(11L);
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+            }
+            verify(subscribeService, never()).sendEnrollApproved(anyLong(), any(), any());
+        } finally {
+            TransactionSynchronizationManager.clear();
+        }
+    }
+
+    @Test
+    void approve_subscribeExceptionAfterCommitDoesNotPropagate() {
+        stubApproveSuccess();
+        doThrow(new RuntimeException("wx down")).when(subscribeService)
+                .sendEnrollApproved(anyLong(), any(), any());
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertDoesNotThrow(() -> {
+                Map<String, Object> vo = adminEnrollService.approve(11L);
+                assertEquals("approved", vo.get("status"));
+            });
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCommit();
+            }
+            verify(subscribeService).sendEnrollApproved(anyLong(), any(), any());
+        } finally {
+            TransactionSynchronizationManager.clear();
+        }
+    }
+
+    private void stubApproveSuccess() {
         Enroll pending = new Enroll();
         pending.setId(11L);
         pending.setMemberId(88L);
@@ -103,17 +175,5 @@ class AdminEnrollServiceTest {
 
         when(enrollMapper.selectById(11L)).thenReturn(pending, approved);
         when(activityMapper.selectById(5L)).thenReturn(activity);
-
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            adminEnrollService.approve(11L);
-            verify(subscribeService, never()).sendEnrollApproved(anyLong(), any(), any());
-            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
-                sync.afterCommit();
-            }
-            verify(subscribeService).sendEnrollApproved(eq(88L), eq(activity), eq(approved));
-        } finally {
-            TransactionSynchronizationManager.clear();
-        }
     }
 }

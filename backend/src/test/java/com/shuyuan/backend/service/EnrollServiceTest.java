@@ -7,11 +7,11 @@ import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Enroll;
 import com.shuyuan.backend.entity.MemberProfile;
 import com.shuyuan.backend.mapper.*;
+import com.shuyuan.backend.util.AfterCommit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
@@ -46,7 +46,7 @@ class EnrollServiceTest {
     @Mock
     private SubscribeService subscribeService;
 
-    @InjectMocks
+    private AfterCommit afterCommit;
     private EnrollService enrollService;
 
     private static final Long MEMBER_ID = 100L;
@@ -55,6 +55,10 @@ class EnrollServiceTest {
     @BeforeEach
     void setUp() {
         MemberContext.setMemberId(MEMBER_ID);
+        afterCommit = new AfterCommit(Runnable::run);
+        enrollService = new EnrollService(
+                activityMapper, enrollMapper, memberProfileMapper,
+                eventLogService, pointService, messageService, subscribeService, afterCommit);
     }
 
     @AfterEach

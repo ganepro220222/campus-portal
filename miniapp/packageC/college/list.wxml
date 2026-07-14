@@ -8,19 +8,26 @@
       <text class="ci-en">书院兄弟小程序互联入口</text>
     </view>
 
-    <view class="college-grid">
+    <view class="app-list college-list">
       <view
         wx:for="{{colleges}}"
         wx:key="id"
-        class="col-card"
+        class="app-row"
+        hover-class="app-row-hover"
+        hover-stay-time="60"
         bindtap="onCardTap"
         data-id="{{item.id}}"
         data-name="{{item.name}}"
       >
-        <view class="col-badge {{item.colorClass}}"><text class="cb-tx serif">{{item.short}}</text></view>
-        <text class="col-name">{{item.name}}</text>
-        <text class="col-en">{{item.en}}</text>
-        <text class="col-desc">{{item.desc}}</text>
+        <view class="app-icon {{item.colorClass || 'hc1'}}">
+          <image wx:if="{{item.iconUrl}}" src="{{item.iconUrl}}" mode="aspectFit" class="app-icon-img" />
+          <text wx:else class="app-icon-seal serif">{{item.short}}</text>
+        </view>
+        <view class="app-body">
+          <view class="app-name">{{item.name}}</view>
+          <view class="app-sub">{{item.desc || item.en}}</view>
+        </view>
+        <view class="app-open">打开<icon name="chevron-right" size="12" color="#2B356E" /></view>
       </view>
     </view>
 

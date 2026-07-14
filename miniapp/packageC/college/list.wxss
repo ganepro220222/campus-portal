@@ -6,41 +6,7 @@
 .ci-zh { font-size: 34rpx; font-weight: 700; color: var(--ink); display: block; }
 .ci-en { font-size: 20rpx; color: var(--muted); letter-spacing: 1rpx; margin-top: 6rpx; display: block; }
 
-.college-grid {
-  padding: 20rpx 32rpx 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24rpx;
-}
-.col-card {
-  background: #fff;
-  border: 1rpx solid var(--line);
-  border-radius: 24rpx;
-  padding: 26rpx 24rpx;
-  box-shadow: 0 6rpx 18rpx rgba(31, 40, 90, 0.08);
-  transition: transform 0.15s;
-}
-.col-card:active { transform: translateY(-4rpx); }
-.col-badge {
-  width: 88rpx; height: 88rpx;
-  border-radius: 22rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6rpx 16rpx rgba(31, 40, 90, 0.18);
-}
-.cb-tx { color: #fff; font-size: 30rpx; font-weight: 700; letter-spacing: 1rpx; }
-.col-name { font-size: 28rpx; font-weight: 700; color: var(--ink); display: block; margin-top: 20rpx; }
-.col-en {
-  font-size: 19rpx;
-  color: var(--muted);
-  letter-spacing: 0.5rpx;
-  margin-top: 4rpx;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.col-desc { font-size: 21rpx; color: var(--sub); margin-top: 12rpx; display: block; }
+/* 关联小程序矩阵：与首页「协同育人」统一为 App 入口横条（样式见 app.wxss） */
+.college-list { padding: 20rpx 32rpx 0; }
 
 .list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

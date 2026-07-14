@@ -1,6 +1,8 @@
 package com.shuyuan.backend.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.KnowledgeDocSaveRequest;
@@ -8,6 +10,8 @@ import com.shuyuan.backend.entity.KnowledgeChunk;
 import com.shuyuan.backend.entity.KnowledgeDoc;
 import com.shuyuan.backend.mapper.KnowledgeChunkMapper;
 import com.shuyuan.backend.mapper.KnowledgeDocMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +29,13 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class KnowledgeServiceTest {
+
+    @BeforeAll
+    static void initMybatisPlusEntityCache() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), KnowledgeDoc.class.getName()),
+                KnowledgeDoc.class);
+    }
 
     @Mock
     private KnowledgeDocMapper knowledgeDocMapper;
@@ -307,13 +318,50 @@ class KnowledgeServiceTest {
 
     @Test
     void retrieve_ignoresDisabledDocs() {
+        KnowledgeDoc ready = doc(1L, "启用资料", "正文");
+        ready.setStatus("ready");
+
         when(knowledgeDocMapper.selectList(any(LambdaQueryWrapper.class)))
-                .thenReturn(List.of());
+                .thenAnswer(inv -> {
+                    @SuppressWarnings("unchecked")
+                    LambdaQueryWrapper<KnowledgeDoc> wrapper = inv.getArgument(0);
+                    assertQueryFiltersReadyStatus(wrapper);
+                    // 模拟 DB：status=ready 条件下只返回 ready，disabled 不进候选
+                    return List.of(ready);
+                });
+
+        KnowledgeChunk readyChunk = chunk(1L, 0, "知行合一强调实践与认知统一");
+        when(knowledgeChunkMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(readyChunk));
+
+        List<KnowledgeChunk> results = knowledgeService.retrieve("知行合一", 5);
+
+        assertEquals(1, results.size());
+        assertEquals(1L, results.get(0).getDocId());
+        verify(knowledgeChunkMapper).selectList(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    void retrieve_returnsEmptyWhenNoReadyDocs() {
+        when(knowledgeDocMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenAnswer(inv -> {
+                    @SuppressWarnings("unchecked")
+                    LambdaQueryWrapper<KnowledgeDoc> wrapper = inv.getArgument(0);
+                    assertQueryFiltersReadyStatus(wrapper);
+                    return List.of();
+                });
 
         List<KnowledgeChunk> results = knowledgeService.retrieve("知行合一", 5);
 
         assertTrue(results.isEmpty());
         verify(knowledgeChunkMapper, never()).selectList(any());
+    }
+
+    private void assertQueryFiltersReadyStatus(LambdaQueryWrapper<KnowledgeDoc> wrapper) {
+        assertTrue(wrapper.getSqlSegment().contains("status"),
+                () -> "retrieve 应过滤 status，实际 SQL: " + wrapper.getSqlSegment());
+        assertTrue(wrapper.getParamNameValuePairs().containsValue("ready"),
+                () -> "retrieve 应只取 ready，实际参数: " + wrapper.getParamNameValuePairs());
     }
 
     private KnowledgeDocSaveRequest request(String title, String content) {

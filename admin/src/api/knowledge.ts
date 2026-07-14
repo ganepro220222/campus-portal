@@ -48,6 +48,11 @@ export function updateKnowledgeDoc(id: number, data: { title: string; content: s
   return put<KnowledgeDocItem>(`/admin/knowledge/docs/${id}`, data)
 }
 
+/** 启用 / 停用：停用后不参与 AI 检索，保留文档可随时启用 */
+export function setKnowledgeDocEnabled(id: number, enabled: boolean) {
+  return put<KnowledgeDocItem>(`/admin/knowledge/docs/${id}/enabled?enabled=${enabled}`)
+}
+
 export function fetchKnowledgeChunks(id: number) {
   return get<KnowledgeChunkItem[]>(`/admin/knowledge/docs/${id}/chunks`)
 }

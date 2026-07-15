@@ -7,6 +7,7 @@ import com.shuyuan.backend.entity.Craft;
 import com.shuyuan.backend.mapper.CraftContactMapper;
 import com.shuyuan.backend.mapper.CraftMapper;
 import com.shuyuan.backend.util.GlbValidator;
+import com.shuyuan.backend.util.GlbTransformUtil;
 import com.shuyuan.backend.util.JsonFieldHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -95,8 +96,16 @@ public class CraftViewerService {
         Map<String, String> uploaded = ossService.uploadModel3dGlb(id, bytes);
         craft.setModel3dUrl(uploaded.get("url"));
         craft.setPreviewType("model3d");
+
+        List<String> uploadWarnings = new ArrayList<>(validation.warnings());
         if (StringUtils.hasText(transformJson)) {
             craft.setTransformJson(normalizeJsonString(transformJson));
+        } else {
+            Map<String, Object> computed = GlbTransformUtil.computeTransform(bytes);
+            if (computed != null) {
+                craft.setTransformJson(JsonFieldHelper.writeObject(computed));
+                uploadWarnings.add("已根据 GLB 包围盒自动计算归一化参数");
+            }
         }
         craftMapper.updateById(craft);
 
@@ -107,7 +116,7 @@ public class CraftViewerService {
         result.put("meshCount", validation.meshCount());
         result.put("materialCount", validation.materialCount());
         result.put("imageCount", validation.imageCount());
-        result.put("warnings", validation.warnings());
+        result.put("warnings", uploadWarnings);
         result.put("transform", JsonFieldHelper.parseObject(craft.getTransformJson()));
         return result;
     }
@@ -222,8 +231,8 @@ public class CraftViewerService {
             throw new BusinessException(400, "文件过大，请压缩后重试");
         }
         String name = file.getOriginalFilename();
-        if (name == null || !(name.toLowerCase().endsWith(".glb") || name.toLowerCase().endsWith(".gltf"))) {
-            throw new BusinessException(400, "仅支持 .glb / .gltf 文件");
+        if (name == null || !name.toLowerCase().endsWith(".glb")) {
+            throw new BusinessException(400, "仅支持 .glb 二进制单文件");
         }
         try {
             return file.getBytes();

@@ -10,8 +10,12 @@
           model-url="{{detail.model3dUrl}}"
           model-scale="{{detail.modelScale}}"
           model-position="{{detail.modelPosition}}"
+          bind:loaded="on3dLoaded"
           bind:error="on3dError"
         />
+        <view wx:if="{{loading3d}}" class="viewer-mask-3d">
+          <text>3D 模型加载中…</text>
+        </view>
         <view class="gcap">拖动旋转 · {{detail.name}} · 3D 鉴赏</view>
       </view>
 

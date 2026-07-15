@@ -26,14 +26,14 @@
           <el-upload
             :auto-upload="false"
             :show-file-list="false"
-            accept=".glb,.gltf"
+            accept=".glb"
             :on-change="onPickGlb"
           >
             <el-button :loading="uploading" :icon="UploadFilled" size="small">
               {{ form.model3dUrl ? '重新上传' : '上传 GLB 模型' }}
             </el-button>
           </el-upload>
-          <span class="cv-desc">仅 .glb / .gltf，建议 ≤ 8MB；上传即自动校验并按内容哈希入库</span>
+          <span class="cv-desc">仅 .glb 二进制单文件，建议 ≤ 8MB；上传即校验并按内容哈希入库，自动计算归一化参数</span>
         </div>
         <el-alert
           v-if="uploadSummary"
@@ -97,7 +97,7 @@
 
       <!-- 高级 -->
       <el-collapse class="cv-advanced">
-        <el-collapse-item title="高级参数（一般无需修改）">
+        <el-collapse-item title="高级参数（归一化 / 机位微调）">
           <div class="cv-grid">
             <div class="cv-field">
               <span class="cv-field-label">方位角 phi</span>
@@ -108,9 +108,28 @@
               <el-input-number v-model="form.camera.theta" :step="0.01" :precision="2" size="small" controls-position="right" />
             </div>
           </div>
-          <div class="cv-transform">
+          <div class="cv-transform-head">
             <span class="cv-field-label">归一化参数</span>
-            <span class="cv-desc">{{ transformText }}（由模型上传时的批处理 manifest 写入，此处只读）</span>
+            <el-button link type="primary" size="small" @click="pasteTransformJson">粘贴 manifest JSON</el-button>
+          </div>
+          <div class="cv-desc cv-transform-hint">上传 GLB 后自动计算；也可从批处理 manifest 粘贴，或手动微调后保存。</div>
+          <div class="cv-grid cv-transform-grid">
+            <div class="cv-field">
+              <span class="cv-field-label">scale</span>
+              <el-input-number v-model="formTransform.scale" :min="0.01" :max="20" :step="0.0001" :precision="5" size="small" controls-position="right" />
+            </div>
+            <div class="cv-field">
+              <span class="cv-field-label">offsetX</span>
+              <el-input-number v-model="formTransform.offsetX" :step="0.0001" :precision="5" size="small" controls-position="right" />
+            </div>
+            <div class="cv-field">
+              <span class="cv-field-label">offsetY</span>
+              <el-input-number v-model="formTransform.offsetY" :step="0.0001" :precision="5" size="small" controls-position="right" />
+            </div>
+            <div class="cv-field">
+              <span class="cv-field-label">offsetZ</span>
+              <el-input-number v-model="formTransform.offsetZ" :step="0.0001" :precision="5" size="small" controls-position="right" />
+            </div>
           </div>
           <el-button link type="primary" size="small" @click="resetParams">恢复机位 / 材质默认值</el-button>
         </el-collapse-item>
@@ -136,9 +155,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import type { UploadFile } from 'element-plus'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
 import {
@@ -159,6 +178,7 @@ const emit = defineEmits<{
 
 const DEFAULT_CAMERA = { distance: 8.4, phi: 1.48, theta: 0.35, autoRotate: true }
 const DEFAULT_MATERIAL = { roughness: 0.15, metalness: 0.02, envMapIntensity: 1.3 }
+const DEFAULT_TRANSFORM = { scale: 1, offsetX: 0, offsetY: 0, offsetZ: 0 }
 
 const loading = ref(false)
 const saving = ref(false)
@@ -170,13 +190,10 @@ const form = reactive({
   posterUrl: '',
   model3dUrl: '',
   camera: { ...DEFAULT_CAMERA },
-  material: { ...DEFAULT_MATERIAL },
-  transform: null as Record<string, unknown> | null
+  material: { ...DEFAULT_MATERIAL }
 })
 
-const transformText = computed(() =>
-  form.transform && Object.keys(form.transform).length ? JSON.stringify(form.transform) : '默认（scale 1, 无偏移）'
-)
+const formTransform = reactive({ ...DEFAULT_TRANSFORM })
 
 function toNumberRecord(src: Record<string, unknown> | null, defaults: Record<string, number>) {
   const out: Record<string, number> = { ...defaults }
@@ -186,6 +203,23 @@ function toNumberRecord(src: Record<string, unknown> | null, defaults: Record<st
     }
   }
   return out
+}
+
+function applyTransform(src: Record<string, unknown> | null) {
+  const t = toNumberRecord(src, DEFAULT_TRANSFORM)
+  formTransform.scale = t.scale
+  formTransform.offsetX = t.offsetX
+  formTransform.offsetY = t.offsetY
+  formTransform.offsetZ = t.offsetZ
+}
+
+function buildTransformPayload() {
+  return {
+    scale: formTransform.scale,
+    offsetX: formTransform.offsetX,
+    offsetY: formTransform.offsetY,
+    offsetZ: formTransform.offsetZ
+  }
 }
 
 function parseMaterial(src: Record<string, unknown> | null) {
@@ -208,7 +242,7 @@ async function onOpen() {
     form.camera = { ...DEFAULT_CAMERA, ...toNumberRecord(cfg.camera as Record<string, unknown> | null, { distance: DEFAULT_CAMERA.distance, phi: DEFAULT_CAMERA.phi, theta: DEFAULT_CAMERA.theta }) }
     form.camera.autoRotate = cfg.camera && typeof cfg.camera.autoRotate === 'boolean' ? cfg.camera.autoRotate : DEFAULT_CAMERA.autoRotate
     form.material = parseMaterial(cfg.material as Record<string, unknown> | null)
-    form.transform = (cfg.transform as Record<string, unknown> | null) ?? null
+    applyTransform(cfg.transform as Record<string, unknown> | null)
   } finally {
     loading.value = false
   }
@@ -217,21 +251,37 @@ async function onOpen() {
 function onPickGlb(uploadFile: UploadFile) {
   const raw = uploadFile.raw
   if (!raw || !props.craft) return
-  if (!/\.(glb|gltf)$/i.test(raw.name)) {
-    ElMessage.warning('仅支持 .glb / .gltf 文件')
+  if (!/\.glb$/i.test(raw.name)) {
+    ElMessage.warning('仅支持 .glb 二进制单文件')
     return
   }
   uploading.value = true
   uploadCraftModel(props.craft.id, raw)
     .then((res) => {
       form.model3dUrl = res.model3dUrl
-      if (res.transform) form.transform = res.transform as Record<string, unknown>
+      if (res.transform) applyTransform(res.transform as Record<string, unknown>)
       uploadSummary.value = res
       ElMessage.success('模型已上传并校验通过')
     })
     .finally(() => {
       uploading.value = false
     })
+}
+
+async function pasteTransformJson() {
+  try {
+    const { value } = await ElMessageBox.prompt(
+      '粘贴批处理 manifest 中的 transform JSON，例如 {"scale":1.05,"offsetX":0,"offsetY":-0.17,"offsetZ":0}',
+      '导入归一化参数',
+      { inputPlaceholder: '{"scale":1,"offsetX":0,"offsetY":0,"offsetZ":0}', confirmButtonText: '导入' }
+    )
+    if (!value?.trim()) return
+    const parsed = JSON.parse(value.trim()) as Record<string, unknown>
+    applyTransform(parsed)
+    ElMessage.success('已导入归一化参数')
+  } catch {
+    ElMessage.warning('JSON 格式无效')
+  }
 }
 
 function resetParams() {
@@ -246,6 +296,7 @@ async function onSave() {
     await saveCraftViewerConfig(props.craft.id, {
       viewerEnabled: form.viewerEnabled,
       posterUrl: form.posterUrl || null,
+      transform: buildTransformPayload(),
       camera: { ...form.camera },
       material: { ...form.material }
     })
@@ -274,6 +325,8 @@ async function onSave() {
 .cv-slider { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
 .cv-slider .el-slider { flex: 1; max-width: 460px; }
 .cv-advanced { margin-top: 16px; }
-.cv-transform { display: flex; align-items: baseline; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+.cv-transform-head { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.cv-transform-hint { margin: 6px 0 10px; }
+.cv-transform-grid { gap: 16px 24px; margin-bottom: 8px; }
 .cv-guard { margin-top: 16px; }
 </style>

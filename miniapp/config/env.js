@@ -8,8 +8,8 @@ const configMap = {
   dev: {
     baseUrl: 'http://localhost:8080/api/v1',
     useMock: true,
-    /** H5 鉴赏页根地址（web-view 须 https；本地开发请在开发者工具勾选「不校验合法域名」） */
-    craftViewerBaseUrl: 'https://shuyuan.gzcpu.edu.cn',
+    /** 本地 H5 viewer（Vite :5174）；开发者工具请勾选「不校验合法域名」 */
+    craftViewerBaseUrl: 'http://localhost:5174',
     craftViewerAllowedHosts: ['shuyuan.gzcpu.edu.cn', 'localhost', '127.0.0.1']
   },
   staging: {

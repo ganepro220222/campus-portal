@@ -98,16 +98,14 @@ function buildEnvChips() {
 }
 
 function fitModel(model: THREE.Object3D, cfg: ViewerConfig) {
-  // 归一化：先套用缩放，再按包围盒把中心移到原点，最后加配置偏移
+  // 入库时已完成归一化：transform 的 offset 已是 -center * scale，前端只做 scale + position 套用
   const scale = num(cfg.transform?.scale, 1)
   model.scale.setScalar(scale)
-  model.updateMatrixWorld(true)
-
-  const box = new THREE.Box3().setFromObject(model)
-  const center = box.getCenter(new THREE.Vector3())
-  model.position.x += -center.x + num(cfg.transform?.offsetX, 0)
-  model.position.y += -center.y + num(cfg.transform?.offsetY, 0)
-  model.position.z += -center.z + num(cfg.transform?.offsetZ, 0)
+  model.position.set(
+    num(cfg.transform?.offsetX, 0),
+    num(cfg.transform?.offsetY, 0),
+    num(cfg.transform?.offsetZ, 0)
+  )
 }
 
 function applyMaterial(model: THREE.Object3D, cfg: ViewerConfig) {

@@ -2,7 +2,9 @@
 -- 前置：viewer/public/models 与 posters 已放置 GLB/JPG；Vite dev 运行于 :5174
 -- 可重复执行
 
-SET @base := 'http://localhost:5174/craft';
+SET @base := 'http://localhost:5174';
+-- Vite dev：public/ 资源挂在站点根路径 /models、/posters（非 /craft/models）
+-- 生产环境 model_3d_url 应使用 OSS/CDN 地址；Nginx 部署 viewer 后静态资源为 /craft/models/...
 
 -- 文创 1（替换原演示数据为真实扫描模型）
 UPDATE `craft` SET

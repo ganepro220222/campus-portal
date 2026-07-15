@@ -46,6 +46,20 @@ class GlbValidatorTest {
     }
 
     @Test
+    void validate_warnsWhenPositionMinMaxMissing() {
+        String json = """
+                {"asset":{"version":"2.0"},
+                 "buffers":[{"byteLength":36}],
+                 "bufferViews":[{"buffer":0,"byteLength":36}],
+                 "accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"}],
+                 "meshes":[{"primitives":[{"attributes":{"POSITION":0}}]}]}\
+                """;
+        GlbValidator.Result r = GlbValidator.validate(GlbTestFixtures.meshGlb(json, 36), MAX);
+        assertTrue(r.valid());
+        assertTrue(r.warnings().stream().anyMatch(w -> w.contains("min/max")));
+    }
+
+    @Test
     void validate_rejectsExternalImageUri() {
         String json = """
                 {"asset":{"version":"2.0"},"images":[{"uri":"tex.png"}],"buffers":[{"byteLength":1}],

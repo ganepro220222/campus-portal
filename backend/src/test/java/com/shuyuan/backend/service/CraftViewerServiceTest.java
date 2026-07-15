@@ -106,6 +106,34 @@ class CraftViewerServiceTest {
         verify(craftMapper).updateById(craft);
     }
 
+    @Test
+    void uploadModel_rejectsWhenAutoNormalizeFailsWithoutManualTransform() {
+        Craft craft = new Craft();
+        craft.setId(6L);
+        craft.setStatus(1);
+        craft.setTransformJson("{\"scale\":9.9,\"offsetX\":1,\"offsetY\":2,\"offsetZ\":3}");
+        when(craftMapper.selectById(6L)).thenReturn(craft);
+        when(ossProperties.getMaxUploadBytes()).thenReturn(10L * 1024 * 1024);
+
+        String json = """
+                {"asset":{"version":"2.0"},
+                 "buffers":[{"byteLength":36}],
+                 "bufferViews":[{"buffer":0,"byteLength":36}],
+                 "accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"}],
+                 "meshes":[{"primitives":[{"attributes":{"POSITION":0}}]}]}\
+                """;
+        byte[] glb = GlbTestFixtures.meshGlb(json, 36);
+        MockMultipartFile file = new MockMultipartFile("file", "bad.glb", "model/gltf-binary", glb);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> craftViewerService.uploadModel(6L, file, null));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("无法自动计算归一化参数"));
+        verify(ossService, never()).uploadModel3dGlb(any(), any());
+        verify(craftMapper, never()).updateById(any(Craft.class));
+        assertEquals("{\"scale\":9.9,\"offsetX\":1,\"offsetY\":2,\"offsetZ\":3}", craft.getTransformJson());
+    }
+
     private static Craft readyCraft(Long id) {
         Craft craft = new Craft();
         craft.setId(id);

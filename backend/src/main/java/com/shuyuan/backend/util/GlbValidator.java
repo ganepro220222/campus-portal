@@ -69,6 +69,9 @@ public final class GlbValidator {
             if (meshes <= 0) {
                 return new Result(false, sha1Hex(data), 0, 0, 0, false, List.of("GLB 不含网格"));
             }
+            if (!GlbTransformUtil.canAutoNormalize(data)) {
+                warnings.add("缺少 POSITION accessor min/max，上传时须手动导入 transform");
+            }
             int materials = root.path("materials").size();
             JsonNode images = root.path("images");
             int imageCount = images.size();

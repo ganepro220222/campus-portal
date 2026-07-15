@@ -304,6 +304,12 @@ def main():
         print("--quality 必须在 1~100 之间")
         sys.exit(1)
 
+    input_abs = os.path.abspath(args.input)
+    output_abs = os.path.abspath(args.output)
+    if input_abs == output_abs:
+        print("错误：输出目录不能与输入目录相同，请使用独立目录（例如 -o 处理结果）")
+        sys.exit(1)
+
     os.makedirs(args.output, exist_ok=True)
     exclude = output_exclusion_for_input(args.input, args.output)
     if exclude:

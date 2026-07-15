@@ -7,7 +7,6 @@ import hashlib
 import io
 import json
 import os
-import re
 import struct
 
 try:
@@ -53,16 +52,45 @@ def build_output_name_from_glb(stem: str, glb_path: str) -> str:
     return f"{stem}-{digest}.glb"
 
 
-def _resolve_texture_path(mtl_dir: str, token: str) -> str | None:
-    """解析 MTL 贴图引用（支持相对路径与 -bm 等选项）。"""
-    token = token.strip().strip('"').strip("'")
-    if not token or token.startswith("#"):
+def _resolve_texture_path(mtl_dir: str, map_path: str) -> str | None:
+    """将 MTL 中的相对贴图路径解析为绝对路径。"""
+    map_path = map_path.strip().strip('"').strip("'")
+    if not map_path or map_path.startswith("#"):
         return None
-    # 去掉 -blendu 等 flags，取最后一个像路径的 token
-    parts = token.replace("\\", "/").split()
-    path_part = parts[-1] if parts else token
-    candidate = os.path.normpath(os.path.join(mtl_dir, path_part))
+    candidate = os.path.normpath(os.path.join(mtl_dir, map_path.replace("\\", "/")))
     return candidate if os.path.isfile(candidate) else None
+
+
+def _extract_map_path(line: str) -> str | None:
+    """从 MTL map 行提取贴图路径，支持引号路径与 -option 参数。"""
+    lower = line.lower().strip()
+    if not any(lower.startswith(p) for p in _MTL_MAP_PREFIXES):
+        return None
+    space = line.find(" ")
+    if space < 0:
+        return None
+    rest = line[space + 1 :].strip()
+    if not rest:
+        return None
+
+    # 引号包裹路径（可含空格）
+    if rest[0] in "\"'":
+        quote = rest[0]
+        end = rest.find(quote, 1)
+        if end > 1:
+            return rest[1:end]
+
+    # 无引号：跳过 -option [value] 后，余下整体视为路径
+    tokens = rest.split()
+    i = 0
+    while i < len(tokens):
+        if tokens[i].startswith("-"):
+            i += 2 if i + 1 < len(tokens) else 1
+        else:
+            break
+    if i >= len(tokens):
+        return None
+    return " ".join(tokens[i:])
 
 
 def _textures_from_mtl(mtl_path: str) -> list[str]:
@@ -73,43 +101,39 @@ def _textures_from_mtl(mtl_path: str) -> list[str]:
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
-            lower = line.lower()
-            if not any(lower.startswith(p) for p in _MTL_MAP_PREFIXES):
+            map_path = _extract_map_path(line)
+            if not map_path:
                 continue
-            # map_Kd texture.jpg  或  bump -bm texture.jpg
-            tokens = line.split()
-            for token in reversed(tokens[1:]):
-                if token.startswith("-"):
-                    continue
-                resolved = _resolve_texture_path(mtl_dir, token)
-                if resolved:
-                    textures.append(resolved)
-                    break
+            resolved = _resolve_texture_path(mtl_dir, map_path)
+            if resolved:
+                textures.append(resolved)
     return textures
 
 
 def hash_obj_bundle(obj_path: str) -> str:
     """
-    计算 OBJ 资产包哈希：纳入 .obj、引用的 .mtl 及 MTL 引用的贴图。
-    用于 manifest 追溯；输出文件名以最终 GLB 内容哈希为准。
+    计算 OBJ 资产包内容哈希：纳入 .obj、.mtl 及贴图**文件内容**。
+    使用相对 obj 目录的路径作为键（非绝对路径），便于跨机器追溯。
+    输出 CDN 文件名仍以 glbSha1 为准。
     """
     obj_abs = os.path.abspath(obj_path)
     obj_dir = os.path.dirname(obj_abs)
-    bundle_files: list[str] = [obj_abs]
+    bundle_abs: list[str] = [obj_abs]
 
     with open(obj_abs, encoding="utf-8", errors="ignore") as f:
         for raw in f:
             if raw.lower().startswith("mtllib "):
-                mtl_name = raw.split(None, 1)[1].strip()
+                mtl_name = raw.split(None, 1)[1].strip().strip('"').strip("'")
                 mtl_path = os.path.normpath(os.path.join(obj_dir, mtl_name))
                 if os.path.isfile(mtl_path):
-                    bundle_files.append(os.path.abspath(mtl_path))
-                    bundle_files.extend(_textures_from_mtl(mtl_path))
+                    bundle_abs.append(os.path.abspath(mtl_path))
+                    bundle_abs.extend(_textures_from_mtl(mtl_path))
 
     digest = hashlib.sha1()
-    for path in sorted(set(bundle_files)):
-        digest.update(path.encode("utf-8"))
-        digest.update(file_sha1(path).encode("ascii"))
+    for abs_path in sorted(set(bundle_abs)):
+        rel_key = os.path.relpath(abs_path, obj_dir).replace("\\", "/")
+        digest.update(rel_key.encode("utf-8"))
+        digest.update(file_sha1(abs_path).encode("ascii"))
     return digest.hexdigest()
 
 
@@ -239,9 +263,9 @@ def optimize_texture(
     return notes
 
 
-def compute_transform(path: str, target_size: float = TARGET_SIZE) -> dict | None:
+def compute_transform(path: str, target_size: float = TARGET_SIZE) -> dict:
     """
-    计算归一化参数。
+    计算归一化参数。无法计算时抛出 RuntimeError（空 mesh / 无效 bounds）。
 
     策略（与实施方案一致）：
     - offsetX/Y/Z：几何中心归零，适合绕中心旋转（H5 / XR-FRAME 默认）
@@ -251,13 +275,13 @@ def compute_transform(path: str, target_size: float = TARGET_SIZE) -> dict | Non
         scene = trimesh.load(path, force="scene")
         bounds = scene.bounds
         if bounds is None:
-            return None
+            raise RuntimeError("无法计算包围盒 / 模型为空")
 
         size = bounds[1] - bounds[0]
         center = (bounds[1] + bounds[0]) / 2.0
         longest = float(np.max(size))
         if longest <= 0:
-            return None
+            raise RuntimeError("无法计算包围盒 / 模型尺度无效")
 
         scale = target_size / longest
         return {
@@ -271,6 +295,8 @@ def compute_transform(path: str, target_size: float = TARGET_SIZE) -> dict | Non
             "bboxMax": [round(float(v), 4) for v in bounds[1]],
             "recommendedCameraDistance": round(target_size * 2.8, 2),
         }
+    except RuntimeError:
+        raise
     except Exception as e:
         raise RuntimeError(f"归一化计算失败：{e}") from e
 
@@ -311,9 +337,9 @@ def collect_input_files(
 
 
 def output_exclusion_for_input(input_dir: str, output_dir: str) -> set[str]:
-    """若输出目录位于输入目录下，返回应排除的绝对路径。"""
+    """若输出目录是输入目录的**真子目录**，返回应排除的绝对路径（不含相等情形）。"""
     input_abs = os.path.abspath(input_dir)
     output_abs = os.path.abspath(output_dir)
-    if output_abs == input_abs or output_abs.startswith(input_abs + os.sep):
+    if output_abs.startswith(input_abs + os.sep):
         return {output_abs}
     return set()

@@ -134,6 +134,7 @@ module.exports = {
     introEn: 'Tunpu stone-carved opera mask, living heritage craft.',
     previewType: 'model3d',
     model3dUrl: 'https://mmbizwxaminiprogram-1258344707.cos.ap-guangzhou.myqcloud.com/xr-frame/demo/damage-helmet/index.glb',
+    viewerEnabled: true,
     images: [{ imageUrl: '', angleLabel: '正面' }],
     contact: { phone: '0851-12345678', wechat: 'shuyuan_craft', email: 'craft@gzjtzy.edu.cn' }
   },

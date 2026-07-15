@@ -1,0 +1,12 @@
+# VR 展馆工艺品热点改链模板（阶段 5 — 待 VR 平台支持自定义外链）
+#
+# 目标 URL 模式（与小程序 env.craftViewerBaseUrl 一致）：
+#   https://shuyuan.gzcpu.edu.cn/craft/{工艺品ID}
+#
+# 示例：
+#   工艺品 ID=3  →  https://shuyuan.gzcpu.edu.cn/craft/3
+#
+# 若 VR 平台不支持外链：
+#   备用：小程序「文化好物」列表 → 详情 →「沉浸式鉴赏」
+#
+# 确认事项（方案 §九 #1）：向 VR 服务商确认热点可否配置上述 HTTPS URL

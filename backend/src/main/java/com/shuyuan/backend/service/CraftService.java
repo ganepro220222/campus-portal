@@ -79,6 +79,7 @@ public class CraftService {
         m.put("previewType", craft.getPreviewType());
         m.put("model3dUrl", craft.getModel3dUrl());
         m.put("viewerEnabled", CraftViewerService.isViewerReady(craft));
+        m.put("transform", com.shuyuan.backend.util.JsonFieldHelper.parseObject(craft.getTransformJson()));
         m.put("categoryName", categoryService.getName(craft.getCategoryId(), catMap));
         m.put("images", imageList);
         m.put("contact", contactVo);

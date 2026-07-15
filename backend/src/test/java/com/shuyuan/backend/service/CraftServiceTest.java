@@ -50,6 +50,7 @@ class CraftServiceTest {
         craft.setPreviewType("model3d");
         craft.setModel3dUrl("https://cdn.example.com/models/mask.glb");
         craft.setViewerEnabled(1);
+        craft.setTransformJson("{\"scale\":1.1,\"offsetX\":0,\"offsetY\":0,\"offsetZ\":0}");
         craft.setStatus(1);
         craft.setCategoryId(12L);
 
@@ -73,6 +74,7 @@ class CraftServiceTest {
         assertEquals("model3d", vo.get("previewType"));
         assertEquals("https://cdn.example.com/models/mask.glb", vo.get("model3dUrl"));
         assertEquals(Boolean.TRUE, vo.get("viewerEnabled"));
+        assertNotNull(vo.get("transform"));
         assertEquals("中文介绍", vo.get("introZh"));
         assertEquals("English intro", vo.get("introEn"));
         assertNotNull(vo.get("images"));

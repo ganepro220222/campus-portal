@@ -17,7 +17,8 @@
         "news/detail",
         "hall/detail",
         "craft/list",
-        "craft/detail"
+        "craft/detail",
+        "craft/viewer-webview"
       ]
     },
     {

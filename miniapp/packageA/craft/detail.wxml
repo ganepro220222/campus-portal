@@ -8,6 +8,8 @@
       <view wx:if="{{show3d}}" class="gal gal-3d">
         <craft-3d-viewer
           model-url="{{detail.model3dUrl}}"
+          model-scale="{{detail.modelScale}}"
+          model-position="{{detail.modelPosition}}"
           bind:error="on3dError"
         />
         <view class="gcap">拖动旋转 · {{detail.name}} · 3D 鉴赏</view>
@@ -26,6 +28,8 @@
         </swiper>
         <view class="gcap">{{detail.name}} · {{slides[galleryIndex].angleLabel}}（点击查看大图）</view>
       </view>
+
+      <!-- UI 工程师：detail.viewerEnabled 为 true 时在此增加「沉浸式鉴赏」入口，bindtap="onImmersiveViewer" -->
 
       <!-- 介绍 -->
       <view class="craft-intro">

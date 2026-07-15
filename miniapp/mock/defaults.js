@@ -113,7 +113,7 @@ module.exports = {
   crafts: [
     { id: 1, name: '苗族银饰·蝴蝶冠', intro: '贵州苗族传统银饰', categoryName: '非遗工艺', previewType: 'multi_image' },
     { id: 2, name: '蜡染壁挂·山水阳明', intro: '蜡染工艺呈现龙场山水', categoryName: '非遗工艺', previewType: 'multi_image' },
-    { id: 3, name: '屯堡石雕·地戏面具', intro: '六百年非遗活态传承', categoryName: '非遗工艺', previewType: 'model3d' }
+    { id: 3, name: '屯堡石雕·地戏面具', intro: '六百年非遗活态传承', categoryName: '非遗工艺', previewType: 'multi_image' }
   ],
 
   craftDetail: {
@@ -122,19 +122,6 @@ module.exports = {
     introZh: '贵州苗族传统银饰，以蝴蝶妈妈为图腾，寓意生命与美好。',
     introEn: 'Traditional Miao silver headdress featuring butterfly motifs.',
     previewType: 'multi_image',
-    model3dUrl: '',
-    images: [{ imageUrl: '', angleLabel: '正面' }],
-    contact: { phone: '0851-12345678', wechat: 'shuyuan_craft', email: 'craft@gzjtzy.edu.cn' }
-  },
-
-  craftDetail3d: {
-    id: 3,
-    name: '屯堡石雕·地戏面具',
-    introZh: '屯堡传统石雕地戏面具，六百年非遗活态传承。',
-    introEn: 'Tunpu stone-carved opera mask, living heritage craft.',
-    previewType: 'model3d',
-    model3dUrl: 'https://mmbizwxaminiprogram-1258344707.cos.ap-guangzhou.myqcloud.com/xr-frame/demo/damage-helmet/index.glb',
-    viewerEnabled: true,
     images: [{ imageUrl: '', angleLabel: '正面' }],
     contact: { phone: '0851-12345678', wechat: 'shuyuan_craft', email: 'craft@gzjtzy.edu.cn' }
   },

@@ -4,23 +4,8 @@
   <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
     <view class="detail-wrap">
 
-      <!-- 3D 立体展示（preview_type=model3d 且模型可用） -->
-      <view wx:if="{{show3d}}" class="gal gal-3d">
-        <craft-3d-viewer
-          model-url="{{detail.model3dUrl}}"
-          model-scale="{{detail.modelScale}}"
-          model-position="{{detail.modelPosition}}"
-          bind:loaded="on3dLoaded"
-          bind:error="on3dError"
-        />
-        <view wx:if="{{loading3d}}" class="viewer-mask-3d">
-          <text>3D 模型加载中…</text>
-        </view>
-        <view class="gcap">拖动旋转 · {{detail.name}} · 3D 鉴赏</view>
-      </view>
-
-      <!-- 多角度图片轮播（默认 / 降级） -->
-      <view wx:if="{{showGallery}}" class="gal">
+      <!-- 多角度图片轮播 -->
+      <view class="gal">
         <swiper class="gslides" circular="{{slides.length > 1}}" bindchange="onGallery"
           indicator-dots="{{slides.length > 1}}" indicator-color="rgba(255,255,255,.4)" indicator-active-color="#ffffff">
           <swiper-item wx:for="{{slides}}" wx:key="angleLabel">
@@ -31,16 +16,6 @@
           </swiper-item>
         </swiper>
         <view class="gcap">{{detail.name}} · {{slides[galleryIndex].angleLabel}}（点击查看大图）</view>
-      </view>
-
-      <!-- 沉浸式鉴赏入口（后台开启且模型就绪时展示） -->
-      <view wx:if="{{detail.viewerEnabled}}" class="immersive" hover-class="immersive-hover" hover-stay-time="60" bindtap="onImmersiveViewer">
-        <view class="im-ic"><icon name="cube" size="26" color="#F4E6C8" /></view>
-        <view class="im-body">
-          <view class="im-title">沉浸式鉴赏</view>
-          <view class="im-sub">720° 旋转 · 高清材质 · 光影反射</view>
-        </view>
-        <view class="im-go"><text>进入</text><icon name="chevron-right" size="15" color="rgba(244,230,200,0.85)" /></view>
       </view>
 
       <!-- 介绍 -->
@@ -54,9 +29,7 @@
         </view>
         <view class="ci-tags">
           <text class="pill gold">非遗工艺</text>
-          <text wx:if="{{show3d}}" class="pill">3D 模型</text>
-          <text wx:elif="{{detail.previewType === 'model3d'}}" class="pill">多图鉴赏</text>
-          <text wx:else class="pill">多图鉴赏</text>
+          <text class="pill">多图鉴赏</text>
         </view>
         <view class="ci-body">{{lang === 'zh' ? detail.introZh : detail.introEn}}</view>
       </view>

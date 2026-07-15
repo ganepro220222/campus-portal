@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>3D 模型查看器 - GLB 展示</title>
+
+    <!-- ========== 样式 ========== -->
+    <style>
+        /* ---- 全局重置 ---- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #111;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            color: #fff;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ---- 3D 容器 ---- */
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            position: relative;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 100%);
+        }
+
+        /* ---- 加载进度条 ---- */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(10, 10, 15, 0.92);
+            backdrop-filter: blur(12px);
+            transition: opacity 0.8s ease;
+        }
+        #loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #loading-bar-track {
+            width: 220px;
+            height: 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            overflow: hidden;
+            margin-top: 20px;
+            box-shadow: 0 0 20px rgba(100, 180, 255, 0.08);
+        }
+        #loading-bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            transition: width 0.3s ease;
+        }
+        #loading-text {
+            font-size: 15px;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        #loading-percent {
+            font-size: 13px;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 6px;
+        }
+        .loader-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(255, 255, 255, 0.06);
+            border-top: 3px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 0.9s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ---- 控制面板 (浮动) ---- */
+        #control-panel {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 100;
+            width: 280px;
+            max-width: calc(100vw - 48px);
+            background: rgba(20, 22, 40, 0.75);
+            backdrop-filter: blur(24px) saturate(1.4);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 18px;
+            padding: 20px 20px 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+            transform: translateY(0);
+            opacity: 1;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        #control-panel.collapsed {
+            transform: translateY(calc(100% + 20px));
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* 自定义滚动条 */
+        #control-panel::-webkit-scrollbar {
+            width: 3px;
+        }
+        #control-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #control-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+        }
+
+        /* ---- 面板头部 ---- */
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            color: rgba(255, 255, 255, 0.85);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel-title .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4facfe;
+            box-shadow: 0 0 12px rgba(79, 172, 254, 0.4);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(0.85);
+            }
+        }
+        .panel-close-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            line-height: 1;
+        }
+        .panel-close-btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* ---- 控制项 ---- */
+        .control-group {
+            margin-bottom: 14px;
+        }
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.2px;
+            margin-bottom: 5px;
+        }
+        .control-value {
+            font-size: 12px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0 10px;
+            border-radius: 20px;
+            min-width: 32px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ---- 自定义滑块 ---- */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 3px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.12);
+            outline: none;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #6ab7ff, #4facfe);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 20px rgba(79, 172, 254, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: transform 0.15s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.12);
+            box-shadow: 0 0 30px rgba(79, 172, 254, 0.5);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #6ab7ff, #4facfe);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 20px rgba(79, 172, 254, 0.3);
+            cursor: pointer;
+        }
+
+        /* ---- 颜色选择器 ---- */
+        .color-picker-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 2px;
+        }
+        input[type="color"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 32px;
+            height: 32px;
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 50%;
+            padding: 2px;
+            background: transparent;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        input[type="color"]:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+        input[type="color"]::-moz-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+        .color-hex {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.35);
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ---- 开关 (自动旋转) ---- */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 4px;
+        }
+        .toggle-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .toggle-switch {
+            position: relative;
+            width: 42px;
+            height: 24px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .toggle-switch.active {
+            background: rgba(79, 172, 254, 0.5);
+            border-color: rgba(79, 172, 254, 0.2);
+        }
+        .toggle-switch .toggle-knob {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .toggle-switch.active .toggle-knob {
+            transform: translateX(18px);
+            background: #fff;
+        }
+
+        /* ---- 面板切换按钮 (浮动触发) ---- */
+        #panel-toggle-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 99;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: rgba(20, 22, 40, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, background 0.2s;
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+        }
+        #panel-toggle-btn.visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        #panel-toggle-btn:hover {
+            background: rgba(40, 44, 80, 0.8);
+            transform: scale(1.05);
+        }
+        #panel-toggle-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* ---- 文件上传区 (拖拽/点击) ---- */
+        #file-drop-zone {
+            position: fixed;
+            bottom: 90px;
+            right: 24px;
+            z-index: 98;
+            background: rgba(20, 22, 40, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px dashed rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 10px 16px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+        }
+        #file-drop-zone.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        #file-drop-zone:hover {
+            border-color: rgba(79, 172, 254, 0.3);
+            background: rgba(30, 34, 60, 0.7);
+            color: rgba(255, 255, 255, 0.6);
+        }
+        #file-drop-zone input[type="file"] {
+            display: none;
+        }
+        #file-drop-zone .icon {
+            font-size: 16px;
+        }
+
+        /* ---- 模型信息 ---- */
+        #model-info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 50;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.2);
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            pointer-events: none;
+            line-height: 1.6;
+            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+        }
+        #model-info strong {
+            color: rgba(255, 255, 255, 0.35);
+            font-weight: 500;
+        }
+
+        /* ---- 响应式适配 ---- */
+        @media (max-width: 640px) {
+            #control-panel {
+                bottom: 16px;
+                right: 16px;
+                left: 16px;
+                width: auto;
+                max-width: none;
+                padding: 16px 16px 14px;
+                border-radius: 16px;
+                max-height: 70vh;
+            }
+            #panel-toggle-btn {
+                bottom: 16px;
+                right: 16px;
+                width: 48px;
+                height: 48px;
+                font-size: 20px;
+            }
+            #file-drop-zone {
+                bottom: 76px;
+                right: 16px;
+                font-size: 10px;
+                padding: 8px 12px;
+            }
+            #model-info {
+                top: 14px;
+                left: 14px;
+                font-size: 10px;
+            }
+            .panel-title {
+                font-size: 13px;
+            }
+            .control-label {
+                font-size: 11px;
+            }
+            input[type="range"]::-webkit-slider-thumb {
+                width: 18px;
+                height: 18px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            #control-panel {
+                padding: 12px 12px 10px;
+                bottom: 12px;
+                right: 12px;
+                left: 12px;
+                border-radius: 14px;
+            }
+            .control-group {
+                margin-bottom: 10px;
+            }
+        }
+
+        /* 横屏提示 (仅针对手机) */
+        @media (orientation: landscape) and (max-height: 500px) {
+            #control-panel {
+                max-height: 85vh;
+                bottom: 12px;
+                right: 12px;
+                padding: 14px 14px 12px;
+            }
+            .control-group {
+                margin-bottom: 8px;
+            }
+            .panel-header {
+                margin-bottom: 10px;
+                padding-bottom: 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ========== 加载遮罩 ========== -->
+    <div id="loading-overlay">
+        <div class="loader-spinner"></div>
+        <div id="loading-text">加载模型中...</div>
+        <div id="loading-bar-track">
+            <div id="loading-bar-fill" style="width:0%;"></div>
+        </div>
+        <div id="loading-percent">0%</div>
+    </div>
+
+    <!-- ========== 3D 容器 ========== -->
+    <div id="canvas-container"></div>
+
+    <!-- ========== 模型信息 ========== -->
+    <div id="model-info">
+        <strong id="model-name">未加载</strong><br />
+        <span id="model-detail">拖入 .glb 文件或点击右下角上传</span>
+    </div>
+
+    <!-- ========== 文件上传区 ========== -->
+    <div id="file-drop-zone" class="visible">
+        <span class="icon">📁</span>
+        <span>上传 GLB / GLTF</span>
+        <input type="file" id="file-input" accept=".glb,.gltf" />
+    </div>
+
+    <!-- ========== 面板切换按钮 ========== -->
+    <button id="panel-toggle-btn" class="visible" aria-label="切换控制面板">⚙️</button>
+
+    <!-- ========== 控制面板 ========== -->
+    <div id="control-panel">
+        <div class="panel-header">
+            <span class="panel-title">
+                <span class="dot"></span>
+                模型控制
+            </span>
+            <button class="panel-close-btn" id="panel-close-btn" aria-label="关闭面板">✕</button>
+        </div>
+
+        <!-- 亮度 -->
+        <div class="control-group">
+            <div class="control-label">
+                <span>☀️ 亮度</span>
+                <span class="control-value" id="brightness-val">0.50</span>
+            </div>
+            <input type="range" id="brightness-slider" min="0" max="2" step="0.01" value="0.5" />
+        </div>
+
+        <!-- 金属度 -->
+        <div class="control-group">
+            <div class="control-label">
+                <span>🔩 金属度</span>
+                <span class="control-value" id="metalness-val">0.50</span>
+            </div>
+            <input type="range" id="metalness-slider" min="0" max="1" step="0.01" value="0.5" />
+        </div>
+
+        <!-- 粗糙度 -->
+        <div class="control-group">
+            <div class="control-label">
+                <span>🧊 粗糙度</span>
+                <span class="control-value" id="roughness-val">0.50</span>
+            </div>
+            <input type="range" id="roughness-slider" min="0" max="1" step="0.01" value="0.5" />
+        </div>
+
+        <!-- 环境光强度 -->
+        <div class="control-group">
+            <div class="control-label">
+                <span>🌥️ 环境光强度</span>
+                <span class="control-value" id="ambient-intensity-val">0.60</span>
+            </div>
+            <input type="range" id="ambient-intensity-slider" min="0" max="2" step="0.01" value="0.6" />
+        </div>
+
+        <!-- 环境光颜色 -->
+        <div class="control-group">
+            <div class="control-label">
+                <span>🎨 环境光颜色</span>
+                <span class="color-hex" id="ambient-color-hex">#ffffff</span>
+            </div>
+            <div class="color-picker-wrap">
+                <input type="color" id="ambient-color-picker" value="#ffffff" />
+                <span style="font-size:11px;color:rgba(255,255,255,0.25);">点击选择</span>
+            </div>
+        </div>
+
+        <!-- 自动旋转 -->
+        <div class="control-group" style="margin-bottom:0;">
+            <div class="toggle-row">
+                <span class="toggle-label">🔄 自动旋转</span>
+                <div class="toggle-switch active" id="auto-rotate-toggle">
+                    <div class="toggle-knob"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Three.js Import Map ========== -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- ========== 主脚本 ========== -->
+    <script type="module">
+        // ------------------------------------------------------------------
+        // 导入 Three.js 核心库及扩展
+        // ------------------------------------------------------------------
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+        // ------------------------------------------------------------------
+        // DOM 引用
+        // ------------------------------------------------------------------
+        const container = document.getElementById('canvas-container');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingFill = document.getElementById('loading-bar-fill');
+        const loadingPercent = document.getElementById('loading-percent');
+        const loadingText = document.getElementById('loading-text');
+        const modelNameEl = document.getElementById('model-name');
+        const modelDetailEl = document.getElementById('model-detail');
+
+        const panel = document.getElementById('control-panel');
+        const panelToggleBtn = document.getElementById('panel-toggle-btn');
+        const panelCloseBtn = document.getElementById('panel-close-btn');
+        const fileDropZone = document.getElementById('file-drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        const brightnessSlider = document.getElementById('brightness-slider');
+        const brightnessVal = document.getElementById('brightness-val');
+        const metalnessSlider = document.getElementById('metalness-slider');
+        const metalnessVal = document.getElementById('metalness-val');
+        const roughnessSlider = document.getElementById('roughness-slider');
+        const roughnessVal = document.getElementById('roughness-val');
+        const ambientIntensitySlider = document.getElementById('ambient-intensity-slider');
+        const ambientIntensityVal = document.getElementById('ambient-intensity-val');
+        const ambientColorPicker = document.getElementById('ambient-color-picker');
+        const ambientColorHex = document.getElementById('ambient-color-hex');
+        const autoRotateToggle = document.getElementById('auto-rotate-toggle');
+
+        // ------------------------------------------------------------------
+        // Three.js 场景初始化
+        // ------------------------------------------------------------------
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111122);
+
+        // 相机
+        const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(4, 3, 6);
+        camera.lookAt(0, 0, 0);
+
+        // 渲染器
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: false,
+        });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        renderer.shadowMap.enabled = false; // 性能优化
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        container.appendChild(renderer.domElement);
+
+        // 轨道控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 1.2;
+        controls.maxDistance = 20;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 2.2;
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        // ------------------------------------------------------------------
+        // 光照
+        // ------------------------------------------------------------------
+        // 环境光 (用户可调)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        // 半球光 (固定，提供基础照明)
+        const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x3a2a1a, 0.7);
+        scene.add(hemiLight);
+
+        // 主方向光 (增加立体感)
+        const dirLight = new THREE.DirectionalLight(0xffeedd, 1.8);
+        dirLight.position.set(5, 8, 6);
+        scene.add(dirLight);
+
+        const fillLight = new THREE.DirectionalLight(0x4488ff, 0.6);
+        fillLight.position.set(-4, 2, -3);
+        scene.add(fillLight);
+
+        // 辅助背光
+        const backLight = new THREE.DirectionalLight(0x88aaff, 0.4);
+        backLight.position.set(-2, 1, -6);
+        scene.add(backLight);
+
+        // ------------------------------------------------------------------
+        // 环境贴图 (使用 RoomEnvironment 生成)
+        // ------------------------------------------------------------------
+        let envMap = null;
+        try {
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            const envScene = new RoomEnvironment(renderer);
+            envMap = pmremGenerator.fromScene(envScene, 0, 0.1, 100).texture;
+            scene.environment = envMap;
+            pmremGenerator.dispose();
+            envScene.dispose();
+        } catch (e) {
+            console.warn('环境贴图生成失败，使用备用光照', e);
+        }
+
+        // ------------------------------------------------------------------
+        // 模型加载
+        // ------------------------------------------------------------------
+        let modelGroup = null;
+        let allMaterials = [];
+        let modelLoaded = false;
+
+        const loader = new GLTFLoader();
+
+        function loadModel(url) {
+            // 重置状态
+            if (modelGroup) {
+                scene.remove(modelGroup);
+                modelGroup.traverse((child) => {
+                    if (child.isMesh) {
+                        child.geometry.dispose();
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else if (child.material) {
+                            child.material.dispose();
+                        }
+                    }
+                });
+                modelGroup = null;
+                allMaterials = [];
+            }
+            modelLoaded = false;
+
+            // 显示加载遮罩
+            loadingOverlay.classList.remove('hidden');
+            loadingFill.style.width = '0%';
+            loadingPercent.textContent = '0%';
+            loadingText.textContent = '加载模型中...';
+
+            loader.load(
+                url,
+                (gltf) => {
+                    modelGroup = gltf.scene;
+
+                    // 收集所有材质
+                    allMaterials = [];
+                    modelGroup.traverse((child) => {
+                        if (child.isMesh) {
+                            const mat = child.material;
+                            if (Array.isArray(mat)) {
+                                mat.forEach(m => {
+                                    if (m && !allMaterials.includes(m)) allMaterials.push(m);
+                                });
+                            } else if (mat && !allMaterials.includes(mat)) {
+                                allMaterials.push(mat);
+                            }
+                        }
+                    });
+
+                    // 应用环境贴图
+                    if (envMap) {
+                        allMaterials.forEach(mat => {
+                            if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+                                mat.envMap = envMap;
+                                mat.envMapIntensity = 0.8;
+                                mat.needsUpdate = true;
+                            }
+                        });
+                    }
+
+                    // 应用当前的滑块值
+                    applyMaterialProperties();
+
+                    // 适配模型大小
+                    const box = new THREE.Box3().setFromObject(modelGroup);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    if (maxDim > 0) {
+                        const scale = 2.5 / maxDim;
+                        modelGroup.scale.set(scale, scale, scale);
+                    }
+                    // 居中
+                    const center = box.getCenter(new THREE.Vector3());
+                    modelGroup.position.sub(center.clone().multiplyScalar(modelGroup.scale.x));
+
+                    scene.add(modelGroup);
+
+                    // 更新模型信息
+                    const name = url.split('/').pop() || '模型';
+                    modelNameEl.textContent = name;
+                    modelDetailEl.textContent = `顶点数: ${countVertices(modelGroup)} | 材质数: ${allMaterials.length}`;
+
+                    modelLoaded = true;
+                    loadingOverlay.classList.add('hidden');
+
+                    // 重置相机位置
+                    controls.target.set(0, 0, 0);
+                    controls.update();
+
+                    // 如果开启了自动旋转，确保启用
+                    if (controls.autoRotate) {
+                        controls.autoRotate = true;
+                        autoRotateToggle.classList.add('active');
+                    }
+
+                    console.log(`✅ 模型加载成功: ${name}, 材质数: ${allMaterials.length}`);
+                },
+                (xhr) => {
+                    const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                    loadingFill.style.width = percent + '%';
+                    loadingPercent.textContent = percent + '%';
+                    if (percent < 30) loadingText.textContent = '加载模型中...';
+                    else if (percent < 70) loadingText.textContent = '解析模型中...';
+                    else loadingText.textContent = '处理材质中...';
+                },
+                (error) => {
+                    console.error('❌ 模型加载失败:', error);
+                    loadingText.textContent = '⚠️ 加载失败，请重试';
+                    loadingPercent.textContent = '错误';
+                    loadingFill.style.width = '100%';
+                    loadingFill.style.background = 'linear-gradient(90deg, #ff6b6b, #ee5a24)';
+                    setTimeout(() => {
+                        loadingOverlay.classList.add('hidden');
+                    }, 2000);
+                    modelDetailEl.textContent = '加载失败，请检查文件或网络';
+                }
+            );
+        }
+
+        // 统计顶点数
+        function countVertices(group) {
+            let count = 0;
+            group.traverse((child) => {
+                if (child.isMesh && child.geometry) {
+                    const pos = child.geometry.attributes.position;
+                    if (pos) count += pos.count;
+                }
+            });
+            return count.toLocaleString();
+        }
+
+        // ------------------------------------------------------------------
+        // 材质属性应用
+        // ------------------------------------------------------------------
+        function applyMaterialProperties() {
+            const brightness = parseFloat(brightnessSlider.value);
+            const metalness = parseFloat(metalnessSlider.value);
+            const roughness = parseFloat(roughnessSlider.value);
+
+            allMaterials.forEach(mat => {
+                if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+                    // 金属度 / 粗糙度
+                    mat.metalness = metalness;
+                    mat.roughness = roughness;
+
+                    // 亮度 -> 使用自发光 (emissive)
+                    const color = mat.color.clone();
+                    // 将亮度映射到 emissiveIntensity，同时略微调整颜色亮度
+                    mat.emissive = color.clone().multiplyScalar(Math.min(brightness * 0.6, 0.8));
+                    mat.emissiveIntensity = brightness * 0.8;
+
+                    mat.needsUpdate = true;
+                } else {
+                    // 非标准材质，尝试通用属性
+                    if (mat.emissiveIntensity !== undefined) {
+                        mat.emissiveIntensity = brightness * 0.8;
+                    }
+                }
+            });
+        }
+
+        // ------------------------------------------------------------------
+        // 环境光控制
+        // ------------------------------------------------------------------
+        function applyAmbientLight() {
+            const intensity = parseFloat(ambientIntensitySlider.value);
+            const color = ambientColorPicker.value;
+            ambientLight.intensity = intensity;
+            ambientLight.color.set(color);
+            ambientColorHex.textContent = color.toUpperCase();
+        }
+
+        // ------------------------------------------------------------------
+        // UI 事件绑定
+        // ------------------------------------------------------------------
+        // 亮度
+        brightnessSlider.addEventListener('input', () => {
+            const val = parseFloat(brightnessSlider.value);
+            brightnessVal.textContent = val.toFixed(2);
+            applyMaterialProperties();
+        });
+
+        // 金属度
+        metalnessSlider.addEventListener('input', () => {
+            const val = parseFloat(metalnessSlider.value);
+            metalnessVal.textContent = val.toFixed(2);
+            applyMaterialProperties();
+        });
+
+        // 粗糙度
+        roughnessSlider.addEventListener('input', () => {
+            const val = parseFloat(roughnessSlider.value);
+            roughnessVal.textContent = val.toFixed(2);
+            applyMaterialProperties();
+        });
+
+        // 环境光强度
+        ambientIntensitySlider.addEventListener('input', () => {
+            const val = parseFloat(ambientIntensitySlider.value);
+            ambientIntensityVal.textContent = val.toFixed(2);
+            applyAmbientLight();
+        });
+
+        // 环境光颜色
+        ambientColorPicker.addEventListener('input', () => {
+            applyAmbientLight();
+        });
+
+        // 自动旋转开关
+        autoRotateToggle.addEventListener('click', () => {
+            const isActive = autoRotateToggle.classList.toggle('active');
+            controls.autoRotate = isActive;
+        });
+
+        // 面板切换
+        function togglePanel(show) {
+            const willShow = show !== undefined ? show : panel.classList.contains('collapsed');
+            if (willShow) {
+                panel.classList.remove('collapsed');
+                panelToggleBtn.classList.remove('visible');
+                // 延迟隐藏按钮
+                setTimeout(() => {
+                    if (!panel.classList.contains('collapsed')) {
+                        panelToggleBtn.classList.remove('visible');
+                    }
+                }, 100);
+            } else {
+                panel.classList.add('collapsed');
+                panelToggleBtn.classList.add('visible');
+            }
+        }
+
+        panelToggleBtn.addEventListener('click', () => togglePanel(true));
+        panelCloseBtn.addEventListener('click', () => togglePanel(false));
+
+        // 点击面板外部不关闭 (仅点击关闭按钮)
+
+        // ------------------------------------------------------------------
+        // 文件上传
+        // ------------------------------------------------------------------
+        fileDropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            loadModel(url);
+            // 显示文件名
+            modelNameEl.textContent = file.name;
+            modelDetailEl.textContent = '正在加载...';
+            fileInput.value = ''; // 重置，允许重复选择同一文件
+        });
+
+        // 拖拽上传
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileDropZone.style.borderColor = 'rgba(79, 172, 254, 0.6)';
+            fileDropZone.style.background = 'rgba(40, 44, 80, 0.7)';
+        });
+        document.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            fileDropZone.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+            fileDropZone.style.background = 'rgba(20, 22, 40, 0.6)';
+        });
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileDropZone.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+            fileDropZone.style.background = 'rgba(20, 22, 40, 0.6)';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.endsWith('.glb') || file.name.endsWith('.gltf')) {
+                    const url = URL.createObjectURL(file);
+                    loadModel(url);
+                    modelNameEl.textContent = file.name;
+                    modelDetailEl.textContent = '正在加载...';
+                } else {
+                    modelDetailEl.textContent = '请拖入 .glb 或 .gltf 文件';
+                }
+            }
+        });
+
+        // ------------------------------------------------------------------
+        // 默认加载 model.glb
+        // ------------------------------------------------------------------
+        function tryLoadDefault() {
+            // 尝试加载同目录下的 model.glb
+            const defaultUrl = 'model.glb';
+            // 使用 fetch 检测文件是否存在
+            fetch(defaultUrl, { method: 'HEAD' })
+                .then((res) => {
+                    if (res.ok) {
+                        loadModel(defaultUrl);
+                    } else {
+                        // 文件不存在，显示提示
+                        loadingOverlay.classList.add('hidden');
+                        modelNameEl.textContent = '未加载模型';
+                        modelDetailEl.textContent = '请上传 .glb 文件或放入 model.glb';
+                        // 显示面板提示
+                        setTimeout(() => {
+                            if (panel.classList.contains('collapsed')) {
+                                togglePanel(true);
+                            }
+                        }, 600);
+                    }
+                })
+                .catch(() => {
+                    loadingOverlay.classList.add('hidden');
+                    modelNameEl.textContent = '未加载模型';
+                    modelDetailEl.textContent = '请上传 .glb 文件或放入 model.glb';
+                });
+        }
+
+        // 延迟一下等页面完全加载
+        setTimeout(tryLoadDefault, 400);
+
+        // ------------------------------------------------------------------
+        // 窗口自适应
+        // ------------------------------------------------------------------
+        function onResize() {
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        }
+        window.addEventListener('resize', onResize);
+
+        // 观察容器大小变化 (手机旋转等)
+        const resizeObserver = new ResizeObserver(() => onResize());
+        resizeObserver.observe(container);
+
+        // ------------------------------------------------------------------
+        // 动画循环
+        // ------------------------------------------------------------------
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // 自动旋转由 OrbitControls 的 autoRotate 处理
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // ------------------------------------------------------------------
+        // 暴露全局 API (方便通过控制台调试)
+        // ------------------------------------------------------------------
+        window.modelControls = {
+            // 材质控制
+            setBrightness: (val) => {
+                const v = Math.max(0, Math.min(2, val));
+                brightnessSlider.value = v;
+                brightnessVal.textContent = v.toFixed(2);
+                applyMaterialProperties();
+            },
+            setMetalness: (val) => {
+                const v = Math.max(0, Math.min(1, val));
+                metalnessSlider.value = v;
+                metalnessVal.textContent = v.toFixed(2);
+                applyMaterialProperties();
+            },
+            setRoughness: (val) => {
+                const v = Math.max(0, Math.min(1, val));
+                roughnessSlider.value = v;
+                roughnessVal.textContent = v.toFixed(2);
+                applyMaterialProperties();
+            },
+            // 环境光控制
+            setAmbientIntensity: (val) => {
+                const v = Math.max(0, Math.min(2, val));
+                ambientIntensitySlider.value = v;
+                ambientIntensityVal.textContent = v.toFixed(2);
+                applyAmbientLight();
+            },
+            setAmbientColor: (color) => {
+                const c = new THREE.Color(color);
+                ambientColorPicker.value = '#' + c.getHexString();
+                ambientColorHex.textContent = '#' + c.getHexString().toUpperCase();
+                applyAmbientLight();
+            },
+            // 自动旋转
+            toggleAutoRotate: () => {
+                autoRotateToggle.click();
+            },
+            setAutoRotate: (on) => {
+                const isActive = autoRotateToggle.classList.contains('active');
+                if (on !== isActive) autoRotateToggle.click();
+            },
+            // 加载模型
+            loadModel: (url) => {
+                loadModel(url);
+            },
+            // 获取当前状态
+            getState: () => ({
+                brightness: parseFloat(brightnessSlider.value),
+                metalness: parseFloat(metalnessSlider.value),
+                roughness: parseFloat(roughnessSlider.value),
+                ambientIntensity: parseFloat(ambientIntensitySlider.value),
+                ambientColor: ambientColorPicker.value,
+                autoRotate: controls.autoRotate,
+                modelLoaded,
+            }),
+        };
+
+        // 在控制台提示
+        console.log('🎮 模型控制 API 已暴露: window.modelControls');
+        console.log('示例: modelControls.setBrightness(0.8)');
+        console.log('示例: modelControls.setMetalness(0.9)');
+        console.log('示例: modelControls.toggleAutoRotate()');
+
+        // ------------------------------------------------------------------
+        // 小技巧：点击模型名称可快速切换面板
+        // ------------------------------------------------------------------
+        modelNameEl.style.cursor = 'pointer';
+        modelNameEl.addEventListener('click', () => {
+            togglePanel(true);
+        });
+
+        // 初始化环境光显示
+        applyAmbientLight();
+
+        // 延迟一下让面板显示
+        setTimeout(() => {
+            if (panel.classList.contains('collapsed')) {
+                // 如果模型已加载且面板折叠，自动展开
+                if (modelLoaded) {
+                    togglePanel(true);
+                }
+            }
+        }, 800);
+
+        console.log('🚀 3D 查看器已启动！');
+    </script>
+
+</body>
+</html>

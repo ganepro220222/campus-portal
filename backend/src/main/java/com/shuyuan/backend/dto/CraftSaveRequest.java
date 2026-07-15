@@ -13,9 +13,9 @@ public class CraftSaveRequest {
     private Long categoryId;
     private String introZh;
     private String introEn;
-    /** multi_image 多角度图片 / model3d 3D 模型 */
+    /** 固定为多角度图片（小程序仅支持多图鉴赏） */
     private String previewType;
-    /** GLB 模型 CDN 地址（previewType=model3d 时使用） */
+    /** @deprecated 历史字段，保存时不再写入 */
     private String model3dUrl;
     private Integer sort;
     /** 1 上架 0 下架 */

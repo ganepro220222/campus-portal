@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 文创后台管理（与 docs Phase 3 文创展示、Phase 5 内容管理对齐）
@@ -28,8 +27,6 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class AdminCraftService {
-
-    private static final Set<String> PREVIEW_TYPES = Set.of("multi_image", "model3d");
 
     private final CraftMapper craftMapper;
     private final CraftImageMapper craftImageMapper;
@@ -150,13 +147,8 @@ public class AdminCraftService {
         if (req.getName() == null || req.getName().isBlank()) {
             throw new BusinessException(400, "文创名称不能为空");
         }
-        if (req.getPreviewType() != null && !req.getPreviewType().isBlank()
-                && !PREVIEW_TYPES.contains(req.getPreviewType())) {
-            throw new BusinessException(400, "展示方式无效");
-        }
-        if ("model3d".equals(req.getPreviewType())
-                && (req.getModel3dUrl() == null || req.getModel3dUrl().isBlank())) {
-            throw new BusinessException(400, "3D 展示需填写 GLB 模型地址");
+        if ("model3d".equals(req.getPreviewType())) {
+            throw new BusinessException(400, "小程序已不再支持 3D 展示，请使用多角度图片");
         }
     }
 
@@ -179,12 +171,7 @@ public class AdminCraftService {
         if (req.getIntroEn() != null) {
             craft.setIntroEn(req.getIntroEn());
         }
-        if (req.getPreviewType() != null && !req.getPreviewType().isBlank()) {
-            craft.setPreviewType(req.getPreviewType());
-        }
-        if (req.getModel3dUrl() != null) {
-            craft.setModel3dUrl(req.getModel3dUrl().trim());
-        }
+        craft.setPreviewType("multi_image");
         if (req.getSort() != null) {
             craft.setSort(req.getSort());
         }
@@ -280,20 +267,10 @@ public class AdminCraftService {
         m.put("categoryName", categoryService.getName(c.getCategoryId(), catMap));
         m.put("introZh", c.getIntroZh());
         m.put("introEn", c.getIntroEn());
-        m.put("previewType", c.getPreviewType());
-        m.put("previewTypeLabel", previewTypeLabel(c.getPreviewType()));
-        m.put("model3dUrl", c.getModel3dUrl());
-        m.putAll(CraftViewerService.viewerFieldsForVo(c));
+        m.put("previewType", "multi_image");
         m.put("sort", c.getSort());
         m.put("status", c.getStatus());
         return m;
-    }
-
-    private String previewTypeLabel(String type) {
-        if ("model3d".equals(type)) {
-            return "3D 模型";
-        }
-        return "多角度图片";
     }
 
     private String trimOrNull(String s) {

@@ -6,7 +6,6 @@ import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.OssProperties;
 import com.shuyuan.backend.util.CourseVideoUrlPolicy;
-import com.shuyuan.backend.util.GlbValidator;
 import com.shuyuan.backend.util.UploadContentInspector;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -180,42 +179,6 @@ public class OssService {
             throw e;
         } catch (Exception e) {
             throw new BusinessException(500, "上传字幕至对象存储失败");
-        } finally {
-            shutdownQuietly(client);
-        }
-        return Map.of("url", buildPublicUrl(objectKey), "objectKey", objectKey);
-    }
-
-    /**
-     * 上传已校验的 GLB 字节；对象键按内容哈希命名：models/{yyyyMM}/{craftId}-{sha8}.glb
-     */
-    public Map<String, String> uploadModel3dGlb(Long craftId, byte[] bytes) {
-        if (!isEnabled()) {
-            throw new BusinessException(503, "对象存储未配置，请设置 OSS 环境变量或手动填写 URL");
-        }
-        if (craftId == null || craftId <= 0) {
-            throw new BusinessException(400, "文创 ID 无效");
-        }
-        if (bytes == null || bytes.length == 0) {
-            throw new BusinessException(400, "模型数据为空");
-        }
-        String sha1 = GlbValidator.sha1Hex(bytes);
-        String sha8 = sha1.substring(0, 8);
-        String month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
-        String objectKey = "models/" + month + "/" + craftId + "-" + sha8 + ".glb";
-
-        OSS client = null;
-        try {
-            client = buildClient();
-            ObjectMetadata meta = new ObjectMetadata();
-            meta.setContentLength(bytes.length);
-            meta.setContentType("model/gltf-binary");
-            client.putObject(ossProperties.getBucket(), objectKey,
-                    new java.io.ByteArrayInputStream(bytes), meta);
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BusinessException(500, "上传模型至对象存储失败");
         } finally {
             shutdownQuietly(client);
         }

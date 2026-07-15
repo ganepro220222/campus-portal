@@ -45,9 +45,15 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right" align="center">
+      <el-table-column label="操作" width="300" fixed="right" align="center">
         <template #default="{ row }">
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
+          <el-button
+            v-if="canWrite && row.previewType === 'model3d'"
+            link
+            type="primary"
+            @click="openViewer(row)"
+          >沉浸式鉴赏</el-button>
           <el-button
             v-if="canPublish && row.status !== 1"
             link
@@ -90,14 +96,22 @@
       :rules="rules"
       @save="onSave"
     />
+
+    <CraftViewerDialog
+      v-model:visible="viewerVisible"
+      :craft="viewerCraft"
+      @saved="loadData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 /** 文创列表页：筛选表格与快捷入口，业务逻辑见 useCraftList */
+import { ref } from 'vue'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { useCraftList } from '@/composables/useCraftList'
 import CraftEditDialog from './CraftEditDialog.vue'
+import CraftViewerDialog from './CraftViewerDialog.vue'
 
 const {
   canWrite,
@@ -123,6 +137,13 @@ const {
   onUnpublish,
   onDelete
 } = useCraftList()
+
+const viewerVisible = ref(false)
+const viewerCraft = ref<{ id: number; name: string } | null>(null)
+function openViewer(row: { id: number; name: string }) {
+  viewerCraft.value = { id: row.id, name: row.name }
+  viewerVisible.value = true
+}
 </script>
 
 <style scoped lang="scss">

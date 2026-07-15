@@ -23,6 +23,11 @@ public class Craft {
     private String introEn;
     @TableField("model_3d_url")
     private String model3dUrl;
+    private String posterUrl;
+    private String transformJson;
+    private String materialJson;
+    private String cameraJson;
+    private Integer viewerEnabled;
     private String previewType;
     private Integer status;
     private Integer sort;

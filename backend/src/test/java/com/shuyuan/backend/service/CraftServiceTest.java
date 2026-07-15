@@ -49,6 +49,7 @@ class CraftServiceTest {
         craft.setIntroEn("English intro");
         craft.setPreviewType("model3d");
         craft.setModel3dUrl("https://cdn.example.com/models/mask.glb");
+        craft.setViewerEnabled(1);
         craft.setStatus(1);
         craft.setCategoryId(12L);
 
@@ -71,6 +72,7 @@ class CraftServiceTest {
 
         assertEquals("model3d", vo.get("previewType"));
         assertEquals("https://cdn.example.com/models/mask.glb", vo.get("model3dUrl"));
+        assertEquals(Boolean.TRUE, vo.get("viewerEnabled"));
         assertEquals("中文介绍", vo.get("introZh"));
         assertEquals("English intro", vo.get("introEn"));
         assertNotNull(vo.get("images"));

@@ -283,6 +283,7 @@ public class AdminCraftService {
         m.put("previewType", c.getPreviewType());
         m.put("previewTypeLabel", previewTypeLabel(c.getPreviewType()));
         m.put("model3dUrl", c.getModel3dUrl());
+        m.putAll(CraftViewerService.viewerFieldsForVo(c));
         m.put("sort", c.getSort());
         m.put("status", c.getStatus());
         return m;

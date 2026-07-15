@@ -7,13 +7,14 @@
   3. .obj + .mtl + 贴图 → 转换为自包含 GLB
 
 不支持 FBX；FBX 请先用 Blender 导出为 GLB/OBJ。
+复杂 PBR 多贴图资产请优先直接交付 GLB，OBJ 管线适合基础漫反射模型。
 
 依赖：pip install trimesh pillow numpy
 
 用法：
   python batch_glb.py 输入目录 -o 输出目录
-  python batch_glb.py 输入目录 -o 输出目录 --recursive --max-texture 2048
-  python batch_glb.py 输入目录 -o 输出目录 --texture-format auto --no-reencode
+  python batch_glb.py 输入目录 -o 输出目录 --max-texture 2048
+  python batch_glb.py 输入目录 -o 输出目录 --texture-format auto
 """
 from __future__ import annotations
 
@@ -22,15 +23,19 @@ import csv
 import os
 import shutil
 import sys
+import tempfile
 import zipfile
 
 from glb_utils import (
-    build_output_basename,
+    build_output_name_from_glb,
     collect_input_files,
     compute_transform,
     file_sha1,
     glb_stats,
+    hash_obj_bundle,
     optimize_texture,
+    output_exclusion_for_input,
+    safe_output_stem,
 )
 
 try:
@@ -41,10 +46,7 @@ except ImportError:
 
 
 def extract_glb_from_zip(zip_path: str, out_path: str) -> tuple[str | None, str | None, str | None]:
-    """
-    从 zip 提取 GLB。返回 (内部路径, warning, error)。
-    多 GLB 时取体积最大者，并给出 warning。
-    """
+    """从 zip 提取 GLB。返回 (内部路径, warning, error)。"""
     try:
         with zipfile.ZipFile(zip_path) as zf:
             candidates = [
@@ -75,6 +77,7 @@ def convert_obj(
     quality: int,
     texture_format: str,
     reencode: bool,
+    allow_alpha_loss: bool,
 ) -> tuple[str | None, list[str]]:
     try:
         scene = trimesh.load(obj_path, force="scene")
@@ -84,11 +87,32 @@ def convert_obj(
             quality=quality,
             texture_format=texture_format,
             reencode=reencode,
+            allow_alpha_loss=allow_alpha_loss,
         )
         scene.export(out_path)
         return None, notes
     except Exception as e:
         return str(e), []
+
+
+def _finalize_output(
+    temp_path: str,
+    stem: str,
+    out_dir: str,
+    overwrite: bool,
+) -> tuple[str | None, str | None, str | None]:
+    """
+    根据临时 GLB 内容哈希确定最终文件名并落盘。
+    返回 (final_path, out_name, error)。
+    """
+    out_name = build_output_name_from_glb(stem, temp_path)
+    final_path = os.path.join(out_dir, out_name)
+
+    if os.path.exists(final_path) and not overwrite:
+        return None, out_name, f"输出已存在：{out_name}（加 --overwrite 覆盖）"
+
+    shutil.move(temp_path, final_path)
+    return final_path, out_name, None
 
 
 def process_one(
@@ -99,20 +123,22 @@ def process_one(
     quality: int,
     texture_format: str,
     reencode: bool,
+    allow_alpha_loss: bool,
     overwrite: bool,
 ) -> dict:
     ext = os.path.splitext(src_path)[1].lower()
     rel_path = os.path.relpath(src_path, input_root)
-    base = build_output_basename(src_path, input_root)
-    out_name = f"{base}.glb"
-    out_path = os.path.join(out_dir, out_name)
+    stem = safe_output_stem(src_path, input_root)
+    source_sha1 = file_sha1(src_path)
 
     result = {
         "名称": os.path.splitext(os.path.basename(src_path))[0],
         "来源相对路径": rel_path,
-        "sha1": file_sha1(src_path),
+        "sourceSha1": source_sha1,
+        "objBundleSha1": "",
+        "glbSha1": "",
         "处理方式": "",
-        "GLB文件": out_name,
+        "GLB文件": "",
         "体积MB": "",
         "网格数": "",
         "材质数": "",
@@ -126,103 +152,137 @@ def process_one(
         "备注": "",
     }
 
-    if os.path.exists(out_path) and not overwrite:
-        result["状态"] = "失败"
-        result["备注"] = f"输出已存在：{out_name}（加 --overwrite 覆盖）"
-        return result
+    if ext == ".obj":
+        try:
+            result["objBundleSha1"] = hash_obj_bundle(src_path)
+        except Exception as e:
+            result["备注"] = f"资产包哈希失败：{e}"
 
-    texture_notes: list[str] = []
-
-    if ext == ".zip":
-        inner, warning, err = extract_glb_from_zip(src_path, out_path)
-        if err:
-            result["状态"] = "失败"
-            result["备注"] = err
-            return result
-        result["处理方式"] = "从离线包提取"
-        result["备注"] = f"内部路径 {inner}"
-        if warning:
-            result["备注"] += f" | {warning}"
-
-    elif ext == ".glb":
-        shutil.copy2(src_path, out_path)
-        result["处理方式"] = "直接使用"
-
-    elif ext == ".obj":
-        err, texture_notes = convert_obj(
-            src_path, out_path, max_texture, quality, texture_format, reencode
-        )
-        if err:
-            result["状态"] = "失败"
-            result["备注"] = err
-            return result
-        result["处理方式"] = "OBJ 转换"
-        if texture_notes:
-            result["备注"] = "贴图处理：" + "; ".join(texture_notes)
-
-    else:
-        result["状态"] = "跳过"
-        result["备注"] = f"不支持的格式 {ext}（FBX 请先导出为 GLB/OBJ）"
-        return result
-
-    stats = glb_stats(out_path)
-    if not stats:
-        result["状态"] = "失败"
-        result["备注"] = (result["备注"] + " | " if result["备注"] else "") + "GLB 格式校验不通过"
-        return result
-
-    result["网格数"] = stats["meshes"]
-    result["材质数"] = stats["materials"]
-    result["贴图内嵌"] = "是" if stats["embedded"] else "否（外链，需修复）"
-    result["体积MB"] = round(os.path.getsize(out_path) / 1024 / 1024, 2)
-
-    extra: list[str] = []
-    if stats["extensions"]:
-        extra.append("扩展:" + ",".join(stats["extensions"]))
-    if stats["warnings"]:
-        extra.append("警告:" + ",".join(stats["warnings"]))
-    if extra:
-        result["备注"] = (result["备注"] + " | " if result["备注"] else "") + "; ".join(extra)
+    fd, temp_path = tempfile.mkstemp(suffix=".glb", prefix=".tmp_", dir=out_dir)
+    os.close(fd)
 
     try:
-        tf = compute_transform(out_path)
-        result["scale"] = tf["scale"]
-        result["offsetX"] = tf["offsetX"]
-        result["offsetY"] = tf["offsetY"]
-        result["offsetZ"] = tf["offsetZ"]
-        result["floorOffsetY"] = tf["floorOffsetY"]
-        result["状态"] = "成功"
-    except RuntimeError as e:
-        result["状态"] = "成功（归一化失败，需手动调整）"
-        result["备注"] = (result["备注"] + " | " if result["备注"] else "") + str(e)
+        texture_notes: list[str] = []
 
-    return result
+        if ext == ".zip":
+            inner, warning, err = extract_glb_from_zip(src_path, temp_path)
+            if err:
+                result["状态"] = "失败"
+                result["备注"] = err
+                return result
+            result["处理方式"] = "从离线包提取"
+            result["备注"] = f"内部路径 {inner}"
+            if warning:
+                result["备注"] += f" | {warning}"
+
+        elif ext == ".glb":
+            shutil.copy2(src_path, temp_path)
+            result["处理方式"] = "原样复制（不压缩贴图）"
+
+        elif ext == ".obj":
+            err, texture_notes = convert_obj(
+                src_path,
+                temp_path,
+                max_texture,
+                quality,
+                texture_format,
+                reencode,
+                allow_alpha_loss,
+            )
+            if err:
+                result["状态"] = "失败"
+                result["备注"] = err
+                return result
+            result["处理方式"] = "OBJ 转换"
+            if texture_notes:
+                result["备注"] = "贴图处理：" + "; ".join(texture_notes)
+
+        else:
+            result["状态"] = "跳过"
+            result["备注"] = f"不支持的格式 {ext}（FBX 请先导出为 GLB/OBJ）"
+            return result
+
+        stats = glb_stats(temp_path)
+        if not stats:
+            result["状态"] = "失败"
+            result["备注"] = (result["备注"] + " | " if result["备注"] else "") + "GLB 格式校验不通过"
+            return result
+
+        final_path, out_name, fin_err = _finalize_output(temp_path, stem, out_dir, overwrite)
+        temp_path = ""  # 已 move，无需清理
+        if fin_err:
+            result["状态"] = "失败"
+            result["备注"] = fin_err
+            result["GLB文件"] = out_name
+            return result
+
+        result["GLB文件"] = out_name
+        result["glbSha1"] = file_sha1(final_path)
+        result["网格数"] = stats["meshes"]
+        result["材质数"] = stats["materials"]
+        result["贴图内嵌"] = "是" if stats["embedded"] else "否（外链，需修复）"
+        result["体积MB"] = round(os.path.getsize(final_path) / 1024 / 1024, 2)
+
+        extra: list[str] = []
+        if stats["extensions"]:
+            extra.append("扩展:" + ",".join(stats["extensions"]))
+        if stats["warnings"]:
+            extra.append("警告:" + ",".join(stats["warnings"]))
+        if extra:
+            result["备注"] = (result["备注"] + " | " if result["备注"] else "") + "; ".join(extra)
+
+        try:
+            tf = compute_transform(final_path)
+            result["scale"] = tf["scale"]
+            result["offsetX"] = tf["offsetX"]
+            result["offsetY"] = tf["offsetY"]
+            result["offsetZ"] = tf["offsetZ"]
+            result["floorOffsetY"] = tf["floorOffsetY"]
+            result["状态"] = "成功"
+        except RuntimeError as e:
+            result["状态"] = "成功（归一化失败，需手动调整）"
+            result["备注"] = (result["备注"] + " | " if result["备注"] else "") + str(e)
+
+        return result
+
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 def main():
     parser = argparse.ArgumentParser(description="工艺品三维模型批量处理")
     parser.add_argument("input", help="输入目录（zip / glb / obj）")
     parser.add_argument("-o", "--output", default="output_glb", help="输出目录")
-    parser.add_argument("-m", "--max-texture", type=int, default=None,
-                        help="贴图最大边长（仅 OBJ 转换），建议 2048")
-    parser.add_argument("-q", "--quality", type=int, default=85,
-                        help="JPEG 质量 1-100（默认 85）")
+    parser.add_argument(
+        "-m", "--max-texture", type=int, default=None,
+        help="贴图最大边长（仅 OBJ 转换），建议 2048",
+    )
+    parser.add_argument(
+        "-q", "--quality", type=int, default=85,
+        help="JPEG 质量 1-100（仅 OBJ 且重编码为 JPEG 时生效）",
+    )
     parser.add_argument(
         "--texture-format",
         choices=["auto", "jpeg", "png"],
         default="auto",
-        help="贴图重编码格式；auto=有透明通道用 PNG，否则 JPEG（默认 auto）",
+        help="贴图重编码（仅 OBJ）；auto=有透明用 PNG，否则 JPEG",
     )
     parser.add_argument(
         "--no-reencode",
         action="store_true",
-        help="不重编码贴图，仅按需缩放（适合已是 PBR 贴图的 GLB 源）",
+        help="仅 OBJ 转换时生效：不重编码贴图，仅按需缩放；GLB 输入始终原样复制",
+    )
+    parser.add_argument(
+        "--allow-alpha-loss",
+        action="store_true",
+        help="仅 OBJ 且 --texture-format jpeg 时：允许丢弃透明通道（默认改 PNG 保留 alpha）",
     )
     parser.add_argument(
         "--recursive",
         action="store_true",
         default=True,
-        help="递归扫描子目录（默认开启）",
+        help="递归扫描子目录（默认开启）；输出目录若在输入树下会自动排除",
     )
     parser.add_argument(
         "--no-recursive",
@@ -245,7 +305,11 @@ def main():
         sys.exit(1)
 
     os.makedirs(args.output, exist_ok=True)
-    files = collect_input_files(args.input, recursive=args.recursive)
+    exclude = output_exclusion_for_input(args.input, args.output)
+    if exclude:
+        print(f"已排除输出目录（避免重复处理产物）：{os.path.abspath(args.output)}")
+
+    files = collect_input_files(args.input, recursive=args.recursive, exclude_dirs=exclude)
     if not files:
         print("未找到可处理的文件（支持 .zip / .glb / .obj；FBX 请先导出）")
         sys.exit(1)
@@ -264,12 +328,13 @@ def main():
             args.quality,
             args.texture_format,
             not args.no_reencode,
+            args.allow_alpha_loss,
             args.overwrite,
         )
         results.append(r)
         if r["状态"].startswith("成功"):
             ok += 1
-            print(f"      ✓ {r['处理方式']} → {r['GLB文件']} · {r['体积MB']}MB · scale={r['scale']}")
+            print(f"      ✓ {r['处理方式']} → {r['GLB文件']} · {r['体积MB']}MB · glbSha1={r['glbSha1'][:8]}")
         else:
             fail += 1
             print(f"      ✗ {r['状态']}：{r['备注']}")
@@ -284,8 +349,7 @@ def main():
     print(f"完成：成功 {ok} 个，失败 {fail} 个")
     print(f"GLB 输出目录：{args.output}/")
     print(f"清单文件：{manifest}")
-    print("transform_json 建议字段：scale, offsetX, offsetY, offsetZ（中心归零）；"
-          "展台模式可用 floorOffsetY。")
+    print("输出文件名以 glbSha1 为准；OBJ 另记录 objBundleSha1 便于追溯 MTL/贴图变更。")
 
 
 if __name__ == "__main__":

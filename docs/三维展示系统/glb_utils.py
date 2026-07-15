@@ -7,8 +7,8 @@ import hashlib
 import io
 import json
 import os
+import re
 import struct
-from typing import Any
 
 try:
     import numpy as np
@@ -25,12 +25,91 @@ RISKY_EXTENSIONS = {
     "EXT_meshopt_compression",
 }
 
+# MTL 中可能引用贴图的前缀
+_MTL_MAP_PREFIXES = (
+    "map_ka", "map_kd", "map_ks", "map_ke", "map_ns", "map_d", "map_bump",
+    "bump", "disp", "decal", "refl",
+)
+
 
 def file_sha1(path: str) -> str:
     digest = hashlib.sha1()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             digest.update(chunk)
+    return digest.hexdigest()
+
+
+def safe_output_stem(src_path: str, input_root: str) -> str:
+    """根据来源相对路径生成安全文件名主干（不含哈希后缀）。"""
+    rel = os.path.relpath(src_path, input_root)
+    stem = os.path.splitext(rel)[0]
+    return stem.replace(os.sep, "__").replace(" ", "_")
+
+
+def build_output_name_from_glb(stem: str, glb_path: str) -> str:
+    """根据最终 GLB 内容哈希生成输出文件名，确保 CDN 缓存随内容变化失效。"""
+    digest = file_sha1(glb_path)[:8]
+    return f"{stem}-{digest}.glb"
+
+
+def _resolve_texture_path(mtl_dir: str, token: str) -> str | None:
+    """解析 MTL 贴图引用（支持相对路径与 -bm 等选项）。"""
+    token = token.strip().strip('"').strip("'")
+    if not token or token.startswith("#"):
+        return None
+    # 去掉 -blendu 等 flags，取最后一个像路径的 token
+    parts = token.replace("\\", "/").split()
+    path_part = parts[-1] if parts else token
+    candidate = os.path.normpath(os.path.join(mtl_dir, path_part))
+    return candidate if os.path.isfile(candidate) else None
+
+
+def _textures_from_mtl(mtl_path: str) -> list[str]:
+    textures: list[str] = []
+    mtl_dir = os.path.dirname(os.path.abspath(mtl_path))
+    with open(mtl_path, encoding="utf-8", errors="ignore") as f:
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            lower = line.lower()
+            if not any(lower.startswith(p) for p in _MTL_MAP_PREFIXES):
+                continue
+            # map_Kd texture.jpg  或  bump -bm texture.jpg
+            tokens = line.split()
+            for token in reversed(tokens[1:]):
+                if token.startswith("-"):
+                    continue
+                resolved = _resolve_texture_path(mtl_dir, token)
+                if resolved:
+                    textures.append(resolved)
+                    break
+    return textures
+
+
+def hash_obj_bundle(obj_path: str) -> str:
+    """
+    计算 OBJ 资产包哈希：纳入 .obj、引用的 .mtl 及 MTL 引用的贴图。
+    用于 manifest 追溯；输出文件名以最终 GLB 内容哈希为准。
+    """
+    obj_abs = os.path.abspath(obj_path)
+    obj_dir = os.path.dirname(obj_abs)
+    bundle_files: list[str] = [obj_abs]
+
+    with open(obj_abs, encoding="utf-8", errors="ignore") as f:
+        for raw in f:
+            if raw.lower().startswith("mtllib "):
+                mtl_name = raw.split(None, 1)[1].strip()
+                mtl_path = os.path.normpath(os.path.join(obj_dir, mtl_name))
+                if os.path.isfile(mtl_path):
+                    bundle_files.append(os.path.abspath(mtl_path))
+                    bundle_files.extend(_textures_from_mtl(mtl_path))
+
+    digest = hashlib.sha1()
+    for path in sorted(set(bundle_files)):
+        digest.update(path.encode("utf-8"))
+        digest.update(file_sha1(path).encode("ascii"))
     return digest.hexdigest()
 
 
@@ -90,6 +169,12 @@ def glb_stats(path: str) -> dict | None:
 
 def has_alpha(image: Image.Image) -> bool:
     if image.mode in ("RGBA", "LA"):
+        # 检查是否真有非不透明像素
+        if image.mode == "RGBA":
+            alpha = image.getchannel("A")
+            if alpha.getextrema()[0] < 255:
+                return True
+            return False
         return True
     if image.mode == "P" and "transparency" in image.info:
         return True
@@ -102,13 +187,13 @@ def optimize_texture(
     quality: int = 85,
     texture_format: str = "auto",
     reencode: bool = True,
+    allow_alpha_loss: bool = False,
 ) -> list[str]:
     """
-    优化场景贴图。
+    优化场景贴图（主要处理 diffuse/baseColor 单图，不覆盖完整 PBR 贴图集）。
 
     texture_format: auto | jpeg | png
-    reencode=False 时仅按需缩放，保留原编码（适合已调好的 PBR 贴图）。
-    返回每条贴图的处理说明，写入 manifest 备注。
+    allow_alpha_loss: 仅当显式 jpeg 且贴图含透明时，为 True 才允许转 RGB 丢 alpha。
     """
     notes: list[str] = []
     for geom_name, geom in scene.geometry.items():
@@ -133,6 +218,12 @@ def optimize_texture(
         fmt = texture_format
         if fmt == "auto":
             fmt = "png" if has_alpha(image) else "jpeg"
+        elif fmt == "jpeg" and has_alpha(image):
+            if allow_alpha_loss:
+                notes.append(f"{geom_name}:JPEG丢弃alpha(已确认)")
+            else:
+                fmt = "png"
+                notes.append(f"{geom_name}:有alpha改PNG(未加--allow-alpha-loss)")
 
         buf = io.BytesIO()
         if fmt == "jpeg":
@@ -184,26 +275,45 @@ def compute_transform(path: str, target_size: float = TARGET_SIZE) -> dict | Non
         raise RuntimeError(f"归一化计算失败：{e}") from e
 
 
-def build_output_basename(src_path: str, input_root: str) -> str:
-    """根据相对路径 + 内容哈希生成唯一输出 basename，避免同名覆盖。"""
-    rel = os.path.relpath(src_path, input_root)
-    stem = os.path.splitext(rel)[0]
-    safe = stem.replace(os.sep, "__").replace(" ", "_")
-    digest = file_sha1(src_path)[:8]
-    return f"{safe}-{digest}"
-
-
-def collect_input_files(input_dir: str, recursive: bool = True) -> list[str]:
-    """收集 .zip / .glb / .obj 输入文件。"""
+def collect_input_files(
+    input_dir: str,
+    recursive: bool = True,
+    exclude_dirs: set[str] | None = None,
+) -> list[str]:
+    """
+    收集 .zip / .glb / .obj 输入文件。
+    exclude_dirs: 绝对路径集合，扫描时跳过（用于排除输出目录等）。
+    """
     allowed = (".zip", ".glb", ".obj")
+    exclude_abs = {os.path.abspath(p) for p in (exclude_dirs or set())}
+    input_abs = os.path.abspath(input_dir)
     files: list[str] = []
+
     if recursive:
-        for dirpath, _, filenames in os.walk(input_dir):
+        for dirpath, dirnames, filenames in os.walk(input_abs):
+            current = os.path.abspath(dirpath)
+            # 不进入排除目录
+            dirnames[:] = [
+                d for d in dirnames
+                if os.path.abspath(os.path.join(current, d)) not in exclude_abs
+            ]
+            if current in exclude_abs:
+                continue
             for fn in sorted(filenames):
                 if fn.lower().endswith(allowed):
-                    files.append(os.path.join(dirpath, fn))
+                    files.append(os.path.join(current, fn))
     else:
-        for fn in sorted(os.listdir(input_dir)):
+        for fn in sorted(os.listdir(input_abs)):
             if fn.lower().endswith(allowed):
-                files.append(os.path.join(input_dir, fn))
+                files.append(os.path.join(input_abs, fn))
+
     return files
+
+
+def output_exclusion_for_input(input_dir: str, output_dir: str) -> set[str]:
+    """若输出目录位于输入目录下，返回应排除的绝对路径。"""
+    input_abs = os.path.abspath(input_dir)
+    output_abs = os.path.abspath(output_dir)
+    if output_abs == input_abs or output_abs.startswith(input_abs + os.sep):
+        return {output_abs}
+    return set()

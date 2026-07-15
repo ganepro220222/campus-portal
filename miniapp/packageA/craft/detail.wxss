@@ -6,7 +6,22 @@
 
 /* 图集 */
 .gal { border-radius: 28rpx; overflow: hidden; box-shadow: var(--shadow); position: relative; }
-.gal-3d { margin-bottom: 0; }
+.gal-3d { margin-bottom: 0; background: linear-gradient(135deg, #EEF2FA, #F8FAFE); }
+.viewer-mask-3d {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(245, 248, 252, 0.72);
+  font-size: 24rpx;
+  color: #5A648A;
+  pointer-events: none;
+}
 
 /* 沉浸式鉴赏入口 */
 .immersive {

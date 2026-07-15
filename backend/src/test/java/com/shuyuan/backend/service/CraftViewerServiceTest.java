@@ -6,6 +6,7 @@ import com.shuyuan.backend.dto.CraftViewerConfigSaveRequest;
 import com.shuyuan.backend.entity.Craft;
 import com.shuyuan.backend.mapper.CraftContactMapper;
 import com.shuyuan.backend.mapper.CraftMapper;
+import com.shuyuan.backend.util.GlbTestFixtures;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -13,9 +14,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -92,7 +90,7 @@ class CraftViewerServiceTest {
         when(craftMapper.selectById(4L)).thenReturn(craft);
         when(ossProperties.getMaxUploadBytes()).thenReturn(10L * 1024 * 1024);
 
-        byte[] glb = minimalGlb("{\"asset\":{\"version\":\"2.0\"}}");
+        byte[] glb = GlbTestFixtures.meshGlb(GlbTestFixtures.defaultMeshJson(), 36);
         MockMultipartFile file = new MockMultipartFile("file", "a.glb", "model/gltf-binary", glb);
         when(ossService.uploadModel3dGlb(4L, glb)).thenReturn(Map.of(
                 "url", "https://cdn.example.com/models/202607/4-abc12345.glb",
@@ -108,17 +106,6 @@ class CraftViewerServiceTest {
         verify(craftMapper).updateById(craft);
     }
 
-    @Test
-    void isViewerReady_requiresAllFlags() {
-        Craft craft = readyCraft(5L);
-        assertTrue(CraftViewerService.isViewerReady(craft));
-        craft.setViewerEnabled(0);
-        assertFalse(CraftViewerService.isViewerReady(craft));
-        craft.setViewerEnabled(1);
-        craft.setPreviewType("images");
-        assertFalse(CraftViewerService.isViewerReady(craft));
-    }
-
     private static Craft readyCraft(Long id) {
         Craft craft = new Craft();
         craft.setId(id);
@@ -131,21 +118,14 @@ class CraftViewerServiceTest {
         return craft;
     }
 
-    private static byte[] minimalGlb(String json) {
-        byte[] jsonBytes = json.getBytes(StandardCharsets.UTF_8);
-        int jsonPad = (4 - (jsonBytes.length % 4)) % 4;
-        int jsonChunkLen = jsonBytes.length + jsonPad;
-        int totalLen = 12 + 8 + jsonChunkLen;
-        ByteBuffer buf = ByteBuffer.allocate(totalLen).order(ByteOrder.LITTLE_ENDIAN);
-        buf.put("glTF".getBytes(StandardCharsets.US_ASCII));
-        buf.putInt(2);
-        buf.putInt(totalLen);
-        buf.putInt(jsonBytes.length);
-        buf.put("JSON".getBytes(StandardCharsets.US_ASCII));
-        buf.put(jsonBytes);
-        for (int i = 0; i < jsonPad; i++) {
-            buf.put((byte) 0x20);
-        }
-        return buf.array();
+    @Test
+    void isViewerReady_requiresAllFlags() {
+        Craft craft = readyCraft(5L);
+        assertTrue(CraftViewerService.isViewerReady(craft));
+        craft.setViewerEnabled(0);
+        assertFalse(CraftViewerService.isViewerReady(craft));
+        craft.setViewerEnabled(1);
+        craft.setPreviewType("images");
+        assertFalse(CraftViewerService.isViewerReady(craft));
     }
 }

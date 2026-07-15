@@ -1,7 +1,6 @@
 package com.shuyuan.backend.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -24,8 +23,6 @@ public final class GlbValidator {
             "KHR_draco_mesh_compression",
             "EXT_meshopt_compression"
     );
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private GlbValidator() {
     }
@@ -61,26 +58,17 @@ public final class GlbValidator {
         if (version != GLB_VERSION) {
             return new Result(false, sha1Hex(data), 0, 0, 0, false, List.of("仅支持 glTF 2.0"));
         }
-        buf.getInt(); // total length
+        buf.getInt(); // total length — GlbJsonReader 会重新解析 JSON
 
-        if (buf.remaining() < 8) {
-            return new Result(false, sha1Hex(data), 0, 0, 0, false, List.of("缺少 JSON chunk"));
+        JsonNode root = GlbJsonReader.readRoot(data);
+        if (root == null) {
+            return new Result(false, sha1Hex(data), 0, 0, 0, false, List.of("JSON 解析失败"));
         }
-        int jsonLen = buf.getInt();
-        byte[] chunkType = new byte[4];
-        buf.get(chunkType);
-        if (!"JSON".equals(new String(chunkType, StandardCharsets.US_ASCII).trim())) {
-            return new Result(false, sha1Hex(data), 0, 0, 0, false, List.of("首 chunk 非 JSON"));
-        }
-        if (buf.remaining() < jsonLen) {
-            return new Result(false, sha1Hex(data), 0, 0, 0, false, List.of("JSON chunk 截断"));
-        }
-        byte[] jsonBytes = new byte[jsonLen];
-        buf.get(jsonBytes);
-
         try {
-            JsonNode root = MAPPER.readTree(jsonBytes);
             int meshes = root.path("meshes").size();
+            if (meshes <= 0) {
+                return new Result(false, sha1Hex(data), 0, 0, 0, false, List.of("GLB 不含网格"));
+            }
             int materials = root.path("materials").size();
             JsonNode images = root.path("images");
             int imageCount = images.size();

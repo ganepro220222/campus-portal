@@ -14,7 +14,8 @@ Page({
     galleryIndex: 0,
     lang: 'zh',
     show3d: false,
-    showGallery: true
+    showGallery: true,
+    loading3d: false
   },
 
   onLoad(opts) {
@@ -36,7 +37,8 @@ Page({
       slides: buildSlides(detail),
       galleryIndex: 0,
       show3d,
-      showGallery: !show3d
+      showGallery: !show3d,
+      loading3d: show3d
     })
   },
 
@@ -54,9 +56,13 @@ Page({
 
   onGallery(e) { this.setData({ galleryIndex: e.detail.current }) },
 
+  on3dLoaded() {
+    this.setData({ loading3d: false })
+  },
+
   on3dError(e) {
     console.warn('[craft/detail] 3D 降级', e && e.detail)
-    this.setData({ show3d: false, showGallery: true })
+    this.setData({ loading3d: false, show3d: false, showGallery: true })
     wx.showToast({ title: '已切换多图展示', icon: 'none' })
   },
 
@@ -116,7 +122,7 @@ Page({
       return
     }
     wx.navigateTo({
-      url: '/packageA/craft/viewer-webview?id=' + id
+      url: '/packageC/craft/viewer-webview?id=' + id
         + '&title=' + encodeURIComponent(d.name || '立体鉴赏')
     })
   }

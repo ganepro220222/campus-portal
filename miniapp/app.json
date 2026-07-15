@@ -17,8 +17,7 @@
         "news/detail",
         "hall/detail",
         "craft/list",
-        "craft/detail",
-        "craft/viewer-webview"
+        "craft/detail"
       ]
     },
     {
@@ -39,6 +38,7 @@
         "search/index",
         "college/list",
         "college/webview",
+        "craft/viewer-webview",
         "profile/list",
         "message/index",
         "feedback/index",

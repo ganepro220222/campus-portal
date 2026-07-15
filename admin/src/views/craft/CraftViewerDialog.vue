@@ -188,6 +188,14 @@ function toNumberRecord(src: Record<string, unknown> | null, defaults: Record<st
   return out
 }
 
+function parseMaterial(src: Record<string, unknown> | null) {
+  return {
+    roughness: typeof src?.roughness === 'number' ? src.roughness : DEFAULT_MATERIAL.roughness,
+    metalness: typeof src?.metalness === 'number' ? src.metalness : DEFAULT_MATERIAL.metalness,
+    envMapIntensity: typeof src?.envMapIntensity === 'number' ? src.envMapIntensity : DEFAULT_MATERIAL.envMapIntensity
+  }
+}
+
 async function onOpen() {
   if (!props.craft) return
   loading.value = true
@@ -199,7 +207,7 @@ async function onOpen() {
     form.model3dUrl = cfg.model3dUrl || ''
     form.camera = { ...DEFAULT_CAMERA, ...toNumberRecord(cfg.camera as Record<string, unknown> | null, { distance: DEFAULT_CAMERA.distance, phi: DEFAULT_CAMERA.phi, theta: DEFAULT_CAMERA.theta }) }
     form.camera.autoRotate = cfg.camera && typeof cfg.camera.autoRotate === 'boolean' ? cfg.camera.autoRotate : DEFAULT_CAMERA.autoRotate
-    form.material = toNumberRecord(cfg.material as Record<string, unknown> | null, DEFAULT_MATERIAL)
+    form.material = parseMaterial(cfg.material as Record<string, unknown> | null)
     form.transform = (cfg.transform as Record<string, unknown> | null) ?? null
   } finally {
     loading.value = false

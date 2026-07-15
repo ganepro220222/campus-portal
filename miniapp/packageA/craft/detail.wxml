@@ -29,7 +29,15 @@
         <view class="gcap">{{detail.name}} · {{slides[galleryIndex].angleLabel}}（点击查看大图）</view>
       </view>
 
-      <!-- UI 工程师：detail.viewerEnabled 为 true 时在此增加「沉浸式鉴赏」入口，bindtap="onImmersiveViewer" -->
+      <!-- 沉浸式鉴赏入口（后台开启且模型就绪时展示） -->
+      <view wx:if="{{detail.viewerEnabled}}" class="immersive" hover-class="immersive-hover" hover-stay-time="60" bindtap="onImmersiveViewer">
+        <view class="im-ic"><icon name="cube" size="26" color="#F4E6C8" /></view>
+        <view class="im-body">
+          <view class="im-title">沉浸式鉴赏</view>
+          <view class="im-sub">720° 旋转 · 高清材质 · 光影反射</view>
+        </view>
+        <view class="im-go"><text>进入</text><icon name="chevron-right" size="15" color="rgba(244,230,200,0.85)" /></view>
+      </view>
 
       <!-- 介绍 -->
       <view class="craft-intro">

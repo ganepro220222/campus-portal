@@ -20,7 +20,7 @@
       <xr-gltf
         wx:if="{{modelUrl}}"
         model="craft-model"
-        position="0 0 0"
+        position="{{modelPosition}}"
         scale="{{modelScale}}"
         rotation="0 30 0"
       />

@@ -115,12 +115,27 @@ function hasCraftModel3d(previewType, model3dUrl) {
     && /^https?:\/\//i.test(String(model3dUrl))
 }
 
+function buildModelScaleFromTransform(transform) {
+  if (!transform || typeof transform.scale !== 'number') return '1.2 1.2 1.2'
+  const s = transform.scale * 1.2
+  return `${s} ${s} ${s}`
+}
+
+function buildModelPositionFromTransform(transform) {
+  if (!transform) return '0 0 0'
+  const x = typeof transform.offsetX === 'number' ? transform.offsetX : 0
+  const y = typeof transform.offsetY === 'number' ? transform.offsetY : 0
+  const z = typeof transform.offsetZ === 'number' ? transform.offsetZ : 0
+  return `${x} ${y} ${z}`
+}
+
 function mergeCraftDetail(raw, fallback) {
   const base = fallback || (useMock ? mock.craftDetail : {})
   if (!raw) return useMock ? base : {}
   const previewType = raw.previewType || base.previewType || 'multi_image'
   const model3dUrl = raw.model3dUrl || base.model3dUrl || ''
   const canUse3d = hasCraftModel3d(previewType, model3dUrl)
+  const transform = raw.transform || base.transform || null
   return {
     ...base,
     ...raw,
@@ -130,6 +145,10 @@ function mergeCraftDetail(raw, fallback) {
     previewType,
     model3dUrl,
     canUse3d,
+    viewerEnabled: raw.viewerEnabled === true || base.viewerEnabled === true,
+    transform,
+    modelScale: buildModelScaleFromTransform(transform),
+    modelPosition: buildModelPositionFromTransform(transform),
     images: raw.images && raw.images.length ? raw.images : base.images,
     contact: raw.contact || base.contact
   }

@@ -2,7 +2,8 @@
 Component({
   properties: {
     modelUrl: { type: String, value: '' },
-    modelScale: { type: String, value: '1.2 1.2 1.2' }
+    modelScale: { type: String, value: '1.2 1.2 1.2' },
+    modelPosition: { type: String, value: '0 0 0' }
   },
 
   data: {

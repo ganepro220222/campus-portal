@@ -101,6 +101,24 @@ Page({
   onPoster() {
     const d = this.data.detail || {}
     wx.navigateTo({ url: `/packageD/poster/generate?type=craft&title=${encodeURIComponent(d.name || '')}` })
+  },
+
+  /** UI 工程师：详情页「沉浸式鉴赏」入口点击后调用（路由与校验已就绪） */
+  onImmersiveViewer() {
+    const d = this.data.detail || {}
+    const id = this.data.craftId || d.id
+    if (!id) {
+      wx.showToast({ title: '缺少工艺品信息', icon: 'none' })
+      return
+    }
+    if (!d.viewerEnabled) {
+      wx.showToast({ title: '沉浸式鉴赏尚未开启', icon: 'none' })
+      return
+    }
+    wx.navigateTo({
+      url: '/packageA/craft/viewer-webview?id=' + id
+        + '&title=' + encodeURIComponent(d.name || '立体鉴赏')
+    })
   }
 })
 

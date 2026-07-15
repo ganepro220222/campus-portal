@@ -1,4 +1,4 @@
-// packageA/craft/detail.js — 文创详情：3D/多图降级 + 中英文切换
+// packageA/craft/detail.js — 文创详情：多角度图片 + 中英文切换
 const { get } = require('../../utils/request')
 const { mergeCraftDetail } = require('../../utils/content')
 const mock = require('../../mock/defaults')
@@ -12,10 +12,7 @@ Page({
     detail: mergeCraftDetail(null),
     slides: [],
     galleryIndex: 0,
-    lang: 'zh',
-    show3d: false,
-    showGallery: true,
-    loading3d: false
+    lang: 'zh'
   },
 
   onLoad(opts) {
@@ -26,19 +23,14 @@ Page({
 
   _fallbackForId(id) {
     if (!useMock) return {}
-    if (String(id) === '3' && mock.craftDetail3d) return mock.craftDetail3d
     return mock.craftDetail
   },
 
   _applyDetail(detail) {
-    const show3d = !!(detail && detail.canUse3d)
     this.setData({
       detail,
       slides: buildSlides(detail),
-      galleryIndex: 0,
-      show3d,
-      showGallery: !show3d,
-      loading3d: show3d
+      galleryIndex: 0
     })
   },
 
@@ -55,16 +47,6 @@ Page({
   },
 
   onGallery(e) { this.setData({ galleryIndex: e.detail.current }) },
-
-  on3dLoaded() {
-    this.setData({ loading3d: false })
-  },
-
-  on3dError(e) {
-    console.warn('[craft/detail] 3D 降级', e && e.detail)
-    this.setData({ loading3d: false, show3d: false, showGallery: true })
-    wx.showToast({ title: '已切换多图展示', icon: 'none' })
-  },
 
   onLangSwitch(e) {
     const lang = e.currentTarget.dataset.lang
@@ -107,24 +89,6 @@ Page({
   onPoster() {
     const d = this.data.detail || {}
     wx.navigateTo({ url: `/packageD/poster/generate?type=craft&title=${encodeURIComponent(d.name || '')}` })
-  },
-
-  /** UI 工程师：详情页「沉浸式鉴赏」入口点击后调用（路由与校验已就绪） */
-  onImmersiveViewer() {
-    const d = this.data.detail || {}
-    const id = this.data.craftId || d.id
-    if (!id) {
-      wx.showToast({ title: '缺少工艺品信息', icon: 'none' })
-      return
-    }
-    if (!d.viewerEnabled) {
-      wx.showToast({ title: '沉浸式鉴赏尚未开启', icon: 'none' })
-      return
-    }
-    wx.navigateTo({
-      url: '/packageC/craft/viewer-webview?id=' + id
-        + '&title=' + encodeURIComponent(d.name || '立体鉴赏')
-    })
   }
 })
 
@@ -132,10 +96,9 @@ function buildSlides(detail) {
   const imgs = (detail && detail.images && detail.images.length)
     ? detail.images
     : [{ imageUrl: '', angleLabel: '正面' }]
-  const icon = (detail && detail.previewType === 'model3d') ? 'museum' : 'medal'
   return imgs.map((img, i) => ({
     cls: COVER_CLASSES[i % COVER_CLASSES.length],
-    icon,
+    icon: 'medal',
     imageUrl: img.imageUrl || '',
     angleLabel: img.angleLabel || `视角 ${i + 1}`
   }))

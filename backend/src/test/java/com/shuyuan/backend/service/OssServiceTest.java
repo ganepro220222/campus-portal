@@ -137,25 +137,4 @@ class OssServiceTest {
                 () -> ossService.upload("resource_file", file));
         assertEquals(400, ex.getCode());
     }
-
-    @Test
-    void uploadModel3dGlb_rejects_whenDisabled() {
-        byte[] glb = new byte[]{1, 2, 3};
-        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
-                () -> ossService.uploadModel3dGlb(1L, glb));
-        assertEquals(503, ex.getCode());
-    }
-
-    @Test
-    void uploadModel3dGlb_rejects_emptyBytes_whenEnabled() {
-        when(ossProperties.isEnabled()).thenReturn(true);
-        when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-test.aliyuncs.com");
-        when(ossProperties.getBucket()).thenReturn("bucket");
-        when(ossProperties.getAccessKey()).thenReturn("ak");
-        when(ossProperties.getSecretKey()).thenReturn("sk");
-
-        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
-                () -> ossService.uploadModel3dGlb(1L, new byte[0]));
-        assertEquals(400, ex.getCode());
-    }
 }

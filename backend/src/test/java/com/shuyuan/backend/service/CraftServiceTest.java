@@ -41,7 +41,7 @@ class CraftServiceTest {
     private CraftService craftService;
 
     @Test
-    void detail_returnsModel3dFieldsFor3dCraft() {
+    void detail_returnsMultiImageFieldsOnly() {
         Craft craft = new Craft();
         craft.setId(3L);
         craft.setName("屯堡石雕·地戏面具");
@@ -50,7 +50,7 @@ class CraftServiceTest {
         craft.setPreviewType("model3d");
         craft.setModel3dUrl("https://cdn.example.com/models/mask.glb");
         craft.setViewerEnabled(1);
-        craft.setTransformJson("{\"scale\":1.1,\"offsetX\":0,\"offsetY\":0,\"offsetZ\":0}");
+        craft.setTransformJson("{\"scale\":1.1}");
         craft.setStatus(1);
         craft.setCategoryId(12L);
 
@@ -71,10 +71,10 @@ class CraftServiceTest {
 
         Map<String, Object> vo = craftService.detail(3L);
 
-        assertEquals("model3d", vo.get("previewType"));
-        assertEquals("https://cdn.example.com/models/mask.glb", vo.get("model3dUrl"));
-        assertEquals(Boolean.TRUE, vo.get("viewerEnabled"));
-        assertNotNull(vo.get("transform"));
+        assertEquals("multi_image", vo.get("previewType"));
+        assertEquals(false, vo.containsKey("model3dUrl"));
+        assertEquals(false, vo.containsKey("viewerEnabled"));
+        assertEquals(false, vo.containsKey("transform"));
         assertEquals("中文介绍", vo.get("introZh"));
         assertEquals("English intro", vo.get("introEn"));
         assertNotNull(vo.get("images"));

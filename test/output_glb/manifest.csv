@@ -1,0 +1,4 @@
+﻿名称,来源相对路径,sourceSha1,objBundleSha1,glbSha1,处理方式,GLB文件,体积MB,网格数,材质数,贴图内嵌,scale,offsetX,offsetY,offsetZ,floorOffsetY,状态,备注
+1,1\1.obj,23823f2d26ea1dd8aae2bb4b6dbcc59d60e8a6c6,54f43dcbb2578f456d732220dcc1afdc36e24ab3,97de61feaba76e706a886b4aa2ca2d40410fe5cd,OBJ 转换,1__1-97de61fe.glb,2.28,1,1,是,1.0475,-0.0021,-0.16716,0.00096,1.33284,成功,贴图处理：1.obj:缩放至2048x2048; 1.obj:JPEG(q=85)
+7,7\7.obj,215692cc37aeb66d5964d485b21484ac43e05912,90bf3c7991ef4c00f38630edcc0d96c542fdfb36,a7b2de38462569e5105a3f1be5a3be6a0f7f6484,OBJ 转换,7__7-a7b2de38.glb,1.76,1,1,是,1.98413,-0.0,-0.32907,-0.0,1.17093,成功,贴图处理：7.obj:缩放至2048x2048; 7.obj:JPEG(q=85)
+8,8\8.obj,48cd9aabe0614521995965d464aeb147b3f76d65,f5ee7a83c99ff9d63b7d14e1e04cb48714a056be,a5be54064cfbdafd5f7c3caf7577bb788c83496a,OBJ 转换,8__8-a5be5406.glb,1.87,1,1,是,3.19575,-0.02125,-0.90725,-0.02183,0.59275,成功,贴图处理：8.obj:缩放至2048x2048; 8.obj:JPEG(q=85)

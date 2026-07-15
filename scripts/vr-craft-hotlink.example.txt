@@ -1,12 +1,36 @@
-# VR 展馆工艺品热点改链模板（阶段 5 — 待 VR 平台支持自定义外链）
-#
-# 目标 URL 模式（与小程序 env.craftViewerBaseUrl 一致）：
-#   https://shuyuan.gzcpu.edu.cn/craft/{工艺品ID}
-#
-# 示例：
-#   工艺品 ID=3  →  https://shuyuan.gzcpu.edu.cn/craft/3
-#
-# 若 VR 平台不支持外链：
-#   备用：小程序「文化好物」列表 → 详情 →「沉浸式鉴赏」
-#
-# 确认事项（方案 §九 #1）：向 VR 服务商确认热点可否配置上述 HTTPS URL
+# VR 展馆工艺品热点外链模板
+
+VR 展馆中的 3D 鉴赏走**静态 H5 展包**（开发者维护），不走小程序、也不走后端动态 API。
+
+## 目标 URL 模式
+
+将热点配置为已部署的静态页面，例如：
+
+```
+https://shuyuan.gzcpu.edu.cn/exhibits/craft-001/index.html
+https://shuyuan.gzcpu.edu.cn/exhibits/craft-007/index.html
+```
+
+展包目录结构参考 `test/4/`：
+
+```
+exhibits/craft-001/
+  index.html      # Three.js 页面（全景 IBL + 热点 + 模型）
+  model.glb       # 批处理输出的 GLB
+  panorama.jpg    # 全景环境贴图（可选）
+  config.json     # 热点、材质、相机等配置（待扩展）
+```
+
+## 本地原型
+
+- 静态页面原型：`test/4/index.html`
+- 批处理脚本：`docs/三维展示系统/batch_glb.py`
+- 设计参考（热点 + 环境切换）：`docs/三维展示系统/工艺品立体鉴赏_演示.html`
+
+## 确认事项
+
+向 VR 服务商确认热点可否配置上述 HTTPS 外链；若仅支持站内跳转，由开发同学在 VR 平台后台配置链接。
+
+## 与小程序的关系
+
+小程序「文化好物」仅展示**多角度图片**；3D 鉴赏入口只在 VR 展馆热点中打开。

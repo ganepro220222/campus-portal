@@ -24,23 +24,6 @@
           slot="craftList"
         />
       </el-form-item>
-      <el-form-item label="展示方式" prop="previewType">
-        <el-radio-group v-model="form.previewType">
-          <el-radio v-for="t in PREVIEW_TYPE_OPTIONS" :key="t.value" :value="t.value">
-            {{ t.label }}
-          </el-radio>
-        </el-radio-group>
-      </el-form-item>
-      <el-form-item v-if="form.previewType === 'model3d'" label="3D 模型" prop="model3dUrl">
-        <OssUploadInput
-          v-model="form.model3dUrl"
-          scene="model3d"
-          accept=".glb,.gltf"
-          upload-label="上传 3D 模型"
-          done-text="模型已上传"
-          hint="请上传校方提供的 3D 模型文件；也可改用「多角度图片」展示"
-        />
-      </el-form-item>
       <el-form-item label="中文介绍" prop="introZh">
         <el-input v-model="form.introZh" type="textarea" :rows="3" maxlength="2000" show-word-limit />
         <FieldHint :text="FIELD_HINTS.craftIntro" />
@@ -53,12 +36,7 @@
       <el-divider content-position="left">产品鉴赏图</el-divider>
       <div class="images-block">
         <p class="text-muted images-hint">
-          <template v-if="form.previewType === 'multi_image'">
-            上传多角度高清图，小程序按排序轮播展示；建议标注角度标签（如正面、侧面）
-          </template>
-          <template v-else>
-            选填：3D 模型不可用时自动切换为多图轮播；建议上传 2–4 张各角度备用图
-          </template>
+          上传多角度高清图，小程序按排序轮播展示；建议标注角度标签（如正面、侧面）
         </p>
         <el-button type="primary" link :icon="Plus" @click="addImage">添加一张图片</el-button>
         <el-table v-if="form.images.length" :data="form.images" size="small" border class="images-table">
@@ -131,12 +109,11 @@
 </template>
 
 <script setup lang="ts">
-/** 文创新建/编辑弹窗：展示方式、鉴赏图与咨询方式 */
+/** 文创新建/编辑弹窗：多角度鉴赏图与咨询方式 */
 import { ref } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { CraftImagePayload } from '@/api/craft'
-import { PREVIEW_TYPE_OPTIONS } from '@/api/craft'
 import CoverUploadField from '@/components/CoverUploadField.vue'
 import FieldHint from '@/components/FieldHint.vue'
 import OssUploadInput from '@/components/OssUploadInput.vue'
@@ -151,8 +128,6 @@ export interface CraftFormState {
   categoryId: number | undefined
   introZh: string
   introEn: string
-  previewType: string
-  model3dUrl: string
   sort: number
   status: number
   images: CraftImagePayload[]

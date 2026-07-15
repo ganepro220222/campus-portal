@@ -252,14 +252,6 @@ export interface CraftItem {
   introZh: string
   introEn: string
   previewType: string
-  previewTypeLabel: string
-  model3dUrl: string | null
-  /** 是否开启沉浸式鉴赏（管理端为开关状态；公开端为综合可用性） */
-  viewerEnabled?: boolean
-  posterUrl?: string | null
-  transform?: Record<string, unknown> | null
-  material?: Record<string, unknown> | null
-  camera?: Record<string, unknown> | null
   sort: number
   status: number
   images?: { id?: number; imageUrl: string; angleLabel: string; sort: number }[]

@@ -41,8 +41,6 @@ export function useCraftList() {
     categoryId: undefined as number | undefined,
     introZh: '',
     introEn: '',
-    previewType: 'multi_image',
-    model3dUrl: '',
     sort: 0,
     status: 0,
     images: [] as CraftImagePayload[],
@@ -57,18 +55,7 @@ export function useCraftList() {
   const rules: FormRules = {
     name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
     categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
-    introZh: [{ required: true, message: '请填写中文介绍', trigger: 'blur' }],
-    previewType: [{ required: true, message: '请选择展示方式', trigger: 'change' }],
-    model3dUrl: [{
-      validator: (_rule, value, callback) => {
-        if (form.previewType === 'model3d' && !value?.trim()) {
-          callback(new Error('请上传 3D 模型文件'))
-        } else {
-          callback()
-        }
-      },
-      trigger: 'blur'
-    }]
+    introZh: [{ required: true, message: '请填写中文介绍', trigger: 'blur' }]
   }
 
   async function loadCategories() {
@@ -103,8 +90,6 @@ export function useCraftList() {
     form.categoryId = categories.value[0]?.id
     form.introZh = ''
     form.introEn = ''
-    form.previewType = 'multi_image'
-    form.model3dUrl = ''
     form.sort = 0
     form.status = 0
     form.images = []
@@ -122,8 +107,6 @@ export function useCraftList() {
       form.categoryId = detail.categoryId ?? undefined
       form.introZh = detail.introZh || ''
       form.introEn = detail.introEn || ''
-      form.previewType = detail.previewType || 'multi_image'
-      form.model3dUrl = detail.model3dUrl || ''
       form.sort = detail.sort ?? 0
       form.status = detail.status ?? 0
       form.images = (detail.images || []).map((img) => ({
@@ -152,8 +135,7 @@ export function useCraftList() {
         categoryId: form.categoryId,
         introZh: form.introZh,
         introEn: form.introEn || undefined,
-        previewType: form.previewType,
-        model3dUrl: form.previewType === 'model3d' ? form.model3dUrl : undefined,
+        previewType: 'multi_image',
         sort: form.sort,
         status: form.status,
         images: form.images.filter((img) => img.imageUrl?.trim()),

@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>非遗工艺品 · 立体鉴赏</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#0a0c16;color:#fff;overflow:hidden;
+    height:100vh;width:100vw;position:fixed;
+  }
+  #stage{width:100%;height:100%;display:block}
+
+  /* ── 顶栏 ── */
+  .topbar{
+    position:absolute;top:0;left:0;right:0;padding:20px 22px 30px;
+    background:linear-gradient(180deg,rgba(8,10,22,.9) 20%,transparent);
+    pointer-events:none;z-index:10;
+    display:flex;justify-content:space-between;align-items:flex-start;
+  }
+  .titles h1{
+    font-size:20px;font-weight:600;letter-spacing:3px;
+    font-family:"Songti SC","STSong",serif;
+  }
+  .titles .sub{
+    font-size:11px;opacity:.45;margin-top:5px;letter-spacing:2px;
+  }
+  .titles .en{
+    font-size:9.5px;opacity:.3;margin-top:2px;letter-spacing:1.5px;
+    font-family:Georgia,serif;font-style:italic;
+  }
+
+  /* ── 右上角开关 ── */
+  .toggles{display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+  .tbtn{
+    display:flex;align-items:center;gap:7px;
+    padding:8px 13px;border-radius:8px;cursor:pointer;font-size:11.5px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+    backdrop-filter:blur(10px);transition:all .2s;white-space:nowrap;
+    letter-spacing:.5px;
+  }
+  .tbtn:hover{background:rgba(255,255,255,.12)}
+  .tbtn.on{
+    background:rgba(190,156,68,.9);border-color:#BE9C44;
+    color:#141414;font-weight:600;
+  }
+  .tbtn .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:rgba(255,255,255,.3);transition:all .2s;
+  }
+  .tbtn.on .dot{background:#141414;box-shadow:0 0 6px rgba(0,0,0,.3)}
+
+  /* ── 底部面板 ── */
+  .panel{
+    position:absolute;bottom:0;left:0;right:0;z-index:10;
+    background:linear-gradient(0deg,rgba(8,10,22,.95) 55%,transparent);
+    padding:26px 20px 20px;
+  }
+  .group{margin-bottom:15px}
+  .group:last-child{margin-bottom:0}
+  .label{
+    font-size:10px;opacity:.42;letter-spacing:2px;margin-bottom:9px;
+  }
+  .chips{display:flex;gap:7px;flex-wrap:wrap}
+  .chip{
+    padding:9px 16px;border-radius:22px;font-size:12.5px;cursor:pointer;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+    transition:all .2s;user-select:none;white-space:nowrap;
+    backdrop-filter:blur(8px);
+  }
+  .chip:hover{background:rgba(255,255,255,.13);transform:translateY(-1px)}
+  .chip.on{
+    background:#BE9C44;border-color:#BE9C44;color:#171717;font-weight:600;
+    box-shadow:0 3px 14px rgba(190,156,68,.35);
+  }
+
+  .sliders{display:flex;gap:20px}
+  .slider-item{flex:1}
+  .slider-item .row{
+    display:flex;justify-content:space-between;font-size:11px;
+    opacity:.6;margin-bottom:7px;
+  }
+  .slider-item .row span:last-child{
+    color:#BE9C44;opacity:.9;font-variant-numeric:tabular-nums;
+  }
+  input[type=range]{
+    width:100%;height:3px;-webkit-appearance:none;border-radius:2px;
+    background:rgba(255,255,255,.15);outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+    background:#BE9C44;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);
+    transition:transform .15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+
+  /* ── 热点（默认隐藏）── */
+  .hotspot{
+    position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;
+    border-radius:50%;cursor:pointer;z-index:5;
+    background:rgba(190,156,68,.22);
+    border:1.5px solid rgba(190,156,68,.95);
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(3px);
+    opacity:0;transform:scale(.4);pointer-events:none;
+    transition:opacity .35s cubic-bezier(.2,.9,.3,1),
+               transform .35s cubic-bezier(.2,.9,.3,1);
+  }
+  .hotspot.visible{opacity:1;transform:scale(1);pointer-events:auto}
+  .hotspot.visible:hover{transform:scale(1.22)}
+  .hotspot::after{
+    content:'';width:7px;height:7px;border-radius:50%;background:#BE9C44;
+    box-shadow:0 0 8px rgba(190,156,68,.8);
+  }
+  .hotspot.behind{opacity:.15!important;pointer-events:none}
+  .hotspot .pulse{
+    position:absolute;inset:-1.5px;border-radius:50%;
+    border:1.5px solid rgba(190,156,68,.7);animation:pulse 2.4s ease-out infinite;
+  }
+  @keyframes pulse{
+    0%{transform:scale(1);opacity:.85}
+    100%{transform:scale(2.6);opacity:0}
+  }
+
+  /* ── 气泡 ── */
+  .bubble{
+    position:absolute;z-index:20;width:262px;
+    background:rgba(16,19,36,.97);
+    border:1px solid rgba(190,156,68,.35);
+    border-radius:13px;padding:15px 17px;
+    box-shadow:0 14px 44px rgba(0,0,0,.6);
+    backdrop-filter:blur(18px);
+    opacity:0;transform:translateY(8px) scale(.96);pointer-events:none;
+    transition:all .26s cubic-bezier(.2,.85,.3,1);
+  }
+  .bubble.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+  .bubble h3{
+    font-size:14.5px;color:#BE9C44;margin-bottom:9px;
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:"Songti SC","STSong",serif;letter-spacing:1px;
+  }
+  .bubble .x{
+    cursor:pointer;opacity:.4;font-size:19px;line-height:1;
+    font-weight:300;padding:0 2px;transition:opacity .15s;
+  }
+  .bubble .x:hover{opacity:1}
+  .bubble p{font-size:12.5px;line-height:1.85;opacity:.85}
+
+  /* ── 提示 ── */
+  .hint{
+    position:absolute;bottom:200px;left:50%;transform:translateX(-50%);
+    font-size:11px;opacity:.32;letter-spacing:2px;pointer-events:none;
+    z-index:4;transition:opacity .7s;white-space:nowrap;
+  }
+  .hint.gone{opacity:0}
+
+  /* ── 加载 ── */
+  .loading{
+    position:absolute;inset:0;z-index:50;background:#0a0c16;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:18px;transition:opacity .7s;
+  }
+  .loading.gone{opacity:0;pointer-events:none}
+  .spinner{
+    width:36px;height:36px;border-radius:50%;
+    border:2.5px solid rgba(190,156,68,.15);border-top-color:#BE9C44;
+    animation:spin .9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading span{font-size:11px;opacity:.4;letter-spacing:3px}
+</style>
+</head>
+<body>
+
+<canvas id="stage"></canvas>
+
+<div class="topbar">
+  <div class="titles">
+    <h1>青花缠枝莲纹梅瓶</h1>
+    <div class="sub">元代 · 景德镇窑 · 国家级非物质文化遗产</div>
+    <div class="en">Blue-and-White Meiping with Lotus Scroll</div>
+  </div>
+  <div class="toggles">
+    <div class="tbtn on" id="btnRotate"><span class="dot"></span>自动旋转</div>
+    <div class="tbtn" id="btnSpots"><span class="dot"></span>细节标注</div>
+  </div>
+</div>
+
+<div class="hint" id="hint">拖动旋转 · 滚轮缩放 · 开启「细节标注」查看讲解</div>
+
+<div class="panel">
+  <div class="group">
+    <div class="label">环境光照</div>
+    <div class="chips" id="envChips"></div>
+  </div>
+  <div class="group">
+    <div class="label">釉面质感</div>
+    <div class="sliders">
+      <div class="slider-item">
+        <div class="row"><span>粗糙度</span><span id="rV">0.12</span></div>
+        <input type="range" id="rS" min="0" max="1" step="0.01" value="0.12">
+      </div>
+      <div class="slider-item">
+        <div class="row"><span>反射强度</span><span id="eV">1.5</span></div>
+        <input type="range" id="eS" min="0" max="3" step="0.05" value="1.5">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <span>正在构建三维场景</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   非遗工艺品 · 三维鉴赏
+   PBR 材质 + IBL 环境光照 + 轨道控制 + 三维热点标注
+   ═══════════════════════════════════════════════════════════ */
+
+const canvas = document.getElementById('stage');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(36, innerWidth/innerHeight, 0.1, 200);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+
+
+/* ═══════════════════════════════════════════════════════════
+   一、青花瓷贴图（程序生成）
+   实际项目中：这里换成 GLB 内嵌的真实贴图，无需此段
+   ═══════════════════════════════════════════════════════════ */
+
+/** 青花蓝，带浓淡变化 —— 模拟苏麻离青的晕散 */
+function blue(alpha, dark) {
+  const shades = dark
+    ? ['26,54,110','31,64,124','20,44,96']
+    : ['42,84,150','56,102,168','35,72,136'];
+  return `rgba(${shades[(Math.random()*shades.length)|0]},${alpha})`;
+}
+
+/** 绘制一朵缠枝莲 */
+function drawLotus(g, x, y, r, rot) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(rot);
+  // 外层花瓣
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.save();
+    g.rotate(a);
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.quadraticCurveTo(r*0.42, -r*0.30, 0, -r);
+    g.quadraticCurveTo(-r*0.42, -r*0.30, 0, 0);
+    g.fillStyle = blue(0.62 + Math.random()*0.2);
+    g.fill();
+    g.strokeStyle = blue(0.85, true);
+    g.lineWidth = r*0.055;
+    g.stroke();
+    g.restore();
+  }
+  // 内层花瓣
+  for (let i = 0; i < 6; i++) {
+    const a = (i/6)*Math.PI*2 + 0.4;
+    g.save();
+    g.rotate(a);
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.quadraticCurveTo(r*0.26, -r*0.2, 0, -r*0.55);
+    g.quadraticCurveTo(-r*0.26, -r*0.2, 0, 0);
+    g.fillStyle = blue(0.8, true);
+    g.fill();
+    g.restore();
+  }
+  // 花心
+  g.beginPath();
+  g.arc(0, 0, r*0.17, 0, Math.PI*2);
+  g.fillStyle = blue(0.92, true);
+  g.fill();
+  g.restore();
+}
+
+/** 绘制卷草藤蔓 */
+function drawVine(g, x0, y0, x1, y1, amp) {
+  g.beginPath();
+  g.moveTo(x0, y0);
+  const mx = (x0+x1)/2, my = (y0+y1)/2;
+  g.quadraticCurveTo(mx, my + amp, x1, y1);
+  g.strokeStyle = blue(0.72, true);
+  g.lineWidth = 5;
+  g.lineCap = 'round';
+  g.stroke();
+
+  // 藤上的叶片
+  for (let t = 0.2; t < 0.9; t += 0.28) {
+    const px = (1-t)*(1-t)*x0 + 2*(1-t)*t*mx + t*t*x1;
+    const py = (1-t)*(1-t)*y0 + 2*(1-t)*t*(my+amp) + t*t*y1;
+    g.save();
+    g.translate(px, py);
+    g.rotate(Math.random()*Math.PI*2);
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.quadraticCurveTo(16, -13, 34, 0);
+    g.quadraticCurveTo(16, 13, 0, 0);
+    g.fillStyle = blue(0.6);
+    g.fill();
+    g.restore();
+  }
+}
+
+/** 生成青花梅瓶的展开贴图 */
+function makePorcelainTexture() {
+  const W = 2048, H = 2048;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+
+  // ── 胎体底色：温润的白，略带青灰 ──
+  const base = g.createLinearGradient(0, 0, 0, H);
+  base.addColorStop(0.00, '#f0f2ee');
+  base.addColorStop(0.50, '#f7f8f4');
+  base.addColorStop(1.00, '#eceee9');
+  g.fillStyle = base;
+  g.fillRect(0, 0, W, H);
+
+  // 胎体细微斑点（釉面杂质，增加真实感）
+  for (let i = 0; i < 2600; i++) {
+    g.fillStyle = `rgba(${180+Math.random()*40|0},${190+Math.random()*40|0},${185+Math.random()*40|0},${Math.random()*0.09})`;
+    g.beginPath();
+    g.arc(Math.random()*W, Math.random()*H, Math.random()*2.4, 0, Math.PI*2);
+    g.fill();
+  }
+
+  // 说明：v=0 在贴图底部对应瓶底，v=1 在顶部对应瓶口
+  // canvas 的 y 轴向下，所以 y = (1-v) * H
+  const V = v => (1 - v) * H;
+
+  // ── 口沿：双弦纹 ──
+  g.fillStyle = blue(0.88, true);
+  g.fillRect(0, V(0.985), W, 12);
+  g.fillRect(0, V(0.945), W, 7);
+
+  // ── 颈部：蕉叶纹 ──
+  const neckTop = V(0.93), neckBot = V(0.80);
+  const leafCount = 16;
+  for (let i = 0; i < leafCount; i++) {
+    const x = (i + 0.5) * (W / leafCount);
+    const w = W / leafCount * 0.40;
+    g.beginPath();
+    g.moveTo(x, neckBot);
+    g.lineTo(x - w, neckTop + 14);
+    g.lineTo(x + w, neckTop + 14);
+    g.closePath();
+    g.fillStyle = blue(0.55 + Math.random()*0.22);
+    g.fill();
+    g.strokeStyle = blue(0.85, true);
+    g.lineWidth = 3.5;
+    g.stroke();
+    // 叶脉
+    g.beginPath();
+    g.moveTo(x, neckBot);
+    g.lineTo(x, neckTop + 16);
+    g.strokeStyle = blue(0.8, true);
+    g.lineWidth = 2.5;
+    g.stroke();
+  }
+
+  // ── 颈肩交界：回纹带 ──
+  g.fillStyle = blue(0.8, true);
+  g.fillRect(0, V(0.795), W, 8);
+  const meanderY = V(0.785);
+  for (let x = 0; x < W; x += 62) {
+    g.strokeStyle = blue(0.72, true);
+    g.lineWidth = 5;
+    g.beginPath();
+    g.moveTo(x + 8,  meanderY);
+    g.lineTo(x + 8,  meanderY - 26);
+    g.lineTo(x + 44, meanderY - 26);
+    g.lineTo(x + 44, meanderY - 8);
+    g.lineTo(x + 24, meanderY - 8);
+    g.stroke();
+  }
+  g.fillStyle = blue(0.8, true);
+  g.fillRect(0, V(0.755), W, 8);
+
+  // ── 肩部：缠枝莲主带 ──
+  const shY = V(0.685);
+  for (let i = 0; i < 6; i++) {
+    const x = (i + 0.5) * (W/6);
+    drawVine(g, x - W/12, shY, x + W/12, shY, 56 * (i%2 ? 1 : -1));
+    drawLotus(g, x, shY, 66, Math.random()*Math.PI);
+  }
+
+  // ── 腹部主纹饰：缠枝牡丹（最大的一圈）──
+  const bodyY = V(0.42);
+  g.fillStyle = blue(0.78, true);
+  g.fillRect(0, V(0.60), W, 7);
+
+  for (let i = 0; i < 4; i++) {
+    const x = (i + 0.5) * (W/4);
+    // 大朵主花
+    drawLotus(g, x, bodyY, 132, Math.random()*Math.PI);
+    // 环绕的藤蔓
+    drawVine(g, x - W/8, bodyY - 96, x + W/8, bodyY - 96, 82);
+    drawVine(g, x - W/8, bodyY + 108, x + W/8, bodyY + 108, -78);
+    // 小花点缀
+    drawLotus(g, x + W/8, bodyY - 130, 46, Math.random()*Math.PI);
+    drawLotus(g, x - W/8, bodyY + 140, 40, Math.random()*Math.PI);
+  }
+
+  g.fillStyle = blue(0.78, true);
+  g.fillRect(0, V(0.235), W, 7);
+
+  // ── 胫部：莲瓣纹（仰莲）──
+  const petalTop = V(0.225), petalBot = V(0.09);
+  const petalCount = 20;
+  for (let i = 0; i < petalCount; i++) {
+    const x = (i + 0.5) * (W/petalCount);
+    const w = W/petalCount * 0.44;
+    g.beginPath();
+    g.moveTo(x, petalBot);
+    g.quadraticCurveTo(x - w, petalBot - (petalBot-petalTop)*0.55, x, petalTop);
+    g.quadraticCurveTo(x + w, petalBot - (petalBot-petalTop)*0.55, x, petalBot);
+    g.fillStyle = blue(0.50 + Math.random()*0.25);
+    g.fill();
+    g.strokeStyle = blue(0.88, true);
+    g.lineWidth = 4;
+    g.stroke();
+    // 瓣心
+    g.beginPath();
+    g.arc(x, petalBot - (petalBot-petalTop)*0.42, 11, 0, Math.PI*2);
+    g.fillStyle = blue(0.9, true);
+    g.fill();
+  }
+
+  // ── 圈足：弦纹 ──
+  g.fillStyle = blue(0.85, true);
+  g.fillRect(0, V(0.075), W, 9);
+
+  // ── 足底：砂胎无釉（火石红）──
+  const footGrad = g.createLinearGradient(0, V(0.06), 0, H);
+  footGrad.addColorStop(0, '#e8e0d2');
+  footGrad.addColorStop(1, '#c9a882');
+  g.fillStyle = footGrad;
+  g.fillRect(0, V(0.06), W, H - V(0.06));
+
+  // ── 整体青料晕散（模拟高温下的自然渗透）──
+  g.globalCompositeOperation = 'multiply';
+  for (let i = 0; i < 70; i++) {
+    const x = Math.random()*W, y = Math.random()*H*0.9;
+    const r = 40 + Math.random()*90;
+    const blur = g.createRadialGradient(x, y, 0, x, y, r);
+    blur.addColorStop(0, 'rgba(120,150,200,0.10)');
+    blur.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = blur;
+    g.fillRect(x-r, y-r, r*2, r*2);
+  }
+  g.globalCompositeOperation = 'source-over';
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.encoding = THREE.sRGBEncoding;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   二、环境贴图（IBL）—— 反射的来源
+   实际项目：直接把 VR 展馆的全景图丢进来即可
+     new THREE.TextureLoader().load('展馆全景.jpg', tex => {
+       tex.mapping = THREE.EquirectangularReflectionMapping;
+       scene.environment = pmrem.fromEquirectangular(tex).texture;
+     })
+   ═══════════════════════════════════════════════════════════ */
+
+function makeEnvironment(preset) {
+  const W = 2048, H = 1024;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+
+  if (preset === 'hall') {
+    /* ── 展馆实景：中式木构展厅 ── */
+    // 天花
+    const ceil = g.createLinearGradient(0, 0, 0, H*0.30);
+    ceil.addColorStop(0, '#2b2119');
+    ceil.addColorStop(1, '#4a3a2a');
+    g.fillStyle = ceil; g.fillRect(0, 0, W, H*0.30);
+
+    // 墙面（暖色木质）
+    const wall = g.createLinearGradient(0, H*0.30, 0, H*0.56);
+    wall.addColorStop(0, '#6d5940');
+    wall.addColorStop(0.55, '#8b7355');
+    wall.addColorStop(1, '#5c4a35');
+    g.fillStyle = wall; g.fillRect(0, H*0.30, W, H*0.26);
+
+    // 地面（深色石材，带反光）
+    const floor = g.createLinearGradient(0, H*0.56, 0, H);
+    floor.addColorStop(0, '#3d332a');
+    floor.addColorStop(0.35, '#2a231c');
+    floor.addColorStop(1, '#15110d');
+    g.fillStyle = floor; g.fillRect(0, H*0.56, W, H*0.44);
+
+    // 天花射灯（在釉面上形成明亮的点状高光）
+    for (let i = 0; i < 10; i++) {
+      const x = (i + 0.5) * (W/10);
+      const y = H * 0.11;
+      const r = 78;
+      const sp = g.createRadialGradient(x, y, 0, x, y, r);
+      sp.addColorStop(0.00, 'rgba(255,252,242,1)');
+      sp.addColorStop(0.22, 'rgba(255,244,220,0.85)');
+      sp.addColorStop(0.55, 'rgba(255,232,190,0.30)');
+      sp.addColorStop(1.00, 'rgba(255,225,175,0)');
+      g.fillStyle = sp;
+      g.fillRect(x-r, y-r, r*2, r*2);
+      // 灯光向下投射的锥形
+      const cone = g.createLinearGradient(x, y, x, H*0.56);
+      cone.addColorStop(0, 'rgba(255,240,205,0.16)');
+      cone.addColorStop(1, 'rgba(255,240,205,0)');
+      g.fillStyle = cone;
+      g.beginPath();
+      g.moveTo(x-14, y);
+      g.lineTo(x+14, y);
+      g.lineTo(x+62, H*0.56);
+      g.lineTo(x-62, H*0.56);
+      g.closePath();
+      g.fill();
+    }
+
+    // 展柜（发光的矩形壁龛，会在瓶身拉出竖长高光）
+    for (let i = 0; i < 8; i++) {
+      const x = i * (W/8) + W/32;
+      const w = W/8 * 0.52;
+      const y = H*0.33, h = H*0.20;
+      // 柜内暖光
+      const box = g.createLinearGradient(x, y, x, y+h);
+      box.addColorStop(0, 'rgba(255,238,205,0.75)');
+      box.addColorStop(0.5, 'rgba(255,228,185,0.45)');
+      box.addColorStop(1, 'rgba(220,190,150,0.20)');
+      g.fillStyle = box;
+      g.fillRect(x, y, w, h);
+      // 柜框
+      g.strokeStyle = 'rgba(40,30,20,0.85)';
+      g.lineWidth = 6;
+      g.strokeRect(x, y, w, h);
+      // 柜内展品剪影
+      g.fillStyle = 'rgba(60,45,32,0.55)';
+      g.beginPath();
+      g.ellipse(x + w/2, y + h*0.72, w*0.14, h*0.24, 0, 0, Math.PI*2);
+      g.fill();
+    }
+
+    // 立柱（暗色竖条，制造层次）
+    for (let i = 0; i < 8; i++) {
+      const x = i * (W/8) + W/8 - 22;
+      const col = g.createLinearGradient(x, 0, x+44, 0);
+      col.addColorStop(0, 'rgba(28,20,14,0.75)');
+      col.addColorStop(0.5, 'rgba(70,54,38,0.55)');
+      col.addColorStop(1, 'rgba(28,20,14,0.75)');
+      g.fillStyle = col;
+      g.fillRect(x, H*0.28, 44, H*0.28);
+    }
+
+    // 悬挂的红色卷轴（暖色反射点缀）
+    for (let i = 0; i < 4; i++) {
+      const x = i * (W/4) + W/8 - 26;
+      g.fillStyle = 'rgba(140,42,38,0.55)';
+      g.fillRect(x, H*0.31, 52, H*0.16);
+      g.fillStyle = 'rgba(190,156,68,0.5)';
+      g.fillRect(x, H*0.31, 52, 8);
+    }
+
+    // 地面对灯光的反射（让下半部也有光，避免瓶底死黑）
+    for (let i = 0; i < 10; i++) {
+      const x = (i + 0.5) * (W/10);
+      const y = H * 0.70;
+      const r = 96;
+      const rf = g.createRadialGradient(x, y, 0, x, y, r);
+      rf.addColorStop(0, 'rgba(255,225,175,0.20)');
+      rf.addColorStop(1, 'rgba(255,225,175,0)');
+      g.fillStyle = rf;
+      g.fillRect(x-r, y-r, r*2, r*2);
+    }
+
+    // 灯带（水平长条，在瓶身形成细长的水平高光）
+    g.fillStyle = 'rgba(255,246,225,0.30)';
+    g.fillRect(0, H*0.295, W, 6);
+
+  } else if (preset === 'sunny') {
+    /* ── 晴天户外：强烈直射，锐利高光 ── */
+    const sky = g.createLinearGradient(0, 0, 0, H*0.52);
+    sky.addColorStop(0.00, '#1e5fb8');
+    sky.addColorStop(0.35, '#5fa3e0');
+    sky.addColorStop(0.75, '#a9d2f2');
+    sky.addColorStop(1.00, '#e2f0fb');
+    g.fillStyle = sky; g.fillRect(0, 0, W, H*0.52);
+
+    // 远山
+    g.fillStyle = 'rgba(120,140,160,0.5)';
+    g.beginPath();
+    g.moveTo(0, H*0.52);
+    for (let x = 0; x <= W; x += 60) {
+      g.lineTo(x, H*0.52 - 32 - Math.sin(x*0.006)*26 - Math.random()*14);
+    }
+    g.lineTo(W, H*0.52);
+    g.closePath();
+    g.fill();
+
+    // 地面
+    const grd = g.createLinearGradient(0, H*0.52, 0, H);
+    grd.addColorStop(0, '#9a8f6e');
+    grd.addColorStop(1, '#4e4738');
+    g.fillStyle = grd; g.fillRect(0, H*0.52, W, H*0.48);
+
+    // 太阳（小而极亮 → 锐利镜面高光）
+    const sx = W*0.70, sy = H*0.17;
+    const sun = g.createRadialGradient(sx, sy, 0, sx, sy, 160);
+    sun.addColorStop(0.00, 'rgba(255,255,255,1)');
+    sun.addColorStop(0.07, 'rgba(255,252,235,1)');
+    sun.addColorStop(0.30, 'rgba(255,244,205,0.45)');
+    sun.addColorStop(1.00, 'rgba(255,235,190,0)');
+    g.fillStyle = sun; g.fillRect(sx-160, sy-160, 320, 320);
+
+    // 云
+    for (let i = 0; i < 14; i++) {
+      const x = Math.random()*W, y = Math.random()*H*0.34;
+      const r = 40 + Math.random()*80;
+      const c = g.createRadialGradient(x, y, 0, x, y, r);
+      c.addColorStop(0, 'rgba(255,255,255,0.55)');
+      c.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = c; g.fillRect(x-r, y-r, r*2, r*2);
+    }
+
+  } else if (preset === 'cloudy') {
+    /* ── 阴天：大面积漫射，高光柔和 ── */
+    const sky = g.createLinearGradient(0, 0, 0, H*0.54);
+    sky.addColorStop(0.00, '#a8b2bd');
+    sky.addColorStop(0.50, '#cbd3da');
+    sky.addColorStop(1.00, '#dde3e8');
+    g.fillStyle = sky; g.fillRect(0, 0, W, H*0.54);
+
+    const grd = g.createLinearGradient(0, H*0.54, 0, H);
+    grd.addColorStop(0, '#7d786e');
+    grd.addColorStop(1, '#413e38');
+    g.fillStyle = grd; g.fillRect(0, H*0.54, W, H*0.46);
+
+    // 厚重云层：制造柔和的大光源
+    for (let i = 0; i < 32; i++) {
+      const x = Math.random()*W, y = Math.random()*H*0.48;
+      const r = 70 + Math.random()*130;
+      const c = g.createRadialGradient(x, y, 0, x, y, r);
+      c.addColorStop(0, 'rgba(255,255,255,0.40)');
+      c.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = c; g.fillRect(x-r, y-r, r*2, r*2);
+    }
+
+  } else {
+    /* ── 影棚：经典三点布光 ── */
+    g.fillStyle = '#1a1c24';
+    g.fillRect(0, 0, W, H);
+
+    // 主光：大柔光箱（矩形，在釉面上形成漂亮的矩形高光）
+    const kx = W*0.26, ky = H*0.26, kw = 380, kh = 260;
+    const key = g.createRadialGradient(kx, ky, 0, kx, ky, 300);
+    key.addColorStop(0.00, 'rgba(255,255,255,1)');
+    key.addColorStop(0.40, 'rgba(255,255,255,0.55)');
+    key.addColorStop(1.00, 'rgba(255,255,255,0)');
+    g.fillStyle = key; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,255,255,0.9)';
+    g.fillRect(kx - kw/2, ky - kh/2, kw, kh);
+
+    // 辅光：冷调，填充暗部
+    const fx = W*0.72, fy = H*0.36;
+    const fill = g.createRadialGradient(fx, fy, 0, fx, fy, 250);
+    fill.addColorStop(0, 'rgba(190,210,255,0.60)');
+    fill.addColorStop(1, 'rgba(190,210,255,0)');
+    g.fillStyle = fill; g.fillRect(0, 0, W, H);
+
+    // 轮廓光：背后
+    const rim = g.createRadialGradient(W*0.50, H*0.68, 0, W*0.50, H*0.68, 200);
+    rim.addColorStop(0, 'rgba(150,170,220,0.35)');
+    rim.addColorStop(1, 'rgba(150,170,220,0)');
+    g.fillStyle = rim; g.fillRect(0, 0, W, H);
+
+    // 地面渐变
+    const grd = g.createLinearGradient(0, H*0.60, 0, H);
+    grd.addColorStop(0, 'rgba(45,48,60,1)');
+    grd.addColorStop(1, 'rgba(12,13,18,1)');
+    g.fillStyle = grd; g.fillRect(0, H*0.60, W, H*0.40);
+  }
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  return tex;
+}
+
+const ENV_PRESETS = {
+  hall:   { name:'展馆实景', exposure:1.30, bg:0x1a1510 },
+  studio: { name:'影棚布光', exposure:1.00, bg:0x14161d },
+  sunny:  { name:'晴天户外', exposure:0.85, bg:0x5fa3e0 },
+  cloudy: { name:'阴天柔光', exposure:1.25, bg:0x9aa4ae }
+};
+
+let currentEnv = null;
+
+function applyEnvironment(key) {
+  const cfg = ENV_PRESETS[key];
+  const equirect = makeEnvironment(key);
+  const envMap = pmrem.fromEquirectangular(equirect).texture;
+
+  if (currentEnv) currentEnv.dispose();
+  currentEnv = envMap;
+
+  scene.environment = envMap;           // ← 工艺品表面反射的就是它
+  scene.background  = new THREE.Color(cfg.bg);
+  renderer.toneMappingExposure = cfg.exposure;
+
+  equirect.dispose();
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   三、梅瓶模型
+   实际项目：GLTFLoader.load(modelUrl) 替换掉这一整段
+   ═══════════════════════════════════════════════════════════ */
+
+// 梅瓶器型：小口、短颈、丰肩、瘦胫
+const profile = [];
+const SEG = 180;
+for (let i = 0; i <= SEG; i++) {
+  const t = i / SEG;                    // 0=底 → 1=口
+  const y = t * 3.0 - 1.5;
+  let r;
+
+  if (t < 0.030) {                      // 足底
+    r = 0.52 + t * 3.2;
+  } else if (t < 0.075) {               // 圈足外撇
+    const u = (t - 0.030) / 0.045;
+    r = 0.62 - u * 0.05;
+  } else if (t < 0.42) {                // 胫部 → 腹部，渐次饱满
+    const u = (t - 0.075) / 0.345;
+    r = 0.57 + Math.pow(u, 0.72) * 0.52;
+  } else if (t < 0.60) {                // 最大腹径（丰肩前的顶点）
+    const u = (t - 0.42) / 0.18;
+    r = 1.09 + Math.sin(u * Math.PI) * 0.055;
+  } else if (t < 0.80) {                // 肩部急收
+    const u = (t - 0.60) / 0.20;
+    r = 1.09 - Math.pow(u, 1.45) * 0.72;
+  } else if (t < 0.90) {                // 颈部
+    const u = (t - 0.80) / 0.10;
+    r = 0.37 - u * 0.11;
+  } else if (t < 0.965) {               // 颈口过渡
+    const u = (t - 0.90) / 0.065;
+    r = 0.26 + u * 0.04;
+  } else {                              // 侈口外翻
+    const u = (t - 0.965) / 0.035;
+    r = 0.30 + Math.pow(u, 1.6) * 0.14;
+  }
+  profile.push(new THREE.Vector2(Math.max(r, 0.03), y));
+}
+
+const geometry = new THREE.LatheGeometry(profile, 192);
+geometry.computeVertexNormals();
+
+const porcelainMap = makePorcelainTexture();
+
+const material = new THREE.MeshStandardMaterial({
+  map: porcelainMap,
+  roughness: 0.12,          // 釉面光洁
+  metalness: 0.04,          // 陶瓷是绝缘体，金属度接近 0
+  envMapIntensity: 1.5      // 环境反射强度
+});
+
+const vase = new THREE.Mesh(geometry, material);
+vase.position.y = 0.10;
+vase.castShadow = true;
+scene.add(vase);
+
+/* ── 底座 ── */
+const pedestal = new THREE.Mesh(
+  new THREE.CylinderGeometry(1.30, 1.45, 0.20, 96),
+  new THREE.MeshStandardMaterial({
+    color: 0x1c1a18, roughness: 0.35, metalness: 0.15, envMapIntensity: 0.8
+  })
+);
+pedestal.position.y = -1.50;
+pedestal.receiveShadow = true;
+scene.add(pedestal);
+
+/* ── 接触阴影（让瓶子"落地"）── */
+const shadowCv = document.createElement('canvas');
+shadowCv.width = shadowCv.height = 256;
+const sg = shadowCv.getContext('2d');
+const sgrad = sg.createRadialGradient(128, 128, 0, 128, 128, 128);
+sgrad.addColorStop(0.00, 'rgba(0,0,0,0.62)');
+sgrad.addColorStop(0.45, 'rgba(0,0,0,0.28)');
+sgrad.addColorStop(1.00, 'rgba(0,0,0,0)');
+sg.fillStyle = sgrad;
+sg.fillRect(0, 0, 256, 256);
+
+const contactShadow = new THREE.Mesh(
+  new THREE.PlaneGeometry(2.6, 2.6),
+  new THREE.MeshBasicMaterial({
+    map: new THREE.CanvasTexture(shadowCv),
+    transparent: true, depthWrite: false, opacity: 0.85
+  })
+);
+contactShadow.rotation.x = -Math.PI/2;
+contactShadow.position.y = -1.395;
+scene.add(contactShadow);
+
+
+/* ═══════════════════════════════════════════════════════════
+   四、补充灯光
+   ═══════════════════════════════════════════════════════════ */
+const keyLight = new THREE.DirectionalLight(0xfff2dc, 1.15);
+keyLight.position.set(4.5, 7, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(1024, 1024);
+keyLight.shadow.camera.near = 1;
+keyLight.shadow.camera.far = 22;
+keyLight.shadow.camera.left = -4;
+keyLight.shadow.camera.right = 4;
+keyLight.shadow.camera.top = 4;
+keyLight.shadow.camera.bottom = -4;
+keyLight.shadow.bias = -0.0012;
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0x9fbce8, 0.55);
+rimLight.position.set(-5, 2.5, -4.5);
+scene.add(rimLight);
+
+
+/* ═══════════════════════════════════════════════════════════
+   五、热点标注（默认隐藏，由开关控制）
+   ═══════════════════════════════════════════════════════════ */
+const HOTSPOTS = [
+  { pos:new THREE.Vector3(0, 1.42, 0.30), title:'侈口·蕉叶纹',
+    text:'梅瓶口小而外撇，颈短。颈部绘蕉叶纹，叶脉以浓青勾勒，叶身填淡青，浓淡分明。口径仅容梅枝一支，"梅瓶"之名由此而来。' },
+
+  { pos:new THREE.Vector3(0.72, 0.62, 0.72), title:'丰肩·缠枝莲',
+    text:'肩部圆浑饱满，是梅瓶最具张力之处。缠枝莲纹绕肩一周，藤蔓婉转，花头饱满。青料浓聚处可见"铁锈斑"，为高温还原焰烧成时苏麻离青自然析出所致。' },
+
+  { pos:new THREE.Vector3(-0.98, -0.18, 0.60), title:'腹部·缠枝牡丹',
+    text:'腹部为主体纹饰区，绘缠枝牡丹四组。一笔点划，线条流畅无滞。花瓣以青料分水，浓淡相间，层次分明，为元青花典型笔法。' },
+
+  { pos:new THREE.Vector3(0.55, -1.02, 0.58), title:'胫部·仰莲瓣',
+    text:'胫部饰仰莲瓣纹一周，共二十瓣。莲瓣内填卷草，瓣与瓣之间不相连，各自独立——此为元代莲瓣的显著特征，明代以后则多相互借边。' },
+
+  { pos:new THREE.Vector3(0, -1.44, 0.52), title:'圈足·砂底',
+    text:'底部砂胎无釉，可见火石红。足墙微外撇，修足工整而略见旋痕。露胎处胎质细白，含微量铁质，是判断窑口与年代的关键依据。' }
+];
+
+const bubble = document.createElement('div');
+bubble.className = 'bubble';
+document.body.appendChild(bubble);
+
+let activeSpot   = null;
+let spotsVisible = false;
+
+HOTSPOTS.forEach((spot, i) => {
+  const el = document.createElement('div');
+  el.className = 'hotspot';
+  el.innerHTML = '<div class="pulse"></div>';
+  el.addEventListener('click', e => { e.stopPropagation(); openBubble(i); });
+  document.body.appendChild(el);
+  spot.el = el;
+});
+
+function openBubble(i) {
+  const spot = HOTSPOTS[i];
+  activeSpot = spot;
+  bubble.innerHTML =
+    '<h3>' + spot.title + '<span class="x">&times;</span></h3>' +
+    '<p>' + spot.text + '</p>';
+  bubble.querySelector('.x').addEventListener('click', e => {
+    e.stopPropagation(); closeBubble();
+  });
+  bubble.classList.add('show');
+}
+
+function closeBubble() {
+  activeSpot = null;
+  bubble.classList.remove('show');
+}
+
+canvas.addEventListener('pointerdown', closeBubble);
+
+function setSpotsVisible(on) {
+  spotsVisible = on;
+  if (!on) closeBubble();
+  // 依次淡入，有节奏感
+  HOTSPOTS.forEach((spot, i) => {
+    setTimeout(() => {
+      spot.el.classList.toggle('visible', on);
+    }, on ? i * 75 : 0);
+  });
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   六、轨道控制（带阻尼惯性）
+   ═══════════════════════════════════════════════════════════ */
+const orbit = {
+  theta: 0.35, phi: Math.PI * 0.47, radius: 8.4,
+  vTheta: 0, vPhi: 0,
+  target: new THREE.Vector3(0, 0, 0),
+  autoRotate: true
+};
+const MIN_PHI = 0.30, MAX_PHI = Math.PI - 0.30;
+const MIN_R = 4.2, MAX_R = 16;
+
+let dragging = false, lastX = 0, lastY = 0, pinchStart = 0;
+
+canvas.addEventListener('pointerdown', e => {
+  dragging = true;
+  setAutoRotate(false);
+  lastX = e.clientX; lastY = e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+  hideHint();
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  orbit.vTheta = -dx * 0.0055;
+  orbit.vPhi   = -dy * 0.0055;
+});
+
+canvas.addEventListener('pointerup',     () => dragging = false);
+canvas.addEventListener('pointercancel', () => dragging = false);
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  orbit.radius *= (1 + Math.sign(e.deltaY) * 0.085);
+  orbit.radius = Math.max(MIN_R, Math.min(MAX_R, orbit.radius));
+  hideHint();
+}, { passive:false });
+
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    pinchStart = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive:true });
+
+canvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 2 && pinchStart) {
+    const d = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    orbit.radius *= pinchStart / d;
+    orbit.radius = Math.max(MIN_R, Math.min(MAX_R, orbit.radius));
+    pinchStart = d;
+    setAutoRotate(false);
+  }
+}, { passive:true });
+
+
+/* ═══════════════════════════════════════════════════════════
+   七、UI 绑定
+   ═══════════════════════════════════════════════════════════ */
+const btnRotate = document.getElementById('btnRotate');
+const btnSpots  = document.getElementById('btnSpots');
+
+function setAutoRotate(on) {
+  orbit.autoRotate = on;
+  btnRotate.classList.toggle('on', on);
+}
+
+btnRotate.addEventListener('click', () => setAutoRotate(!orbit.autoRotate));
+
+btnSpots.addEventListener('click', () => {
+  const next = !spotsVisible;
+  btnSpots.classList.toggle('on', next);
+  setSpotsVisible(next);
+  hideHint();
+});
+
+const envChips = document.getElementById('envChips');
+Object.keys(ENV_PRESETS).forEach((key, i) => {
+  const chip = document.createElement('div');
+  chip.className = 'chip' + (i === 0 ? ' on' : '');
+  chip.textContent = ENV_PRESETS[key].name;
+  chip.addEventListener('click', () => {
+    envChips.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+    chip.classList.add('on');
+    applyEnvironment(key);
+  });
+  envChips.appendChild(chip);
+});
+
+const rS = document.getElementById('rS'), rV = document.getElementById('rV');
+const eS = document.getElementById('eS'), eV = document.getElementById('eV');
+
+rS.addEventListener('input', () => {
+  material.roughness = parseFloat(rS.value);
+  rV.textContent = parseFloat(rS.value).toFixed(2);
+});
+eS.addEventListener('input', () => {
+  material.envMapIntensity = parseFloat(eS.value);
+  eV.textContent = parseFloat(eS.value).toFixed(1);
+});
+
+const hintEl = document.getElementById('hint');
+let hintHidden = false;
+function hideHint() {
+  if (hintHidden) return;
+  hintHidden = true;
+  hintEl.classList.add('gone');
+}
+setTimeout(hideHint, 6500);
+
+
+/* ═══════════════════════════════════════════════════════════
+   八、主循环
+   ═══════════════════════════════════════════════════════════ */
+const projected  = new THREE.Vector3();
+const raycaster  = new THREE.Raycaster();
+const worldPos   = new THREE.Vector3();
+
+function updateHotspots() {
+  if (!spotsVisible) return;
+
+  HOTSPOTS.forEach(spot => {
+    worldPos.copy(spot.pos).applyMatrix4(vase.matrixWorld);
+    projected.copy(worldPos).project(camera);
+
+    const sx = (projected.x * 0.5 + 0.5) * innerWidth;
+    const sy = (-projected.y * 0.5 + 0.5) * innerHeight;
+
+    spot.el.style.left = sx + 'px';
+    spot.el.style.top  = sy + 'px';
+
+    // 遮挡判定：热点转到模型背面时淡出
+    const dir  = worldPos.clone().sub(camera.position).normalize();
+    raycaster.set(camera.position, dir);
+    const hits = raycaster.intersectObject(vase);
+    const dist = camera.position.distanceTo(worldPos);
+    const occluded = hits.length > 0 && hits[0].distance < dist - 0.06;
+
+    spot.el.classList.toggle('behind', occluded);
+
+    if (activeSpot === spot) {
+      const bw = 262;
+      let bx = sx + 22;
+      let by = sy - 30;
+      if (bx + bw > innerWidth - 14) bx = sx - bw - 22;
+      bx = Math.max(12, bx);
+      by = Math.max(96, Math.min(by, innerHeight - 230));
+      bubble.style.left = bx + 'px';
+      bubble.style.top  = by + 'px';
+    }
+  });
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  // 阻尼惯性
+  orbit.theta += orbit.vTheta;
+  orbit.phi   += orbit.vPhi;
+  orbit.vTheta *= 0.90;
+  orbit.vPhi   *= 0.90;
+  orbit.phi = Math.max(MIN_PHI, Math.min(MAX_PHI, orbit.phi));
+
+  if (orbit.autoRotate && !dragging) orbit.theta += 0.0026;
+
+  camera.position.set(
+    orbit.target.x + orbit.radius * Math.sin(orbit.phi) * Math.sin(orbit.theta),
+    orbit.target.y + orbit.radius * Math.cos(orbit.phi),
+    orbit.target.z + orbit.radius * Math.sin(orbit.phi) * Math.cos(orbit.theta)
+  );
+  camera.lookAt(orbit.target);
+
+  vase.updateMatrixWorld();
+  updateHotspots();
+
+  renderer.render(scene, camera);
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ── 启动 ── */
+applyEnvironment('hall');
+animate();
+setTimeout(() => document.getElementById('loading').classList.add('gone'), 700);
+</script>
+</body>
+</html>

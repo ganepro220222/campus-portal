@@ -6,7 +6,7 @@
     </div>
 
     <p class="text-muted">
-      维护工艺品名称、介绍、展示图片或 3D 模型、咨询联系方式；上架后小程序「文化好物」中展示。
+      维护工艺品名称、介绍、多角度鉴赏图与咨询联系方式；上架后小程序「文化好物」中展示。
     </p>
 
     <div class="toolbar">
@@ -30,13 +30,6 @@
       <el-table-column prop="sort" label="排序" width="70" align="center" />
       <el-table-column prop="name" label="名称" min-width="160" show-overflow-tooltip />
       <el-table-column prop="categoryName" label="分类" width="110" />
-      <el-table-column label="展示方式" width="110" align="center">
-        <template #default="{ row }">
-          <el-tag size="small" :type="row.previewType === 'model3d' ? 'warning' : 'info'">
-            {{ row.previewTypeLabel }}
-          </el-tag>
-        </template>
-      </el-table-column>
       <el-table-column prop="introZh" label="中文简介" min-width="180" show-overflow-tooltip />
       <el-table-column label="状态" width="80" align="center">
         <template #default="{ row }">
@@ -45,15 +38,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="300" fixed="right" align="center">
+      <el-table-column label="操作" width="220" fixed="right" align="center">
         <template #default="{ row }">
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
-          <el-button
-            v-if="canWrite && row.previewType === 'model3d'"
-            link
-            type="primary"
-            @click="openViewer(row)"
-          >沉浸式鉴赏</el-button>
           <el-button
             v-if="canPublish && row.status !== 1"
             link
@@ -96,22 +83,14 @@
       :rules="rules"
       @save="onSave"
     />
-
-    <CraftViewerDialog
-      v-model:visible="viewerVisible"
-      :craft="viewerCraft"
-      @saved="loadData"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 /** 文创列表页：筛选表格与快捷入口，业务逻辑见 useCraftList */
-import { ref } from 'vue'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { useCraftList } from '@/composables/useCraftList'
 import CraftEditDialog from './CraftEditDialog.vue'
-import CraftViewerDialog from './CraftViewerDialog.vue'
 
 const {
   canWrite,
@@ -137,13 +116,6 @@ const {
   onUnpublish,
   onDelete
 } = useCraftList()
-
-const viewerVisible = ref(false)
-const viewerCraft = ref<{ id: number; name: string } | null>(null)
-function openViewer(row: { id: number; name: string }) {
-  viewerCraft.value = { id: row.id, name: row.name }
-  viewerVisible.value = true
-}
 </script>
 
 <style scoped lang="scss">

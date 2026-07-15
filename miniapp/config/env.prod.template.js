@@ -7,21 +7,15 @@ const ENV = 'prod' // dev | staging | prod
 const configMap = {
   dev: {
     baseUrl: 'http://localhost:8080/api/v1',
-    useMock: true,
-    craftViewerBaseUrl: 'https://shuyuan.gzcpu.edu.cn',
-    craftViewerAllowedHosts: ['shuyuan.gzcpu.edu.cn']
+    useMock: true
   },
   staging: {
     baseUrl: 'https://staging.YOUR_DOMAIN.edu.cn/api/v1',
-    useMock: false,
-    craftViewerBaseUrl: 'https://staging.YOUR_DOMAIN.edu.cn',
-    craftViewerAllowedHosts: ['staging.YOUR_DOMAIN.edu.cn']
+    useMock: false
   },
   prod: {
     baseUrl: 'https://api.YOUR_DOMAIN.edu.cn/api/v1',
-    useMock: false,
-    craftViewerBaseUrl: 'https://shuyuan.gzcpu.edu.cn',
-    craftViewerAllowedHosts: ['shuyuan.gzcpu.edu.cn']
+    useMock: false
   }
 }
 
@@ -30,7 +24,5 @@ const config = configMap[ENV] || configMap.prod
 module.exports = {
   ENV,
   baseUrl: config.baseUrl,
-  useMock: config.useMock,
-  craftViewerBaseUrl: config.craftViewerBaseUrl,
-  craftViewerAllowedHosts: config.craftViewerAllowedHosts
+  useMock: config.useMock
 }

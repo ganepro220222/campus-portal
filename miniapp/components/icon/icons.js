@@ -58,6 +58,7 @@ const ICONS = {
 
   /* ── 个人中心 ── */
   'medal':       { i: '<path d="M8.2 12.5 5 22l7-4 7 4-3.2-9.5"/><circle cx="12" cy="8" r="6"/>', m: 'stroke', w: 2 },
+  'cube':        { i: '<path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5"/><path d="M12 12v10"/>', m: 'stroke', w: 1.8 },
   'chat':        { i: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', m: 'stroke', w: 2 },
   'logout':      { i: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>', m: 'stroke', w: 2 },
   'heart':       { i: '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/>', m: 'stroke', w: 2 },

@@ -93,20 +93,24 @@ public class CraftViewerService {
             throw new BusinessException(400, msg);
         }
 
+        List<String> uploadWarnings = new ArrayList<>(validation.warnings());
+        Map<String, Object> transformToWrite;
+        if (StringUtils.hasText(transformJson)) {
+            transformToWrite = JsonFieldHelper.parseObject(normalizeJsonString(transformJson));
+        } else {
+            Map<String, Object> computed = GlbTransformUtil.computeTransform(bytes);
+            if (computed == null) {
+                throw new BusinessException(400,
+                        "无法自动计算归一化参数，请粘贴 manifest 中的 transform JSON 后保存，或使用含 POSITION min/max 的 GLB");
+            }
+            transformToWrite = computed;
+            uploadWarnings.add("已根据 GLB 包围盒自动计算归一化参数");
+        }
+
         Map<String, String> uploaded = ossService.uploadModel3dGlb(id, bytes);
         craft.setModel3dUrl(uploaded.get("url"));
         craft.setPreviewType("model3d");
-
-        List<String> uploadWarnings = new ArrayList<>(validation.warnings());
-        if (StringUtils.hasText(transformJson)) {
-            craft.setTransformJson(normalizeJsonString(transformJson));
-        } else {
-            Map<String, Object> computed = GlbTransformUtil.computeTransform(bytes);
-            if (computed != null) {
-                craft.setTransformJson(JsonFieldHelper.writeObject(computed));
-                uploadWarnings.add("已根据 GLB 包围盒自动计算归一化参数");
-            }
-        }
+        craft.setTransformJson(JsonFieldHelper.writeObject(transformToWrite));
         craftMapper.updateById(craft);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -117,7 +121,7 @@ public class CraftViewerService {
         result.put("materialCount", validation.materialCount());
         result.put("imageCount", validation.imageCount());
         result.put("warnings", uploadWarnings);
-        result.put("transform", JsonFieldHelper.parseObject(craft.getTransformJson()));
+        result.put("transform", transformToWrite);
         return result;
     }
 

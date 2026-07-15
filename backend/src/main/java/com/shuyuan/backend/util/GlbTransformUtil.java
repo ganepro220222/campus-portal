@@ -21,6 +21,19 @@ public final class GlbTransformUtil {
      * 无法计算时返回 null（例如 accessor 缺少 min/max）。
      */
     public static Map<String, Object> computeTransform(byte[] glbBytes) {
+        Bounds bounds = collectPositionBounds(glbBytes);
+        if (bounds == null) {
+            return null;
+        }
+        return bounds.toTransform();
+    }
+
+    /** 是否具备自动归一化所需数据（至少一个 POSITION accessor 且含 min/max）。 */
+    public static boolean canAutoNormalize(byte[] glbBytes) {
+        return collectPositionBounds(glbBytes) != null;
+    }
+
+    private static Bounds collectPositionBounds(byte[] glbBytes) {
         JsonNode root = GlbJsonReader.readRoot(glbBytes);
         if (root == null) {
             return null;
@@ -72,26 +85,31 @@ public final class GlbTransformUtil {
             return null;
         }
 
-        double sizeX = maxX - minX;
-        double sizeY = maxY - minY;
-        double sizeZ = maxZ - minZ;
-        double longest = Math.max(sizeX, Math.max(sizeY, sizeZ));
-        if (longest <= 0) {
-            return null;
+        return new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
+    }
+
+    private record Bounds(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+        Map<String, Object> toTransform() {
+            double sizeX = maxX - minX;
+            double sizeY = maxY - minY;
+            double sizeZ = maxZ - minZ;
+            double longest = Math.max(sizeX, Math.max(sizeY, sizeZ));
+            if (longest <= 0) {
+                return null;
+            }
+            double centerX = (maxX + minX) / 2.0;
+            double centerY = (maxY + minY) / 2.0;
+            double centerZ = (maxZ + minZ) / 2.0;
+            double scale = TARGET_SIZE / longest;
+
+            Map<String, Object> transform = new LinkedHashMap<>();
+            transform.put("scale", round5(scale));
+            transform.put("offsetX", round5(-centerX * scale));
+            transform.put("offsetY", round5(-centerY * scale));
+            transform.put("offsetZ", round5(-centerZ * scale));
+            transform.put("floorOffsetY", round5(-minY * scale));
+            return transform;
         }
-
-        double centerX = (maxX + minX) / 2.0;
-        double centerY = (maxY + minY) / 2.0;
-        double centerZ = (maxZ + minZ) / 2.0;
-        double scale = TARGET_SIZE / longest;
-
-        Map<String, Object> transform = new LinkedHashMap<>();
-        transform.put("scale", round5(scale));
-        transform.put("offsetX", round5(-centerX * scale));
-        transform.put("offsetY", round5(-centerY * scale));
-        transform.put("offsetZ", round5(-centerZ * scale));
-        transform.put("floorOffsetY", round5(-minY * scale));
-        return transform;
     }
 
     private static double round5(double v) {

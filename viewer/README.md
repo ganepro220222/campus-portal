@@ -12,6 +12,8 @@ npm run dev
 
 浏览器访问：`http://localhost:5174/craft/1`（需后端运行且该文创已配置 3D）
 
+**静态资源路径（dev）**：`viewer/public/` 下文件在 dev 时挂在站点根路径，例如 `public/models/a.glb` → `http://localhost:5174/models/a.glb`（不是 `/craft/models/`）。生产 Nginx 将 `dist/` 部署在 `/craft/` 下时，同源模型可为 `/craft/models/...`；正式 GLB 通常走 OSS/CDN。
+
 Vite 已将 `/api` 代理到 `http://localhost:8080`。
 
 ## 已实现（MVP）

@@ -41,7 +41,7 @@ docker compose -f docker-compose.dev.yml exec -T mysql \
   < sql/patch-test-exhibition-crafts.sql
 ```
 
-将文创 **1、7、8** 指向 `http://localhost:5174/craft/models/...`（需 Vite dev 同时运行）。
+将文创 **1、7、8** 指向 `http://localhost:5174/models/...`（Vite dev 的 `public/` 根路径；H5 页仍为 `/craft/1`）。
 
 ## 4. 启动并验证
 

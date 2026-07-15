@@ -32,6 +32,8 @@ class GlbTransformUtilTest {
                  "meshes":[{"primitives":[{"attributes":{"POSITION":0}}]}],
                  "accessors":[{"componentType":5126,"count":3,"type":"VEC3"}]}\
                 """;
-        assertNull(GlbTransformUtil.computeTransform(GlbTestFixtures.meshGlb(json, 0)));
+        byte[] glb = GlbTestFixtures.meshGlb(json, 0);
+        assertFalse(GlbTransformUtil.canAutoNormalize(glb));
+        assertNull(GlbTransformUtil.computeTransform(glb));
     }
 }

@@ -23,10 +23,14 @@
   "materials": { "global": { "metalness": 0.0, "roughness": 0.5, "envMapIntensity": 1.35 }, "overrides": [] },
   "hotspotStyle": { "color": "#c8a86a", "size": 26, "pulse": true },
   "panel": { "style": "glass" },
+  "audio": [
+    { "id": "a1", "label": "整器概览（占位示例）", "src": "assets/narration-1.wav" },
+    { "id": "a2", "label": "纹样细节（占位示例）", "src": "assets/narration-2.wav" }
+  ],
   "hotspots": [
-    { "id": "h1", "position": [0, 0.95, 0.28], "i18n": { "zh": { "title": "颈部纹样", "content": "瓶颈以螭龙与卷草纹对称展开，黄地留白衬托主纹，是清代宫廷珐琅彩的典型装饰语言。" }, "en": { "title": "Neck Motif", "content": "Symmetric chi-dragon and scrolling grass on a yellow ground — a hallmark of Qing court enamelware." } }, "cameraFocus": { "distance": 2.6, "duration": 800 } },
+    { "id": "h1", "position": [0, 0.95, 0.28], "audio": "a1", "i18n": { "zh": { "title": "颈部纹样", "content": "瓶颈以螭龙与卷草纹对称展开，黄地留白衬托主纹，是清代宫廷珐琅彩的典型装饰语言。" }, "en": { "title": "Neck Motif", "content": "Symmetric chi-dragon and scrolling grass on a yellow ground — a hallmark of Qing court enamelware." } }, "cameraFocus": { "distance": 2.6, "duration": 800 } },
     { "id": "h2", "position": [0.05, 0.33, 0.44], "i18n": { "zh": { "title": "肩部缠枝", "content": "肩部一周缠枝莲纹环绕，线条以金彩勾边，随光影流转而生辉，工艺极为繁复。" }, "en": { "title": "Shoulder Scroll", "content": "A band of interlocking lotus scrolls, gold-outlined and shimmering as the light shifts." } }, "cameraFocus": { "distance": 2.8, "duration": 800 } },
-    { "id": "h3", "position": [0, -0.25, 0.46], "i18n": { "zh": { "title": "粉彩牡丹", "content": "腹部主题为粉彩牡丹，花头以渲染法层层晕色，寓意富贵吉祥，为全器点睛之笔。" }, "en": { "title": "Famille-Rose Peony", "content": "The belly features a famille-rose peony, shaded in graded washes — an emblem of prosperity." } }, "cameraFocus": { "distance": 2.9, "duration": 800 } }
+    { "id": "h3", "position": [0, -0.25, 0.46], "audio": "a2", "i18n": { "zh": { "title": "粉彩牡丹", "content": "腹部主题为粉彩牡丹，花头以渲染法层层晕色，寓意富贵吉祥，为全器点睛之笔。" }, "en": { "title": "Famille-Rose Peony", "content": "The belly features a famille-rose peony, shaded in graded washes — an emblem of prosperity." } }, "cameraFocus": { "distance": 2.9, "duration": 800 } }
   ],
   "ui": { "defaultMode": "view", "showAutoRotateButton": true, "showHotspotButton": true, "showResetButton": true, "showFullscreenButton": true, "showLangSwitch": true, "showPresets": true, "hideEditorByDefault": true },
   "presets": [

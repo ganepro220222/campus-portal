@@ -65,6 +65,24 @@
   .btn.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
   .btn .ic { font-size:16px; line-height:1; }
 
+  /* 语音讲解 小型播放器（左上，标题下方） */
+  .audio { position:absolute; left:16px; top:calc(env(safe-area-inset-top) + 88px); z-index:7;
+    display:flex; align-items:center; gap:10px; width:min(300px,78vw); padding:8px 12px;
+    background:rgba(20,22,32,.72); backdrop-filter:blur(12px);
+    border:1px solid rgba(255,255,255,.14); border-radius:14px; }
+  .au-btn { flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:1px solid var(--gold);
+    background:rgba(200,168,106,.18); color:#f4e6c8; font-size:12px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:.18s; }
+  .au-btn:active { transform:scale(.94); }
+  .au-mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+  .au-top { display:flex; align-items:center; gap:8px; font-size:11.5px; color:rgba(238,240,245,.82); }
+  .au-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .au-sel { flex:1; min-width:0; background:transparent; border:none; color:#eef0f5; font-size:11.5px; font-family:inherit; outline:none; cursor:pointer; }
+  .au-sel option { background:#14161f; color:#eef0f5; }
+  .au-time { flex:0 0 auto; color:rgba(238,240,245,.6); font-variant-numeric:tabular-nums; }
+  .au-bar { height:4px; border-radius:2px; background:rgba(255,255,255,.16); cursor:pointer; overflow:hidden; }
+  .au-bar>i { display:block; width:0; height:100%; border-radius:2px; background:linear-gradient(90deg,var(--gold),#e6cf9a); transition:width .1s linear; }
+
   /* 信息面板（详情卡片）：底色由样式预设类控制 */
   .card { position:absolute; z-index:8; color:#eef0f5; opacity:0; pointer-events:none;
     transition:opacity .28s, transform .28s; }
@@ -161,6 +179,20 @@
   <svg class="hs-svg" id="hs-svg" hidden><line id="hs-leader" x1="0" y1="0" x2="0" y2="0" /></svg>
   <div class="hs-layer" id="hs-layer"></div>
 
+  <!-- 语音讲解 小型播放器 -->
+  <div class="audio" hidden id="audio">
+    <button class="au-btn" id="au-play" aria-label="播放/暂停语音讲解">▶</button>
+    <div class="au-mid">
+      <div class="au-top">
+        <select class="au-sel" id="au-sel" hidden></select>
+        <span class="au-name" id="au-name">语音讲解</span>
+        <span class="au-time" id="au-time">0:00</span>
+      </div>
+      <div class="au-bar" id="au-bar"><i id="au-prog"></i></div>
+    </div>
+  </div>
+  <audio id="au-el" preload="none"></audio>
+
   <div class="hud" hidden id="hud">
     <div class="presets" id="presets"></div>
     <div class="actions" id="actions"></div>
@@ -211,6 +243,8 @@ let hotspots = [], activePreset = null, raf = 0
 const initialCam = new THREE.Vector3()
 const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
+const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
+let auTracks = [], auIndex = -1     // 语音讲解播放器状态
 
 const t = o => (o && (o[lang] || o.zh || o.en)) || {}
 function hexToRgba(hex, a){
@@ -319,7 +353,8 @@ function placeCamera() {
   camera.fov = num(c.fov, 40); camera.updateProjectionMatrix()
   camera.position.setFromSpherical(new THREE.Spherical(num(c.distance,3.4), num(c.phi,1.2), num(c.theta,0.7)))
   initialCam.copy(camera.position)
-  controls.target.set(0,0,0)
+  const pv = c.pivot || [0,0,0]; pivot.set(pv[0]||0, pv[1]||0, pv[2]||0)  // 默认 (0,0,0)=模型中轴
+  controls.target.copy(pivot)
   controls.minDistance = num(c.minDistance, 1.4)
   controls.maxDistance = num(c.maxDistance, 7)
   controls.autoRotate = !reduceMotion && c.autoRotate !== false
@@ -401,6 +436,7 @@ function openHotspot(h, el) {
   if (wide) { $('hs-svg').removeAttribute('hidden'); leaderT0 = performance.now() }  // 桌面才有引线
   else { $('hs-svg').setAttribute('hidden','') }                                     // 移动端就近显示，无引线
   if (h.cameraFocus) focusTo(new THREE.Vector3(...(h.position||[0,0,0])), num(h.cameraFocus.distance,2.4), num(h.cameraFocus.duration,800))
+  if (h.audio) playTrackById(h.audio)   // 该热点绑定了语音讲解 → 自动播放
   setTimeout(() => $('card').classList.add('show'), wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
 }
 function closeHotspot() {
@@ -408,7 +444,7 @@ function closeHotspot() {
   $('hs-svg').setAttribute('hidden','')
   hotspots.forEach(x => x.el.classList.remove('active'))
   activeHS = null
-  focusTo(new THREE.Vector3(0,0,0), initialCam.length(), 700, initialCam.clone())
+  focusTo(pivot.clone(), initialCam.length(), 700, initialCam.clone())
 }
 const _cw2 = new THREE.Vector3(), _bc = new THREE.Vector3()
 // 模型世界包围盒 8 角投到屏幕，得到其占屏范围（用于面板避让）
@@ -476,6 +512,44 @@ function focusTo(target, dist, dur, camOverride) {
     controls.update()
     if (k<1) focusAnim = requestAnimationFrame(step)
   })()
+}
+
+/* ── 语音讲解 播放器 ── */
+function buildAudio(){
+  auTracks = (cfg.audio||[]).filter(a=>a && a.src)
+  const wrap = $('audio')
+  if (!auTracks.length){ wrap.setAttribute('hidden',''); return }
+  wrap.removeAttribute('hidden')
+  const sel = $('au-sel'), name = $('au-name')
+  if (auTracks.length > 1){
+    sel.removeAttribute('hidden'); name.setAttribute('hidden','')
+    sel.innerHTML = auTracks.map((a,i)=>`<option value="${i}">${(a.label||('讲解 '+(i+1))).replace(/</g,'&lt;')}</option>`).join('')
+    sel.onchange = () => selectTrack(+sel.value, true)
+  } else {
+    sel.setAttribute('hidden',''); name.removeAttribute('hidden'); name.textContent = auTracks[0].label || '语音讲解'
+  }
+  auIndex = -1; selectTrack(0, false)
+}
+function selectTrack(i, play){
+  const el = $('au-el'), tr = auTracks[i]; if(!tr) return
+  if (i !== auIndex){ el.src = tr.src; auIndex = i }
+  const sel = $('au-sel'); if(!sel.hasAttribute('hidden')) sel.value = String(i)
+  const name = $('au-name'); if(!name.hasAttribute('hidden')) name.textContent = tr.label || '语音讲解'
+  if (play){ el.play().catch(()=>{}) } else { auIcon(false); $('au-prog').style.width='0%'; $('au-time').textContent='0:00' }
+}
+function playTrackById(id){
+  const i = auTracks.findIndex(a=>a.id===id); if(i<0) return
+  if (i===auIndex && !$('au-el').paused) return
+  selectTrack(i, true)
+}
+function auIcon(p){ $('au-play').textContent = p ? '❚❚' : '▶' }
+function auFmt(s){ if(!isFinite(s)||s<0) return '0:00'; const m=Math.floor(s/60), ss=Math.floor(s%60); return m+':'+String(ss).padStart(2,'0') }
+function wireAudio(){
+  const el = $('au-el')
+  $('au-play').onclick = () => { if(!auTracks.length) return; if(auIndex<0) selectTrack(0,false); el.paused ? el.play().catch(()=>{}) : el.pause() }
+  el.onplay = ()=>auIcon(true); el.onpause = ()=>auIcon(false); el.onended = ()=>{ auIcon(false); $('au-prog').style.width='0%' }
+  el.ontimeupdate = ()=>{ const p = el.duration ? el.currentTime/el.duration*100 : 0; $('au-prog').style.width=p+'%'; $('au-time').textContent=auFmt(el.currentTime) }
+  $('au-bar').onclick = e => { if(!el.duration) return; const r=$('au-bar').getBoundingClientRect(); el.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*el.duration }
 }
 
 /* ── UI ── */
@@ -547,7 +621,7 @@ function start() {
   new GLTFLoader().load(cfg.assets.model, gltf => {
     model = gltf.scene
     normalize(model); applyMaterial(); scene.add(model)
-    placeCamera(); buildHotspots(); buildHUD(); renderText()
+    placeCamera(); buildHotspots(); buildHUD(); renderText(); buildAudio(); wireAudio()
     // 背景真全景 IBL 后台加载，平滑接管
     if (cfg.environment?.mode === 'panorama' && cfg.assets.panorama) panoramaIBL(cfg.assets.panorama)
     $('topbar').removeAttribute('hidden'); $('hud').removeAttribute('hidden')
@@ -601,7 +675,7 @@ function ensureCfg() {
   cfg.materials = cfg.materials || {}; cfg.materials.global = cfg.materials.global || {}; cfg.materials.overrides = cfg.materials.overrides || []
   cfg.lights = cfg.lights || {}; cfg.hotspots = cfg.hotspots || []; cfg.presets = cfg.presets || []
   cfg.environment = cfg.environment || {}
-  cfg.hotspotStyle = cfg.hotspotStyle || {}; cfg.panel = cfg.panel || {}; cfg.ui = cfg.ui || {}
+  cfg.hotspotStyle = cfg.hotspotStyle || {}; cfg.panel = cfg.panel || {}; cfg.ui = cfg.ui || {}; cfg.audio = cfg.audio || []
 }
 
 function renderEditor() {
@@ -610,12 +684,17 @@ function renderEditor() {
   const rng = (k,label,min,max,step,val)=>`<div class="ed-row"><span>${label}</span><span class="ed-slider"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"><input type="number" class="ed-num" data-num="${k}" min="${min}" max="${max}" step="${step}" value="${val}"></span></div>`
   const col = (k,label,val)=>`<div class="ed-row"><span>${label}</span><input type="color" data-k="${k}" value="${val}"></div>`
   const names = model ? materialNames() : []
+  const auOpt = (sel)=>`<option value="">无</option>`+(cfg.audio||[]).map(a=>`<option value="${a.id}" ${sel===a.id?'selected':''}>${(a.label||a.id).replace(/</g,'&lt;')}</option>`).join('')
   const hs = cfg.hotspots.map((h,i)=>{
     const x=h.i18n?.zh||{}
     return `<div class="ed-hs-item"><div class="ed-row"><b>#${i+1}</b><span><a data-hs-focus="${i}">更新机位</a> · <a data-hs-del="${i}" style="color:#e07a7a">删除</a></span></div>
       <input class="ed-in" data-hs-title="${i}" value="${(x.title||'').replace(/"/g,'&quot;')}" placeholder="标题">
-      <textarea class="ed-in" data-hs-content="${i}" rows="4" placeholder="讲解文案">${x.content||''}</textarea></div>`
+      <textarea class="ed-in" data-hs-content="${i}" rows="4" placeholder="讲解文案">${x.content||''}</textarea>
+      <div class="ed-row"><span style="font-size:11.5px;color:#8a90a6">绑定语音</span><select class="ed-in" data-hs-audio="${i}" style="width:auto;margin:0;flex:0 0 auto">${auOpt(h.audio)}</select></div></div>`
   }).join('') || '<div class="ed-note">暂无热点。Shift+点击模型表面添加。</div>'
+  const audioList = (cfg.audio||[]).map((a,i)=>`<div class="ed-hs-item"><div class="ed-row"><b>${a.id||('a'+(i+1))}</b><a data-au-del="${i}" style="color:#e07a7a">删除</a></div>
+      <input class="ed-in" data-au-label="${i}" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="名称（下拉显示）">
+      <input class="ed-in" data-au-src="${i}" value="${(a.src||'').replace(/"/g,'&quot;')}" placeholder="音频地址 .mp3/.m4a/.wav"></div>`).join('') || '<div class="ed-note">暂无语音。</div>'
   const presets = cfg.presets.map((p,i)=>`<div class="ed-row"><span>${t(p.label)||p.id}</span><a data-pr-del="${i}" style="color:#e07a7a">删除</a></div>`).join('') || '<div class="ed-note">暂无预设。</div>'
 
   const info = cfg.i18n?.zh || {}, ui = cfg.ui || {}
@@ -658,6 +737,8 @@ function renderEditor() {
     ${rng('c.rspeed','自动旋转速度',0,4,0.1, num(c.autoRotateSpeed,0.9))}
     ${rng('c.min','最近距离',0.5,5,0.1, num(c.minDistance,1.8))}
     ${rng('c.max','最远距离',3,15,0.1, num(c.maxDistance,8))}
+    ${rng('c.pivy','旋转轴 Y 偏移',-1,1,0.01,(c.pivot||[0,0,0])[1])}
+    <div class="ed-note">自动/手动旋转均绕此轴。默认 0 = 模型中轴；仅需偏移旋转中心时再调。</div>
     <button class="ed-btn" id="ed-cam-save">保存当前视角为默认</button>
   </details>
 
@@ -702,6 +783,13 @@ function renderEditor() {
     <div class="ed-note">Shift + 点击模型表面 = 新增热点</div>${hs}
   </details>
 
+  <details class="ed-sec"><summary>语音讲解</summary>
+    <div class="ed-note">音频放同目录/指定目录；多条自动出现下拉切换，可在热点里绑定自动播放。</div>
+    ${audioList}
+    <input class="ed-in" id="ed-au-url" placeholder="音频 URL（.mp3/.m4a/.wav）">
+    <button class="ed-btn" id="ed-au-add">新增语音</button>
+  </details>
+
   <details class="ed-sec"><summary>预设</summary>
     ${presets}<button class="ed-btn" id="ed-pr-add">从当前状态新建预设</button>
   </details>
@@ -738,6 +826,7 @@ function wireEditor() {
       case 'c.rspeed': c.autoRotateSpeed=v; controls.autoRotateSpeed=v; break
       case 'c.min': c.minDistance=v; controls.minDistance=v; break
       case 'c.max': c.maxDistance=v; controls.maxDistance=v; break
+      case 'c.pivy': c.pivot=[(c.pivot||[0,0,0])[0], v, (c.pivot||[0,0,0])[2]]; pivot.set(c.pivot[0],c.pivot[1],c.pivot[2]); if(!activeHS){ controls.target.copy(pivot); controls.update() } break
       case 'l.amb': L.ambient=L.ambient||{}; L.ambient.intensity=v; lightRefs.ambient.intensity=v; break
       case 'l.key': L.key=L.key||{}; L.key.intensity=v; lightRefs.key.intensity=v; break
       case 'l.fill': L.fill=L.fill||{}; L.fill.intensity=v; lightRefs.fill.intensity=v; break
@@ -805,6 +894,14 @@ function wireEditor() {
   $('editor').querySelectorAll('[data-hs-del]').forEach(a=>a.onclick=()=>{ cfg.hotspots.splice(+a.dataset.hsDel,1); buildHotspots(); renderEditor() })
   $('editor').querySelectorAll('[data-hs-focus]').forEach(a=>a.onclick=()=>{ const h=cfg.hotspots[+a.dataset.hsFocus]; const d=camera.position.distanceTo(controls.target); h.cameraFocus={distance:+d.toFixed(2),duration:800}; flash('已更新聚焦机位') })
   $('editor').querySelectorAll('[data-pr-del]').forEach(a=>a.onclick=()=>{ cfg.presets.splice(+a.dataset.prDel,1); renderEditor(); buildHUD_refresh() })
+  // 热点绑定语音
+  $('editor').querySelectorAll('[data-hs-audio]').forEach(s=>s.onchange=e=>{ const h=cfg.hotspots[+s.dataset.hsAudio]; if(e.target.value) h.audio=e.target.value; else delete h.audio })
+  // 语音讲解 增删改
+  el('ed-au-add').onclick=()=>{ cfg.audio=cfg.audio||[]; const n=cfg.audio.length+1; const u=el('ed-au-url').value.trim()
+    cfg.audio.push({ id:'a'+n, label:'讲解 '+n, src:u }); renderEditor(); buildAudio() }
+  $('editor').querySelectorAll('[data-au-label]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auLabel].label=e.target.value; buildAudio() })
+  $('editor').querySelectorAll('[data-au-src]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auSrc].src=e.target.value })
+  $('editor').querySelectorAll('[data-au-del]').forEach(a=>a.onclick=()=>{ cfg.audio.splice(+a.dataset.auDel,1); renderEditor(); buildAudio() })
 }
 function loadOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
   const o=(cfg.materials.overrides||[]).find(x=>x.namePattern===sel.value)||{}
@@ -827,7 +924,8 @@ function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x
   p.push(cfg.assets?.model?ok('模型：'+cfg.assets.model):wn('缺模型'))
   p.push(cfg.assets?.panorama?ok('全景：'+cfg.assets.panorama):wn('无全景（用内置环境）'))
   p.push(cfg.assets?.poster?ok('封面'):wn('无封面'))
-  p.push(`热点 ${cfg.hotspots.length} · 预设 ${cfg.presets.length}`)
+  p.push(`热点 ${cfg.hotspots.length} · 预设 ${cfg.presets.length} · 语音 ${(cfg.audio||[]).length}`)
+  ;(cfg.audio||[]).forEach(a=>{ if(!a.src) p.push(wn('语音「'+(a.label||a.id)+'」缺文件')) })
   const st=modelStats(); p.push(st.tris>500000?wn('三角面偏多 '+st.tris.toLocaleString()):ok('三角面 '+st.tris.toLocaleString()))
   return p.join('<br>') }
 function flash(msg){ const e=document.createElement('div'); e.textContent=msg; e.style.cssText='position:fixed;left:50%;top:40px;transform:translateX(-50%);background:rgba(200,168,106,.95);color:#0b0d14;padding:7px 16px;border-radius:999px;font-size:12.5px;z-index:99'; document.body.appendChild(e); setTimeout(()=>e.remove(),1400) }

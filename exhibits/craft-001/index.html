@@ -703,8 +703,10 @@ function start() {
 
 async function boot() {
   $('error').setAttribute('hidden',''); $('loading').removeAttribute('hidden'); $('loading').classList.remove('fade')
-  let raw
-  try { raw = await fetch('config.json',{cache:'no-cache'}); cfg = await raw.json() }
+  try {
+    if (window.__CFG__) cfg = window.__CFG__            // 便携单文件：内联配置，免 fetch（可双击 file:// 打开）
+    else cfg = await (await fetch('config.json',{cache:'no-cache'})).json()
+  }
   catch(e){ return showError('配置加载失败：'+e.message, true) }
   if (!initRenderer()) return showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信')
   document.title = t(cfg.i18n).title || '立体鉴赏'

@@ -101,7 +101,21 @@
   .editor h3:first-child { margin-top:0; }
   .ed-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:7px 0; color:#cfd3e0; }
   .ed-row input[type=range]{ flex:1; }
+  .ed-row input[type=color]{ width:30px; height:22px; border:none; background:none; padding:0; cursor:pointer; flex:0 0 auto; }
   .ed-note { color:#8a90a6; line-height:1.6; margin:6px 0; }
+  .ed-sec { border:1px solid rgba(255,255,255,.08); border-radius:8px; margin:8px 0; padding:2px 10px; }
+  .ed-sec summary { cursor:pointer; color:var(--gold); font-size:13px; font-weight:600; padding:8px 0; letter-spacing:.5px; list-style:none; }
+  .ed-sec summary::-webkit-details-marker { display:none; }
+  .ed-sec summary::before { content:"▸ "; }
+  .ed-sec[open] summary::before { content:"▾ "; }
+  .ed-in { width:100%; margin:5px 0; padding:7px 9px; border:1px solid rgba(255,255,255,.14); border-radius:7px;
+    background:rgba(255,255,255,.05); color:#eef0f5; font-size:12px; font-family:inherit; }
+  textarea.ed-in { resize:vertical; }
+  .ed-file { display:block; text-align:center; margin:5px 0; padding:8px; border:1px dashed rgba(255,255,255,.22);
+    border-radius:7px; color:#cfd3e0; cursor:pointer; font-size:12px; }
+  .ed-hs-item { border:1px solid rgba(255,255,255,.08); border-radius:7px; padding:6px 8px; margin:7px 0; }
+  .ed-hs-item b { color:var(--gold); }
+  .editor a { cursor:pointer; color:var(--gold); text-decoration:none; }
   .ed-btn { width:100%; margin-top:6px; padding:9px; border:1px solid var(--gold); border-radius:8px;
     background:transparent; color:#f4e6c8; cursor:pointer; font-size:12.5px; }
   .ed-badge { position:absolute; top:12px; left:12px; z-index:20; background:rgba(200,168,106,.9); color:#0b0d14;
@@ -183,7 +197,7 @@ const num = (v,d) => (typeof v === 'number' && isFinite(v)) ? v : d
 
 function initRenderer() {
   try {
-    renderer = new THREE.WebGLRenderer({ canvas:$('scene'), antialias:true, powerPreference:'high-performance' })
+    renderer = new THREE.WebGLRenderer({ canvas:$('scene'), antialias:true, powerPreference:'high-performance', preserveDrawingBuffer:editMode })
   } catch(e){ return false }
   const dpr = Math.min(window.devicePixelRatio||1, cfg.renderer?.maxPixelRatio || 2)
   renderer.setPixelRatio(dpr)
@@ -195,6 +209,7 @@ function initRenderer() {
 }
 
 function normalize(obj) {
+  obj.scale.setScalar(1); obj.position.set(0,0,0); obj.rotation.set(0,0,0); obj.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(obj)
   const size = box.getSize(new THREE.Vector3())
   const maxDim = Math.max(size.x, size.y, size.z) || 1
@@ -211,6 +226,7 @@ function normalize(obj) {
 
 function applyMaterial() {
   const g = cfg.materials?.global || {}
+  const ov = cfg.materials?.overrides || []
   model.traverse(o => {
     if (!o.isMesh) return
     ;[].concat(o.material).forEach(m => {
@@ -218,9 +234,48 @@ function applyMaterial() {
       if (typeof g.roughness === 'number') m.roughness = g.roughness
       if (typeof g.metalness === 'number') m.metalness = g.metalness
       if (typeof g.envMapIntensity === 'number') m.envMapIntensity = g.envMapIntensity
+      // 按材质名覆盖（分组）
+      const name = (m.name||'').toLowerCase()
+      ov.forEach(o2 => {
+        if (o2.namePattern && name.includes(String(o2.namePattern).toLowerCase())) {
+          if (typeof o2.roughness==='number') m.roughness=o2.roughness
+          if (typeof o2.metalness==='number') m.metalness=o2.metalness
+          if (typeof o2.envMapIntensity==='number') m.envMapIntensity=o2.envMapIntensity
+        }
+      })
       m.needsUpdate = true
     })
   })
+}
+/* 四光源灯组（叠加在 IBL 之上，可编辑） */
+let lightRefs = {}
+function buildLights() {
+  Object.values(lightRefs).forEach(l => scene.remove(l)); lightRefs = {}
+  const L = cfg.lights || {}
+  const amb = new THREE.AmbientLight(new THREE.Color(L.ambient?.color||'#ffffff'), num(L.ambient?.intensity,0.25))
+  scene.add(amb); lightRefs.ambient = amb
+  ;['key','fill','rim'].forEach(k => {
+    const c = L[k] || {}
+    const d = new THREE.DirectionalLight(new THREE.Color(c.color||'#ffffff'), num(c.intensity, k==='key'?1.1:0.4))
+    const p = c.position || [3,5,4]; d.position.set(p[0],p[1],p[2])
+    scene.add(d); lightRefs[k] = d
+  })
+}
+/* 统计 */
+function modelStats() {
+  let tris=0, verts=0, tex=new Set(); const mats=new Set()
+  model.traverse(o => {
+    if (o.isMesh && o.geometry) {
+      const g=o.geometry; const pos=g.attributes.position
+      if (pos) verts += pos.count
+      tris += g.index ? g.index.count/3 : (pos?pos.count/3:0)
+      ;[].concat(o.material).forEach(m=>{ if(m){ mats.add(m.name||m.uuid); ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap'].forEach(k=>{ if(m[k]) tex.add(m[k].uuid) }) } })
+    }
+  })
+  return { tris:Math.round(tris), verts, mats:mats.size, tex:tex.size }
+}
+function materialNames() {
+  const s=new Set(); model.traverse(o=>{ if(o.isMesh) [].concat(o.material).forEach(m=>{ if(m&&m.name) s.add(m.name) }) }); return [...s]
 }
 
 function placeCamera() {
@@ -253,26 +308,33 @@ function panoramaIBL(url) {
 }
 
 /* ── 热点 ── */
+// 热点以「显示空间坐标」写入 config；锚点挂到模型下（转成模型局部），
+// 这样模型缩放/旋转/位移后热点仍跟随，兼顾我方 config 直觉与最终形态健壮性。
 function buildHotspots() {
   const layer = $('hs-layer'); layer.innerHTML=''; hotspots=[]
+  if (!model) return
   ;(cfg.hotspots||[]).forEach(h => {
     const el = document.createElement('div'); el.className='hs'
     el.addEventListener('click', e => { e.stopPropagation(); openHotspot(h, el) })
     layer.appendChild(el)
-    hotspots.push({ data:h, el, world:new THREE.Vector3(...(h.position||[0,0,0])) })
+    const anchor = new THREE.Object3D()
+    anchor.position.copy(model.worldToLocal(new THREE.Vector3(...(h.position||[0,0,0]))))
+    model.add(anchor)
+    hotspots.push({ data:h, el, anchor })
   })
 }
 let hotspotsVisible = true
+const _hw = new THREE.Vector3()
 function updateHotspots() {
   const camDir = new THREE.Vector3()
   hotspots.forEach(hs => {
-    const w = hs.world
-    tmp.copy(w).project(camera)
+    hs.anchor.getWorldPosition(_hw)
+    tmp.copy(_hw).project(camera)
     const onScreen = tmp.z < 1
     const x = (tmp.x*0.5+0.5)*innerWidth, y = (-tmp.y*0.5+0.5)*innerHeight
     // 近/远半球淡化（背面自动淡）
-    camDir.copy(camera.position).sub(w).normalize()
-    const facing = w.clone().normalize().dot(camDir) // 中心在原点
+    camDir.copy(camera.position).sub(_hw).normalize()
+    const facing = _hw.clone().normalize().dot(camDir) // 模型中心≈原点
     let op = facing > 0.12 ? 1 : facing > -0.15 ? 0.28 : 0
     if (!hotspotsVisible || !onScreen) op = 0
     hs.el.style.opacity = op
@@ -354,7 +416,19 @@ function applyPreset(p) {
 }
 
 function onResize() { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight) }
-function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateHotspots(); renderer.render(scene,camera) }
+let fps=0, _ft=performance.now(), _fc=0
+function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateHotspots(); renderer.render(scene,camera)
+  _fc++; const n=performance.now(); if(n-_ft>=500){ fps=Math.round(_fc*1000/(n-_ft)); _fc=0; _ft=n } }
+/* 换模型（支持任意 URL / 拖拽本地文件；跨域需 CORS） */
+function reloadModel(url, revoke) {
+  new GLTFLoader().load(url, gltf => {
+    if (model) scene.remove(model)
+    model = gltf.scene
+    normalize(model); applyMaterial(); scene.add(model); buildHotspots()
+    if (revoke) URL.revokeObjectURL(url)
+    if (window.__edRefresh) window.__edRefresh()
+  }, undefined, () => alert('模型加载失败：请检查地址，跨域资源需服务器配置 CORS'))
+}
 
 function start() {
   scene = new THREE.Scene()
@@ -364,6 +438,7 @@ function start() {
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false; controls.rotateSpeed = 0.9
   controls.addEventListener('start', ()=>{ controls.autoRotate=false; syncBtns() })
   roomIBL() // 先给内置环境，秒出反射
+  buildLights() // 四光源灯组（叠加在 IBL 上，可编辑）
 
   new GLTFLoader().load(cfg.assets.model, gltf => {
     model = gltf.scene
@@ -404,48 +479,208 @@ $('lang').addEventListener('click', e=>{ const l=e.target.dataset.l; if(!l||l===
   renderText(); if($('card').classList.contains('show')){ /* 关闭以避免语言错位 */ closeHotspot() } })
 $('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); boot() }
 
-/* ── 编辑模式（开发方；纯前端，导出 config，不写服务器）── */
+/* ── 编辑模式（开发方；纯前端，导出 config，不写服务器）──
+   面板：资产 / 模型 / 相机 / 材质 / 灯光 / 环境 / 热点 / 预设 / 性能 / 导出 */
+let _perfTimer = null
 function buildEditor() {
-  const g = cfg.materials?.global || (cfg.materials={global:{}},cfg.materials.global)
   const ed = $('editor'); ed.removeAttribute('hidden')
-  const row=(label,min,max,step,val,fn)=>`<div class="ed-row"><span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-fn="${fn}"></div>`
-  ed.innerHTML = `<h3>渲染 / 材质</h3>
-    ${row('曝光',0.4,2,0.01, renderer.toneMappingExposure,'exposure')}
-    ${row('环境光强',0,3,0.05, num(g.envMapIntensity,1.35),'env')}
-    ${row('金属度',0,1,0.01, 0.5,'metal')}
-    ${row('粗糙度',0,1,0.01, 0.4,'rough')}
-    <h3>相机</h3>
-    ${row('自动旋转速度',0,4,0.1, controls.autoRotateSpeed,'rspeed')}
-    <div class="ed-note">Shift + 点击模型表面 = 打热点（存模型局部坐标）。</div>
-    <h3>导出</h3>
-    <div class="ed-note" id="ed-hs">热点数：${(cfg.hotspots||[]).length}</div>
-    <button class="ed-btn" id="ed-export">导出 config.json</button>
-    <div class="ed-note">纯前端不写服务器：导出后由开发方替换展包再上传。</div>`
-  ed.querySelectorAll('input[type=range]').forEach(inp => inp.oninput = () => {
-    const v=parseFloat(inp.value), fn=inp.dataset.fn
-    if(fn==='exposure') renderer.toneMappingExposure=v
-    if(fn==='env'){ g.envMapIntensity=v; applyMaterial() }
-    if(fn==='metal') model.traverse(o=>o.isMesh&&[].concat(o.material).forEach(m=>{if('metalness'in m){m.metalness=v;m.needsUpdate=1}}))
-    if(fn==='rough') model.traverse(o=>o.isMesh&&[].concat(o.material).forEach(m=>{if('roughness'in m){m.roughness=v;m.needsUpdate=1}}))
-    if(fn==='rspeed') controls.autoRotateSpeed=v
-  })
-  $('ed-export').onclick = () => {
-    const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'})
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config.json'; a.click()
-  }
-  // Shift+点击打点
-  const ray=new THREE.Raycaster(), m2=new THREE.Vector2()
-  $('scene').addEventListener('click', e=>{
-    if(!e.shiftKey) return
-    m2.x=e.clientX/innerWidth*2-1; m2.y=-(e.clientY/innerHeight)*2+1
-    ray.setFromCamera(m2,camera); const hit=ray.intersectObject(model,true)[0]
-    if(!hit) return
-    const local=model.worldToLocal(hit.point.clone())
-    const h={ id:'h'+((cfg.hotspots||[]).length+1), position:[+local.x.toFixed(3),+local.y.toFixed(3),+local.z.toFixed(3)],
-      i18n:{ zh:{title:'新热点',content:'（待填写）'}, en:{title:'New',content:'(todo)'} }, cameraFocus:{distance:2.3,duration:800} }
-    cfg.hotspots=cfg.hotspots||[]; cfg.hotspots.push(h); buildHotspots(); $('ed-hs').textContent='热点数：'+cfg.hotspots.length
-  })
+  window.__edRefresh = renderEditor
+  renderEditor()
+  wireCanvasAdd()
+  clearInterval(_perfTimer)
+  _perfTimer = setInterval(() => {
+    const el = document.getElementById('ed-perf'); if (!el) return
+    const info = renderer.info.render, st = modelStats()
+    el.innerHTML = `FPS ${fps} · Draw ${info.calls} · 三角面 ${st.tris.toLocaleString()}<br>顶点 ${st.verts.toLocaleString()} · 材质 ${st.mats} · 贴图 ${st.tex} · DPR ${renderer.getPixelRatio()}`
+    const warn = st.tris>500000 || renderer.getPixelRatio()>2
+    el.style.color = warn ? '#e6a23c' : '#8a90a6'
+  }, 500)
 }
+
+function ensureCfg() {
+  cfg.model = cfg.model || {}; cfg.camera = cfg.camera || {}
+  cfg.materials = cfg.materials || {}; cfg.materials.global = cfg.materials.global || {}; cfg.materials.overrides = cfg.materials.overrides || []
+  cfg.lights = cfg.lights || {}; cfg.hotspots = cfg.hotspots || []; cfg.presets = cfg.presets || []
+  cfg.environment = cfg.environment || {}
+}
+
+function renderEditor() {
+  ensureCfg()
+  const g = cfg.materials.global, m = cfg.model, c = cfg.camera, L = cfg.lights
+  const rng = (k,label,min,max,step,val)=>`<div class="ed-row"><span>${label}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"></div>`
+  const col = (k,label,val)=>`<div class="ed-row"><span>${label}</span><input type="color" data-k="${k}" value="${val}"></div>`
+  const names = model ? materialNames() : []
+  const hs = cfg.hotspots.map((h,i)=>{
+    const x=h.i18n?.zh||{}
+    return `<div class="ed-hs-item"><div class="ed-row"><b>#${i+1}</b><span><a data-hs-focus="${i}">更新机位</a> · <a data-hs-del="${i}" style="color:#e07a7a">删除</a></span></div>
+      <input class="ed-in" data-hs-title="${i}" value="${(x.title||'').replace(/"/g,'&quot;')}" placeholder="标题">
+      <textarea class="ed-in" data-hs-content="${i}" rows="2" placeholder="讲解文案">${x.content||''}</textarea></div>`
+  }).join('') || '<div class="ed-note">暂无热点。Shift+点击模型表面添加。</div>'
+  const presets = cfg.presets.map((p,i)=>`<div class="ed-row"><span>${t(p.label)||p.id}</span><a data-pr-del="${i}" style="color:#e07a7a">删除</a></div>`).join('') || '<div class="ed-note">暂无预设。</div>'
+
+  $('editor').innerHTML = `
+  <details class="ed-sec" open><summary>资产</summary>
+    <div class="ed-note">加载任意路径模型（相对/绝对 URL；跨域需 CORS）：</div>
+    <input class="ed-in" id="ed-url" placeholder="https://…/model.glb">
+    <button class="ed-btn" id="ed-url-load">从 URL 加载</button>
+    <label class="ed-file">拖拽或选择本地 .glb 预览<input type="file" id="ed-file" accept=".glb,.gltf" hidden></label>
+    <div class="ed-note" id="ed-assets">模型：${cfg.assets?.model||'-'}</div>
+  </details>
+
+  <details class="ed-sec"><summary>模型 Transform</summary>
+    ${rng('m.scale','缩放系数',0.2,3,0.01, num(m.scale,1))}
+    ${rng('m.size','适配尺寸',0.5,5,0.05, num(m.targetSize,2.4))}
+    ${rng('m.px','位移 X',-2,2,0.01,(m.position||[0,0,0])[0])}
+    ${rng('m.py','位移 Y',-2,2,0.01,(m.position||[0,0,0])[1])}
+    ${rng('m.pz','位移 Z',-2,2,0.01,(m.position||[0,0,0])[2])}
+    ${rng('m.ry','旋转 Y°',-180,180,1,(m.rotationDeg||[0,0,0])[1])}
+    <button class="ed-btn" id="ed-m-reset">重置 Transform</button>
+  </details>
+
+  <details class="ed-sec"><summary>相机</summary>
+    ${rng('c.fov','视野 FOV',20,70,1, num(c.fov,40))}
+    ${rng('c.rspeed','自动旋转速度',0,4,0.1, num(c.autoRotateSpeed,0.9))}
+    ${rng('c.min','最近距离',0.5,5,0.1, num(c.minDistance,1.8))}
+    ${rng('c.max','最远距离',3,15,0.1, num(c.maxDistance,8))}
+    <button class="ed-btn" id="ed-cam-save">保存当前视角为默认</button>
+  </details>
+
+  <details class="ed-sec"><summary>材质</summary>
+    ${rng('g.exposure','曝光',0.4,2,0.01, renderer.toneMappingExposure)}
+    ${rng('g.env','环境光强',0,3,0.05, num(g.envMapIntensity,1.35))}
+    ${rng('g.metal','金属度',0,1,0.01, num(g.metalness,0))}
+    ${rng('g.rough','粗糙度',0,1,0.01, num(g.roughness,0.5))}
+    <div class="ed-note">按材质名覆盖（分组）：</div>
+    <select class="ed-in" id="ed-matsel">${names.length?names.map(n=>`<option>${n}</option>`).join(''):'<option value="">（模型无命名材质）</option>'}</select>
+    ${rng('ov.metal','· 金属度',0,1,0.01,0.5)}
+    ${rng('ov.rough','· 粗糙度',0,1,0.01,0.3)}
+    ${rng('ov.env','· 环境光强',0,3,0.05,1.5)}
+  </details>
+
+  <details class="ed-sec"><summary>灯光（四光源）</summary>
+    ${rng('l.amb','环境光',0,1,0.01, num(L.ambient?.intensity,0.25))}${col('l.ambc','',L.ambient?.color||'#ffffff')}
+    ${rng('l.key','主光',0,3,0.05, num(L.key?.intensity,1.1))}${col('l.keyc','',L.key?.color||'#fff0e0')}
+    ${rng('l.fill','补光',0,2,0.05, num(L.fill?.intensity,0.35))}${col('l.fillc','',L.fill?.color||'#a9c4ff')}
+    ${rng('l.rim','轮廓光',0,2,0.05, num(L.rim?.intensity,0.5))}${col('l.rimc','',L.rim?.color||'#ffffff')}
+  </details>
+
+  <details class="ed-sec"><summary>环境 IBL</summary>
+    <label class="ed-row"><span>可见全景背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
+    <input class="ed-in" id="ed-pano" placeholder="全景图 URL（2:1 等距柱状）">
+    <button class="ed-btn" id="ed-pano-load">加载全景</button>
+    <div class="ed-note">无全景时自动降级为内置 RoomEnvironment。</div>
+  </details>
+
+  <details class="ed-sec"><summary>热点（增删改）</summary>
+    <div class="ed-note">Shift + 点击模型表面 = 新增热点</div>${hs}
+  </details>
+
+  <details class="ed-sec"><summary>预设</summary>
+    ${presets}<button class="ed-btn" id="ed-pr-add">从当前状态新建预设</button>
+  </details>
+
+  <details class="ed-sec"><summary>性能</summary><div class="ed-note" id="ed-perf">采样中…</div></details>
+
+  <details class="ed-sec" open><summary>导出</summary>
+    <button class="ed-btn" id="ed-export">导出 config.json</button>
+    <button class="ed-btn" id="ed-shot">截取当前帧为 poster</button>
+    <button class="ed-btn" id="ed-check">校验 + 部署清单</button>
+    <div class="ed-note" id="ed-checkout"></div>
+    <div class="ed-note">纯前端不写服务器：导出后由开发方替换展包再上传。</div>
+  </details>`
+
+  wireEditor()
+}
+
+function wireEditor() {
+  const g=cfg.materials.global, m=cfg.model, c=cfg.camera, L=cfg.lights
+  const val = e => parseFloat(e.target.value)
+  $('editor').querySelectorAll('input[type=range]').forEach(inp => inp.oninput = e => {
+    const k=inp.dataset.k, v=val(e)
+    switch(k){
+      case 'g.exposure': renderer.toneMappingExposure=v; break
+      case 'g.env': g.envMapIntensity=v; applyMaterial(); break
+      case 'g.metal': g.metalness=v; applyMaterial(); break
+      case 'g.rough': g.roughness=v; applyMaterial(); break
+      case 'm.scale': m.scale=v; normalize(model); break
+      case 'm.size': m.targetSize=v; normalize(model); break
+      case 'm.px': m.position=[v,(m.position||[0,0,0])[1],(m.position||[0,0,0])[2]]; normalize(model); break
+      case 'm.py': m.position=[(m.position||[0,0,0])[0],v,(m.position||[0,0,0])[2]]; normalize(model); break
+      case 'm.pz': m.position=[(m.position||[0,0,0])[0],(m.position||[0,0,0])[1],v]; normalize(model); break
+      case 'm.ry': m.rotationDeg=[(m.rotationDeg||[0,0,0])[0],v,(m.rotationDeg||[0,0,0])[2]]; normalize(model); break
+      case 'c.fov': c.fov=v; camera.fov=v; camera.updateProjectionMatrix(); break
+      case 'c.rspeed': c.autoRotateSpeed=v; controls.autoRotateSpeed=v; break
+      case 'c.min': c.minDistance=v; controls.minDistance=v; break
+      case 'c.max': c.maxDistance=v; controls.maxDistance=v; break
+      case 'l.amb': L.ambient=L.ambient||{}; L.ambient.intensity=v; lightRefs.ambient.intensity=v; break
+      case 'l.key': L.key=L.key||{}; L.key.intensity=v; lightRefs.key.intensity=v; break
+      case 'l.fill': L.fill=L.fill||{}; L.fill.intensity=v; lightRefs.fill.intensity=v; break
+      case 'l.rim': L.rim=L.rim||{}; L.rim.intensity=v; lightRefs.rim.intensity=v; break
+      case 'ov.metal': case 'ov.rough': case 'ov.env': upsertOverride(); break
+    }
+  })
+  $('editor').querySelectorAll('input[type=color]').forEach(inp => inp.oninput = e => {
+    const k=inp.dataset.k, col=new THREE.Color(e.target.value)
+    if(k==='l.ambc'){ L.ambient.color=e.target.value; lightRefs.ambient.color.copy(col) }
+    if(k==='l.keyc'){ L.key.color=e.target.value; lightRefs.key.color.copy(col) }
+    if(k==='l.fillc'){ L.fill.color=e.target.value; lightRefs.fill.color.copy(col) }
+    if(k==='l.rimc'){ L.rim.color=e.target.value; lightRefs.rim.color.copy(col) }
+  })
+  const bg=$('editor').querySelector('[data-k="e.bg"]'); if(bg) bg.onchange=e=>{ cfg.environment.visibleBackground=e.target.checked; if(cfg.assets?.panorama) panoramaIBL(cfg.assets.panorama); if(!e.target.checked) scene.background=new THREE.Color(cfg.renderer?.background||'#0f1118') }
+
+  const el=id=>document.getElementById(id)
+  el('ed-url-load').onclick=()=>{ const u=el('ed-url').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.model=u; reloadModel(u) } }
+  el('ed-file').onchange=e=>{ const f=e.target.files[0]; if(f) reloadModel(URL.createObjectURL(f), true) }
+  const dz=el('editor'); ;['dragover','drop'].forEach(ev=>dz.addEventListener(ev,e=>e.preventDefault()))
+  el('ed-m-reset').onclick=()=>{ m.scale=1; m.position=[0,0,0]; m.rotationDeg=[0,0,0]; normalize(model); renderEditor() }
+  el('ed-cam-save').onclick=()=>{ const s=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target))
+    c.distance=+s.radius.toFixed(3); c.phi=+s.phi.toFixed(3); c.theta=+s.theta.toFixed(3); initialCam.copy(camera.position); flash('已保存当前视角') }
+  el('ed-pano-load').onclick=()=>{ const u=el('ed-pano').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.panorama=u; panoramaIBL(u) } }
+  el('ed-matsel')?.addEventListener('change', loadOverride); loadOverride()
+  el('ed-pr-add').onclick=()=>{ cfg.presets.push({ id:'p'+(cfg.presets.length+1), label:{zh:'预设'+(cfg.presets.length+1),en:'Preset'+(cfg.presets.length+1)},
+    exposure:+renderer.toneMappingExposure.toFixed(2), envMapIntensity:num(g.envMapIntensity,1.35), background:cfg.renderer?.background||'#0f1118' }); renderEditor(); buildHUD_refresh() }
+  el('ed-export').onclick=()=>downloadJSON()
+  el('ed-shot').onclick=()=>{ renderer.render(scene,camera); const a=document.createElement('a'); a.href=renderer.domElement.toDataURL('image/jpeg',0.9); a.download='poster.jpg'; a.click() }
+  el('ed-check').onclick=()=>{ el('ed-checkout').innerHTML=validateReport() }
+  // 热点编辑
+  $('editor').querySelectorAll('[data-hs-title]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsTitle]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.title=e.target.value })
+  $('editor').querySelectorAll('[data-hs-content]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsContent]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.content=e.target.value })
+  $('editor').querySelectorAll('[data-hs-del]').forEach(a=>a.onclick=()=>{ cfg.hotspots.splice(+a.dataset.hsDel,1); buildHotspots(); renderEditor() })
+  $('editor').querySelectorAll('[data-hs-focus]').forEach(a=>a.onclick=()=>{ const h=cfg.hotspots[+a.dataset.hsFocus]; const d=camera.position.distanceTo(controls.target); h.cameraFocus={distance:+d.toFixed(2),duration:800}; flash('已更新聚焦机位') })
+  $('editor').querySelectorAll('[data-pr-del]').forEach(a=>a.onclick=()=>{ cfg.presets.splice(+a.dataset.prDel,1); renderEditor(); buildHUD_refresh() })
+}
+function loadOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
+  const o=(cfg.materials.overrides||[]).find(x=>x.namePattern===sel.value)||{}
+  const set=(k,v)=>{ const i=document.querySelector(`[data-k="${k}"]`); if(i&&typeof v==='number') i.value=v }
+  set('ov.metal',o.metalness); set('ov.rough',o.roughness); set('ov.env',o.envMapIntensity) }
+function upsertOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
+  let o=cfg.materials.overrides.find(x=>x.namePattern===sel.value)
+  if(!o){ o={namePattern:sel.value}; cfg.materials.overrides.push(o) }
+  o.metalness=parseFloat(document.querySelector('[data-k="ov.metal"]').value)
+  o.roughness=parseFloat(document.querySelector('[data-k="ov.rough"]').value)
+  o.envMapIntensity=parseFloat(document.querySelector('[data-k="ov.env"]').value)
+  applyMaterial() }
+function buildHUD_refresh(){ $('presets').innerHTML=''; $('actions').innerHTML=''; buildHUD(); renderText() }
+function downloadJSON(){ const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'})
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config.json'; a.click() }
+function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x}`
+  p.push((cfg.i18n?.zh?.title)?ok('标题'):wn('缺标题'))
+  p.push(cfg.assets?.model?ok('模型：'+cfg.assets.model):wn('缺模型'))
+  p.push(cfg.assets?.panorama?ok('全景：'+cfg.assets.panorama):wn('无全景（用内置环境）'))
+  p.push(cfg.assets?.poster?ok('封面'):wn('无封面'))
+  p.push(`热点 ${cfg.hotspots.length} · 预设 ${cfg.presets.length}`)
+  const st=modelStats(); p.push(st.tris>500000?wn('三角面偏多 '+st.tris.toLocaleString()):ok('三角面 '+st.tris.toLocaleString()))
+  return p.join('<br>') }
+function flash(msg){ const e=document.createElement('div'); e.textContent=msg; e.style.cssText='position:fixed;left:50%;top:40px;transform:translateX(-50%);background:rgba(200,168,106,.95);color:#0b0d14;padding:7px 16px;border-radius:999px;font-size:12.5px;z-index:99'; document.body.appendChild(e); setTimeout(()=>e.remove(),1400) }
+function wireCanvasAdd(){ const ray=new THREE.Raycaster(), m2=new THREE.Vector2()
+  $('scene').addEventListener('click', e=>{ if(!e.shiftKey||!model) return
+    m2.x=e.clientX/innerWidth*2-1; m2.y=-(e.clientY/innerHeight)*2+1
+    ray.setFromCamera(m2,camera); const hit=ray.intersectObject(model,true)[0]; if(!hit) return
+    const w=hit.point // 显示空间世界坐标（与 config 一致）
+    cfg.hotspots=cfg.hotspots||[]
+    cfg.hotspots.push({ id:'h'+(cfg.hotspots.length+1), position:[+w.x.toFixed(3),+w.y.toFixed(3),+w.z.toFixed(3)],
+      i18n:{ zh:{title:'新热点',content:'（待填写）'}, en:{title:'New',content:'(todo)'} }, cameraFocus:{distance:+camera.position.distanceTo(controls.target).toFixed(2),duration:800} })
+    buildHotspots(); renderEditor() }) }
 
 boot()
 </script>

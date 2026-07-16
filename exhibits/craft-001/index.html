@@ -33,17 +33,20 @@
     opacity:0; transition:opacity .5s; }
   .hint.show { opacity:1; }
 
-  /* 热点标记 */
+  /* 热点标记（双环：亮白内环 + 暗外描边 → 任意底色可见；强调色核心 = 身份色） */
   .hs-layer { position:absolute; inset:0; z-index:4; pointer-events:none; }
   .hs { position:absolute; transform:translate(-50%,-50%); pointer-events:auto; cursor:pointer;
-    width:26px; height:26px; will-change:transform,opacity; transition:opacity .25s; }
-  .hs::before { content:""; position:absolute; inset:8px; border-radius:50%; background:var(--gold);
-    box-shadow:0 0 0 4px rgba(200,168,106,.28); }
-  .hs::after { content:""; position:absolute; inset:8px; border-radius:50%; border:1px solid var(--gold);
-    animation:pulse 2s ease-out infinite; }
-  .hs.active::before { background:#fff; box-shadow:0 0 0 5px rgba(255,255,255,.35); }
-  @keyframes pulse { 0%{transform:scale(1);opacity:.9} 100%{transform:scale(2.6);opacity:0} }
-  @media (prefers-reduced-motion:reduce){ .hs::after{ animation:none } }
+    width:var(--hs-size,26px); height:var(--hs-size,26px); will-change:transform,opacity; transition:opacity .25s; }
+  .hs::before { content:""; position:absolute; inset:28%; border-radius:50%;
+    background:var(--hs-color,#c8a86a); border:2px solid rgba(255,255,255,.95);
+    box-shadow:0 0 0 3px rgba(0,0,0,.4), 0 0 10px 2px var(--hs-glow,rgba(200,168,106,.55)); }
+  .hs::after { content:""; position:absolute; inset:28%; border-radius:50%;
+    border:1.5px solid var(--hs-color,#c8a86a); animation:pulse 2.4s ease-out infinite; }
+  .hs.no-pulse::after { animation:none; opacity:0; }
+  .hs.active::before { background:#fff; border-color:#fff;
+    box-shadow:0 0 0 3px rgba(0,0,0,.45), 0 0 12px 3px rgba(255,255,255,.5); }
+  @keyframes pulse { 0%{transform:scale(1);opacity:.65} 100%{transform:scale(2.4);opacity:0} }
+  @media (prefers-reduced-motion:reduce){ .hs::after{ animation:none; opacity:0 } }
 
   /* 底部工具条 */
   .hud { position:absolute; left:0; right:0; bottom:0; z-index:7;
@@ -62,21 +65,27 @@
   .btn.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
   .btn .ic { font-size:16px; line-height:1; }
 
-  /* 讲解卡片 / 抽屉 */
-  .card { position:absolute; z-index:8; background:rgba(20,22,32,.92); backdrop-filter:blur(16px);
-    border:1px solid rgba(255,255,255,.1); color:#eef0f5; opacity:0; pointer-events:none; transition:.28s; }
+  /* 信息面板（详情卡片）：底色由样式预设类控制 */
+  .card { position:absolute; z-index:8; color:#eef0f5; opacity:0; pointer-events:none;
+    transition:opacity .28s, transform .28s; }
   .card.show { opacity:1; pointer-events:auto; }
   .card-title { font-size:16px; font-weight:700; color:#f4e6c8; margin-bottom:8px; letter-spacing:.5px; }
-  .card-body { font-size:13.5px; line-height:1.75; color:rgba(238,240,245,.9); }
+  .card-body { font-size:13.5px; line-height:1.75; color:rgba(238,240,245,.92); }
   .card-close { position:absolute; top:12px; right:14px; font-size:20px; color:rgba(255,255,255,.6); cursor:pointer; line-height:1; }
-  /* 浮动卡片（宽屏；JS 定位在热点旁，避开右侧编辑面板）+ 引线 */
-  .card.float { width:280px; padding:18px 20px; border-radius:16px; transform:scale(.9);
-    transform-origin:var(--org, left center); box-shadow:0 18px 44px rgba(0,0,0,.5); }
+  /* 浮动卡片（JS 定位在热点旁）：宽屏避让模型投影 + 右侧面板；窄屏就近夹取在视口内 */
+  .card.float { width:min(300px, 86vw); padding:18px 20px; border-radius:16px; transform:scale(.92);
+    transform-origin:var(--org, left center); }
   .card.float.show { transform:scale(1); }
-  /* 底部抽屉（窄屏 / 手机） */
-  .card.drawer { left:0; right:0; bottom:0; transform:translateY(28px);
-    padding:20px 22px calc(env(safe-area-inset-bottom) + 22px); border-radius:22px 22px 0 0; }
-  .card.drawer.show { transform:translateY(0); }
+  /* 面板样式预设：黑底 / 毛玻璃 / 透明 */
+  .card.st-solid { background:rgba(20,22,32,.94); backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,.1); box-shadow:0 18px 44px rgba(0,0,0,.5); }
+  .card.st-glass { background:rgba(24,26,38,.5); backdrop-filter:blur(22px) saturate(1.3);
+    border:1px solid rgba(255,255,255,.18); box-shadow:0 18px 44px rgba(0,0,0,.42); }
+  .card.st-transparent { background:transparent; backdrop-filter:none; border:none; box-shadow:none;
+    border-left:2px solid var(--gold); border-radius:0; padding-left:16px; }
+  .card.st-transparent .card-title, .card.st-transparent .card-body {
+    text-shadow:0 2px 10px rgba(0,0,0,.92), 0 0 3px rgba(0,0,0,.85); }
+  .card.st-transparent .card-close { text-shadow:0 1px 6px rgba(0,0,0,.9); color:rgba(255,255,255,.85); }
   /* 引线 SVG */
   .hs-svg { position:absolute; inset:0; width:100%; height:100%; z-index:6; pointer-events:none; overflow:visible; }
   #hs-leader { stroke:var(--gold); stroke-width:1.6; stroke-linecap:round; opacity:.92;
@@ -189,8 +198,16 @@ let cfg, renderer, scene, camera, controls, model
 let hotspots = [], activePreset = null, raf = 0
 const initialCam = new THREE.Vector3()
 const tmp = new THREE.Vector3()
+const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
 
 const t = o => (o && (o[lang] || o.zh || o.en)) || {}
+function hexToRgba(hex, a){
+  const h = String(hex||'').replace('#','')
+  const n = h.length===3 ? h.split('').map(c=>c+c).join('') : h
+  const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16)
+  if ([r,g,b].some(x=>isNaN(x))) return `rgba(200,168,106,${a})`
+  return `rgba(${r},${g},${b},${a})`
+}
 
 function showError(msg, retry) {
   $('loading').setAttribute('hidden','')
@@ -227,6 +244,8 @@ function normalize(obj) {
   obj.position.set(-c.x + (p[0]||0), -c.y + (p[1]||0), -c.z + (p[2]||0))
   const r = cfg.model?.rotationDeg || [0,0,0]
   obj.rotation.set(r[0]*Math.PI/180, r[1]*Math.PI/180, r[2]*Math.PI/180)
+  obj.updateMatrixWorld(true)
+  modelBox.setFromObject(obj)
 }
 
 function applyMaterial() {
@@ -318,8 +337,14 @@ function panoramaIBL(url) {
 function buildHotspots() {
   const layer = $('hs-layer'); layer.innerHTML=''; hotspots=[]
   if (!model) return
+  const hstyle = cfg.hotspotStyle || {}
   ;(cfg.hotspots||[]).forEach(h => {
     const el = document.createElement('div'); el.className='hs'
+    const col = h.color || hstyle.color || '#c8a86a'
+    el.style.setProperty('--hs-color', col)
+    el.style.setProperty('--hs-glow', hexToRgba(col, .55))
+    if (hstyle.size) el.style.setProperty('--hs-size', hstyle.size+'px')
+    if (hstyle.pulse === false) el.classList.add('no-pulse')
     el.addEventListener('click', e => { e.stopPropagation(); openHotspot(h, el) })
     layer.appendChild(el)
     const anchor = new THREE.Object3D()
@@ -357,13 +382,14 @@ function openHotspot(h, el) {
   $('card-title').textContent = tx.title || ''
   $('card-body').textContent = tx.content || ''
   const wide = innerWidth > 720
+  const style = (cfg.panel?.style) || 'solid'
   const card = $('card')
-  card.style.left = ''; card.style.top = ''       // 清掉上次浮动定位，避免污染抽屉
-  card.className = 'card ' + (wide ? 'float' : 'drawer')
-  $('hs-svg').removeAttribute('hidden')
-  leaderT0 = performance.now()                     // 引线延伸动画起点
+  card.style.left = ''; card.style.top = ''
+  card.className = 'card float st-' + style
+  if (wide) { $('hs-svg').removeAttribute('hidden'); leaderT0 = performance.now() }  // 桌面才有引线
+  else { $('hs-svg').setAttribute('hidden','') }                                     // 移动端就近显示，无引线
   if (h.cameraFocus) focusTo(new THREE.Vector3(...(h.position||[0,0,0])), num(h.cameraFocus.distance,2.4), num(h.cameraFocus.duration,800))
-  setTimeout(() => $('card').classList.add('show'), 240)   // 先出线，再出框
+  setTimeout(() => $('card').classList.add('show'), wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
 }
 function closeHotspot() {
   $('card').classList.remove('show')
@@ -372,18 +398,40 @@ function closeHotspot() {
   activeHS = null
   focusTo(new THREE.Vector3(0,0,0), initialCam.length(), 700, initialCam.clone())
 }
-const _cw2 = new THREE.Vector3()
+const _cw2 = new THREE.Vector3(), _bc = new THREE.Vector3()
+// 模型世界包围盒 8 角投到屏幕，得到其占屏范围（用于面板避让）
+function projectModelBounds() {
+  let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity
+  const mn=modelBox.min, mx=modelBox.max
+  for (let i=0;i<8;i++) {
+    _bc.set(i&1?mx.x:mn.x, i&2?mx.y:mn.y, i&4?mx.z:mn.z).project(camera)
+    const sx=(_bc.x*0.5+0.5)*innerWidth, sy=(-_bc.y*0.5+0.5)*innerHeight
+    if(sx<minX)minX=sx; if(sx>maxX)maxX=sx; if(sy<minY)minY=sy; if(sy>maxY)maxY=sy
+  }
+  return { minX, maxX, minY, maxY }
+}
 function updateCallout() {
   if (!activeHS) return
   activeHS.anchor.getWorldPosition(_cw2); tmp.copy(_cw2).project(camera)
   const mx = (tmp.x*0.5+0.5)*innerWidth, my = (-tmp.y*0.5+0.5)*innerHeight
-  const card = $('card'), leader = $('hs-leader')
-  const g = 1 - Math.pow(1 - Math.min(1,(performance.now()-leaderT0)/260), 3)  // easeOutCubic 延伸
+  const card = $('card')
+  const cw = card.offsetWidth || 280, ch = card.offsetHeight || 150
   if (innerWidth > 720) {
-    const cw = 280, ch = card.offsetHeight || 150, reserve = editMode ? 320 : 8
-    const placeLeft = (innerWidth - reserve - mx) < cw + 70
-    const cardX = placeLeft ? Math.max(14, mx-70-cw) : Math.min(innerWidth-reserve-cw-8, mx+70)
-    const cardY = Math.min(Math.max(66, my-ch/2), innerHeight-ch-90)
+    // 桌面：优先落在模型投影外的留白区（不遮挡模型），再避让右侧编辑面板
+    const leader = $('hs-leader')
+    const g = 1 - Math.pow(1 - Math.min(1,(performance.now()-leaderT0)/260), 3)  // easeOutCubic 延伸
+    const reserve = editMode ? 320 : 8, gap = 26
+    const mb = projectModelBounds()
+    const freeLeft = mb.minX - 8
+    const freeRight = (innerWidth - reserve) - mb.maxX
+    let placeLeft
+    if (freeRight >= cw + gap) placeLeft = false
+    else if (freeLeft >= cw + gap) placeLeft = true
+    else placeLeft = (innerWidth - reserve - mx) < cw + 70          // 兜底：靠热点侧避让面板
+    const cardX = placeLeft
+      ? Math.max(8, mb.minX - gap - cw)
+      : Math.min(innerWidth - reserve - cw - 8, Math.max(mb.maxX + gap, mx + 60))
+    const cardY = Math.min(Math.max(66, my - ch/2), innerHeight - ch - 24)
     card.style.left = cardX+'px'; card.style.top = cardY+'px'
     card.style.setProperty('--org', placeLeft ? 'right center' : 'left center')
     const ax = placeLeft ? cardX+cw : cardX
@@ -391,9 +439,15 @@ function updateCallout() {
     leader.setAttribute('x1',mx); leader.setAttribute('y1',my)
     leader.setAttribute('x2', mx+(ax-mx)*g); leader.setAttribute('y2', my+(ay-my)*g)
   } else {
-    const dy = innerHeight - (card.offsetHeight || 190)
-    leader.setAttribute('x1',mx); leader.setAttribute('y1',my)
-    leader.setAttribute('x2',mx); leader.setAttribute('y2', my+(dy-my)*g)
+    // 移动端：就近显示于热点旁，夹取在视口内（避开顶栏 / 底部工具条），无引线
+    const pad = 10, safeTop = 60, safeBot = 148
+    let cx = mx - cw/2
+    cx = Math.min(Math.max(pad, cx), innerWidth - cw - pad)
+    let cy = my + 22
+    if (cy + ch > innerHeight - safeBot) cy = my - 22 - ch          // 下方放不下就放上方
+    cy = Math.min(Math.max(safeTop, cy), innerHeight - ch - pad)
+    card.style.left = cx+'px'; card.style.top = cy+'px'
+    card.style.setProperty('--org','center center')
   }
 }
 function focusTo(target, dist, dur, camOverride) {
@@ -535,6 +589,7 @@ function ensureCfg() {
   cfg.materials = cfg.materials || {}; cfg.materials.global = cfg.materials.global || {}; cfg.materials.overrides = cfg.materials.overrides || []
   cfg.lights = cfg.lights || {}; cfg.hotspots = cfg.hotspots || []; cfg.presets = cfg.presets || []
   cfg.environment = cfg.environment || {}
+  cfg.hotspotStyle = cfg.hotspotStyle || {}; cfg.panel = cfg.panel || {}
 }
 
 function renderEditor() {
@@ -604,6 +659,17 @@ function renderEditor() {
     <div class="ed-note">无全景时自动降级为内置 RoomEnvironment。</div>
   </details>
 
+  <details class="ed-sec"><summary>热点与面板样式</summary>
+    <div class="ed-row"><span>信息面板样式</span>
+      <select class="ed-in" id="ed-panel-style" style="width:auto;margin:0;flex:0 0 auto">
+        <option value="solid">黑底</option><option value="glass">毛玻璃</option><option value="transparent">透明</option>
+      </select></div>
+    ${col('hs.color','热点颜色', cfg.hotspotStyle.color||'#c8a86a')}
+    ${rng('hs.size','热点大小', 18, 40, 1, num(cfg.hotspotStyle.size,26))}
+    <label class="ed-row"><span>热点脉冲动画</span><input type="checkbox" data-k="hs.pulse" ${cfg.hotspotStyle.pulse!==false?'checked':''}></label>
+    <div class="ed-note">桌面：面板落在模型外留白 + 引线；移动端：就近显示、夹取在视口内。</div>
+  </details>
+
   <details class="ed-sec"><summary>热点（增删改）</summary>
     <div class="ed-note">Shift + 点击模型表面 = 新增热点</div>${hs}
   </details>
@@ -649,6 +715,7 @@ function wireEditor() {
       case 'l.key': L.key=L.key||{}; L.key.intensity=v; lightRefs.key.intensity=v; break
       case 'l.fill': L.fill=L.fill||{}; L.fill.intensity=v; lightRefs.fill.intensity=v; break
       case 'l.rim': L.rim=L.rim||{}; L.rim.intensity=v; lightRefs.rim.intensity=v; break
+      case 'hs.size': cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.size=v; buildHotspots(); break
       case 'ov.metal': case 'ov.rough': case 'ov.env': upsertOverride(); break
     }
   })
@@ -658,10 +725,14 @@ function wireEditor() {
     if(k==='l.keyc'){ L.key.color=e.target.value; lightRefs.key.color.copy(col) }
     if(k==='l.fillc'){ L.fill.color=e.target.value; lightRefs.fill.color.copy(col) }
     if(k==='l.rimc'){ L.rim.color=e.target.value; lightRefs.rim.color.copy(col) }
+    if(k==='hs.color'){ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.color=e.target.value; buildHotspots() }
   })
   const bg=$('editor').querySelector('[data-k="e.bg"]'); if(bg) bg.onchange=e=>{ cfg.environment.visibleBackground=e.target.checked; if(cfg.assets?.panorama) panoramaIBL(cfg.assets.panorama); if(!e.target.checked) scene.background=new THREE.Color(cfg.renderer?.background||'#0f1118') }
+  const pulseCb=$('editor').querySelector('[data-k="hs.pulse"]'); if(pulseCb) pulseCb.onchange=e=>{ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.pulse=e.target.checked; buildHotspots() }
 
   const el=id=>document.getElementById(id)
+  const ps=el('ed-panel-style'); if(ps){ ps.value=(cfg.panel?.style)||'solid'; ps.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.style=e.target.value
+    if($('card').classList.contains('show')){ const c=$('card'); c.classList.remove('st-solid','st-glass','st-transparent'); c.classList.add('st-'+e.target.value) } } }
   el('ed-url-load').onclick=()=>{ const u=el('ed-url').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.model=u; reloadModel(u) } }
   el('ed-file').onchange=e=>{ const f=e.target.files[0]; if(f) reloadModel(URL.createObjectURL(f), true) }
   const dz=el('editor'); ;['dragover','drop'].forEach(ev=>dz.addEventListener(ev,e=>e.preventDefault()))

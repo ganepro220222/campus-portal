@@ -583,8 +583,10 @@ function syncBtns(){
 function buildHUD() {
   const ui = cfg.ui||{}
   const pr = $('presets')
+  let shownPresets = 0
   ;(cfg.presets||[]).forEach((p,i) => {
-    if (!ui.showPresets) return
+    if (!ui.showPresets || p.showAsButton===false || shownPresets>=4) return   // 前台最多 4 个光源按钮
+    shownPresets++
     const b=document.createElement('button'); b.className='preset'; b.dataset.id=p.id; b.textContent=t(p.label)||p.id
     b.onclick=()=>applyPreset(p); pr.appendChild(b)
   })
@@ -602,6 +604,11 @@ function applyPreset(p) {
   renderer.toneMappingExposure = num(p.exposure, renderer.toneMappingExposure)
   if (typeof p.envMapIntensity === 'number') { cfg.materials = cfg.materials||{}; cfg.materials.global = Object.assign(cfg.materials.global||{}, {envMapIntensity:p.envMapIntensity}); applyMaterial() }
   if (p.background) scene.background = cfg.environment?.visibleBackground ? scene.background : new THREE.Color(p.background)
+  if (p.lights) {   // 预设含四光源方案 → 应用灯组
+    cfg.lights = cfg.lights || {}
+    ;['ambient','key','fill','rim'].forEach(k => { if (p.lights[k]) cfg.lights[k] = Object.assign(cfg.lights[k]||{}, p.lights[k]) })
+    buildLights()
+  }
   document.querySelectorAll('#presets .preset').forEach(b=>b.classList.toggle('on', b.dataset.id===p.id))
 }
 
@@ -712,7 +719,7 @@ function renderEditor() {
   const audioList = (cfg.audio||[]).map((a,i)=>`<div class="ed-hs-item"><div class="ed-row"><b>${a.id||('a'+(i+1))}</b><a data-au-del="${i}" style="color:#e07a7a">删除</a></div>
       <input class="ed-in" data-au-label="${i}" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="名称（下拉显示）">
       <input class="ed-in" data-au-src="${i}" value="${(a.src||'').replace(/"/g,'&quot;')}" placeholder="音频地址 .mp3/.m4a/.wav"></div>`).join('') || '<div class="ed-note">暂无语音。</div>'
-  const presets = cfg.presets.map((p,i)=>`<div class="ed-row"><span>${t(p.label)||p.id}</span><a data-pr-del="${i}" style="color:#e07a7a">删除</a></div>`).join('') || '<div class="ed-note">暂无预设。</div>'
+  const presets = cfg.presets.map((p,i)=>`<div class="ed-row"><span>${t(p.label)||p.id}</span><span style="flex:0 0 auto"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" data-pr-btn="${i}" ${p.showAsButton!==false?'checked':''}> 按钮</label> · <a data-pr-del="${i}" style="color:#e07a7a">删除</a></span></div>`).join('') || '<div class="ed-note">暂无预设。</div>'
 
   const info = cfg.i18n?.zh || {}, ui = cfg.ui || {}
   $('editor').innerHTML = `
@@ -807,7 +814,8 @@ function renderEditor() {
     <button class="ed-btn" id="ed-au-add">新增语音</button>
   </details>
 
-  <details class="ed-sec"><summary>预设</summary>
+  <details class="ed-sec"><summary>预设（含灯光方案）</summary>
+    <div class="ed-note">新建预设会记录当前曝光/环境光强/背景 + 四光源灯组。前台最多显示 4 个按钮。</div>
     ${presets}<button class="ed-btn" id="ed-pr-add">从当前状态新建预设</button>
   </details>
 
@@ -898,8 +906,13 @@ function wireEditor() {
     c.distance=+s.radius.toFixed(3); c.phi=+s.phi.toFixed(3); c.theta=+s.theta.toFixed(3); initialCam.copy(camera.position); flash('已保存当前视角') }
   el('ed-pano-load').onclick=()=>{ const u=el('ed-pano').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.panorama=u; panoramaIBL(u) } }
   el('ed-matsel')?.addEventListener('change', loadOverride); loadOverride()
-  el('ed-pr-add').onclick=()=>{ cfg.presets.push({ id:'p'+(cfg.presets.length+1), label:{zh:'预设'+(cfg.presets.length+1),en:'Preset'+(cfg.presets.length+1)},
-    exposure:+renderer.toneMappingExposure.toFixed(2), envMapIntensity:num(g.envMapIntensity,1.35), background:cfg.renderer?.background||'#0f1118' }); renderEditor(); buildHUD_refresh() }
+  el('ed-pr-add').onclick=()=>{ const shown=cfg.presets.filter(pp=>pp.showAsButton!==false).length
+    cfg.presets.push({ id:'p'+(cfg.presets.length+1), label:{zh:'预设'+(cfg.presets.length+1),en:'Preset'+(cfg.presets.length+1)},
+      exposure:+renderer.toneMappingExposure.toFixed(2), envMapIntensity:num(g.envMapIntensity,1.35), background:cfg.renderer?.background||'#0f1118',
+      lights: JSON.parse(JSON.stringify(cfg.lights||{})), showAsButton: shown<4 }); renderEditor(); buildHUD_refresh() }
+  $('editor').querySelectorAll('[data-pr-btn]').forEach(cb=>cb.onchange=e=>{ const idx=+cb.dataset.prBtn
+    if(e.target.checked){ const shown=cfg.presets.filter((pp,j)=>j!==idx && pp.showAsButton!==false).length; if(shown>=4){ e.target.checked=false; flash('前台最多显示 4 个光源按钮'); return } }
+    cfg.presets[idx].showAsButton=e.target.checked; buildHUD_refresh() })
   el('ed-export').onclick=()=>downloadJSON()
   el('ed-shot').onclick=()=>{ renderer.render(scene,camera); const a=document.createElement('a'); a.href=renderer.domElement.toDataURL('image/jpeg',0.9); a.download='poster.jpg'; a.click() }
   el('ed-check').onclick=()=>{ const o=el('ed-checkout'), b=el('ed-check')

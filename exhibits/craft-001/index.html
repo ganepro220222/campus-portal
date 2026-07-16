@@ -69,13 +69,19 @@
   .card-title { font-size:16px; font-weight:700; color:#f4e6c8; margin-bottom:8px; letter-spacing:.5px; }
   .card-body { font-size:13.5px; line-height:1.75; color:rgba(238,240,245,.9); }
   .card-close { position:absolute; top:12px; right:14px; font-size:20px; color:rgba(255,255,255,.6); cursor:pointer; line-height:1; }
-  /* PC：右侧栏 */
-  @media (min-width:721px){ .card { top:50%; right:26px; transform:translateY(-50%) translateX(20px);
-      width:300px; padding:22px 24px; border-radius:18px; } .card.show{ transform:translateY(-50%) translateX(0);} }
-  /* 移动：底部抽屉 */
-  @media (max-width:720px){ .card { left:0; right:0; bottom:0; transform:translateY(24px);
-      padding:20px 22px calc(env(safe-area-inset-bottom) + 22px); border-radius:22px 22px 0 0; }
-      .card.show{ transform:translateY(0);} }
+  /* 浮动卡片（宽屏；JS 定位在热点旁，避开右侧编辑面板）+ 引线 */
+  .card.float { width:280px; padding:18px 20px; border-radius:16px; transform:scale(.9);
+    transform-origin:var(--org, left center); box-shadow:0 18px 44px rgba(0,0,0,.5); }
+  .card.float.show { transform:scale(1); }
+  /* 底部抽屉（窄屏 / 手机） */
+  .card.drawer { left:0; right:0; bottom:0; transform:translateY(28px);
+    padding:20px 22px calc(env(safe-area-inset-bottom) + 22px); border-radius:22px 22px 0 0; }
+  .card.drawer.show { transform:translateY(0); }
+  /* 引线 SVG */
+  .hs-svg { position:absolute; inset:0; width:100%; height:100%; z-index:6; pointer-events:none; overflow:visible; }
+  #hs-leader { stroke:var(--gold); stroke-width:1.6; stroke-linecap:round; opacity:.92;
+    stroke-dasharray:5 6; animation:flow 1s linear infinite; filter:drop-shadow(0 0 3px rgba(200,168,106,.55)); }
+  @keyframes flow { to { stroke-dashoffset:-22; } }
 
   /* 遮罩：加载 / 错误 */
   .overlay { position:absolute; inset:0; z-index:10; display:flex; align-items:center; justify-content:center;
@@ -118,8 +124,8 @@
   .editor a { cursor:pointer; color:var(--gold); text-decoration:none; }
   .ed-btn { width:100%; margin-top:6px; padding:9px; border:1px solid var(--gold); border-radius:8px;
     background:transparent; color:#f4e6c8; cursor:pointer; font-size:12.5px; }
-  .ed-badge { position:absolute; top:12px; left:12px; z-index:20; background:rgba(200,168,106,.9); color:#0b0d14;
-    font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; }
+  .ed-badge { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:21; background:rgba(200,168,106,.92); color:#0b0d14;
+    font-size:11px; font-weight:700; padding:3px 12px; border-radius:999px; }
 </style>
 </head>
 <body>
@@ -130,9 +136,8 @@
     <div class="topbar-name" id="c-name"></div>
     <div class="topbar-sub" id="c-sub"></div>
   </header>
-  <div class="lang" hidden id="lang"><button data-l="zh" class="on">中文</button><button data-l="en">EN</button></div>
-
   <div class="hint" id="hint">拖动旋转 · 双指缩放</div>
+  <svg class="hs-svg" id="hs-svg" hidden><line id="hs-leader" x1="0" y1="0" x2="0" y2="0" /></svg>
   <div class="hs-layer" id="hs-layer"></div>
 
   <div class="hud" hidden id="hud">
@@ -343,20 +348,53 @@ function updateHotspots() {
   })
 }
 
-let focusAnim = null
+let focusAnim = null, activeHS = null, leaderT0 = 0
 function openHotspot(h, el) {
   controls.autoRotate = false; syncBtns()
   hotspots.forEach(x => x.el.classList.toggle('active', x.el===el))
+  activeHS = hotspots.find(x => x.el===el)
   const tx = t(h.i18n)
   $('card-title').textContent = tx.title || ''
   $('card-body').textContent = tx.content || ''
-  $('card').classList.add('show')
+  const wide = innerWidth > 720
+  const card = $('card')
+  card.style.left = ''; card.style.top = ''       // 清掉上次浮动定位，避免污染抽屉
+  card.className = 'card ' + (wide ? 'float' : 'drawer')
+  $('hs-svg').removeAttribute('hidden')
+  leaderT0 = performance.now()                     // 引线延伸动画起点
   if (h.cameraFocus) focusTo(new THREE.Vector3(...(h.position||[0,0,0])), num(h.cameraFocus.distance,2.4), num(h.cameraFocus.duration,800))
+  setTimeout(() => $('card').classList.add('show'), 240)   // 先出线，再出框
 }
 function closeHotspot() {
   $('card').classList.remove('show')
+  $('hs-svg').setAttribute('hidden','')
   hotspots.forEach(x => x.el.classList.remove('active'))
+  activeHS = null
   focusTo(new THREE.Vector3(0,0,0), initialCam.length(), 700, initialCam.clone())
+}
+const _cw2 = new THREE.Vector3()
+function updateCallout() {
+  if (!activeHS) return
+  activeHS.anchor.getWorldPosition(_cw2); tmp.copy(_cw2).project(camera)
+  const mx = (tmp.x*0.5+0.5)*innerWidth, my = (-tmp.y*0.5+0.5)*innerHeight
+  const card = $('card'), leader = $('hs-leader')
+  const g = 1 - Math.pow(1 - Math.min(1,(performance.now()-leaderT0)/260), 3)  // easeOutCubic 延伸
+  if (innerWidth > 720) {
+    const cw = 280, ch = card.offsetHeight || 150, reserve = editMode ? 320 : 8
+    const placeLeft = (innerWidth - reserve - mx) < cw + 70
+    const cardX = placeLeft ? Math.max(14, mx-70-cw) : Math.min(innerWidth-reserve-cw-8, mx+70)
+    const cardY = Math.min(Math.max(66, my-ch/2), innerHeight-ch-90)
+    card.style.left = cardX+'px'; card.style.top = cardY+'px'
+    card.style.setProperty('--org', placeLeft ? 'right center' : 'left center')
+    const ax = placeLeft ? cardX+cw : cardX
+    const ay = Math.min(Math.max(cardY+16, my), cardY+ch-16)
+    leader.setAttribute('x1',mx); leader.setAttribute('y1',my)
+    leader.setAttribute('x2', mx+(ax-mx)*g); leader.setAttribute('y2', my+(ay-my)*g)
+  } else {
+    const dy = innerHeight - (card.offsetHeight || 190)
+    leader.setAttribute('x1',mx); leader.setAttribute('y1',my)
+    leader.setAttribute('x2',mx); leader.setAttribute('y2', my+(dy-my)*g)
+  }
 }
 function focusTo(target, dist, dur, camOverride) {
   const startT = controls.target.clone(), startC = camera.position.clone()
@@ -417,7 +455,7 @@ function applyPreset(p) {
 
 function onResize() { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight) }
 let fps=0, _ft=performance.now(), _fc=0
-function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateHotspots(); renderer.render(scene,camera)
+function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
   _fc++; const n=performance.now(); if(n-_ft>=500){ fps=Math.round(_fc*1000/(n-_ft)); _fc=0; _ft=n } }
 /* 换模型（支持任意 URL / 拖拽本地文件；跨域需 CORS） */
 function reloadModel(url, revoke) {
@@ -447,7 +485,6 @@ function start() {
     // 背景真全景 IBL 后台加载，平滑接管
     if (cfg.environment?.mode === 'panorama' && cfg.assets.panorama) panoramaIBL(cfg.assets.panorama)
     $('topbar').removeAttribute('hidden'); $('hud').removeAttribute('hidden')
-    if (cfg.ui?.showLangSwitch!==false) $('lang').removeAttribute('hidden')
     $('loading').classList.add('fade'); setTimeout(()=>$('loading').setAttribute('hidden',''), 460)
     $('hint').classList.add('show'); setTimeout(()=>$('hint').classList.remove('show'), 2600)
     if (editMode) buildEditor()
@@ -473,10 +510,6 @@ async function boot() {
   start()
 }
 
-/* 语言切换 */
-$('lang').addEventListener('click', e=>{ const l=e.target.dataset.l; if(!l||l===lang) return
-  lang=l; document.querySelectorAll('#lang button').forEach(b=>b.classList.toggle('on',b.dataset.l===l))
-  renderText(); if($('card').classList.contains('show')){ /* 关闭以避免语言错位 */ closeHotspot() } })
 $('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); boot() }
 
 /* ── 编辑模式（开发方；纯前端，导出 config，不写服务器）──

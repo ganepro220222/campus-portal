@@ -14,7 +14,13 @@
   "camera": { "fov": 40, "distance": 4.4, "phi": 1.35, "theta": 0.6, "minDistance": 1.8, "maxDistance": 8, "autoRotate": true, "autoRotateSpeed": 0.8, "damping": true },
   "renderer": { "toneMapping": "ACESFilmic", "exposure": 1.05, "maxPixelRatio": 2, "background": "#0f1118" },
   "environment": { "mode": "panorama", "useAsIBL": true, "visibleBackground": false, "intensity": 1.15, "fallback": "room" },
-  "materials": { "global": { "envMapIntensity": 1.35 } },
+  "lights": {
+    "ambient": { "color": "#ffffff", "intensity": 0.25 },
+    "key":  { "color": "#fff0e0", "intensity": 1.1, "position": [5, 8, 6] },
+    "fill": { "color": "#a9c4ff", "intensity": 0.35, "position": [-5, 2, -3] },
+    "rim":  { "color": "#ffffff", "intensity": 0.5, "position": [-2, 3, -7] }
+  },
+  "materials": { "global": { "metalness": 0.0, "roughness": 0.5, "envMapIntensity": 1.35 }, "overrides": [] },
   "hotspots": [
     { "id": "h1", "position": [0, 0.95, 0.28], "i18n": { "zh": { "title": "颈部纹样", "content": "瓶颈以螭龙与卷草纹对称展开，黄地留白衬托主纹，是清代宫廷珐琅彩的典型装饰语言。" }, "en": { "title": "Neck Motif", "content": "Symmetric chi-dragon and scrolling grass on a yellow ground — a hallmark of Qing court enamelware." } }, "cameraFocus": { "distance": 2.6, "duration": 800 } },
     { "id": "h2", "position": [0.05, 0.33, 0.44], "i18n": { "zh": { "title": "肩部缠枝", "content": "肩部一周缠枝莲纹环绕，线条以金彩勾边，随光影流转而生辉，工艺极为繁复。" }, "en": { "title": "Shoulder Scroll", "content": "A band of interlocking lotus scrolls, gold-outlined and shimmering as the light shifts." } }, "cameraFocus": { "distance": 2.8, "duration": 800 } },

@@ -8,6 +8,11 @@
 <style>
   :root { --gold:#c8a86a; --ink:#0f1118; }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  /* 无障碍：键盘焦点可见（鼠标点击不显示，Tab 导航才显示） */
+  :focus { outline:none; }
+  :focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+  .btn:focus-visible, .preset:focus-visible, .au-btn:focus-visible, .card-close:focus-visible, .err-btn:focus-visible { outline:2px solid #f4e6c8; outline-offset:2px; }
+  .hs:focus-visible { outline:2px solid #fff; outline-offset:3px; }
   html,body,#app { width:100%; height:100%; overflow:hidden; background:var(--ink); color:#eef0f5;
     font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
   #app { position:fixed; inset:0; }
@@ -184,11 +189,11 @@
   <div class="hs-layer" id="hs-layer"></div>
 
   <!-- 语音讲解 小型播放器 -->
-  <div class="audio" hidden id="audio">
-    <button class="au-btn" id="au-play" aria-label="播放/暂停语音讲解">▶</button>
+  <div class="audio" hidden id="audio" role="group" aria-label="语音讲解播放器">
+    <button class="au-btn" id="au-play" aria-label="播放/暂停语音讲解（空格键）">▶</button>
     <div class="au-mid">
       <div class="au-top">
-        <select class="au-sel" id="au-sel" hidden></select>
+        <select class="au-sel" id="au-sel" hidden aria-label="选择语音讲解"></select>
         <span class="au-name" id="au-name">语音讲解</span>
         <span class="au-time" id="au-time">0:00</span>
       </div>
@@ -202,8 +207,8 @@
     <div class="actions" id="actions"></div>
   </div>
 
-  <div class="card" id="card">
-    <span class="card-close" id="card-close">×</span>
+  <div class="card" id="card" role="dialog" aria-labelledby="card-title" aria-modal="false">
+    <span class="card-close" id="card-close" role="button" tabindex="0" aria-label="关闭讲解">×</span>
     <div class="card-title" id="card-title"></div>
     <div class="card-body" id="card-body"></div>
   </div>
@@ -238,6 +243,8 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 
 const $ = id => document.getElementById(id)
@@ -273,7 +280,11 @@ function initRenderer() {
   try {
     renderer = new THREE.WebGLRenderer({ canvas:$('scene'), antialias:true, powerPreference:'high-performance', preserveDrawingBuffer:editMode })
   } catch(e){ return false }
-  const dpr = Math.min(window.devicePixelRatio||1, cfg.renderer?.maxPixelRatio || 2)
+  // 移动端像素比自适应：手机限流以省 GPU/发热，桌面放开到高清
+  const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 768
+  const cap = isMobile ? num(cfg.performance?.mobilePixelRatio, 1.5)
+                       : num(cfg.performance?.desktopPixelRatio, cfg.renderer?.maxPixelRatio || 2)
+  const dpr = Math.min(window.devicePixelRatio||1, cap)
   renderer.setPixelRatio(dpr)
   renderer.setSize(innerWidth, innerHeight)
   renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -400,13 +411,18 @@ function buildHotspots() {
     el.style.setProperty('--hs-glow', hexToRgba(col, .55))
     if (hstyle.size) el.style.setProperty('--hs-size', hstyle.size+'px')
     if (hstyle.pulse === false) el.classList.add('no-pulse')
+    el.setAttribute('role','button'); el.setAttribute('tabindex','0')
+    el.setAttribute('aria-label', (t(h.i18n).title || '热点') + ' · 查看讲解')
     layer.appendChild(el)
     const anchor = new THREE.Object3D()
     anchor.position.copy(model.worldToLocal(new THREE.Vector3(...(h.position||[0,0,0]))))
     model.add(anchor)
     const hsObj = { data:h, el, anchor }
     if (editMode) el.addEventListener('pointerdown', e => startHsDrag(e, hsObj))   // 编辑版：拖拽微调 / 点开
-    else el.addEventListener('click', e => { e.stopPropagation(); openHotspot(h, el) })
+    else {
+      el.addEventListener('click', e => { e.stopPropagation(); openHotspot(h, el) })
+      el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openHotspot(h, el) } })  // 键盘可达
+    }
     hotspots.push(hsObj)
   })
 }
@@ -425,7 +441,9 @@ function updateHotspots() {
     let op = facing > 0.12 ? 1 : facing > -0.15 ? 0.28 : 0
     if (!hotspotsVisible || !onScreen) op = 0
     hs.el.style.opacity = op
-    hs.el.style.pointerEvents = op > 0.5 ? 'auto' : 'none'
+    const vis = op > 0.5
+    hs.el.style.pointerEvents = vis ? 'auto' : 'none'
+    if (hs._vis !== vis) { hs._vis = vis; hs.el.tabIndex = vis ? 0 : -1; hs.el.setAttribute('aria-hidden', vis ? 'false' : 'true') }  // 隐藏时移出 Tab 序
     hs.el.style.left = x+'px'; hs.el.style.top = y+'px'
   })
 }
@@ -581,8 +599,8 @@ function renderText() {
 const BTN = { rotate:{zh:'自动旋转',en:'Auto'}, hot:{zh:'热点',en:'Hotspots'}, reset:{zh:'重置',en:'Reset'}, full:{zh:'全屏',en:'Full'} }
 function labelBtns(){ document.querySelectorAll('#actions .btn').forEach(b=>{ const k=b.dataset.k; if(BTN[k]) b.querySelector('.tx').textContent = BTN[k][lang] }) }
 function syncBtns(){
-  const r=document.querySelector('[data-k=rotate]'); if(r) r.classList.toggle('on', controls.autoRotate)
-  const h=document.querySelector('[data-k=hot]'); if(h) h.classList.toggle('on', hotspotsVisible)
+  const r=document.querySelector('[data-k=rotate]'); if(r){ r.classList.toggle('on', controls.autoRotate); r.setAttribute('aria-pressed', controls.autoRotate) }
+  const h=document.querySelector('[data-k=hot]'); if(h){ h.classList.toggle('on', hotspotsVisible); h.setAttribute('aria-pressed', hotspotsVisible) }
 }
 function buildHUD() {
   const ui = cfg.ui||{}
@@ -601,7 +619,7 @@ function buildHUD() {
   if (ui.showHotspotButton!==false && (cfg.hotspots||[]).length) mk('hot','◈', true, ()=>{ hotspotsVisible=!hotspotsVisible; if(!hotspotsVisible) closeHotspot(); syncBtns() })
   if (ui.showResetButton!==false) mk('reset','⤢', false, ()=>{ closeHotspot() })
   if (ui.showFullscreenButton!==false) mk('full','⛶', false, ()=>{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen() })
-  labelBtns()
+  labelBtns(); syncBtns()   // 初始化 aria-pressed 等状态
 }
 function applyPreset(p) {
   activePreset = p.id
@@ -620,9 +638,21 @@ function onResize() { camera.aspect=innerWidth/innerHeight; camera.updateProject
 let fps=0, _ft=performance.now(), _fc=0
 function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
   _fc++; const n=performance.now(); if(n-_ft>=500){ fps=Math.round(_fc*1000/(n-_ft)); _fc=0; _ft=n } }
+/* 统一构造 GLTFLoader：挂载 Draco（几何压缩）+ KTX2/Basis（贴图压缩）解码器，自托管于 vendor/ */
+let _draco = null, _ktx2 = null
+function makeLoader() {
+  const loader = new GLTFLoader()
+  if (!_draco) _draco = new DRACOLoader().setDecoderPath('./vendor/draco/')
+  loader.setDRACOLoader(_draco)
+  try {
+    if (!_ktx2) _ktx2 = new KTX2Loader().setTranscoderPath('./vendor/basis/').detectSupport(renderer)
+    loader.setKTX2Loader(_ktx2)
+  } catch(e) { /* KTX2 不支持时忽略，普通贴图不受影响 */ }
+  return loader
+}
 /* 换模型（支持任意 URL / 拖拽本地文件；跨域需 CORS） */
 function reloadModel(url, revoke) {
-  new GLTFLoader().load(url, gltf => {
+  makeLoader().load(url, gltf => {
     if (model) scene.remove(model)
     model = gltf.scene
     normalize(model); applyMaterial(); scene.add(model); buildHotspots()
@@ -641,7 +671,7 @@ function start() {
   roomIBL() // 先给内置环境，秒出反射
   buildLights() // 四光源灯组（叠加在 IBL 上，可编辑）
 
-  new GLTFLoader().load(cfg.assets.model, gltf => {
+  makeLoader().load(cfg.assets.model, gltf => {
     model = gltf.scene
     normalize(model); applyMaterial(); scene.add(model)
     placeCamera(); buildHotspots(); buildHUD(); renderText(); buildAudio(); wireAudio()
@@ -658,7 +688,17 @@ function start() {
 
   addEventListener('resize', onResize)
   $('card-close').onclick = closeHotspot
+  $('card-close').addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); closeHotspot() } })
   $('scene').addEventListener('pointerdown', ()=>{ if($('card').classList.contains('show')) return })
+  // 键盘快捷键：Esc 关面板 · 空格 播/暂停语音
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape') { if ($('card').classList.contains('show')) closeHotspot() }
+    else if (e.key === ' ' || e.code === 'Space') {
+      const tag = (e.target?.tagName || '').toLowerCase()
+      if (tag==='input' || tag==='textarea' || tag==='select' || tag==='button' || tag==='a') return  // 不干扰控件/输入
+      if (auTracks.length) { e.preventDefault(); const a=$('au-el'); a.paused ? a.play().catch(()=>{}) : a.pause() }
+    }
+  })
 }
 
 async function boot() {

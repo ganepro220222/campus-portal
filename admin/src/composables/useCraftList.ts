@@ -135,7 +135,6 @@ export function useCraftList() {
         categoryId: form.categoryId,
         introZh: form.introZh,
         introEn: form.introEn || undefined,
-        previewType: 'multi_image',
         sort: form.sort,
         status: form.status,
         images: form.images.filter((img) => img.imageUrl?.trim()),

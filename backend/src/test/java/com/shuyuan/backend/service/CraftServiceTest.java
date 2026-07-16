@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,16 +42,12 @@ class CraftServiceTest {
     private CraftService craftService;
 
     @Test
-    void detail_returnsMultiImageFieldsOnly() {
+    void detail_returnsImagesAndContactOnly() {
         Craft craft = new Craft();
         craft.setId(3L);
         craft.setName("屯堡石雕·地戏面具");
         craft.setIntroZh("中文介绍");
         craft.setIntroEn("English intro");
-        craft.setPreviewType("model3d");
-        craft.setModel3dUrl("https://cdn.example.com/models/mask.glb");
-        craft.setViewerEnabled(1);
-        craft.setTransformJson("{\"scale\":1.1}");
         craft.setStatus(1);
         craft.setCategoryId(12L);
 
@@ -71,10 +68,10 @@ class CraftServiceTest {
 
         Map<String, Object> vo = craftService.detail(3L);
 
-        assertEquals("multi_image", vo.get("previewType"));
-        assertEquals(false, vo.containsKey("model3dUrl"));
-        assertEquals(false, vo.containsKey("viewerEnabled"));
-        assertEquals(false, vo.containsKey("transform"));
+        assertFalse(vo.containsKey("previewType"));
+        assertFalse(vo.containsKey("model3dUrl"));
+        assertFalse(vo.containsKey("viewerEnabled"));
+        assertFalse(vo.containsKey("transform"));
         assertEquals("中文介绍", vo.get("introZh"));
         assertEquals("English intro", vo.get("introEn"));
         assertNotNull(vo.get("images"));

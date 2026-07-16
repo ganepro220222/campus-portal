@@ -67,7 +67,7 @@ class OssServiceTest {
     }
 
     @Test
-    void upload_acceptsGlbScene_whenEnabled_withoutCallingCloud() {
+    void upload_rejects_model3dScene_whenEnabled() {
         when(ossProperties.isEnabled()).thenReturn(true);
         when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-test.aliyuncs.com");
         when(ossProperties.getBucket()).thenReturn("bucket");
@@ -76,12 +76,9 @@ class OssServiceTest {
         when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
 
         MockMultipartFile file = new MockMultipartFile("file", "craft.glb", "model/gltf-binary", "glTF".getBytes());
-        // 未 mock OSS 客户端，会在实际上传时失败；此处仅验证场景白名单不拦截 glb
-        try {
-            ossService.upload("model3d", file);
-        } catch (com.shuyuan.backend.common.exception.BusinessException ex) {
-            assertNotEquals(400, ex.getCode(), "glb 扩展名应通过白名单校验");
-        }
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.upload("model3d", file));
+        assertEquals(400, ex.getCode());
     }
 
     @Test

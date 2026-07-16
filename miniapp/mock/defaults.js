@@ -111,9 +111,9 @@ module.exports = {
   },
 
   crafts: [
-    { id: 1, name: '苗族银饰·蝴蝶冠', intro: '贵州苗族传统银饰', categoryName: '非遗工艺', previewType: 'multi_image' },
-    { id: 2, name: '蜡染壁挂·山水阳明', intro: '蜡染工艺呈现龙场山水', categoryName: '非遗工艺', previewType: 'multi_image' },
-    { id: 3, name: '屯堡石雕·地戏面具', intro: '六百年非遗活态传承', categoryName: '非遗工艺', previewType: 'multi_image' }
+    { id: 1, name: '苗族银饰·蝴蝶冠', intro: '贵州苗族传统银饰', categoryName: '非遗工艺' },
+    { id: 2, name: '蜡染壁挂·山水阳明', intro: '蜡染工艺呈现龙场山水', categoryName: '非遗工艺' },
+    { id: 3, name: '屯堡石雕·地戏面具', intro: '六百年非遗活态传承', categoryName: '非遗工艺' }
   ],
 
   craftDetail: {
@@ -121,7 +121,6 @@ module.exports = {
     name: '苗族银饰·蝴蝶冠',
     introZh: '贵州苗族传统银饰，以蝴蝶妈妈为图腾，寓意生命与美好。',
     introEn: 'Traditional Miao silver headdress featuring butterfly motifs.',
-    previewType: 'multi_image',
     images: [{ imageUrl: '', angleLabel: '正面' }],
     contact: { phone: '0851-12345678', wechat: 'shuyuan_craft', email: 'craft@gzjtzy.edu.cn' }
   },

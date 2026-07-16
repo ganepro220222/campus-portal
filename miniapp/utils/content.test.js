@@ -7,25 +7,19 @@ const { mergeCraftDetail, mergeHallDetail } = require('./content')
 
 const merged = mergeCraftDetail({
   id: 3,
-  previewType: 'model3d',
-  model3dUrl: 'https://cdn.example.com/mask.glb',
   introZh: '中文',
   introEn: 'EN',
   images: [{ imageUrl: 'https://a.jpg', angleLabel: '正面' }]
 }, {})
 
-assert.strictEqual(merged.previewType, 'multi_image')
 assert.strictEqual(merged.images.length, 1)
 assert.strictEqual(merged.introZh, '中文')
+assert.strictEqual(merged.name, undefined)
 
-const fallback = mergeCraftDetail({
-  id: 3,
-  previewType: 'model3d',
-  model3dUrl: ''
-}, { previewType: 'multi_image', images: [{ imageUrl: 'x' }] })
+const fallback = mergeCraftDetail({ id: 3 }, { name: '面具', images: [{ imageUrl: 'x' }] })
 
-assert.strictEqual(fallback.previewType, 'multi_image')
 assert.strictEqual(fallback.images[0].imageUrl, 'x')
+assert.strictEqual(fallback.name, '面具')
 
 const hall = mergeHallDetail({
   id: 2,

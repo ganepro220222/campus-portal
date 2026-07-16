@@ -42,7 +42,6 @@ public class OssService {
         map.put("document", Set.of("pdf", "doc", "docx", "ppt", "pptx"));
         map.put("resource_file", Set.of("pdf", "doc", "docx", "ppt", "pptx", "mp4", "mp3"));
         map.put("subtitle", Set.of("vtt", "srt"));
-        map.put("model3d", Set.of("glb", "gltf"));
         return Map.copyOf(map);
     }
 
@@ -207,7 +206,6 @@ public class OssService {
             case "file" -> "document";
             case "resource_file" -> "resource_file";
             case "subtitle" -> "subtitle";
-            case "model3d", "model", "glb" -> "model3d";
             default -> scene.toLowerCase(Locale.ROOT);
         };
     }
@@ -220,7 +218,6 @@ public class OssService {
             case "document" -> "files";
             case "resource_file" -> resourceFileFolder(ext);
             case "subtitle" -> "subtitles";
-            case "model3d" -> "models";
             default -> "images";
         };
         String month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));

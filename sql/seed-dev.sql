@@ -163,10 +163,10 @@ INSERT IGNORE INTO `home_recommend` (`id`, `module_type`, `target_id`, `sort`, `
 (11, 'course', 2, 2, 1);
 
 -- 文创
-INSERT IGNORE INTO `craft` (`id`, `name`, `intro_zh`, `intro_en`, `category_id`, `preview_type`, `sort`, `status`) VALUES
-(1, '苗族银饰·蝴蝶冠', '贵州苗族传统银饰，以蝴蝶妈妈为图腾，寓意生命与美好。', 'Traditional Miao silver headdress featuring butterfly motifs.', 12, 'multi_image', 1, 1),
-(2, '蜡染壁挂·山水阳明', '以蜡染工艺呈现龙场山水与阳明先生悟道意境。', 'Batik wall hanging depicting Yangming\'s enlightenment landscape.', 12, 'multi_image', 2, 1),
-(3, '屯堡石雕·地戏面具', '屯堡传统石雕地戏面具，六百年非遗活态传承。', 'Tunpu stone-carved opera mask, living heritage craft.', 12, 'multi_image', 3, 1);
+INSERT IGNORE INTO `craft` (`id`, `name`, `intro_zh`, `intro_en`, `category_id`, `sort`, `status`) VALUES
+(1, '苗族银饰·蝴蝶冠', '贵州苗族传统银饰，以蝴蝶妈妈为图腾，寓意生命与美好。', 'Traditional Miao silver headdress featuring butterfly motifs.', 12, 1, 1),
+(2, '蜡染壁挂·山水阳明', '以蜡染工艺呈现龙场山水与阳明先生悟道意境。', 'Batik wall hanging depicting Yangming\'s enlightenment landscape.', 12, 2, 1),
+(3, '屯堡石雕·地戏面具', '屯堡传统石雕地戏面具，六百年非遗活态传承。', 'Tunpu stone-carved opera mask, living heritage craft.', 12, 3, 1);
 
 INSERT IGNORE INTO `craft_image` (`craft_id`, `image_url`, `angle_label`, `sort`) VALUES
 (1, 'https://cdn.example.com/craft/silver-1.jpg', '正面', 1),

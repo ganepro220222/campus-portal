@@ -73,9 +73,6 @@ public class AdminCraftService {
         if (craft.getStatus() == null) {
             craft.setStatus(0);
         }
-        if (craft.getPreviewType() == null || craft.getPreviewType().isBlank()) {
-            craft.setPreviewType("multi_image");
-        }
         craftMapper.insert(craft);
         syncImages(craft.getId(), req.getImages());
         syncContact(craft.getId(), req.getContact());
@@ -147,9 +144,6 @@ public class AdminCraftService {
         if (req.getName() == null || req.getName().isBlank()) {
             throw new BusinessException(400, "文创名称不能为空");
         }
-        if ("model3d".equals(req.getPreviewType())) {
-            throw new BusinessException(400, "小程序已不再支持 3D 展示，请使用多角度图片");
-        }
     }
 
     private Craft fromRequest(Craft craft, CraftSaveRequest req) {
@@ -171,7 +165,6 @@ public class AdminCraftService {
         if (req.getIntroEn() != null) {
             craft.setIntroEn(req.getIntroEn());
         }
-        craft.setPreviewType("multi_image");
         if (req.getSort() != null) {
             craft.setSort(req.getSort());
         }
@@ -267,7 +260,6 @@ public class AdminCraftService {
         m.put("categoryName", categoryService.getName(c.getCategoryId(), catMap));
         m.put("introZh", c.getIntroZh());
         m.put("introEn", c.getIntroEn());
-        m.put("previewType", "multi_image");
         m.put("sort", c.getSort());
         m.put("status", c.getStatus());
         return m;

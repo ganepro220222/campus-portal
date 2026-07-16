@@ -27,7 +27,6 @@ export interface CraftSavePayload {
   categoryId?: number
   introZh?: string
   introEn?: string
-  previewType?: string
   sort?: number
   status?: number
   images?: CraftImagePayload[]

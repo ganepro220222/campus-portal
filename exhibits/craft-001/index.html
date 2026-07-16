@@ -601,7 +601,7 @@ function ensureCfg() {
   cfg.materials = cfg.materials || {}; cfg.materials.global = cfg.materials.global || {}; cfg.materials.overrides = cfg.materials.overrides || []
   cfg.lights = cfg.lights || {}; cfg.hotspots = cfg.hotspots || []; cfg.presets = cfg.presets || []
   cfg.environment = cfg.environment || {}
-  cfg.hotspotStyle = cfg.hotspotStyle || {}; cfg.panel = cfg.panel || {}
+  cfg.hotspotStyle = cfg.hotspotStyle || {}; cfg.panel = cfg.panel || {}; cfg.ui = cfg.ui || {}
 }
 
 function renderEditor() {
@@ -618,11 +618,21 @@ function renderEditor() {
   }).join('') || '<div class="ed-note">暂无热点。Shift+点击模型表面添加。</div>'
   const presets = cfg.presets.map((p,i)=>`<div class="ed-row"><span>${t(p.label)||p.id}</span><a data-pr-del="${i}" style="color:#e07a7a">删除</a></div>`).join('') || '<div class="ed-note">暂无预设。</div>'
 
-  const info = cfg.i18n?.zh || {}
+  const info = cfg.i18n?.zh || {}, ui = cfg.ui || {}
   $('editor').innerHTML = `
   <details class="ed-sec" open><summary>基本信息</summary>
     <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
     <input class="ed-in" id="ed-subtitle" value="${(info.subtitle||'').replace(/"/g,'&quot;')}" placeholder="副标题（标题下方小字）">
+  </details>
+
+  <details class="ed-sec"><summary>用户端按钮</summary>
+    <div class="ed-note">勾选终端用户可见的功能按钮：</div>
+    <label class="ed-row"><span>自动旋转</span><input type="checkbox" data-ui="showAutoRotateButton" ${ui.showAutoRotateButton!==false?'checked':''}></label>
+    <label class="ed-row"><span>热点</span><input type="checkbox" data-ui="showHotspotButton" ${ui.showHotspotButton!==false?'checked':''}></label>
+    <label class="ed-row"><span>重置</span><input type="checkbox" data-ui="showResetButton" ${ui.showResetButton!==false?'checked':''}></label>
+    <label class="ed-row"><span>全屏</span><input type="checkbox" data-ui="showFullscreenButton" ${ui.showFullscreenButton!==false?'checked':''}></label>
+    <label class="ed-row"><span>光源预设按钮</span><input type="checkbox" data-ui="showPresets" ${ui.showPresets!==false?'checked':''}></label>
+    <div class="ed-note">光源按钮由下方「预设」段条目驱动：增删预设即增删按钮。</div>
   </details>
 
   <details class="ed-sec"><summary>资产</summary>
@@ -765,6 +775,8 @@ function wireEditor() {
   })
   const bg=$('editor').querySelector('[data-k="e.bg"]'); if(bg) bg.onchange=e=>{ cfg.environment.visibleBackground=e.target.checked; if(cfg.assets?.panorama) panoramaIBL(cfg.assets.panorama); if(!e.target.checked) scene.background=new THREE.Color(cfg.renderer?.background||'#0f1118') }
   const pulseCb=$('editor').querySelector('[data-k="hs.pulse"]'); if(pulseCb) pulseCb.onchange=e=>{ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.pulse=e.target.checked; buildHotspots() }
+  // 用户端按钮显隐
+  $('editor').querySelectorAll('[data-ui]').forEach(cb=>cb.onchange=e=>{ cfg.ui=cfg.ui||{}; cfg.ui[cb.dataset.ui]=e.target.checked; buildHUD_refresh() })
 
   const el=id=>document.getElementById(id)
   // 基本信息：标题 / 副标题（实时更新左上角）

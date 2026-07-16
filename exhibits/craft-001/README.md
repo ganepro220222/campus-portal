@@ -51,6 +51,12 @@ python3 -m http.server 8099
 - **加载编排**：poster 占位 → 模型淡入 → 全景 IBL 后台接管；WebGL 不支持 / 加载失败有降级与重试。
 - **交付闭环**：开发方在编辑版调参打点 → 导出 `config.json` → 替换展包 → 上传静态服务器。校方不接触 GLB / 材质 / 热点。
 
+### 无障碍 / 性能 / 兼容
+- **键盘快捷键**：`Tab` 在热点/按钮间移动（焦点高亮）、`Enter/空格` 打开聚焦的热点、`Esc` 关闭讲解面板、`空格` 播放/暂停语音讲解。
+- **无障碍 (a11y)**：热点/按钮具备 `role` / `aria-label` / `aria-pressed`；背面隐藏的热点自动移出 Tab 序；面板 `role="dialog"`；`prefers-reduced-motion` 下停用脉冲/自动旋转。
+- **压缩模型支持**：GLTFLoader 已挂载 **Draco（几何压缩）+ KTX2/Basis（贴图压缩）** 解码器（自托管于 `vendor/draco`、`vendor/basis`，无 CDN）；仅当模型实际使用压缩时才按需拉取解码器，普通模型零开销。
+- **移动端像素比自适应**：手机端限流到 `performance.mobilePixelRatio`（默认 1.5）省电控温，桌面端放开到 `desktopPixelRatio`（默认 2）保清晰。
+
 ## 新增一件展品
 ```
 exhibits/craft-002/

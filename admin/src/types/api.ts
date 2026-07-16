@@ -251,7 +251,6 @@ export interface CraftItem {
   categoryName: string
   introZh: string
   introEn: string
-  previewType: string
   sort: number
   status: number
   images?: { id?: number; imageUrl: string; angleLabel: string; sort: number }[]

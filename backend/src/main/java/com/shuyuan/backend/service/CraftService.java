@@ -76,7 +76,6 @@ public class CraftService {
         m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(craft.getCoverFitMode()));
         m.put("introZh", craft.getIntroZh());
         m.put("introEn", craft.getIntroEn());
-        m.put("previewType", "multi_image");
         m.put("categoryName", categoryService.getName(craft.getCategoryId(), catMap));
         m.put("images", imageList);
         m.put("contact", contactVo);
@@ -93,7 +92,6 @@ public class CraftService {
         m.put("intro", c.getIntroZh());
         m.put("introZh", c.getIntroZh());
         m.put("categoryName", categoryService.getName(c.getCategoryId(), catMap));
-        m.put("previewType", "multi_image");
         return m;
     }
 }

@@ -53,7 +53,7 @@ const auth = useAuthStore()
 const modules = [
   { title: '新闻管理', desc: '新闻发布、分类维护与置顶推荐', path: '/news', perm: 'news:read', icon: Document, grad: 'linear-gradient(135deg,#3F57B5,#2B356E)' },
   { title: '展馆管理', desc: '11 馆信息维护，下架后小程序不可见', path: '/halls', perm: 'hall:read', icon: OfficeBuilding, grad: 'linear-gradient(135deg,#365E8C,#2E7C8C)' },
-  { title: '文创管理', desc: '工艺品双语介绍、鉴赏图 / 3D 与咨询方式', path: '/crafts', perm: 'hall:read', icon: Goods, grad: 'linear-gradient(135deg,#7A2E36,#A0505A)' },
+  { title: '文创管理', desc: '工艺品双语介绍、多角度鉴赏图与咨询方式', path: '/crafts', perm: 'hall:read', icon: Goods, grad: 'linear-gradient(135deg,#7A2E36,#A0505A)' },
   { title: '课程管理', desc: '在线课程上下架、视频与 AI 字幕配置', path: '/courses', perm: 'course:read', icon: VideoCamera, grad: 'linear-gradient(135deg,#5A4E86,#7E72B0)' },
   { title: '资源管理', desc: 'PDF / 音视频资料上下架与下载统计', path: '/resources', perm: 'course:read', icon: FolderOpened, grad: 'linear-gradient(135deg,#3F6B4A,#5C9A6B)' },
   { title: '活动管理', desc: '活动发布、报名审核与 Excel 导出', path: '/activities', perm: 'enroll:read', icon: Calendar, grad: 'linear-gradient(135deg,#C0A24E,#9C7C2E)' },

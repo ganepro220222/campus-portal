@@ -101,7 +101,7 @@ function decorateCrafts(list) {
     colorClass: it.colorClass || CRAFT_COLORS[i % CRAFT_COLORS.length],
     icon: it.icon || CRAFT_ICONS[i % CRAFT_ICONS.length],
     categoryName: it.categoryName || '非遗工艺',
-    badge: it.previewType === 'multi_image' ? '多图' : ''
+    badge: '多图'
   }))
 }
 

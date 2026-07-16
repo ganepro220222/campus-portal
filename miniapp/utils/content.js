@@ -119,7 +119,6 @@ function mergeCraftDetail(raw, fallback) {
     name: raw.name || base.name,
     introZh: raw.introZh || base.introZh,
     introEn: raw.introEn || base.introEn,
-    previewType: 'multi_image',
     images,
     contact: raw.contact || base.contact
   }

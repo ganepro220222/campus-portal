@@ -127,6 +127,7 @@
     font-size:26px; font-weight:700; color:#0b0d14; background:var(--gold); }
   .err-btn { margin-top:4px; padding:9px 24px; border:1px solid var(--gold); border-radius:999px; background:transparent; color:#f4e6c8; font-size:13px; cursor:pointer; }
 
+  /* EDITOR-CSS-START （导出仅观看版时整段剔除） */
   /* 编辑面板（?mode=edit） */
   .editor { position:absolute; top:0; right:0; bottom:0; width:300px; z-index:20; overflow-y:auto;
     background:rgba(14,16,24,.95); border-left:1px solid rgba(255,255,255,.1); padding:16px; font-size:12.5px;
@@ -167,6 +168,7 @@
     background:transparent; color:#f4e6c8; cursor:pointer; font-size:12.5px; }
   .ed-badge { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:21; background:rgba(200,168,106,.92); color:#0b0d14;
     font-size:11px; font-weight:700; padding:3px 12px; border-radius:999px; }
+  /* EDITOR-CSS-END */
 </style>
 </head>
 <body>
@@ -222,8 +224,10 @@
     </div>
   </div>
 
+  <!-- EDITOR-HTML-START （导出仅观看版时整段剔除） -->
   <div class="editor" hidden id="editor"></div>
   <div class="ed-badge" hidden id="ed-badge">编辑模式</div>
+  <!-- EDITOR-HTML-END -->
 </div>
 
 <script type="importmap">
@@ -671,6 +675,7 @@ async function boot() {
 
 $('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); boot() }
 
+/* EDITOR-JS-START （导出仅观看版时整段剔除） */
 /* ── 编辑模式（开发方；纯前端，导出 config，不写服务器）──
    面板：资产 / 模型 / 相机 / 材质 / 灯光 / 环境 / 热点 / 预设 / 性能 / 导出 */
 let _perfTimer = null
@@ -823,6 +828,7 @@ function renderEditor() {
 
   <details class="ed-sec" open><summary>导出</summary>
     <button class="ed-btn" id="ed-export">导出 config.json</button>
+    <button class="ed-btn" id="ed-viewonly">导出仅观看版 index.view.html（去编辑器）</button>
     <button class="ed-btn" id="ed-shot">截取当前帧为 poster</button>
     <button class="ed-btn" id="ed-check">校验 + 部署清单 ▾</button>
     <div class="ed-note" id="ed-checkout"></div>
@@ -914,6 +920,7 @@ function wireEditor() {
     if(e.target.checked){ const shown=cfg.presets.filter((pp,j)=>j!==idx && pp.showAsButton!==false).length; if(shown>=4){ e.target.checked=false; flash('前台最多显示 4 个光源按钮'); return } }
     cfg.presets[idx].showAsButton=e.target.checked; buildHUD_refresh() })
   el('ed-export').onclick=()=>downloadJSON()
+  el('ed-viewonly').onclick=()=>exportViewerOnly()
   el('ed-shot').onclick=()=>{ renderer.render(scene,camera); const a=document.createElement('a'); a.href=renderer.domElement.toDataURL('image/jpeg',0.9); a.download='poster.jpg'; a.click() }
   el('ed-check').onclick=()=>{ const o=el('ed-checkout'), b=el('ed-check')
     if(o.dataset.on==='1'){ o.innerHTML=''; o.dataset.on=''; b.textContent='校验 + 部署清单 ▾' }
@@ -999,6 +1006,20 @@ function wireCanvasAdd(){ const ray=new THREE.Raycaster(), m2=new THREE.Vector2(
     cfg.hotspots.push({ id:'h'+(cfg.hotspots.length+1), position:[+w.x.toFixed(3),+w.y.toFixed(3),+w.z.toFixed(3)],
       i18n:{ zh:{title:'新热点',content:'（待填写）'}, en:{title:'New',content:'(todo)'} }, cameraFocus:{distance:+camera.position.distanceTo(controls.target).toFixed(2),duration:800} })
     buildHotspots(); renderEditor() }) }
+
+// 导出「仅观看版」：抓取本文件源码，剔除三段编辑器标记区（CSS/HTML/JS），生成更轻更安全的前台文件
+async function exportViewerOnly(){
+  try{
+    let src = await (await fetch('index.html',{cache:'no-cache'})).text()
+    src = src.replace(/[ \t]*\/\* EDITOR-CSS-START[\s\S]*?\/\* EDITOR-CSS-END \*\/\n?/, '')
+             .replace(/[ \t]*<!-- EDITOR-HTML-START[\s\S]*?<!-- EDITOR-HTML-END -->\n?/, '')
+             .replace(/[ \t]*\/\* EDITOR-JS-START[\s\S]*?\/\* EDITOR-JS-END \*\/\n?/, '')
+    const blob = new Blob([src], {type:'text/html'})
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='index.view.html'; a.click()
+    flash('已导出仅观看版 index.view.html')
+  }catch(e){ alert('导出仅观看版失败：'+e.message) }
+}
+/* EDITOR-JS-END */
 
 boot()
 </script>

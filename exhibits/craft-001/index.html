@@ -111,12 +111,24 @@
 
   /* 编辑面板（?mode=edit） */
   .editor { position:absolute; top:0; right:0; bottom:0; width:300px; z-index:20; overflow-y:auto;
-    background:rgba(14,16,24,.95); border-left:1px solid rgba(255,255,255,.1); padding:16px; font-size:12.5px; }
+    background:rgba(14,16,24,.95); border-left:1px solid rgba(255,255,255,.1); padding:16px; font-size:12.5px;
+    scrollbar-width:thin; scrollbar-color:rgba(200,168,106,.4) transparent; }
+  .editor::-webkit-scrollbar { width:8px; }
+  .editor::-webkit-scrollbar-track { background:transparent; }
+  .editor::-webkit-scrollbar-thumb { background:rgba(200,168,106,.32); border-radius:4px; border:2px solid transparent; background-clip:padding-box; }
+  .editor::-webkit-scrollbar-thumb:hover { background:rgba(200,168,106,.55); background-clip:padding-box; }
   .editor h3 { font-size:13px; color:var(--gold); margin:14px 0 8px; letter-spacing:.5px; }
   .editor h3:first-child { margin-top:0; }
   .ed-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:7px 0; color:#cfd3e0; }
-  .ed-row input[type=range]{ flex:1; }
+  .ed-row input[type=range]{ flex:1; min-width:0; accent-color:var(--gold); }
   .ed-row input[type=color]{ width:30px; height:22px; border:none; background:none; padding:0; cursor:pointer; flex:0 0 auto; }
+  /* 滑条 + 数字输入 联动组件 */
+  .ed-slider { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+  .ed-num { flex:0 0 auto; width:56px; padding:3px 6px; border:1px solid rgba(255,255,255,.14); border-radius:6px;
+    background:rgba(255,255,255,.05); color:#eef0f5; font-size:11.5px; font-family:inherit; text-align:right;
+    -moz-appearance:textfield; }
+  .ed-num::-webkit-outer-spin-button, .ed-num::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  .ed-num:focus { outline:none; border-color:var(--gold); }
   .ed-note { color:#8a90a6; line-height:1.6; margin:6px 0; }
   .ed-sec { border:1px solid rgba(255,255,255,.08); border-radius:8px; margin:8px 0; padding:2px 10px; }
   .ed-sec summary { cursor:pointer; color:var(--gold); font-size:13px; font-weight:600; padding:8px 0; letter-spacing:.5px; list-style:none; }
@@ -125,7 +137,7 @@
   .ed-sec[open] summary::before { content:"▾ "; }
   .ed-in { width:100%; margin:5px 0; padding:7px 9px; border:1px solid rgba(255,255,255,.14); border-radius:7px;
     background:rgba(255,255,255,.05); color:#eef0f5; font-size:12px; font-family:inherit; }
-  textarea.ed-in { resize:vertical; }
+  textarea.ed-in { resize:vertical; min-height:76px; line-height:1.6; }
   .ed-file { display:block; text-align:center; margin:5px 0; padding:8px; border:1px dashed rgba(255,255,255,.22);
     border-radius:7px; color:#cfd3e0; cursor:pointer; font-size:12px; }
   .ed-hs-item { border:1px solid rgba(255,255,255,.08); border-radius:7px; padding:6px 8px; margin:7px 0; }
@@ -595,19 +607,25 @@ function ensureCfg() {
 function renderEditor() {
   ensureCfg()
   const g = cfg.materials.global, m = cfg.model, c = cfg.camera, L = cfg.lights
-  const rng = (k,label,min,max,step,val)=>`<div class="ed-row"><span>${label}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"></div>`
+  const rng = (k,label,min,max,step,val)=>`<div class="ed-row"><span>${label}</span><span class="ed-slider"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"><input type="number" class="ed-num" data-num="${k}" min="${min}" max="${max}" step="${step}" value="${val}"></span></div>`
   const col = (k,label,val)=>`<div class="ed-row"><span>${label}</span><input type="color" data-k="${k}" value="${val}"></div>`
   const names = model ? materialNames() : []
   const hs = cfg.hotspots.map((h,i)=>{
     const x=h.i18n?.zh||{}
     return `<div class="ed-hs-item"><div class="ed-row"><b>#${i+1}</b><span><a data-hs-focus="${i}">更新机位</a> · <a data-hs-del="${i}" style="color:#e07a7a">删除</a></span></div>
       <input class="ed-in" data-hs-title="${i}" value="${(x.title||'').replace(/"/g,'&quot;')}" placeholder="标题">
-      <textarea class="ed-in" data-hs-content="${i}" rows="2" placeholder="讲解文案">${x.content||''}</textarea></div>`
+      <textarea class="ed-in" data-hs-content="${i}" rows="4" placeholder="讲解文案">${x.content||''}</textarea></div>`
   }).join('') || '<div class="ed-note">暂无热点。Shift+点击模型表面添加。</div>'
   const presets = cfg.presets.map((p,i)=>`<div class="ed-row"><span>${t(p.label)||p.id}</span><a data-pr-del="${i}" style="color:#e07a7a">删除</a></div>`).join('') || '<div class="ed-note">暂无预设。</div>'
 
+  const info = cfg.i18n?.zh || {}
   $('editor').innerHTML = `
-  <details class="ed-sec" open><summary>资产</summary>
+  <details class="ed-sec" open><summary>基本信息</summary>
+    <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
+    <input class="ed-in" id="ed-subtitle" value="${(info.subtitle||'').replace(/"/g,'&quot;')}" placeholder="副标题（标题下方小字）">
+  </details>
+
+  <details class="ed-sec"><summary>资产</summary>
     <div class="ed-note">加载任意路径模型（相对/绝对 URL；跨域需 CORS）：</div>
     <input class="ed-in" id="ed-url" placeholder="https://…/model.glb">
     <button class="ed-btn" id="ed-url-load">从 URL 加载</button>
@@ -622,7 +640,7 @@ function renderEditor() {
     ${rng('m.py','位移 Y',-2,2,0.01,(m.position||[0,0,0])[1])}
     ${rng('m.pz','位移 Z',-2,2,0.01,(m.position||[0,0,0])[2])}
     ${rng('m.ry','旋转 Y°',-180,180,1,(m.rotationDeg||[0,0,0])[1])}
-    <button class="ed-btn" id="ed-m-reset">重置 Transform</button>
+    <button class="ed-btn" id="ed-m-reset">复位模型（缩放/位移/旋转归零）</button>
   </details>
 
   <details class="ed-sec"><summary>相机</summary>
@@ -683,7 +701,7 @@ function renderEditor() {
   <details class="ed-sec" open><summary>导出</summary>
     <button class="ed-btn" id="ed-export">导出 config.json</button>
     <button class="ed-btn" id="ed-shot">截取当前帧为 poster</button>
-    <button class="ed-btn" id="ed-check">校验 + 部署清单</button>
+    <button class="ed-btn" id="ed-check">校验 + 部署清单 ▾</button>
     <div class="ed-note" id="ed-checkout"></div>
     <div class="ed-note">纯前端不写服务器：导出后由开发方替换展包再上传。</div>
   </details>`
@@ -693,9 +711,8 @@ function renderEditor() {
 
 function wireEditor() {
   const g=cfg.materials.global, m=cfg.model, c=cfg.camera, L=cfg.lights
-  const val = e => parseFloat(e.target.value)
-  $('editor').querySelectorAll('input[type=range]').forEach(inp => inp.oninput = e => {
-    const k=inp.dataset.k, v=val(e)
+  const ed = $('editor')
+  function applyRange(k, v){
     switch(k){
       case 'g.exposure': renderer.toneMappingExposure=v; break
       case 'g.env': g.envMapIntensity=v; applyMaterial(); break
@@ -718,6 +735,25 @@ function wireEditor() {
       case 'hs.size': cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.size=v; buildHotspots(); break
       case 'ov.metal': case 'ov.rough': case 'ov.env': upsertOverride(); break
     }
+  }
+  // 滑条 → 联动数字框
+  ed.querySelectorAll('input[type=range]').forEach(inp => inp.oninput = e => {
+    const k=inp.dataset.k, v=parseFloat(e.target.value)
+    const n=ed.querySelector(`.ed-num[data-num="${k}"]`); if(n) n.value=v
+    applyRange(k,v)
+  })
+  // 数字框 → 联动滑条（输入时按范围夹取应用，失焦时回填夹取后的值）
+  ed.querySelectorAll('.ed-num').forEach(inp => {
+    inp.oninput = () => {
+      const k=inp.dataset.num; let v=parseFloat(inp.value); if(isNaN(v)) return
+      const mn=parseFloat(inp.min), mx=parseFloat(inp.max)
+      if(!isNaN(mn)&&v<mn)v=mn; if(!isNaN(mx)&&v>mx)v=mx
+      const r=ed.querySelector(`input[type=range][data-k="${k}"]`); if(r) r.value=v
+      applyRange(k,v)
+    }
+    inp.onchange = () => { let v=parseFloat(inp.value); if(isNaN(v)){ return }
+      const mn=parseFloat(inp.min), mx=parseFloat(inp.max)
+      if(!isNaN(mn)&&v<mn)v=mn; if(!isNaN(mx)&&v>mx)v=mx; inp.value=v }
   })
   $('editor').querySelectorAll('input[type=color]').forEach(inp => inp.oninput = e => {
     const k=inp.dataset.k, col=new THREE.Color(e.target.value)
@@ -731,6 +767,9 @@ function wireEditor() {
   const pulseCb=$('editor').querySelector('[data-k="hs.pulse"]'); if(pulseCb) pulseCb.onchange=e=>{ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.pulse=e.target.checked; buildHotspots() }
 
   const el=id=>document.getElementById(id)
+  // 基本信息：标题 / 副标题（实时更新左上角）
+  const bindInfo=(id,key)=>{ const i=el(id); if(i) i.oninput=e=>{ cfg.i18n=cfg.i18n||{}; cfg.i18n.zh=cfg.i18n.zh||{}; cfg.i18n.zh[key]=e.target.value; renderText() } }
+  bindInfo('ed-title','title'); bindInfo('ed-subtitle','subtitle')
   const ps=el('ed-panel-style'); if(ps){ ps.value=(cfg.panel?.style)||'solid'; ps.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.style=e.target.value
     if($('card').classList.contains('show')){ const c=$('card'); c.classList.remove('st-solid','st-glass','st-transparent'); c.classList.add('st-'+e.target.value) } } }
   el('ed-url-load').onclick=()=>{ const u=el('ed-url').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.model=u; reloadModel(u) } }
@@ -745,7 +784,9 @@ function wireEditor() {
     exposure:+renderer.toneMappingExposure.toFixed(2), envMapIntensity:num(g.envMapIntensity,1.35), background:cfg.renderer?.background||'#0f1118' }); renderEditor(); buildHUD_refresh() }
   el('ed-export').onclick=()=>downloadJSON()
   el('ed-shot').onclick=()=>{ renderer.render(scene,camera); const a=document.createElement('a'); a.href=renderer.domElement.toDataURL('image/jpeg',0.9); a.download='poster.jpg'; a.click() }
-  el('ed-check').onclick=()=>{ el('ed-checkout').innerHTML=validateReport() }
+  el('ed-check').onclick=()=>{ const o=el('ed-checkout'), b=el('ed-check')
+    if(o.dataset.on==='1'){ o.innerHTML=''; o.dataset.on=''; b.textContent='校验 + 部署清单 ▾' }
+    else { o.innerHTML=validateReport(); o.dataset.on='1'; b.textContent='收起校验清单 ▴' } }
   // 热点编辑
   $('editor').querySelectorAll('[data-hs-title]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsTitle]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.title=e.target.value })
   $('editor').querySelectorAll('[data-hs-content]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsContent]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.content=e.target.value })
@@ -755,7 +796,9 @@ function wireEditor() {
 }
 function loadOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
   const o=(cfg.materials.overrides||[]).find(x=>x.namePattern===sel.value)||{}
-  const set=(k,v)=>{ const i=document.querySelector(`[data-k="${k}"]`); if(i&&typeof v==='number') i.value=v }
+  const set=(k,v)=>{ if(typeof v!=='number') return
+    const i=document.querySelector(`input[type=range][data-k="${k}"]`); if(i) i.value=v
+    const n=document.querySelector(`.ed-num[data-num="${k}"]`); if(n) n.value=v }
   set('ov.metal',o.metalness); set('ov.rough',o.roughness); set('ov.env',o.envMapIntensity) }
 function upsertOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
   let o=cfg.materials.overrides.find(x=>x.namePattern===sel.value)

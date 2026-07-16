@@ -384,7 +384,9 @@ function panoramaIBL(url) {
 // 热点以「显示空间坐标」写入 config；锚点挂到模型下（转成模型局部），
 // 这样模型缩放/旋转/位移后热点仍跟随，兼顾我方 config 直觉与最终形态健壮性。
 function buildHotspots() {
-  const layer = $('hs-layer'); layer.innerHTML=''; hotspots=[]
+  const layer = $('hs-layer'); layer.innerHTML=''
+  hotspots.forEach(h => { if (h.anchor && h.anchor.parent) h.anchor.parent.remove(h.anchor) })  // 清理旧锚点，避免累积
+  hotspots=[]
   if (!model) return
   const hstyle = cfg.hotspotStyle || {}
   ;(cfg.hotspots||[]).forEach(h => {
@@ -394,12 +396,14 @@ function buildHotspots() {
     el.style.setProperty('--hs-glow', hexToRgba(col, .55))
     if (hstyle.size) el.style.setProperty('--hs-size', hstyle.size+'px')
     if (hstyle.pulse === false) el.classList.add('no-pulse')
-    el.addEventListener('click', e => { e.stopPropagation(); openHotspot(h, el) })
     layer.appendChild(el)
     const anchor = new THREE.Object3D()
     anchor.position.copy(model.worldToLocal(new THREE.Vector3(...(h.position||[0,0,0]))))
     model.add(anchor)
-    hotspots.push({ data:h, el, anchor })
+    const hsObj = { data:h, el, anchor }
+    if (editMode) el.addEventListener('pointerdown', e => startHsDrag(e, hsObj))   // 编辑版：拖拽微调 / 点开
+    else el.addEventListener('click', e => { e.stopPropagation(); openHotspot(h, el) })
+    hotspots.push(hsObj)
   })
 }
 let hotspotsVisible = true
@@ -437,7 +441,13 @@ function openHotspot(h, el) {
   card.className = 'card float st-' + style
   if (wide) { $('hs-svg').removeAttribute('hidden'); leaderT0 = performance.now() }  // 桌面才有引线
   else { $('hs-svg').setAttribute('hidden','') }                                     // 移动端就近显示，无引线
-  if (h.cameraFocus) focusTo(new THREE.Vector3(...(h.position||[0,0,0])), num(h.cameraFocus.distance,2.4), num(h.cameraFocus.duration,800))
+  if (h.cameraFocus) {
+    const cf = h.cameraFocus, tgt = new THREE.Vector3(...(h.position||[0,0,0]))
+    let camPos = null
+    if (typeof cf.phi === 'number' && typeof cf.theta === 'number')   // 存了完整角度 → 转到该面
+      camPos = tgt.clone().add(new THREE.Vector3().setFromSpherical(new THREE.Spherical(num(cf.distance,2.4), cf.phi, cf.theta)))
+    focusTo(tgt, num(cf.distance,2.4), num(cf.duration,800), camPos)
+  }
   if (h.audio) playTrackById(h.audio)   // 该热点绑定了语音讲解 → 自动播放
   setTimeout(() => $('card').classList.add('show'), wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
 }
@@ -692,7 +702,12 @@ function renderEditor() {
     return `<div class="ed-hs-item"><div class="ed-row"><b>#${i+1}</b><span><a data-hs-focus="${i}">更新机位</a> · <a data-hs-del="${i}" style="color:#e07a7a">删除</a></span></div>
       <input class="ed-in" data-hs-title="${i}" value="${(x.title||'').replace(/"/g,'&quot;')}" placeholder="标题">
       <textarea class="ed-in" data-hs-content="${i}" rows="4" placeholder="讲解文案">${x.content||''}</textarea>
-      <div class="ed-row"><span style="font-size:11.5px;color:#8a90a6">绑定语音</span><select class="ed-in" data-hs-audio="${i}" style="width:auto;margin:0;flex:0 0 auto">${auOpt(h.audio)}</select></div></div>`
+      <div class="ed-row"><span style="font-size:11.5px;color:#8a90a6">绑定语音</span><select class="ed-in" data-hs-audio="${i}" style="width:auto;margin:0;flex:0 0 auto">${auOpt(h.audio)}</select></div>
+      <div class="ed-row" style="gap:5px"><span style="font-size:11px;color:#8a90a6;flex:0 0 auto">位置</span>
+        <input class="ed-num" style="flex:1;width:auto;text-align:center" type="number" step="0.01" data-hs-px="${i}" value="${(h.position||[0,0,0])[0]}">
+        <input class="ed-num" style="flex:1;width:auto;text-align:center" type="number" step="0.01" data-hs-py="${i}" value="${(h.position||[0,0,0])[1]}">
+        <input class="ed-num" style="flex:1;width:auto;text-align:center" type="number" step="0.01" data-hs-pz="${i}" value="${(h.position||[0,0,0])[2]}"></div>
+      <div class="ed-note" style="margin-top:2px">拖拽模型上的热点亦可微调位置</div></div>`
   }).join('') || '<div class="ed-note">暂无热点。Shift+点击模型表面添加。</div>'
   const audioList = (cfg.audio||[]).map((a,i)=>`<div class="ed-hs-item"><div class="ed-row"><b>${a.id||('a'+(i+1))}</b><a data-au-del="${i}" style="color:#e07a7a">删除</a></div>
       <input class="ed-in" data-au-label="${i}" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="名称（下拉显示）">
@@ -894,7 +909,9 @@ function wireEditor() {
   $('editor').querySelectorAll('[data-hs-title]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsTitle]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.title=e.target.value })
   $('editor').querySelectorAll('[data-hs-content]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsContent]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.content=e.target.value })
   $('editor').querySelectorAll('[data-hs-del]').forEach(a=>a.onclick=()=>{ cfg.hotspots.splice(+a.dataset.hsDel,1); buildHotspots(); renderEditor() })
-  $('editor').querySelectorAll('[data-hs-focus]').forEach(a=>a.onclick=()=>{ const h=cfg.hotspots[+a.dataset.hsFocus]; const d=camera.position.distanceTo(controls.target); h.cameraFocus={distance:+d.toFixed(2),duration:800}; flash('已更新聚焦机位') })
+  $('editor').querySelectorAll('[data-hs-focus]').forEach(a=>a.onclick=()=>{ const h=cfg.hotspots[+a.dataset.hsFocus]
+    const s=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target))
+    h.cameraFocus={ distance:+s.radius.toFixed(2), phi:+s.phi.toFixed(3), theta:+s.theta.toFixed(3), duration:800 }; flash('已更新聚焦机位（角度+距离）') })
   $('editor').querySelectorAll('[data-pr-del]').forEach(a=>a.onclick=()=>{ cfg.presets.splice(+a.dataset.prDel,1); renderEditor(); buildHUD_refresh() })
   // 热点绑定语音
   $('editor').querySelectorAll('[data-hs-audio]').forEach(s=>s.onchange=e=>{ const h=cfg.hotspots[+s.dataset.hsAudio]; if(e.target.value) h.audio=e.target.value; else delete h.audio })
@@ -904,6 +921,10 @@ function wireEditor() {
   $('editor').querySelectorAll('[data-au-label]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auLabel].label=e.target.value; buildAudio() })
   $('editor').querySelectorAll('[data-au-src]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auSrc].src=e.target.value })
   $('editor').querySelectorAll('[data-au-del]').forEach(a=>a.onclick=()=>{ cfg.audio.splice(+a.dataset.auDel,1); renderEditor(); buildAudio() })
+  // 热点位置数字微调
+  ;['px','py','pz'].forEach((ax,ai)=>$('editor').querySelectorAll(`[data-hs-${ax}]`).forEach(inp=>inp.oninput=()=>{
+    const h=cfg.hotspots[+inp.getAttribute(`data-hs-${ax}`)]; if(!h) return
+    h.position=(h.position||[0,0,0]).slice(); h.position[ai]=parseFloat(inp.value)||0; buildHotspots() }))
 }
 function loadOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
   const o=(cfg.materials.overrides||[]).find(x=>x.namePattern===sel.value)||{}
@@ -931,6 +952,31 @@ function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x
   const st=modelStats(); p.push(st.tris>500000?wn('三角面偏多 '+st.tris.toLocaleString()):ok('三角面 '+st.tris.toLocaleString()))
   return p.join('<br>') }
 function flash(msg){ const e=document.createElement('div'); e.textContent=msg; e.style.cssText='position:fixed;left:50%;top:40px;transform:translateX(-50%);background:rgba(200,168,106,.95);color:#0b0d14;padding:7px 16px;border-radius:999px;font-size:12.5px;z-index:99'; document.body.appendChild(e); setTimeout(()=>e.remove(),1400) }
+// 编辑版：拖拽热点微调位置（未拖动=点击打开）
+let hsDrag=null
+function startHsDrag(e, hs){
+  e.stopPropagation()
+  hsDrag={ hs, moved:false, sx:e.clientX, sy:e.clientY }
+  controls.enabled=false
+  const ray=new THREE.Raycaster(), m2=new THREE.Vector2()
+  const move=ev=>{
+    if(!hsDrag) return
+    if(Math.abs(ev.clientX-hsDrag.sx)+Math.abs(ev.clientY-hsDrag.sy)>4) hsDrag.moved=true
+    if(!hsDrag.moved || !model) return
+    m2.set(ev.clientX/innerWidth*2-1, -(ev.clientY/innerHeight)*2+1)
+    ray.setFromCamera(m2,camera); const hit=ray.intersectObject(model,true)[0]; if(!hit) return
+    hs.data.position=[+hit.point.x.toFixed(3),+hit.point.y.toFixed(3),+hit.point.z.toFixed(3)]
+    hs.anchor.position.copy(model.worldToLocal(hit.point.clone()))
+  }
+  const up=()=>{
+    removeEventListener('pointermove',move); removeEventListener('pointerup',up)
+    controls.enabled=true
+    const dragged = hsDrag && hsDrag.moved; hsDrag=null
+    if(!dragged) openHotspot(hs.data, hs.el)              // 没拖动 = 点击 = 打开
+    else if(window.__edRefresh) window.__edRefresh()      // 拖完刷新编辑器里的位置数字
+  }
+  addEventListener('pointermove',move); addEventListener('pointerup',up)
+}
 function wireCanvasAdd(){ const ray=new THREE.Raycaster(), m2=new THREE.Vector2()
   $('scene').addEventListener('click', e=>{ if(!e.shiftKey||!model) return
     m2.x=e.clientX/innerWidth*2-1; m2.y=-(e.clientY/innerHeight)*2+1

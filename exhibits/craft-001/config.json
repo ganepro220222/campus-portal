@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "craft-001",
+  "i18n": {
+    "zh": { "title": "珐琅彩·缠枝牡丹纹瓶", "subtitle": "非遗工艺 · 三维鉴赏样片", "summary": "旗舰样片 · 用于方案演示：真实全景 IBL + 热点讲解 + 沉浸交互。" },
+    "en": { "title": "Enamel Porcelain · Peony Vase", "subtitle": "Intangible Heritage · 3D Sample", "summary": "Flagship sample: real panorama IBL, guided hotspots, immersive controls." }
+  },
+  "assets": {
+    "model": "assets/model.glb",
+    "panorama": "assets/panorama.jpg",
+    "poster": "assets/poster.jpg"
+  },
+  "model": { "scale": 1.0, "position": [0, 0, 0], "rotationDeg": [0, 0, 0], "autoCenter": true, "targetSize": 2.4 },
+  "camera": { "fov": 40, "distance": 4.4, "phi": 1.35, "theta": 0.6, "minDistance": 1.8, "maxDistance": 8, "autoRotate": true, "autoRotateSpeed": 0.8, "damping": true },
+  "renderer": { "toneMapping": "ACESFilmic", "exposure": 1.05, "maxPixelRatio": 2, "background": "#0f1118" },
+  "environment": { "mode": "panorama", "useAsIBL": true, "visibleBackground": false, "intensity": 1.15, "fallback": "room" },
+  "materials": { "global": { "envMapIntensity": 1.35 } },
+  "hotspots": [
+    { "id": "h1", "position": [0, 0.95, 0.28], "i18n": { "zh": { "title": "颈部纹样", "content": "瓶颈以螭龙与卷草纹对称展开，黄地留白衬托主纹，是清代宫廷珐琅彩的典型装饰语言。" }, "en": { "title": "Neck Motif", "content": "Symmetric chi-dragon and scrolling grass on a yellow ground — a hallmark of Qing court enamelware." } }, "cameraFocus": { "distance": 2.6, "duration": 800 } },
+    { "id": "h2", "position": [0.05, 0.33, 0.44], "i18n": { "zh": { "title": "肩部缠枝", "content": "肩部一周缠枝莲纹环绕，线条以金彩勾边，随光影流转而生辉，工艺极为繁复。" }, "en": { "title": "Shoulder Scroll", "content": "A band of interlocking lotus scrolls, gold-outlined and shimmering as the light shifts." } }, "cameraFocus": { "distance": 2.8, "duration": 800 } },
+    { "id": "h3", "position": [0, -0.25, 0.46], "i18n": { "zh": { "title": "粉彩牡丹", "content": "腹部主题为粉彩牡丹，花头以渲染法层层晕色，寓意富贵吉祥，为全器点睛之笔。" }, "en": { "title": "Famille-Rose Peony", "content": "The belly features a famille-rose peony, shaded in graded washes — an emblem of prosperity." } }, "cameraFocus": { "distance": 2.9, "duration": 800 } }
+  ],
+  "ui": { "defaultMode": "view", "showAutoRotateButton": true, "showHotspotButton": true, "showResetButton": true, "showFullscreenButton": true, "showLangSwitch": true, "showPresets": true, "hideEditorByDefault": true },
+  "presets": [
+    { "id": "hall", "label": { "zh": "展厅光", "en": "Hall" }, "exposure": 1.05, "envMapIntensity": 1.35, "background": "#0f1118" },
+    { "id": "detail", "label": { "zh": "细节光", "en": "Detail" }, "exposure": 1.32, "envMapIntensity": 1.75, "background": "#07070b" }
+  ],
+  "performance": { "mobilePixelRatio": 1.5, "desktopPixelRatio": 2 }
+}

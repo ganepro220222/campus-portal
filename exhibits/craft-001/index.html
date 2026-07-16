@@ -155,6 +155,8 @@
   .ed-sec[open] summary::before { content:"▾ "; }
   .ed-in { width:100%; margin:5px 0; padding:7px 9px; border:1px solid rgba(255,255,255,.14); border-radius:7px;
     background:rgba(255,255,255,.05); color:#eef0f5; font-size:12px; font-family:inherit; }
+  .editor select.ed-in { color:#eef0f5; }
+  .editor select option { background:#14161f; color:#eef0f5; }   /* 修复下拉项浅底浅字看不清 */
   textarea.ed-in { resize:vertical; min-height:76px; line-height:1.6; }
   .ed-file { display:block; text-align:center; margin:5px 0; padding:8px; border:1px dashed rgba(255,255,255,.22);
     border-radius:7px; color:#cfd3e0; cursor:pointer; font-size:12px; }
@@ -722,7 +724,7 @@ function renderEditor() {
     <div class="ed-note" id="ed-assets">模型：${cfg.assets?.model||'-'}</div>
   </details>
 
-  <details class="ed-sec"><summary>模型 Transform</summary>
+  <details class="ed-sec"><summary>模型摆放（缩放 / 位移 / 旋转）</summary>
     ${rng('m.scale','缩放系数',0.2,3,0.01, num(m.scale,1))}
     ${rng('m.size','适配尺寸',0.5,5,0.05, num(m.targetSize,2.4))}
     ${rng('m.px','位移 X',-2,2,0.01,(m.position||[0,0,0])[0])}

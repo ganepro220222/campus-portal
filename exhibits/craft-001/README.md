@@ -66,6 +66,17 @@ exhibits/craft-002/
   assets/         # 换 model.glb + panorama.jpg + poster.jpg
 ```
 
+## 便携单文件（给非技术同事双击看效果，免开服务器）
+本地不想开 http 服务？用打包器把某件展品打成**一个「双击即开」的 HTML**：
+```bash
+cd exhibits
+node build-portable.mjs craft-001      # 产出 craft-001.portable.html
+```
+- 把 Three.js + config + 模型/全景/封面/音频**全部内联**（转 data: URI），**无外部依赖、可离线、可直接双击**（`file://`），也可当附件发给合伙人/甲方。
+- 便携版是**观看版**（不含编辑器）；因解码器需按路径加载，便携版**不支持 Draco/KTX2 压缩模型**（普通 `.glb` 正常）——压缩模型走 http 部署版。
+- 打包需 Node 环境（**开发方一次生成即可；非技术同事只需双击产物**，无需装任何东西）。
+- 产物 `*.portable.html` 已在 `.gitignore` 中，不入库，按需现场生成。
+
 ## 上线注意（详见方案 v2 第 10/12 节）
 - `vendor/` 已自托管 Three.js；生产**观看版不要打包编辑代码**（编辑版单独部署 / 加访问控制）。
 - 部署到静态目录（如 `https://shuyuan.gzcpu.edu.cn/exhibits/craft-001/`），VR 平台热点配外链指向它。

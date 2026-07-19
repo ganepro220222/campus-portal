@@ -134,7 +134,7 @@
 
   /* EDITOR-CSS-START （导出仅观看版时整段剔除） */
   /* 编辑面板（?mode=edit） */
-  .editor { position:absolute; top:0; right:0; bottom:0; width:300px; z-index:20; overflow-y:auto;
+  .editor { position:absolute; top:0; right:0; bottom:0; width:300px; z-index:20; overflow-y:auto; overflow-x:hidden;
     background:rgba(14,16,24,.95); border-left:1px solid rgba(255,255,255,.1); padding:16px; font-size:12.5px;
     scrollbar-width:thin; scrollbar-color:rgba(200,168,106,.4) transparent; }
   .editor::-webkit-scrollbar { width:8px; }
@@ -766,9 +766,9 @@ function renderEditor() {
       <textarea class="ed-in" data-hs-content="${i}" rows="4" placeholder="讲解文案">${x.content||''}</textarea>
       <div class="ed-row"><span style="font-size:11.5px;color:#8a90a6">绑定语音</span><select class="ed-in" data-hs-audio="${i}" style="width:auto;margin:0;flex:0 0 auto">${auOpt(h.audio)}</select></div>
       <div class="ed-row" style="gap:5px"><span style="font-size:11px;color:#8a90a6;flex:0 0 auto">位置</span>
-        <input class="ed-num" style="flex:1;width:auto;text-align:center" type="number" step="0.01" data-hs-px="${i}" value="${(h.position||[0,0,0])[0]}">
-        <input class="ed-num" style="flex:1;width:auto;text-align:center" type="number" step="0.01" data-hs-py="${i}" value="${(h.position||[0,0,0])[1]}">
-        <input class="ed-num" style="flex:1;width:auto;text-align:center" type="number" step="0.01" data-hs-pz="${i}" value="${(h.position||[0,0,0])[2]}"></div>
+        <input class="ed-num" style="flex:1;min-width:0;width:auto;text-align:center" type="number" step="0.01" data-hs-px="${i}" value="${(h.position||[0,0,0])[0]}">
+        <input class="ed-num" style="flex:1;min-width:0;width:auto;text-align:center" type="number" step="0.01" data-hs-py="${i}" value="${(h.position||[0,0,0])[1]}">
+        <input class="ed-num" style="flex:1;min-width:0;width:auto;text-align:center" type="number" step="0.01" data-hs-pz="${i}" value="${(h.position||[0,0,0])[2]}"></div>
       <div class="ed-note" style="margin-top:2px">拖拽模型上的热点亦可微调位置</div></div>`
   }).join('') || '<div class="ed-note">暂无热点。Shift+点击模型表面添加。</div>'
   const audioList = (cfg.audio||[]).map((a,i)=>`<div class="ed-hs-item"><div class="ed-row"><b>${a.id||('a'+(i+1))}</b><a data-au-del="${i}" style="color:#e07a7a">删除</a></div>

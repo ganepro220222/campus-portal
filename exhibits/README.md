@@ -1,22 +1,38 @@
-# 旗舰样片 · 珐琅彩缠枝牡丹纹瓶（增强版 3D 鉴赏）
+# 云端书院 · 增强版 3D 鉴赏系统
 
-对方案 `docs/三维展示系统/增强版3D鉴赏系统_实施方案_v2.md` 的**可运行样片**，用于向合伙人/甲方演示效果。
-纯前端静态展包，自包含（含 `vendor/` 的 Three.js，**不依赖任何外部 CDN**）。
+对方案 `docs/三维展示系统/增强版3D鉴赏系统_实施方案_v2.md` 的**可运行实现**。
+纯前端，自托管 Three.js（`vendor/`，**不依赖任何外部 CDN**）。
 
-## 本地运行（给对方看效果）
-```bash
-cd exhibits/craft-001
-python3 -m http.server 8099
-# 浏览器打开 http://127.0.0.1:8099/
+## 架构：共享播放器 + 数据分离（应对 100+ 展品）
 ```
-> 必须用「静态服务器」打开，不能直接双击 `index.html`（ES 模块 + fetch 需 http 协议）。
-> 建议用桌面 Chrome / 手机浏览器体验；展馆大屏效果最佳。
+exhibits/
+  player.html          # 播放器 + 编辑器（全站唯一一份）
+  vendor/              # Three.js + Draco/Basis 解码器（全站唯一一份）
+  studio.html          # 开发方工作台：列出所有展品，点卡片直达
+  manifest.json        # 展品目录清单（有后端后可改为自动扫目录）
+  craft-001/
+    config.json        # 该展品的全部配置（标题/相机/材质/热点/光照/语音…）
+    assets/            # model.glb + panorama.jpg + poster.jpg + 音频
+    index.html         # ~15 行跳转壳 → ../player.html?ex=craft-001
+  craft-002/ …         # 每件展品只是「一份 config + assets」
+```
+- **一份代码带上百个展品**：升级 Three.js / 修编辑器 bug 只改一处，全站生效；vendor 只存一份（省掉每包 ~2.9MB 重复）。
+- 新增展品 = 复制一个 `craft-XXX/` 目录改数据 + 在 `manifest.json` 加一行 → 工作台自动出现。
 
-## 两种模式
-| 模式 | 入口 | 谁用 | 能力 |
-|---|---|---|---|
-| 观看版（默认） | `http://…:8099/` | 终端用户 | 自动旋转、热点显隐、点击热点看讲解、语音讲解播放、重置、全屏、展厅光/细节光（按钮由编辑端勾选） |
-| 编辑版 | `http://…:8099/?mode=edit` | 开发方 | 轻量编辑器（见下） |
+## 本地运行
+```bash
+cd exhibits
+python3 -m http.server 8099
+# 工作台（推荐）： http://127.0.0.1:8099/studio.html
+```
+> 必须用「静态服务器」打开（ES 模块 + fetch 需 http 协议，不能双击）。
+
+## 入口一览
+| 用途 | 地址 | 谁用 |
+|---|---|---|
+| 工作台（所有展品入口） | `…:8099/studio.html` | 开发/维护方 |
+| 观看某展品 | `…/player.html?ex=craft-001` 或 `…/craft-001/` | 终端用户 / VR 平台外链 |
+| 编辑某展品 | `…/player.html?ex=craft-001&mode=edit` | 开发/维护方 |
 
 ### 编辑版面板（接近方案 v2 第 5 节 + 需求增补 v3）
 - **基本信息**：工艺品名称 / 副标题（实时更新左上角）。
@@ -59,25 +75,15 @@ python3 -m http.server 8099
 
 ## 新增一件展品
 ```
-exhibits/craft-002/
-  index.html      # 复制本目录（播放器通用）
-  vendor/         # 复制（或软链到共用版本）
-  config.json     # 改这一份：标题/模型/相机/材质/热点
-  assets/         # 换 model.glb + panorama.jpg + poster.jpg
+exhibits/craft-XXX/
+  config.json     # 复制一份改：标题/模型/相机/材质/热点/光照/语音…
+  assets/         # 放 model.glb + panorama.jpg（2:1 等距柱状）+ poster.jpg + 音频
+  index.html      # ~15 行跳转壳（把 craft-001/index.html 改个 ex 即可）
 ```
-
-## 便携单文件（给非技术同事双击看效果，免开服务器）
-本地不想开 http 服务？用打包器把某件展品打成**一个「双击即开」的 HTML**：
-```bash
-cd exhibits
-node build-portable.mjs craft-001      # 产出 craft-001.portable.html
-```
-- 把 Three.js + config + 模型/全景/封面/音频**全部内联**（转 data: URI），**无外部依赖、可离线、可直接双击**（`file://`），也可当附件发给合伙人/甲方。
-- 便携版是**观看版**（不含编辑器）；因解码器需按路径加载，便携版**不支持 Draco/KTX2 压缩模型**（普通 `.glb` 正常）——压缩模型走 http 部署版。
-- 打包需 Node 环境（**开发方一次生成即可；非技术同事只需双击产物**，无需装任何东西）。
-- 产物 `*.portable.html` 已在 `.gitignore` 中，不入库，按需现场生成。
+再在 `manifest.json` 的 `exhibits` 数组加一行目录名 → 工作台自动出现。**不复制 vendor、不复制播放器代码。**
 
 ## 上线注意（详见方案 v2 第 10/12 节）
-- `vendor/` 已自托管 Three.js；生产**观看版不要打包编辑代码**（编辑版单独部署 / 加访问控制）。
-- 部署到静态目录（如 `https://shuyuan.gzcpu.edu.cn/exhibits/craft-001/`），VR 平台热点配外链指向它。
-- 资源建议带版本号或 hash 以避免 CDN/浏览器缓存。
+- **公开路径**：部署共享 `player.html` 的**仅观看版**（编辑器里「导出仅观看版」生成 `player.view.html`）+ 各展品数据目录；VR 平台热点外链指向 `…/craft-001/` 或 `…/player.html?ex=craft-001`。
+- **编辑路径**：完整 `player.html` + `studio.html` 放**受保护地址**（Basic Auth / IP 白名单），仅开发/维护方可达。
+- 全站静态（player/vendor/展品数据）建议托管 **OSS + CDN**；`config.json` **不走 CDN 缓存或带版本号**，避免编辑保存后看不到更新。
+- 资源建议带版本号或 hash 以避免浏览器缓存。

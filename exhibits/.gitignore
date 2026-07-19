@@ -1,2 +1,0 @@
-# 便携单文件是 build-portable.mjs 的生成产物，不入库（按需现场生成）
-*.portable.html

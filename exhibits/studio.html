@@ -151,7 +151,7 @@ const selected = new Set()   // 选中的展品目录名
 // 复合字段（灯光方案）用 expand() 返回多个 {path,value}。
 const PANEL_STYLES = [['solid','实底'],['glass','毛玻璃'],['transparent','透明'],['outline','描边'],['ribbon','缎带'],['minimal','极简']]
 const LEADERS = [['elbow','折线'],['straight','直线']]
-const DIRS = [['auto','自动'],['right','右'],['left','左'],['up','上'],['down','下'],['upright','右上'],['downright','右下'],['upleft','左上'],['downleft','左下']]
+const DIRS = [['auto','自动'],['free','自由'],['right','右'],['left','左'],['up','上'],['down','下'],['upright','右上'],['downright','右下'],['upleft','左上'],['downleft','左下']]
 const LIGHT_SCHEMES = {
   hall:   { label:'展厅光', ops:[['renderer.exposure',1.05],['environment.intensity',1.35]] },
   detail: { label:'细节光', ops:[['renderer.exposure',1.32],['environment.intensity',1.75]] },
@@ -174,6 +174,10 @@ const GROUPS = [
     { id:'pstyle', path:'panel.style',  label:'面板样式', type:'select', opts:PANEL_STYLES, def:'glass' },
     { id:'leader', path:'panel.leader', label:'引线样式', type:'select', opts:LEADERS, def:'elbow' },
     { id:'pdir',   path:'panel.dir',    label:'面板方位', type:'select', opts:DIRS, def:'auto' },
+    { id:'lgap',   path:'panel.leaderGap',   label:'引线第一段', type:'range', min:8, max:240, step:1, def:48 },
+    { id:'ltail',  path:'panel.leaderTail',  label:'引线第二段', type:'range', min:0, max:240, step:1, def:0 },
+    { id:'lmode',  path:'panel.elbowMode',   label:'拐角形成', type:'select', opts:[['orthogonal','直角L'],['leg1-lock','定第一段'],['leg2-lock','定第二段']], def:'orthogonal' },
+    { id:'lang',   path:'panel.elbowAngle',  label:'折点内角°', type:'range', min:90, max:180, step:1, def:90 },
   ]},
   { title:'灯光方案 / 热点样式', fields:[
     { id:'scheme', label:'灯光方案', type:'scheme', def:'hall' },

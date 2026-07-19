@@ -75,42 +75,46 @@ const $ = id => document.getElementById(id)
 let cards = []
 
 async function load() {
-  let mani
-  try { mani = await (await fetch('manifest.json', {cache:'no-cache'})).json() }
-  catch(e){ return showEmpty('读取 manifest.json 失败：' + e.message) }
-  $('s-title').textContent = mani.title || '3D 鉴赏工作台'
-  $('s-sub').textContent = mani.subtitle || ''
-  document.title = mani.title || '3D 鉴赏工作台'
-  const list = (mani.exhibits || []).map(e => typeof e === 'string' ? { dir:e } : e)
-  if (!list.length) return showEmpty('manifest.json 里还没有展品。复制一个 craft-XXX/ 文件夹并把目录名加进 exhibits 数组。')
-
-  const results = await Promise.all(list.map(async e => {
-    const dir = e.dir.replace(/\/$/, '')
-    try {
-      const cfg = await (await fetch(`${dir}/config.json`, {cache:'no-cache'})).json()
-      return { dir, cfg, override:e }
-    } catch(err) { return { dir, error:err.message, override:e } }
-  }))
-  cards = results.map(render)
+  let items = null, source = ''
+  // 有后端时自动列目录；否则回退读 manifest.json + 各 config
+  try {
+    const r = await fetch('studio-api/list', {cache:'no-cache'})
+    if (r.ok) { const d = await r.json(); items = (d.exhibits||[]).map(normApi); source='api' }
+  } catch(e) {}
+  if (!items) {
+    let mani
+    try { mani = await (await fetch('manifest.json', {cache:'no-cache'})).json() }
+    catch(e){ return showEmpty('读取展品清单失败：' + e.message) }
+    $('s-title').textContent = mani.title || $('s-title').textContent
+    $('s-sub').textContent = mani.subtitle || $('s-sub').textContent
+    const list = (mani.exhibits || []).map(e => typeof e === 'string' ? { dir:e } : e)
+    if (!list.length) return showEmpty('清单里还没有展品。复制一个 craft-XXX/ 目录并加进 manifest.json 的 exhibits。')
+    items = await Promise.all(list.map(async e => {
+      const dir = e.dir.replace(/\/$/, '')
+      try { const cfg = await (await fetch(`${dir}/config.json`, {cache:'no-cache'})).json(); return normCfg(dir, cfg, e) }
+      catch(err) { return { dir, title:(e&&e.title)||dir, error:err.message } }
+    }))
+    source='manifest'
+  }
+  document.title = $('s-title').textContent
+  cards = items.map(render)
   $('grid').append(...cards.map(c => c.el))
-  $('s-count').textContent = `${results.length} 件展品`
+  $('s-count').textContent = `${items.length} 件展品` + (source==='api' ? ' · 自动列出' : '')
   $('search').addEventListener('input', filter)
 }
+const normApi = e => ({ dir:e.dir, title:e.title||e.dir, subtitle:e.subtitle||'', hotspots:e.hotspots||0, audio:e.audio||0, hasPano:!!e.hasPano, poster:e.poster||'', error:e.error })
+const normCfg = (dir, cfg, ov) => { const zh=(cfg.i18n&&cfg.i18n.zh)||{}; return { dir, title:(ov&&ov.title)||zh.title||dir, subtitle:zh.subtitle||'', hotspots:(cfg.hotspots||[]).length, audio:(cfg.audio||[]).length, hasPano:!!(cfg.assets&&cfg.assets.panorama), poster:(cfg.assets&&cfg.assets.poster)?`${dir}/${cfg.assets.poster}`:'' } }
 
 function render(r) {
   const el = document.createElement('div'); el.className = 'card'
-  const zh = r.cfg?.i18n?.zh || {}
-  const title = r.override?.title || zh.title || r.dir
-  const subtitle = r.error ? ('⚠️ 读取失败：' + r.error) : (zh.subtitle || '')
-  const poster = r.cfg?.assets?.poster ? `${r.dir}/${r.cfg.assets.poster}` : ''
-  const hsN = (r.cfg?.hotspots || []).length
-  const auN = (r.cfg?.audio || []).length
-  const hasPano = !!(r.cfg?.assets?.panorama)
+  const title = r.title || r.dir
+  const subtitle = r.error ? ('⚠️ 读取失败：' + r.error) : (r.subtitle || '')
+  const poster = r.poster || ''
 
   const badges = r.error ? '' : `
-    <span class="badge">热点 ${hsN}</span>
-    <span class="badge">语音 ${auN}</span>
-    ${hasPano ? '<span class="badge">全景</span>' : '<span class="badge warn">无全景</span>'}`
+    <span class="badge">热点 ${r.hotspots||0}</span>
+    <span class="badge">语音 ${r.audio||0}</span>
+    ${r.hasPano ? '<span class="badge">全景</span>' : '<span class="badge warn">无全景</span>'}`
 
   el.innerHTML = `
     <a class="thumb" href="player.html?ex=${encodeURIComponent(r.dir)}" target="_blank" rel="noopener"

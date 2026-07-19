@@ -171,6 +171,9 @@
   .editor a { cursor:pointer; color:var(--gold); text-decoration:none; }
   .ed-btn { width:100%; margin-top:6px; padding:9px; border:1px solid var(--gold); border-radius:8px;
     background:transparent; color:#f4e6c8; cursor:pointer; font-size:12.5px; }
+  .ed-btn.ed-save { background:var(--gold); color:#0b0d14; font-weight:700; font-size:13.5px; padding:11px; }
+  .ed-btn.ed-save:hover { background:#d8b877; }
+  .ed-btn.ed-save:disabled { opacity:.6; cursor:default; }
   .ed-badge { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:21; background:rgba(200,168,106,.92); color:#0b0d14;
     font-size:11px; font-weight:700; padding:3px 12px; border-radius:999px; }
   /* EDITOR-CSS-END */
@@ -873,7 +876,9 @@ function renderEditor() {
 
   <details class="ed-sec"><summary>性能</summary><div class="ed-note" id="ed-perf">采样中…</div></details>
 
-  <details class="ed-sec" open><summary>导出</summary>
+  <details class="ed-sec" open><summary>保存 / 导出</summary>
+    <button class="ed-btn ed-save" id="ed-save">保存</button>
+    <div class="ed-note" id="ed-save-hint"></div>
     <button class="ed-btn" id="ed-export">导出 config.json</button>
     <button class="ed-btn" id="ed-viewonly">导出仅观看版（去编辑器）</button>
     <div class="ed-note">生成 index.view.html — 上线部署这一份即可</div>
@@ -968,6 +973,9 @@ function wireEditor() {
     if(e.target.checked){ const shown=cfg.presets.filter((pp,j)=>j!==idx && pp.showAsButton!==false).length; if(shown>=4){ e.target.checked=false; flash('前台最多显示 4 个光源按钮'); return } }
     cfg.presets[idx].showAsButton=e.target.checked; buildHUD_refresh() })
   el('ed-export').onclick=()=>downloadJSON()
+  el('ed-save').onclick=()=>doSave()
+  { const api = window.__SAVE_API__ || (cfg.ui && cfg.ui.saveEndpoint) || ''
+    el('ed-save-hint').textContent = api ? '写回服务器该展品的 config.json（后端自动备份上一版）' : '未配置服务器：点「保存」将导出 config.json 供手动上传' }
   el('ed-viewonly').onclick=()=>exportViewerOnly()
   el('ed-shot').onclick=()=>{ renderer.render(scene,camera); const a=document.createElement('a'); a.href=renderer.domElement.toDataURL('image/jpeg',0.9); a.download='poster.jpg'; a.click() }
   el('ed-check').onclick=()=>{ const o=el('ed-checkout'), b=el('ed-check')
@@ -1010,6 +1018,32 @@ function upsertOverride(){ const sel=document.getElementById('ed-matsel'); if(!s
 function buildHUD_refresh(){ $('presets').innerHTML=''; $('actions').innerHTML=''; buildHUD(); renderText() }
 function downloadJSON(){ const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'})
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config.json'; a.click() }
+// 保存前校验：errs 阻断保存，warns 提示确认
+function preSaveIssues(){
+  const errs=[], warns=[]
+  if(!cfg.assets?.model) errs.push('缺少模型文件')
+  if(!((cfg.i18n?.zh?.title)||'').trim()) warns.push('未填标题')
+  ;(cfg.hotspots||[]).forEach((h,i)=>{ const x=h.i18n?.zh||{}; if(!((x.title||'').trim())&&!((x.content||'').trim())) warns.push('热点 #'+(i+1)+' 无标题/文案') })
+  ;(cfg.audio||[]).forEach(a=>{ if(!a||!a.src) warns.push('语音「'+((a&&a.label)||(a&&a.id)||'?')+'」缺文件') })
+  return { errs, warns }
+}
+// 一键保存：配置了 SAVE_API 则写回服务器（后端负责备份上一版）；否则降级为导出 config.json
+async function doSave(){
+  const { errs, warns } = preSaveIssues()
+  if(errs.length){ flash('⚠ 无法保存：'+errs.join('；')); return }
+  if(warns.length && !confirm('保存前提醒：\n· '+warns.join('\n· ')+'\n\n仍要保存吗？')) return
+  const SAVE_API = window.__SAVE_API__ || (cfg.ui && cfg.ui.saveEndpoint) || ''
+  if(!SAVE_API){ downloadJSON(); flash('已导出 config.json —— 未配置服务器，请手动覆盖上传'); return }
+  const btn=$('ed-save'), old=btn.textContent; btn.disabled=true; btn.textContent='保存中…'
+  try{
+    const res = await fetch(SAVE_API.replace('{ex}', encodeURIComponent(EX)), {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({ ex:EX, config:cfg }) })
+    if(!res.ok) throw new Error('HTTP '+res.status)
+    flash('✓ 已保存到服务器')
+  }catch(e){ flash('✗ 保存失败：'+e.message+'（可改用「导出 config.json」手动上传）') }
+  finally{ btn.disabled=false; btn.textContent=old }
+}
 function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x}`
   p.push((cfg.i18n?.zh?.title)?ok('标题'):wn('缺标题'))
   p.push(cfg.assets?.model?ok('模型：'+cfg.assets.model):wn('缺模型'))

@@ -977,7 +977,7 @@ function wireEditor() {
   { const api = window.__SAVE_API__ || (cfg.ui && cfg.ui.saveEndpoint) || ''
     el('ed-save-hint').textContent = api ? '写回服务器该展品的 config.json（后端自动备份上一版）' : '未配置服务器：点「保存」将导出 config.json 供手动上传' }
   el('ed-viewonly').onclick=()=>exportViewerOnly()
-  el('ed-shot').onclick=()=>{ renderer.render(scene,camera); const a=document.createElement('a'); a.href=renderer.domElement.toDataURL('image/jpeg',0.9); a.download='poster.jpg'; a.click() }
+  el('ed-shot').onclick=()=>{ const a=document.createElement('a'); a.href=capturePoster(); a.download='poster.jpg'; a.click() }
   el('ed-check').onclick=()=>{ const o=el('ed-checkout'), b=el('ed-check')
     if(o.dataset.on==='1'){ o.innerHTML=''; o.dataset.on=''; b.textContent='校验 + 部署清单 ▾' }
     else { o.innerHTML=validateReport(); o.dataset.on='1'; b.textContent='收起校验清单 ▴' } }
@@ -1018,6 +1018,20 @@ function upsertOverride(){ const sel=document.getElementById('ed-matsel'); if(!s
 function buildHUD_refresh(){ $('presets').innerHTML=''; $('actions').innerHTML=''; buildHUD(); renderText() }
 function downloadJSON(){ const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'})
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config.json'; a.click() }
+// 截取「整器入镜」的一帧作缩略图/封面（临时把相机拉到刚好框住整个模型，拍完复位）
+function capturePoster(){
+  if(!model) return renderer.domElement.toDataURL('image/jpeg',0.86)
+  const box=modelBox.clone(), c=box.getCenter(new THREE.Vector3()), s=box.getSize(new THREE.Vector3())
+  const maxDim=Math.max(s.x,s.y,s.z)||1
+  const fit=(maxDim*0.5)/Math.tan(camera.fov*Math.PI/360)*1.5 + maxDim*0.2   // 留边距
+  const pos0=camera.position.clone(), tgt0=controls.target.clone()
+  const dir=new THREE.Vector3(0.28,0.12,1).normalize()                       // 略带俯角的正面
+  camera.position.copy(c).add(dir.multiplyScalar(fit)); controls.target.copy(c); camera.lookAt(c)
+  renderer.render(scene,camera)
+  const url=renderer.domElement.toDataURL('image/jpeg',0.86)
+  camera.position.copy(pos0); controls.target.copy(tgt0); controls.update(); renderer.render(scene,camera)
+  return url
+}
 // 保存前校验：errs 阻断保存，warns 提示确认
 function preSaveIssues(){
   const errs=[], warns=[]
@@ -1035,12 +1049,14 @@ async function doSave(){
   const SAVE_API = window.__SAVE_API__ || (cfg.ui && cfg.ui.saveEndpoint) || ''
   if(!SAVE_API){ downloadJSON(); flash('已导出 config.json —— 未配置服务器，请手动覆盖上传'); return }
   const btn=$('ed-save'), old=btn.textContent; btn.disabled=true; btn.textContent='保存中…'
+  let poster=null
+  try{ poster=capturePoster(); cfg.assets=cfg.assets||{}; cfg.assets.poster='assets/poster.jpg' }catch(e){}  // 保存即刷新缩略图
   try{
     const res = await fetch(SAVE_API.replace('{ex}', encodeURIComponent(EX)), {
       method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({ ex:EX, config:cfg }) })
+      body: JSON.stringify({ ex:EX, config:cfg, poster }) })
     if(!res.ok) throw new Error('HTTP '+res.status)
-    flash('✓ 已保存到服务器')
+    flash('✓ 已保存到服务器（含缩略图）')
   }catch(e){ flash('✗ 保存失败：'+e.message+'（可改用「导出 config.json」手动上传）') }
   finally{ btn.disabled=false; btn.textContent=old }
 }

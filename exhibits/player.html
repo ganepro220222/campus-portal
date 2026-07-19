@@ -482,8 +482,7 @@ function openHotspot(h, el) {
   const card = $('card')
   card.style.left = ''; card.style.top = ''
   card.className = 'card float st-' + style
-  const leaderMode = (cfg.panel && cfg.panel.leader) || 'elbow'
-  if (wide && leaderMode !== 'none') { $('hs-svg').removeAttribute('hidden'); leaderT0 = performance.now() }  // 桌面引线（可关）
+  if (wide) { $('hs-svg').removeAttribute('hidden'); leaderT0 = performance.now() }  // 桌面引线
   else { $('hs-svg').setAttribute('hidden','') }                                     // 移动端就近显示，无引线
   if (h.cameraFocus) {
     const cf = h.cameraFocus, tgt = new THREE.Vector3(...(h.position||[0,0,0]))
@@ -514,6 +513,14 @@ function projectModelBounds() {
   }
   return { minX, maxX, minY, maxY }
 }
+// 沿折点数组按进度 g 截断，实现"引线从热点生长"的动画
+function growPoly(pts, g){
+  let total=0; for(let i=1;i<pts.length;i++) total+=Math.hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1])
+  let want=total*Math.min(1,Math.max(0,g)); const out=[pts[0]]
+  for(let i=1;i<pts.length;i++){ const dx=pts[i][0]-pts[i-1][0], dy=pts[i][1]-pts[i-1][1], seg=Math.hypot(dx,dy)||0
+    if(want>=seg){ out.push(pts[i]); want-=seg } else { const t=seg?want/seg:0; out.push([pts[i-1][0]+dx*t, pts[i-1][1]+dy*t]); break } }
+  return out.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')
+}
 function updateCallout() {
   if (!activeHS) return
   activeHS.anchor.getWorldPosition(_cw2); tmp.copy(_cw2).project(camera)
@@ -522,8 +529,10 @@ function updateCallout() {
   const cw = card.offsetWidth || 280, ch = card.offsetHeight || 150
   if (innerWidth > 720) {
     // 桌面：面板放在「热点所在一侧」的模型外沿（不遮挡模型、引线尽量短），再避让右侧编辑面板
-    const leaderMode = (cfg.panel && cfg.panel.leader) || 'elbow'
-    const reserve = editMode ? 320 : 8, gap = 22
+    const P = cfg.panel || {}
+    const straight = (P.leader === 'straight' || P.leader === 'line')     // 默认折线
+    const gap = num(P.leaderGap, 22), ratio = Math.min(1, Math.max(0.05, num(P.elbowRatio, 0.6)))
+    const reserve = editMode ? 320 : 8
     const mb = projectModelBounds()
     const freeLeft = mb.minX - 8, freeRight = (innerWidth - reserve) - mb.maxX
     const hotspotLeft = mx < (mb.minX + mb.maxX) / 2
@@ -531,23 +540,17 @@ function updateCallout() {
                                 : (freeRight >= cw+gap ? false : (freeLeft >= cw+gap ? true : false))
     const cardX = placeLeft ? Math.max(8, mb.minX - gap - cw)
                             : Math.min(innerWidth - reserve - cw - 8, mb.maxX + gap)
-    const cardY = Math.min(Math.max(66, my - ch/2), innerHeight - ch - 24)
+    // 面板竖直略上移（热点靠近面板上部）→ 引线有竖直分量，折线/直线区别明显
+    const cardY = Math.min(Math.max(66, my - 28), innerHeight - ch - 24)
     card.style.left = cardX+'px'; card.style.top = cardY+'px'
     card.style.setProperty('--org', placeLeft ? 'right center' : 'left center')
-    // 引线：从热点到面板近侧边缘中部；折线（先横后竖）按总长生长
-    const ax = placeLeft ? cardX+cw : cardX
-    const ay = Math.min(Math.max(cardY+16, my), cardY+ch-16)
-    const g = 1 - Math.pow(1 - Math.min(1,(performance.now()-leaderT0)/300), 3)
+    const ax = placeLeft ? cardX+cw : cardX            // 面板近侧边
+    const ay = cardY + Math.min(ch*0.5, ch-18)         // 连接点约在面板中部
+    const g = 1 - Math.pow(1 - Math.min(1,(performance.now()-leaderT0)/320), 3)
     $('hs-dot').setAttribute('cx',mx); $('hs-dot').setAttribute('cy',my)
-    const leader = $('hs-leader')
-    if (leaderMode === 'line') {
-      leader.setAttribute('points', `${mx},${my} ${mx+(ax-mx)*g},${my+(ay-my)*g}`)
-    } else {
-      const seg1=Math.abs(ax-mx), seg2=Math.abs(ay-my), L=(seg1+seg2)||1, d=g*L
-      leader.setAttribute('points', d<=seg1
-        ? `${mx},${my} ${mx+Math.sign(ax-mx)*d},${my}`
-        : `${mx},${my} ${ax},${my} ${ax},${my+Math.sign(ay-my)*(d-seg1)}`)
-    }
+    // 直线：热点→面板一段斜线；折线：横向 stub（比例=拐角）→ 斜线到面板
+    const pts = straight ? [[mx,my],[ax,ay]] : [[mx,my],[mx+(ax-mx)*ratio, my],[ax,ay]]
+    $('hs-leader').setAttribute('points', growPoly(pts, g))
   } else {
     // 移动端：就近显示于热点旁，夹取在视口内（避开顶栏 / 底部工具条），无引线
     const pad = 10, safeTop = 60, safeBot = 148
@@ -649,6 +652,10 @@ function buildHUD() {
   if (ui.showResetButton!==false) mk('reset','⤢', false, ()=>{ closeHotspot() })
   if (ui.showFullscreenButton!==false) mk('full','⛶', false, ()=>{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen() })
   labelBtns(); syncBtns()   // 初始化 aria-pressed 等状态
+  // 高亮与当前状态匹配的预设（让默认预设显示为选中）
+  if (renderer) { const cur=renderer.toneMappingExposure
+    const m=(cfg.presets||[]).find(p=>Math.abs(num(p.exposure,-99)-cur)<0.02)
+    if(m){ activePreset=m.id; const btn=document.querySelector(`#presets .preset[data-id="${m.id}"]`); if(btn) btn.classList.add('on') } }
 }
 function applyPreset(p) {
   activePreset = p.id
@@ -876,8 +883,10 @@ function renderEditor() {
       </select></div>
     <div class="ed-row"><span>引线样式（桌面）</span>
       <select class="ed-in" id="ed-leader" style="width:auto;margin:0;flex:0 0 auto">
-        <option value="elbow">折线</option><option value="line">直线</option><option value="none">无</option>
+        <option value="elbow">折线</option><option value="straight">直线</option>
       </select></div>
+    ${rng('leader.gap','引线长度',8,120,1, num(cfg.panel?.leaderGap,22))}
+    ${rng('leader.ratio','折线拐角',0.05,1,0.05, num(cfg.panel?.elbowRatio,0.6))}
     ${col('hs.color','热点颜色', cfg.hotspotStyle.color||'#c8a86a')}
     ${rng('hs.size','热点大小', 18, 40, 1, num(cfg.hotspotStyle.size,26))}
     <label class="ed-row"><span>热点脉冲动画</span><input type="checkbox" data-k="hs.pulse" ${cfg.hotspotStyle.pulse!==false?'checked':''}></label>
@@ -942,6 +951,8 @@ function wireEditor() {
       case 'l.fill': L.fill=L.fill||{}; L.fill.intensity=v; lightRefs.fill.intensity=v; break
       case 'l.rim': L.rim=L.rim||{}; L.rim.intensity=v; lightRefs.rim.intensity=v; break
       case 'hs.size': cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.size=v; buildHotspots(); break
+      case 'leader.gap': cfg.panel=cfg.panel||{}; cfg.panel.leaderGap=v; break
+      case 'leader.ratio': cfg.panel=cfg.panel||{}; cfg.panel.elbowRatio=v; break
       case 'ov.metal': case 'ov.rough': case 'ov.env': upsertOverride(); break
     }
   }
@@ -984,9 +995,8 @@ function wireEditor() {
   { const c=el('ed-showtitle'); if(c) c.onchange=e=>{ cfg.ui=cfg.ui||{}; cfg.ui.showTitle=e.target.checked; renderText() } }
   const ps=el('ed-panel-style'); if(ps){ ps.value=(cfg.panel?.style)||'solid'; ps.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.style=e.target.value
     if($('card').classList.contains('show')){ const c=$('card'); c.classList.remove('st-solid','st-glass','st-transparent','st-outline','st-ribbon','st-minimal'); c.classList.add('st-'+e.target.value) } } }
-  const lz=el('ed-leader'); if(lz){ lz.value=(cfg.panel&&cfg.panel.leader)||'elbow'; lz.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.leader=e.target.value
-    if(e.target.value==='none') $('hs-svg').setAttribute('hidden','')
-    else if($('card').classList.contains('show')&&innerWidth>720){ $('hs-svg').removeAttribute('hidden'); leaderT0=performance.now() } } }
+  const lz=el('ed-leader'); if(lz){ lz.value=(cfg.panel&&(cfg.panel.leader==='straight'||cfg.panel.leader==='line'))?'straight':'elbow'; lz.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.leader=e.target.value
+    if($('card').classList.contains('show')&&innerWidth>720){ $('hs-svg').removeAttribute('hidden'); leaderT0=performance.now() } } }
   el('ed-url-load').onclick=()=>{ const u=el('ed-url').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.model=u; reloadModel(u) } }
   el('ed-file').onchange=e=>{ const f=e.target.files[0]; if(f) reloadModel(URL.createObjectURL(f), true) }
   const dz=el('editor'); ;['dragover','drop'].forEach(ev=>dz.addEventListener(ev,e=>e.preventDefault()))

@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>立体鉴赏</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --gold:#c8a86a; --ink:#0f1118; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  /* 无障碍：键盘焦点可见（鼠标点击不显示，Tab 导航才显示） */
+  :focus { outline:none; }
+  :focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+  .btn:focus-visible, .preset:focus-visible, .au-btn:focus-visible, .card-close:focus-visible, .err-btn:focus-visible { outline:2px solid #f4e6c8; outline-offset:2px; }
+  .hs:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+  html,body,#app { width:100%; height:100%; overflow:hidden; background:var(--ink); color:#eef0f5;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
+  #app { position:fixed; inset:0; }
+  #scene { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  [hidden] { display:none !important; }
+
+  /* 顶栏 */
+  .topbar { position:absolute; left:0; right:0; top:0; z-index:5; pointer-events:none;
+    padding:calc(env(safe-area-inset-top) + 16px) 20px 40px;
+    background:linear-gradient(180deg, rgba(6,8,14,.72), rgba(6,8,14,0)); }
+  .topbar-name { font-size:19px; font-weight:700; letter-spacing:1px; text-shadow:0 2px 12px rgba(0,0,0,.55); }
+  .topbar-sub { margin-top:5px; font-size:12.5px; color:rgba(230,234,245,.72); max-width:80%;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .lang { position:absolute; top:calc(env(safe-area-inset-top) + 16px); right:16px; z-index:6; pointer-events:auto;
+    display:flex; border:1px solid rgba(255,255,255,.22); border-radius:999px; overflow:hidden; font-size:12px; }
+  .lang button { appearance:none; border:0; background:transparent; color:rgba(238,240,245,.7); padding:5px 12px; cursor:pointer; }
+  .lang button.on { background:rgba(200,168,106,.22); color:#f4e6c8; }
+
+  /* 提示 */
+  .hint { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) translateY(66px);
+    padding:8px 18px; border-radius:999px; background:rgba(0,0,0,.5); backdrop-filter:blur(6px);
+    font-size:12.5px; letter-spacing:1px; color:rgba(255,255,255,.86); z-index:6; pointer-events:none;
+    opacity:0; transition:opacity .5s; }
+  .hint.show { opacity:1; }
+
+  /* 热点标记（双环：亮白内环 + 暗外描边 → 任意底色可见；强调色核心 = 身份色） */
+  .hs-layer { position:absolute; inset:0; z-index:4; pointer-events:none; }
+  .hs { position:absolute; transform:translate(-50%,-50%); pointer-events:auto; cursor:pointer;
+    width:var(--hs-size,26px); height:var(--hs-size,26px); will-change:transform,opacity; transition:opacity .25s; }
+  .hs::before { content:""; position:absolute; inset:28%; border-radius:50%;
+    background:var(--hs-color,#c8a86a); border:2px solid rgba(255,255,255,.95);
+    box-shadow:0 0 0 3px rgba(0,0,0,.4), 0 0 10px 2px var(--hs-glow,rgba(200,168,106,.55)); }
+  .hs::after { content:""; position:absolute; inset:28%; border-radius:50%;
+    border:1.5px solid var(--hs-color,#c8a86a); animation:pulse 2.4s ease-out infinite; }
+  .hs.no-pulse::after { animation:none; opacity:0; }
+  .hs.active::before { background:#fff; border-color:#fff;
+    box-shadow:0 0 0 3px rgba(0,0,0,.45), 0 0 12px 3px rgba(255,255,255,.5); }
+  @keyframes pulse { 0%{transform:scale(1);opacity:.65} 100%{transform:scale(2.4);opacity:0} }
+  @media (prefers-reduced-motion:reduce){ .hs::after{ animation:none; opacity:0 } }
+
+  /* 底部工具条 */
+  .hud { position:absolute; left:0; right:0; bottom:0; z-index:7;
+    padding:34px 14px calc(env(safe-area-inset-bottom) + 16px);
+    background:linear-gradient(0deg, rgba(6,8,14,.8), rgba(6,8,14,0));
+    display:flex; flex-direction:column; gap:12px; align-items:center; }
+  .presets { display:flex; gap:9px; }
+  .preset { appearance:none; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.06);
+    color:rgba(238,240,245,.82); font-size:12px; padding:5px 15px; border-radius:999px; cursor:pointer; transition:.2s; }
+  .preset.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
+  .actions { display:flex; gap:10px; }
+  .btn { appearance:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    height:44px; min-width:64px; padding:0 14px; border:1px solid rgba(255,255,255,.16); border-radius:14px;
+    background:rgba(255,255,255,.08); backdrop-filter:blur(10px); color:#eef0f5; font-size:13px; cursor:pointer; transition:.18s; }
+  .btn:active { transform:scale(.96); }
+  .btn.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
+  .btn .ic { font-size:16px; line-height:1; }
+
+  /* 语音讲解 小型播放器（左上，标题下方） */
+  .audio { position:absolute; left:16px; top:calc(env(safe-area-inset-top) + 88px); z-index:7;
+    display:flex; align-items:center; gap:10px; width:min(300px,78vw); padding:8px 12px;
+    background:rgba(20,22,32,.72); backdrop-filter:blur(12px);
+    border:1px solid rgba(255,255,255,.14); border-radius:14px; }
+  .au-btn { flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:1px solid var(--gold);
+    background:rgba(200,168,106,.18); color:#f4e6c8; font-size:12px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:.18s; }
+  .au-btn:active { transform:scale(.94); }
+  .au-mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+  .au-top { display:flex; align-items:center; gap:8px; font-size:11.5px; color:rgba(238,240,245,.82); }
+  .au-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .au-sel { flex:1; min-width:0; background:transparent; border:none; color:#eef0f5; font-size:11.5px; font-family:inherit; outline:none; cursor:pointer; }
+  .au-sel option { background:#14161f; color:#eef0f5; }
+  .au-time { flex:0 0 auto; color:rgba(238,240,245,.6); font-variant-numeric:tabular-nums; }
+  .au-bar { height:4px; border-radius:2px; background:rgba(255,255,255,.16); cursor:pointer; overflow:hidden; }
+  .au-bar>i { display:block; width:0; height:100%; border-radius:2px; background:linear-gradient(90deg,var(--gold),#e6cf9a); transition:width .1s linear; }
+
+  /* 信息面板（详情卡片）：底色由样式预设类控制 */
+  .card { position:absolute; z-index:8; color:#eef0f5; opacity:0; pointer-events:none;
+    transition:opacity .28s, transform .28s; }
+  .card.show { opacity:1; pointer-events:auto; }
+  .card-title { font-size:16px; font-weight:700; color:#f4e6c8; margin-bottom:8px; letter-spacing:.5px; }
+  .card-body { font-size:13.5px; line-height:1.75; color:rgba(238,240,245,.92); }
+  .card-close { position:absolute; top:12px; right:14px; font-size:20px; color:rgba(255,255,255,.6); cursor:pointer; line-height:1; }
+  /* 浮动卡片（JS 定位在热点旁）：宽屏避让模型投影 + 右侧面板；窄屏就近夹取在视口内 */
+  .card.float { width:min(300px, 86vw); padding:18px 20px; border-radius:16px; transform:scale(.92);
+    transform-origin:var(--org, left center); }
+  .card.float.show { transform:scale(1); }
+  /* 面板样式预设：黑底 / 毛玻璃 / 透明 */
+  .card.st-solid { background:rgba(20,22,32,.94); backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,.1); box-shadow:0 18px 44px rgba(0,0,0,.5); }
+  .card.st-glass { background:rgba(24,26,38,.5); backdrop-filter:blur(22px) saturate(1.3);
+    border:1px solid rgba(255,255,255,.18); box-shadow:0 18px 44px rgba(0,0,0,.42); }
+  .card.st-transparent { background:transparent; backdrop-filter:none; border:none; box-shadow:none;
+    border-left:2px solid var(--gold); border-radius:0; padding-left:16px; }
+  .card.st-transparent .card-title, .card.st-transparent .card-body {
+    text-shadow:0 2px 10px rgba(0,0,0,.92), 0 0 3px rgba(0,0,0,.85); }
+  .card.st-transparent .card-close { text-shadow:0 1px 6px rgba(0,0,0,.9); color:rgba(255,255,255,.85); }
+  /* 引线 SVG */
+  .hs-svg { position:absolute; inset:0; width:100%; height:100%; z-index:6; pointer-events:none; overflow:visible; }
+  #hs-leader { stroke:var(--gold); stroke-width:1.6; stroke-linecap:round; opacity:.92;
+    stroke-dasharray:5 6; animation:flow 1s linear infinite; filter:drop-shadow(0 0 3px rgba(200,168,106,.55)); }
+  @keyframes flow { to { stroke-dashoffset:-22; } }
+
+  /* 遮罩：加载 / 错误 */
+  .overlay { position:absolute; inset:0; z-index:10; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(120% 90% at 50% 40%, #1c2030 0%, #0b0d14 100%); transition:opacity .45s; }
+  .overlay.fade { opacity:0; }
+  .poster { position:absolute; inset:0; background-size:cover; background-position:center; opacity:0;
+    transform:scale(1.06); filter:blur(3px) brightness(.5); }
+  .poster.on { opacity:1; }
+  .ov-inner { position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:15px; padding:0 32px; text-align:center; }
+  .spin { width:38px; height:38px; border-radius:50%; border:3px solid rgba(255,255,255,.16); border-top-color:var(--gold); animation:spin .9s linear infinite; }
+  @keyframes spin { to{ transform:rotate(360deg) } }
+  .ov-text { font-size:13px; letter-spacing:1px; color:rgba(238,240,245,.86); text-shadow:0 1px 8px rgba(0,0,0,.6); }
+  .bar { width:180px; height:4px; border-radius:2px; background:rgba(255,255,255,.14); overflow:hidden; }
+  .bar>i { display:block; width:0; height:100%; border-radius:2px; background:linear-gradient(90deg,var(--gold),#e6cf9a); transition:width .25s; }
+  .err-ic { width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:26px; font-weight:700; color:#0b0d14; background:var(--gold); }
+  .err-btn { margin-top:4px; padding:9px 24px; border:1px solid var(--gold); border-radius:999px; background:transparent; color:#f4e6c8; font-size:13px; cursor:pointer; }
+
+  /* EDITOR-CSS-START （导出仅观看版时整段剔除） */
+  /* 编辑面板（?mode=edit） */
+  .editor { position:absolute; top:0; right:0; bottom:0; width:300px; z-index:20; overflow-y:auto;
+    background:rgba(14,16,24,.95); border-left:1px solid rgba(255,255,255,.1); padding:16px; font-size:12.5px;
+    scrollbar-width:thin; scrollbar-color:rgba(200,168,106,.4) transparent; }
+  .editor::-webkit-scrollbar { width:8px; }
+  .editor::-webkit-scrollbar-track { background:transparent; }
+  .editor::-webkit-scrollbar-thumb { background:rgba(200,168,106,.32); border-radius:4px; border:2px solid transparent; background-clip:padding-box; }
+  .editor::-webkit-scrollbar-thumb:hover { background:rgba(200,168,106,.55); background-clip:padding-box; }
+  .editor h3 { font-size:13px; color:var(--gold); margin:14px 0 8px; letter-spacing:.5px; }
+  .editor h3:first-child { margin-top:0; }
+  .ed-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:7px 0; color:#cfd3e0; }
+  .ed-row input[type=range]{ flex:1; min-width:0; accent-color:var(--gold); }
+  .ed-row input[type=color]{ width:30px; height:22px; border:none; background:none; padding:0; cursor:pointer; flex:0 0 auto; }
+  /* 滑条 + 数字输入 联动组件 */
+  .ed-slider { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+  .ed-num { flex:0 0 auto; width:56px; padding:3px 6px; border:1px solid rgba(255,255,255,.14); border-radius:6px;
+    background:rgba(255,255,255,.05); color:#eef0f5; font-size:11.5px; font-family:inherit; text-align:right;
+    -moz-appearance:textfield; }
+  .ed-num::-webkit-outer-spin-button, .ed-num::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  .ed-num:focus { outline:none; border-color:var(--gold); }
+  .ed-note { color:#8a90a6; line-height:1.6; margin:6px 0; }
+  .ed-sec { border:1px solid rgba(255,255,255,.08); border-radius:8px; margin:8px 0; padding:2px 10px; }
+  .ed-sec summary { cursor:pointer; color:var(--gold); font-size:13px; font-weight:600; padding:8px 0; letter-spacing:.5px; list-style:none; }
+  .ed-sec summary::-webkit-details-marker { display:none; }
+  .ed-sec summary::before { content:"▸ "; }
+  .ed-sec[open] summary::before { content:"▾ "; }
+  .ed-in { width:100%; margin:5px 0; padding:7px 9px; border:1px solid rgba(255,255,255,.14); border-radius:7px;
+    background:rgba(255,255,255,.05); color:#eef0f5; font-size:12px; font-family:inherit; }
+  .editor select.ed-in { color:#eef0f5; }
+  .editor select option { background:#14161f; color:#eef0f5; }   /* 修复下拉项浅底浅字看不清 */
+  textarea.ed-in { resize:vertical; min-height:76px; line-height:1.6; }
+  .ed-file { display:block; text-align:center; margin:5px 0; padding:8px; border:1px dashed rgba(255,255,255,.22);
+    border-radius:7px; color:#cfd3e0; cursor:pointer; font-size:12px; }
+  .ed-hs-item { border:1px solid rgba(255,255,255,.08); border-radius:7px; padding:6px 8px; margin:7px 0; }
+  .ed-hs-item b { color:var(--gold); }
+  .editor a { cursor:pointer; color:var(--gold); text-decoration:none; }
+  .ed-btn { width:100%; margin-top:6px; padding:9px; border:1px solid var(--gold); border-radius:8px;
+    background:transparent; color:#f4e6c8; cursor:pointer; font-size:12.5px; }
+  .ed-badge { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:21; background:rgba(200,168,106,.92); color:#0b0d14;
+    font-size:11px; font-weight:700; padding:3px 12px; border-radius:999px; }
+  /* EDITOR-CSS-END */
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <header class="topbar" hidden id="topbar">
+    <div class="topbar-name" id="c-name"></div>
+    <div class="topbar-sub" id="c-sub"></div>
+  </header>
+  <div class="hint" id="hint">拖动旋转 · 双指缩放</div>
+  <svg class="hs-svg" id="hs-svg" hidden><line id="hs-leader" x1="0" y1="0" x2="0" y2="0" /></svg>
+  <div class="hs-layer" id="hs-layer"></div>
+
+  <!-- 语音讲解 小型播放器 -->
+  <div class="audio" hidden id="audio" role="group" aria-label="语音讲解播放器">
+    <button class="au-btn" id="au-play" aria-label="播放/暂停语音讲解（空格键）">▶</button>
+    <div class="au-mid">
+      <div class="au-top">
+        <select class="au-sel" id="au-sel" hidden aria-label="选择语音讲解"></select>
+        <span class="au-name" id="au-name">语音讲解</span>
+        <span class="au-time" id="au-time">0:00</span>
+      </div>
+      <div class="au-bar" id="au-bar"><i id="au-prog"></i></div>
+    </div>
+  </div>
+  <audio id="au-el" preload="none"></audio>
+
+  <div class="hud" hidden id="hud">
+    <div class="presets" id="presets"></div>
+    <div class="actions" id="actions"></div>
+  </div>
+
+  <div class="card" id="card" role="dialog" aria-labelledby="card-title" aria-modal="false">
+    <span class="card-close" id="card-close" role="button" tabindex="0" aria-label="关闭讲解">×</span>
+    <div class="card-title" id="card-title"></div>
+    <div class="card-body" id="card-body"></div>
+  </div>
+
+  <div class="overlay" id="loading">
+    <div class="poster" id="poster"></div>
+    <div class="ov-inner">
+      <div class="spin"></div>
+      <div class="ov-text" id="load-text">正在加载…</div>
+      <div class="bar"><i id="bar"></i></div>
+    </div>
+  </div>
+  <div class="overlay error" hidden id="error">
+    <div class="ov-inner">
+      <div class="err-ic">!</div>
+      <div class="ov-text" id="err-text">加载失败</div>
+      <button class="err-btn" id="err-btn" hidden>重新加载</button>
+    </div>
+  </div>
+
+  <!-- EDITOR-HTML-START （导出仅观看版时整段剔除） -->
+  <div class="editor" hidden id="editor"></div>
+  <div class="ed-badge" hidden id="ed-badge">编辑模式</div>
+  <!-- EDITOR-HTML-END -->
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+
+const $ = id => document.getElementById(id)
+const params = new URLSearchParams(location.search)
+const editMode = params.get('mode') === 'edit'
+// 共享播放器：?ex=craft-001 指定展品目录；数据（config+assets）在该目录下，代码与 vendor 全站共享
+const EX = (params.get('ex') || '').replace(/^\/+|\/+$/g, '')
+const BASE = EX ? EX + '/' : ''
+const asset = p => (!p || /^(https?:|data:|blob:|\/\/|\/)/.test(p)) ? p : BASE + p   // 相对路径补展品目录前缀
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
+let lang = 'zh'
+let cfg, renderer, scene, camera, controls, model
+let hotspots = [], activePreset = null, raf = 0
+const initialCam = new THREE.Vector3()
+const tmp = new THREE.Vector3()
+const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
+const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
+let auTracks = [], auIndex = -1     // 语音讲解播放器状态
+
+const t = o => (o && (o[lang] || o.zh || o.en)) || {}
+function hexToRgba(hex, a){
+  const h = String(hex||'').replace('#','')
+  const n = h.length===3 ? h.split('').map(c=>c+c).join('') : h
+  const r=parseInt(n.slice(0,2),16), g=parseInt(n.slice(2,4),16), b=parseInt(n.slice(4,6),16)
+  if ([r,g,b].some(x=>isNaN(x))) return `rgba(200,168,106,${a})`
+  return `rgba(${r},${g},${b},${a})`
+}
+
+function showError(msg, retry) {
+  $('loading').setAttribute('hidden','')
+  $('err-text').textContent = msg
+  $('err-btn').toggleAttribute('hidden', !retry)
+  $('error').removeAttribute('hidden')
+}
+const num = (v,d) => (typeof v === 'number' && isFinite(v)) ? v : d
+
+function initRenderer() {
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas:$('scene'), antialias:true, powerPreference:'high-performance', preserveDrawingBuffer:editMode })
+  } catch(e){ return false }
+  // 移动端像素比自适应：手机限流以省 GPU/发热，桌面放开到高清
+  const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 768
+  const cap = isMobile ? num(cfg.performance?.mobilePixelRatio, 1.5)
+                       : num(cfg.performance?.desktopPixelRatio, cfg.renderer?.maxPixelRatio || 2)
+  const dpr = Math.min(window.devicePixelRatio||1, cap)
+  renderer.setPixelRatio(dpr)
+  renderer.setSize(innerWidth, innerHeight)
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  renderer.toneMappingExposure = num(cfg.renderer?.exposure, 1.05)
+  renderer.outputColorSpace = THREE.SRGBColorSpace
+  return true
+}
+
+function normalize(obj) {
+  obj.scale.setScalar(1); obj.position.set(0,0,0); obj.rotation.set(0,0,0); obj.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(obj)
+  const size = box.getSize(new THREE.Vector3())
+  const maxDim = Math.max(size.x, size.y, size.z) || 1
+  const s = num(cfg.model?.targetSize, 2.6) / maxDim * num(cfg.model?.scale, 1)
+  obj.scale.setScalar(s)
+  obj.updateMatrixWorld(true)
+  const box2 = new THREE.Box3().setFromObject(obj)
+  const c = box2.getCenter(new THREE.Vector3())
+  const p = cfg.model?.position || [0,0,0]
+  obj.position.set(-c.x + (p[0]||0), -c.y + (p[1]||0), -c.z + (p[2]||0))
+  const r = cfg.model?.rotationDeg || [0,0,0]
+  obj.rotation.set(r[0]*Math.PI/180, r[1]*Math.PI/180, r[2]*Math.PI/180)
+  obj.updateMatrixWorld(true)
+  modelBox.setFromObject(obj)
+}
+
+function applyMaterial() {
+  const g = cfg.materials?.global || {}
+  const ov = cfg.materials?.overrides || []
+  model.traverse(o => {
+    if (!o.isMesh) return
+    ;[].concat(o.material).forEach(m => {
+      if (!m || !('roughness' in m)) return
+      if (typeof g.roughness === 'number') m.roughness = g.roughness
+      if (typeof g.metalness === 'number') m.metalness = g.metalness
+      if (typeof g.envMapIntensity === 'number') m.envMapIntensity = g.envMapIntensity
+      // 按材质名覆盖（分组）
+      const name = (m.name||'').toLowerCase()
+      ov.forEach(o2 => {
+        if (o2.namePattern && name.includes(String(o2.namePattern).toLowerCase())) {
+          if (typeof o2.roughness==='number') m.roughness=o2.roughness
+          if (typeof o2.metalness==='number') m.metalness=o2.metalness
+          if (typeof o2.envMapIntensity==='number') m.envMapIntensity=o2.envMapIntensity
+        }
+      })
+      m.needsUpdate = true
+    })
+  })
+}
+/* 四光源灯组（叠加在 IBL 之上，可编辑） */
+let lightRefs = {}
+function buildLights() {
+  Object.values(lightRefs).forEach(l => scene.remove(l)); lightRefs = {}
+  const L = cfg.lights || {}
+  const amb = new THREE.AmbientLight(new THREE.Color(L.ambient?.color||'#ffffff'), num(L.ambient?.intensity,0.25))
+  scene.add(amb); lightRefs.ambient = amb
+  ;['key','fill','rim'].forEach(k => {
+    const c = L[k] || {}
+    const d = new THREE.DirectionalLight(new THREE.Color(c.color||'#ffffff'), num(c.intensity, k==='key'?1.1:0.4))
+    const p = c.position || [3,5,4]; d.position.set(p[0],p[1],p[2])
+    scene.add(d); lightRefs[k] = d
+  })
+}
+/* 统计 */
+function modelStats() {
+  let tris=0, verts=0, tex=new Set(); const mats=new Set()
+  model.traverse(o => {
+    if (o.isMesh && o.geometry) {
+      const g=o.geometry; const pos=g.attributes.position
+      if (pos) verts += pos.count
+      tris += g.index ? g.index.count/3 : (pos?pos.count/3:0)
+      ;[].concat(o.material).forEach(m=>{ if(m){ mats.add(m.name||m.uuid); ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap'].forEach(k=>{ if(m[k]) tex.add(m[k].uuid) }) } })
+    }
+  })
+  return { tris:Math.round(tris), verts, mats:mats.size, tex:tex.size }
+}
+function materialNames() {
+  const s=new Set(); model.traverse(o=>{ if(o.isMesh) [].concat(o.material).forEach(m=>{ if(m&&m.name) s.add(m.name) }) }); return [...s]
+}
+
+function placeCamera() {
+  const c = cfg.camera || {}
+  camera.fov = num(c.fov, 40); camera.updateProjectionMatrix()
+  camera.position.setFromSpherical(new THREE.Spherical(num(c.distance,3.4), num(c.phi,1.2), num(c.theta,0.7)))
+  initialCam.copy(camera.position)
+  const pv = c.pivot || [0,0,0]; pivot.set(pv[0]||0, pv[1]||0, pv[2]||0)  // 默认 (0,0,0)=模型中轴
+  controls.target.copy(pivot)
+  controls.minDistance = num(c.minDistance, 1.4)
+  controls.maxDistance = num(c.maxDistance, 7)
+  controls.autoRotate = !reduceMotion && c.autoRotate !== false
+  controls.autoRotateSpeed = num(c.autoRotateSpeed, 0.9)
+  controls.update()
+}
+
+/* ── 环境 / IBL ── */
+function roomIBL() {
+  const pmrem = new THREE.PMREMGenerator(renderer)
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+}
+function panoramaIBL(url) {
+  new THREE.TextureLoader().load(url, tex => {
+    tex.mapping = THREE.EquirectangularReflectionMapping
+    tex.colorSpace = THREE.SRGBColorSpace
+    const pmrem = new THREE.PMREMGenerator(renderer)
+    scene.environment = pmrem.fromEquirectangular(tex).texture
+    if (cfg.environment?.visibleBackground) scene.background = tex
+    tex.dispose(); pmrem.dispose()
+  }, undefined, () => {/* 保底已是 RoomEnvironment */})
+}
+
+/* ── 热点 ── */
+// 热点以「显示空间坐标」写入 config；锚点挂到模型下（转成模型局部），
+// 这样模型缩放/旋转/位移后热点仍跟随，兼顾我方 config 直觉与最终形态健壮性。
+function buildHotspots() {
+  const layer = $('hs-layer'); layer.innerHTML=''
+  hotspots.forEach(h => { if (h.anchor && h.anchor.parent) h.anchor.parent.remove(h.anchor) })  // 清理旧锚点，避免累积
+  hotspots=[]
+  if (!model) return
+  const hstyle = cfg.hotspotStyle || {}
+  ;(cfg.hotspots||[]).forEach(h => {
+    const el = document.createElement('div'); el.className='hs'
+    const col = h.color || hstyle.color || '#c8a86a'
+    el.style.setProperty('--hs-color', col)
+    el.style.setProperty('--hs-glow', hexToRgba(col, .55))
+    if (hstyle.size) el.style.setProperty('--hs-size', hstyle.size+'px')
+    if (hstyle.pulse === false) el.classList.add('no-pulse')
+    el.setAttribute('role','button'); el.setAttribute('tabindex','0')
+    el.setAttribute('aria-label', (t(h.i18n).title || '热点') + ' · 查看讲解')
+    layer.appendChild(el)
+    const anchor = new THREE.Object3D()
+    anchor.position.copy(model.worldToLocal(new THREE.Vector3(...(h.position||[0,0,0]))))
+    model.add(anchor)
+    const hsObj = { data:h, el, anchor }
+    if (editMode) el.addEventListener('pointerdown', e => startHsDrag(e, hsObj))   // 编辑版：拖拽微调 / 点开
+    else {
+      el.addEventListener('click', e => { e.stopPropagation(); openHotspot(h, el) })
+      el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openHotspot(h, el) } })  // 键盘可达
+    }
+    hotspots.push(hsObj)
+  })
+}
+let hotspotsVisible = true
+const _hw = new THREE.Vector3()
+function updateHotspots() {
+  const camDir = new THREE.Vector3()
+  hotspots.forEach(hs => {
+    hs.anchor.getWorldPosition(_hw)
+    tmp.copy(_hw).project(camera)
+    const onScreen = tmp.z < 1
+    const x = (tmp.x*0.5+0.5)*innerWidth, y = (-tmp.y*0.5+0.5)*innerHeight
+    // 近/远半球淡化（背面自动淡）
+    camDir.copy(camera.position).sub(_hw).normalize()
+    const facing = _hw.clone().normalize().dot(camDir) // 模型中心≈原点
+    let op = facing > 0.12 ? 1 : facing > -0.15 ? 0.28 : 0
+    if (!hotspotsVisible || !onScreen) op = 0
+    hs.el.style.opacity = op
+    const vis = op > 0.5
+    hs.el.style.pointerEvents = vis ? 'auto' : 'none'
+    if (hs._vis !== vis) { hs._vis = vis; hs.el.tabIndex = vis ? 0 : -1; hs.el.setAttribute('aria-hidden', vis ? 'false' : 'true') }  // 隐藏时移出 Tab 序
+    hs.el.style.left = x+'px'; hs.el.style.top = y+'px'
+  })
+}
+
+let focusAnim = null, activeHS = null, leaderT0 = 0
+function openHotspot(h, el) {
+  controls.autoRotate = false; syncBtns()
+  hotspots.forEach(x => x.el.classList.toggle('active', x.el===el))
+  activeHS = hotspots.find(x => x.el===el)
+  const tx = t(h.i18n)
+  $('card-title').textContent = tx.title || ''
+  $('card-body').textContent = tx.content || ''
+  const wide = innerWidth > 720
+  const style = (cfg.panel?.style) || 'solid'
+  const card = $('card')
+  card.style.left = ''; card.style.top = ''
+  card.className = 'card float st-' + style
+  if (wide) { $('hs-svg').removeAttribute('hidden'); leaderT0 = performance.now() }  // 桌面才有引线
+  else { $('hs-svg').setAttribute('hidden','') }                                     // 移动端就近显示，无引线
+  if (h.cameraFocus) {
+    const cf = h.cameraFocus, tgt = new THREE.Vector3(...(h.position||[0,0,0]))
+    let camPos = null
+    if (typeof cf.phi === 'number' && typeof cf.theta === 'number')   // 存了完整角度 → 转到该面
+      camPos = tgt.clone().add(new THREE.Vector3().setFromSpherical(new THREE.Spherical(num(cf.distance,2.4), cf.phi, cf.theta)))
+    focusTo(tgt, num(cf.distance,2.4), num(cf.duration,800), camPos)
+  }
+  if (h.audio) playTrackById(h.audio)   // 该热点绑定了语音讲解 → 自动播放
+  setTimeout(() => $('card').classList.add('show'), wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
+}
+function closeHotspot() {
+  $('card').classList.remove('show')
+  $('hs-svg').setAttribute('hidden','')
+  hotspots.forEach(x => x.el.classList.remove('active'))
+  activeHS = null
+  focusTo(pivot.clone(), initialCam.length(), 700, initialCam.clone())
+}
+const _cw2 = new THREE.Vector3(), _bc = new THREE.Vector3()
+// 模型世界包围盒 8 角投到屏幕，得到其占屏范围（用于面板避让）
+function projectModelBounds() {
+  let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity
+  const mn=modelBox.min, mx=modelBox.max
+  for (let i=0;i<8;i++) {
+    _bc.set(i&1?mx.x:mn.x, i&2?mx.y:mn.y, i&4?mx.z:mn.z).project(camera)
+    const sx=(_bc.x*0.5+0.5)*innerWidth, sy=(-_bc.y*0.5+0.5)*innerHeight
+    if(sx<minX)minX=sx; if(sx>maxX)maxX=sx; if(sy<minY)minY=sy; if(sy>maxY)maxY=sy
+  }
+  return { minX, maxX, minY, maxY }
+}
+function updateCallout() {
+  if (!activeHS) return
+  activeHS.anchor.getWorldPosition(_cw2); tmp.copy(_cw2).project(camera)
+  const mx = (tmp.x*0.5+0.5)*innerWidth, my = (-tmp.y*0.5+0.5)*innerHeight
+  const card = $('card')
+  const cw = card.offsetWidth || 280, ch = card.offsetHeight || 150
+  if (innerWidth > 720) {
+    // 桌面：优先落在模型投影外的留白区（不遮挡模型），再避让右侧编辑面板
+    const leader = $('hs-leader')
+    const g = 1 - Math.pow(1 - Math.min(1,(performance.now()-leaderT0)/260), 3)  // easeOutCubic 延伸
+    const reserve = editMode ? 320 : 8, gap = 26
+    const mb = projectModelBounds()
+    const freeLeft = mb.minX - 8
+    const freeRight = (innerWidth - reserve) - mb.maxX
+    let placeLeft
+    if (freeRight >= cw + gap) placeLeft = false
+    else if (freeLeft >= cw + gap) placeLeft = true
+    else placeLeft = (innerWidth - reserve - mx) < cw + 70          // 兜底：靠热点侧避让面板
+    const cardX = placeLeft
+      ? Math.max(8, mb.minX - gap - cw)
+      : Math.min(innerWidth - reserve - cw - 8, Math.max(mb.maxX + gap, mx + 60))
+    const cardY = Math.min(Math.max(66, my - ch/2), innerHeight - ch - 24)
+    card.style.left = cardX+'px'; card.style.top = cardY+'px'
+    card.style.setProperty('--org', placeLeft ? 'right center' : 'left center')
+    const ax = placeLeft ? cardX+cw : cardX
+    const ay = Math.min(Math.max(cardY+16, my), cardY+ch-16)
+    leader.setAttribute('x1',mx); leader.setAttribute('y1',my)
+    leader.setAttribute('x2', mx+(ax-mx)*g); leader.setAttribute('y2', my+(ay-my)*g)
+  } else {
+    // 移动端：就近显示于热点旁，夹取在视口内（避开顶栏 / 底部工具条），无引线
+    const pad = 10, safeTop = 60, safeBot = 148
+    let cx = mx - cw/2
+    cx = Math.min(Math.max(pad, cx), innerWidth - cw - pad)
+    let cy = my + 22
+    if (cy + ch > innerHeight - safeBot) cy = my - 22 - ch          // 下方放不下就放上方
+    cy = Math.min(Math.max(safeTop, cy), innerHeight - ch - pad)
+    card.style.left = cx+'px'; card.style.top = cy+'px'
+    card.style.setProperty('--org','center center')
+  }
+}
+function focusTo(target, dist, dur, camOverride) {
+  const startT = controls.target.clone(), startC = camera.position.clone()
+  const endT = target.clone()
+  const endC = camOverride || target.clone().add(camera.position.clone().sub(controls.target).normalize().multiplyScalar(dist))
+  const t0 = performance.now()
+  cancelAnimationFrame(focusAnim)
+  const ease = x => x<0.5 ? 4*x*x*x : 1-Math.pow(-2*x+2,3)/2
+  ;(function step(){
+    const k = Math.min(1, (performance.now()-t0)/dur), e = ease(k)
+    controls.target.lerpVectors(startT, endT, e)
+    camera.position.lerpVectors(startC, endC, e)
+    controls.update()
+    if (k<1) focusAnim = requestAnimationFrame(step)
+  })()
+}
+
+/* ── 语音讲解 播放器 ── */
+function buildAudio(){
+  auTracks = (cfg.audio||[]).filter(a=>a && a.src)
+  const wrap = $('audio')
+  if (!auTracks.length){ wrap.setAttribute('hidden',''); return }
+  wrap.removeAttribute('hidden')
+  const sel = $('au-sel'), name = $('au-name')
+  if (auTracks.length > 1){
+    sel.removeAttribute('hidden'); name.setAttribute('hidden','')
+    sel.innerHTML = auTracks.map((a,i)=>`<option value="${i}">${(a.label||('讲解 '+(i+1))).replace(/</g,'&lt;')}</option>`).join('')
+    sel.onchange = () => selectTrack(+sel.value, true)
+  } else {
+    sel.setAttribute('hidden',''); name.removeAttribute('hidden'); name.textContent = auTracks[0].label || '语音讲解'
+  }
+  auIndex = -1; selectTrack(0, false)
+}
+function selectTrack(i, play){
+  const el = $('au-el'), tr = auTracks[i]; if(!tr) return
+  if (i !== auIndex){ el.src = asset(tr.src); auIndex = i }
+  const sel = $('au-sel'); if(!sel.hasAttribute('hidden')) sel.value = String(i)
+  const name = $('au-name'); if(!name.hasAttribute('hidden')) name.textContent = tr.label || '语音讲解'
+  if (play){ el.play().catch(()=>{}) } else { auIcon(false); $('au-prog').style.width='0%'; $('au-time').textContent='0:00' }
+}
+function playTrackById(id){
+  const i = auTracks.findIndex(a=>a.id===id); if(i<0) return
+  if (i===auIndex && !$('au-el').paused) return
+  selectTrack(i, true)
+}
+function auIcon(p){ $('au-play').textContent = p ? '❚❚' : '▶' }
+function auFmt(s){ if(!isFinite(s)||s<0) return '0:00'; const m=Math.floor(s/60), ss=Math.floor(s%60); return m+':'+String(ss).padStart(2,'0') }
+function wireAudio(){
+  const el = $('au-el')
+  $('au-play').onclick = () => { if(!auTracks.length) return; if(auIndex<0) selectTrack(0,false); el.paused ? el.play().catch(()=>{}) : el.pause() }
+  el.onplay = ()=>auIcon(true); el.onpause = ()=>auIcon(false); el.onended = ()=>{ auIcon(false); $('au-prog').style.width='0%' }
+  el.ontimeupdate = ()=>{ const p = el.duration ? el.currentTime/el.duration*100 : 0; $('au-prog').style.width=p+'%'; $('au-time').textContent=auFmt(el.currentTime) }
+  $('au-bar').onclick = e => { if(!el.duration) return; const r=$('au-bar').getBoundingClientRect(); el.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*el.duration }
+}
+
+/* ── UI ── */
+function renderText() {
+  const x = t(cfg.i18n)
+  $('c-name').textContent = x.title || '立体鉴赏'
+  $('c-sub').textContent = x.subtitle || ''
+  document.querySelectorAll('#presets .preset').forEach(b => {
+    const p = (cfg.presets||[]).find(p=>p.id===b.dataset.id); if(p) b.textContent = t(p.label) || p.id
+  })
+  labelBtns()
+}
+const BTN = { rotate:{zh:'自动旋转',en:'Auto'}, hot:{zh:'热点',en:'Hotspots'}, reset:{zh:'重置',en:'Reset'}, full:{zh:'全屏',en:'Full'} }
+function labelBtns(){ document.querySelectorAll('#actions .btn').forEach(b=>{ const k=b.dataset.k; if(BTN[k]) b.querySelector('.tx').textContent = BTN[k][lang] }) }
+function syncBtns(){
+  const r=document.querySelector('[data-k=rotate]'); if(r){ r.classList.toggle('on', controls.autoRotate); r.setAttribute('aria-pressed', controls.autoRotate) }
+  const h=document.querySelector('[data-k=hot]'); if(h){ h.classList.toggle('on', hotspotsVisible); h.setAttribute('aria-pressed', hotspotsVisible) }
+}
+function buildHUD() {
+  const ui = cfg.ui||{}
+  const pr = $('presets')
+  let shownPresets = 0
+  ;(cfg.presets||[]).forEach((p,i) => {
+    if (!ui.showPresets || p.showAsButton===false || shownPresets>=4) return   // 前台最多 4 个光源按钮
+    shownPresets++
+    const b=document.createElement('button'); b.className='preset'; b.dataset.id=p.id; b.textContent=t(p.label)||p.id
+    b.onclick=()=>applyPreset(p); pr.appendChild(b)
+  })
+  const act = $('actions')
+  const mk = (k, ic, on, fn) => { const b=document.createElement('button'); b.className='btn'+(on?' on':''); b.dataset.k=k
+    b.innerHTML=`<span class="ic">${ic}</span><span class="tx"></span>`; b.onclick=fn; act.appendChild(b) }
+  if (ui.showAutoRotateButton!==false) mk('rotate','↻', controls.autoRotate, ()=>{ controls.autoRotate=!controls.autoRotate; syncBtns() })
+  if (ui.showHotspotButton!==false && (cfg.hotspots||[]).length) mk('hot','◈', true, ()=>{ hotspotsVisible=!hotspotsVisible; if(!hotspotsVisible) closeHotspot(); syncBtns() })
+  if (ui.showResetButton!==false) mk('reset','⤢', false, ()=>{ closeHotspot() })
+  if (ui.showFullscreenButton!==false) mk('full','⛶', false, ()=>{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen() })
+  labelBtns(); syncBtns()   // 初始化 aria-pressed 等状态
+}
+function applyPreset(p) {
+  activePreset = p.id
+  renderer.toneMappingExposure = num(p.exposure, renderer.toneMappingExposure)
+  if (typeof p.envMapIntensity === 'number') { cfg.materials = cfg.materials||{}; cfg.materials.global = Object.assign(cfg.materials.global||{}, {envMapIntensity:p.envMapIntensity}); applyMaterial() }
+  if (p.background) scene.background = cfg.environment?.visibleBackground ? scene.background : new THREE.Color(p.background)
+  if (p.lights) {   // 预设含四光源方案 → 应用灯组
+    cfg.lights = cfg.lights || {}
+    ;['ambient','key','fill','rim'].forEach(k => { if (p.lights[k]) cfg.lights[k] = Object.assign(cfg.lights[k]||{}, p.lights[k]) })
+    buildLights()
+  }
+  document.querySelectorAll('#presets .preset').forEach(b=>b.classList.toggle('on', b.dataset.id===p.id))
+}
+
+function onResize() { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight) }
+let fps=0, _ft=performance.now(), _fc=0
+function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
+  _fc++; const n=performance.now(); if(n-_ft>=500){ fps=Math.round(_fc*1000/(n-_ft)); _fc=0; _ft=n } }
+/* 统一构造 GLTFLoader：挂载 Draco（几何压缩）+ KTX2/Basis（贴图压缩）解码器，自托管于 vendor/ */
+let _draco = null, _ktx2 = null
+function makeLoader() {
+  const loader = new GLTFLoader()
+  if (!_draco) _draco = new DRACOLoader().setDecoderPath('./vendor/draco/')
+  loader.setDRACOLoader(_draco)
+  try {
+    if (!_ktx2) _ktx2 = new KTX2Loader().setTranscoderPath('./vendor/basis/').detectSupport(renderer)
+    loader.setKTX2Loader(_ktx2)
+  } catch(e) { /* KTX2 不支持时忽略，普通贴图不受影响 */ }
+  return loader
+}
+/* 换模型（支持任意 URL / 拖拽本地文件；跨域需 CORS） */
+function reloadModel(url, revoke) {
+  makeLoader().load(url, gltf => {
+    if (model) scene.remove(model)
+    model = gltf.scene
+    normalize(model); applyMaterial(); scene.add(model); buildHotspots()
+    if (revoke) URL.revokeObjectURL(url)
+    if (window.__edRefresh) window.__edRefresh()
+  }, undefined, () => alert('模型加载失败：请检查地址，跨域资源需服务器配置 CORS'))
+}
+
+function start() {
+  scene = new THREE.Scene()
+  scene.background = new THREE.Color(cfg.renderer?.background || '#0f1118')
+  camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.1, 1000)
+  controls = new OrbitControls(camera, renderer.domElement)
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false; controls.rotateSpeed = 0.9
+  controls.addEventListener('start', ()=>{ controls.autoRotate=false; syncBtns() })
+  roomIBL() // 先给内置环境，秒出反射
+  buildLights() // 四光源灯组（叠加在 IBL 上，可编辑）
+
+  makeLoader().load(asset(cfg.assets.model), gltf => {
+    model = gltf.scene
+    normalize(model); applyMaterial(); scene.add(model)
+    placeCamera(); buildHotspots(); buildHUD(); renderText(); buildAudio(); wireAudio()
+    // 背景真全景 IBL 后台加载，平滑接管
+    if (cfg.environment?.mode === 'panorama' && cfg.assets.panorama) panoramaIBL(asset(cfg.assets.panorama))
+    $('topbar').removeAttribute('hidden'); $('hud').removeAttribute('hidden')
+    $('loading').classList.add('fade'); setTimeout(()=>$('loading').setAttribute('hidden',''), 460)
+    $('hint').classList.add('show'); setTimeout(()=>$('hint').classList.remove('show'), 2600)
+    if (editMode) buildEditor()
+    animate()
+  }, evt => {
+    if (evt.total) { const p=Math.min(100,Math.round(evt.loaded/evt.total*100)); $('bar').style.width=p+'%'; $('load-text').textContent=`正在加载模型… ${p}%` }
+  }, () => showError('模型加载失败，请检查网络后重试', true))
+
+  addEventListener('resize', onResize)
+  $('card-close').onclick = closeHotspot
+  $('card-close').addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); closeHotspot() } })
+  $('scene').addEventListener('pointerdown', ()=>{ if($('card').classList.contains('show')) return })
+  // 键盘快捷键：Esc 关面板 · 空格 播/暂停语音
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape') { if ($('card').classList.contains('show')) closeHotspot() }
+    else if (e.key === ' ' || e.code === 'Space') {
+      const tag = (e.target?.tagName || '').toLowerCase()
+      if (tag==='input' || tag==='textarea' || tag==='select' || tag==='button' || tag==='a') return  // 不干扰控件/输入
+      if (auTracks.length) { e.preventDefault(); const a=$('au-el'); a.paused ? a.play().catch(()=>{}) : a.pause() }
+    }
+  })
+}
+
+async function boot() {
+  $('error').setAttribute('hidden',''); $('loading').removeAttribute('hidden'); $('loading').classList.remove('fade')
+  try {
+    if (window.__CFG__) cfg = window.__CFG__            // 便携单文件：内联配置，免 fetch（可双击 file:// 打开）
+    else cfg = await (await fetch(BASE + 'config.json', {cache:'no-cache'})).json()   // 共享播放器：按 ?ex= 读该展品配置
+  }
+  catch(e){ return showError('配置加载失败：'+e.message, true) }
+  if (!initRenderer()) return showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信')
+  document.title = t(cfg.i18n).title || '立体鉴赏'
+  if (cfg.assets.poster) { $('poster').style.backgroundImage=`url("${asset(cfg.assets.poster)}")`; $('poster').classList.add('on') }
+  if (editMode) $('ed-badge').removeAttribute('hidden')
+  start()
+}
+
+$('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); boot() }
+
+/* EDITOR-JS-START （导出仅观看版时整段剔除） */
+/* ── 编辑模式（开发方；纯前端，导出 config，不写服务器）──
+   面板：资产 / 模型 / 相机 / 材质 / 灯光 / 环境 / 热点 / 预设 / 性能 / 导出 */
+let _perfTimer = null
+function buildEditor() {
+  const ed = $('editor'); ed.removeAttribute('hidden')
+  window.__edRefresh = renderEditor
+  renderEditor()
+  wireCanvasAdd()
+  clearInterval(_perfTimer)
+  _perfTimer = setInterval(() => {
+    const el = document.getElementById('ed-perf'); if (!el) return
+    const info = renderer.info.render, st = modelStats()
+    el.innerHTML = `FPS ${fps} · Draw ${info.calls} · 三角面 ${st.tris.toLocaleString()}<br>顶点 ${st.verts.toLocaleString()} · 材质 ${st.mats} · 贴图 ${st.tex} · DPR ${renderer.getPixelRatio()}`
+    const warn = st.tris>500000 || renderer.getPixelRatio()>2
+    el.style.color = warn ? '#e6a23c' : '#8a90a6'
+  }, 500)
+}
+
+function ensureCfg() {
+  cfg.model = cfg.model || {}; cfg.camera = cfg.camera || {}
+  cfg.materials = cfg.materials || {}; cfg.materials.global = cfg.materials.global || {}; cfg.materials.overrides = cfg.materials.overrides || []
+  cfg.lights = cfg.lights || {}; cfg.hotspots = cfg.hotspots || []; cfg.presets = cfg.presets || []
+  cfg.environment = cfg.environment || {}
+  cfg.hotspotStyle = cfg.hotspotStyle || {}; cfg.panel = cfg.panel || {}; cfg.ui = cfg.ui || {}; cfg.audio = cfg.audio || []
+}
+
+function renderEditor() {
+  ensureCfg()
+  const g = cfg.materials.global, m = cfg.model, c = cfg.camera, L = cfg.lights
+  const rng = (k,label,min,max,step,val)=>`<div class="ed-row"><span>${label}</span><span class="ed-slider"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"><input type="number" class="ed-num" data-num="${k}" min="${min}" max="${max}" step="${step}" value="${val}"></span></div>`
+  const col = (k,label,val)=>`<div class="ed-row"><span>${label}</span><input type="color" data-k="${k}" value="${val}"></div>`
+  const names = model ? materialNames() : []
+  const auOpt = (sel)=>`<option value="">无</option>`+(cfg.audio||[]).map(a=>`<option value="${a.id}" ${sel===a.id?'selected':''}>${(a.label||a.id).replace(/</g,'&lt;')}</option>`).join('')
+  const hs = cfg.hotspots.map((h,i)=>{
+    const x=h.i18n?.zh||{}
+    return `<div class="ed-hs-item"><div class="ed-row"><b>#${i+1}</b><span><a data-hs-focus="${i}">更新机位</a> · <a data-hs-del="${i}" style="color:#e07a7a">删除</a></span></div>
+      <input class="ed-in" data-hs-title="${i}" value="${(x.title||'').replace(/"/g,'&quot;')}" placeholder="标题">
+      <textarea class="ed-in" data-hs-content="${i}" rows="4" placeholder="讲解文案">${x.content||''}</textarea>
+      <div class="ed-row"><span style="font-size:11.5px;color:#8a90a6">绑定语音</span><select class="ed-in" data-hs-audio="${i}" style="width:auto;margin:0;flex:0 0 auto">${auOpt(h.audio)}</select></div>
+      <div class="ed-row" style="gap:5px"><span style="font-size:11px;color:#8a90a6;flex:0 0 auto">位置</span>
+        <input class="ed-num" style="flex:1;width:auto;text-align:center" type="number" step="0.01" data-hs-px="${i}" value="${(h.position||[0,0,0])[0]}">
+        <input class="ed-num" style="flex:1;width:auto;text-align:center" type="number" step="0.01" data-hs-py="${i}" value="${(h.position||[0,0,0])[1]}">
+        <input class="ed-num" style="flex:1;width:auto;text-align:center" type="number" step="0.01" data-hs-pz="${i}" value="${(h.position||[0,0,0])[2]}"></div>
+      <div class="ed-note" style="margin-top:2px">拖拽模型上的热点亦可微调位置</div></div>`
+  }).join('') || '<div class="ed-note">暂无热点。Shift+点击模型表面添加。</div>'
+  const audioList = (cfg.audio||[]).map((a,i)=>`<div class="ed-hs-item"><div class="ed-row"><b>${a.id||('a'+(i+1))}</b><a data-au-del="${i}" style="color:#e07a7a">删除</a></div>
+      <input class="ed-in" data-au-label="${i}" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="名称（下拉显示）">
+      <input class="ed-in" data-au-src="${i}" value="${(a.src||'').replace(/"/g,'&quot;')}" placeholder="音频地址 .mp3/.m4a/.wav"></div>`).join('') || '<div class="ed-note">暂无语音。</div>'
+  const presets = cfg.presets.map((p,i)=>`<div class="ed-row"><span>${t(p.label)||p.id}</span><span style="flex:0 0 auto"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" data-pr-btn="${i}" ${p.showAsButton!==false?'checked':''}> 按钮</label> · <a data-pr-del="${i}" style="color:#e07a7a">删除</a></span></div>`).join('') || '<div class="ed-note">暂无预设。</div>'
+
+  const info = cfg.i18n?.zh || {}, ui = cfg.ui || {}
+  $('editor').innerHTML = `
+  <details class="ed-sec" open><summary>基本信息</summary>
+    <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
+    <input class="ed-in" id="ed-subtitle" value="${(info.subtitle||'').replace(/"/g,'&quot;')}" placeholder="副标题（标题下方小字）">
+  </details>
+
+  <details class="ed-sec"><summary>用户端按钮</summary>
+    <div class="ed-note">勾选终端用户可见的功能按钮：</div>
+    <label class="ed-row"><span>自动旋转</span><input type="checkbox" data-ui="showAutoRotateButton" ${ui.showAutoRotateButton!==false?'checked':''}></label>
+    <label class="ed-row"><span>热点</span><input type="checkbox" data-ui="showHotspotButton" ${ui.showHotspotButton!==false?'checked':''}></label>
+    <label class="ed-row"><span>重置</span><input type="checkbox" data-ui="showResetButton" ${ui.showResetButton!==false?'checked':''}></label>
+    <label class="ed-row"><span>全屏</span><input type="checkbox" data-ui="showFullscreenButton" ${ui.showFullscreenButton!==false?'checked':''}></label>
+    <label class="ed-row"><span>光源预设按钮</span><input type="checkbox" data-ui="showPresets" ${ui.showPresets!==false?'checked':''}></label>
+    <div class="ed-note">光源按钮由下方「预设」段条目驱动：增删预设即增删按钮。</div>
+  </details>
+
+  <details class="ed-sec"><summary>资产</summary>
+    <div class="ed-note">加载任意路径模型（相对/绝对 URL；跨域需 CORS）：</div>
+    <input class="ed-in" id="ed-url" placeholder="https://…/model.glb">
+    <button class="ed-btn" id="ed-url-load">从 URL 加载</button>
+    <label class="ed-file">拖拽或选择本地 .glb 预览<input type="file" id="ed-file" accept=".glb,.gltf" hidden></label>
+    <div class="ed-note" id="ed-assets">模型：${cfg.assets?.model||'-'}</div>
+  </details>
+
+  <details class="ed-sec"><summary>模型摆放（缩放 / 位移 / 旋转）</summary>
+    ${rng('m.scale','缩放系数',0.2,3,0.01, num(m.scale,1))}
+    ${rng('m.size','适配尺寸',0.5,5,0.05, num(m.targetSize,2.4))}
+    ${rng('m.px','位移 X',-2,2,0.01,(m.position||[0,0,0])[0])}
+    ${rng('m.py','位移 Y',-2,2,0.01,(m.position||[0,0,0])[1])}
+    ${rng('m.pz','位移 Z',-2,2,0.01,(m.position||[0,0,0])[2])}
+    ${rng('m.ry','旋转 Y°',-180,180,1,(m.rotationDeg||[0,0,0])[1])}
+    <button class="ed-btn" id="ed-m-reset">复位模型（缩放/位移/旋转归零）</button>
+  </details>
+
+  <details class="ed-sec"><summary>相机</summary>
+    ${rng('c.fov','视野 FOV',20,70,1, num(c.fov,40))}
+    ${rng('c.rspeed','自动旋转速度',0,4,0.1, num(c.autoRotateSpeed,0.9))}
+    ${rng('c.min','最近距离',0.5,5,0.1, num(c.minDistance,1.8))}
+    ${rng('c.max','最远距离',3,15,0.1, num(c.maxDistance,8))}
+    ${rng('c.pivy','旋转轴 Y 偏移',-1,1,0.01,(c.pivot||[0,0,0])[1])}
+    <div class="ed-note">自动/手动旋转均绕此轴。默认 0 = 模型中轴；仅需偏移旋转中心时再调。</div>
+    <button class="ed-btn" id="ed-cam-save">保存当前视角为默认</button>
+  </details>
+
+  <details class="ed-sec"><summary>材质</summary>
+    ${rng('g.exposure','曝光',0.4,2,0.01, renderer.toneMappingExposure)}
+    ${rng('g.env','环境光强',0,3,0.05, num(g.envMapIntensity,1.35))}
+    ${rng('g.metal','金属度',0,1,0.01, num(g.metalness,0))}
+    ${rng('g.rough','粗糙度',0,1,0.01, num(g.roughness,0.5))}
+    <div class="ed-note">按材质名覆盖（分组）：</div>
+    <select class="ed-in" id="ed-matsel">${names.length?names.map(n=>`<option>${n}</option>`).join(''):'<option value="">（模型无命名材质）</option>'}</select>
+    ${rng('ov.metal','· 金属度',0,1,0.01,0.5)}
+    ${rng('ov.rough','· 粗糙度',0,1,0.01,0.3)}
+    ${rng('ov.env','· 环境光强',0,3,0.05,1.5)}
+  </details>
+
+  <details class="ed-sec"><summary>灯光（四光源）</summary>
+    ${rng('l.amb','环境光',0,1,0.01, num(L.ambient?.intensity,0.25))}${col('l.ambc','',L.ambient?.color||'#ffffff')}
+    ${rng('l.key','主光',0,3,0.05, num(L.key?.intensity,1.1))}${col('l.keyc','',L.key?.color||'#fff0e0')}
+    ${rng('l.fill','补光',0,2,0.05, num(L.fill?.intensity,0.35))}${col('l.fillc','',L.fill?.color||'#a9c4ff')}
+    ${rng('l.rim','轮廓光',0,2,0.05, num(L.rim?.intensity,0.5))}${col('l.rimc','',L.rim?.color||'#ffffff')}
+  </details>
+
+  <details class="ed-sec"><summary>环境 IBL</summary>
+    <label class="ed-row"><span>可见全景背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
+    <input class="ed-in" id="ed-pano" placeholder="全景图 URL（2:1 等距柱状）">
+    <button class="ed-btn" id="ed-pano-load">加载全景</button>
+    <div class="ed-note">无全景时自动降级为内置 RoomEnvironment。</div>
+  </details>
+
+  <details class="ed-sec"><summary>热点与面板样式</summary>
+    <div class="ed-row"><span>信息面板样式</span>
+      <select class="ed-in" id="ed-panel-style" style="width:auto;margin:0;flex:0 0 auto">
+        <option value="solid">黑底</option><option value="glass">毛玻璃</option><option value="transparent">透明</option>
+      </select></div>
+    ${col('hs.color','热点颜色', cfg.hotspotStyle.color||'#c8a86a')}
+    ${rng('hs.size','热点大小', 18, 40, 1, num(cfg.hotspotStyle.size,26))}
+    <label class="ed-row"><span>热点脉冲动画</span><input type="checkbox" data-k="hs.pulse" ${cfg.hotspotStyle.pulse!==false?'checked':''}></label>
+    <div class="ed-note">桌面：面板落在模型外留白 + 引线；移动端：就近显示、夹取在视口内。</div>
+  </details>
+
+  <details class="ed-sec"><summary>热点（增删改）</summary>
+    <div class="ed-note">Shift + 点击模型表面 = 新增热点</div>${hs}
+  </details>
+
+  <details class="ed-sec"><summary>语音讲解</summary>
+    <div class="ed-note">音频放同目录/指定目录；多条自动出现下拉切换，可在热点里绑定自动播放。</div>
+    ${audioList}
+    <input class="ed-in" id="ed-au-url" placeholder="音频 URL（.mp3/.m4a/.wav）">
+    <button class="ed-btn" id="ed-au-add">新增语音</button>
+  </details>
+
+  <details class="ed-sec"><summary>预设（含灯光方案）</summary>
+    <div class="ed-note">新建预设会记录当前曝光/环境光强/背景 + 四光源灯组。前台最多显示 4 个按钮。</div>
+    ${presets}<button class="ed-btn" id="ed-pr-add">从当前状态新建预设</button>
+  </details>
+
+  <details class="ed-sec"><summary>性能</summary><div class="ed-note" id="ed-perf">采样中…</div></details>
+
+  <details class="ed-sec" open><summary>导出</summary>
+    <button class="ed-btn" id="ed-export">导出 config.json</button>
+    <button class="ed-btn" id="ed-viewonly">导出仅观看版（去编辑器）</button>
+    <div class="ed-note">生成 index.view.html — 上线部署这一份即可</div>
+    <button class="ed-btn" id="ed-shot">截取当前帧为 poster</button>
+    <button class="ed-btn" id="ed-check">校验 + 部署清单 ▾</button>
+    <div class="ed-note" id="ed-checkout"></div>
+    <div class="ed-note">纯前端不写服务器：导出后由开发方替换展包再上传。</div>
+  </details>`
+
+  wireEditor()
+}
+
+function wireEditor() {
+  const g=cfg.materials.global, m=cfg.model, c=cfg.camera, L=cfg.lights
+  const ed = $('editor')
+  function applyRange(k, v){
+    switch(k){
+      case 'g.exposure': renderer.toneMappingExposure=v; break
+      case 'g.env': g.envMapIntensity=v; applyMaterial(); break
+      case 'g.metal': g.metalness=v; applyMaterial(); break
+      case 'g.rough': g.roughness=v; applyMaterial(); break
+      case 'm.scale': m.scale=v; normalize(model); break
+      case 'm.size': m.targetSize=v; normalize(model); break
+      case 'm.px': m.position=[v,(m.position||[0,0,0])[1],(m.position||[0,0,0])[2]]; normalize(model); break
+      case 'm.py': m.position=[(m.position||[0,0,0])[0],v,(m.position||[0,0,0])[2]]; normalize(model); break
+      case 'm.pz': m.position=[(m.position||[0,0,0])[0],(m.position||[0,0,0])[1],v]; normalize(model); break
+      case 'm.ry': m.rotationDeg=[(m.rotationDeg||[0,0,0])[0],v,(m.rotationDeg||[0,0,0])[2]]; normalize(model); break
+      case 'c.fov': c.fov=v; camera.fov=v; camera.updateProjectionMatrix(); break
+      case 'c.rspeed': c.autoRotateSpeed=v; controls.autoRotateSpeed=v; break
+      case 'c.min': c.minDistance=v; controls.minDistance=v; break
+      case 'c.max': c.maxDistance=v; controls.maxDistance=v; break
+      case 'c.pivy': c.pivot=[(c.pivot||[0,0,0])[0], v, (c.pivot||[0,0,0])[2]]; pivot.set(c.pivot[0],c.pivot[1],c.pivot[2]); if(!activeHS){ controls.target.copy(pivot); controls.update() } break
+      case 'l.amb': L.ambient=L.ambient||{}; L.ambient.intensity=v; lightRefs.ambient.intensity=v; break
+      case 'l.key': L.key=L.key||{}; L.key.intensity=v; lightRefs.key.intensity=v; break
+      case 'l.fill': L.fill=L.fill||{}; L.fill.intensity=v; lightRefs.fill.intensity=v; break
+      case 'l.rim': L.rim=L.rim||{}; L.rim.intensity=v; lightRefs.rim.intensity=v; break
+      case 'hs.size': cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.size=v; buildHotspots(); break
+      case 'ov.metal': case 'ov.rough': case 'ov.env': upsertOverride(); break
+    }
+  }
+  // 滑条 → 联动数字框
+  ed.querySelectorAll('input[type=range]').forEach(inp => inp.oninput = e => {
+    const k=inp.dataset.k, v=parseFloat(e.target.value)
+    const n=ed.querySelector(`.ed-num[data-num="${k}"]`); if(n) n.value=v
+    applyRange(k,v)
+  })
+  // 数字框 → 联动滑条（输入时按范围夹取应用，失焦时回填夹取后的值）
+  ed.querySelectorAll('.ed-num').forEach(inp => {
+    inp.oninput = () => {
+      const k=inp.dataset.num; let v=parseFloat(inp.value); if(isNaN(v)) return
+      const mn=parseFloat(inp.min), mx=parseFloat(inp.max)
+      if(!isNaN(mn)&&v<mn)v=mn; if(!isNaN(mx)&&v>mx)v=mx
+      const r=ed.querySelector(`input[type=range][data-k="${k}"]`); if(r) r.value=v
+      applyRange(k,v)
+    }
+    inp.onchange = () => { let v=parseFloat(inp.value); if(isNaN(v)){ return }
+      const mn=parseFloat(inp.min), mx=parseFloat(inp.max)
+      if(!isNaN(mn)&&v<mn)v=mn; if(!isNaN(mx)&&v>mx)v=mx; inp.value=v }
+  })
+  $('editor').querySelectorAll('input[type=color]').forEach(inp => inp.oninput = e => {
+    const k=inp.dataset.k, col=new THREE.Color(e.target.value)
+    if(k==='l.ambc'){ L.ambient.color=e.target.value; lightRefs.ambient.color.copy(col) }
+    if(k==='l.keyc'){ L.key.color=e.target.value; lightRefs.key.color.copy(col) }
+    if(k==='l.fillc'){ L.fill.color=e.target.value; lightRefs.fill.color.copy(col) }
+    if(k==='l.rimc'){ L.rim.color=e.target.value; lightRefs.rim.color.copy(col) }
+    if(k==='hs.color'){ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.color=e.target.value; buildHotspots() }
+  })
+  const bg=$('editor').querySelector('[data-k="e.bg"]'); if(bg) bg.onchange=e=>{ cfg.environment.visibleBackground=e.target.checked; if(cfg.assets?.panorama) panoramaIBL(asset(cfg.assets.panorama)); if(!e.target.checked) scene.background=new THREE.Color(cfg.renderer?.background||'#0f1118') }
+  const pulseCb=$('editor').querySelector('[data-k="hs.pulse"]'); if(pulseCb) pulseCb.onchange=e=>{ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.pulse=e.target.checked; buildHotspots() }
+  // 用户端按钮显隐
+  $('editor').querySelectorAll('[data-ui]').forEach(cb=>cb.onchange=e=>{ cfg.ui=cfg.ui||{}; cfg.ui[cb.dataset.ui]=e.target.checked; buildHUD_refresh() })
+
+  const el=id=>document.getElementById(id)
+  // 基本信息：标题 / 副标题（实时更新左上角）
+  const bindInfo=(id,key)=>{ const i=el(id); if(i) i.oninput=e=>{ cfg.i18n=cfg.i18n||{}; cfg.i18n.zh=cfg.i18n.zh||{}; cfg.i18n.zh[key]=e.target.value; renderText() } }
+  bindInfo('ed-title','title'); bindInfo('ed-subtitle','subtitle')
+  const ps=el('ed-panel-style'); if(ps){ ps.value=(cfg.panel?.style)||'solid'; ps.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.style=e.target.value
+    if($('card').classList.contains('show')){ const c=$('card'); c.classList.remove('st-solid','st-glass','st-transparent'); c.classList.add('st-'+e.target.value) } } }
+  el('ed-url-load').onclick=()=>{ const u=el('ed-url').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.model=u; reloadModel(u) } }
+  el('ed-file').onchange=e=>{ const f=e.target.files[0]; if(f) reloadModel(URL.createObjectURL(f), true) }
+  const dz=el('editor'); ;['dragover','drop'].forEach(ev=>dz.addEventListener(ev,e=>e.preventDefault()))
+  el('ed-m-reset').onclick=()=>{ m.scale=1; m.position=[0,0,0]; m.rotationDeg=[0,0,0]; normalize(model); renderEditor() }
+  el('ed-cam-save').onclick=()=>{ const s=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target))
+    c.distance=+s.radius.toFixed(3); c.phi=+s.phi.toFixed(3); c.theta=+s.theta.toFixed(3); initialCam.copy(camera.position); flash('已保存当前视角') }
+  el('ed-pano-load').onclick=()=>{ const u=el('ed-pano').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.panorama=u; panoramaIBL(u) } }
+  el('ed-matsel')?.addEventListener('change', loadOverride); loadOverride()
+  el('ed-pr-add').onclick=()=>{ const shown=cfg.presets.filter(pp=>pp.showAsButton!==false).length
+    cfg.presets.push({ id:'p'+(cfg.presets.length+1), label:{zh:'预设'+(cfg.presets.length+1),en:'Preset'+(cfg.presets.length+1)},
+      exposure:+renderer.toneMappingExposure.toFixed(2), envMapIntensity:num(g.envMapIntensity,1.35), background:cfg.renderer?.background||'#0f1118',
+      lights: JSON.parse(JSON.stringify(cfg.lights||{})), showAsButton: shown<4 }); renderEditor(); buildHUD_refresh() }
+  $('editor').querySelectorAll('[data-pr-btn]').forEach(cb=>cb.onchange=e=>{ const idx=+cb.dataset.prBtn
+    if(e.target.checked){ const shown=cfg.presets.filter((pp,j)=>j!==idx && pp.showAsButton!==false).length; if(shown>=4){ e.target.checked=false; flash('前台最多显示 4 个光源按钮'); return } }
+    cfg.presets[idx].showAsButton=e.target.checked; buildHUD_refresh() })
+  el('ed-export').onclick=()=>downloadJSON()
+  el('ed-viewonly').onclick=()=>exportViewerOnly()
+  el('ed-shot').onclick=()=>{ renderer.render(scene,camera); const a=document.createElement('a'); a.href=renderer.domElement.toDataURL('image/jpeg',0.9); a.download='poster.jpg'; a.click() }
+  el('ed-check').onclick=()=>{ const o=el('ed-checkout'), b=el('ed-check')
+    if(o.dataset.on==='1'){ o.innerHTML=''; o.dataset.on=''; b.textContent='校验 + 部署清单 ▾' }
+    else { o.innerHTML=validateReport(); o.dataset.on='1'; b.textContent='收起校验清单 ▴' } }
+  // 热点编辑
+  $('editor').querySelectorAll('[data-hs-title]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsTitle]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.title=e.target.value })
+  $('editor').querySelectorAll('[data-hs-content]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsContent]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.content=e.target.value })
+  $('editor').querySelectorAll('[data-hs-del]').forEach(a=>a.onclick=()=>{ cfg.hotspots.splice(+a.dataset.hsDel,1); buildHotspots(); renderEditor() })
+  $('editor').querySelectorAll('[data-hs-focus]').forEach(a=>a.onclick=()=>{ const h=cfg.hotspots[+a.dataset.hsFocus]
+    const s=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target))
+    h.cameraFocus={ distance:+s.radius.toFixed(2), phi:+s.phi.toFixed(3), theta:+s.theta.toFixed(3), duration:800 }; flash('已更新聚焦机位（角度+距离）') })
+  $('editor').querySelectorAll('[data-pr-del]').forEach(a=>a.onclick=()=>{ cfg.presets.splice(+a.dataset.prDel,1); renderEditor(); buildHUD_refresh() })
+  // 热点绑定语音
+  $('editor').querySelectorAll('[data-hs-audio]').forEach(s=>s.onchange=e=>{ const h=cfg.hotspots[+s.dataset.hsAudio]; if(e.target.value) h.audio=e.target.value; else delete h.audio })
+  // 语音讲解 增删改
+  el('ed-au-add').onclick=()=>{ cfg.audio=cfg.audio||[]; const n=cfg.audio.length+1; const u=el('ed-au-url').value.trim()
+    cfg.audio.push({ id:'a'+n, label:'讲解 '+n, src:u }); renderEditor(); buildAudio() }
+  $('editor').querySelectorAll('[data-au-label]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auLabel].label=e.target.value; buildAudio() })
+  $('editor').querySelectorAll('[data-au-src]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auSrc].src=e.target.value })
+  $('editor').querySelectorAll('[data-au-del]').forEach(a=>a.onclick=()=>{ cfg.audio.splice(+a.dataset.auDel,1); renderEditor(); buildAudio() })
+  // 热点位置数字微调
+  ;['px','py','pz'].forEach((ax,ai)=>$('editor').querySelectorAll(`[data-hs-${ax}]`).forEach(inp=>inp.oninput=()=>{
+    const h=cfg.hotspots[+inp.getAttribute(`data-hs-${ax}`)]; if(!h) return
+    h.position=(h.position||[0,0,0]).slice(); h.position[ai]=parseFloat(inp.value)||0; buildHotspots() }))
+}
+function loadOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
+  const o=(cfg.materials.overrides||[]).find(x=>x.namePattern===sel.value)||{}
+  const set=(k,v)=>{ if(typeof v!=='number') return
+    const i=document.querySelector(`input[type=range][data-k="${k}"]`); if(i) i.value=v
+    const n=document.querySelector(`.ed-num[data-num="${k}"]`); if(n) n.value=v }
+  set('ov.metal',o.metalness); set('ov.rough',o.roughness); set('ov.env',o.envMapIntensity) }
+function upsertOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
+  let o=cfg.materials.overrides.find(x=>x.namePattern===sel.value)
+  if(!o){ o={namePattern:sel.value}; cfg.materials.overrides.push(o) }
+  o.metalness=parseFloat(document.querySelector('[data-k="ov.metal"]').value)
+  o.roughness=parseFloat(document.querySelector('[data-k="ov.rough"]').value)
+  o.envMapIntensity=parseFloat(document.querySelector('[data-k="ov.env"]').value)
+  applyMaterial() }
+function buildHUD_refresh(){ $('presets').innerHTML=''; $('actions').innerHTML=''; buildHUD(); renderText() }
+function downloadJSON(){ const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'})
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config.json'; a.click() }
+function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x}`
+  p.push((cfg.i18n?.zh?.title)?ok('标题'):wn('缺标题'))
+  p.push(cfg.assets?.model?ok('模型：'+cfg.assets.model):wn('缺模型'))
+  p.push(cfg.assets?.panorama?ok('全景：'+cfg.assets.panorama):wn('无全景（用内置环境）'))
+  p.push(cfg.assets?.poster?ok('封面'):wn('无封面'))
+  p.push(`热点 ${cfg.hotspots.length} · 预设 ${cfg.presets.length} · 语音 ${(cfg.audio||[]).length}`)
+  ;(cfg.audio||[]).forEach(a=>{ if(!a.src) p.push(wn('语音「'+(a.label||a.id)+'」缺文件')) })
+  const st=modelStats(); p.push(st.tris>500000?wn('三角面偏多 '+st.tris.toLocaleString()):ok('三角面 '+st.tris.toLocaleString()))
+  return p.join('<br>') }
+function flash(msg){ const e=document.createElement('div'); e.textContent=msg; e.style.cssText='position:fixed;left:50%;top:40px;transform:translateX(-50%);background:rgba(200,168,106,.95);color:#0b0d14;padding:7px 16px;border-radius:999px;font-size:12.5px;z-index:99'; document.body.appendChild(e); setTimeout(()=>e.remove(),1400) }
+// 编辑版：拖拽热点微调位置（未拖动=点击打开）
+let hsDrag=null
+function startHsDrag(e, hs){
+  e.stopPropagation()
+  hsDrag={ hs, moved:false, sx:e.clientX, sy:e.clientY }
+  controls.enabled=false
+  const ray=new THREE.Raycaster(), m2=new THREE.Vector2()
+  const move=ev=>{
+    if(!hsDrag) return
+    if(Math.abs(ev.clientX-hsDrag.sx)+Math.abs(ev.clientY-hsDrag.sy)>4) hsDrag.moved=true
+    if(!hsDrag.moved || !model) return
+    m2.set(ev.clientX/innerWidth*2-1, -(ev.clientY/innerHeight)*2+1)
+    ray.setFromCamera(m2,camera); const hit=ray.intersectObject(model,true)[0]; if(!hit) return
+    hs.data.position=[+hit.point.x.toFixed(3),+hit.point.y.toFixed(3),+hit.point.z.toFixed(3)]
+    hs.anchor.position.copy(model.worldToLocal(hit.point.clone()))
+  }
+  const up=()=>{
+    removeEventListener('pointermove',move); removeEventListener('pointerup',up)
+    controls.enabled=true
+    const dragged = hsDrag && hsDrag.moved; hsDrag=null
+    if(!dragged) openHotspot(hs.data, hs.el)              // 没拖动 = 点击 = 打开
+    else if(window.__edRefresh) window.__edRefresh()      // 拖完刷新编辑器里的位置数字
+  }
+  addEventListener('pointermove',move); addEventListener('pointerup',up)
+}
+function wireCanvasAdd(){ const ray=new THREE.Raycaster(), m2=new THREE.Vector2()
+  $('scene').addEventListener('click', e=>{ if(!e.shiftKey||!model) return
+    m2.x=e.clientX/innerWidth*2-1; m2.y=-(e.clientY/innerHeight)*2+1
+    ray.setFromCamera(m2,camera); const hit=ray.intersectObject(model,true)[0]; if(!hit) return
+    const w=hit.point // 显示空间世界坐标（与 config 一致）
+    cfg.hotspots=cfg.hotspots||[]
+    cfg.hotspots.push({ id:'h'+(cfg.hotspots.length+1), position:[+w.x.toFixed(3),+w.y.toFixed(3),+w.z.toFixed(3)],
+      i18n:{ zh:{title:'新热点',content:'（待填写）'}, en:{title:'New',content:'(todo)'} }, cameraFocus:{distance:+camera.position.distanceTo(controls.target).toFixed(2),duration:800} })
+    buildHotspots(); renderEditor() }) }
+
+// 导出「仅观看版」：抓取本文件源码，剔除三段编辑器标记区（CSS/HTML/JS），生成更轻更安全的前台文件
+async function exportViewerOnly(){
+  try{
+    let src = await (await fetch('player.html',{cache:'no-cache'})).text()
+    src = src.replace(/[ \t]*\/\* EDITOR-CSS-START[\s\S]*?\/\* EDITOR-CSS-END \*\/\n?/, '')
+             .replace(/[ \t]*<!-- EDITOR-HTML-START[\s\S]*?<!-- EDITOR-HTML-END -->\n?/, '')
+             .replace(/[ \t]*\/\* EDITOR-JS-START[\s\S]*?\/\* EDITOR-JS-END \*\/\n?/, '')
+    const blob = new Blob([src], {type:'text/html'})
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='player.view.html'; a.click()
+    flash('已导出仅观看版 player.view.html')
+  }catch(e){ alert('导出仅观看版失败：'+e.message) }
+}
+/* EDITOR-JS-END */
+
+boot()
+</script>
+</body>
+</html>

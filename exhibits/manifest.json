@@ -2,6 +2,8 @@
   "title": "云端书院 · 3D 鉴赏工作台",
   "subtitle": "开发/维护方内部工具 · 勿公开部署",
   "exhibits": [
-    "craft-001"
+    "craft-001",
+    "craft-002",
+    "craft-003"
   ]
 }

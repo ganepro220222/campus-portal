@@ -113,7 +113,7 @@ function render(r) {
     ${hasPano ? '<span class="badge">全景</span>' : '<span class="badge warn">无全景</span>'}`
 
   el.innerHTML = `
-    <a class="thumb" href="${r.dir}/index.html" target="_blank" rel="noopener"
+    <a class="thumb" href="player.html?ex=${encodeURIComponent(r.dir)}" target="_blank" rel="noopener"
        style="${poster ? `background-image:url('${poster}')` : ''}">
        ${poster ? '' : '<span class="ph">🏺</span>'}</a>
     <div class="body">
@@ -122,8 +122,8 @@ function render(r) {
       <div class="badges">${badges}</div>
       <div class="dir">${esc(r.dir)}/</div>
       <div class="acts">
-        <a class="btn" href="${r.dir}/index.html" target="_blank" rel="noopener">预览</a>
-        <a class="btn edit" href="${r.dir}/index.html?mode=edit" target="_blank" rel="noopener">编辑</a>
+        <a class="btn" href="player.html?ex=${encodeURIComponent(r.dir)}" target="_blank" rel="noopener">预览</a>
+        <a class="btn edit" href="player.html?ex=${encodeURIComponent(r.dir)}&mode=edit" target="_blank" rel="noopener">编辑</a>
       </div>
     </div>`
   return { el, key: (title + ' ' + r.dir).toLowerCase() }

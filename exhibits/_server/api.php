@@ -48,6 +48,7 @@ if ($isSave && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
   $in  = json_decode(file_get_contents('php://input'), true) ?: [];
   $ex  = $in['ex'] ?? '';
   $cfg = $in['config'] ?? null;
+  $poster = $in['poster'] ?? null;
   if (!preg_match('/^[A-Za-z0-9_-]+$/', $ex)) { http_response_code(400); echo json_encode(['ok' => false, 'error' => '非法展品目录']); exit; }
   $dir = "$ROOT/$ex"; $cp = "$dir/config.json";
   if (!is_dir($dir) || !$cfg || empty($cfg['assets']['model'])) { http_response_code(400); echo json_encode(['ok' => false, 'error' => '配置无效或目录不存在']); exit; }
@@ -56,6 +57,12 @@ if ($isSave && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
   // 只保留最近 20 份备份
   $baks = glob("$bak/config.*.json"); sort($baks);
   while (count($baks) > 20) @unlink(array_shift($baks));
+  // 缩略图（保存时自动刷新）：dataURL(jpeg) → assets/poster.jpg
+  if (is_string($poster) && strpos($poster, 'data:image') === 0) {
+    if (!is_dir("$dir/assets")) mkdir("$dir/assets", 0775, true);
+    file_put_contents("$dir/assets/poster.jpg", base64_decode(substr($poster, strpos($poster, ',') + 1)));
+    $cfg['assets']['poster'] = 'assets/poster.jpg';
+  }
   file_put_contents($cp, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
   echo json_encode(['ok' => true]); exit;
 }

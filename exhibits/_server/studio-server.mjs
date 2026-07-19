@@ -61,7 +61,7 @@ function listExhibits() {
   return out.sort((a, b) => (b.mtime || 0) - (a.mtime || 0))
 }
 
-function saveConfig(ex, config) {
+function saveConfig(ex, config, poster) {
   if (!SAFE.test(ex)) throw new Error('非法展品目录')
   const dir = path.join(ROOT, ex), cfgPath = path.join(dir, 'config.json')
   if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error('展品目录不存在：' + ex)
@@ -71,6 +71,13 @@ function saveConfig(ex, config) {
   // 只保留最近 BAK_KEEP 份备份
   const baks = fs.readdirSync(bakDir).filter(f => f.startsWith('config.')).sort()
   while (baks.length > BAK_KEEP) fs.rmSync(path.join(bakDir, baks.shift()))
+  // 缩略图（保存时自动刷新）：dataURL(jpeg) → assets/poster.jpg
+  if (typeof poster === 'string' && poster.startsWith('data:image')) {
+    const b64 = poster.slice(poster.indexOf(',') + 1)
+    fs.mkdirSync(path.join(dir, 'assets'), { recursive: true })
+    fs.writeFileSync(path.join(dir, 'assets', 'poster.jpg'), Buffer.from(b64, 'base64'))
+    config.assets.poster = 'assets/poster.jpg'
+  }
   fs.writeFileSync(cfgPath, JSON.stringify(config, null, 2))
 }
 
@@ -101,7 +108,7 @@ http.createServer((req, res) => {
     let body = ''
     req.on('data', c => { body += c; if (body.length > 5e6) req.destroy() })
     req.on('end', () => {
-      try { const { ex, config } = JSON.parse(body); saveConfig(ex, config); json(res, 200, { ok: true }) }
+      try { const { ex, config, poster } = JSON.parse(body); saveConfig(ex, config, poster); json(res, 200, { ok: true }) }
       catch (e) { json(res, 400, { ok: false, error: String(e.message) }) }
     })
     return

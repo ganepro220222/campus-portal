@@ -118,7 +118,7 @@ function render(r) {
 
   el.innerHTML = `
     <a class="thumb" href="player.html?ex=${encodeURIComponent(r.dir)}" target="_blank" rel="noopener"
-       style="${poster ? `background-image:url('${poster}')` : ''}">
+       style="${poster ? `background-image:url('${poster}');background-size:contain` : ''}">
        ${poster ? '' : '<span class="ph">🏺</span>'}</a>
     <div class="body">
       <div class="title">${esc(title)}</div>

@@ -11,8 +11,8 @@
  *   - POST /studio-api/save        写回 <ex>/config.json，写前自动备份上一版到 <ex>/.bak/
  *   - Basic Auth 保护全部（生产务必设 STUDIO_PASS；不设则仅本机可用并告警）
  *
- * 上线：放到你们自己的服务器（与甲方 Spring Boot 同机、独立端口/路径亦可），
- *       建议由 Nginx 反代 /studio-api/ 到本服务、静态直接由 Nginx 发；本服务是参考实现。
+ * 上线：部署在自有服务器（独立端口或 URL 前缀均可），
+ *       可由 Nginx 反代 /studio-api/ 到本服务、静态文件由 Nginx 直接分发；本文件为参考实现。
  */
 import http from 'node:http'
 import fs from 'node:fs'

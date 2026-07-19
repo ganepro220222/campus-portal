@@ -771,8 +771,8 @@ async function boot() {
 $('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); boot() }
 
 /* EDITOR-JS-START （导出仅观看版时整段剔除） */
-/* ── 编辑模式（开发方；纯前端，导出 config，不写服务器）──
-   面板：资产 / 模型 / 相机 / 材质 / 灯光 / 环境 / 热点 / 预设 / 性能 / 导出 */
+/* ── 编辑模式：纯前端调参；可导出 config，或通过保存服务写回 ──
+   面板：资产 / 模型 / 相机 / 材质 / 灯光 / 环境 / 热点 / 预设 / 性能 / 保存导出 */
 let _perfTimer = null
 function buildEditor() {
   const ed = $('editor'); ed.removeAttribute('hidden')
@@ -938,11 +938,11 @@ function renderEditor() {
     <div class="ed-note" id="ed-save-hint"></div>
     <button class="ed-btn" id="ed-export">导出 config.json</button>
     <button class="ed-btn" id="ed-viewonly">导出仅观看版（去编辑器）</button>
-    <div class="ed-note">生成 index.view.html — 上线部署这一份即可</div>
+    <div class="ed-note">生成 player.view.html — 公开展示使用仅观看版</div>
     <button class="ed-btn" id="ed-shot">截取当前帧为 poster</button>
-    <button class="ed-btn" id="ed-check">校验 + 部署清单 ▾</button>
+    <button class="ed-btn" id="ed-check">配置校验 ▾</button>
     <div class="ed-note" id="ed-checkout"></div>
-    <div class="ed-note">纯前端不写服务器：导出后由开发方替换展包再上传。</div>
+    <div class="ed-note">未配置保存服务时：导出 config.json 后覆盖到对应展品目录并上传。</div>
   </details>`
 
   wireEditor()
@@ -1042,8 +1042,8 @@ function wireEditor() {
   el('ed-viewonly').onclick=()=>exportViewerOnly()
   el('ed-shot').onclick=()=>{ const a=document.createElement('a'); a.href=capturePoster(); a.download='poster.jpg'; a.click() }
   el('ed-check').onclick=()=>{ const o=el('ed-checkout'), b=el('ed-check')
-    if(o.dataset.on==='1'){ o.innerHTML=''; o.dataset.on=''; b.textContent='校验 + 部署清单 ▾' }
-    else { o.innerHTML=validateReport(); o.dataset.on='1'; b.textContent='收起校验清单 ▴' } }
+    if(o.dataset.on==='1'){ o.innerHTML=''; o.dataset.on=''; b.textContent='配置校验 ▾' }
+    else { o.innerHTML=validateReport(); o.dataset.on='1'; b.textContent='收起校验 ▴' } }
   // 热点编辑
   $('editor').querySelectorAll('[data-hs-title]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsTitle]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.title=e.target.value })
   $('editor').querySelectorAll('[data-hs-content]').forEach(i=>i.oninput=e=>{ const h=cfg.hotspots[+i.dataset.hsContent]; h.i18n=h.i18n||{zh:{},en:{}}; h.i18n.zh=h.i18n.zh||{}; h.i18n.zh.content=e.target.value })

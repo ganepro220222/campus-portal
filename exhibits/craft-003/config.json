@@ -2,27 +2,30 @@
   "version": 1,
   "id": "craft-003",
   "i18n": {
-    "zh": { "title": "文创展品 · 003（示例）", "subtitle": "非遗工艺 · 三维鉴赏", "summary": "共享播放器多展品演示：本目录仅含 config.json + assets，代码与 vendor 全站共享。" }
+    "zh": { "title": "霁蓝刻花·凤羽纹瓶", "subtitle": "霁蓝釉 · 肩部刻花", "summary": "釉色自口部赭红渐入宝蓝，肩部刻凤羽卷草纹，线条流转如翎，静穆而华。" }
   },
-  "assets": { "model": "assets/model.glb", "panorama": "assets/panorama.jpg" },
-  "model": { "scale": 1.0, "position": [0, 0, 0], "rotationDeg": [0, 0, 0], "autoCenter": true, "targetSize": 2.4 },
+  "assets": { "model": "assets/model.glb", "panorama": "assets/panorama.jpg", "poster": "assets/poster.jpg" },
+  "model": { "scale": 1.0, "position": [0, 0, 0], "rotationDeg": [0, 0, 0], "autoCenter": true, "targetSize": 2.5 },
   "camera": { "fov": 40, "distance": 4.4, "phi": 1.35, "theta": 0.6, "minDistance": 1.8, "maxDistance": 8, "autoRotate": true, "autoRotateSpeed": 0.8, "damping": true },
   "renderer": { "toneMapping": "ACESFilmic", "exposure": 1.05, "maxPixelRatio": 2, "background": "#0f1118" },
   "environment": { "mode": "panorama", "useAsIBL": true, "visibleBackground": false, "intensity": 1.15, "fallback": "room" },
   "lights": {
     "ambient": { "color": "#ffffff", "intensity": 0.25 },
     "key":  { "color": "#fff0e0", "intensity": 1.1, "position": [5, 8, 6] },
-    "fill": { "color": "#a9c4ff", "intensity": 0.35, "position": [-5, 2, -3] },
-    "rim":  { "color": "#ffffff", "intensity": 0.5, "position": [-2, 3, -7] }
+    "fill": { "color": "#a9c4ff", "intensity": 0.4, "position": [-5, 2, -3] },
+    "rim":  { "color": "#ffffff", "intensity": 0.55, "position": [-2, 3, -7] }
   },
   "materials": { "global": { "metalness": 0.0, "roughness": 0.5, "envMapIntensity": 1.35 }, "overrides": [] },
-  "hotspotStyle": { "color": "#c8a86a", "size": 26, "pulse": true },
+  "hotspotStyle": { "color": "#e6cf9a", "size": 26, "pulse": true },
   "panel": { "style": "glass" },
-  "hotspots": [],
+  "hotspots": [
+    { "id": "h1", "position": [0.235, 0.575, 0.348], "i18n": { "zh": { "title": "肩部刻花", "content": "肩部一周以刀刻凤羽与卷草纹，翎羽层叠、卷云回转；凹线藏釉，更显幽蓝。" } }, "cameraFocus": { "distance": 2.6, "phi": 1.2, "theta": 0.55, "duration": 800 } },
+    { "id": "h2", "position": [0.257, -0.263, 0.38], "i18n": { "zh": { "title": "霁蓝釉色", "content": "釉色由口沿赭红过渡至腹部深蓝，如暮色入夜；釉面温润匀净，光下宝光内敛。" } }, "cameraFocus": { "distance": 2.8, "phi": 1.5, "theta": 0.6, "duration": 800 } }
+  ],
   "ui": { "defaultMode": "view", "showAutoRotateButton": true, "showHotspotButton": true, "showResetButton": true, "showFullscreenButton": true, "showPresets": true, "hideEditorByDefault": true },
   "presets": [
     { "id": "hall", "label": { "zh": "展厅光" }, "exposure": 1.05, "envMapIntensity": 1.35, "background": "#0f1118" },
-    { "id": "detail", "label": { "zh": "细节光" }, "exposure": 1.32, "envMapIntensity": 1.75, "background": "#07070b" }
+    { "id": "detail", "label": { "zh": "细节光" }, "exposure": 1.3, "envMapIntensity": 1.7, "background": "#07070b" }
   ],
   "performance": { "mobilePixelRatio": 1.5, "desktopPixelRatio": 2 }
 }

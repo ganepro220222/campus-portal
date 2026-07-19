@@ -11,6 +11,7 @@
   html,body { background:var(--ink); color:#eef0f5; min-height:100%;
     font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
   body { padding:32px clamp(16px,4vw,48px) 64px; }
+  body.batch-open { padding-bottom:340px; }
   a { color:inherit; text-decoration:none; }
 
   .head { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 24px; margin-bottom:6px; }
@@ -21,9 +22,13 @@
   .search { flex:1; min-width:200px; max-width:360px; padding:9px 14px; border:1px solid rgba(255,255,255,.14);
     border-radius:10px; background:rgba(255,255,255,.05); color:#eef0f5; font-size:13px; font-family:inherit; }
   .search:focus { outline:none; border-color:var(--gold); }
+  .tbtn { padding:9px 16px; border-radius:10px; font-size:13px; cursor:pointer; transition:.18s; white-space:nowrap;
+    border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#eef0f5; font-family:inherit; }
+  .tbtn:hover { background:rgba(255,255,255,.12); }
+  .tbtn.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
 
   .grid { display:grid; gap:18px; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); }
-  .card { border:1px solid rgba(255,255,255,.1); border-radius:16px; overflow:hidden; background:rgba(255,255,255,.03);
+  .card { position:relative; border:1px solid rgba(255,255,255,.1); border-radius:16px; overflow:hidden; background:rgba(255,255,255,.03);
     display:flex; flex-direction:column; transition:.2s; }
   .card:hover { border-color:rgba(200,168,106,.5); transform:translateY(-3px); box-shadow:0 14px 34px rgba(0,0,0,.45); }
   .thumb { aspect-ratio:16/10; background:#14161f center/cover no-repeat;
@@ -45,11 +50,57 @@
   .btn.edit { border-color:var(--gold); background:rgba(200,168,106,.16); color:#f4e6c8; }
   .btn.edit:hover { background:rgba(200,168,106,.28); }
 
+  /* 批量多选：仅在批量模式显示复选层 */
+  .pick { position:absolute; inset:0; z-index:5; display:none; cursor:pointer;
+    background:rgba(10,12,18,.35); border-radius:16px; align-items:flex-start; justify-content:flex-start; }
+  body.batch-open .pick { display:flex; }
+  body.batch-open .card:hover { transform:none; }
+  .pick .box { margin:12px; width:26px; height:26px; border-radius:8px; border:2px solid rgba(255,255,255,.7);
+    background:rgba(10,12,18,.5); display:flex; align-items:center; justify-content:center; font-size:16px; color:#0f1118; }
+  .card.sel .pick { background:rgba(200,168,106,.18); outline:2px solid var(--gold); outline-offset:-2px; }
+  .card.sel .pick .box { background:var(--gold); border-color:var(--gold); }
+
   .empty { padding:60px 20px; text-align:center; color:rgba(230,234,245,.55); font-size:14px; line-height:1.9; }
   .foot { margin-top:36px; padding-top:20px; border-top:1px solid rgba(255,255,255,.08);
     font-size:12.5px; color:rgba(230,234,245,.5); line-height:1.9; }
   .foot code { background:rgba(255,255,255,.07); padding:1px 6px; border-radius:5px; font-size:12px; }
   .foot b { color:rgba(230,234,245,.75); }
+
+  /* 批量编辑面板（底部抽屉） */
+  .bpanel { position:fixed; left:0; right:0; bottom:0; z-index:40; transform:translateY(100%); transition:transform .25s;
+    background:rgba(16,18,26,.97); backdrop-filter:blur(12px); border-top:1px solid rgba(200,168,106,.35);
+    box-shadow:0 -12px 40px rgba(0,0,0,.5); max-height:70vh; display:flex; flex-direction:column; }
+  body.batch-open .bpanel { transform:translateY(0); }
+  .bpanel .bhead { display:flex; align-items:center; gap:14px; padding:12px clamp(16px,4vw,48px); flex-wrap:wrap;
+    border-bottom:1px solid rgba(255,255,255,.08); }
+  .bpanel .bhead .n { font-size:14px; font-weight:700; color:#f4e6c8; }
+  .bpanel .bhead .sel-n { font-size:13px; color:var(--gold); }
+  .bpanel .bhead .grow { flex:1; }
+  .bwrap { display:flex; gap:22px; overflow:auto; padding:16px clamp(16px,4vw,48px) 4px; }
+  .bgroup { flex:0 0 260px; border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px 14px;
+    background:rgba(255,255,255,.03); }
+  .bgroup h4 { font-size:13px; color:#f4e6c8; margin-bottom:10px; letter-spacing:.3px; }
+  .bf { display:flex; align-items:center; gap:8px; margin:7px 0; font-size:12.5px; color:rgba(230,234,245,.85); }
+  .bf > .bf-en { flex:0 0 auto; width:15px; height:15px; accent-color:var(--gold); cursor:pointer; }
+  .bf .lb { flex:0 0 92px; color:rgba(230,234,245,.7); }
+  .bf .ctl { flex:1; min-width:0; display:flex; align-items:center; gap:6px; }
+  .bf .ctl select, .bf .ctl input[type=text] { flex:1; min-width:0; padding:5px 8px; border-radius:7px; font-size:12px;
+    border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#eef0f5; font-family:inherit; }
+  .bf .ctl input[type=range] { flex:1; min-width:0; accent-color:var(--gold); }
+  .bf .ctl input[type=color] { width:34px; height:24px; padding:0; border:1px solid rgba(255,255,255,.2); border-radius:6px; background:none; }
+  .bf .ctl .val { flex:0 0 34px; text-align:right; font-variant-numeric:tabular-nums; color:var(--gold); font-size:11.5px; }
+  .bf .swi { flex:1; }
+  .bf.dis { opacity:.42; }
+  .bfoot { display:flex; align-items:center; gap:14px; padding:12px clamp(16px,4vw,48px); flex-wrap:wrap;
+    border-top:1px solid rgba(255,255,255,.08); }
+  .bfoot .note { font-size:12px; color:rgba(230,234,245,.55); flex:1; min-width:180px; line-height:1.6; }
+  .bapply { padding:10px 22px; border-radius:10px; font-size:13.5px; font-weight:700; cursor:pointer; transition:.18s;
+    border:1px solid var(--gold); background:linear-gradient(180deg,#d8bd86,#c8a86a); color:#241c0c; }
+  .bapply:hover { filter:brightness(1.06); }
+  .bapply:disabled { opacity:.45; cursor:not-allowed; filter:none; }
+  .blog { max-height:120px; overflow:auto; padding:0 clamp(16px,4vw,48px) 12px; font-size:12px;
+    font-family:ui-monospace,monospace; color:rgba(230,234,245,.7); line-height:1.7; }
+  .blog .ok { color:#7fd08a; } .blog .er { color:#e07a7a; } .blog .hd { color:#f4e6c8; }
 </style>
 </head>
 <body>
@@ -60,63 +111,193 @@
   </div>
   <div class="toolbar">
     <input class="search" id="search" placeholder="搜索展品名称 / 目录…" autocomplete="off">
+    <button class="tbtn" id="batchToggle">批量编辑</button>
   </div>
   <div class="grid" id="grid"></div>
   <div class="empty" id="empty" hidden></div>
 
   <div class="foot">
     <div><b>怎么用</b>：点卡片「编辑」直接进该展品编辑器（无需手打 URL），「预览」看观看版。</div>
+    <div><b>批量编辑</b>：点右上「批量编辑」→ 勾选多件展品 → 在底部只勾选<b>要统一修改的字段</b>并设值 → 应用。<b>每件展品只覆盖被勾选的字段，其它设置各自保留、互不影响。</b></div>
     <div><b>新增展品</b>：<b>有服务时</b>——把新的 <code>craft-XXX/</code> 文件夹（含 <code>model.glb</code> 等）放进 <code>exhibits/</code>，刷新本页即自动出现；进「编辑」<b>保存一次即自动生成缩略图</b>。<b>无服务时</b>——在 <code>manifest.json</code> 的 <code>exhibits</code> 加一行目录名。</div>
     <div><b>注意</b>：本页是开发/维护方内部工具，<b>请勿随公开展包一起部署</b>（放本地或受保护路径）。</div>
   </div>
 
+  <!-- 批量编辑抽屉 -->
+  <div class="bpanel" id="bpanel">
+    <div class="bhead">
+      <span class="n">批量编辑</span>
+      <span class="sel-n" id="selN">已选 0 件</span>
+      <button class="tbtn" id="selAll">全选</button>
+      <button class="tbtn" id="selNone">清空</button>
+      <span class="grow"></span>
+      <button class="tbtn" id="batchExit">退出批量</button>
+    </div>
+    <div class="bwrap" id="bwrap"></div>
+    <div class="blog" id="blog" hidden></div>
+    <div class="bfoot">
+      <span class="note" id="bnote">仅左侧勾选的字段会写入所选展品；其余字段保持各自原值。</span>
+      <button class="bapply" id="bapply" disabled>应用到 0 件展品</button>
+    </div>
+  </div>
+
 <script>
 const $ = id => document.getElementById(id)
-let cards = []
+let cards = [], hasApi = false
+const selected = new Set()   // 选中的展品目录名
 
+/* ---------- 批量字段注册表 ---------- */
+// 每个字段带 path（写入 config 的点路径）、type、以及独立的“启用”开关。
+// 复合字段（灯光方案）用 expand() 返回多个 {path,value}。
+const PANEL_STYLES = [['solid','实底'],['glass','毛玻璃'],['transparent','透明'],['outline','描边'],['ribbon','缎带'],['minimal','极简']]
+const LEADERS = [['elbow','折线'],['straight','直线']]
+const DIRS = [['auto','自动'],['right','右'],['left','左'],['up','上'],['down','下'],['upright','右上'],['downright','右下'],['upleft','左上'],['downleft','左下']]
+const LIGHT_SCHEMES = {
+  hall:   { label:'展厅光', ops:[['renderer.exposure',1.05],['environment.intensity',1.35]] },
+  detail: { label:'细节光', ops:[['renderer.exposure',1.32],['environment.intensity',1.75]] },
+}
+const GROUPS = [
+  { title:'全景 / 背景 IBL', fields:[
+    { id:'pano', path:'assets.panorama', label:'全景贴图', type:'text', ph:'assets/panorama.jpg 或 https://…', def:'' },
+    { id:'ibl',  path:'environment.intensity', label:'IBL 强度', type:'range', min:0, max:3, step:0.05, def:1.15 },
+    { id:'bgvis',path:'environment.visibleBackground', label:'显示全景背景', type:'bool', def:false },
+  ]},
+  { title:'用户端按钮显隐', fields:[
+    { id:'b1', path:'ui.showAutoRotateButton', label:'自动旋转按钮', type:'bool', def:true },
+    { id:'b2', path:'ui.showHotspotButton',    label:'热点按钮',     type:'bool', def:true },
+    { id:'b3', path:'ui.showResetButton',      label:'重置按钮',     type:'bool', def:true },
+    { id:'b4', path:'ui.showFullscreenButton', label:'全屏按钮',     type:'bool', def:true },
+    { id:'b5', path:'ui.showPresets',          label:'光源预设按钮', type:'bool', def:true },
+    { id:'b6', path:'ui.showTitle',            label:'名称/副标题',  type:'bool', def:true },
+  ]},
+  { title:'信息面板样式', fields:[
+    { id:'pstyle', path:'panel.style',  label:'面板样式', type:'select', opts:PANEL_STYLES, def:'glass' },
+    { id:'leader', path:'panel.leader', label:'引线样式', type:'select', opts:LEADERS, def:'elbow' },
+    { id:'pdir',   path:'panel.dir',    label:'面板方位', type:'select', opts:DIRS, def:'auto' },
+  ]},
+  { title:'灯光方案 / 热点样式', fields:[
+    { id:'scheme', label:'灯光方案', type:'scheme', def:'hall' },
+    { id:'hcolor', path:'hotspotStyle.color', label:'热点颜色', type:'color', def:'#c8a86a' },
+    { id:'hsize',  path:'hotspotStyle.size',  label:'热点大小', type:'range', min:18, max:40, step:1, def:26 },
+    { id:'hpulse', path:'hotspotStyle.pulse', label:'热点脉冲', type:'bool', def:true },
+  ]},
+]
+const FIELDS = {}; GROUPS.forEach(g => g.fields.forEach(f => FIELDS[f.id] = f))
+
+function setPath(o, path, val) {
+  const ks = path.split('.'); let t = o
+  for (let i = 0; i < ks.length - 1; i++) { if (typeof t[ks[i]] !== 'object' || t[ks[i]] == null) t[ks[i]] = {}; t = t[ks[i]] }
+  t[ks[ks.length - 1]] = val
+}
+// 收集当前启用字段 → 一组 {path,value}（复合字段展开）
+function enabledOps() {
+  const ops = []
+  for (const f of Object.values(FIELDS)) {
+    const en = $('en-' + f.id); if (!en || !en.checked) continue
+    if (f.type === 'scheme') { (LIGHT_SCHEMES[$('v-' + f.id).value] || {}).ops.forEach(([p, v]) => ops.push({ path: p, value: v })); continue }
+    let v
+    if (f.type === 'bool') v = $('v-' + f.id).checked
+    else if (f.type === 'range') v = Number($('v-' + f.id).value)
+    else v = $('v-' + f.id).value
+    if (f.type === 'text' && v === '') continue   // 空文本视为不改
+    ops.push({ path: f.path, value: v })
+  }
+  return ops
+}
+
+/* ---------- 批量面板 UI ---------- */
+function buildBatchUI() {
+  $('bwrap').innerHTML = GROUPS.map(g => `
+    <div class="bgroup"><h4>${g.title}</h4>${g.fields.map(fieldRow).join('')}</div>`).join('')
+  // 交互：启用开关切换灰显；范围值实时显示
+  for (const f of Object.values(FIELDS)) {
+    const en = $('en-' + f.id), row = $('row-' + f.id)
+    en.addEventListener('change', () => row.classList.toggle('dis', !en.checked))
+    if (f.type === 'range') { const v = $('v-' + f.id), out = $('o-' + f.id); v.addEventListener('input', () => out.textContent = v.value) }
+  }
+}
+function fieldRow(f) {
+  let ctl = ''
+  if (f.type === 'bool') ctl = `<label class="swi"><input type="checkbox" id="v-${f.id}" ${f.def ? 'checked' : ''}> 显示 / 开启</label>`
+  else if (f.type === 'text') ctl = `<input type="text" id="v-${f.id}" placeholder="${f.ph || ''}" value="${f.def || ''}">`
+  else if (f.type === 'color') ctl = `<input type="color" id="v-${f.id}" value="${f.def}">`
+  else if (f.type === 'range') ctl = `<input type="range" id="v-${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}"><span class="val" id="o-${f.id}">${f.def}</span>`
+  else if (f.type === 'select') ctl = `<select id="v-${f.id}">${f.opts.map(([v, l]) => `<option value="${v}" ${v === f.def ? 'selected' : ''}>${l}</option>`).join('')}</select>`
+  else if (f.type === 'scheme') ctl = `<select id="v-${f.id}">${Object.entries(LIGHT_SCHEMES).map(([k, s]) => `<option value="${k}" ${k === f.def ? 'selected' : ''}>${s.label}</option>`).join('')}</select>`
+  return `<label class="bf dis" id="row-${f.id}"><input type="checkbox" class="bf-en" id="en-${f.id}"><span class="lb">${f.label}</span><span class="ctl">${ctl}</span></label>`
+}
+
+/* ---------- 应用（逐个展品独立写回，绝不相互覆盖） ---------- */
+async function applyBatch() {
+  const ops = enabledOps()
+  const dirs = [...selected]
+  const log = $('blog'); log.hidden = false; log.innerHTML = ''
+  const line = (cls, txt) => { const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = txt; log.appendChild(d); log.scrollTop = log.scrollHeight }
+  if (!dirs.length) return line('er', '未选择展品。')
+  if (!ops.length) return line('er', '未勾选任何要修改的字段。')
+  line('hd', `开始批量：${dirs.length} 件展品 · ${ops.length} 个字段 → ${ops.map(o => o.path).join(', ')}`)
+  if (!hasApi) return line('er', '未检测到工作台服务（studio-api），无法直接写回。请用 node _server/studio-server.mjs 启动后再批量保存。')
+  $('bapply').disabled = true
+  let ok = 0, fail = 0
+  for (const dir of dirs) {
+    try {
+      // 关键：每件展品都重新拉取自己的 config，只改被勾选的路径，再写回自己的目录
+      const cfg = await (await fetch(`${dir}/config.json?_=${Date.now()}`, { cache: 'no-cache' })).json()
+      for (const op of ops) setPath(cfg, op.path, op.value)
+      const r = await fetch('studio-api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ex: dir, config: cfg }) })
+      const d = await r.json().catch(() => ({}))
+      if (r.ok && d.ok !== false) { ok++; line('ok', `✓ ${dir}`) } else { fail++; line('er', `✗ ${dir}：${d.error || r.status}`) }
+    } catch (e) { fail++; line('er', `✗ ${dir}：${e.message}`) }
+  }
+  line('hd', `完成：成功 ${ok} · 失败 ${fail}。缩略图未改动；如需刷新封面请进单个编辑器保存。`)
+  $('bapply').disabled = false
+}
+
+/* ---------- 加载展品列表 ---------- */
 async function load() {
   let items = null, source = ''
-  // 有后端时自动列目录；否则回退读 manifest.json + 各 config
   try {
-    const r = await fetch('studio-api/list', {cache:'no-cache'})
-    if (r.ok) { const d = await r.json(); items = (d.exhibits||[]).map(normApi); source='api' }
-  } catch(e) {}
+    const r = await fetch('studio-api/list', { cache: 'no-cache' })
+    if (r.ok) { const d = await r.json(); items = (d.exhibits || []).map(normApi); source = 'api'; hasApi = true }
+  } catch (e) {}
   if (!items) {
     let mani
-    try { mani = await (await fetch('manifest.json', {cache:'no-cache'})).json() }
-    catch(e){ return showEmpty('读取展品清单失败：' + e.message) }
+    try { mani = await (await fetch('manifest.json', { cache: 'no-cache' })).json() }
+    catch (e) { return showEmpty('读取展品清单失败：' + e.message) }
     $('s-title').textContent = mani.title || $('s-title').textContent
     $('s-sub').textContent = mani.subtitle || $('s-sub').textContent
-    const list = (mani.exhibits || []).map(e => typeof e === 'string' ? { dir:e } : e)
+    const list = (mani.exhibits || []).map(e => typeof e === 'string' ? { dir: e } : e)
     if (!list.length) return showEmpty('清单里还没有展品。复制一个 craft-XXX/ 目录并加进 manifest.json 的 exhibits。')
     items = await Promise.all(list.map(async e => {
       const dir = e.dir.replace(/\/$/, '')
-      try { const cfg = await (await fetch(`${dir}/config.json`, {cache:'no-cache'})).json(); return normCfg(dir, cfg, e) }
-      catch(err) { return { dir, title:(e&&e.title)||dir, error:err.message } }
+      try { const cfg = await (await fetch(`${dir}/config.json`, { cache: 'no-cache' })).json(); return normCfg(dir, cfg, e) }
+      catch (err) { return { dir, title: (e && e.title) || dir, error: err.message } }
     }))
-    source='manifest'
+    source = 'manifest'
   }
   document.title = $('s-title').textContent
   cards = items.map(render)
   $('grid').append(...cards.map(c => c.el))
-  $('s-count').textContent = `${items.length} 件展品` + (source==='api' ? ' · 自动列出' : '')
+  $('s-count').textContent = `${items.length} 件展品` + (source === 'api' ? ' · 自动列出' : '')
   $('search').addEventListener('input', filter)
+  buildBatchUI()
+  if (!hasApi) { $('bnote').innerHTML = '⚠ 未检测到工作台服务：批量保存需先 <code>node _server/studio-server.mjs</code> 启动。'; }
 }
-const normApi = e => ({ dir:e.dir, title:e.title||e.dir, subtitle:e.subtitle||'', hotspots:e.hotspots||0, audio:e.audio||0, hasPano:!!e.hasPano, poster:e.poster||'', error:e.error })
-const normCfg = (dir, cfg, ov) => { const zh=(cfg.i18n&&cfg.i18n.zh)||{}; return { dir, title:(ov&&ov.title)||zh.title||dir, subtitle:zh.subtitle||'', hotspots:(cfg.hotspots||[]).length, audio:(cfg.audio||[]).length, hasPano:!!(cfg.assets&&cfg.assets.panorama), poster:(cfg.assets&&cfg.assets.poster)?`${dir}/${cfg.assets.poster}`:'' } }
+const normApi = e => ({ dir: e.dir, title: e.title || e.dir, subtitle: e.subtitle || '', hotspots: e.hotspots || 0, audio: e.audio || 0, hasPano: !!e.hasPano, poster: e.poster || '', error: e.error })
+const normCfg = (dir, cfg, ov) => { const zh = (cfg.i18n && cfg.i18n.zh) || {}; return { dir, title: (ov && ov.title) || zh.title || dir, subtitle: zh.subtitle || '', hotspots: (cfg.hotspots || []).length, audio: (cfg.audio || []).length, hasPano: !!(cfg.assets && cfg.assets.panorama), poster: (cfg.assets && cfg.assets.poster) ? `${dir}/${cfg.assets.poster}` : '' } }
 
 function render(r) {
-  const el = document.createElement('div'); el.className = 'card'
+  const el = document.createElement('div'); el.className = 'card'; el.dataset.dir = r.dir
   const title = r.title || r.dir
   const subtitle = r.error ? ('⚠️ 读取失败：' + r.error) : (r.subtitle || '')
   const poster = r.poster || ''
-
   const badges = r.error ? '' : `
-    <span class="badge">热点 ${r.hotspots||0}</span>
-    <span class="badge">语音 ${r.audio||0}</span>
+    <span class="badge">热点 ${r.hotspots || 0}</span>
+    <span class="badge">语音 ${r.audio || 0}</span>
     ${r.hasPano ? '<span class="badge">全景</span>' : '<span class="badge warn">无全景</span>'}`
 
   el.innerHTML = `
+    <div class="pick" title="点选/取消选择"><span class="box">✓</span></div>
     <a class="thumb" href="player.html?ex=${encodeURIComponent(r.dir)}" target="_blank" rel="noopener"
        style="${poster ? `background-image:url('${poster}');background-size:contain` : ''}">
        ${poster ? '' : '<span class="ph">🏺</span>'}</a>
@@ -130,7 +311,27 @@ function render(r) {
         <a class="btn edit" href="player.html?ex=${encodeURIComponent(r.dir)}&mode=edit" target="_blank" rel="noopener">编辑</a>
       </div>
     </div>`
-  return { el, key: (title + ' ' + r.dir).toLowerCase() }
+  if (!r.error) el.querySelector('.pick').addEventListener('click', () => toggleSel(r.dir, el))
+  return { el, key: (title + ' ' + r.dir).toLowerCase(), dir: r.dir }
+}
+
+/* ---------- 选择 / 批量模式 ---------- */
+function toggleSel(dir, el) {
+  if (selected.has(dir)) { selected.delete(dir); el.classList.remove('sel') }
+  else { selected.add(dir); el.classList.add('sel') }
+  refreshSel()
+}
+function refreshSel() {
+  const n = selected.size
+  $('selN').textContent = `已选 ${n} 件`
+  $('bapply').textContent = `应用到 ${n} 件展品`
+  $('bapply').disabled = n === 0 || !hasApi
+}
+function setBatch(on) {
+  document.body.classList.toggle('batch-open', on)
+  $('batchToggle').classList.toggle('on', on)
+  $('batchToggle').textContent = on ? '批量编辑中' : '批量编辑'
+  if (!on) { selected.clear(); cards.forEach(c => c.el.classList.remove('sel')); refreshSel(); $('blog').hidden = true }
 }
 
 function filter() {
@@ -140,8 +341,14 @@ function filter() {
   $('empty').hidden = shown > 0
   if (!shown) { $('empty').textContent = '没有匹配「' + $('search').value + '」的展品。'; $('empty').hidden = false }
 }
-function showEmpty(msg){ $('empty').textContent = msg; $('empty').hidden = false; $('grid').hidden = true }
-function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])) }
+function showEmpty(msg) { $('empty').textContent = msg; $('empty').hidden = false; $('grid').hidden = true }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m])) }
+
+$('batchToggle').addEventListener('click', () => setBatch(!document.body.classList.contains('batch-open')))
+$('batchExit').addEventListener('click', () => setBatch(false))
+$('selAll').addEventListener('click', () => { cards.forEach(c => { if (!c.el.hidden && !c.el.querySelector('.subtitle').textContent.startsWith('⚠')) { selected.add(c.dir); c.el.classList.add('sel') } }); refreshSel() })
+$('selNone').addEventListener('click', () => { selected.clear(); cards.forEach(c => c.el.classList.remove('sel')); refreshSel() })
+$('bapply').addEventListener('click', applyBatch)
 
 load()
 </script>

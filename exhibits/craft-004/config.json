@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "craft-004",
+  "i18n": {
+    "zh": { "title": "窑变流釉·浮雕卷草罐", "subtitle": "窑变流釉 · 肩部浮雕", "summary": "深釉窑变，蓝褐流淌垂落如瀑；肩部浮雕卷草螭纹，凹凸厚重，古拙有力。" }
+  },
+  "assets": { "model": "assets/model.glb", "panorama": "assets/panorama.jpg", "poster": "assets/poster.jpg" },
+  "model": { "scale": 1.0, "position": [0, 0, 0], "rotationDeg": [0, 0, 0], "autoCenter": true, "targetSize": 2.5 },
+  "camera": { "fov": 40, "distance": 4.4, "phi": 1.35, "theta": 0.6, "minDistance": 1.8, "maxDistance": 8, "autoRotate": true, "autoRotateSpeed": 0.8, "damping": true },
+  "renderer": { "toneMapping": "ACESFilmic", "exposure": 1.12, "maxPixelRatio": 2, "background": "#0f1118" },
+  "environment": { "mode": "panorama", "useAsIBL": true, "visibleBackground": false, "intensity": 1.2, "fallback": "room" },
+  "lights": {
+    "ambient": { "color": "#ffffff", "intensity": 0.28 },
+    "key":  { "color": "#fff0e0", "intensity": 1.25, "position": [5, 8, 6] },
+    "fill": { "color": "#a9c4ff", "intensity": 0.35, "position": [-5, 2, -3] },
+    "rim":  { "color": "#ffffff", "intensity": 0.6, "position": [-2, 3, -7] }
+  },
+  "materials": { "global": { "metalness": 0.05, "roughness": 0.55, "envMapIntensity": 1.45 }, "overrides": [] },
+  "hotspotStyle": { "color": "#d9b892", "size": 26, "pulse": true },
+  "panel": { "style": "glass" },
+  "hotspots": [
+    { "id": "h1", "position": [0.397, 0.604, 0.588], "i18n": { "zh": { "title": "肩部浮雕", "content": "肩部堆塑浮雕卷草与螭纹，立体隆起、层层叠压；随光影明暗起伏，见手作的体量感。" } }, "cameraFocus": { "distance": 2.6, "phi": 1.2, "theta": 0.55, "duration": 800 } },
+    { "id": "h2", "position": [0.348, -0.21, 0.516], "i18n": { "zh": { "title": "窑变流釉", "content": "釉在高温中熔融流淌，蓝、褐、铁锈色交织垂流，形成天然“泪痕”，窑变一色不可预设。" } }, "cameraFocus": { "distance": 2.8, "phi": 1.5, "theta": 0.6, "duration": 800 } }
+  ],
+  "ui": { "defaultMode": "view", "showAutoRotateButton": true, "showHotspotButton": true, "showResetButton": true, "showFullscreenButton": true, "showPresets": true, "hideEditorByDefault": true },
+  "presets": [
+    { "id": "hall", "label": { "zh": "展厅光" }, "exposure": 1.12, "envMapIntensity": 1.45, "background": "#0f1118" },
+    { "id": "detail", "label": { "zh": "细节光" }, "exposure": 1.4, "envMapIntensity": 1.85, "background": "#07070b" }
+  ],
+  "performance": { "mobilePixelRatio": 1.5, "desktopPixelRatio": 2 }
+}

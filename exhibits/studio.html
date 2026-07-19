@@ -162,13 +162,13 @@ const GROUPS = [
     { id:'ibl',  path:'environment.intensity', label:'IBL 强度', type:'range', min:0, max:3, step:0.05, def:1.15 },
     { id:'bgvis',path:'environment.visibleBackground', label:'显示全景背景', type:'bool', def:false },
   ]},
-  { title:'用户端按钮显隐', fields:[
+  { title:'用户端显隐（按钮 / 信息）', fields:[
     { id:'b1', path:'ui.showAutoRotateButton', label:'自动旋转按钮', type:'bool', def:true },
     { id:'b2', path:'ui.showHotspotButton',    label:'热点按钮',     type:'bool', def:true },
     { id:'b3', path:'ui.showResetButton',      label:'重置按钮',     type:'bool', def:true },
     { id:'b4', path:'ui.showFullscreenButton', label:'全屏按钮',     type:'bool', def:true },
     { id:'b5', path:'ui.showPresets',          label:'光源预设按钮', type:'bool', def:true },
-    { id:'b6', path:'ui.showTitle',            label:'名称/副标题',  type:'bool', def:true },
+    { id:'b6', path:'ui.showTitle',            label:'名称/副标题',  type:'switch', def:true, on:'显示', off:'隐藏' },
   ]},
   { title:'信息面板样式', fields:[
     { id:'pstyle', path:'panel.style',  label:'面板样式', type:'select', opts:PANEL_STYLES, def:'glass' },
@@ -196,7 +196,7 @@ function enabledOps() {
     const en = $('en-' + f.id); if (!en || !en.checked) continue
     if (f.type === 'scheme') { (LIGHT_SCHEMES[$('v-' + f.id).value] || {}).ops.forEach(([p, v]) => ops.push({ path: p, value: v })); continue }
     let v
-    if (f.type === 'bool') v = $('v-' + f.id).checked
+    if (f.type === 'bool' || f.type === 'switch') v = $('v-' + f.id).checked
     else if (f.type === 'range') v = Number($('v-' + f.id).value)
     else v = $('v-' + f.id).value
     if (f.type === 'text' && v === '') continue   // 空文本视为不改
@@ -219,6 +219,7 @@ function buildBatchUI() {
 function fieldRow(f) {
   let ctl = ''
   if (f.type === 'bool') ctl = `<label class="swi"><input type="checkbox" id="v-${f.id}" ${f.def ? 'checked' : ''}> 显示 / 开启</label>`
+  else if (f.type === 'switch') ctl = `<label class="swi"><input type="checkbox" id="v-${f.id}" ${f.def ? 'checked' : ''}> 勾选${f.on || '显示'} · 取消${f.off || '隐藏'}</label>`
   else if (f.type === 'text') ctl = `<input type="text" id="v-${f.id}" placeholder="${f.ph || ''}" value="${f.def || ''}">`
   else if (f.type === 'color') ctl = `<input type="color" id="v-${f.id}" value="${f.def}">`
   else if (f.type === 'range') ctl = `<input type="range" id="v-${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}"><span class="val" id="o-${f.id}">${f.def}</span>`

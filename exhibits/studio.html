@@ -54,7 +54,7 @@
 </head>
 <body>
   <div class="head">
-    <h1 id="s-title">3D 鉴赏工作台</h1>
+    <h1 id="s-title">立体鉴赏 · 工作台</h1>
     <span class="sub" id="s-sub"></span>
     <span class="count" id="s-count"></span>
   </div>
@@ -66,8 +66,8 @@
 
   <div class="foot">
     <div><b>怎么用</b>：点卡片「编辑」直接进该展品编辑器（无需手打 URL），「预览」看观看版。</div>
-    <div><b>新增展品</b>：复制任一 <code>craft-XXX/</code> 文件夹改内容 → 在 <code>manifest.json</code> 的 <code>exhibits</code> 数组里加一行目录名即可出现在此。</div>
-    <div><b>注意</b>：本页是开发方内部工具，<b>请勿随公开展包一起部署</b>（放本地或受保护路径）。</div>
+    <div><b>新增展品</b>：<b>有服务时</b>——把新的 <code>craft-XXX/</code> 文件夹（含 <code>model.glb</code> 等）放进 <code>exhibits/</code>，刷新本页即自动出现；进「编辑」<b>保存一次即自动生成缩略图</b>。<b>无服务时</b>——在 <code>manifest.json</code> 的 <code>exhibits</code> 加一行目录名。</div>
+    <div><b>注意</b>：本页是开发/维护方内部工具，<b>请勿随公开展包一起部署</b>（放本地或受保护路径）。</div>
   </div>
 
 <script>

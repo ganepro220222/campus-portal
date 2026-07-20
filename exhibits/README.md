@@ -7,13 +7,16 @@
 ```
 exhibits/
   player.html          # 播放器 + 编辑器（全站共用一份）
+  player.view.html     # 仅观看版（编辑器内导出；须与 leader-geom.mjs 同目录部署）
+  leader-geom.mjs      # 引线/面板布局纯函数（player 与 player.view 均依赖）
+  leader-geom.test.mjs # 几何单元测试（node exhibits/leader-geom.test.mjs）
   vendor/              # Three.js 与 Draco / Basis 解码器
   studio.html          # 工作台：列出全部展品，点卡片进入编辑或预览
   manifest.json        # 展品目录清单（启用保存服务时可自动扫描，无需手改）
   craft-001/
     config.json        # 该展品的配置（标题、相机、材质、热点、光照、语音等）
     assets/            # model.glb、panorama.jpg、poster.jpg、音频等
-    index.html         # 跳转壳 → ../player.html?ex=craft-001
+    index.html         # 跳转壳 → ../player.html?ex=craft-001（公开站点建议改指向 player.view.html）
   craft-002/ …         # 每件展品仅含一份 config 与 assets
 ```
 
@@ -75,8 +78,13 @@ exhibits/craft-XXX/
 
 ## 上线说明
 
-- **公开访问**：部署各展品数据目录，以及播放器的**仅观看版**（编辑器内「导出仅观看版」生成 `player.view.html`）。外链可指向 `…/craft-001/` 或 `…/player.html?ex=craft-001`。
-- **编辑入口**：完整 `player.html` 与 `studio.html` 应放在受保护路径（登录鉴权或 IP 限制），勿与公开展品同路径暴露。
+- **公开访问（观看版）**：须在同一目录下保持相对路径部署以下文件：
+  - `player.view.html`（编辑器「导出仅观看版」生成）
+  - `leader-geom.mjs`（播放器模块依赖，遗漏会导致浏览器加载失败）
+  - `vendor/`（Three.js 与解码器）
+  - 各展品数据目录（`craft-XXX/config.json`、`assets/` 等）
+  - 外链可指向 `…/craft-001/` 或 `…/player.view.html?ex=craft-001`
+- **编辑入口**：完整 `player.html` 与 `studio.html` 应放在受保护路径（登录鉴权或 IP 限制），勿与公开展品同路径暴露。公开站点的 `craft-XXX/index.html` 跳转壳应指向 `player.view.html`，勿暴露带 `mode=edit` 的完整版。
 - **缓存**：`config.json` 不宜长期 CDN 缓存，保存后应能立即读到新版本；静态资源可加版本号或 hash 避免浏览器旧缓存。
 - **保存服务**：浏览器内直接保存需启动 `_server/` 中的参考服务，详见 `_server/README.md`。
 

@@ -1,8 +1,9 @@
 /** 热点引线二维几何（纯函数，可单测） */
 
-export function clampN(v, lo, hi) { return Math.min(Math.max(v, lo), hi) }
-
 export const PANEL_HOTSPOT_GAP = 20
+export const ORTH_MIN_SEG = 4
+
+export function clampN(v, lo, hi) { return Math.min(Math.max(v, lo), hi) }
 
 export function panelBounds(cardX, cardY, cw, ch, pad = 8) {
   return { l: cardX + pad, r: cardX + cw - pad, t: cardY + pad, b: cardY + ch - pad }
@@ -12,41 +13,93 @@ export function hotspotInsidePanel(mx, my, cardX, cardY, cw, ch) {
   return mx >= cardX && mx <= cardX + cw && my >= cardY && my <= cardY + ch
 }
 
-/** 热点与面板之间保留 gap 间距（严格分离） */
-export function panelHotspotClear(mx, my, cardX, cardY, cw, ch, gap = PANEL_HOTSPOT_GAP) {
-  return mx + gap <= cardX || mx - gap >= cardX + cw || my + gap <= cardY || my - gap >= cardY + ch
+/** 热点到面板矩形的有符号净空（正=外，负=内） */
+export function hotspotClearance(mx, my, cardX, cardY, cw, ch) {
+  const dx = mx < cardX ? cardX - mx : mx > cardX + cw ? mx - (cardX + cw) : -Math.min(mx - cardX, cardX + cw - mx)
+  const dy = my < cardY ? cardY - my : my > cardY + ch ? my - (cardY + ch) : -Math.min(my - cardY, cardY + ch - my)
+  if (dx <= 0 && dy <= 0) return -Math.min(-dx, -dy)
+  if (dx <= 0) return dy
+  if (dy <= 0) return dx
+  return Math.hypot(dx, dy)
 }
 
-/** 热点与面板（含安全间距）碰撞 = 未满足分离 */
+export function panelHotspotClear(mx, my, cardX, cardY, cw, ch, gap = PANEL_HOTSPOT_GAP) {
+  return hotspotClearance(mx, my, cardX, cardY, cw, ch) >= gap
+}
+
 export function panelHotspotCollision(mx, my, cardX, cardY, cw, ch, gap = PANEL_HOTSPOT_GAP) {
   return !panelHotspotClear(mx, my, cardX, cardY, cw, ch, gap)
 }
 
+function nudgeCandidates(mx, my, cw, ch, gap) {
+  return [
+    { cardX: mx + gap, cardY: null },
+    { cardX: mx - gap - cw, cardY: null },
+    { cardX: null, cardY: my + gap },
+    { cardX: null, cardY: my - gap - ch },
+  ]
+}
+
+function applyNudgeCand(c, cardX, cardY) {
+  return { cardX: c.cardX ?? cardX, cardY: c.cardY ?? cardY }
+}
+
 /**
- * 面板不得覆盖热点：仅真实碰撞时推离；四向候选 + 视口 clamp，选位移最小且不再碰撞者。
- * viewport: { minX, minY, maxX, maxY, gap? }
+ * 面板推离热点。返回 { cardX, cardY, degraded, clearance }。
+ * 优先满足 target gap；逐步缩小 gap；仍无解则选净空最大者。
  */
 export function nudgePanelFromHotspot(mx, my, cardX, cardY, cw, ch, viewport = {}) {
-  const gap = viewport.gap ?? PANEL_HOTSPOT_GAP
-  if (!panelHotspotCollision(mx, my, cardX, cardY, cw, ch, gap)) {
-    return clampPanelPos(cardX, cardY, cw, ch, viewport)
-  }
+  const targetGap = viewport.gap ?? PANEL_HOTSPOT_GAP
   const maxX = viewport.maxX ?? cardX
-  const cands = [
-    { cardX: mx + gap, cardY },
-    { cardX: mx - gap - cw, cardY },
-    { cardX, cardY: my + gap },
-    { cardX, cardY: my - gap - ch },
-  ]
-  let best = null, bestD = 1e18
-  for (const c of cands) {
-    const cl = clampPanel(c.cardX, c.cardY, cw, ch, maxX, viewport)
-    if (panelHotspotCollision(mx, my, cl.x, cl.y, cw, ch, gap)) continue
-    const d = Math.hypot(cl.x - cardX, cl.y - cardY)
-    if (d < bestD) { bestD = d; best = { cardX: cl.x, cardY: cl.y } }
+  const base = clampPanelPos(cardX, cardY, cw, ch, viewport)
+
+  if (panelHotspotClear(mx, my, base.cardX, base.cardY, cw, ch, targetGap)) {
+    return { ...base, degraded: false, clearance: hotspotClearance(mx, my, base.cardX, base.cardY, cw, ch) }
   }
-  if (best) return best
-  return clampPanelPos(cardX, cardY, cw, ch, viewport)
+
+  const gaps = [...new Set([targetGap, 16, 12, 8, 4, 0])].sort((a, b) => b - a)
+
+  let best = null, bestMove = 1e18, bestGap = targetGap
+  for (const gap of gaps) {
+    for (const raw of nudgeCandidates(mx, my, cw, ch, gap)) {
+      const c = applyNudgeCand(raw, cardX, cardY)
+      const cl = clampPanel(c.cardX, c.cardY, cw, ch, maxX, viewport)
+      if (!panelHotspotClear(mx, my, cl.x, cl.y, cw, ch, gap)) continue
+      const move = Math.hypot(cl.x - cardX, cl.y - cardY)
+      if (move < bestMove) {
+        bestMove = move
+        best = { cardX: cl.x, cardY: cl.y }
+        bestGap = gap
+      }
+    }
+    if (best) {
+      return {
+        ...best,
+        degraded: bestGap < targetGap,
+        clearance: hotspotClearance(mx, my, best.cardX, best.cardY, cw, ch),
+      }
+    }
+  }
+
+  let bestClear = -1e18, bestPos = base
+  for (const gap of [0, 4, 8, 12, 16, targetGap]) {
+    for (const raw of nudgeCandidates(mx, my, cw, ch, gap)) {
+      const c = applyNudgeCand(raw, cardX, cardY)
+      const cl = clampPanel(c.cardX, c.cardY, cw, ch, maxX, viewport)
+      const clear = hotspotClearance(mx, my, cl.x, cl.y, cw, ch)
+      const move = Math.hypot(cl.x - cardX, cl.y - cardY)
+      const score = clear - move * 0.001
+      if (score > bestClear) {
+        bestClear = clear
+        bestPos = { cardX: cl.x, cardY: cl.y }
+      }
+    }
+  }
+  return {
+    ...bestPos,
+    degraded: true,
+    clearance: hotspotClearance(mx, my, bestPos.cardX, bestPos.cardY, cw, ch),
+  }
 }
 
 export function parseLeaderOpts(P) {
@@ -64,7 +117,6 @@ export function parseLeaderOpts(P) {
 
 function num(v, d) { return (typeof v === 'number' && isFinite(v)) ? v : d }
 
-/** 定第二段 tail=0 时的默认长度（不依赖当前模式下不可见的第一段参数） */
 export const LEG2_AUTO_TAIL = 40
 
 export function interiorAngle(mx, my, kx, ky, ax, ay) {
@@ -75,8 +127,15 @@ export function interiorAngle(mx, my, kx, ky, ax, ay) {
 
 export function isRightAngle(mx, my, kx, ky, ax, ay, eps = 0.01) {
   const dx1 = kx - mx, dy1 = ky - my, dx2 = ax - kx, dy2 = ay - ky
-  if ((Math.abs(dx1) < eps && Math.abs(dy1) < eps) || (Math.abs(dx2) < eps && Math.abs(dy2) < eps)) return false
+  if (Math.hypot(dx1, dy1) < ORTH_MIN_SEG || Math.hypot(dx2, dy2) < ORTH_MIN_SEG) return false
   return Math.abs(dx1 * dx2 + dy1 * dy2) < eps
+}
+
+function orthSegLens(mx, my, c) {
+  return {
+    l1: Math.hypot(c.kx - mx, c.ky - my),
+    l2: Math.hypot(c.ax - c.kx, c.ay - c.ky),
+  }
 }
 
 function orthCandidatesHFirst(mx, my, b) {
@@ -87,7 +146,7 @@ function orthCandidatesHFirst(mx, my, b) {
   }
   for (const ay of [b.t, b.b]) {
     const ax = clampN(mx, b.l, b.r)
-    out.push({ kx: ax, ky: my, ax, ay, first: 'h' })
+    if (Math.abs(ax - mx) >= ORTH_MIN_SEG) out.push({ kx: ax, ky: my, ax, ay, first: 'h' })
   }
   return out
 }
@@ -100,14 +159,13 @@ function orthCandidatesVFirst(mx, my, b) {
   }
   for (const ax of [b.l, b.r]) {
     const ay = clampN(my, b.t, b.b)
-    out.push({ kx: mx, ky: ay, ax, ay, first: 'v' })
+    if (Math.abs(ay - my) >= ORTH_MIN_SEG) out.push({ kx: mx, ky: ay, ax, ay, first: 'v' })
   }
   return out
 }
 
 function orthScore(mx, my, c, b) {
-  const l1 = Math.abs(c.kx - mx) + Math.abs(c.ky - my)
-  const l2 = Math.abs(c.ax - c.kx) + Math.abs(c.ay - c.ky)
+  const { l1, l2 } = orthSegLens(mx, my, c)
   const cx = (b.l + b.r) / 2, cy = (b.t + b.b) / 2
   let face = 0
   if (c.first === 'h') {
@@ -117,8 +175,8 @@ function orthScore(mx, my, c, b) {
     if (my < b.t && c.ay === b.t) face -= 80
     if (my > b.b && c.ay === b.b) face -= 80
   }
-  if (Math.abs(mx - cx) >= Math.abs(my - cy) && c.first === 'h') face -= 12
-  if (Math.abs(mx - cx) < Math.abs(my - cy) && c.first === 'v') face -= 12
+  if (Math.abs(mx - cx) >= Math.abs(cy - my) && c.first === 'h') face -= 12
+  if (Math.abs(mx - cx) < Math.abs(cy - my) && c.first === 'v') face -= 12
   return face + l1 + l2
 }
 
@@ -132,7 +190,38 @@ function pickOrthCandidate(mx, my, cands) {
   return best
 }
 
-function orthFallback(mx, my, cardX, cardY, cw, ch) {
+function hotspotInsideBounds(mx, my, b) {
+  return mx >= b.l && mx <= b.r && my >= b.t && my <= b.b
+}
+
+function orthCandidatesInsideEscape(mx, my, b) {
+  const distL = mx - b.l, distR = b.r - mx, distT = my - b.t, distB = b.b - my
+  const midX = (b.l + b.r) / 2, midY = (b.t + b.b) / 2
+  const out = []
+  if (distL > 0) out.push({ kx: b.l, ky: my, ax: b.l, ay: my <= midY ? b.t : b.b, first: 'h' })
+  if (distR > 0) out.push({ kx: b.r, ky: my, ax: b.r, ay: my <= midY ? b.t : b.b, first: 'h' })
+  if (distT > 0) out.push({ kx: mx, ky: b.t, ax: mx <= midX ? b.l : b.r, ay: b.t, first: 'v' })
+  if (distB > 0) out.push({ kx: mx, ky: b.b, ax: mx <= midX ? b.l : b.r, ay: b.b, first: 'v' })
+  return out
+}
+
+function orthFallback(mx, my, cardX, cardY, cw, ch, leg1Axis) {
+  const b = panelBounds(cardX, cardY, cw, ch)
+  if (hotspotInsideBounds(mx, my, b)) {
+    const cands = orthCandidatesInsideEscape(mx, my, b).map(c => ({ ...c, _b: b }))
+    const best = pickOrthCandidate(mx, my, cands)
+    if (best) return best
+  }
+  if (leg1Axis === 'h') {
+    const kx = (mx - b.l) <= (b.r - mx) ? b.l : b.r
+    const ay = clampN(my, b.t, b.b)
+    return { kx, ky: my, ax: kx, ay, first: 'h' }
+  }
+  if (leg1Axis === 'v') {
+    const ky = (my - b.t) <= (b.b - my) ? b.t : b.b
+    const ax = clampN(mx, b.l, b.r)
+    return { kx: mx, ky, ax, ay: ky, first: 'v' }
+  }
   const [eax, eay] = panelEdgeAnchor(mx, my, cardX, cardY, cw, ch)
   if (Math.abs(eax - mx) >= Math.abs(eay - my)) {
     return { kx: eax, ky: my, ax: eax, ay: eay, first: 'h' }
@@ -140,23 +229,34 @@ function orthFallback(mx, my, cardX, cardY, cw, ch) {
   return { kx: mx, ky: eay, ax: eax, ay: eay, first: 'v' }
 }
 
-/** 直角 L 形：Manhattan 路径，恒 90°；leg1Axis=h/v 表示水平/竖直优先，不静默改轴 */
+function finalizeOrth(mx, my, raw, leg1Axis) {
+  const { l1, l2 } = orthSegLens(mx, my, raw)
+  if (isRightAngle(mx, my, raw.kx, raw.ky, raw.ax, raw.ay)) return raw
+  if (leg1Axis === 'h' && Math.abs(raw.ky - my) < ORTH_MIN_SEG && l2 >= ORTH_MIN_SEG) {
+    return { ...raw, kx: raw.ax, ky: my, first: 'h' }
+  }
+  if (leg1Axis === 'v' && Math.abs(raw.kx - mx) < ORTH_MIN_SEG && l2 >= ORTH_MIN_SEG) {
+    return { ...raw, kx: mx, ky: raw.ay, first: 'v' }
+  }
+  return raw
+}
+
 export function resolveOrthogonal(mx, my, cardX, cardY, cw, ch, panel) {
   const b = panelBounds(cardX, cardY, cw, ch)
   const O = parseLeaderOpts(panel)
   let pool = []
-  if (O.leg1Axis === 'h') pool = orthCandidatesHFirst(mx, my, b)
+  if (hotspotInsideBounds(mx, my, b)) {
+    pool = orthCandidatesInsideEscape(mx, my, b)
+    if (O.leg1Axis === 'h') pool = pool.filter(c => c.first === 'h')
+    else if (O.leg1Axis === 'v') pool = pool.filter(c => c.first === 'v')
+  } else if (O.leg1Axis === 'h') pool = orthCandidatesHFirst(mx, my, b)
   else if (O.leg1Axis === 'v') pool = orthCandidatesVFirst(mx, my, b)
-  else {
-    pool = [
-      ...orthCandidatesHFirst(mx, my, b),
-      ...orthCandidatesVFirst(mx, my, b),
-    ]
-  }
+  else pool = [...orthCandidatesHFirst(mx, my, b), ...orthCandidatesVFirst(mx, my, b)]
   pool = pool.map(c => ({ ...c, _b: b }))
   const best = pickOrthCandidate(mx, my, pool)
-  if (best) return { kx: best.kx, ky: best.ky, ax: best.ax, ay: best.ay, first: best.first }
-  return orthFallback(mx, my, cardX, cardY, cw, ch)
+  const raw = best || orthFallback(mx, my, cardX, cardY, cw, ch, O.leg1Axis)
+  const fin = finalizeOrth(mx, my, raw, O.leg1Axis)
+  return { kx: fin.kx, ky: fin.ky, ax: fin.ax, ay: fin.ay, first: fin.first }
 }
 
 export function leaderAxis(dir, mx, my, ax, ay) {
@@ -208,7 +308,6 @@ export function anchor90(kx, ky, cardX, cardY, cw, ch) {
   return best
 }
 
-/** 定第二段：leg2Axis 直接表示第二段方向（h→ky===ay，v→kx===ax） */
 export function leg2LockedKnee(mx, my, ax, ay, panel) {
   const O = parseLeaderOpts(panel)
   const sec = O.leg2Axis === 'h' ? 'h' : O.leg2Axis === 'v' ? 'v' : (leaderAxis(O.dir, mx, my, ax, ay) === 'h' ? 'v' : 'h')
@@ -248,17 +347,19 @@ export function layoutPanelFromHotspot(mx, my, cardX, cardY, cw, ch, viewport = 
 }
 
 export function resolveCalloutGeom(mx, my, cw, ch, panel, hs, layout, viewport = {}) {
-  const { cardX, cardY } = layoutPanelFromHotspot(mx, my, layout.cardX, layout.cardY, cw, ch, viewport)
+  const pl = layoutPanelFromHotspot(mx, my, layout.cardX, layout.cardY, cw, ch, viewport)
+  const { cardX, cardY, degraded, clearance } = pl
   const O = parseLeaderOpts(panel)
+  const panelMeta = { panelDegraded: degraded, panelClearance: clearance }
   if (O.leader === 'straight' || O.leader === 'line') {
     const [ax, ay] = nearestAnchor(cardX, cardY, cw, ch, mx, my)
-    return { cardX, cardY, ax, ay, pts: [[mx, my], [ax, ay]], meta: {} }
+    return { cardX, cardY, ax, ay, pts: [[mx, my], [ax, ay]], meta: panelMeta }
   }
   if (O.mode === 'orthogonal') {
     const { kx, ky, ax, ay } = resolveOrthogonal(mx, my, cardX, cardY, cw, ch, panel)
     const ang = interiorAngle(mx, my, kx, ky, ax, ay)
     const l1 = Math.hypot(kx - mx, ky - my), l2 = Math.hypot(ax - kx, ay - ky)
-    return { cardX, cardY, ax, ay, pts: elbow2(mx, my, kx, ky, ax, ay), meta: { kx, ky, ang, l1, l2 } }
+    return { cardX, cardY, ax, ay, pts: elbow2(mx, my, kx, ky, ax, ay), meta: { kx, ky, ang, l1, l2, ...panelMeta } }
   }
   const edge = panelEdgeAnchor(mx, my, cardX, cardY, cw, ch)
   let ax = edge[0], ay = edge[1]
@@ -277,14 +378,40 @@ export function resolveCalloutGeom(mx, my, cw, ch, panel, hs, layout, viewport =
   }
   const ang = interiorAngle(mx, my, kx, ky, ax, ay)
   const l1 = Math.hypot(kx - mx, ky - my), l2 = Math.hypot(ax - kx, ay - ky)
-  return { cardX, cardY, ax, ay, pts: elbow2(mx, my, kx, ky, ax, ay), meta: { kx, ky, ang, l1, l2 } }
+  return { cardX, cardY, ax, ay, pts: elbow2(mx, my, kx, ky, ax, ay), meta: { kx, ky, ang, l1, l2, ...panelMeta } }
 }
 
-/** 旧配置：leg2-lock 曾把方向存进 leg1Axis，迁移到 leg2Axis */
 export function migratePanelLeader(panel) {
   if (!panel || panel.elbowMode !== 'leg2-lock') return panel
   if (!panel.leg2Axis && panel.leg1Axis && panel.leg1Axis !== 'auto') {
     return { ...panel, leg2Axis: panel.leg1Axis }
   }
   return panel
+}
+
+/** 属性测试：随机布局下几何不变量（固定 seed） */
+export function probeLeaderLayouts(seed = 42, count = 2000) {
+  let s = seed
+  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
+  const stats = { total: 0, badAngle: 0, zeroSeg: 0, badDir: 0, nan: 0 }
+  const modes = ['auto', 'h', 'v']
+  for (let i = 0; i < count; i++) {
+    for (const leg1Axis of modes) {
+      stats.total++
+      const mx = rnd() * 900, my = rnd() * 700 + 60
+      const cw = 120 + rnd() * 200, ch = 80 + rnd() * 120
+      const maxX = 900 - 320 - cw - 8
+      const vp = { minX: 8, minY: 66, maxX, maxY: 800 - ch - 24 }
+      const cardX = 8 + rnd() * Math.max(1, maxX - 8)
+      const cardY = 66 + rnd() * Math.max(1, vp.maxY - 66)
+      const r = resolveCalloutGeom(mx, my, cw, ch, { elbowMode: 'orthogonal', leg1Axis }, null, { cardX, cardY }, vp)
+      const { kx, ky, l1, l2 } = r.meta
+      if ([mx, my, kx, ky, r.ax, r.ay, l1, l2].some(v => !Number.isFinite(v))) stats.nan++
+      if (!isRightAngle(mx, my, kx, ky, r.ax, r.ay)) stats.badAngle++
+      if (l1 <= 0.01 || l2 <= 0.01) stats.zeroSeg++
+      if (leg1Axis === 'h' && Math.abs(ky - my) > 0.5) stats.badDir++
+      if (leg1Axis === 'v' && Math.abs(kx - mx) > 0.5) stats.badDir++
+    }
+  }
+  return stats
 }

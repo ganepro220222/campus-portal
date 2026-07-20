@@ -270,6 +270,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+import * as LG from './leader-geom.js'
 
 const $ = id => document.getElementById(id)
 const params = new URLSearchParams(location.search)
@@ -532,19 +533,9 @@ function growPoly(pts, g){
     if(want>=seg){ out.push(pts[i]); want-=seg } else { const t=seg?want/seg:0; out.push([pts[i-1][0]+dx*t, pts[i-1][1]+dy*t]); break } }
   return out.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')
 }
-function clampN(v, lo, hi){ return Math.min(Math.max(v, lo), hi) }
-function leaderAxis(dir, mx, my, ax, ay){
-  if (dir==='up'||dir==='down') return 'v'
-  if (dir==='left'||dir==='right'||dir==='upleft'||dir==='upright'||dir==='downleft'||dir==='downright') return 'h'
-  return Math.abs(ax-mx) >= Math.abs(ay-my) ? 'h' : 'v'
-}
-function leaderSign1(dir, axis, mx, my, ax, ay){
-  const m = { left:['h',-1], right:['h',1], up:['v',-1], down:['v',1],
-    upleft:['h',-1], upright:['h',1], downleft:['h',-1], downright:['h',1] }
-  if (m[dir]) return m[dir][1]
-  if (axis==='h') return ax>=mx ? 1 : -1
-  return ay>=my ? 1 : -1
-}
+function clampN(v, lo, hi){ return LG.clampN(v, lo, hi) }
+function leaderAxis(dir, mx, my, ax, ay){ return LG.leaderAxis(dir, mx, my, ax, ay) }
+function leaderSign1(dir, axis, mx, my, ax, ay){ return LG.leaderSign1(dir, axis, mx, my, ax, ay) }
 function panelAnchor(cardX, cardY, cw, ch, mx, my, dir){
   const p=8
   if (dir==='left') return [cardX+cw-p, clampN(my, cardY+p, cardY+ch-p)]
@@ -557,69 +548,14 @@ function panelAnchor(cardX, cardY, cw, ch, mx, my, dir){
   if (dir==='downright') return [cardX+p, cardY+p]
   return [clampN(mx, cardX+p, cardX+cw-p), clampN(my, cardY+p, cardY+ch-p)]
 }
-function leaderOpts(P){
-  P=P||{}
-  let ang=num(P.elbowAngle, NaN)
-  if (!isFinite(ang) && typeof P.elbowRatio==='number') ang=90+(1-P.elbowRatio)*90
-  if (!isFinite(ang)) ang=90
-  return { leader:P.leader||'elbow', dir:P.dir||'auto', stub:Math.max(16, num(P.leaderGap, 48)), tail:num(P.leaderTail, 0),
-    mode:P.elbowMode||'orthogonal', angle:clampN(ang, 90, 165), leg1Axis:P.leg1Axis||'auto' }
-}
-function elbow2(mx, my, kx, ky, ax, ay){ return [[mx,my],[kx,ky],[ax,ay]] }
-function nearestAnchor(cardX, cardY, cw, ch, mx, my){
-  return [clampN(mx, cardX+8, cardX+cw-8), clampN(my, cardY+8, cardY+ch-8)]
-}
-function anchor90(kx, ky, cardX, cardY, cw, ch){
-  const p=8, l=cardX+p, r=cardX+cw-p, t=cardY+p, b=cardY+ch-p
-  const cands=[]
-  if (kx>=l&&kx<=r) cands.push([kx,t],[kx,b])
-  if (ky>=t&&ky<=b) cands.push([l,ky],[r,ky])
-  if (!cands.length) return [clampN(kx,l,r), clampN(ky,t,b)]
-  let best=cands[0], bd=1e9
-  for (const c of cands){ const d=Math.hypot(c[0]-kx,c[1]-ky); if(d<bd){ bd=d; best=c } }
-  return best
-}
-function interiorAngle(mx, my, kx, ky, ax, ay){
-  const v1x=mx-kx, v1y=my-ky, v2x=ax-kx, v2y=ay-ky, l1=Math.hypot(v1x,v1y)||1, l2=Math.hypot(v2x,v2y)||1
-  return Math.acos(clampN((v1x/l1*v2x/l2+v1y/l1*v2y/l2),-1,1))*180/Math.PI
-}
-function leg1LockedKnee(mx, my, axis, s1, stub){
-  if (axis==='h') return [mx+s1*stub, my]
-  return [mx, my+s1*stub]
-}
-// 直角 L 形：面板位置固定 → 折点 + 90° 连接点（方案 A）
-function resolveOrthogonal(mx, my, cardX, cardY, cw, ch, P){
-  const O=leaderOpts(P), p=8, l=cardX+p, r=cardX+cw-p, t=cardY+p, b=cardY+ch-p
-  const cx=(l+r)/2, cy=(t+b)/2
-  let axis=O.leg1Axis==='h'?'h':O.leg1Axis==='v'?'v':(Math.abs(cx-mx)>=Math.abs(cy-my)?'h':'v')
-  let kx, ky
-  if (axis==='h'){
-    const s1=O.leg1Axis==='auto'? (cx>=mx?1:-1) : leaderSign1(O.dir,'h',mx,my,cx,cy)
-    kx=mx+s1*O.stub; ky=my
-    if (kx<l||kx>r){ axis='v' } else { const a=anchor90(kx,ky,cardX,cardY,cw,ch); return { kx, ky, ax:a[0], ay:a[1] } }
-  }
-  const s1=O.leg1Axis==='auto'? (cy>=my?1:-1) : leaderSign1(O.dir,'v',mx,my,cx,cy)
-  kx=mx; ky=my+s1*O.stub
-  const a=anchor90(kx,ky,cardX,cardY,cw,ch)
-  return { kx, ky, ax:a[0], ay:a[1] }
-}
-function leg2LockedKnee(mx, my, ax, ay, panel){
-  const O=leaderOpts(panel)
-  const axis=O.leg1Axis==='h'?'h':O.leg1Axis==='v'?'v':leaderAxis(O.dir,mx,my,ax,ay)
-  const sec=axis==='h'?'v':'h'
-  const len2=O.tail>0?O.tail:Math.max(24, O.stub*0.55)
-  if (sec==='v') return [ax, ay+(my>ay?len2:-len2)]
-  return [ax+(mx>ax?len2:-len2), ay]
-}
+function leaderOpts(P){ return LG.parseLeaderOpts(LG.migratePanelLeader(P)) }
+function elbow2(mx, my, kx, ky, ax, ay){ return LG.elbow2(mx, my, kx, ky, ax, ay) }
+function interiorAngle(mx, my, kx, ky, ax, ay){ return LG.interiorAngle(mx, my, kx, ky, ax, ay) }
 function clampPanel(cardX, cardY, cw, ch, maxX){
-  return { x:clampN(cardX, 8, maxX), y:clampN(cardY, 66, innerHeight-ch-24) }
+  return LG.clampPanel(cardX, cardY, cw, ch, maxX, { maxY: innerHeight - ch - 24 })
 }
-function packCalloutPos(x, y){ return { x, y, vw:innerWidth, vh:innerHeight } }
-function unpackCalloutPos(pos){
-  if (!pos) return null
-  if (pos.vw&&pos.vh) return { x:pos.x*innerWidth/pos.vw, y:pos.y*innerHeight/pos.vh }
-  return { x:pos.x, y:pos.y }
-}
+function packCalloutPos(x, y){ return LG.packCalloutPos(x, y, innerWidth, innerHeight) }
+function unpackCalloutPos(pos){ return LG.unpackCalloutPos(pos, innerWidth, innerHeight) }
 function clearManualKnee(hs){ if(!hs) return; delete hs.leaderKnee; delete hs.leaderKneeManual }
 function clearAllManualPanels(){ (cfg.hotspots||[]).forEach(h=>{ delete h.calloutPos; delete h.calloutPosManual }) }
 function leaderKneePoint(pts){ return (pts&&pts.length>=3)?pts[1]:null }
@@ -651,6 +587,7 @@ function placePanelByDir(mx, my, cw, ch, P, maxX){
   return { cardX:p.x, cardY:p.y, edgeDir:dir }
 }
 function resolveCallout(mx, my, cw, ch, P, hs, maxX){
+  P = LG.migratePanelLeader(P || {})
   let cardX, cardY
   const dir=P.dir||'auto'
   const unpacked=hs?.calloutPosManual ? unpackCalloutPos(hs.calloutPos) : null
@@ -661,50 +598,31 @@ function resolveCallout(mx, my, cw, ch, P, hs, maxX){
   }else{
     ({cardX,cardY}=placePanelByDir(mx, my, cw, ch, P, maxX))
   }
-  const O=leaderOpts(P)
-  if (O.leader==='straight'||O.leader==='line'){
-    const [ax,ay]=nearestAnchor(cardX, cardY, cw, ch, mx, my)
-    return { cardX, cardY, ax, ay, pts:[[mx,my],[ax,ay]], meta:{} }
-  }
-  if (O.mode==='orthogonal'){
-    const {kx,ky,ax,ay}=resolveOrthogonal(mx, my, cardX, cardY, cw, ch, P)
-    const ang=interiorAngle(mx,my,kx,ky,ax,ay)
-    return { cardX, cardY, ax, ay, pts:elbow2(mx,my,kx,ky,ax,ay), meta:{ kx,ky, ang, l1:O.stub, l2:Math.hypot(ax-kx,ay-ky) } }
-  }
-  let [ax,ay]=nearestAnchor(cardX, cardY, cw, ch, mx, my)
-  let kx, ky
-  if (O.mode==='leg2-lock'){
-    ;[kx,ky]=leg2LockedKnee(mx, my, ax, ay, P)
-  }else{
-    const axis=O.leg1Axis==='h'?'h':O.leg1Axis==='v'?'v':leaderAxis(O.dir,mx,my,ax,ay)
-    const s1=leaderSign1(O.dir,axis,mx,my,ax,ay)
-    if (hs?.leaderKneeManual && Array.isArray(hs.leaderKnee)){
-      kx=mx+hs.leaderKnee[0]; ky=my+hs.leaderKnee[1]
-    }else{
-      ;[kx,ky]=leg1LockedKnee(mx, my, axis, s1, O.stub)
-    }
-  }
-  const ang=interiorAngle(mx,my,kx,ky,ax,ay)
-  const l1=Math.hypot(kx-mx,ky-my), l2=Math.hypot(ax-kx,ay-ky)
-  return { cardX, cardY, ax, ay, pts:elbow2(mx,my,kx,ky,ax,ay), meta:{ kx,ky, ang, l1, l2 } }
+  return LG.resolveCalloutGeom(mx, my, cw, ch, P, hs, { cardX, cardY })
 }
 function bumpLeader(){ if($('card').classList.contains('show')&&innerWidth>720){ $('hs-svg').removeAttribute('hidden'); leaderT0=performance.now() } }
 function syncLeaderEditorUI(){
   if (!editMode) return
   const O=leaderOpts(cfg.panel), straight=O.leader==='straight'||O.leader==='line'
   const hide=id=>{ const e=$(id); if(e) e.style.display=straight?'none':'' }
-  hide('ed-elbow-fields'); hide('ed-elbow-mode-row'); hide('ed-leg1-row')
+  hide('ed-elbow-fields'); hide('ed-elbow-mode-row')
   const ed=$('editor')
   const gapRow=ed?.querySelector('[data-k="leader.gap"]')?.closest('.ed-row')
   const tailRow=ed?.querySelector('[data-k="leader.tail"]')?.closest('.ed-row')
   const angRow=ed?.querySelector('[data-k="leader.angle"]')?.closest('.ed-row')
   const gapLab=gapRow?.querySelector('span')
-  const legLab=$('ed-leg1-row')?.querySelector('span')
-  if(gapRow) gapRow.style.display=(straight||O.mode==='leg2-lock')?'none':''
+  const leg1Row=$('ed-leg1-row')
+  const legLab=leg1Row?.querySelector('span')
+  const leg2Row=$('ed-leg2-row')
+  const leg2Lab=leg2Row?.querySelector('span')
+  if(gapRow) gapRow.style.display=(straight||O.mode==='leg2-lock'||O.mode==='orthogonal')?'none':''
   if(tailRow) tailRow.style.display=(straight||O.mode==='orthogonal'||O.mode==='leg1-lock')?'none':''
   if(angRow) angRow.style.display='none'
   if(gapLab) gapLab.textContent='第一段长度'
-  if(legLab) legLab.textContent=O.mode==='leg2-lock'?'第二段方向':'第一段方向'
+  if(leg1Row) leg1Row.style.display=(straight||O.mode==='leg2-lock')?'none':''
+  if(leg2Row) leg2Row.style.display=(straight||O.mode!=='leg2-lock')?'none':''
+  if(legLab) legLab.textContent=O.mode==='orthogonal'?'路径优先':'第一段方向'
+  if(leg2Lab) leg2Lab.textContent='第二段方向'
   if(gapRow){
     const r=gapRow.querySelector('[data-k="leader.gap"]'), n=gapRow.querySelector('[data-num="leader.gap"]')
     if(r){ r.min=16; if(+r.value<16) r.value=16 }
@@ -715,15 +633,16 @@ function syncLeaderEditorUI(){
     if(r){ r.min=0; r.max=320 }
     if(n){ n.min=0; n.max=320 }
   }
-  $('ed-knee-reset')?.style.setProperty('display', straight||O.mode==='orthogonal'?'none':'')
+  $('ed-knee-reset')?.style.setProperty('display', straight||O.mode==='orthogonal'||O.mode==='leg2-lock'?'none':'')
   const prBtn=$('ed-panel-reset'); if(prBtn) prBtn.style.display=straight?'none':''
   const note=$('ed-leader-note'), hs=activeHS?.data
+  if (O.mode==='leg2-lock' && hs?.leaderKneeManual) clearManualKnee(hs)
   if(!note) return
   const st=hs?.leaderKneeManual?' · 折点：手动':(hs?.calloutPosManual?' · 面板：手动':' · 自动')
   if(straight) note.textContent='直线：热点→面板一条线段。'+st
-  else if(O.mode==='orthogonal') note.textContent='直角 L 形：拖面板后仍保持 90°；仅两段线。编辑：拖标题移面板（折点自动重算）。'+st
-  else if(O.mode==='leg1-lock') note.textContent='定第一段：方向与长度锁定，第二段直连面板；可拖折点微调。'+st
-  else note.textContent='定第二段：板边入射段长度由滑条控制；「第二段 0」=自动估算。'+st
+  else if(O.mode==='orthogonal') note.textContent='直角 L 形：Manhattan 路径，任意面板位置恒 90°。编辑：拖标题移面板。'+st
+  else if(O.mode==='leg1-lock') note.textContent='定第一段：方向与长度锁定；可拖折点微调。'+st
+  else note.textContent='定第二段：板边入射段方向/长度由控件决定；折点自动计算，不可拖拽。'+st
 }
 function clearLeaderParams(){
   clearManualKnee(activeHS?.data)
@@ -737,7 +656,7 @@ function wireCalloutDrag(){
     svg.addEventListener('pointerdown', e=>{
       if (!editMode||!activeHS||innerWidth<=720||!lastPts) return
       const O=leaderOpts(cfg.panel)
-      if (O.mode==='orthogonal'||O.leader==='straight'||O.leader==='line') return
+      if (O.mode==='orthogonal'||O.mode==='leg2-lock'||O.leader==='straight'||O.leader==='line') return
       const kp=leaderKneePoint(lastPts); if (!kp) return
       if (Math.hypot(e.clientX-kp[0], e.clientY-kp[1])>20) return
       e.preventDefault(); e.stopPropagation()
@@ -794,7 +713,7 @@ function updateCallout() {
     leaderEl.setAttribute('points', growPoly(pts, g))
     leaderEl.classList.toggle('straight', O.leader==='straight'||O.leader==='line')
     const knee=$('hs-knee'), kp=leaderKneePoint(pts)
-    if (editMode && kp && O.leader!=='straight' && O.leader!=='line' && O.mode!=='orthogonal'){
+    if (editMode && kp && O.leader!=='straight' && O.leader!=='line' && O.mode!=='orthogonal' && O.mode!=='leg2-lock'){
       knee.removeAttribute('hidden'); knee.classList.add('edit')
       knee.setAttribute('cx',kp[0]); knee.setAttribute('cy',kp[1])
     }else{ knee.setAttribute('hidden',''); knee.classList.remove('edit') }
@@ -1154,11 +1073,17 @@ function renderEditor() {
         <option value="leg1-lock" ${pan.elbowMode==='leg1-lock'?'selected':''}>定第一段（锁方向+长度）</option>
         <option value="leg2-lock" ${pan.elbowMode==='leg2-lock'?'selected':''}>定第二段（板边入射）</option>
       </select></div>
-    <div class="ed-row" id="ed-leg1-row"><span>第一段方向</span>
+    <div class="ed-row" id="ed-leg1-row"><span>路径优先</span>
       <select class="ed-in" id="ed-leg1-axis" style="width:auto;margin:0;flex:0 0 auto">
         <option value="auto" ${!(pan.leg1Axis)||pan.leg1Axis==='auto'?'selected':''}>自动</option>
-        <option value="h" ${pan.leg1Axis==='h'?'selected':''}>水平</option>
-        <option value="v" ${pan.leg1Axis==='v'?'selected':''}>竖直</option>
+        <option value="h" ${pan.leg1Axis==='h'?'selected':''}>水平优先</option>
+        <option value="v" ${pan.leg1Axis==='v'?'selected':''}>竖直优先</option>
+      </select></div>
+    <div class="ed-row" id="ed-leg2-row"><span>第二段方向</span>
+      <select class="ed-in" id="ed-leg2-axis" style="width:auto;margin:0;flex:0 0 auto">
+        <option value="auto" ${!(pan.leg2Axis)||pan.leg2Axis==='auto'?'selected':''}>自动</option>
+        <option value="h" ${pan.leg2Axis==='h'?'selected':''}>水平</option>
+        <option value="v" ${pan.leg2Axis==='v'?'selected':''}>竖直</option>
       </select></div>
     <div id="ed-elbow-fields">
     ${rng('leader.gap','第一段长度',16,320,1, Math.max(16, num(cfg.panel?.leaderGap,48)))}
@@ -1280,9 +1205,13 @@ function wireEditor() {
     if (e.target.value!=='free') clearAllManualPanels()
     clearLeaderParams() } }
   const em=el('ed-elbow-mode'); if(em){ em.value=(cfg.panel&&cfg.panel.elbowMode)||'orthogonal'; em.onchange=e=>{
-    cfg.panel=cfg.panel||{}; cfg.panel.elbowMode=e.target.value; clearManualKnee(activeHS?.data); syncLeaderEditorUI(); bumpLeader() } }
+    cfg.panel=cfg.panel||{}; cfg.panel.elbowMode=e.target.value
+    if (e.target.value==='leg2-lock') cfg.panel=LG.migratePanelLeader(cfg.panel)
+    clearManualKnee(activeHS?.data); syncLeaderEditorUI(); bumpLeader() } }
   const l1=el('ed-leg1-axis'); if(l1){ l1.value=(cfg.panel&&cfg.panel.leg1Axis)||'auto'; l1.onchange=e=>{
     cfg.panel=cfg.panel||{}; cfg.panel.leg1Axis=e.target.value; clearLeaderParams() } }
+  const l2=el('ed-leg2-axis'); if(l2){ l2.value=(cfg.panel&&(cfg.panel.leg2Axis||cfg.panel.leg1Axis))||'auto'; l2.onchange=e=>{
+    cfg.panel=cfg.panel||{}; cfg.panel.leg2Axis=e.target.value; clearLeaderParams() } }
   const kr=el('ed-knee-reset'); if(kr) kr.onclick=()=>{ if(activeHS?.data){ clearManualKnee(activeHS.data); bumpLeader(); syncLeaderEditorUI(); flash('已恢复自动折点') } else flash('请先打开一个热点') }
   const pr=el('ed-panel-reset'); if(pr) pr.onclick=()=>{ if(activeHS?.data){ delete activeHS.data.calloutPos; delete activeHS.data.calloutPosManual; bumpLeader(); syncLeaderEditorUI(); flash('已恢复自动面板位置') } else flash('请先打开一个热点') }
   syncLeaderEditorUI()

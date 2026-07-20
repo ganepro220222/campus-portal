@@ -591,15 +591,16 @@ function resolveCallout(mx, my, cw, ch, P, hs, maxX){
   P = LG.migratePanelLeader(P || {})
   let cardX, cardY
   const dir=P.dir||'auto'
+  const viewport={ minX:8, minY:66, maxX, maxY:innerHeight-ch-24 }
   const unpacked=hs?.calloutPosManual ? unpackCalloutPos(hs.calloutPos) : null
   if (unpacked){
-    const p=clampPanel(unpacked.x, unpacked.y, cw, ch, maxX); cardX=p.x; cardY=p.y
+    const p=clampPanel(unpacked.x, unpacked.y, cw, ch, maxX, viewport); cardX=p.x; cardY=p.y
   }else if (dir==='free' || dir==='auto'){
     ({cardX,cardY}=placePanelAuto(mx, my, cw, ch, maxX))
   }else{
     ({cardX,cardY}=placePanelByDir(mx, my, cw, ch, P, maxX))
   }
-  return LG.resolveCalloutGeom(mx, my, cw, ch, P, hs, { cardX, cardY })
+  return LG.resolveCalloutGeom(mx, my, cw, ch, P, hs, { cardX, cardY }, viewport)
 }
 function bumpLeader(){ if($('card').classList.contains('show')&&innerWidth>720){ $('hs-svg').removeAttribute('hidden'); leaderT0=performance.now() } }
 function syncLeaderEditorUI(){
@@ -687,9 +688,11 @@ function wireCalloutDrag(){
     card.addEventListener('pointermove', e=>{
       if (!panelDrag||!activeHS) return
       const card=$('card'), cw=card.offsetWidth||280, ch=card.offsetHeight||150
+      const reserve=editMode?320:8, maxX=innerWidth-reserve-cw-8
+      const viewport={ minX:8, minY:66, maxX, maxY:innerHeight-ch-24 }
       let nx=panelDrag.ox+e.clientX-panelDrag.sx, ny=panelDrag.oy+e.clientY-panelDrag.sy
-      const n=LG.nudgePanelFromHotspot(lastMx, lastMy, nx, ny, cw, ch)
-      activeHS.data.calloutPos=packCalloutPos(n.cardX, n.cardY)
+      const cl=LG.layoutPanelFromHotspot(lastMx, lastMy, nx, ny, cw, ch, viewport)
+      activeHS.data.calloutPos=packCalloutPos(cl.cardX, cl.cardY)
       activeHS.data.calloutPosManual=true; bumpLeader(); syncLeaderEditorUI()
     })
     card.addEventListener('pointerup', e=>{ panelDrag=null; try{card.releasePointerCapture(e.pointerId)}catch(_){} })
@@ -891,7 +894,7 @@ function start() {
     $('topbar').removeAttribute('hidden'); $('hud').removeAttribute('hidden')
     $('loading').classList.add('fade'); setTimeout(()=>$('loading').setAttribute('hidden',''), 460)
     $('hint').classList.add('show'); setTimeout(()=>$('hint').classList.remove('show'), 2600)
-    if (editMode) buildEditor()
+    if (editMode && typeof buildEditor === 'function') buildEditor()
     animate()
   }, evt => {
     if (evt.total) { const p=Math.min(100,Math.round(evt.loaded/evt.total*100)); $('bar').style.width=p+'%'; $('load-text').textContent=`正在加载模型… ${p}%` }
@@ -1372,6 +1375,9 @@ async function exportViewerOnly(){
     src = src.replace(/[ \t]*\/\* EDITOR-CSS-START[\s\S]*?\/\* EDITOR-CSS-END \*\/\n?/, '')
              .replace(/[ \t]*<!-- EDITOR-HTML-START[\s\S]*?<!-- EDITOR-HTML-END -->\n?/, '')
              .replace(/[ \t]*\/\* EDITOR-JS-START[\s\S]*?\/\* EDITOR-JS-END \*\/\n?/, '')
+             .replace(/const editMode = params\.get\('mode'\) === 'edit'/, "const editMode = false /* viewer-only */")
+             .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
+             .replace(/if \(editMode\) buildEditor\(\)/, '/* viewer-only: no editor */')
     const blob = new Blob([src], {type:'text/html'})
     const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='player.view.html'; a.click()
     flash('已导出仅观看版 player.view.html')

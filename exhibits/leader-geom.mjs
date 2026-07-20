@@ -12,18 +12,41 @@ export function hotspotInsidePanel(mx, my, cardX, cardY, cw, ch) {
   return mx >= cardX && mx <= cardX + cw && my >= cardY && my <= cardY + ch
 }
 
-/** 面板不得覆盖热点：将面板推到距热点至少 gap 的最近合法位置 */
-export function nudgePanelFromHotspot(mx, my, cardX, cardY, cw, ch, gap = PANEL_HOTSPOT_GAP) {
-  let x = cardX, y = cardY
-  if (mx >= x && mx <= x + cw) {
-    const left = mx - gap - cw, right = mx + gap
-    x = Math.abs(left - cardX) <= Math.abs(right - cardX) ? left : right
+/** 热点与面板之间保留 gap 间距（严格分离） */
+export function panelHotspotClear(mx, my, cardX, cardY, cw, ch, gap = PANEL_HOTSPOT_GAP) {
+  return mx + gap <= cardX || mx - gap >= cardX + cw || my + gap <= cardY || my - gap >= cardY + ch
+}
+
+/** 热点与面板（含安全间距）碰撞 = 未满足分离 */
+export function panelHotspotCollision(mx, my, cardX, cardY, cw, ch, gap = PANEL_HOTSPOT_GAP) {
+  return !panelHotspotClear(mx, my, cardX, cardY, cw, ch, gap)
+}
+
+/**
+ * 面板不得覆盖热点：仅真实碰撞时推离；四向候选 + 视口 clamp，选位移最小且不再碰撞者。
+ * viewport: { minX, minY, maxX, maxY, gap? }
+ */
+export function nudgePanelFromHotspot(mx, my, cardX, cardY, cw, ch, viewport = {}) {
+  const gap = viewport.gap ?? PANEL_HOTSPOT_GAP
+  if (!panelHotspotCollision(mx, my, cardX, cardY, cw, ch, gap)) {
+    return clampPanelPos(cardX, cardY, cw, ch, viewport)
   }
-  if (my >= y && my <= y + ch) {
-    const up = my - gap - ch, down = my + gap
-    y = Math.abs(up - cardY) <= Math.abs(down - cardY) ? up : down
+  const maxX = viewport.maxX ?? cardX
+  const cands = [
+    { cardX: mx + gap, cardY },
+    { cardX: mx - gap - cw, cardY },
+    { cardX, cardY: my + gap },
+    { cardX, cardY: my - gap - ch },
+  ]
+  let best = null, bestD = 1e18
+  for (const c of cands) {
+    const cl = clampPanel(c.cardX, c.cardY, cw, ch, maxX, viewport)
+    if (panelHotspotCollision(mx, my, cl.x, cl.y, cw, ch, gap)) continue
+    const d = Math.hypot(cl.x - cardX, cl.y - cardY)
+    if (d < bestD) { bestD = d; best = { cardX: cl.x, cardY: cl.y } }
   }
-  return { cardX: x, cardY: y }
+  if (best) return best
+  return clampPanelPos(cardX, cardY, cw, ch, viewport)
 }
 
 export function parseLeaderOpts(P) {
@@ -215,9 +238,17 @@ export function clampPanel(cardX, cardY, cw, ch, maxX, viewport = {}) {
   return { x: clampN(cardX, minX, maxX), y: clampN(cardY, minY, maxY) }
 }
 
-export function resolveCalloutGeom(mx, my, cw, ch, panel, hs, layout) {
-  const nudged = nudgePanelFromHotspot(mx, my, layout.cardX, layout.cardY, cw, ch)
-  const cardX = nudged.cardX, cardY = nudged.cardY
+function clampPanelPos(cardX, cardY, cw, ch, viewport) {
+  const cl = clampPanel(cardX, cardY, cw, ch, viewport.maxX ?? cardX, viewport)
+  return { cardX: cl.x, cardY: cl.y }
+}
+
+export function layoutPanelFromHotspot(mx, my, cardX, cardY, cw, ch, viewport = {}) {
+  return nudgePanelFromHotspot(mx, my, cardX, cardY, cw, ch, viewport)
+}
+
+export function resolveCalloutGeom(mx, my, cw, ch, panel, hs, layout, viewport = {}) {
+  const { cardX, cardY } = layoutPanelFromHotspot(mx, my, layout.cardX, layout.cardY, cw, ch, viewport)
   const O = parseLeaderOpts(panel)
   if (O.leader === 'straight' || O.leader === 'line') {
     const [ax, ay] = nearestAnchor(cardX, cardY, cw, ch, mx, my)

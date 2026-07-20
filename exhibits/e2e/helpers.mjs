@@ -19,6 +19,13 @@ function playerUrl({ ex = 'craft-001', mode, view = false } = {}) {
   return `/${file}?${q}`
 }
 
+/** 确定性 hidden-overlap：热点落在面板内边距锚点（pad=8）上，且 panelOverlap */
+export const HIDDEN_OVERLAP_GEOM = {
+  mx: 16, my: 74, cw: 100, ch: 80, cardX: 200, cardY: 200,
+  panel: { elbowMode: 'orthogonal' },
+  vp: { minX: 8, minY: 66, maxX: 8, maxY: 66, relaxedMaxX: 8 },
+}
+
 /** 注入 __CFG__（每次导航前 addInitScript，reload 前再调一次即可换配置） */
 export async function injectCfg(page, { panel = {}, camera = {} } = {}) {
   const cfg = baseCfg()
@@ -42,6 +49,35 @@ export async function gotoPlayerLight(page, opts = {}) {
   await injectCfg(page, opts)
   if (opts.viewport) await page.setViewportSize(opts.viewport)
   await page.goto(playerUrl(opts), { waitUntil: 'domcontentloaded' })
+}
+
+/** 注入 __CFG__ 并打开仅观看版（完整加载） */
+export async function gotoViewerReady(page, opts = {}) {
+  await injectCfg(page, opts)
+  if (opts.viewport) await page.setViewportSize(opts.viewport)
+  await page.goto(playerUrl({ ...opts, view: true, mode: opts.mode ?? undefined }))
+  await waitForPlayerReady(page)
+}
+
+/** 按 player updateCallout 的 leader 分支写入 DOM（用于 hidden-overlap 快测） */
+export async function applyLeaderDomFromGeom(page, args) {
+  return page.evaluate(async (a) => {
+    const LG = await import('./leader-geom.js')
+    const lay = LG.resolveCalloutGeom(a.mx, a.my, a.cw, a.ch, a.panel, {}, { cardX: a.cardX, cardY: a.cardY }, a.vp)
+    const leaderEl = document.getElementById('hs-leader')
+    const svg = document.getElementById('hs-svg')
+    svg?.removeAttribute('hidden')
+    if (lay.meta?.leaderHidden) leaderEl.setAttribute('points', '')
+    else {
+      leaderEl.setAttribute('points', lay.pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' '))
+    }
+    leaderEl.classList.toggle('straight', !!lay.meta?.leaderFallback)
+    return {
+      leaderFallback: lay.meta?.leaderFallback,
+      leaderHidden: lay.meta?.leaderHidden,
+      points: leaderEl.getAttribute('points'),
+    }
+  }, args)
 }
 
 /** 注入 __CFG__ 并打开播放器（完整加载） */

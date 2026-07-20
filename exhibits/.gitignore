@@ -1,2 +1,8 @@
 # 运行时备份（保存接口自动生成），不入库
 */.bak/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

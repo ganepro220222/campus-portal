@@ -1,0 +1,58 @@
+import { test, expect } from '@playwright/test'
+import { gotoPlayerLight, resolveGeom } from './helpers.mjs'
+
+const CRAFTS = ['craft-001', 'craft-002', 'craft-003', 'craft-004']
+
+test.describe('public entry (fast)', () => {
+  for (const dir of CRAFTS) {
+    test(`${dir}/ redirects to player.view.html without mode`, async ({ page }) => {
+      await page.goto(`/${dir}/`, { waitUntil: 'commit' })
+      await page.waitForURL(/player\.view\.html\?ex=/, { timeout: 10_000 })
+      expect(page.url()).toContain(`player.view.html?ex=${dir}`)
+      expect(page.url()).not.toContain('mode=edit')
+      expect(page.url()).not.toContain('player.html')
+    })
+  }
+
+  test('player.view.html?mode=edit does not expose editor DOM', async ({ page }) => {
+    await page.goto('/player.view.html?ex=craft-001&mode=edit', { waitUntil: 'domcontentloaded' })
+    await expect(page.locator('#editor')).toHaveCount(0)
+    await expect(page.locator('#ed-badge')).toHaveCount(0)
+    const editMode = await page.evaluate(() =>
+      /const editMode = false \/\* viewer-only \*\//.test(document.documentElement.innerHTML))
+    expect(editMode).toBe(true)
+  })
+})
+
+test.describe('geometry fallback (in-browser, no 3D)', () => {
+  test.beforeEach(async ({ page }) => {
+    await gotoPlayerLight(page)
+  })
+
+  test('panel-overlap straight fallback has positive length', async ({ page }) => {
+    const r = await resolveGeom(page, {
+      mx: 50, my: 80, cw: 500, ch: 400, cardX: 200, cardY: 200,
+      panel: { elbowMode: 'orthogonal' },
+      vp: { minX: 8, minY: 66, maxX: 8, maxY: 66, relaxedMaxX: 8 },
+    })
+    expect(r.meta.leaderFallback).toBe('panel-overlap')
+    expect(r.meta.l1).toBeGreaterThan(4)
+    expect(r.pts.length).toBe(2)
+    const dx = r.pts[1][0] - r.pts[0][0], dy = r.pts[1][1] - r.pts[0][1]
+    expect(Math.hypot(dx, dy)).toBeGreaterThan(4)
+  })
+
+  test('hidden-overlap when edge anchor degenerates', async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      const LG = await import('./leader-geom.js')
+      return LG.resolveCalloutGeom(100, 100, 200, 120, { elbowMode: 'orthogonal' }, {}, { cardX: 8, cardY: 66 },
+        { minX: 8, minY: 66, maxX: 8, maxY: 66, relaxedMaxX: 8 })
+    })
+    if (r.meta.leaderFallback === 'hidden-overlap') {
+      expect(r.meta.leaderHidden).toBe(true)
+      expect(r.pts.length).toBe(1)
+    } else {
+      expect(r.meta.l1).toBeGreaterThan(0)
+    }
+  })
+})

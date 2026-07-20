@@ -8,7 +8,8 @@
 exhibits/
   player.html          # 播放器 + 编辑器（全站共用一份）
   player.view.html     # 仅观看版（node build-viewer.mjs 从 player.html 生成）
-  build-viewer.mjs     # 生成/更新 player.view.html
+  build-viewer.mjs     # 生成/校验 player.view.html（node build-viewer.mjs [--check]）
+  package.json         # exhibits 目录 ESM（Node 测试用）
   leader-geom.js       # 引线/面板布局纯函数（player 与 player.view 均依赖）
   leader-geom.test.mjs # 几何单元测试（node leader-geom.test.mjs）
   serve.py             # Python 静态服务（修正 MIME，无 Node 时用）
@@ -51,6 +52,20 @@ Windows 双击或 CMD：`start.bat`（可选参数 `start.bat 8199`）
 **不要用** `python -m http.server`（曾导致播放器卡在「正在加载」；若必须用，请改用 `python serve.py 8199`）。
 
 须通过 HTTP 访问，不能直接双击 HTML 文件。
+
+## 测试
+
+```bash
+cd exhibits
+npm install
+npx playwright install chromium   # 首次运行 E2E 需要
+
+npm test                          # 几何单元测试（42 项）
+npm run test:e2e                  # Playwright 浏览器测试（smoke + 3D 播放器）
+npm run test:ci                   # 单元 + viewer 同步校验 + E2E（CI 同款）
+```
+
+E2E 分两类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 秒）与 `e2e/player.spec.mjs`（3D 模型串行，约 2 分钟）。本地若 8199 端口已有服务，Playwright 会复用，无需重复启动。
 
 ## 常用地址
 

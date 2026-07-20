@@ -8,7 +8,7 @@ import {
   resolveCalloutGeom, migratePanelLeader, LEG2_AUTO_TAIL,
   nudgePanelFromHotspot, hotspotInsidePanel, panelHotspotCollision, panelHotspotClear,
   layoutPanelFromHotspot, probeLeaderLayouts, hotspotClearance,
-} from './leader-geom.mjs'
+} from './leader-geom.js'
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))

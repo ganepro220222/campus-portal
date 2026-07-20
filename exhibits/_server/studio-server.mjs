@@ -3,7 +3,7 @@
  * 3D 鉴赏工作台 · 参考服务（零依赖，Node 内置模块）
  *
  *   STUDIO_USER=admin STUDIO_PASS=你的密码 node _server/studio-server.mjs
- *   # 打开 http://127.0.0.1:8080/studio.html （会弹 Basic Auth 登录）
+ *   # 打开 http://127.0.0.1:8199/studio.html （会弹 Basic Auth 登录）
  *
  * 提供：
  *   - 静态托管整个 exhibits/（并给 player.html 注入 window.__SAVE_API__，使「保存」直接写回）
@@ -20,7 +20,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
-const PORT = Number(process.env.PORT || 8080)
+const PORT = Number(process.env.PORT || 8199)
 const USER = process.env.STUDIO_USER || 'admin'
 const PASS = process.env.STUDIO_PASS || ''
 const SAFE = /^[a-zA-Z0-9_-]+$/

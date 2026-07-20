@@ -349,7 +349,7 @@ export function resolveOrthogonal(mx, my, cardX, cardY, cw, ch, panel, preferFir
   const raw = best || orthFallback(mx, my, cardX, cardY, cw, ch, O.leg1Axis)
   const fin = finalizeOrth(mx, my, raw, O.leg1Axis)
   if (fin) return { kx: fin.kx, ky: fin.ky, ax: fin.ax, ay: fin.ay, first: fin.first }
-  const [ax, ay] = nearestAnchor(cardX, cardY, cw, ch, mx, my)
+  const [ax, ay] = panelEdgeAnchor(mx, my, cardX, cardY, cw, ch)
   return { kx: ax, ky: ay, ax, ay, first: 'straight', leaderFallback: 'straight' }
 }
 
@@ -416,6 +416,28 @@ export function nearestAnchor(cardX, cardY, cw, ch, mx, my) {
   return [clampN(mx, cardX + 8, cardX + cw - 8), clampN(my, cardY + 8, cardY + ch - 8)]
 }
 
+/** 锚点是否在面板内边距边缘上 */
+export function anchorOnPanelEdge(ax, ay, cardX, cardY, cw, ch, eps = 0.5) {
+  const b = panelBounds(cardX, cardY, cw, ch)
+  const onV = (Math.abs(ax - b.l) <= eps || Math.abs(ax - b.r) <= eps) && ay >= b.t - eps && ay <= b.b + eps
+  const onH = (Math.abs(ay - b.t) <= eps || Math.abs(ay - b.b) <= eps) && ax >= b.l - eps && ax <= b.r + eps
+  return onV || onH
+}
+
+const orthPreferFirst = new WeakMap()
+
+export function getOrthPreferFirst(hs) {
+  return hs ? orthPreferFirst.get(hs) : undefined
+}
+
+export function setOrthPreferFirst(hs, first) {
+  if (hs && first) orthPreferFirst.set(hs, first)
+}
+
+export function clearOrthPreferFirst(hs) {
+  if (hs) orthPreferFirst.delete(hs)
+}
+
 export function packCalloutPos(x, y, vw, vh) { return { x, y, vw, vh } }
 
 export function unpackCalloutPos(pos, vw, vh) {
@@ -445,15 +467,22 @@ export function resolveCalloutGeom(mx, my, cw, ch, panel, hs, layout, viewport =
   const { cardX, cardY, degraded, clearance, panelOverlap, reserveRelaxed } = pl
   const O = parseLeaderOpts(panel)
   const panelMeta = { panelDegraded: degraded, panelClearance: clearance, panelOverlap, reserveRelaxed }
-  const preferFirst = hs?.calloutOrthFirst
+  const preferFirst = getOrthPreferFirst(hs)
 
   function straightResult(reason) {
-    const [ax, ay] = nearestAnchor(cardX, cardY, cw, ch, mx, my)
+    const [ax, ay] = panelEdgeAnchor(mx, my, cardX, cardY, cw, ch)
     const l1 = Math.hypot(ax - mx, ay - my)
+    if (l1 < ORTH_MIN_SEG) {
+      return {
+        cardX, cardY, ax, ay,
+        pts: [[mx, my]],
+        meta: { l1: 0, l2: 0, ang: 0, leaderFallback: 'hidden-overlap', leaderHidden: true, ...panelMeta },
+      }
+    }
     return {
       cardX, cardY, ax, ay,
       pts: [[mx, my], [ax, ay]],
-      meta: { l1, l2: 0, ang: 180, leaderFallback: reason, ...panelMeta },
+      meta: { l1, l2: 0, ang: 180, leaderFallback: reason || 'straight', ...panelMeta },
     }
   }
 
@@ -469,7 +498,7 @@ export function resolveCalloutGeom(mx, my, cw, ch, panel, hs, layout, viewport =
     const { kx, ky, ax, ay, first } = orth
     const ang = interiorAngle(mx, my, kx, ky, ax, ay)
     const l1 = Math.hypot(kx - mx, ky - my), l2 = Math.hypot(ax - kx, ay - ky)
-    if (hs) hs.calloutOrthFirst = first
+    setOrthPreferFirst(hs, first)
     return { cardX, cardY, ax, ay, pts: elbow2(mx, my, kx, ky, ax, ay), meta: { kx, ky, ang, l1, l2, ...panelMeta } }
   }
   const edge = panelEdgeAnchor(mx, my, cardX, cardY, cw, ch)
@@ -504,7 +533,7 @@ export function migratePanelLeader(panel) {
 export function probeLeaderLayouts(seed = 42, count = 2000) {
   let s = seed
   const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
-  const stats = { total: 0, badAngle: 0, zeroSeg: 0, badDir: 0, nan: 0, overlap: 0, straightFallback: 0 }
+  const stats = { total: 0, badAngle: 0, zeroSeg: 0, badDir: 0, nan: 0, overlap: 0, straightFallback: 0, badStraight: 0 }
   const modes = ['auto', 'h', 'v']
   for (let i = 0; i < count; i++) {
     for (const leg1Axis of modes) {
@@ -523,6 +552,13 @@ export function probeLeaderLayouts(seed = 42, count = 2000) {
       if (leaderFallback) {
         stats.straightFallback++
         if (r.pts.some(p => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) stats.nan++
+        if (leaderFallback === 'hidden-overlap' || r.meta.leaderHidden) {
+          if (r.pts.length !== 1) stats.badStraight++
+          continue
+        }
+        if (r.meta.l1 <= 0.01 || r.pts.length < 2) stats.zeroSeg++
+        if (r.pts.length >= 2 && Math.hypot(r.pts[1][0] - r.pts[0][0], r.pts[1][1] - r.pts[0][1]) <= 0.01) stats.zeroSeg++
+        if (!anchorOnPanelEdge(r.ax, r.ay, r.cardX, r.cardY, cw, ch)) stats.badStraight++
         continue
       }
       if (!isRightAngle(mx, my, kx, ky, r.ax, r.ay)) stats.badAngle++

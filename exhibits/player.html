@@ -760,8 +760,9 @@ function updateCallout() {
     const g = 1 - Math.pow(1 - Math.min(1,(performance.now()-leaderT0)/320), 3)
     $('hs-dot').setAttribute('cx',mx); $('hs-dot').setAttribute('cy',my)
     const leaderEl = $('hs-leader')
-    leaderEl.setAttribute('points', growPoly(pts, g))
-    leaderEl.classList.toggle('straight', O.leader==='straight'||O.leader==='line')
+    if (lay.meta?.leaderHidden) leaderEl.setAttribute('points', '')
+    else leaderEl.setAttribute('points', growPoly(pts, g))
+    leaderEl.classList.toggle('straight', O.leader==='straight'||O.leader==='line'||!!lay.meta?.leaderFallback)
     $('hs-knee').setAttribute('hidden','')
   } else {
     // 移动端：就近显示于热点旁，夹取在视口内（避开顶栏 / 底部工具条），无引线

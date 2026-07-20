@@ -503,13 +503,19 @@ function openHotspot(h, el) {
   if (h.audio) playTrackById(h.audio)   // 该热点绑定了语音讲解 → 自动播放
   setTimeout(() => $('card').classList.add('show'), wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
 }
+function releaseCalloutDrag() {
+  kneeDrag = null; panelDrag = null; lastPts = null
+  document.body.classList.remove('edit-callout-knee')
+  try { $('hs-svg').releasePointerCapture?.() } catch (_) {}
+  try { $('card').releasePointerCapture?.() } catch (_) {}
+}
 function closeHotspot() {
   $('card').classList.remove('show')
   $('card').classList.remove('ed-movable')
   $('hs-svg').setAttribute('hidden','')
   $('hs-knee').setAttribute('hidden',''); $('hs-knee').classList.remove('edit')
-  document.body.classList.remove('edit-callout-knee')
   document.body.classList.remove('edit-callout')
+  releaseCalloutDrag()
   hotspots.forEach(x => x.el.classList.remove('active'))
   activeHS = null
   focusTo(pivot.clone(), initialCam.length(), 700, initialCam.clone())
@@ -673,7 +679,9 @@ function wireCalloutDrag(){
       activeHS.data.leaderKnee=[kneeDrag.ox+e.clientX-kneeDrag.sx, kneeDrag.oy+e.clientY-kneeDrag.sy]
       activeHS.data.leaderKneeManual=true; bumpLeader(); syncLeaderEditorUI()
     })
-    svg.addEventListener('pointerup', e=>{ kneeDrag=null; document.body.classList.remove('edit-callout-knee'); try{svg.releasePointerCapture(e.pointerId)}catch(_){} })
+    const endKneeDrag = e => { kneeDrag=null; document.body.classList.remove('edit-callout-knee'); try{svg.releasePointerCapture(e.pointerId)}catch(_){} }
+    svg.addEventListener('pointerup', endKneeDrag)
+    svg.addEventListener('pointercancel', endKneeDrag)
   }
   if (card && !card._pdWire){
     card._pdWire=1
@@ -695,7 +703,9 @@ function wireCalloutDrag(){
       activeHS.data.calloutPos=packCalloutPos(cl.cardX, cl.cardY)
       activeHS.data.calloutPosManual=true; bumpLeader(); syncLeaderEditorUI()
     })
-    card.addEventListener('pointerup', e=>{ panelDrag=null; try{card.releasePointerCapture(e.pointerId)}catch(_){} })
+    const endPanelDrag = e => { panelDrag=null; try{card.releasePointerCapture(e.pointerId)}catch(_){} }
+    card.addEventListener('pointerup', endPanelDrag)
+    card.addEventListener('pointercancel', endPanelDrag)
   }
 }
 function updateCallout() {

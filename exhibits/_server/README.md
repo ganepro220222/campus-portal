@@ -22,7 +22,7 @@
 ```bash
 cd exhibits
 STUDIO_PASS=你的密码 node _server/studio-server.mjs
-# 浏览器打开 http://127.0.0.1:8080/studio.html
+# 浏览器打开 http://127.0.0.1:8199/studio.html
 ```
 
 未设置 `STUDIO_PASS` 时不启用鉴权，仅限本机调试，勿暴露到公网。

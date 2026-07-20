@@ -262,6 +262,21 @@
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
 </script>
+<script>
+window.__SY_PLAYER = { module: false, booted: false }
+setTimeout(function () {
+  if (window.__SY_PLAYER.booted) return
+  var msg = window.__SY_PLAYER.module
+    ? '配置或模型加载超时，请检查 craft-XXX/config.json 与 assets/model.glb 是否存在'
+    : '播放器模块加载失败。请在 exhibits 目录运行：python serve.py 8199  或  node _server/studio-server.mjs（不要用 python -m http.server）'
+  var loading = document.getElementById('loading')
+  var err = document.getElementById('error')
+  var errText = document.getElementById('err-text')
+  if (loading) loading.setAttribute('hidden', '')
+  if (err) err.removeAttribute('hidden')
+  if (errText) errText.textContent = msg
+}, 12000)
+</script>
 
 <script type="module">
 import * as THREE from 'three'
@@ -270,8 +285,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
-import * as LG from './leader-geom.mjs'
+import * as LG from './leader-geom.js'
 
+window.__SY_PLAYER = window.__SY_PLAYER || {}
+window.__SY_PLAYER.module = true
 const $ = id => document.getElementById(id)
 const params = new URLSearchParams(location.search)
 const editMode = params.get('mode') === 'edit'
@@ -910,7 +927,10 @@ function start() {
   roomIBL() // 先给内置环境，秒出反射
   buildLights() // 四光源灯组（叠加在 IBL 上，可编辑）
 
-  makeLoader().load(asset(cfg.assets.model), gltf => {
+  const modelUrl = asset(cfg.assets.model)
+  if (!modelUrl) return showError('模型地址无效', true)
+
+  makeLoader().load(modelUrl, gltf => {
     model = gltf.scene
     normalize(model); applyMaterial(); scene.add(model)
     placeCamera(); buildHotspots(); buildHUD(); renderText(); buildAudio(); wireAudio()
@@ -941,12 +961,19 @@ function start() {
 }
 
 async function boot() {
+  window.__SY_PLAYER.booted = true
   $('error').setAttribute('hidden',''); $('loading').removeAttribute('hidden'); $('loading').classList.remove('fade')
   try {
     if (window.__CFG__) cfg = window.__CFG__            // 便携单文件：内联配置，免 fetch（可双击 file:// 打开）
-    else cfg = await (await fetch(BASE + 'config.json', {cache:'no-cache'})).json()   // 共享播放器：按 ?ex= 读该展品配置
+    else {
+      const url = BASE + 'config.json'
+      const res = await fetch(url, { cache: 'no-cache' })
+      if (!res.ok) throw new Error(`HTTP ${res.status} · ${url}`)
+      cfg = await res.json()
+    }
   }
-  catch(e){ return showError('配置加载失败：'+e.message, true) }
+  catch(e){ return showError('配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）', true) }
+  if (!cfg?.assets?.model) return showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true)
   if (!initRenderer()) return showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信')
   document.title = t(cfg.i18n).title || '立体鉴赏'
   if (cfg.assets.poster) { $('poster').style.backgroundImage=`url("${asset(cfg.assets.poster)}")`; $('poster').classList.add('on') }

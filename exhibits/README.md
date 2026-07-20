@@ -9,15 +9,17 @@ exhibits/
   player.html          # 播放器 + 编辑器（全站共用一份）
   player.view.html     # 仅观看版（node build-viewer.mjs 从 player.html 生成）
   build-viewer.mjs     # 生成/更新 player.view.html
-  leader-geom.mjs      # 引线/面板布局纯函数（player 与 player.view 均依赖）
-  leader-geom.test.mjs # 几何单元测试（node exhibits/leader-geom.test.mjs）
+  leader-geom.js       # 引线/面板布局纯函数（player 与 player.view 均依赖）
+  leader-geom.test.mjs # 几何单元测试（node leader-geom.test.mjs）
+  serve.py             # Python 静态服务（修正 MIME，无 Node 时用）
+  start.sh / start.bat # 一键启动（Git Bash / Windows）
   vendor/              # Three.js 与 Draco / Basis 解码器
   studio.html          # 工作台：列出全部展品，点卡片进入编辑或预览
   manifest.json        # 展品目录清单（启用保存服务时可自动扫描，无需手改）
   craft-001/
     config.json        # 该展品的配置（标题、相机、材质、热点、光照、语音等）
     assets/            # model.glb、panorama.jpg、poster.jpg、音频等
-    index.html         # 公开跳转壳 → ../player.view.html?ex=craft-001（不透传 mode=edit）
+    index.html         # 跳转壳 → ../player.html?ex=craft-001（不透传 mode=edit）
   craft-002/ …         # 每件展品仅含一份 config 与 assets
 ```
 
@@ -26,13 +28,29 @@ exhibits/
 
 ## 本地运行
 
+在 **`exhibits/` 目录** 下启动（Git Bash）：
+
 ```bash
-cd exhibits
-python3 -m http.server 8099
-# 工作台： http://127.0.0.1:8099/studio.html
+cd /d/shuyuan/exhibits
+bash start.sh
+# 或指定端口：bash start.sh 8199
 ```
 
-须通过 HTTP 访问（ES 模块与 `fetch` 需要 http 协议，不能直接双击打开 HTML）。
+Windows 双击或 CMD：`start.bat`（可选参数 `start.bat 8199`）
+
+启动后访问：
+
+| 用途 | 地址 |
+|---|---|
+| 工作台 | `http://127.0.0.1:8199/studio.html` |
+| 观看展品 | `http://127.0.0.1:8199/craft-001/` |
+| 编辑展品 | `http://127.0.0.1:8199/player.html?ex=craft-001&mode=edit` |
+
+`start.sh` 优先用 Node 工作台服务（含保存 API）；无 Node 时自动改用 `python serve.py`。
+
+**不要用** `python -m http.server`（曾导致播放器卡在「正在加载」；若必须用，请改用 `python serve.py 8199`）。
+
+须通过 HTTP 访问，不能直接双击 HTML 文件。
 
 ## 常用地址
 
@@ -81,7 +99,7 @@ exhibits/craft-XXX/
 
 - **公开访问（观看版）**：须在同一目录下保持相对路径部署以下文件：
   - `player.view.html`（编辑器「导出仅观看版」生成）
-  - `leader-geom.mjs`（播放器模块依赖，遗漏会导致浏览器加载失败）
+  - `leader-geom.js`（播放器模块依赖，遗漏会导致浏览器加载失败）
   - `vendor/`（Three.js 与解码器）
   - 各展品数据目录（`craft-XXX/config.json`、`assets/` 等）
   - 外链可指向 `…/craft-001/` 或 `…/player.view.html?ex=craft-001`

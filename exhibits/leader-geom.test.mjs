@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import {
   resolveOrthogonal, leg1LockedKnee, leg2LockedKnee, interiorAngle,
-  isRightAngle, parseLeaderOpts, packCalloutPos, unpackCalloutPos,
+  isRightAngle, packCalloutPos, unpackCalloutPos,
   resolveCalloutGeom, migratePanelLeader, LEG2_AUTO_TAIL,
-} from './leader-geom.js'
+  nudgePanelFromHotspot, hotspotInsidePanel,
+} from './leader-geom.mjs'
 
 let pass = 0, fail = 0
 function test(name, fn) {
@@ -18,6 +19,20 @@ test('orthogonal: audit case is 90°', () => {
   const r = resolveOrthogonal(100, 100, 500, 300, 300, 150, { elbowMode: 'orthogonal' })
   near(interiorAngle(100, 100, r.kx, r.ky, r.ax, r.ay), 90)
   assert.ok(isRightAngle(100, 100, r.kx, r.ky, r.ax, r.ay))
+})
+
+test('orthogonal: panel overlapping hotspot nudges to 90°', () => {
+  const mx = 400, my = 350, cw = 300, ch = 150
+  const cardX = 300, cardY = 300
+  assert.ok(hotspotInsidePanel(mx, my, cardX, cardY, cw, ch))
+  const r = resolveCalloutGeom(mx, my, cw, ch, { elbowMode: 'orthogonal' }, null, { cardX, cardY })
+  assert.ok(!hotspotInsidePanel(mx, my, r.cardX, r.cardY, cw, ch))
+  near(r.meta.ang, 90)
+})
+
+test('nudgePanelFromHotspot pushes panel away', () => {
+  const n = nudgePanelFromHotspot(400, 350, 300, 300, 300, 150)
+  assert.ok(!hotspotInsidePanel(400, 350, n.cardX, n.cardY, 300, 150))
 })
 
 test('orthogonal: panel right of hotspot', () => {

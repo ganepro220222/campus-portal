@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import {
-  gotoPlayerLight, gotoViewerReady, resolveGeom, applyLeaderDomFromGeom,
+  gotoPlayerLight, gotoViewerReady, resolveGeom, renderHiddenOverlapInPlayer,
   HIDDEN_OVERLAP_GEOM, openFirstHotspot, calloutSnapshot, segmentCount,
 } from './helpers.mjs'
 
@@ -69,8 +69,9 @@ test.describe('geometry fallback (in-browser, no 3D)', () => {
     expect(r.meta.l1).toBe(0)
   })
 
-  test('hidden-overlap clears #hs-leader points in player DOM', async ({ page }) => {
-    const dom = await applyLeaderDomFromGeom(page, HIDDEN_OVERLAP_GEOM)
+  test('hidden-overlap clears #hs-leader via production renderLeaderElement', async ({ page }) => {
+    await gotoPlayerLight(page, { mode: 'edit', viewport: { width: 900, height: 700 } })
+    const dom = await renderHiddenOverlapInPlayer(page)
     expect(dom.leaderFallback).toBe('hidden-overlap')
     expect(dom.leaderHidden).toBe(true)
     expect(dom.points).toBe('')

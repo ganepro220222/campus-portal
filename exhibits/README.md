@@ -7,7 +7,8 @@
 ```
 exhibits/
   player.html          # 播放器 + 编辑器（全站共用一份）
-  player.view.html     # 仅观看版（编辑器内导出；须与 leader-geom.mjs 同目录部署）
+  player.view.html     # 仅观看版（node build-viewer.mjs 从 player.html 生成）
+  build-viewer.mjs     # 生成/更新 player.view.html
   leader-geom.mjs      # 引线/面板布局纯函数（player 与 player.view 均依赖）
   leader-geom.test.mjs # 几何单元测试（node exhibits/leader-geom.test.mjs）
   vendor/              # Three.js 与 Draco / Basis 解码器

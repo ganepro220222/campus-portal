@@ -153,7 +153,6 @@
     font-size:26px; font-weight:700; color:#0b0d14; background:var(--gold); }
   .err-btn { margin-top:4px; padding:9px 24px; border:1px solid var(--gold); border-radius:999px; background:transparent; color:#f4e6c8; font-size:13px; cursor:pointer; }
 
-
 </style>
 </head>
 <body>
@@ -208,7 +207,6 @@
       <button class="err-btn" id="err-btn" hidden>重新加载</button>
     </div>
   </div>
-
 
 </div>
 
@@ -936,8 +934,6 @@ async function boot() {
 }
 
 $('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); boot() }
-
-
 
 boot()
 </script>

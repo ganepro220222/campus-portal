@@ -1428,6 +1428,7 @@ async function exportViewerOnly(){
     src = src.replace(/[ \t]*\/\* EDITOR-CSS-START[\s\S]*?\/\* EDITOR-CSS-END \*\/\n?/, '')
              .replace(/[ \t]*<!-- EDITOR-HTML-START[\s\S]*?<!-- EDITOR-HTML-END -->\n?/, '')
              .replace(/[ \t]*\/\* EDITOR-JS-START[\s\S]*?\/\* EDITOR-JS-END \*\/\n?/, '')
+             .replace(/[ \t]*\/\* TEST-HOOKS-START[\s\S]*?\/\* TEST-HOOKS-END \*\/\n?/, '')
              .replace(/const editMode = params\.get\('mode'\) === 'edit'/, "const editMode = false /* viewer-only */")
              .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
              .replace(/if \(editMode\) buildEditor\(\)/, '/* viewer-only: no editor */')
@@ -1437,6 +1438,42 @@ async function exportViewerOnly(){
   }catch(e){ alert('导出仅观看版失败：'+e.message) }
 }
 /* EDITOR-JS-END */
+
+/* TEST-HOOKS-START — build-viewer 剔除，仅 edit 模式 E2E */
+if (editMode) {
+  window.__SY_TEST__ = {
+    dragState: () => ({ kneeDrag: kneeDrag != null, panelDrag: panelDrag != null }),
+    openHotspotByIndex: (i = 0) => {
+      const item = hotspots[i]
+      if (!item) return false
+      openHotspot(item.data, item.el)
+      return true
+    },
+    setAutoRotate: (on) => { controls.autoRotate = !!on },
+    isAutoRotating: () => !!controls.autoRotate,
+    startPanelDragTest: () => {
+      if (!activeHS || innerWidth <= 720) return false
+      const c = $('card'), d = activeHS.data
+      const ox = parseFloat(c.style.left) || 0, oy = parseFloat(c.style.top) || 0
+      if (!d.calloutPosManual) { d.calloutPos = packCalloutPos(ox, oy); d.calloutPosManual = true }
+      panelDrag = { sx: ox, sy: oy, ox, oy, pid: 1 }
+      try { c.setPointerCapture(1) } catch (_) {}
+      return true
+    },
+    calloutSnapshot: () => {
+      if (!activeHS) return null
+      const card = $('card')
+      return {
+        cardX: parseFloat(card.style.left) || 0,
+        cardY: parseFloat(card.style.top) || 0,
+        points: $('hs-leader').getAttribute('points') || '',
+        svgHidden: $('hs-svg').hasAttribute('hidden'),
+        cardShow: card.classList.contains('show'),
+      }
+    },
+  }
+}
+/* TEST-HOOKS-END */
 
 boot()
 </script>

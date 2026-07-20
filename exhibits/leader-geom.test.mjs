@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import {
   resolveOrthogonal, leg1LockedKnee, leg2LockedKnee, interiorAngle,
@@ -248,8 +249,8 @@ test('migratePanelLeader copies leg1Axis to leg2Axis in leg2-lock', () => {
   assert.equal(m.leg2Axis, 'h')
 })
 
-test('property probe: 6000 layouts (seed=42) have valid geometry or straight fallback', () => {
-  const s = probeLeaderLayouts(42, 2000)
+test('property probe: 60000 layouts (seed=42) have valid geometry or straight fallback', () => {
+  const s = probeLeaderLayouts(42, 20000)
   assert.equal(s.nan, 0)
   assert.equal(s.badAngle, 0)
   assert.equal(s.zeroSeg, 0)
@@ -297,6 +298,11 @@ test('batch: collectBatchOps skips modeOff fields', () => {
   assert.equal(ops[0].path, 'panel.style')
 })
 
+test('build-viewer: player.view.html is byte-identical to generator output', () => {
+  const r = spawnSync(process.execPath, ['build-viewer.mjs', '--check'], { cwd: ROOT, encoding: 'utf8' })
+  assert.equal(r.status, 0, (r.stderr || r.stdout || 'build-viewer --check failed').trim())
+})
+
 test('export viewer strips editMode and buildEditor', () => {
   let src = fs.readFileSync(path.join(ROOT, 'player.html'), 'utf8')
   src = src.replace(/[ \t]*\/\* EDITOR-CSS-START[\s\S]*?\/\* EDITOR-CSS-END \*\/\n?/, '')
@@ -306,6 +312,9 @@ test('export viewer strips editMode and buildEditor', () => {
            .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
   assert.match(src, /const editMode = false \/\* viewer-only \*\//)
   assert.doesNotMatch(src, /buildEditor\(\)/)
+  const view = fs.readFileSync(path.join(ROOT, 'player.view.html'), 'utf8')
+  assert.match(view, /const editMode = false \/\* viewer-only \*\//)
+  assert.doesNotMatch(view, /buildEditor\(\)/)
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)

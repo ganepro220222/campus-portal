@@ -1,0 +1,14 @@
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node leader-geom.test.mjs",
+    "test:e2e": "playwright test",
+    "test:ci": "node leader-geom.test.mjs && node build-viewer.mjs --check && playwright test",
+    "build:viewer": "node build-viewer.mjs",
+    "check:viewer": "node build-viewer.mjs --check"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

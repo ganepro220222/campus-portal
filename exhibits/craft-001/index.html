@@ -7,8 +7,8 @@
 <style>html,body{height:100%;margin:0;background:#0f1118;color:#c8a86a;font-family:system-ui,-apple-system,"PingFang SC",sans-serif}
 .c{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;letter-spacing:1px;opacity:.8}</style>
 <script>
-/* 公开观看入口：/exhibits/craft-001/ → ../player.view.html?ex=craft-001
-   不透传 mode=edit；本目录只放数据（config.json + assets/）。 */
+/* 观看入口：/exhibits/craft-001/ → ../player.view.html?ex=craft-001
+   本地/仓库已包含 player.view.html；不透传 mode=edit。编辑请直接打开 player.html?ex=…&mode=edit */
 (function () {
   var params = new URLSearchParams(location.search);
   params.delete('mode');

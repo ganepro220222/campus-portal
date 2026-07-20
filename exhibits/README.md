@@ -16,7 +16,7 @@ exhibits/
   craft-001/
     config.json        # 该展品的配置（标题、相机、材质、热点、光照、语音等）
     assets/            # model.glb、panorama.jpg、poster.jpg、音频等
-    index.html         # 跳转壳 → ../player.html?ex=craft-001（公开站点建议改指向 player.view.html）
+    index.html         # 公开跳转壳 → ../player.view.html?ex=craft-001（不透传 mode=edit）
   craft-002/ …         # 每件展品仅含一份 config 与 assets
 ```
 
@@ -38,7 +38,7 @@ python3 -m http.server 8099
 | 用途 | 地址 |
 |---|---|
 | 工作台 | `…/studio.html` |
-| 观看某展品 | `…/player.html?ex=craft-001` 或 `…/craft-001/` |
+| 观看某展品 | `…/player.view.html?ex=craft-001` 或 `…/craft-001/` |
 | 编辑某展品 | `…/player.html?ex=craft-001&mode=edit` |
 
 ## 编辑器功能

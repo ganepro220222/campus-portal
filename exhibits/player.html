@@ -128,6 +128,9 @@
     filter:drop-shadow(0 0 3px rgba(200,168,106,.5)); }
   #hs-leader.straight { stroke-width:1.3; opacity:.82; }
   #hs-dot { fill:var(--gold); filter:drop-shadow(0 0 4px rgba(200,168,106,.7)); }
+  #hs-knee { fill:var(--gold); stroke:#0f1118; stroke-width:1.5; opacity:0; pointer-events:none; }
+  #hs-knee.edit { opacity:.92; pointer-events:auto; cursor:grab; }
+  #hs-knee.edit:active { cursor:grabbing; }
   body.edit-callout .hs-svg { pointer-events:auto; cursor:default; }
   body.edit-callout .card.ed-movable .card-title { cursor:grab; }
   body.edit-callout .card.ed-movable .card-title:active { cursor:grabbing; }
@@ -206,7 +209,7 @@
     <div class="topbar-sub" id="c-sub"></div>
   </header>
   <div class="hint" id="hint">拖动旋转 · 双指缩放</div>
-  <svg class="hs-svg" id="hs-svg" hidden><polyline id="hs-leader" points="" /><circle id="hs-dot" r="3.4" cx="0" cy="0" /></svg>
+  <svg class="hs-svg" id="hs-svg" hidden><polyline id="hs-leader" points="" /><circle id="hs-dot" r="3.4" cx="0" cy="0" /><circle id="hs-knee" r="5" cx="0" cy="0" hidden /></svg>
   <div class="hs-layer" id="hs-layer"></div>
 
   <!-- 语音讲解 小型播放器 -->
@@ -503,6 +506,7 @@ function closeHotspot() {
   $('card').classList.remove('show')
   $('card').classList.remove('ed-movable')
   $('hs-svg').setAttribute('hidden','')
+  $('hs-knee').setAttribute('hidden',''); $('hs-knee').classList.remove('edit')
   document.body.classList.remove('edit-callout')
   hotspots.forEach(x => x.el.classList.remove('active'))
   activeHS = null
@@ -558,58 +562,66 @@ function leaderOpts(P){
   let ang=num(P.elbowAngle, NaN)
   if (!isFinite(ang) && typeof P.elbowRatio==='number') ang=90+(1-P.elbowRatio)*90
   if (!isFinite(ang)) ang=90
-  return { leader:P.leader||'elbow', dir:P.dir||'auto', stub:Math.max(4, num(P.leaderGap, 48)), tail:num(P.leaderTail, 0),
-    mode:P.elbowMode||'orthogonal', angle:clampN(ang, 90, 180), leg1Axis:P.leg1Axis||'auto' }
-}
-function vecTurnFrom(v1x, v1y, interiorDeg, tx, ty){
-  const l=Math.hypot(v1x, v1y)||1; v1x/=l; v1y/=l
-  const turn=Math.PI-interiorDeg*Math.PI/180
-  const c=Math.cos(turn), s=Math.sin(turn)
-  const a1x=v1x*c-v1y*s, a1y=v1x*s+v1y*c, a2x=v1x*c+v1y*s, a2y=-v1x*s+v1y*c
-  return (a1x*tx+a1y*ty>=(a2x*tx+a2y*ty)) ? [a1x,a1y] : [a2x,a2y]
+  return { leader:P.leader||'elbow', dir:P.dir||'auto', stub:Math.max(16, num(P.leaderGap, 48)), tail:num(P.leaderTail, 0),
+    mode:P.elbowMode||'orthogonal', angle:clampN(ang, 90, 165), leg1Axis:P.leg1Axis||'auto' }
 }
 function elbow2(mx, my, kx, ky, ax, ay){ return [[mx,my],[kx,ky],[ax,ay]] }
 function nearestAnchor(cardX, cardY, cw, ch, mx, my){
   return [clampN(mx, cardX+8, cardX+cw-8), clampN(my, cardY+8, cardY+ch-8)]
 }
-// 在面板上取与折点构成 90° 的连接点（仅两段：H→K→A）
 function anchor90(kx, ky, cardX, cardY, cw, ch){
   const p=8, l=cardX+p, r=cardX+cw-p, t=cardY+p, b=cardY+ch-p
   const cands=[]
-  if (kx>=l&&kx<=r){ cands.push([kx,t],[kx,b]) }
-  if (ky>=t&&ky<=b){ cands.push([l,ky],[r,ky]) }
+  if (kx>=l&&kx<=r) cands.push([kx,t],[kx,b])
+  if (ky>=t&&ky<=b) cands.push([l,ky],[r,ky])
   if (!cands.length) return [clampN(kx,l,r), clampN(ky,t,b)]
   let best=cands[0], bd=1e9
   for (const c of cands){ const d=Math.hypot(c[0]-kx,c[1]-ky); if(d<bd){ bd=d; best=c } }
   return best
 }
+function interiorAngle(mx, my, kx, ky, ax, ay){
+  const v1x=mx-kx, v1y=my-ky, v2x=ax-kx, v2y=ay-ky, l1=Math.hypot(v1x,v1y)||1, l2=Math.hypot(v2x,v2y)||1
+  return Math.acos(clampN((v1x/l1*v2x/l2+v1y/l1*v2y/l2),-1,1))*180/Math.PI
+}
+function leg1LockedKnee(mx, my, axis, s1, stub){
+  if (axis==='h') return [mx+s1*stub, my]
+  return [mx, my+s1*stub]
+}
+// 直角 L 形：面板位置固定 → 折点 + 90° 连接点（方案 A）
+function resolveOrthogonal(mx, my, cardX, cardY, cw, ch, P){
+  const O=leaderOpts(P), p=8, l=cardX+p, r=cardX+cw-p, t=cardY+p, b=cardY+ch-p
+  const cx=(l+r)/2, cy=(t+b)/2
+  let axis=O.leg1Axis==='h'?'h':O.leg1Axis==='v'?'v':(Math.abs(cx-mx)>=Math.abs(cy-my)?'h':'v')
+  let kx, ky
+  if (axis==='h'){
+    const s1=O.leg1Axis==='auto'? (cx>=mx?1:-1) : leaderSign1(O.dir,'h',mx,my,cx,cy)
+    kx=mx+s1*O.stub; ky=my
+    if (kx<l||kx>r){ axis='v' } else { const a=anchor90(kx,ky,cardX,cardY,cw,ch); return { kx, ky, ax:a[0], ay:a[1] } }
+  }
+  const s1=O.leg1Axis==='auto'? (cy>=my?1:-1) : leaderSign1(O.dir,'v',mx,my,cx,cy)
+  kx=mx; ky=my+s1*O.stub
+  const a=anchor90(kx,ky,cardX,cardY,cw,ch)
+  return { kx, ky, ax:a[0], ay:a[1] }
+}
+function leg2LockedKnee(mx, my, ax, ay, panel){
+  const O=leaderOpts(panel)
+  const axis=O.leg1Axis==='h'?'h':O.leg1Axis==='v'?'v':leaderAxis(O.dir,mx,my,ax,ay)
+  const sec=axis==='h'?'v':'h'
+  const len2=O.tail>0?O.tail:Math.max(24, O.stub*0.55)
+  if (sec==='v') return [ax, ay+(my>ay?len2:-len2)]
+  return [ax+(mx>ax?len2:-len2), ay]
+}
 function clampPanel(cardX, cardY, cw, ch, maxX){
   return { x:clampN(cardX, 8, maxX), y:clampN(cardY, 66, innerHeight-ch-24) }
 }
-function computeKnee(mx, my, ax, ay, panel, hs){
-  const O=leaderOpts(panel)
-  if (hs?.leaderKneeManual && Array.isArray(hs.leaderKnee)) return [mx+hs.leaderKnee[0], my+hs.leaderKnee[1]]
-  const axis=O.leg1Axis==='h'?'h':O.leg1Axis==='v'?'v':leaderAxis(O.dir, mx, my, ax, ay)
-  const s1=leaderSign1(O.dir, axis, mx, my, ax, ay)
-  if (O.mode==='leg2-lock'){
-    const sec=axis==='h'?'v':'h', len2=O.tail>0?O.tail:Math.max(24, O.stub*0.55)
-    if (sec==='v') return [ax, ay+(my>ay?len2:-len2)]
-    return [ax+(mx>ax?len2:-len2), ay]
-  }
-  if (O.mode==='leg1-lock'){
-    const leg1a=axis==='h'?(s1>0?0:Math.PI):(s1>0?Math.PI/2:-Math.PI/2)
-    let best=[mx+s1*O.stub*(axis==='h'?1:0), my+s1*O.stub*(axis==='h'?0:1)], bestErr=1e9
-    for (let i=0;i<=64;i++){
-      const a=leg1a+(i-32)*Math.PI/64, kx=mx+Math.cos(a)*O.stub, ky=my+Math.sin(a)*O.stub
-      const v1x=mx-kx, v1y=my-ky, v2x=ax-kx, v2y=ay-ky, l1=Math.hypot(v1x,v1y)||1, l2=Math.hypot(v2x,v2y)||1
-      const interior=Math.acos(clampN((v1x/l1*v2x/l2+v1y/l1*v2y/l2),-1,1))*180/Math.PI
-      const err=Math.abs(interior-O.angle); if(err<bestErr){ bestErr=err; best=[kx,ky] }
-    }
-    return best
-  }
-  if (axis==='h') return [mx+s1*O.stub, my]
-  return [mx, my+s1*O.stub]
+function packCalloutPos(x, y){ return { x, y, vw:innerWidth, vh:innerHeight } }
+function unpackCalloutPos(pos){
+  if (!pos) return null
+  if (pos.vw&&pos.vh) return { x:pos.x*innerWidth/pos.vw, y:pos.y*innerHeight/pos.vh }
+  return { x:pos.x, y:pos.y }
 }
+function clearManualKnee(hs){ if(!hs) return; delete hs.leaderKnee; delete hs.leaderKneeManual }
+function clearAllManualPanels(){ (cfg.hotspots||[]).forEach(h=>{ delete h.calloutPos; delete h.calloutPosManual }) }
 function leaderKneePoint(pts){ return (pts&&pts.length>=3)?pts[1]:null }
 function placePanelAuto(mx, my, cw, ch, maxX){
   const mb=projectModelBounds(), panelMargin=20, reserve=editMode?320:8
@@ -641,8 +653,9 @@ function placePanelByDir(mx, my, cw, ch, P, maxX){
 function resolveCallout(mx, my, cw, ch, P, hs, maxX){
   let cardX, cardY
   const dir=P.dir||'auto'
-  if (hs?.calloutPosManual && hs.calloutPos){
-    const p=clampPanel(hs.calloutPos.x, hs.calloutPos.y, cw, ch, maxX); cardX=p.x; cardY=p.y
+  const unpacked=hs?.calloutPosManual ? unpackCalloutPos(hs.calloutPos) : null
+  if (unpacked){
+    const p=clampPanel(unpacked.x, unpacked.y, cw, ch, maxX); cardX=p.x; cardY=p.y
   }else if (dir==='free' || dir==='auto'){
     ({cardX,cardY}=placePanelAuto(mx, my, cw, ch, maxX))
   }else{
@@ -651,12 +664,29 @@ function resolveCallout(mx, my, cw, ch, P, hs, maxX){
   const O=leaderOpts(P)
   if (O.leader==='straight'||O.leader==='line'){
     const [ax,ay]=nearestAnchor(cardX, cardY, cw, ch, mx, my)
-    return { cardX, cardY, ax, ay, pts:[[mx,my],[ax,ay]] }
+    return { cardX, cardY, ax, ay, pts:[[mx,my],[ax,ay]], meta:{} }
+  }
+  if (O.mode==='orthogonal'){
+    const {kx,ky,ax,ay}=resolveOrthogonal(mx, my, cardX, cardY, cw, ch, P)
+    const ang=interiorAngle(mx,my,kx,ky,ax,ay)
+    return { cardX, cardY, ax, ay, pts:elbow2(mx,my,kx,ky,ax,ay), meta:{ kx,ky, ang, l1:O.stub, l2:Math.hypot(ax-kx,ay-ky) } }
   }
   let [ax,ay]=nearestAnchor(cardX, cardY, cw, ch, mx, my)
-  const [kx,ky]=computeKnee(mx, my, ax, ay, P, hs)
-  if (O.mode==='orthogonal' && !hs?.calloutPosManual) [ax,ay]=anchor90(kx, ky, cardX, cardY, cw, ch)
-  return { cardX, cardY, ax, ay, pts:elbow2(mx, my, kx, ky, ax, ay) }
+  let kx, ky
+  if (O.mode==='leg2-lock'){
+    ;[kx,ky]=leg2LockedKnee(mx, my, ax, ay, P)
+  }else{
+    const axis=O.leg1Axis==='h'?'h':O.leg1Axis==='v'?'v':leaderAxis(O.dir,mx,my,ax,ay)
+    const s1=leaderSign1(O.dir,axis,mx,my,ax,ay)
+    if (hs?.leaderKneeManual && Array.isArray(hs.leaderKnee)){
+      kx=mx+hs.leaderKnee[0]; ky=my+hs.leaderKnee[1]
+    }else{
+      ;[kx,ky]=leg1LockedKnee(mx, my, axis, s1, O.stub)
+    }
+  }
+  const ang=interiorAngle(mx,my,kx,ky,ax,ay)
+  const l1=Math.hypot(kx-mx,ky-my), l2=Math.hypot(ax-kx,ay-ky)
+  return { cardX, cardY, ax, ay, pts:elbow2(mx,my,kx,ky,ax,ay), meta:{ kx,ky, ang, l1, l2 } }
 }
 function bumpLeader(){ if($('card').classList.contains('show')&&innerWidth>720){ $('hs-svg').removeAttribute('hidden'); leaderT0=performance.now() } }
 function syncLeaderEditorUI(){
@@ -664,15 +694,40 @@ function syncLeaderEditorUI(){
   const O=leaderOpts(cfg.panel), straight=O.leader==='straight'||O.leader==='line'
   const hide=id=>{ const e=$(id); if(e) e.style.display=straight?'none':'' }
   hide('ed-elbow-fields'); hide('ed-elbow-mode-row'); hide('ed-leg1-row')
-  const kr=$('ed-knee-reset'); if(kr) kr.style.display=straight?'none':''
-  const angRow=$('editor')?.querySelector('[data-k="leader.angle"]')?.closest('.ed-row')
-  if(angRow) angRow.style.display=(straight||O.mode==='orthogonal'||O.mode==='leg2-lock')?'none':''
-  const note=$('ed-leader-note')
+  const ed=$('editor')
+  const gapRow=ed?.querySelector('[data-k="leader.gap"]')?.closest('.ed-row')
+  const tailRow=ed?.querySelector('[data-k="leader.tail"]')?.closest('.ed-row')
+  const angRow=ed?.querySelector('[data-k="leader.angle"]')?.closest('.ed-row')
+  const gapLab=gapRow?.querySelector('span')
+  const legLab=$('ed-leg1-row')?.querySelector('span')
+  if(gapRow) gapRow.style.display=(straight||O.mode==='leg2-lock')?'none':''
+  if(tailRow) tailRow.style.display=(straight||O.mode==='orthogonal'||O.mode==='leg1-lock')?'none':''
+  if(angRow) angRow.style.display='none'
+  if(gapLab) gapLab.textContent='第一段长度'
+  if(legLab) legLab.textContent=O.mode==='leg2-lock'?'第二段方向':'第一段方向'
+  if(gapRow){
+    const r=gapRow.querySelector('[data-k="leader.gap"]'), n=gapRow.querySelector('[data-num="leader.gap"]')
+    if(r){ r.min=16; if(+r.value<16) r.value=16 }
+    if(n){ n.min=16; if(+n.value<16) n.value=16 }
+  }
+  if(tailRow){
+    const r=tailRow.querySelector('[data-k="leader.tail"]'), n=tailRow.querySelector('[data-num="leader.tail"]')
+    if(r){ r.min=0; r.max=320 }
+    if(n){ n.min=0; n.max=320 }
+  }
+  $('ed-knee-reset')?.style.setProperty('display', straight||O.mode==='orthogonal'?'none':'')
+  const prBtn=$('ed-panel-reset'); if(prBtn) prBtn.style.display=straight?'none':''
+  const note=$('ed-leader-note'), hs=activeHS?.data
   if(!note) return
-  if(straight) note.textContent='直线：热点→面板一条线段。'
-  else if(O.mode==='orthogonal') note.textContent='直角 L 形：仅两段（热点→折点→面板），折点处无可见节点。编辑：拖标题移面板；在折点旁按下拖折点。'
-  else if(O.mode==='leg1-lock') note.textContent='定第一段：锁方向+长度；第二段直连面板，内角滑条调折点。'
-  else note.textContent='定第二段：板边入射段由第二段长度控制。拖标题可自由移动面板。'
+  const st=hs?.leaderKneeManual?' · 折点：手动':(hs?.calloutPosManual?' · 面板：手动':' · 自动')
+  if(straight) note.textContent='直线：热点→面板一条线段。'+st
+  else if(O.mode==='orthogonal') note.textContent='直角 L 形：拖面板后仍保持 90°；仅两段线。编辑：拖标题移面板（折点自动重算）。'+st
+  else if(O.mode==='leg1-lock') note.textContent='定第一段：方向与长度锁定，第二段直连面板；可拖折点微调。'+st
+  else note.textContent='定第二段：板边入射段长度由滑条控制；「第二段 0」=自动估算。'+st
+}
+function clearLeaderParams(){
+  clearManualKnee(activeHS?.data)
+  bumpLeader(); syncLeaderEditorUI()
 }
 let kneeDrag=null, panelDrag=null, lastPts=null, lastMx=0, lastMy=0, lastAx=0, lastAy=0
 function wireCalloutDrag(){
@@ -681,18 +736,20 @@ function wireCalloutDrag(){
     svg._cdWire=1
     svg.addEventListener('pointerdown', e=>{
       if (!editMode||!activeHS||innerWidth<=720||!lastPts) return
+      const O=leaderOpts(cfg.panel)
+      if (O.mode==='orthogonal'||O.leader==='straight'||O.leader==='line') return
       const kp=leaderKneePoint(lastPts); if (!kp) return
-      if (Math.hypot(e.clientX-kp[0], e.clientY-kp[1])>18) return
+      if (Math.hypot(e.clientX-kp[0], e.clientY-kp[1])>20) return
       e.preventDefault(); e.stopPropagation()
       const d=activeHS.data
       if (!d.leaderKneeManual){ d.leaderKnee=[kp[0]-lastMx, kp[1]-lastMy]; d.leaderKneeManual=true }
       kneeDrag={ sx:e.clientX, sy:e.clientY, ox:d.leaderKnee[0], oy:d.leaderKnee[1] }
-      svg.setPointerCapture(e.pointerId)
+      svg.setPointerCapture(e.pointerId); syncLeaderEditorUI()
     })
     svg.addEventListener('pointermove', e=>{
       if (!kneeDrag||!activeHS) return
       activeHS.data.leaderKnee=[kneeDrag.ox+e.clientX-kneeDrag.sx, kneeDrag.oy+e.clientY-kneeDrag.sy]
-      activeHS.data.leaderKneeManual=true; bumpLeader()
+      activeHS.data.leaderKneeManual=true; bumpLeader(); syncLeaderEditorUI()
     })
     svg.addEventListener('pointerup', e=>{ kneeDrag=null; try{svg.releasePointerCapture(e.pointerId)}catch(_){} })
   }
@@ -703,15 +760,13 @@ function wireCalloutDrag(){
       e.preventDefault(); e.stopPropagation()
       const d=activeHS.data, c=$('card')
       const ox=parseFloat(c.style.left)||0, oy=parseFloat(c.style.top)||0
-      if (!d.calloutPosManual){ d.calloutPos={x:ox,y:oy}; d.calloutPosManual=true }
-      cfg.panel=cfg.panel||{}; cfg.panel.dir='free'
-      const sel=$('ed-dir'); if(sel) sel.value='free'
-      panelDrag={ sx:e.clientX, sy:e.clientY, ox, oy }; c.setPointerCapture(e.pointerId)
+      if (!d.calloutPosManual){ d.calloutPos=packCalloutPos(ox,oy); d.calloutPosManual=true }
+      panelDrag={ sx:e.clientX, sy:e.clientY, ox, oy }; c.setPointerCapture(e.pointerId); syncLeaderEditorUI()
     })
     card.addEventListener('pointermove', e=>{
       if (!panelDrag||!activeHS) return
-      activeHS.data.calloutPos={ x:panelDrag.ox+e.clientX-panelDrag.sx, y:panelDrag.oy+e.clientY-panelDrag.sy }
-      activeHS.data.calloutPosManual=true; bumpLeader()
+      activeHS.data.calloutPos=packCalloutPos(panelDrag.ox+e.clientX-panelDrag.sx, panelDrag.oy+e.clientY-panelDrag.sy)
+      activeHS.data.calloutPosManual=true; bumpLeader(); syncLeaderEditorUI()
     })
     card.addEventListener('pointerup', e=>{ panelDrag=null; try{card.releasePointerCapture(e.pointerId)}catch(_){} })
   }
@@ -738,6 +793,11 @@ function updateCallout() {
     const leaderEl = $('hs-leader')
     leaderEl.setAttribute('points', growPoly(pts, g))
     leaderEl.classList.toggle('straight', O.leader==='straight'||O.leader==='line')
+    const knee=$('hs-knee'), kp=leaderKneePoint(pts)
+    if (editMode && kp && O.leader!=='straight' && O.leader!=='line' && O.mode!=='orthogonal'){
+      knee.removeAttribute('hidden'); knee.classList.add('edit')
+      knee.setAttribute('cx',kp[0]); knee.setAttribute('cy',kp[1])
+    }else{ knee.setAttribute('hidden',''); knee.classList.remove('edit') }
   } else {
     // 移动端：就近显示于热点旁，夹取在视口内（避开顶栏 / 底部工具条），无引线
     const pad = 10, safeTop = 60, safeBot = 148
@@ -1001,9 +1061,6 @@ function renderEditor() {
 
   const info = cfg.i18n?.zh || {}, ui = cfg.ui || {}
   const pan = cfg.panel || {}
-  let elbowAng = num(pan.elbowAngle, NaN)
-  if (!isFinite(elbowAng) && typeof pan.elbowRatio==='number') elbowAng = 90+(1-pan.elbowRatio)*90
-  if (!isFinite(elbowAng)) elbowAng = 90
   $('editor').innerHTML = `
   <details class="ed-sec" open><summary>基本信息</summary>
     <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
@@ -1094,8 +1151,8 @@ function renderEditor() {
     <div class="ed-row" id="ed-elbow-mode-row"><span>拐角形成</span>
       <select class="ed-in" id="ed-elbow-mode" style="width:auto;margin:0;flex:0 0 auto">
         <option value="orthogonal" ${(pan.elbowMode||'orthogonal')==='orthogonal'?'selected':''}>直角 L 形</option>
-        <option value="leg1-lock" ${pan.elbowMode==='leg1-lock'?'selected':''}>定第一段</option>
-        <option value="leg2-lock" ${pan.elbowMode==='leg2-lock'?'selected':''}>定第二段</option>
+        <option value="leg1-lock" ${pan.elbowMode==='leg1-lock'?'selected':''}>定第一段（锁方向+长度）</option>
+        <option value="leg2-lock" ${pan.elbowMode==='leg2-lock'?'selected':''}>定第二段（板边入射）</option>
       </select></div>
     <div class="ed-row" id="ed-leg1-row"><span>第一段方向</span>
       <select class="ed-in" id="ed-leg1-axis" style="width:auto;margin:0;flex:0 0 auto">
@@ -1104,16 +1161,15 @@ function renderEditor() {
         <option value="v" ${pan.leg1Axis==='v'?'selected':''}>竖直</option>
       </select></div>
     <div id="ed-elbow-fields">
-    ${rng('leader.gap','第一段长度',8,240,1, num(cfg.panel?.leaderGap,48))}
-    ${rng('leader.tail','第二段长度',0,240,1, num(cfg.panel?.leaderTail,0))}
-    ${rng('leader.angle','折点内角(°)',90,180,1, Math.round(elbowAng))}
+    ${rng('leader.gap','第一段长度',16,320,1, Math.max(16, num(cfg.panel?.leaderGap,48)))}
+    ${rng('leader.tail','第二段长度',0,320,1, num(cfg.panel?.leaderTail,0))}
     </div>
     <button class="ed-btn" id="ed-knee-reset" type="button">重置折点</button>
     <button class="ed-btn" id="ed-panel-reset" type="button">重置面板位置</button>
     ${col('hs.color','热点颜色', cfg.hotspotStyle.color||'#c8a86a')}
     ${rng('hs.size','热点大小', 18, 40, 1, num(cfg.hotspotStyle.size,26))}
     <label class="ed-row"><span>热点脉冲动画</span><input type="checkbox" data-k="hs.pulse" ${cfg.hotspotStyle.pulse!==false?'checked':''}></label>
-    <div class="ed-note" id="ed-leader-note">直线：热点→面板一条线。折线：参考 PPT/Illustrator 标注——直角 L 形恒 90°；定第一段=锁方向+长度后第二段按角度转向；定第二段=板边入射段锁定。第二段 0=自动补齐到面板（非直角含义）。编辑时拖金色折点可微调（存当前热点）。</div>
+    <div class="ed-note" id="ed-leader-note"></div>
   </details>
 
   <details class="ed-sec"><summary>热点（增删改）</summary>
@@ -1174,9 +1230,8 @@ function wireEditor() {
       case 'l.fill': L.fill=L.fill||{}; L.fill.intensity=v; lightRefs.fill.intensity=v; break
       case 'l.rim': L.rim=L.rim||{}; L.rim.intensity=v; lightRefs.rim.intensity=v; break
       case 'hs.size': cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.size=v; buildHotspots(); break
-      case 'leader.gap': cfg.panel=cfg.panel||{}; cfg.panel.leaderGap=v; bumpLeader(); break
-      case 'leader.tail': cfg.panel=cfg.panel||{}; cfg.panel.leaderTail=v; bumpLeader(); break
-      case 'leader.angle': cfg.panel=cfg.panel||{}; cfg.panel.elbowAngle=v; bumpLeader(); break
+      case 'leader.gap': cfg.panel=cfg.panel||{}; cfg.panel.leaderGap=v; clearLeaderParams(); break
+      case 'leader.tail': cfg.panel=cfg.panel||{}; cfg.panel.leaderTail=v; clearLeaderParams(); break
       case 'ov.metal': case 'ov.rough': case 'ov.env': upsertOverride(); break
     }
   }
@@ -1222,12 +1277,14 @@ function wireEditor() {
   const lz=el('ed-leader'); if(lz){ lz.value=(cfg.panel&&(cfg.panel.leader==='straight'||cfg.panel.leader==='line'))?'straight':'elbow'; lz.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.leader=e.target.value; syncLeaderEditorUI(); bumpLeader() } }
   const dz2=el('ed-dir'); if(dz2){ dz2.value=(cfg.panel&&cfg.panel.dir)||'auto'; dz2.onchange=e=>{
     cfg.panel=cfg.panel||{}; cfg.panel.dir=e.target.value
-    if (e.target.value!=='free' && activeHS?.data){ delete activeHS.data.calloutPos; delete activeHS.data.calloutPosManual }
-    bumpLeader() } }
-  const em=el('ed-elbow-mode'); if(em){ em.value=(cfg.panel&&cfg.panel.elbowMode)||'orthogonal'; em.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.elbowMode=e.target.value; syncLeaderEditorUI(); bumpLeader() } }
-  const l1=el('ed-leg1-axis'); if(l1){ l1.value=(cfg.panel&&cfg.panel.leg1Axis)||'auto'; l1.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.leg1Axis=e.target.value; bumpLeader() } }
-  const kr=el('ed-knee-reset'); if(kr) kr.onclick=()=>{ if(activeHS?.data){ delete activeHS.data.leaderKnee; delete activeHS.data.leaderKneeManual; bumpLeader(); flash('已重置折点') } else flash('请先打开一个热点') }
-  const pr=el('ed-panel-reset'); if(pr) pr.onclick=()=>{ if(activeHS?.data){ delete activeHS.data.calloutPos; delete activeHS.data.calloutPosManual; bumpLeader(); flash('已重置面板位置') } else flash('请先打开一个热点') }
+    if (e.target.value!=='free') clearAllManualPanels()
+    clearLeaderParams() } }
+  const em=el('ed-elbow-mode'); if(em){ em.value=(cfg.panel&&cfg.panel.elbowMode)||'orthogonal'; em.onchange=e=>{
+    cfg.panel=cfg.panel||{}; cfg.panel.elbowMode=e.target.value; clearManualKnee(activeHS?.data); syncLeaderEditorUI(); bumpLeader() } }
+  const l1=el('ed-leg1-axis'); if(l1){ l1.value=(cfg.panel&&cfg.panel.leg1Axis)||'auto'; l1.onchange=e=>{
+    cfg.panel=cfg.panel||{}; cfg.panel.leg1Axis=e.target.value; clearLeaderParams() } }
+  const kr=el('ed-knee-reset'); if(kr) kr.onclick=()=>{ if(activeHS?.data){ clearManualKnee(activeHS.data); bumpLeader(); syncLeaderEditorUI(); flash('已恢复自动折点') } else flash('请先打开一个热点') }
+  const pr=el('ed-panel-reset'); if(pr) pr.onclick=()=>{ if(activeHS?.data){ delete activeHS.data.calloutPos; delete activeHS.data.calloutPosManual; bumpLeader(); syncLeaderEditorUI(); flash('已恢复自动面板位置') } else flash('请先打开一个热点') }
   syncLeaderEditorUI()
   wireCalloutDrag()
   el('ed-url-load').onclick=()=>{ const u=el('ed-url').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.model=u; reloadModel(u) } }

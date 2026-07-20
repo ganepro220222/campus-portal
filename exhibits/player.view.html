@@ -513,6 +513,11 @@ function growPoly(pts, g){
     if(want>=seg){ out.push(pts[i]); want-=seg } else { const t=seg?want/seg:0; out.push([pts[i-1][0]+dx*t, pts[i-1][1]+dy*t]); break } }
   return out.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')
 }
+function renderLeaderElement(leaderEl, lay, O, g) {
+  if (lay.meta?.leaderHidden) leaderEl.setAttribute('points', '')
+  else leaderEl.setAttribute('points', growPoly(lay.pts, g))
+  leaderEl.classList.toggle('straight', O.leader==='straight'||O.leader==='line'||!!lay.meta?.leaderFallback)
+}
 function clampN(v, lo, hi){ return LG.clampN(v, lo, hi) }
 function leaderAxis(dir, mx, my, ax, ay){ return LG.leaderAxis(dir, mx, my, ax, ay) }
 function leaderSign1(dir, axis, mx, my, ax, ay){ return LG.leaderSign1(dir, axis, mx, my, ax, ay) }
@@ -710,10 +715,7 @@ function updateCallout() {
     if (editMode) card.classList.add('ed-movable'); else card.classList.remove('ed-movable')
     const g = 1 - Math.pow(1 - Math.min(1,(performance.now()-leaderT0)/320), 3)
     $('hs-dot').setAttribute('cx',mx); $('hs-dot').setAttribute('cy',my)
-    const leaderEl = $('hs-leader')
-    if (lay.meta?.leaderHidden) leaderEl.setAttribute('points', '')
-    else leaderEl.setAttribute('points', growPoly(pts, g))
-    leaderEl.classList.toggle('straight', O.leader==='straight'||O.leader==='line'||!!lay.meta?.leaderFallback)
+    renderLeaderElement($('hs-leader'), lay, O, g)
     $('hs-knee').setAttribute('hidden','')
   } else {
     // 移动端：就近显示于热点旁，夹取在视口内（避开顶栏 / 底部工具条），无引线

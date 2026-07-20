@@ -59,25 +59,11 @@ export async function gotoViewerReady(page, opts = {}) {
   await waitForPlayerReady(page)
 }
 
-/** 按 player updateCallout 的 leader 分支写入 DOM（用于 hidden-overlap 快测） */
-export async function applyLeaderDomFromGeom(page, args) {
-  return page.evaluate(async (a) => {
-    const LG = await import('./leader-geom.js')
-    const lay = LG.resolveCalloutGeom(a.mx, a.my, a.cw, a.ch, a.panel, {}, { cardX: a.cardX, cardY: a.cardY }, a.vp)
-    const leaderEl = document.getElementById('hs-leader')
-    const svg = document.getElementById('hs-svg')
-    svg?.removeAttribute('hidden')
-    if (lay.meta?.leaderHidden) leaderEl.setAttribute('points', '')
-    else {
-      leaderEl.setAttribute('points', lay.pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' '))
-    }
-    leaderEl.classList.toggle('straight', !!lay.meta?.leaderFallback)
-    return {
-      leaderFallback: lay.meta?.leaderFallback,
-      leaderHidden: lay.meta?.leaderHidden,
-      points: leaderEl.getAttribute('points'),
-    }
-  }, args)
+/** 调用生产 renderLeaderElement（edit 模式 TEST-HOOKS） */
+export async function renderHiddenOverlapInPlayer(page) {
+  const result = await page.evaluate(() => window.__SY_TEST__?.renderHiddenOverlapCallout?.())
+  if (!result?.ok) throw new Error('renderHiddenOverlapCallout failed: ' + (result?.reason || 'missing hook'))
+  return result
 }
 
 /** 注入 __CFG__ 并打开播放器（完整加载） */

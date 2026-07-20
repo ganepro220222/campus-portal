@@ -44,61 +44,128 @@ function applyNudgeCand(c, cardX, cardY) {
   return { cardX: c.cardX ?? cardX, cardY: c.cardY ?? cardY }
 }
 
+function evalPanelPos(mx, my, cardX, cardY, cw, ch, origX, origY, maxX, viewport) {
+  const cl = clampPanel(cardX, cardY, cw, ch, maxX, viewport)
+  return {
+    cardX: cl.x,
+    cardY: cl.y,
+    clear: hotspotClearance(mx, my, cl.x, cl.y, cw, ch),
+    move: Math.hypot(cl.x - origX, cl.y - origY),
+  }
+}
+
+function comparePanelChoice(a, b) {
+  const aOk = a.clear >= 0, bOk = b.clear >= 0
+  if (aOk !== bOk) return aOk ? -1 : 1
+  if (Math.abs(a.clear - b.clear) > 1e-6) return b.clear - a.clear
+  if (Math.abs(a.move - b.move) > 1e-6) return a.move - b.move
+  if (a.cardX !== b.cardX) return a.cardX - b.cardX
+  return a.cardY - b.cardY
+}
+
+function anchorPanelPositions(maxX, viewport) {
+  const minX = viewport.minX ?? 8
+  const minY = viewport.minY ?? 66
+  const maxY = viewport.maxY ?? minY
+  const midX = (minX + maxX) / 2
+  const midY = (minY + maxY) / 2
+  const xs = [minX, maxX, midX]
+  const ys = [minY, maxY, midY]
+  const out = []
+  for (const x of xs) for (const y of ys) out.push({ cardX: x, cardY: y })
+  return out
+}
+
+function collectPanelPositions(mx, my, cw, ch, cardX, cardY, gap) {
+  const out = []
+  for (const raw of nudgeCandidates(mx, my, cw, ch, gap)) out.push(applyNudgeCand(raw, cardX, cardY))
+  return out
+}
+
+function pickBestPanel(mx, my, cw, ch, origX, origY, maxX, viewport, positions, minClear) {
+  let best = null
+  for (const pos of positions) {
+    const ev = evalPanelPos(mx, my, pos.cardX, pos.cardY, cw, ch, origX, origY, maxX, viewport)
+    if (ev.clear < minClear) continue
+    if (!best || comparePanelChoice(ev, best) < 0) best = ev
+  }
+  return best
+}
+
+function pickMaxClearancePanel(mx, my, cw, ch, origX, origY, maxX, viewport, positions) {
+  let best = null
+  for (const pos of positions) {
+    const ev = evalPanelPos(mx, my, pos.cardX, pos.cardY, cw, ch, origX, origY, maxX, viewport)
+    if (!best || comparePanelChoice(ev, best) < 0) best = ev
+  }
+  return best
+}
+
 /**
- * 面板推离热点。返回 { cardX, cardY, degraded, clearance }。
- * 优先满足 target gap；逐步缩小 gap；仍无解则选净空最大者。
+ * 面板推离热点。返回 { cardX, cardY, degraded, clearance, panelOverlap?, reserveRelaxed? }。
+ * 阶段：目标 gap → 缩小 gap → 锚点且 clearance≥0 → 放宽编辑保留区 → 最大化净空。
  */
 export function nudgePanelFromHotspot(mx, my, cardX, cardY, cw, ch, viewport = {}) {
   const targetGap = viewport.gap ?? PANEL_HOTSPOT_GAP
   const maxX = viewport.maxX ?? cardX
+  const relaxedMaxX = viewport.relaxedMaxX ?? maxX
+  const origX = cardX, origY = cardY
   const base = clampPanelPos(cardX, cardY, cw, ch, viewport)
+  const gaps = [...new Set([targetGap, 16, 12, 8, 4, 0])].sort((a, b) => b - a)
+  const anchors = anchorPanelPositions(maxX, viewport)
+  const relaxedAnchors = anchorPanelPositions(relaxedMaxX, viewport)
 
   if (panelHotspotClear(mx, my, base.cardX, base.cardY, cw, ch, targetGap)) {
     return { ...base, degraded: false, clearance: hotspotClearance(mx, my, base.cardX, base.cardY, cw, ch) }
   }
 
-  const gaps = [...new Set([targetGap, 16, 12, 8, 4, 0])].sort((a, b) => b - a)
-
-  let best = null, bestMove = 1e18, bestGap = targetGap
   for (const gap of gaps) {
-    for (const raw of nudgeCandidates(mx, my, cw, ch, gap)) {
-      const c = applyNudgeCand(raw, cardX, cardY)
-      const cl = clampPanel(c.cardX, c.cardY, cw, ch, maxX, viewport)
-      if (!panelHotspotClear(mx, my, cl.x, cl.y, cw, ch, gap)) continue
-      const move = Math.hypot(cl.x - cardX, cl.y - cardY)
-      if (move < bestMove) {
-        bestMove = move
-        best = { cardX: cl.x, cardY: cl.y }
-        bestGap = gap
-      }
-    }
+    const positions = collectPanelPositions(mx, my, cw, ch, cardX, cardY, gap)
+    const best = pickBestPanel(mx, my, cw, ch, origX, origY, maxX, viewport, positions, gap)
     if (best) {
       return {
-        ...best,
-        degraded: bestGap < targetGap,
-        clearance: hotspotClearance(mx, my, best.cardX, best.cardY, cw, ch),
+        cardX: best.cardX,
+        cardY: best.cardY,
+        degraded: gap < targetGap,
+        clearance: best.clear,
       }
     }
   }
 
-  let bestClear = -1e18, bestPos = base
-  for (const gap of [0, 4, 8, 12, 16, targetGap]) {
-    for (const raw of nudgeCandidates(mx, my, cw, ch, gap)) {
-      const c = applyNudgeCand(raw, cardX, cardY)
-      const cl = clampPanel(c.cardX, c.cardY, cw, ch, maxX, viewport)
-      const clear = hotspotClearance(mx, my, cl.x, cl.y, cw, ch)
-      const move = Math.hypot(cl.x - cardX, cl.y - cardY)
-      const score = clear - move * 0.001
-      if (score > bestClear) {
-        bestClear = clear
-        bestPos = { cardX: cl.x, cardY: cl.y }
-      }
-    }
+  let positions = []
+  for (const gap of gaps) positions.push(...collectPanelPositions(mx, my, cw, ch, cardX, cardY, gap))
+  positions.push(...anchors)
+  let best = pickBestPanel(mx, my, cw, ch, origX, origY, maxX, viewport, positions, 0)
+  let reserveRelaxed = false
+
+  if (!best && relaxedMaxX > maxX) {
+    positions = []
+    for (const gap of gaps) positions.push(...collectPanelPositions(mx, my, cw, ch, cardX, cardY, gap))
+    positions.push(...relaxedAnchors)
+    best = pickBestPanel(mx, my, cw, ch, origX, origY, relaxedMaxX, viewport, positions, 0)
+    reserveRelaxed = !!best
   }
+
+  if (!best) {
+    positions = []
+    for (const gap of gaps) positions.push(...collectPanelPositions(mx, my, cw, ch, cardX, cardY, gap))
+    positions.push(...anchors, ...relaxedAnchors)
+    const strict = pickMaxClearancePanel(mx, my, cw, ch, origX, origY, maxX, viewport, positions)
+    const relaxed = relaxedMaxX > maxX
+      ? pickMaxClearancePanel(mx, my, cw, ch, origX, origY, relaxedMaxX, viewport, positions)
+      : null
+    best = relaxed && comparePanelChoice(relaxed, strict) < 0 ? relaxed : strict
+    reserveRelaxed = !!(relaxed && best === relaxed)
+  }
+
+  const clearance = best?.clear ?? hotspotClearance(mx, my, base.cardX, base.cardY, cw, ch)
   return {
-    ...bestPos,
-    degraded: true,
-    clearance: hotspotClearance(mx, my, bestPos.cardX, bestPos.cardY, cw, ch),
+    cardX: best?.cardX ?? base.cardX,
+    cardY: best?.cardY ?? base.cardY,
+    degraded: clearance < targetGap || reserveRelaxed,
+    clearance,
+    panelOverlap: clearance < 0,
+    reserveRelaxed,
   }
 }
 
@@ -180,14 +247,37 @@ function orthScore(mx, my, c, b) {
   return face + l1 + l2
 }
 
-function pickOrthCandidate(mx, my, cands) {
+function orthCandTieBreak(a, b) {
+  if (a.kx !== b.kx) return a.kx - b.kx
+  if (a.ky !== b.ky) return a.ky - b.ky
+  if (a.ax !== b.ax) return a.ax - b.ax
+  return a.ay - b.ay
+}
+
+function pickOrthCandidate(mx, my, cands, preferFirst) {
   let best = null, bs = 1e18
   for (const c of cands) {
     if (!isRightAngle(mx, my, c.kx, c.ky, c.ax, c.ay)) continue
-    const s = orthScore(mx, my, c, c._b)
-    if (s < bs) { bs = s; best = c }
+    let s = orthScore(mx, my, c, c._b)
+    if (preferFirst && c.first === preferFirst) s -= 0.01
+    if (!best || s < bs - 1e-9 || (Math.abs(s - bs) < 1e-9 && orthCandTieBreak(c, best) < 0)) {
+      bs = s
+      best = c
+    }
   }
   return best
+}
+
+export function validateOrthPath(mx, my, path, leg1Axis) {
+  const { kx, ky, ax, ay } = path
+  const l1 = Math.hypot(kx - mx, ky - my)
+  const l2 = Math.hypot(ax - kx, ay - ky)
+  if (![mx, my, kx, ky, ax, ay, l1, l2].every(Number.isFinite)) return false
+  if (l1 < ORTH_MIN_SEG || l2 < ORTH_MIN_SEG) return false
+  if (!isRightAngle(mx, my, kx, ky, ax, ay)) return false
+  if (leg1Axis === 'h' && Math.abs(ky - my) > 0.5) return false
+  if (leg1Axis === 'v' && Math.abs(kx - mx) > 0.5) return false
+  return true
 }
 
 function hotspotInsideBounds(mx, my, b) {
@@ -230,18 +320,20 @@ function orthFallback(mx, my, cardX, cardY, cw, ch, leg1Axis) {
 }
 
 function finalizeOrth(mx, my, raw, leg1Axis) {
+  if (validateOrthPath(mx, my, raw, leg1Axis)) return raw
   const { l1, l2 } = orthSegLens(mx, my, raw)
-  if (isRightAngle(mx, my, raw.kx, raw.ky, raw.ax, raw.ay)) return raw
   if (leg1Axis === 'h' && Math.abs(raw.ky - my) < ORTH_MIN_SEG && l2 >= ORTH_MIN_SEG) {
-    return { ...raw, kx: raw.ax, ky: my, first: 'h' }
+    const fixed = { ...raw, kx: raw.ax, ky: my, first: 'h' }
+    if (validateOrthPath(mx, my, fixed, leg1Axis)) return fixed
   }
   if (leg1Axis === 'v' && Math.abs(raw.kx - mx) < ORTH_MIN_SEG && l2 >= ORTH_MIN_SEG) {
-    return { ...raw, kx: mx, ky: raw.ay, first: 'v' }
+    const fixed = { ...raw, kx: mx, ky: raw.ay, first: 'v' }
+    if (validateOrthPath(mx, my, fixed, leg1Axis)) return fixed
   }
-  return raw
+  return null
 }
 
-export function resolveOrthogonal(mx, my, cardX, cardY, cw, ch, panel) {
+export function resolveOrthogonal(mx, my, cardX, cardY, cw, ch, panel, preferFirst) {
   const b = panelBounds(cardX, cardY, cw, ch)
   const O = parseLeaderOpts(panel)
   let pool = []
@@ -253,10 +345,12 @@ export function resolveOrthogonal(mx, my, cardX, cardY, cw, ch, panel) {
   else if (O.leg1Axis === 'v') pool = orthCandidatesVFirst(mx, my, b)
   else pool = [...orthCandidatesHFirst(mx, my, b), ...orthCandidatesVFirst(mx, my, b)]
   pool = pool.map(c => ({ ...c, _b: b }))
-  const best = pickOrthCandidate(mx, my, pool)
+  const best = pickOrthCandidate(mx, my, pool, preferFirst)
   const raw = best || orthFallback(mx, my, cardX, cardY, cw, ch, O.leg1Axis)
   const fin = finalizeOrth(mx, my, raw, O.leg1Axis)
-  return { kx: fin.kx, ky: fin.ky, ax: fin.ax, ay: fin.ay, first: fin.first }
+  if (fin) return { kx: fin.kx, ky: fin.ky, ax: fin.ax, ay: fin.ay, first: fin.first }
+  const [ax, ay] = nearestAnchor(cardX, cardY, cw, ch, mx, my)
+  return { kx: ax, ky: ay, ax, ay, first: 'straight', leaderFallback: 'straight' }
 }
 
 export function leaderAxis(dir, mx, my, ax, ay) {
@@ -348,17 +442,34 @@ export function layoutPanelFromHotspot(mx, my, cardX, cardY, cw, ch, viewport = 
 
 export function resolveCalloutGeom(mx, my, cw, ch, panel, hs, layout, viewport = {}) {
   const pl = layoutPanelFromHotspot(mx, my, layout.cardX, layout.cardY, cw, ch, viewport)
-  const { cardX, cardY, degraded, clearance } = pl
+  const { cardX, cardY, degraded, clearance, panelOverlap, reserveRelaxed } = pl
   const O = parseLeaderOpts(panel)
-  const panelMeta = { panelDegraded: degraded, panelClearance: clearance }
-  if (O.leader === 'straight' || O.leader === 'line') {
+  const panelMeta = { panelDegraded: degraded, panelClearance: clearance, panelOverlap, reserveRelaxed }
+  const preferFirst = hs?.calloutOrthFirst
+
+  function straightResult(reason) {
     const [ax, ay] = nearestAnchor(cardX, cardY, cw, ch, mx, my)
-    return { cardX, cardY, ax, ay, pts: [[mx, my], [ax, ay]], meta: panelMeta }
+    const l1 = Math.hypot(ax - mx, ay - my)
+    return {
+      cardX, cardY, ax, ay,
+      pts: [[mx, my], [ax, ay]],
+      meta: { l1, l2: 0, ang: 180, leaderFallback: reason, ...panelMeta },
+    }
+  }
+
+  if (O.leader === 'straight' || O.leader === 'line') {
+    return straightResult(null)
   }
   if (O.mode === 'orthogonal') {
-    const { kx, ky, ax, ay } = resolveOrthogonal(mx, my, cardX, cardY, cw, ch, panel)
+    if (panelOverlap) return straightResult('panel-overlap')
+    const orth = resolveOrthogonal(mx, my, cardX, cardY, cw, ch, panel, preferFirst)
+    if (orth.leaderFallback === 'straight' || !validateOrthPath(mx, my, orth, O.leg1Axis)) {
+      return straightResult('invalid-orthogonal')
+    }
+    const { kx, ky, ax, ay, first } = orth
     const ang = interiorAngle(mx, my, kx, ky, ax, ay)
     const l1 = Math.hypot(kx - mx, ky - my), l2 = Math.hypot(ax - kx, ay - ky)
+    if (hs) hs.calloutOrthFirst = first
     return { cardX, cardY, ax, ay, pts: elbow2(mx, my, kx, ky, ax, ay), meta: { kx, ky, ang, l1, l2, ...panelMeta } }
   }
   const edge = panelEdgeAnchor(mx, my, cardX, cardY, cw, ch)
@@ -393,7 +504,7 @@ export function migratePanelLeader(panel) {
 export function probeLeaderLayouts(seed = 42, count = 2000) {
   let s = seed
   const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
-  const stats = { total: 0, badAngle: 0, zeroSeg: 0, badDir: 0, nan: 0 }
+  const stats = { total: 0, badAngle: 0, zeroSeg: 0, badDir: 0, nan: 0, overlap: 0, straightFallback: 0 }
   const modes = ['auto', 'h', 'v']
   for (let i = 0; i < count; i++) {
     for (const leg1Axis of modes) {
@@ -401,12 +512,19 @@ export function probeLeaderLayouts(seed = 42, count = 2000) {
       const mx = rnd() * 900, my = rnd() * 700 + 60
       const cw = 120 + rnd() * 200, ch = 80 + rnd() * 120
       const maxX = 900 - 320 - cw - 8
-      const vp = { minX: 8, minY: 66, maxX, maxY: 800 - ch - 24 }
+      const vp = { minX: 8, minY: 66, maxX, maxY: 800 - ch - 24, relaxedMaxX: 900 - cw - 8 }
       const cardX = 8 + rnd() * Math.max(1, maxX - 8)
       const cardY = 66 + rnd() * Math.max(1, vp.maxY - 66)
-      const r = resolveCalloutGeom(mx, my, cw, ch, { elbowMode: 'orthogonal', leg1Axis }, null, { cardX, cardY }, vp)
-      const { kx, ky, l1, l2 } = r.meta
-      if ([mx, my, kx, ky, r.ax, r.ay, l1, l2].some(v => !Number.isFinite(v))) stats.nan++
+      const hs = {}
+      const r = resolveCalloutGeom(mx, my, cw, ch, { elbowMode: 'orthogonal', leg1Axis }, hs, { cardX, cardY }, vp)
+      const { kx, ky, l1, l2, panelClearance, leaderFallback } = r.meta
+      if ([mx, my, kx, ky, r.ax, r.ay, l1, l2].some(v => v != null && !Number.isFinite(v))) stats.nan++
+      if (panelClearance < 0) stats.overlap++
+      if (leaderFallback) {
+        stats.straightFallback++
+        if (r.pts.some(p => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) stats.nan++
+        continue
+      }
       if (!isRightAngle(mx, my, kx, ky, r.ax, r.ay)) stats.badAngle++
       if (l1 <= 0.01 || l2 <= 0.01) stats.zeroSeg++
       if (leg1Axis === 'h' && Math.abs(ky - my) > 0.5) stats.badDir++

@@ -123,12 +123,32 @@ test('nudge: true overlap moves panel', () => {
 
 test('nudge: returns degraded metadata when gap cannot be met', () => {
   const mx = 400, my = 400, cw = 280, ch = 160
-  const vp = { minX: 8, minY: 66, maxX: 420, maxY: 500 }
+  const vp = { minX: 8, minY: 66, maxX: 420, maxY: 500, relaxedMaxX: 620 }
   const n = nudgePanelFromHotspot(mx, my, mx - 40, my - 40, cw, ch, vp)
   assert.equal(typeof n.degraded, 'boolean')
   assert.equal(typeof n.clearance, 'number')
   assert.ok(Number.isFinite(n.clearance))
-  if (n.degraded) assert.ok(n.clearance >= hotspotClearance(mx, my, mx - 40, my - 40, cw, ch) - 0.01)
+  assert.ok(n.clearance >= 0, `expected non-overlap clearance, got ${n.clearance}`)
+})
+
+test('nudge: impossible overlap uses straight fallback in resolveCalloutGeom', () => {
+  const mx = 200, my = 300, cw = 300, ch = 200
+  const vp = { minX: 8, minY: 66, maxX: 120, maxY: 300, relaxedMaxX: 120 }
+  const r = resolveCalloutGeom(mx, my, cw, ch, { elbowMode: 'orthogonal' }, {}, { cardX: 50, cardY: 200 }, vp)
+  if (r.meta.panelOverlap) {
+    assert.equal(r.meta.leaderFallback, 'panel-overlap')
+    assert.equal(r.pts.length, 2)
+  } else {
+    assert.ok(r.meta.panelClearance >= 0)
+    assert.ok(isRightAngle(mx, my, r.meta.kx, r.meta.ky, r.ax, r.ay))
+  }
+})
+
+test('orthogonal: invalid path falls back to straight segment', () => {
+  const mx = 450, my = 375, cw = 300, ch = 150
+  const r = resolveCalloutGeom(mx, my, cw, ch, { elbowMode: 'orthogonal', leg1Axis: 'h' }, {}, { cardX: 300, cardY: 300 }, VP(1200, 900, cw, ch))
+  if (r.meta.leaderFallback) assert.equal(r.pts.length, 2)
+  else assert.ok(isRightAngle(mx, my, r.meta.kx, r.meta.ky, r.ax, r.ay))
 })
 
 test('nudge: narrow viewport picks best clearance among candidates', () => {
@@ -200,12 +220,13 @@ test('migratePanelLeader copies leg1Axis to leg2Axis in leg2-lock', () => {
   assert.equal(m.leg2Axis, 'h')
 })
 
-test('property probe: 6000 layouts (seed=42) have valid orthogonal geometry', () => {
+test('property probe: 6000 layouts (seed=42) have valid geometry or straight fallback', () => {
   const s = probeLeaderLayouts(42, 2000)
   assert.equal(s.nan, 0)
   assert.equal(s.badAngle, 0)
   assert.equal(s.zeroSeg, 0)
   assert.equal(s.badDir, 0)
+  assert.equal(s.overlap, 0)
 })
 
 test('batch: leg1-lock mode enables lgap and laxis only', () => {

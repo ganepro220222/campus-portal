@@ -504,10 +504,15 @@ function openHotspot(h, el) {
   setTimeout(() => $('card').classList.add('show'), wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
 }
 function releaseCalloutDrag() {
+  const svg = $('hs-svg'), cardEl = $('card')
+  if (kneeDrag?.pid != null && svg?.hasPointerCapture?.(kneeDrag.pid)) {
+    try { svg.releasePointerCapture(kneeDrag.pid) } catch (_) {}
+  }
+  if (panelDrag?.pid != null && cardEl?.hasPointerCapture?.(panelDrag.pid)) {
+    try { cardEl.releasePointerCapture(panelDrag.pid) } catch (_) {}
+  }
   kneeDrag = null; panelDrag = null; lastPts = null
   document.body.classList.remove('edit-callout-knee')
-  try { $('hs-svg').releasePointerCapture?.() } catch (_) {}
-  try { $('card').releasePointerCapture?.() } catch (_) {}
 }
 function closeHotspot() {
   $('card').classList.remove('show')
@@ -597,7 +602,7 @@ function resolveCallout(mx, my, cw, ch, P, hs, maxX){
   P = LG.migratePanelLeader(P || {})
   let cardX, cardY
   const dir=P.dir||'auto'
-  const viewport={ minX:8, minY:66, maxX, maxY:innerHeight-ch-24 }
+  const viewport={ minX:8, minY:66, maxX, maxY:innerHeight-ch-24, relaxedMaxX:innerWidth-cw-8 }
   const unpacked=hs?.calloutPosManual ? unpackCalloutPos(hs.calloutPos) : null
   if (unpacked){
     const p=clampPanel(unpacked.x, unpacked.y, cw, ch, maxX, viewport); cardX=p.x; cardY=p.y
@@ -671,7 +676,7 @@ function wireCalloutDrag(){
       document.body.classList.add('edit-callout-knee')
       const d=activeHS.data
       if (!d.leaderKneeManual){ d.leaderKnee=[kp[0]-lastMx, kp[1]-lastMy]; d.leaderKneeManual=true }
-      kneeDrag={ sx:e.clientX, sy:e.clientY, ox:d.leaderKnee[0], oy:d.leaderKnee[1] }
+      kneeDrag={ sx:e.clientX, sy:e.clientY, ox:d.leaderKnee[0], oy:d.leaderKnee[1], pid:e.pointerId }
       svg.setPointerCapture(e.pointerId); syncLeaderEditorUI()
     })
     svg.addEventListener('pointermove', e=>{
@@ -679,9 +684,14 @@ function wireCalloutDrag(){
       activeHS.data.leaderKnee=[kneeDrag.ox+e.clientX-kneeDrag.sx, kneeDrag.oy+e.clientY-kneeDrag.sy]
       activeHS.data.leaderKneeManual=true; bumpLeader(); syncLeaderEditorUI()
     })
-    const endKneeDrag = e => { kneeDrag=null; document.body.classList.remove('edit-callout-knee'); try{svg.releasePointerCapture(e.pointerId)}catch(_){} }
+    const endKneeDrag = e => {
+      if (kneeDrag?.pid != null && e.pointerId !== kneeDrag.pid) return
+      kneeDrag=null; document.body.classList.remove('edit-callout-knee')
+      try{ if (svg.hasPointerCapture?.(e.pointerId)) svg.releasePointerCapture(e.pointerId) }catch(_){}
+    }
     svg.addEventListener('pointerup', endKneeDrag)
     svg.addEventListener('pointercancel', endKneeDrag)
+    svg.addEventListener('lostpointercapture', endKneeDrag)
   }
   if (card && !card._pdWire){
     card._pdWire=1
@@ -691,21 +701,26 @@ function wireCalloutDrag(){
       const d=activeHS.data, c=$('card')
       const ox=parseFloat(c.style.left)||0, oy=parseFloat(c.style.top)||0
       if (!d.calloutPosManual){ d.calloutPos=packCalloutPos(ox,oy); d.calloutPosManual=true }
-      panelDrag={ sx:e.clientX, sy:e.clientY, ox, oy }; c.setPointerCapture(e.pointerId); syncLeaderEditorUI()
+      panelDrag={ sx:e.clientX, sy:e.clientY, ox, oy, pid:e.pointerId }; c.setPointerCapture(e.pointerId); syncLeaderEditorUI()
     })
     card.addEventListener('pointermove', e=>{
       if (!panelDrag||!activeHS) return
       const card=$('card'), cw=card.offsetWidth||280, ch=card.offsetHeight||150
       const reserve=editMode?320:8, maxX=innerWidth-reserve-cw-8
-      const viewport={ minX:8, minY:66, maxX, maxY:innerHeight-ch-24 }
+      const viewport={ minX:8, minY:66, maxX, maxY:innerHeight-ch-24, relaxedMaxX:innerWidth-cw-8 }
       let nx=panelDrag.ox+e.clientX-panelDrag.sx, ny=panelDrag.oy+e.clientY-panelDrag.sy
       const cl=LG.layoutPanelFromHotspot(lastMx, lastMy, nx, ny, cw, ch, viewport)
       activeHS.data.calloutPos=packCalloutPos(cl.cardX, cl.cardY)
       activeHS.data.calloutPosManual=true; bumpLeader(); syncLeaderEditorUI()
     })
-    const endPanelDrag = e => { panelDrag=null; try{card.releasePointerCapture(e.pointerId)}catch(_){} }
+    const endPanelDrag = e => {
+      if (panelDrag?.pid != null && e.pointerId !== panelDrag.pid) return
+      panelDrag=null
+      try{ if (card.hasPointerCapture?.(e.pointerId)) card.releasePointerCapture(e.pointerId) }catch(_){}
+    }
     card.addEventListener('pointerup', endPanelDrag)
     card.addEventListener('pointercancel', endPanelDrag)
+    card.addEventListener('lostpointercapture', endPanelDrag)
   }
 }
 function updateCallout() {

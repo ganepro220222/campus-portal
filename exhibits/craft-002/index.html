@@ -7,11 +7,11 @@
 <style>html,body{height:100%;margin:0;background:#0f1118;color:#c8a86a;font-family:system-ui,-apple-system,"PingFang SC",sans-serif}
 .c{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;letter-spacing:1px;opacity:.8}</style>
 <script>
-/* 兼容干净 URL：/exhibits/craft-002/ → 共享播放器 ../player.html?ex=craft-002
-   保留 ?mode=edit 等参数；代码与 vendor 全站共享，本目录只放数据（config.json + assets/）。 */
 (function () {
-  var q = location.search ? '&' + location.search.replace(/^\?/, '') : '';
-  location.replace('../player.html?ex=craft-002' + q);
+  var params = new URLSearchParams(location.search);
+  params.delete('mode');
+  var q = params.toString();
+  location.replace('../player.view.html?ex=craft-002' + (q ? '&' + q : ''));
 })();
 </script>
 </head>

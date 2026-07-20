@@ -8,6 +8,7 @@ import {
   resolveCalloutGeom, migratePanelLeader, LEG2_AUTO_TAIL,
   nudgePanelFromHotspot, hotspotInsidePanel, panelHotspotCollision, panelHotspotClear,
   layoutPanelFromHotspot, probeLeaderLayouts, hotspotClearance,
+  anchorOnPanelEdge, getOrthPreferFirst, setOrthPreferFirst, clearOrthPreferFirst,
 } from './leader-geom.js'
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
 
@@ -136,12 +137,39 @@ test('nudge: impossible overlap uses straight fallback in resolveCalloutGeom', (
   const vp = { minX: 8, minY: 66, maxX: 120, maxY: 300, relaxedMaxX: 120 }
   const r = resolveCalloutGeom(mx, my, cw, ch, { elbowMode: 'orthogonal' }, {}, { cardX: 50, cardY: 200 }, vp)
   if (r.meta.panelOverlap) {
-    assert.equal(r.meta.leaderFallback, 'panel-overlap')
-    assert.equal(r.pts.length, 2)
+    assert.ok(['panel-overlap', 'hidden-overlap'].includes(r.meta.leaderFallback))
+    if (r.meta.leaderFallback !== 'hidden-overlap') {
+      assert.ok(r.meta.l1 >= ORTH_MIN_SEG)
+      assert.ok(anchorOnPanelEdge(r.ax, r.ay, r.cardX, r.cardY, cw, ch))
+      assert.ok(Math.hypot(r.ax - mx, r.ay - my) >= ORTH_MIN_SEG)
+    }
   } else {
     assert.ok(r.meta.panelClearance >= 0)
     assert.ok(isRightAngle(mx, my, r.meta.kx, r.meta.ky, r.ax, r.ay))
   }
+})
+
+test('panel-overlap straight fallback uses edge anchor with positive length', () => {
+  const mx = 50, my = 80, cw = 500, ch = 400
+  const vp = { minX: 8, minY: 66, maxX: 8, maxY: 66, relaxedMaxX: 8 }
+  const r = resolveCalloutGeom(mx, my, cw, ch, { elbowMode: 'orthogonal' }, {}, { cardX: 200, cardY: 200 }, vp)
+  assert.equal(r.meta.leaderFallback, 'panel-overlap')
+  assert.ok(r.meta.l1 >= ORTH_MIN_SEG)
+  assert.ok(anchorOnPanelEdge(r.ax, r.ay, r.cardX, r.cardY, cw, ch))
+  assert.ok(Math.hypot(r.pts[1][0] - r.pts[0][0], r.pts[1][1] - r.pts[0][1]) >= ORTH_MIN_SEG)
+})
+
+test('calloutOrthFirst is not written into hotspot config', () => {
+  const hs = { id: 'h1', position: [0, 0, 0] }
+  const before = JSON.stringify(hs)
+  for (let i = 0; i < 8; i++) {
+    resolveCalloutGeom(400, 350, 280, 150, { elbowMode: 'orthogonal', leg1Axis: 'auto' }, hs, { cardX: 300, cardY: 300 }, VP(900, 800))
+  }
+  assert.equal(JSON.stringify(hs), before)
+  setOrthPreferFirst(hs, 'h')
+  assert.equal(getOrthPreferFirst(hs), 'h')
+  assert.ok(!('calloutOrthFirst' in hs))
+  clearOrthPreferFirst(hs)
 })
 
 test('orthogonal: invalid path falls back to straight segment', () => {
@@ -227,6 +255,16 @@ test('property probe: 6000 layouts (seed=42) have valid geometry or straight fal
   assert.equal(s.zeroSeg, 0)
   assert.equal(s.badDir, 0)
   assert.equal(s.overlap, 0)
+  assert.equal(s.badStraight, 0)
+})
+
+test('craft index shells point to player.view.html only', () => {
+  for (const dir of ['craft-001', 'craft-002', 'craft-003', 'craft-004']) {
+    const html = fs.readFileSync(path.join(ROOT, dir, 'index.html'), 'utf8')
+    assert.ok(html.includes(`player.view.html?ex=${dir}`))
+    assert.ok(!html.includes('player.html'))
+    assert.match(html, /params\.delete\('mode'\)/)
+  }
 })
 
 test('batch: leg1-lock mode enables lgap and laxis only', () => {

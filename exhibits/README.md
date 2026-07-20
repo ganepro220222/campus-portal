@@ -19,7 +19,7 @@ exhibits/
   craft-001/
     config.json        # 该展品的配置（标题、相机、材质、热点、光照、语音等）
     assets/            # model.glb、panorama.jpg、poster.jpg、音频等
-    index.html         # 跳转壳 → ../player.html?ex=craft-001（不透传 mode=edit）
+    index.html         # 公开跳转壳 → ../player.view.html?ex=craft-001（不透传 mode=edit）
   craft-002/ …         # 每件展品仅含一份 config 与 assets
 ```
 

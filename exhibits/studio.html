@@ -174,10 +174,11 @@ const GROUPS = [
     { id:'pstyle', path:'panel.style',  label:'面板样式', type:'select', opts:PANEL_STYLES, def:'glass' },
     { id:'leader', path:'panel.leader', label:'引线样式', type:'select', opts:LEADERS, def:'elbow' },
     { id:'pdir',   path:'panel.dir',    label:'面板方位', type:'select', opts:DIRS, def:'auto' },
-    { id:'lgap',   path:'panel.leaderGap',   label:'引线第一段', type:'range', min:16, max:320, step:1, def:48 },
-    { id:'ltail',  path:'panel.leaderTail',  label:'引线第二段', type:'range', min:0, max:320, step:1, def:0 },
+    { id:'lgap',   path:'panel.leaderGap',   label:'第一段长度', type:'range', min:16, max:320, step:1, def:48, modes:['leg1-lock'] },
+    { id:'ltail',  path:'panel.leaderTail',  label:'第二段长度', type:'range', min:0, max:320, step:1, def:0, modes:['leg2-lock'] },
     { id:'lmode',  path:'panel.elbowMode',   label:'拐角形成', type:'select', opts:[['orthogonal','直角L'],['leg1-lock','定第一段'],['leg2-lock','定第二段']], def:'orthogonal' },
-    { id:'laxis',  path:'panel.leg1Axis',    label:'第一段方向', type:'select', opts:[['auto','自动'],['h','水平'],['v','垂直']], def:'auto' },
+    { id:'laxis',  path:'panel.leg1Axis',    label:'路径/第一段方向', type:'select', opts:[['auto','自动'],['h','水平优先/水平'],['v','竖直优先/竖直']], def:'auto', modes:['orthogonal','leg1-lock'] },
+    { id:'l2axis', path:'panel.leg2Axis',    label:'第二段方向', type:'select', opts:[['auto','自动'],['h','水平'],['v','垂直']], def:'auto', modes:['leg2-lock'] },
   ]},
   { title:'灯光方案 / 热点样式', fields:[
     { id:'scheme', label:'灯光方案', type:'scheme', def:'hall' },
@@ -209,6 +210,22 @@ function enabledOps() {
   return ops
 }
 
+function syncBatchFieldModes() {
+  const mode = $('v-lmode')?.value || 'orthogonal'
+  const leader = $('v-leader')?.value || 'elbow'
+  const straight = leader === 'straight'
+  for (const f of Object.values(FIELDS)) {
+    if (!f.modes) continue
+    const row = $('row-' + f.id), en = $('en-' + f.id)
+    if (!row || !en) continue
+    const applies = !straight && f.modes.includes(mode)
+    row.dataset.modeOff = applies ? '' : '1'
+    row.classList.toggle('dis', !en.checked || !applies)
+    const lb = row.querySelector('.lb')
+    if (lb) lb.title = applies ? '' : `仅 ${f.modes.map(m => ({ orthogonal:'直角L', 'leg1-lock':'定第一段', 'leg2-lock':'定第二段' }[m] || m)).join(' / ')} 模式生效`
+  }
+}
+
 /* ---------- 批量面板 UI ---------- */
 function buildBatchUI() {
   $('bwrap').innerHTML = GROUPS.map(g => `
@@ -216,9 +233,12 @@ function buildBatchUI() {
   // 交互：启用开关切换灰显；范围值实时显示
   for (const f of Object.values(FIELDS)) {
     const en = $('en-' + f.id), row = $('row-' + f.id)
-    en.addEventListener('change', () => row.classList.toggle('dis', !en.checked))
+    en.addEventListener('change', () => { syncBatchFieldModes(); row.classList.toggle('dis', !en.checked || row.dataset.modeOff === '1') })
     if (f.type === 'range') { const v = $('v-' + f.id), out = $('o-' + f.id); v.addEventListener('input', () => out.textContent = v.value) }
   }
+  $('v-lmode')?.addEventListener('change', syncBatchFieldModes)
+  $('v-leader')?.addEventListener('change', syncBatchFieldModes)
+  syncBatchFieldModes()
 }
 function fieldRow(f) {
   let ctl = ''

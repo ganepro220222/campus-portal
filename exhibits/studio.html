@@ -199,6 +199,8 @@ function enabledOps() {
   const ops = []
   for (const f of Object.values(FIELDS)) {
     const en = $('en-' + f.id); if (!en || !en.checked) continue
+    const row = $('row-' + f.id)
+    if (row?.dataset.modeOff === '1') continue
     if (f.type === 'scheme') { (LIGHT_SCHEMES[$('v-' + f.id).value] || {}).ops.forEach(([p, v]) => ops.push({ path: p, value: v })); continue }
     let v
     if (f.type === 'bool' || f.type === 'switch') v = $('v-' + f.id).checked

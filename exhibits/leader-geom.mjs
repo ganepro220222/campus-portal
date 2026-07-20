@@ -2,8 +2,28 @@
 
 export function clampN(v, lo, hi) { return Math.min(Math.max(v, lo), hi) }
 
+export const PANEL_HOTSPOT_GAP = 20
+
 export function panelBounds(cardX, cardY, cw, ch, pad = 8) {
   return { l: cardX + pad, r: cardX + cw - pad, t: cardY + pad, b: cardY + ch - pad }
+}
+
+export function hotspotInsidePanel(mx, my, cardX, cardY, cw, ch) {
+  return mx >= cardX && mx <= cardX + cw && my >= cardY && my <= cardY + ch
+}
+
+/** 面板不得覆盖热点：将面板推到距热点至少 gap 的最近合法位置 */
+export function nudgePanelFromHotspot(mx, my, cardX, cardY, cw, ch, gap = PANEL_HOTSPOT_GAP) {
+  let x = cardX, y = cardY
+  if (mx >= x && mx <= x + cw) {
+    const left = mx - gap - cw, right = mx + gap
+    x = Math.abs(left - cardX) <= Math.abs(right - cardX) ? left : right
+  }
+  if (my >= y && my <= y + ch) {
+    const up = my - gap - ch, down = my + gap
+    y = Math.abs(up - cardY) <= Math.abs(down - cardY) ? up : down
+  }
+  return { cardX: x, cardY: y }
 }
 
 export function parseLeaderOpts(P) {
@@ -89,26 +109,31 @@ function pickOrthCandidate(mx, my, cands) {
   return best
 }
 
+function orthFallback(mx, my, cardX, cardY, cw, ch) {
+  const [eax, eay] = panelEdgeAnchor(mx, my, cardX, cardY, cw, ch)
+  if (Math.abs(eax - mx) >= Math.abs(eay - my)) {
+    return { kx: eax, ky: my, ax: eax, ay: eay, first: 'h' }
+  }
+  return { kx: mx, ky: eay, ax: eax, ay: eay, first: 'v' }
+}
+
 /** 直角 L 形：Manhattan 路径，恒 90°；leg1Axis=h/v 表示水平/竖直优先，不静默改轴 */
 export function resolveOrthogonal(mx, my, cardX, cardY, cw, ch, panel) {
-  const O = parseLeaderOpts(panel)
   const b = panelBounds(cardX, cardY, cw, ch)
+  const O = parseLeaderOpts(panel)
   let pool = []
   if (O.leg1Axis === 'h') pool = orthCandidatesHFirst(mx, my, b)
   else if (O.leg1Axis === 'v') pool = orthCandidatesVFirst(mx, my, b)
   else {
     pool = [
-      ...orthCandidatesHFirst(mx, my, b).map(c => ({ ...c, _prefer: 'h' })),
-      ...orthCandidatesVFirst(mx, my, b).map(c => ({ ...c, _prefer: 'v' })),
+      ...orthCandidatesHFirst(mx, my, b),
+      ...orthCandidatesVFirst(mx, my, b),
     ]
   }
   pool = pool.map(c => ({ ...c, _b: b }))
-  let best = pickOrthCandidate(mx, my, pool)
-  if (!best) {
-    const ax = clampN(mx, b.l, b.r), ay = clampN(my, b.t, b.b)
-    return { kx: ax, ky: my, ax, ay, first: 'h' }
-  }
-  return { kx: best.kx, ky: best.ky, ax: best.ax, ay: best.ay, first: best.first }
+  const best = pickOrthCandidate(mx, my, pool)
+  if (best) return { kx: best.kx, ky: best.ky, ax: best.ax, ay: best.ay, first: best.first }
+  return orthFallback(mx, my, cardX, cardY, cw, ch)
 }
 
 export function leaderAxis(dir, mx, my, ax, ay) {
@@ -191,7 +216,8 @@ export function clampPanel(cardX, cardY, cw, ch, maxX, viewport = {}) {
 }
 
 export function resolveCalloutGeom(mx, my, cw, ch, panel, hs, layout) {
-  const { cardX, cardY } = layout
+  const nudged = nudgePanelFromHotspot(mx, my, layout.cardX, layout.cardY, cw, ch)
+  const cardX = nudged.cardX, cardY = nudged.cardY
   const O = parseLeaderOpts(panel)
   if (O.leader === 'straight' || O.leader === 'line') {
     const [ax, ay] = nearestAnchor(cardX, cardY, cw, ch, mx, my)

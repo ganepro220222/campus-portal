@@ -128,9 +128,9 @@
     filter:drop-shadow(0 0 3px rgba(200,168,106,.5)); }
   #hs-leader.straight { stroke-width:1.3; opacity:.82; }
   #hs-dot { fill:var(--gold); filter:drop-shadow(0 0 4px rgba(200,168,106,.7)); }
-  #hs-knee { fill:var(--gold); stroke:#0f1118; stroke-width:1.5; opacity:0; pointer-events:none; }
-  #hs-knee.edit { opacity:.92; pointer-events:auto; cursor:grab; }
-  #hs-knee.edit:active { cursor:grabbing; }
+  #hs-knee { fill:transparent; stroke:transparent; opacity:0; pointer-events:none; }
+  body.edit-callout-knee .hs-svg { cursor:grab; }
+  body.edit-callout-knee .hs-svg:active { cursor:grabbing; }
   body.edit-callout .hs-svg { pointer-events:auto; cursor:default; }
   body.edit-callout .card.ed-movable .card-title { cursor:grab; }
   body.edit-callout .card.ed-movable .card-title:active { cursor:grabbing; }
@@ -270,7 +270,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
-import * as LG from './leader-geom.js'
+import * as LG from './leader-geom.mjs'
 
 const $ = id => document.getElementById(id)
 const params = new URLSearchParams(location.search)
@@ -508,6 +508,7 @@ function closeHotspot() {
   $('card').classList.remove('ed-movable')
   $('hs-svg').setAttribute('hidden','')
   $('hs-knee').setAttribute('hidden',''); $('hs-knee').classList.remove('edit')
+  document.body.classList.remove('edit-callout-knee')
   document.body.classList.remove('edit-callout')
   hotspots.forEach(x => x.el.classList.remove('active'))
   activeHS = null
@@ -640,7 +641,7 @@ function syncLeaderEditorUI(){
   if(!note) return
   const st=hs?.leaderKneeManual?' · 折点：手动':(hs?.calloutPosManual?' · 面板：手动':' · 自动')
   if(straight) note.textContent='直线：热点→面板一条线段。'+st
-  else if(O.mode==='orthogonal') note.textContent='直角 L 形：Manhattan 路径，任意面板位置恒 90°。编辑：拖标题移面板。'+st
+  else if(O.mode==='orthogonal') note.textContent='直角 L 形：面板不覆盖热点时严格 90°；拖标题移面板。'+st
   else if(O.mode==='leg1-lock') note.textContent='定第一段：方向与长度锁定；可拖折点微调。'+st
   else note.textContent='定第二段：板边入射段方向/长度由控件决定；折点自动计算，不可拖拽。'+st
 }
@@ -660,6 +661,7 @@ function wireCalloutDrag(){
       const kp=leaderKneePoint(lastPts); if (!kp) return
       if (Math.hypot(e.clientX-kp[0], e.clientY-kp[1])>20) return
       e.preventDefault(); e.stopPropagation()
+      document.body.classList.add('edit-callout-knee')
       const d=activeHS.data
       if (!d.leaderKneeManual){ d.leaderKnee=[kp[0]-lastMx, kp[1]-lastMy]; d.leaderKneeManual=true }
       kneeDrag={ sx:e.clientX, sy:e.clientY, ox:d.leaderKnee[0], oy:d.leaderKnee[1] }
@@ -670,7 +672,7 @@ function wireCalloutDrag(){
       activeHS.data.leaderKnee=[kneeDrag.ox+e.clientX-kneeDrag.sx, kneeDrag.oy+e.clientY-kneeDrag.sy]
       activeHS.data.leaderKneeManual=true; bumpLeader(); syncLeaderEditorUI()
     })
-    svg.addEventListener('pointerup', e=>{ kneeDrag=null; try{svg.releasePointerCapture(e.pointerId)}catch(_){} })
+    svg.addEventListener('pointerup', e=>{ kneeDrag=null; document.body.classList.remove('edit-callout-knee'); try{svg.releasePointerCapture(e.pointerId)}catch(_){} })
   }
   if (card && !card._pdWire){
     card._pdWire=1
@@ -684,7 +686,10 @@ function wireCalloutDrag(){
     })
     card.addEventListener('pointermove', e=>{
       if (!panelDrag||!activeHS) return
-      activeHS.data.calloutPos=packCalloutPos(panelDrag.ox+e.clientX-panelDrag.sx, panelDrag.oy+e.clientY-panelDrag.sy)
+      const card=$('card'), cw=card.offsetWidth||280, ch=card.offsetHeight||150
+      let nx=panelDrag.ox+e.clientX-panelDrag.sx, ny=panelDrag.oy+e.clientY-panelDrag.sy
+      const n=LG.nudgePanelFromHotspot(lastMx, lastMy, nx, ny, cw, ch)
+      activeHS.data.calloutPos=packCalloutPos(n.cardX, n.cardY)
       activeHS.data.calloutPosManual=true; bumpLeader(); syncLeaderEditorUI()
     })
     card.addEventListener('pointerup', e=>{ panelDrag=null; try{card.releasePointerCapture(e.pointerId)}catch(_){} })
@@ -712,11 +717,7 @@ function updateCallout() {
     const leaderEl = $('hs-leader')
     leaderEl.setAttribute('points', growPoly(pts, g))
     leaderEl.classList.toggle('straight', O.leader==='straight'||O.leader==='line')
-    const knee=$('hs-knee'), kp=leaderKneePoint(pts)
-    if (editMode && kp && O.leader!=='straight' && O.leader!=='line' && O.mode!=='orthogonal' && O.mode!=='leg2-lock'){
-      knee.removeAttribute('hidden'); knee.classList.add('edit')
-      knee.setAttribute('cx',kp[0]); knee.setAttribute('cy',kp[1])
-    }else{ knee.setAttribute('hidden',''); knee.classList.remove('edit') }
+    $('hs-knee').setAttribute('hidden','')
   } else {
     // 移动端：就近显示于热点旁，夹取在视口内（避开顶栏 / 底部工具条），无引线
     const pad = 10, safeTop = 60, safeBot = 148

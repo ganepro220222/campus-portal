@@ -269,24 +269,38 @@ test('craft index shells point to player.view.html only', () => {
 })
 
 test('batch: leg1-lock mode enables lgap and laxis only', () => {
-  const lgap = { id: 'lgap', modes: ['leg1-lock'] }
-  const ltail = { id: 'ltail', modes: ['leg2-lock'] }
-  const laxis = { id: 'laxis', modes: ['orthogonal', 'leg1-lock'] }
+  const lgap = { id: 'lgap', leaders: ['elbow'], modes: ['leg1-lock'] }
+  const ltail = { id: 'ltail', leaders: ['elbow'], modes: ['leg2-lock'] }
+  const laxis = { id: 'laxis', leaders: ['elbow'], modes: ['orthogonal', 'leg1-lock'] }
   assert.ok(batchFieldApplies(lgap, 'leg1-lock', 'elbow'))
   assert.ok(!batchFieldApplies(lgap, 'orthogonal', 'elbow'))
   assert.ok(batchFieldApplies(laxis, 'leg1-lock', 'elbow'))
   assert.ok(batchFieldModeOff(ltail, 'leg1-lock', 'elbow'))
 })
 
-test('batch: straight leader disables mode-specific fields', () => {
-  const laxis = { id: 'laxis', modes: ['orthogonal', 'leg1-lock'] }
+test('batch: straight leader disables elbow-only fields including elbowMode', () => {
+  const lmode = { id: 'lmode', path: 'panel.elbowMode', leaders: ['elbow'] }
+  const laxis = { id: 'laxis', leaders: ['elbow'], modes: ['orthogonal', 'leg1-lock'] }
+  const lgap = { id: 'lgap', leaders: ['elbow'], modes: ['leg1-lock'] }
+  assert.ok(!batchFieldApplies(lmode, 'orthogonal', 'straight'))
   assert.ok(!batchFieldApplies(laxis, 'orthogonal', 'straight'))
+  assert.ok(!batchFieldApplies(lgap, 'leg1-lock', 'straight'))
+  assert.ok(batchFieldApplies(lmode, 'leg1-lock', 'elbow'))
+  assert.ok(batchFieldModeOff(lmode, 'orthogonal', 'straight'))
+  assert.ok(!batchFieldModeOff(lmode, 'orthogonal', 'elbow'))
+})
+
+test('batch: straight leader still allows non-elbow panel fields', () => {
+  const pstyle = { id: 'pstyle', path: 'panel.style' }
+  const leader = { id: 'leader', path: 'panel.leader' }
+  assert.ok(batchFieldApplies(pstyle, 'orthogonal', 'straight'))
+  assert.ok(batchFieldApplies(leader, 'orthogonal', 'straight'))
 })
 
 test('batch: collectBatchOps skips modeOff fields', () => {
   const FIELDS = {
     a: { id: 'a', path: 'panel.style', type: 'text' },
-    b: { id: 'b', path: 'panel.leaderGap', type: 'range', modes: ['leg1-lock'] },
+    b: { id: 'b', path: 'panel.leaderGap', type: 'range', leaders: ['elbow'], modes: ['leg1-lock'] },
   }
   const ops = collectBatchOps(FIELDS, {
     enabled: id => id === 'a' || id === 'b',
@@ -296,6 +310,22 @@ test('batch: collectBatchOps skips modeOff fields', () => {
   })
   assert.equal(ops.length, 1)
   assert.equal(ops[0].path, 'panel.style')
+})
+
+test('batch: collectBatchOps excludes panel.elbowMode when leader straight', () => {
+  const lmode = { id: 'lmode', path: 'panel.elbowMode', type: 'select', leaders: ['elbow'] }
+  const leader = { id: 'leader', path: 'panel.leader', type: 'select' }
+  const FIELDS = { lmode, leader }
+  const ops = collectBatchOps(FIELDS, {
+    enabled: () => true,
+    modeOff: id => id === 'lmode',
+    applies: f => batchFieldApplies(f, 'orthogonal', 'straight'),
+    value: f => (f.id === 'lmode' ? 'leg1-lock' : 'straight'),
+    schemeOps: () => [],
+  })
+  assert.ok(!ops.some(o => o.path === 'panel.elbowMode'))
+  assert.equal(ops.length, 1)
+  assert.equal(ops[0].path, 'panel.leader')
 })
 
 test('build-viewer: player.view.html is byte-identical to generator output', () => {

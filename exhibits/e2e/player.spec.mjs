@@ -121,6 +121,16 @@ test.describe('edit drag state', () => {
     await openFirstHotspot(page)
     expect((await calloutSnapshot(page)).cardShow).toBe(true)
   })
+
+  test('closeHotspotIfOpen clears state without reload', async () => {
+    await openFirstHotspot(page)
+    expect((await calloutSnapshot(page)).cardShow).toBe(true)
+    await closeHotspotIfOpen(page)
+    expect(await page.evaluate(() => document.getElementById('card')?.classList.contains('show'))).toBe(false)
+    expect(await page.evaluate(() => document.getElementById('hs-svg')?.hasAttribute('hidden'))).toBe(true)
+    expect(await page.evaluate(() => document.querySelectorAll('.hs.active').length)).toBe(0)
+    expect(await dragState(page)).toEqual({ kneeDrag: false, panelDrag: false })
+  })
 })
 
 test.describe('panel stability during model rotation', () => {

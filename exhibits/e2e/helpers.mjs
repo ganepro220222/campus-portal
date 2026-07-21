@@ -98,11 +98,12 @@ export async function openFirstHotspot(page) {
 }
 
 export async function closeHotspotIfOpen(page) {
-  await page.evaluate(() => {
-    const card = document.getElementById('card')
-    if (card?.classList.contains('show') && typeof closeHotspot === 'function') closeHotspot()
-  })
-  await page.waitForTimeout(200)
+  if (await page.locator('#card.show').count() === 0) return
+  const closeBtn = page.locator('#card-close')
+  if (await closeBtn.isVisible()) await closeBtn.click()
+  else await page.keyboard.press('Escape')
+  await page.waitForFunction(() => !document.getElementById('card')?.classList.contains('show'), null, { timeout: 10_000 })
+  await page.waitForFunction(() => document.getElementById('hs-svg')?.hasAttribute('hidden'), null, { timeout: 5_000 })
 }
 
 /** DOM 快照（不依赖 edit 模式 TEST-HOOKS） */

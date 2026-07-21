@@ -1,7 +1,7 @@
 /** 工作台批量字段模式过滤（纯函数，可单测） */
 
 export function batchFieldApplies(field, mode, leader) {
-  if (leader === 'straight') return false
+  if (field.leaders?.length && !field.leaders.includes(leader)) return false
   if (!field.modes) return true
   return field.modes.includes(mode)
 }
@@ -16,6 +16,7 @@ export function collectBatchOps(fields, state) {
   for (const f of Object.values(fields)) {
     if (!state.enabled(f.id)) continue
     if (state.modeOff(f.id)) continue
+    if (state.applies && !state.applies(f)) continue
     if (f.type === 'scheme') {
       for (const [p, v] of state.schemeOps(f.id) || []) ops.push({ path: p, value: v })
       continue

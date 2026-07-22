@@ -126,9 +126,14 @@ export async function viewerPendingEscapeSync(page) {
 
 export async function closeHotspotIfOpen(page) {
   if (await page.locator('#card.show').count() === 0) return
-  const closeBtn = page.locator('#card-close')
-  if (await closeBtn.isVisible()) await closeBtn.click()
-  else await page.keyboard.press('Escape')
+  // 编辑模式下窄屏时 #editor 会挡住 #card-close 的点击；优先 Esc / TEST-HOOK
+  await page.evaluate(() => {
+    if (window.__SY_TEST__?.closeHotspot) {
+      window.__SY_TEST__.closeHotspot()
+      return
+    }
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  })
   await page.waitForFunction(() => !document.getElementById('card')?.classList.contains('show'), null, { timeout: 10_000 })
   await page.waitForFunction(() => document.getElementById('hs-svg')?.hasAttribute('hidden'), null, { timeout: 5_000 })
 }

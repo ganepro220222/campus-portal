@@ -116,3 +116,36 @@ export function ensureHotspotIds(list) {
 
   return changes
 }
+
+export function formatHotspotIdChangeLine(change) {
+  return `#${change.index + 1} ${change.from} → ${change.to}`
+}
+
+export function formatHotspotIdChanges(changes) {
+  return (changes || []).map(formatHotspotIdChangeLine).join(' · ')
+}
+
+export function bootstrapHotspotIds(list) {
+  const audit = auditHotspotIds(list || [])
+  const changes = ensureHotspotIds(list || [])
+  return { audit, changes }
+}
+
+export function mergeHotspotIdChanges(...groups) {
+  const merged = []
+  const seen = new Set()
+  for (const group of groups) {
+    for (const c of group || []) {
+      const key = `${c.index}|${c.from}|${c.to}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      merged.push(c)
+    }
+  }
+  return merged
+}
+
+export function hotspotBootAuditHadIssues(audit, changes = []) {
+  if (!audit) return changes.length > 0
+  return !!(audit.invalid.length || audit.missing || audit.dupes.length || changes.length)
+}

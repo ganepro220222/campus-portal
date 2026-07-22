@@ -112,11 +112,6 @@ class ConverterGUI:
         self.var_overwrite = tk.BooleanVar(value=False)
         ttk.Checkbutton(g, text="覆盖已存在的同名 GLB",
                         variable=self.var_overwrite).grid(row=4, column=0, columnspan=4, sticky="w")
-        # Draco：当前几何占比小、需外部编码器，暂未内置（保留位，说明清楚）
-        self.var_draco = tk.BooleanVar(value=False)
-        cb = ttk.Checkbutton(g, text="压缩几何 Draco（几何仅占约 1/6，收益有限；需外部编码器，暂未内置）",
-                             variable=self.var_draco, state="disabled")
-        cb.grid(row=5, column=0, columnspan=4, sticky="w", pady=(2, 0))
 
         # 4) 执行 + 日志
         f_run = ttk.Frame(self.root); f_run.pack(fill="x", **pad)

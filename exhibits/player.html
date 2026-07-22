@@ -286,7 +286,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
-import { nextHotspotId, ensureHotspotIds } from './hotspot-id.mjs'
+import { nextHotspotId, ensureHotspotIds, auditHotspotIds, hotspotIdIssueLabel } from './hotspot-id.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -1432,12 +1432,13 @@ function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x
   p.push(cfg.assets?.panorama?ok('全景：'+cfg.assets.panorama):wn('无全景（用内置环境）'))
   p.push(cfg.assets?.poster?ok('封面'):wn('无封面'))
   p.push(`热点 ${cfg.hotspots.length} · 预设 ${cfg.presets.length} · 语音 ${(cfg.audio||[]).length}`)
-  const hsIds = (cfg.hotspots || []).map(h => String(h?.id || '').trim())
-  const hsDupes = hsIds.filter((id, i) => id && hsIds.indexOf(id) !== i)
-  const hsMissing = hsIds.filter(id => !id).length
-  if (hsDupes.length) p.push(wn('热点 id 重复：' + [...new Set(hsDupes)].join(', ')))
-  else if (hsMissing) p.push(wn('热点缺 id：' + hsMissing + ' 个'))
-  else p.push(ok('热点 id 唯一'))
+  const hsAudit = auditHotspotIds(cfg.hotspots || [])
+  if (hsAudit.invalid.length) {
+    p.push(wn('热点 id 类型非法：' + hsAudit.invalid.map(x => `#${x.index + 1} ${hotspotIdIssueLabel(x.issue)}`).join(' · ')))
+  }
+  if (hsAudit.dupes.length) p.push(wn('热点 id 重复：' + hsAudit.dupes.join(', ')))
+  else if (hsAudit.missing) p.push(wn('热点缺 id：' + hsAudit.missing + ' 个'))
+  else if (!hsAudit.invalid.length) p.push(ok('热点 id 唯一'))
   ;(cfg.audio||[]).forEach(a=>{ if(!a.src) p.push(wn('语音「'+(a.label||a.id)+'」缺文件')) })
   const st=modelStats(); p.push(st.tris>500000?wn('三角面偏多 '+st.tris.toLocaleString()):ok('三角面 '+st.tris.toLocaleString()))
   return p.join('<br>') }

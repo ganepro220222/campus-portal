@@ -237,7 +237,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
-import { nextHotspotId, ensureHotspotIds } from './hotspot-id.mjs'
+import { nextHotspotId, ensureHotspotIds, auditHotspotIds, hotspotIdIssueLabel } from './hotspot-id.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true

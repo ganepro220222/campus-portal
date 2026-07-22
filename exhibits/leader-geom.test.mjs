@@ -328,6 +328,11 @@ test('batch: collectBatchOps excludes panel.elbowMode when leader straight', () 
   assert.equal(ops[0].path, 'panel.leader')
 })
 
+test('static deps: HTML module imports resolve to files', () => {
+  const r = spawnSync(process.execPath, ['check-static-deps.mjs'], { cwd: ROOT, encoding: 'utf8' })
+  assert.equal(r.status, 0, (r.stderr || r.stdout || 'check-static-deps failed').trim())
+})
+
 test('build-viewer: player.view.html is byte-identical to generator output', () => {
   const r = spawnSync(process.execPath, ['build-viewer.mjs', '--check'], { cwd: ROOT, encoding: 'utf8' })
   assert.equal(r.status, 0, (r.stderr || r.stdout || 'build-viewer --check failed').trim())

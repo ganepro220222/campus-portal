@@ -16,6 +16,7 @@ exhibits/
   start.sh / start.bat # 一键启动（Git Bash / Windows）
   vendor/              # Three.js 与 Draco / Basis 解码器
   studio.html          # 工作台：列出全部展品，点卡片进入编辑或预览
+  studio-batch.mjs     # 工作台批量字段适用性与 ops 收集（studio.html 模块依赖）
   manifest.json        # 展品目录清单（启用保存服务时可自动扫描，无需手改）
   craft-001/
     config.json        # 该展品的配置（标题、相机、材质、热点、光照、语音等）
@@ -60,12 +61,13 @@ cd exhibits
 npm install
 npx playwright install chromium   # 首次运行 E2E 需要
 
-npm test                          # 几何单元测试（42 项）
-npm run test:e2e                  # Playwright 浏览器测试（smoke + 3D 播放器）
-npm run test:ci                   # 单元 + viewer 同步校验 + E2E（CI 同款）
+npm test                          # 几何单元测试 + 静态依赖检查
+npm run check:deps                # 仅校验 HTML module import 资源存在
+npm run test:e2e                  # Playwright 浏览器测试（smoke + 3D 播放器 + 工作台）
+npm run test:ci                   # 单元 + deps + viewer 同步校验 + E2E（CI 同款）
 ```
 
-E2E 分两类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 秒）与 `e2e/player.spec.mjs`（3D 模型串行，约 2 分钟）。本地若 8199 端口已有服务，Playwright 会复用，无需重复启动。
+E2E 分三类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 秒）、`e2e/player.spec.mjs`（3D 模型串行，约 2 分钟）、`e2e/studio.spec.mjs`（工作台启动与批量保存，约 30 秒）。本地若 8199 端口已有服务，Playwright 会复用，无需重复启动。
 
 ## 常用地址
 
@@ -118,7 +120,13 @@ exhibits/craft-XXX/
   - `vendor/`（Three.js 与解码器）
   - 各展品数据目录（`craft-XXX/config.json`、`assets/` 等）
   - 外链可指向 `…/craft-001/` 或 `…/player.view.html?ex=craft-001`
-- **编辑入口**：完整 `player.html` 与 `studio.html` 应放在受保护路径（登录鉴权或 IP 限制），勿与公开展品同路径暴露。公开站点的 `craft-XXX/index.html` 跳转壳应指向 `player.view.html`，勿暴露带 `mode=edit` 的完整版。
+- **编辑工作台（受保护路径）**：须**同时**部署以下文件（缺一会导致编辑器或工作台无法启动）：
+  - `studio.html` + `studio-batch.mjs`（工作台 ES module 依赖，缺后者整页脚本不执行）
+  - `player.html` + `leader-geom.js`
+  - `vendor/`
+  - 各展品数据目录
+  - 须 HTTP 访问；建议 `node _server/studio-server.mjs` 提供保存 API
+- **安全提示**：`player.html?mode=edit` 与 `studio.html` 勿与公开展品同路径暴露；`craft-XXX/index.html` 跳转壳应指向 `player.view.html`，勿透传 `mode=edit`。
 - **缓存**：`config.json` 不宜长期 CDN 缓存，保存后应能立即读到新版本；静态资源可加版本号或 hash 避免浏览器旧缓存。
 - **保存服务**：浏览器内直接保存需启动 `_server/` 中的参考服务，详见 `_server/README.md`。
 

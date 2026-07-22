@@ -1,8 +1,11 @@
 package com.shuyuan.backend.service;
 
+import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.News;
 import com.shuyuan.backend.mapper.NewsMapper;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,6 +36,12 @@ class NewsServiceTest {
 
     @InjectMocks
     private NewsService newsService;
+
+    @BeforeEach
+    @AfterEach
+    void clearMemberContext() {
+        MemberContext.clear();
+    }
 
     @Test
     void detail_usesRedisViewCountInsteadOfDirectDbUpdate() {

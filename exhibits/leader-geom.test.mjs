@@ -12,7 +12,7 @@ import {
   anchorOnPanelEdge, getOrthPreferFirst, setOrthPreferFirst, clearOrthPreferFirst,
 } from './leader-geom.js'
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
-import { ensureHotspotIds, nextHotspotId } from './hotspot-id.mjs'
+import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId } from './hotspot-id.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -365,6 +365,36 @@ test('hotspot id: migration is idempotent', () => {
   ensureHotspotIds(list)
   assert.deepEqual(ensureHotspotIds(list), [])
   assert.deepEqual(hsIds(list), ['h1', 'h3', 'h2'])
+})
+
+test('hotspot id: non-string ids are replaced not stringified', () => {
+  const list = [{ id: 1 }, { id: true }, { id: { source: 'cms-42' } }]
+  const changes = ensureHotspotIds(list)
+  assert.deepEqual(hsIds(list), ['h1', 'h2', 'h3'])
+  assert.ok(changes.some(c => c.from === '(invalid type: number)'))
+  assert.ok(changes.some(c => c.from === '(invalid type: boolean)'))
+  assert.ok(changes.some(c => c.from === '(invalid type: object)'))
+})
+
+test('hotspot id: two object ids get distinct hN not [object Object]', () => {
+  const list = [{ id: {} }, { id: { x: 1 } }]
+  ensureHotspotIds(list)
+  assert.deepEqual(hsIds(list), ['h1', 'h2'])
+})
+
+test('hotspot id: string numeric id stays valid', () => {
+  assert.equal(normalizeHotspotId('1'), '1')
+  const list = [{ id: '1' }]
+  assert.deepEqual(ensureHotspotIds(list), [])
+  assert.deepEqual(hsIds(list), ['1'])
+})
+
+test('hotspot id: audit reports invalid types before migration', () => {
+  const list = [{ id: 1 }, { id: 'h1' }]
+  const audit = auditHotspotIds(list)
+  assert.equal(audit.invalid.length, 1)
+  assert.equal(audit.invalid[0].issue, 'invalid:number')
+  assert.equal(hotspotIdIssueLabel(audit.invalid[0].issue), '(invalid type: number)')
 })
 
 test('static deps: HTML module imports resolve to files', () => {

@@ -1,7 +1,54 @@
 /** Hotspot id allocation and stable two-pass migration (editor + viewer boot). */
 
 export function normalizeHotspotId(id) {
-  return String(id ?? '').trim()
+  return typeof id === 'string' ? id.trim() : ''
+}
+
+export function hotspotIdIssue(id) {
+  if (id == null) return 'missing'
+  if (typeof id === 'string') return id.trim() ? null : 'empty'
+  if (typeof id === 'number') return 'invalid:number'
+  if (typeof id === 'boolean') return 'invalid:boolean'
+  if (Array.isArray(id)) return 'invalid:array'
+  if (typeof id === 'object') return 'invalid:object'
+  return `invalid:${typeof id}`
+}
+
+export function hotspotIdIssueLabel(issue) {
+  if (!issue || issue === 'empty' || issue === 'missing') return '(missing)'
+  if (issue.startsWith('invalid:')) return `(invalid type: ${issue.slice(8)})`
+  return '(missing)'
+}
+
+export function hotspotIdPrevLabel(id) {
+  const issue = hotspotIdIssue(id)
+  if (!issue) return normalizeHotspotId(id)
+  return hotspotIdIssueLabel(issue)
+}
+
+/** Read-only audit for validateReport (no mutation). */
+export function auditHotspotIds(list) {
+  const invalid = []
+  let missing = 0
+  const seen = new Map()
+  const dupes = []
+
+  for (let i = 0; i < (list || []).length; i++) {
+    const h = list[i]
+    if (!h || typeof h !== 'object') continue
+    const issue = hotspotIdIssue(h.id)
+    if (issue) {
+      if (issue === 'empty' || issue === 'missing') missing++
+      else invalid.push({ index: i, issue })
+      continue
+    }
+    const id = normalizeHotspotId(h.id)
+    const n = (seen.get(id) || 0) + 1
+    seen.set(id, n)
+    if (n === 2) dupes.push(id)
+  }
+
+  return { invalid, missing, dupes: [...new Set(dupes)] }
 }
 
 export function nextHotspotIdFromUsed(used) {
@@ -22,7 +69,7 @@ export function nextHotspotId(list) {
 
 /**
  * Two-pass migration: first instance of each existing id is kept; later duplicates,
- * missing, and empty ids receive new ids that never steal ids reserved for later items.
+ * missing, empty, and non-string ids receive new ids that never steal ids reserved for later items.
  * @returns {Array<{index:number, from:string, to:string}>}
  */
 export function ensureHotspotIds(list) {
@@ -49,7 +96,7 @@ export function ensureHotspotIds(list) {
     if (!h || typeof h !== 'object') continue
 
     const raw = normalized[i]
-    const prevLabel = raw || '(missing)'
+    const prevLabel = hotspotIdPrevLabel(h.id)
     let id = raw
 
     if (!id) {

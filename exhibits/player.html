@@ -963,7 +963,7 @@ function start() {
   $('scene').addEventListener('pointerdown', ()=>{ if($('card').classList.contains('show')) return })
   // 键盘快捷键：Esc 关面板 · 空格 播/暂停语音
   addEventListener('keydown', e => {
-    if (e.key === 'Escape') { if ($('card').classList.contains('show')) closeHotspot() }
+    if (e.key === 'Escape') { if (activeHS || cardShowTimer) closeHotspot() }
     else if (e.key === ' ' || e.code === 'Space') {
       const tag = (e.target?.tagName || '').toLowerCase()
       if (tag==='input' || tag==='textarea' || tag==='select' || tag==='button' || tag==='a') return  // 不干扰控件/输入
@@ -1464,6 +1464,7 @@ if (editMode) {
     setAutoRotate: (on) => { controls.autoRotate = !!on },
     isAutoRotating: () => !!controls.autoRotate,
     isHotspotOpen: () => activeHS != null,
+    isCardShowPending: () => cardShowTimer != null,
     startPanelDragTest: () => {
       if (!activeHS || innerWidth <= 720) return false
       const c = $('card'), d = activeHS.data

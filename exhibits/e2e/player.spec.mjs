@@ -200,6 +200,7 @@ test.describe('card show timer race', () => {
     expect(await page.evaluate(() => document.querySelectorAll('.hs.active').length)).toBe(0)
     if (edit) {
       expect(await page.evaluate(() => window.__SY_TEST__?.isHotspotOpen?.() ?? false)).toBe(false)
+      expect(await page.evaluate(() => window.__SY_TEST__?.isCardShowPending?.() ?? false)).toBe(false)
     }
   }
 
@@ -226,6 +227,22 @@ test.describe('card show timer race', () => {
     await openFirstHotspotNoWait(page)
     await page.keyboard.press('Escape')
     await assertHotspotStaysClosed(page, { waitMs: 150 })
+  })
+
+  test('desktop reset before show delay closes pending hotspot', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    await openFirstHotspotNoWait(page)
+    await page.locator('[data-k="reset"]').click()
+    await assertHotspotStaysClosed(page)
+  })
+
+  test('desktop hide-hotspots before show delay closes pending hotspot', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    await openFirstHotspotNoWait(page)
+    await page.locator('[data-k="hot"]').click()
+    await assertHotspotStaysClosed(page)
   })
 })
 

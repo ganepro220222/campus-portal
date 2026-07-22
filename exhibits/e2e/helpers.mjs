@@ -125,6 +125,18 @@ export async function dragState(page) {
   return page.evaluate(() => window.__SY_TEST__?.dragState?.() ?? { kneeDrag: false, panelDrag: false })
 }
 
+export async function editCalloutUiState(page) {
+  return page.evaluate(() => ({
+    cardShow: document.getElementById('card')?.classList.contains('show'),
+    svgHidden: document.getElementById('hs-svg')?.hasAttribute('hidden'),
+    kneeHidden: document.getElementById('hs-knee')?.hasAttribute('hidden'),
+    edMovable: document.getElementById('card')?.classList.contains('ed-movable'),
+    editCallout: document.body.classList.contains('edit-callout'),
+    editCalloutKnee: document.body.classList.contains('edit-callout-knee'),
+    activeHs: document.querySelectorAll('.hs.active').length,
+  }))
+}
+
 /** 在页面内调用 leader-geom.js */
 export async function resolveGeom(page, args) {
   return page.evaluate(async (a) => {

@@ -531,16 +531,19 @@ function releaseCalloutDrag() {
   kneeDrag = null; panelDrag = null; lastPts = null
   document.body.classList.remove('edit-callout-knee')
 }
-function closeHotspot() {
-  $('card').classList.remove('show')
-  $('card').classList.remove('ed-movable')
+function clearActiveHotspot(opts = {}) {
+  const refocus = opts.refocus !== false
+  $('card').classList.remove('show', 'ed-movable')
   $('hs-svg').setAttribute('hidden','')
   $('hs-knee').setAttribute('hidden',''); $('hs-knee').classList.remove('edit')
   document.body.classList.remove('edit-callout')
   releaseCalloutDrag()
   hotspots.forEach(x => x.el.classList.remove('active'))
   activeHS = null
-  focusTo(pivot.clone(), initialCam.length(), 700, initialCam.clone())
+  if (refocus) focusTo(pivot.clone(), initialCam.length(), 700, initialCam.clone())
+}
+function closeHotspot() {
+  clearActiveHotspot({ refocus: true })
 }
 const _cw2 = new THREE.Vector3(), _bc = new THREE.Vector3()
 // 模型世界包围盒 8 角投到屏幕，得到其占屏范围（用于面板避让）
@@ -865,8 +868,7 @@ function buildHUD() {
   if (ui.showAutoRotateButton!==false) mk('rotate','↻', controls.autoRotate, ()=>{
     controls.autoRotate=!controls.autoRotate
     if (controls.autoRotate && activeHS) {   // 开启自转：收起讲解并回到模型中轴，避免绕热点旋转
-      $('card').classList.remove('show'); $('hs-svg').setAttribute('hidden','')
-      hotspots.forEach(x=>x.el.classList.remove('active')); activeHS=null
+      clearActiveHotspot({ refocus: false })
       controls.target.copy(pivot); controls.update()
     }
     syncBtns()

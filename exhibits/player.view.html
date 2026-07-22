@@ -237,6 +237,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
+import { nextHotspotId, ensureHotspotIds } from './hotspot-id.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -408,34 +409,6 @@ function scheduleCardShow() {
     if (activeHS !== opening) return
     $('card').classList.add('show')
   }, wide ? 240 : 60)
-}
-function hotspotIdNum(id) {
-  const m = /^h(\d+)$/i.exec(String(id || '').trim())
-  return m ? parseInt(m[1], 10) : 0
-}
-function nextHotspotIdFromUsed(used) {
-  for (let n = 1; ; n++) {
-    const cand = 'h' + n
-    if (!used.has(cand)) return cand
-  }
-}
-function nextHotspotId(list) {
-  const used = new Set()
-  for (const h of list || []) {
-    const id = String(h?.id || '').trim()
-    if (id) used.add(id)
-  }
-  return nextHotspotIdFromUsed(used)
-}
-function ensureHotspotIds(list) {
-  const used = new Set()
-  for (const h of list || []) {
-    if (!h || typeof h !== 'object') continue
-    let id = String(h.id || '').trim()
-    if (!id || used.has(id)) id = nextHotspotIdFromUsed(used)
-    h.id = id
-    used.add(id)
-  }
 }
 // 热点以「显示空间坐标」写入 config；锚点挂到模型下（转成模型局部），
 // 这样模型缩放/旋转/位移后热点仍跟随，兼顾我方 config 直觉与最终形态健壮性。

@@ -394,9 +394,28 @@ function panoramaIBL(url) {
 }
 
 /* ── 热点 ── */
+const CARD_PANEL_STYLES = ['solid', 'glass', 'transparent', 'outline', 'ribbon', 'minimal']
+function applyCardPanelStyle(style) {
+  const card = $('card')
+  CARD_PANEL_STYLES.forEach(s => card.classList.remove('st-' + s))
+  card.classList.add('st-' + (style || 'solid'))
+}
+function scheduleCardShow() {
+  const wide = innerWidth > 720
+  const opening = activeHS
+  cardShowTimer = setTimeout(() => {
+    cardShowTimer = null
+    if (activeHS !== opening) return
+    $('card').classList.add('show')
+  }, wide ? 240 : 60)
+}
 // 热点以「显示空间坐标」写入 config；锚点挂到模型下（转成模型局部），
 // 这样模型缩放/旋转/位移后热点仍跟随，兼顾我方 config 直觉与最终形态健壮性。
 function buildHotspots() {
+  const activeId = activeHS?.data?.id ?? null
+  const cardWasShow = $('card').classList.contains('show')
+  clearTimeout(cardShowTimer); cardShowTimer = null
+  activeHS = null
   const layer = $('hs-layer'); layer.innerHTML=''
   hotspots.forEach(h => { if (h.anchor && h.anchor.parent) h.anchor.parent.remove(h.anchor) })  // 清理旧锚点，避免累积
   hotspots=[]
@@ -423,6 +442,17 @@ function buildHotspots() {
     }
     hotspots.push(hsObj)
   })
+  if (activeId) {
+    const hs = hotspots.find(x => x.data?.id === activeId)
+    if (hs) {
+      activeHS = hs
+      hs.el.classList.add('active')
+      if (cardWasShow) {
+        if (innerWidth > 720) $('hs-svg').removeAttribute('hidden')
+        bumpLeader()
+      } else scheduleCardShow()
+    } else clearActiveHotspot({ refocus: false })
+  }
 }
 let hotspotsVisible = true
 const _hw = new THREE.Vector3()
@@ -459,7 +489,8 @@ function openHotspot(h, el) {
   const style = (cfg.panel?.style) || 'solid'
   const card = $('card')
   card.style.left = ''; card.style.top = ''
-  card.className = 'card float st-' + style
+  card.className = 'card float'
+  applyCardPanelStyle(style)
   if (wide) { $('hs-svg').removeAttribute('hidden'); leaderT0 = performance.now(); if(editMode) document.body.classList.add('edit-callout') }
   else { $('hs-svg').setAttribute('hidden','') }                                     // 移动端就近显示，无引线
   if (h.cameraFocus) {
@@ -470,12 +501,7 @@ function openHotspot(h, el) {
     focusTo(tgt, num(cf.distance,2.4), num(cf.duration,800), camPos)
   }
   if (h.audio) playTrackById(h.audio)   // 该热点绑定了语音讲解 → 自动播放
-  const opening = activeHS
-  cardShowTimer = setTimeout(() => {
-    cardShowTimer = null
-    if (activeHS !== opening) return
-    $('card').classList.add('show')
-  }, wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
+  scheduleCardShow()   // 桌面先出线再出框；移动端直接就近弹出
 }
 function releaseCalloutDrag() {
   const svg = $('hs-svg'), cardEl = $('card')

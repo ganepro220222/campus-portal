@@ -443,9 +443,28 @@ function panoramaIBL(url) {
 }
 
 /* ── 热点 ── */
+const CARD_PANEL_STYLES = ['solid', 'glass', 'transparent', 'outline', 'ribbon', 'minimal']
+function applyCardPanelStyle(style) {
+  const card = $('card')
+  CARD_PANEL_STYLES.forEach(s => card.classList.remove('st-' + s))
+  card.classList.add('st-' + (style || 'solid'))
+}
+function scheduleCardShow() {
+  const wide = innerWidth > 720
+  const opening = activeHS
+  cardShowTimer = setTimeout(() => {
+    cardShowTimer = null
+    if (activeHS !== opening) return
+    $('card').classList.add('show')
+  }, wide ? 240 : 60)
+}
 // 热点以「显示空间坐标」写入 config；锚点挂到模型下（转成模型局部），
 // 这样模型缩放/旋转/位移后热点仍跟随，兼顾我方 config 直觉与最终形态健壮性。
 function buildHotspots() {
+  const activeId = activeHS?.data?.id ?? null
+  const cardWasShow = $('card').classList.contains('show')
+  clearTimeout(cardShowTimer); cardShowTimer = null
+  activeHS = null
   const layer = $('hs-layer'); layer.innerHTML=''
   hotspots.forEach(h => { if (h.anchor && h.anchor.parent) h.anchor.parent.remove(h.anchor) })  // 清理旧锚点，避免累积
   hotspots=[]
@@ -472,6 +491,17 @@ function buildHotspots() {
     }
     hotspots.push(hsObj)
   })
+  if (activeId) {
+    const hs = hotspots.find(x => x.data?.id === activeId)
+    if (hs) {
+      activeHS = hs
+      hs.el.classList.add('active')
+      if (cardWasShow) {
+        if (innerWidth > 720) $('hs-svg').removeAttribute('hidden')
+        bumpLeader()
+      } else scheduleCardShow()
+    } else clearActiveHotspot({ refocus: false })
+  }
 }
 let hotspotsVisible = true
 const _hw = new THREE.Vector3()
@@ -508,7 +538,8 @@ function openHotspot(h, el) {
   const style = (cfg.panel?.style) || 'solid'
   const card = $('card')
   card.style.left = ''; card.style.top = ''
-  card.className = 'card float st-' + style
+  card.className = 'card float'
+  applyCardPanelStyle(style)
   if (wide) { $('hs-svg').removeAttribute('hidden'); leaderT0 = performance.now(); if(editMode) document.body.classList.add('edit-callout') }
   else { $('hs-svg').setAttribute('hidden','') }                                     // 移动端就近显示，无引线
   if (h.cameraFocus) {
@@ -519,12 +550,7 @@ function openHotspot(h, el) {
     focusTo(tgt, num(cf.distance,2.4), num(cf.duration,800), camPos)
   }
   if (h.audio) playTrackById(h.audio)   // 该热点绑定了语音讲解 → 自动播放
-  const opening = activeHS
-  cardShowTimer = setTimeout(() => {
-    cardShowTimer = null
-    if (activeHS !== opening) return
-    $('card').classList.add('show')
-  }, wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
+  scheduleCardShow()   // 桌面先出线再出框；移动端直接就近弹出
 }
 function releaseCalloutDrag() {
   const svg = $('hs-svg'), cardEl = $('card')
@@ -1266,7 +1292,7 @@ function wireEditor() {
   bindInfo('ed-title','title'); bindInfo('ed-subtitle','subtitle')
   { const c=el('ed-showtitle'); if(c) c.onchange=e=>{ cfg.ui=cfg.ui||{}; cfg.ui.showTitle=e.target.checked; renderText() } }
   const ps=el('ed-panel-style'); if(ps){ ps.value=(cfg.panel?.style)||'solid'; ps.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.style=e.target.value
-    if($('card').classList.contains('show')){ const c=$('card'); c.classList.remove('st-solid','st-glass','st-transparent','st-outline','st-ribbon','st-minimal'); c.classList.add('st-'+e.target.value) } } }
+    if (activeHS || cardShowTimer) applyCardPanelStyle(e.target.value) } }
   const lz=el('ed-leader'); if(lz){ lz.value=(cfg.panel&&(cfg.panel.leader==='straight'||cfg.panel.leader==='line'))?'straight':'elbow'; lz.onchange=e=>{ cfg.panel=cfg.panel||{}; cfg.panel.leader=e.target.value; syncLeaderEditorUI(); bumpLeader() } }
   const dz2=el('ed-dir'); if(dz2){ dz2.value=(cfg.panel&&cfg.panel.dir)||'auto'; dz2.onchange=e=>{
     cfg.panel=cfg.panel||{}; cfg.panel.dir=e.target.value
@@ -1465,6 +1491,61 @@ if (editMode) {
     isAutoRotating: () => !!controls.autoRotate,
     isHotspotOpen: () => activeHS != null,
     isCardShowPending: () => cardShowTimer != null,
+    openPendingAndAct: (action) => {
+      const item = hotspots[0]
+      if (!item) return { ok: false, reason: 'no-hotspot' }
+      openHotspot(item.data, item.el)
+      const card = document.getElementById('card')
+      if (!cardShowTimer || card.classList.contains('show')) {
+        return { ok: false, reason: 'not-pending', pending: !!cardShowTimer, show: card.classList.contains('show') }
+      }
+      const before = { open: activeHS != null, pending: true, show: false }
+      if (action === 'escape') { if (activeHS || cardShowTimer) closeHotspot() }
+      else if (action === 'rotate') {
+        controls.autoRotate = true
+        if (activeHS) { clearActiveHotspot({ refocus: false }); controls.target.copy(pivot); controls.update() }
+        syncBtns()
+      } else if (action === 'reset') closeHotspot()
+      else if (action === 'hideHot') { hotspotsVisible = false; closeHotspot(); syncBtns() }
+      else return { ok: false, reason: 'unknown-action' }
+      return {
+        ok: true, before,
+        after: { open: activeHS != null, pending: cardShowTimer != null, show: card.classList.contains('show') },
+      }
+    },
+    applyPanelStylePending: (style) => {
+      if (!activeHS && !cardShowTimer) return { ok: false, reason: 'no-hotspot' }
+      cfg.panel = cfg.panel || {}
+      cfg.panel.style = style
+      applyCardPanelStyle(style)
+      const card = document.getElementById('card')
+      return { ok: true, pending: cardShowTimer != null, classes: [...card.classList] }
+    },
+    applyPanelStyleWhilePending: (style) => {
+      const item = hotspots[0]
+      if (!item) return { ok: false, reason: 'no-hotspot' }
+      openHotspot(item.data, item.el)
+      const card = document.getElementById('card')
+      if (!cardShowTimer || card.classList.contains('show')) {
+        return { ok: false, reason: 'not-pending', pending: !!cardShowTimer, show: card.classList.contains('show') }
+      }
+      cfg.panel = cfg.panel || {}
+      cfg.panel.style = style
+      applyCardPanelStyle(style)
+      return { ok: true, pending: true, classes: [...card.classList] }
+    },
+    rebuildHotspotsWhileOpen: () => {
+      const wasPending = cardShowTimer != null
+      const wasShow = document.getElementById('card')?.classList.contains('show')
+      buildHotspots()
+      return {
+        ok: true, wasPending, wasShow,
+        open: activeHS != null,
+        pending: cardShowTimer != null,
+        show: document.getElementById('card')?.classList.contains('show'),
+        activeCount: document.querySelectorAll('.hs.active').length,
+      }
+    },
     startPanelDragTest: () => {
       if (!activeHS || innerWidth <= 720) return false
       const c = $('card'), d = activeHS.data

@@ -3,8 +3,9 @@
   "private": true,
   "scripts": {
     "test": "node leader-geom.test.mjs",
+    "check:deps": "node check-static-deps.mjs",
     "test:e2e": "playwright test",
-    "test:ci": "node leader-geom.test.mjs && node build-viewer.mjs --check && playwright test",
+    "test:ci": "node leader-geom.test.mjs && node check-static-deps.mjs && node build-viewer.mjs --check && playwright test",
     "build:viewer": "node build-viewer.mjs",
     "check:viewer": "node build-viewer.mjs --check"
   },

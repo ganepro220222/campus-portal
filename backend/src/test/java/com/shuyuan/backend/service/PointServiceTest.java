@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.entity.PointRecord;
 import com.shuyuan.backend.entity.PointRule;
 import com.shuyuan.backend.mapper.MemberMapper;
@@ -55,6 +56,7 @@ class PointServiceTest {
 
     @AfterEach
     void clearTransactionSynchronization() {
+        MemberContext.clear();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.clear();
         }

@@ -110,6 +110,20 @@ export async function openFirstHotspotNoWait(page) {
   if (!ok) throw new Error('failed to open hotspot')
 }
 
+/** 观看版：同一页面任务内打开 pending 热点并同步 Esc（避免协议往返吃掉 delay） */
+export async function viewerPendingEscapeSync(page) {
+  return page.evaluate(() => {
+    const el = document.querySelector('#hs-layer .hs')
+    if (!el) return { ok: false, reason: 'no-hs' }
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    const card = document.getElementById('card')
+    const pending = !card.classList.contains('show') && document.querySelectorAll('.hs.active').length > 0
+    if (!pending) return { ok: false, reason: 'not-pending', show: card.classList.contains('show') }
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    return { ok: true }
+  })
+}
+
 export async function closeHotspotIfOpen(page) {
   if (await page.locator('#card.show').count() === 0) return
   const closeBtn = page.locator('#card-close')

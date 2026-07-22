@@ -3,7 +3,10 @@ import {
   gotoPlayer, reloadPlayer, openFirstHotspot, openFirstHotspotNoWait, closeHotspotIfOpen,
   calloutSnapshot, dragState, editCalloutUiState, parseLeaderPoints, segmentCount,
   gotoViewerReady,
+  viewerPendingEscapeSync,
 } from './helpers.mjs'
+
+const PANEL_STYLES = ['solid', 'glass', 'transparent', 'outline', 'ribbon', 'minimal']
 
 /** 3D 相关用例串行 + 复用同一 page，避免重复冷启动 */
 test.describe.configure({ mode: 'serial', timeout: 180_000 })
@@ -207,16 +210,18 @@ test.describe('card show timer race', () => {
   test('desktop Escape before show delay does not flash card back', async () => {
     await closeHotspotIfOpen(page)
     await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
-    await openFirstHotspotNoWait(page)
-    await page.keyboard.press('Escape')
+    const r = await page.evaluate(() => window.__SY_TEST__.openPendingAndAct('escape'))
+    expect(r.ok).toBe(true)
+    expect(r.before).toEqual({ open: true, pending: true, show: false })
     await assertHotspotStaysClosed(page)
   })
 
   test('desktop rotate before show delay does not flash card back', async () => {
     await closeHotspotIfOpen(page)
     await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
-    await openFirstHotspotNoWait(page)
-    await page.locator('[data-k="rotate"]').click()
+    const r = await page.evaluate(() => window.__SY_TEST__.openPendingAndAct('rotate'))
+    expect(r.ok).toBe(true)
+    expect(r.before.pending).toBe(true)
     await assertHotspotStaysClosed(page)
     expect(await page.evaluate(() => window.__SY_TEST__?.isAutoRotating())).toBe(true)
   })
@@ -224,24 +229,75 @@ test.describe('card show timer race', () => {
   test('mobile Escape before show delay does not flash card back', async () => {
     await closeHotspotIfOpen(page)
     await reloadPlayer(page, { viewport: { width: 719, height: 700 } })
-    await openFirstHotspotNoWait(page)
-    await page.keyboard.press('Escape')
+    const r = await page.evaluate(() => window.__SY_TEST__.openPendingAndAct('escape'))
+    expect(r.ok).toBe(true)
+    expect(r.before.pending).toBe(true)
     await assertHotspotStaysClosed(page, { waitMs: 150 })
   })
 
   test('desktop reset before show delay closes pending hotspot', async () => {
     await closeHotspotIfOpen(page)
     await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
-    await openFirstHotspotNoWait(page)
-    await page.locator('[data-k="reset"]').click()
+    const r = await page.evaluate(() => window.__SY_TEST__.openPendingAndAct('reset'))
+    expect(r.ok).toBe(true)
     await assertHotspotStaysClosed(page)
   })
 
   test('desktop hide-hotspots before show delay closes pending hotspot', async () => {
     await closeHotspotIfOpen(page)
     await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
-    await openFirstHotspotNoWait(page)
-    await page.locator('[data-k="hot"]').click()
+    const r = await page.evaluate(() => window.__SY_TEST__.openPendingAndAct('hideHot'))
+    expect(r.ok).toBe(true)
+    await assertHotspotStaysClosed(page)
+  })
+
+  test('pending panel style preview matches each selection', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    for (const style of PANEL_STYLES) {
+      const applied = await page.evaluate(s => window.__SY_TEST__.applyPanelStyleWhilePending(s), style)
+      expect(applied.ok, applied.reason || '').toBe(true)
+      expect(applied.pending).toBe(true)
+      expect(applied.classes).toContain(`st-${style}`)
+      for (const other of PANEL_STYLES.filter(x => x !== style)) {
+        expect(applied.classes).not.toContain(`st-${other}`)
+      }
+      await page.waitForFunction(() => document.getElementById('card')?.classList.contains('show'), null, { timeout: 5_000 })
+      const final = await page.evaluate(() => [...document.getElementById('card').classList])
+      expect(final).toContain(`st-${style}`)
+      await page.evaluate(() => window.__SY_TEST__.closeHotspot())
+      await page.waitForFunction(() => !document.getElementById('card')?.classList.contains('show'))
+    }
+  })
+
+  test('pending hotspot rebuild rebinds without stale card flash', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    const rebuilt = await page.evaluate(() => {
+      if (!window.__SY_TEST__.openHotspotByIndex(0)) return { ok: false, reason: 'open-failed' }
+      if (!window.__SY_TEST__.isCardShowPending()) return { ok: false, reason: 'not-pending' }
+      return { ok: true, ...window.__SY_TEST__.rebuildHotspotsWhileOpen() }
+    })
+    expect(rebuilt.ok, rebuilt.reason || '').toBe(true)
+    expect(rebuilt.wasPending).toBe(true)
+    expect(rebuilt.open).toBe(true)
+    expect(rebuilt.pending).toBe(true)
+    expect(rebuilt.activeCount).toBe(1)
+    expect(rebuilt.show).toBe(false)
+    await page.waitForTimeout(300)
+    expect(await page.evaluate(() => document.getElementById('card')?.classList.contains('show'))).toBe(true)
+    expect(await page.evaluate(() => document.querySelectorAll('.hs.active').length)).toBe(1)
+  })
+
+  test('pending delete rebuild keeps hotspot closed', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    const pending = await page.evaluate(() => {
+      if (!window.__SY_TEST__.openHotspotByIndex(0)) return false
+      return window.__SY_TEST__.isCardShowPending()
+    })
+    expect(pending).toBe(true)
+    await page.locator('[data-hs-del="0"]').click()
     await assertHotspotStaysClosed(page)
   })
 })
@@ -263,8 +319,8 @@ test.describe('viewer rotate button', () => {
   test('closes hotspot opened during show delay (race)', async ({ browser }) => {
     const vpage = await browser.newPage()
     await gotoViewerReady(vpage, { viewport: { width: 900, height: 700 } })
-    await openFirstHotspotNoWait(vpage)
-    await vpage.keyboard.press('Escape')
+    const r = await viewerPendingEscapeSync(vpage)
+    expect(r.ok).toBe(true)
     await vpage.waitForTimeout(300)
     expect(await vpage.evaluate(() => document.getElementById('card')?.classList.contains('show'))).toBe(false)
     expect(await vpage.evaluate(() => document.getElementById('hs-svg')?.hasAttribute('hidden'))).toBe(true)

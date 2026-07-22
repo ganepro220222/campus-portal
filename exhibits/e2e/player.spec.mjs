@@ -300,6 +300,70 @@ test.describe('card show timer race', () => {
     expect(ok).toBe(true)
     await assertHotspotStaysClosed(page)
   })
+
+  test('delete non-tail hotspot then add keeps unique ids and rebinds on rebuild', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    const result = await page.evaluate(() => {
+      window.__SY_TEST__.setupHotspotsForIdTest()
+      window.__SY_TEST__.deleteHotspotByIndex(0)
+      const afterAdd = window.__SY_TEST__.addHotspotForIdTest('新H3')
+      const ids = afterAdd.map(h => h.id)
+      if (new Set(ids).size !== ids.length) return { ok: false, reason: 'duplicate-ids', ids }
+      const newHs = afterAdd.find(h => h.title === '新H3')
+      if (!newHs || !window.__SY_TEST__.openHotspotById(newHs.id)) return { ok: false, reason: 'open-failed', ids }
+      const beforeRebuild = window.__SY_TEST__.activeHotspotSnapshot()
+      window.__SY_TEST__.triggerHotspotStyleRebuild()
+      const afterRebuild = window.__SY_TEST__.activeHotspotSnapshot()
+      return {
+        ok: true, ids, beforeRebuild, afterRebuild,
+        activeCount: document.querySelectorAll('.hs.active').length,
+      }
+    })
+    expect(result.ok, result.reason || '').toBe(true)
+    expect(result.beforeRebuild.title).toBe('新H3')
+    expect(result.afterRebuild.title).toBe('新H3')
+    expect(result.afterRebuild.id).toBe(result.beforeRebuild.id)
+    expect(result.afterRebuild.cardTitle).toBe('新H3')
+    expect(result.activeCount).toBe(1)
+  })
+
+  test('duplicate id config rebinds opened hotspot not first match', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    const result = await page.evaluate(() => {
+      window.__SY_TEST__.setupHotspotsForIdTest()
+      window.__SY_TEST__.simulateDuplicateIdHotspot()
+      if (!window.__SY_TEST__.openHotspotByTitle('新H3-dup')) return { ok: false, reason: 'open-failed' }
+      const before = window.__SY_TEST__.activeHotspotSnapshot()
+      window.__SY_TEST__.triggerHotspotStyleRebuild()
+      const after = window.__SY_TEST__.activeHotspotSnapshot()
+      return { ok: true, before, after, activeCount: document.querySelectorAll('.hs.active').length }
+    })
+    expect(result.ok, result.reason || '').toBe(true)
+    expect(result.before.title).toBe('新H3-dup')
+    expect(result.after.title).toBe('新H3-dup')
+    expect(result.after.cardTitle).toBe('新H3-dup')
+    expect(result.activeCount).toBe(1)
+  })
+
+  test('legacy hotspot without id rebinds by data reference on rebuild', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    const result = await page.evaluate(() => {
+      window.__SY_TEST__.setupLegacyNoIdHotspot()
+      if (!window.__SY_TEST__.openHotspotByIndex(0)) return { ok: false, reason: 'open-failed' }
+      const before = window.__SY_TEST__.activeHotspotSnapshot()
+      window.__SY_TEST__.triggerHotspotStyleRebuild()
+      const after = window.__SY_TEST__.activeHotspotSnapshot()
+      return { ok: true, before, after, activeCount: document.querySelectorAll('.hs.active').length }
+    })
+    expect(result.ok, result.reason || '').toBe(true)
+    expect(result.before.title).toBe('Legacy')
+    expect(result.after.title).toBe('Legacy')
+    expect(result.after.cardTitle).toBe('Legacy')
+    expect(result.activeCount).toBe(1)
+  })
 })
 
 test.describe('viewer rotate button', () => {

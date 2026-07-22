@@ -12,6 +12,7 @@ import {
   anchorOnPanelEdge, getOrthPreferFirst, setOrthPreferFirst, clearOrthPreferFirst,
 } from './leader-geom.js'
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
+import { ensureHotspotIds, nextHotspotId } from './hotspot-id.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -326,6 +327,44 @@ test('batch: collectBatchOps excludes panel.elbowMode when leader straight', () 
   assert.ok(!ops.some(o => o.path === 'panel.elbowMode'))
   assert.equal(ops.length, 1)
   assert.equal(ops[0].path, 'panel.leader')
+})
+
+function hsList(ids) {
+  return ids.map(id => (id == null ? {} : { id }))
+}
+
+function hsIds(list) {
+  return list.map(h => h.id)
+}
+
+test('hotspot id: duplicate h1,h1,h2 migrates to h1,h3,h2', () => {
+  const list = hsList(['h1', 'h1', 'h2'])
+  ensureHotspotIds(list)
+  assert.deepEqual(hsIds(list), ['h1', 'h3', 'h2'])
+})
+
+test('hotspot id: missing then h1 becomes h2,h1', () => {
+  const list = hsList(['', 'h1'])
+  ensureHotspotIds(list)
+  assert.deepEqual(hsIds(list), ['h2', 'h1'])
+})
+
+test('hotspot id: nextHotspotId skips reserved existing ids', () => {
+  const list = hsList(['h1', 'h3', 'h100'])
+  assert.equal(nextHotspotId(list), 'h2')
+})
+
+test('hotspot id: reordering unique ids does not rewrite them', () => {
+  const list = hsList(['h2', 'h1', 'h3'])
+  ensureHotspotIds(list)
+  assert.deepEqual(hsIds(list), ['h2', 'h1', 'h3'])
+})
+
+test('hotspot id: migration is idempotent', () => {
+  const list = hsList(['h1', 'h1', 'h2'])
+  ensureHotspotIds(list)
+  assert.deepEqual(ensureHotspotIds(list), [])
+  assert.deepEqual(hsIds(list), ['h1', 'h3', 'h2'])
 })
 
 test('static deps: HTML module imports resolve to files', () => {

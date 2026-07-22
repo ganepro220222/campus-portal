@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test'
 import {
   gotoPlayer, reloadPlayer, openFirstHotspot, closeHotspotIfOpen,
-  calloutSnapshot, dragState, parseLeaderPoints, segmentCount,
+  calloutSnapshot, dragState, editCalloutUiState, parseLeaderPoints, segmentCount,
+  gotoViewerReady,
 } from './helpers.mjs'
 
 /** 3D 相关用例串行 + 复用同一 page，避免重复冷启动 */
@@ -131,6 +132,29 @@ test.describe('edit drag state', () => {
     expect(await page.evaluate(() => document.querySelectorAll('.hs.active').length)).toBe(0)
     expect(await dragState(page)).toEqual({ kneeDrag: false, panelDrag: false })
   })
+
+  test('rotate button clears panel drag and edit UI', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    await openFirstHotspot(page)
+    expect(await page.evaluate(() => window.__SY_TEST__?.startPanelDragTest())).toBe(true)
+    expect(await dragState(page)).toEqual({ kneeDrag: false, panelDrag: true })
+    await page.locator('[data-k="rotate"]').click()
+    await page.waitForFunction(() => !document.getElementById('card')?.classList.contains('show'), null, { timeout: 5_000 })
+    expect(await dragState(page)).toEqual({ kneeDrag: false, panelDrag: false })
+    expect(await editCalloutUiState(page)).toMatchObject({
+      cardShow: false,
+      svgHidden: true,
+      kneeHidden: true,
+      edMovable: false,
+      editCallout: false,
+      editCalloutKnee: false,
+      activeHs: 0,
+    })
+    expect(await page.evaluate(() => window.__SY_TEST__?.isAutoRotating())).toBe(true)
+    await openFirstHotspot(page)
+    expect((await calloutSnapshot(page)).cardShow).toBe(true)
+  })
 })
 
 test.describe('panel stability during model rotation', () => {
@@ -165,5 +189,20 @@ test.describe('panel stability during model rotation', () => {
     }
     expect(maxJump).toBeLessThan(120)
     expect(dotMove).toBeGreaterThan(0.1)
+  })
+})
+
+test.describe('viewer rotate button', () => {
+  test('closes open hotspot without edit drag hooks', async ({ browser }) => {
+    const vpage = await browser.newPage()
+    await gotoViewerReady(vpage, { viewport: { width: 900, height: 700 } })
+    await openFirstHotspot(vpage)
+    expect((await calloutSnapshot(vpage))?.cardShow).toBe(true)
+    await vpage.locator('[data-k="rotate"]').click()
+    await vpage.waitForFunction(() => !document.getElementById('card')?.classList.contains('show'), null, { timeout: 5_000 })
+    expect(await vpage.evaluate(() => document.getElementById('hs-svg')?.hasAttribute('hidden'))).toBe(true)
+    expect(await vpage.evaluate(() => document.querySelectorAll('.hs.active').length)).toBe(0)
+    expect(await vpage.evaluate(() => document.querySelector('[data-k="rotate"]')?.classList.contains('on'))).toBe(true)
+    await vpage.close()
   })
 })

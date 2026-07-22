@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import {
-  gotoPlayer, reloadPlayer, openFirstHotspot, closeHotspotIfOpen,
+  gotoPlayer, reloadPlayer, openFirstHotspot, openFirstHotspotNoWait, closeHotspotIfOpen,
   calloutSnapshot, dragState, editCalloutUiState, parseLeaderPoints, segmentCount,
   gotoViewerReady,
 } from './helpers.mjs'
@@ -192,6 +192,43 @@ test.describe('panel stability during model rotation', () => {
   })
 })
 
+test.describe('card show timer race', () => {
+  async function assertHotspotStaysClosed(page, { edit = true, waitMs = 300 } = {}) {
+    await page.waitForTimeout(waitMs)
+    expect(await page.evaluate(() => document.getElementById('card')?.classList.contains('show'))).toBe(false)
+    expect(await page.evaluate(() => document.getElementById('hs-svg')?.hasAttribute('hidden'))).toBe(true)
+    expect(await page.evaluate(() => document.querySelectorAll('.hs.active').length)).toBe(0)
+    if (edit) {
+      expect(await page.evaluate(() => window.__SY_TEST__?.isHotspotOpen?.() ?? false)).toBe(false)
+    }
+  }
+
+  test('desktop Escape before show delay does not flash card back', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    await openFirstHotspotNoWait(page)
+    await page.keyboard.press('Escape')
+    await assertHotspotStaysClosed(page)
+  })
+
+  test('desktop rotate before show delay does not flash card back', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    await openFirstHotspotNoWait(page)
+    await page.locator('[data-k="rotate"]').click()
+    await assertHotspotStaysClosed(page)
+    expect(await page.evaluate(() => window.__SY_TEST__?.isAutoRotating())).toBe(true)
+  })
+
+  test('mobile Escape before show delay does not flash card back', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 719, height: 700 } })
+    await openFirstHotspotNoWait(page)
+    await page.keyboard.press('Escape')
+    await assertHotspotStaysClosed(page, { waitMs: 150 })
+  })
+})
+
 test.describe('viewer rotate button', () => {
   test('closes open hotspot without edit drag hooks', async ({ browser }) => {
     const vpage = await browser.newPage()
@@ -203,6 +240,18 @@ test.describe('viewer rotate button', () => {
     expect(await vpage.evaluate(() => document.getElementById('hs-svg')?.hasAttribute('hidden'))).toBe(true)
     expect(await vpage.evaluate(() => document.querySelectorAll('.hs.active').length)).toBe(0)
     expect(await vpage.evaluate(() => document.querySelector('[data-k="rotate"]')?.classList.contains('on'))).toBe(true)
+    await vpage.close()
+  })
+
+  test('closes hotspot opened during show delay (race)', async ({ browser }) => {
+    const vpage = await browser.newPage()
+    await gotoViewerReady(vpage, { viewport: { width: 900, height: 700 } })
+    await openFirstHotspotNoWait(vpage)
+    await vpage.keyboard.press('Escape')
+    await vpage.waitForTimeout(300)
+    expect(await vpage.evaluate(() => document.getElementById('card')?.classList.contains('show'))).toBe(false)
+    expect(await vpage.evaluate(() => document.getElementById('hs-svg')?.hasAttribute('hidden'))).toBe(true)
+    expect(await vpage.evaluate(() => document.querySelectorAll('.hs.active').length)).toBe(0)
     await vpage.close()
   })
 })

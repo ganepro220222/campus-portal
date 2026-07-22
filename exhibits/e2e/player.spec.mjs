@@ -364,6 +364,26 @@ test.describe('card show timer race', () => {
     expect(result.after.cardTitle).toBe('Legacy')
     expect(result.activeCount).toBe(1)
   })
+
+  test('editor validate report retains boot-time invalid hotspot id diagnostics', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, {
+      viewport: { width: 900, height: 700 },
+      hotspots: [
+        { id: 1, position: [0, 1, 0], i18n: { zh: { title: 'A', content: 'a' } } },
+        { id: true, position: [0.2, 1, 0], i18n: { zh: { title: 'B', content: 'b' } } },
+        { id: 'h1', position: [0.4, 1, 0], i18n: { zh: { title: 'C', content: 'c' } } },
+      ],
+    })
+    const report = await page.evaluate(() => window.__SY_TEST__.validateReportText())
+    const diag = await page.evaluate(() => window.__SY_TEST__.hotspotIdBootDiagnostics())
+    expect(report).toContain('加载时发现热点 id 类型非法')
+    expect(report).toContain('加载时已自动修正')
+    expect(report).toContain('热点 id 唯一（加载后已修正）')
+    expect(diag.hadIssues).toBe(true)
+    expect(diag.invalidCount).toBe(2)
+    expect(diag.changeCount).toBeGreaterThan(0)
+  })
 })
 
 test.describe('viewer rotate button', () => {

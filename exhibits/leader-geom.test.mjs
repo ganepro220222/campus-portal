@@ -12,7 +12,7 @@ import {
   anchorOnPanelEdge, getOrthPreferFirst, setOrthPreferFirst, clearOrthPreferFirst,
 } from './leader-geom.js'
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
-import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId } from './hotspot-id.mjs'
+import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges } from './hotspot-id.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -395,6 +395,22 @@ test('hotspot id: audit reports invalid types before migration', () => {
   assert.equal(audit.invalid.length, 1)
   assert.equal(audit.invalid[0].issue, 'invalid:number')
   assert.equal(hotspotIdIssueLabel(audit.invalid[0].issue), '(invalid type: number)')
+})
+
+test('hotspot id: bootstrap preserves pre-migration audit and changes', () => {
+  const list = [{ id: 1 }, { id: true }, { id: 'h1' }]
+  const { audit, changes } = bootstrapHotspotIds(list)
+  assert.equal(audit.invalid.length, 2)
+  assert.ok(changes.length >= 2)
+  assert.deepEqual(list.map(h => h.id), ['h2', 'h3', 'h1'])
+  assert.ok(hotspotBootAuditHadIssues(audit, changes))
+  assert.ok(formatHotspotIdChanges(changes).includes('(invalid type: number)'))
+})
+
+test('hotspot id: mergeHotspotIdChanges dedupes boot and save groups', () => {
+  const boot = [{ index: 0, from: '(invalid type: number)', to: 'h1' }]
+  const save = [{ index: 0, from: '(invalid type: number)', to: 'h1' }, { index: 3, from: '(missing)', to: 'h4' }]
+  assert.equal(mergeHotspotIdChanges(boot, save).length, 2)
 })
 
 test('static deps: HTML module imports resolve to files', () => {

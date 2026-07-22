@@ -286,7 +286,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
-import { nextHotspotId, ensureHotspotIds, auditHotspotIds, hotspotIdIssueLabel } from './hotspot-id.mjs'
+import { nextHotspotId, ensureHotspotIds, auditHotspotIds, hotspotIdIssueLabel, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues } from './hotspot-id.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -306,6 +306,7 @@ const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
 const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
 let auTracks = [], auIndex = -1     // 语音讲解播放器状态
+let hotspotIdBootAudit = null, hotspotIdBootChanges = []   // editor：加载时 ID 诊断（boot 前 audit）
 
 const t = o => (o && (o[lang] || o.zh || o.en)) || {}
 function hexToRgba(hex, a){
@@ -1018,7 +1019,15 @@ async function boot() {
     }
   }
   catch(e){ return showError('配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）', true) }
-  ensureHotspotIds(cfg.hotspots || [])
+  if (editMode) {
+    hotspotIdBootAudit = null
+    hotspotIdBootChanges = []
+    const boot = bootstrapHotspotIds(cfg.hotspots || [])
+    hotspotIdBootAudit = boot.audit
+    hotspotIdBootChanges = boot.changes
+  } else {
+    ensureHotspotIds(cfg.hotspots || [])
+  }
   if (!cfg?.assets?.model) return showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true)
   if (!initRenderer()) return showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信')
   document.title = t(cfg.i18n).title || '立体鉴赏'
@@ -1033,6 +1042,14 @@ $('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); boot() }
 /* ── 编辑模式：纯前端调参；可导出 config，或通过保存服务写回 ──
    面板：资产 / 模型 / 相机 / 材质 / 灯光 / 环境 / 热点 / 预设 / 性能 / 保存导出 */
 let _perfTimer = null
+function clearHotspotIdDiagnostics() {
+  hotspotIdBootAudit = null
+  hotspotIdBootChanges = []
+}
+function hotspotIdChangeWarn(changes) {
+  if (!changes?.length) return null
+  return '热点 id 已自动修正：\n· ' + formatHotspotIdChanges(changes).split(' · ').join('\n· ')
+}
 function buildEditor() {
   const ed = $('editor'); ed.removeAttribute('hidden')
   window.__edRefresh = renderEditor
@@ -1406,14 +1423,14 @@ function preSaveIssues(){
 // 一键保存：配置了 SAVE_API 则写回服务器（后端负责备份上一版）；否则降级为导出 config.json
 async function doSave(){
   const idChanges = ensureHotspotIds(cfg.hotspots || [])
+  const allIdChanges = mergeHotspotIdChanges(hotspotIdBootChanges, idChanges)
   const { errs, warns } = preSaveIssues()
-  if (idChanges.length) {
-    warns.unshift('热点 id 已自动修正：\n· ' + idChanges.map(c => `#${c.index + 1} ${c.from} → ${c.to}`).join('\n· '))
-  }
+  const idWarn = hotspotIdChangeWarn(allIdChanges)
+  if (idWarn) warns.unshift(idWarn)
   if(errs.length){ flash('⚠ 无法保存：'+errs.join('；')); return }
   if(warns.length && !confirm('保存前提醒：\n· '+warns.join('\n· ')+'\n\n仍要保存吗？')) return
   const SAVE_API = window.__SAVE_API__ || (cfg.ui && cfg.ui.saveEndpoint) || ''
-  if(!SAVE_API){ downloadJSON(); flash('已导出 config.json —— 未配置服务器，请手动覆盖上传'); return }
+  if(!SAVE_API){ downloadJSON(); clearHotspotIdDiagnostics(); flash('已导出 config.json —— 未配置服务器，请手动覆盖上传'); return }
   const btn=$('ed-save'), old=btn.textContent; btn.disabled=true; btn.textContent='保存中…'
   let poster=null
   try{ poster=capturePoster(); cfg.assets=cfg.assets||{}; cfg.assets.poster='assets/poster.jpg' }catch(e){}  // 保存即刷新缩略图
@@ -1422,6 +1439,7 @@ async function doSave(){
       method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
       body: JSON.stringify({ ex:EX, config:cfg, poster }) })
     if(!res.ok) throw new Error('HTTP '+res.status)
+    clearHotspotIdDiagnostics()
     flash('✓ 已保存到服务器（含缩略图）')
   }catch(e){ flash('✗ 保存失败：'+e.message+'（可改用「导出 config.json」手动上传）') }
   finally{ btn.disabled=false; btn.textContent=old }
@@ -1433,12 +1451,21 @@ function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x
   p.push(cfg.assets?.poster?ok('封面'):wn('无封面'))
   p.push(`热点 ${cfg.hotspots.length} · 预设 ${cfg.presets.length} · 语音 ${(cfg.audio||[]).length}`)
   const hsAudit = auditHotspotIds(cfg.hotspots || [])
+  const bootHadIssues = hotspotBootAuditHadIssues(hotspotIdBootAudit, hotspotIdBootChanges)
+  if (bootHadIssues && hotspotIdBootAudit) {
+    if (hotspotIdBootAudit.invalid.length) {
+      p.push(wn('加载时发现热点 id 类型非法：' + hotspotIdBootAudit.invalid.map(x => `#${x.index + 1} ${hotspotIdIssueLabel(x.issue)}`).join(' · ')))
+    }
+    if (hotspotIdBootAudit.dupes.length) p.push(wn('加载时发现热点 id 重复：' + hotspotIdBootAudit.dupes.join(', ')))
+    else if (hotspotIdBootAudit.missing) p.push(wn('加载时发现热点缺 id：' + hotspotIdBootAudit.missing + ' 个'))
+    if (hotspotIdBootChanges.length) p.push(wn('加载时已自动修正：' + formatHotspotIdChanges(hotspotIdBootChanges)))
+  }
   if (hsAudit.invalid.length) {
     p.push(wn('热点 id 类型非法：' + hsAudit.invalid.map(x => `#${x.index + 1} ${hotspotIdIssueLabel(x.issue)}`).join(' · ')))
   }
   if (hsAudit.dupes.length) p.push(wn('热点 id 重复：' + hsAudit.dupes.join(', ')))
   else if (hsAudit.missing) p.push(wn('热点缺 id：' + hsAudit.missing + ' 个'))
-  else if (!hsAudit.invalid.length) p.push(ok('热点 id 唯一'))
+  else if (!hsAudit.invalid.length) p.push(ok('热点 id 唯一' + (bootHadIssues ? '（加载后已修正）' : '')))
   ;(cfg.audio||[]).forEach(a=>{ if(!a.src) p.push(wn('语音「'+(a.label||a.id)+'」缺文件')) })
   const st=modelStats(); p.push(st.tris>500000?wn('三角面偏多 '+st.tris.toLocaleString()):ok('三角面 '+st.tris.toLocaleString()))
   return p.join('<br>') }
@@ -1636,6 +1663,13 @@ if (editMode) {
       buildHotspots()
       return cfg.hotspots.map(h => h.id || null)
     },
+    validateReportText: () => validateReport(),
+    hotspotIdBootDiagnostics: () => ({
+      hadIssues: hotspotBootAuditHadIssues(hotspotIdBootAudit, hotspotIdBootChanges),
+      invalidCount: hotspotIdBootAudit?.invalid?.length || 0,
+      changeCount: hotspotIdBootChanges?.length || 0,
+      changes: (hotspotIdBootChanges || []).map(c => ({ index: c.index, from: c.from, to: c.to })),
+    }),
     startPanelDragTest: () => {
       if (!activeHS || innerWidth <= 720) return false
       const c = $('card'), d = activeHS.data

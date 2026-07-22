@@ -409,10 +409,40 @@ function scheduleCardShow() {
     $('card').classList.add('show')
   }, wide ? 240 : 60)
 }
+function hotspotIdNum(id) {
+  const m = /^h(\d+)$/i.exec(String(id || '').trim())
+  return m ? parseInt(m[1], 10) : 0
+}
+function nextHotspotIdFromUsed(used) {
+  for (let n = 1; ; n++) {
+    const cand = 'h' + n
+    if (!used.has(cand)) return cand
+  }
+}
+function nextHotspotId(list) {
+  const used = new Set()
+  for (const h of list || []) {
+    const id = String(h?.id || '').trim()
+    if (id) used.add(id)
+  }
+  return nextHotspotIdFromUsed(used)
+}
+function ensureHotspotIds(list) {
+  const used = new Set()
+  for (const h of list || []) {
+    if (!h || typeof h !== 'object') continue
+    let id = String(h.id || '').trim()
+    if (!id || used.has(id)) id = nextHotspotIdFromUsed(used)
+    h.id = id
+    used.add(id)
+  }
+}
 // 热点以「显示空间坐标」写入 config；锚点挂到模型下（转成模型局部），
 // 这样模型缩放/旋转/位移后热点仍跟随，兼顾我方 config 直觉与最终形态健壮性。
 function buildHotspots() {
-  const activeId = activeHS?.data?.id ?? null
+  const activeData = activeHS?.data ?? null
+  const activeId = activeData?.id ?? null
+  const hadActive = activeData != null
   const cardWasShow = $('card').classList.contains('show')
   clearTimeout(cardShowTimer); cardShowTimer = null
   activeHS = null
@@ -442,16 +472,20 @@ function buildHotspots() {
     }
     hotspots.push(hsObj)
   })
-  if (activeId) {
-    const hs = hotspots.find(x => x.data?.id === activeId)
-    if (hs) {
-      activeHS = hs
-      hs.el.classList.add('active')
-      if (cardWasShow) {
-        if (innerWidth > 720) $('hs-svg').removeAttribute('hidden')
-        bumpLeader()
-      } else scheduleCardShow()
-    } else clearActiveHotspot({ refocus: false })
+  let hs = null
+  if (activeData) {
+    hs = hotspots.find(x => x.data === activeData)
+    if (!hs && activeId) hs = hotspots.find(x => x.data?.id === activeId)
+  }
+  if (hs) {
+    activeHS = hs
+    hs.el.classList.add('active')
+    if (cardWasShow) {
+      if (innerWidth > 720) $('hs-svg').removeAttribute('hidden')
+      bumpLeader()
+    } else scheduleCardShow()
+  } else if (hadActive) {
+    clearActiveHotspot({ refocus: false })
   }
 }
 let hotspotsVisible = true
@@ -962,6 +996,7 @@ async function boot() {
     }
   }
   catch(e){ return showError('配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）', true) }
+  ensureHotspotIds(cfg.hotspots || [])
   if (!cfg?.assets?.model) return showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true)
   if (!initRenderer()) return showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信')
   document.title = t(cfg.i18n).title || '立体鉴赏'

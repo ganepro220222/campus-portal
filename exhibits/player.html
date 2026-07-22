@@ -458,10 +458,40 @@ function scheduleCardShow() {
     $('card').classList.add('show')
   }, wide ? 240 : 60)
 }
+function hotspotIdNum(id) {
+  const m = /^h(\d+)$/i.exec(String(id || '').trim())
+  return m ? parseInt(m[1], 10) : 0
+}
+function nextHotspotIdFromUsed(used) {
+  for (let n = 1; ; n++) {
+    const cand = 'h' + n
+    if (!used.has(cand)) return cand
+  }
+}
+function nextHotspotId(list) {
+  const used = new Set()
+  for (const h of list || []) {
+    const id = String(h?.id || '').trim()
+    if (id) used.add(id)
+  }
+  return nextHotspotIdFromUsed(used)
+}
+function ensureHotspotIds(list) {
+  const used = new Set()
+  for (const h of list || []) {
+    if (!h || typeof h !== 'object') continue
+    let id = String(h.id || '').trim()
+    if (!id || used.has(id)) id = nextHotspotIdFromUsed(used)
+    h.id = id
+    used.add(id)
+  }
+}
 // 热点以「显示空间坐标」写入 config；锚点挂到模型下（转成模型局部），
 // 这样模型缩放/旋转/位移后热点仍跟随，兼顾我方 config 直觉与最终形态健壮性。
 function buildHotspots() {
-  const activeId = activeHS?.data?.id ?? null
+  const activeData = activeHS?.data ?? null
+  const activeId = activeData?.id ?? null
+  const hadActive = activeData != null
   const cardWasShow = $('card').classList.contains('show')
   clearTimeout(cardShowTimer); cardShowTimer = null
   activeHS = null
@@ -491,16 +521,20 @@ function buildHotspots() {
     }
     hotspots.push(hsObj)
   })
-  if (activeId) {
-    const hs = hotspots.find(x => x.data?.id === activeId)
-    if (hs) {
-      activeHS = hs
-      hs.el.classList.add('active')
-      if (cardWasShow) {
-        if (innerWidth > 720) $('hs-svg').removeAttribute('hidden')
-        bumpLeader()
-      } else scheduleCardShow()
-    } else clearActiveHotspot({ refocus: false })
+  let hs = null
+  if (activeData) {
+    hs = hotspots.find(x => x.data === activeData)
+    if (!hs && activeId) hs = hotspots.find(x => x.data?.id === activeId)
+  }
+  if (hs) {
+    activeHS = hs
+    hs.el.classList.add('active')
+    if (cardWasShow) {
+      if (innerWidth > 720) $('hs-svg').removeAttribute('hidden')
+      bumpLeader()
+    } else scheduleCardShow()
+  } else if (hadActive) {
+    clearActiveHotspot({ refocus: false })
   }
 }
 let hotspotsVisible = true
@@ -1011,6 +1045,7 @@ async function boot() {
     }
   }
   catch(e){ return showError('配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）', true) }
+  ensureHotspotIds(cfg.hotspots || [])
   if (!cfg?.assets?.model) return showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true)
   if (!initRenderer()) return showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信')
   document.title = t(cfg.i18n).title || '立体鉴赏'
@@ -1046,6 +1081,7 @@ function ensureCfg() {
   cfg.lights = cfg.lights || {}; cfg.hotspots = cfg.hotspots || []; cfg.presets = cfg.presets || []
   cfg.environment = cfg.environment || {}
   cfg.hotspotStyle = cfg.hotspotStyle || {}; cfg.panel = cfg.panel || {}; cfg.ui = cfg.ui || {}; cfg.audio = cfg.audio || []
+  ensureHotspotIds(cfg.hotspots)
 }
 
 function renderEditor() {
@@ -1396,6 +1432,7 @@ function preSaveIssues(){
 }
 // 一键保存：配置了 SAVE_API 则写回服务器（后端负责备份上一版）；否则降级为导出 config.json
 async function doSave(){
+  ensureHotspotIds(cfg.hotspots || [])
   const { errs, warns } = preSaveIssues()
   if(errs.length){ flash('⚠ 无法保存：'+errs.join('；')); return }
   if(warns.length && !confirm('保存前提醒：\n· '+warns.join('\n· ')+'\n\n仍要保存吗？')) return
@@ -1419,6 +1456,12 @@ function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x
   p.push(cfg.assets?.panorama?ok('全景：'+cfg.assets.panorama):wn('无全景（用内置环境）'))
   p.push(cfg.assets?.poster?ok('封面'):wn('无封面'))
   p.push(`热点 ${cfg.hotspots.length} · 预设 ${cfg.presets.length} · 语音 ${(cfg.audio||[]).length}`)
+  const hsIds = (cfg.hotspots || []).map(h => String(h?.id || '').trim())
+  const hsDupes = hsIds.filter((id, i) => id && hsIds.indexOf(id) !== i)
+  const hsMissing = hsIds.filter(id => !id).length
+  if (hsDupes.length) p.push(wn('热点 id 重复：' + [...new Set(hsDupes)].join(', ')))
+  else if (hsMissing) p.push(wn('热点缺 id：' + hsMissing + ' 个'))
+  else p.push(ok('热点 id 唯一'))
   ;(cfg.audio||[]).forEach(a=>{ if(!a.src) p.push(wn('语音「'+(a.label||a.id)+'」缺文件')) })
   const st=modelStats(); p.push(st.tris>500000?wn('三角面偏多 '+st.tris.toLocaleString()):ok('三角面 '+st.tris.toLocaleString()))
   return p.join('<br>') }
@@ -1454,7 +1497,7 @@ function wireCanvasAdd(){ const ray=new THREE.Raycaster(), m2=new THREE.Vector2(
     ray.setFromCamera(m2,camera); const hit=ray.intersectObject(model,true)[0]; if(!hit) return
     const w=hit.point // 显示空间世界坐标（与 config 一致）
     cfg.hotspots=cfg.hotspots||[]
-    cfg.hotspots.push({ id:'h'+(cfg.hotspots.length+1), position:[+w.x.toFixed(3),+w.y.toFixed(3),+w.z.toFixed(3)],
+    cfg.hotspots.push({ id: nextHotspotId(cfg.hotspots), position:[+w.x.toFixed(3),+w.y.toFixed(3),+w.z.toFixed(3)],
       i18n:{ zh:{title:'新热点',content:'（待填写）'}, en:{title:'New',content:'(todo)'} }, cameraFocus:{distance:+camera.position.distanceTo(controls.target).toFixed(2),duration:800} })
     buildHotspots(); renderEditor() }) }
 
@@ -1552,6 +1595,69 @@ if (editMode) {
       buildHotspots()
       if (typeof renderEditor === 'function') renderEditor()
       return true
+    },
+    setupHotspotsForIdTest: () => {
+      cfg.hotspots = [
+        { id: 'h1', position: [0, 1, 0], i18n: { zh: { title: 'H1', content: 'c1' } } },
+        { id: 'h2', position: [0.2, 1, 0], i18n: { zh: { title: 'H2', content: 'c2' } } },
+        { id: 'h3', position: [0.4, 1, 0], i18n: { zh: { title: 'H3-old', content: 'old' } } },
+      ]
+      buildHotspots()
+      renderEditor()
+      return cfg.hotspots.map(h => h.id)
+    },
+    addHotspotForIdTest: (title = '新H3') => {
+      cfg.hotspots.push({
+        id: nextHotspotId(cfg.hotspots),
+        position: [0.3, 1.2, 0.1],
+        i18n: { zh: { title, content: 'new' }, en: { title: 'New', content: 'new' } },
+      })
+      buildHotspots()
+      renderEditor()
+      return cfg.hotspots.map(h => ({ id: h.id, title: h.i18n?.zh?.title }))
+    },
+    simulateDuplicateIdHotspot: () => {
+      cfg.hotspots.push({
+        id: 'h3',
+        position: [0.5, 1, 0],
+        i18n: { zh: { title: '新H3-dup', content: 'dup' }, en: { title: 'Dup', content: 'dup' } },
+      })
+      buildHotspots()
+      renderEditor()
+      return cfg.hotspots.map(h => ({ id: h.id, title: h.i18n?.zh?.title }))
+    },
+    openHotspotById: (id) => {
+      const item = hotspots.find(x => x.data?.id === id)
+      if (!item) return false
+      openHotspot(item.data, item.el)
+      return true
+    },
+    openHotspotByTitle: (title) => {
+      const item = hotspots.find(x => x.data?.i18n?.zh?.title === title)
+      if (!item) return false
+      openHotspot(item.data, item.el)
+      return true
+    },
+    activeHotspotSnapshot: () => {
+      if (!activeHS) return null
+      return {
+        id: activeHS.data?.id,
+        title: activeHS.data?.i18n?.zh?.title,
+        cardTitle: document.getElementById('card-title')?.textContent || '',
+        activeCount: document.querySelectorAll('.hs.active').length,
+      }
+    },
+    triggerHotspotStyleRebuild: () => {
+      cfg.hotspotStyle = cfg.hotspotStyle || {}
+      const prev = cfg.hotspotStyle.size || 24
+      cfg.hotspotStyle.size = prev === 24 ? 25 : 24
+      buildHotspots()
+      return cfg.hotspotStyle.size
+    },
+    setupLegacyNoIdHotspot: () => {
+      cfg.hotspots = [{ position: [0, 1, 0], i18n: { zh: { title: 'Legacy', content: 'x' } } }]
+      buildHotspots()
+      return cfg.hotspots.map(h => h.id || null)
     },
     startPanelDragTest: () => {
       if (!activeHS || innerWidth <= 720) return false

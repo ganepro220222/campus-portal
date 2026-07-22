@@ -446,8 +446,9 @@ function updateHotspots() {
   })
 }
 
-let focusAnim = null, activeHS = null, leaderT0 = 0
+let focusAnim = null, activeHS = null, leaderT0 = 0, cardShowTimer = null
 function openHotspot(h, el) {
+  clearTimeout(cardShowTimer); cardShowTimer = null
   controls.autoRotate = false; syncBtns()
   hotspots.forEach(x => x.el.classList.toggle('active', x.el===el))
   activeHS = hotspots.find(x => x.el===el)
@@ -469,7 +470,12 @@ function openHotspot(h, el) {
     focusTo(tgt, num(cf.distance,2.4), num(cf.duration,800), camPos)
   }
   if (h.audio) playTrackById(h.audio)   // 该热点绑定了语音讲解 → 自动播放
-  setTimeout(() => $('card').classList.add('show'), wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
+  const opening = activeHS
+  cardShowTimer = setTimeout(() => {
+    cardShowTimer = null
+    if (activeHS !== opening) return
+    $('card').classList.add('show')
+  }, wide ? 240 : 60)   // 桌面先出线再出框；移动端直接就近弹出
 }
 function releaseCalloutDrag() {
   const svg = $('hs-svg'), cardEl = $('card')
@@ -484,6 +490,7 @@ function releaseCalloutDrag() {
 }
 function clearActiveHotspot(opts = {}) {
   const refocus = opts.refocus !== false
+  clearTimeout(cardShowTimer); cardShowTimer = null
   $('card').classList.remove('show', 'ed-movable')
   $('hs-svg').setAttribute('hidden','')
   $('hs-knee').setAttribute('hidden',''); $('hs-knee').classList.remove('edit')

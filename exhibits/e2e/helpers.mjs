@@ -97,6 +97,19 @@ export async function openFirstHotspot(page) {
   await page.waitForTimeout(350)
 }
 
+/** 打开第一个热点但不等待 card.show（用于竞态 E2E） */
+export async function openFirstHotspotNoWait(page) {
+  await page.waitForSelector('#hs-layer .hs', { timeout: 45_000 })
+  const ok = await page.evaluate(() => {
+    if (window.__SY_TEST__?.openHotspotByIndex) return window.__SY_TEST__.openHotspotByIndex(0)
+    const el = document.querySelector('#hs-layer .hs')
+    if (!el) return false
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    return true
+  })
+  if (!ok) throw new Error('failed to open hotspot')
+}
+
 export async function closeHotspotIfOpen(page) {
   if (await page.locator('#card.show').count() === 0) return
   const closeBtn = page.locator('#card-close')

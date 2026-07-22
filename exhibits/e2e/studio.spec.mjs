@@ -47,7 +47,20 @@ test.describe('studio.html', () => {
   })
 
   test('straight leader filters elbow fields from batch save', async ({ page }) => {
+    const fixturePanel = {
+      style: 'glass',
+      leader: 'elbow',
+      elbowMode: 'leg2-lock',
+      leaderGap: 77,
+      leaderTail: 63,
+      leg1Axis: 'v',
+      leg2Axis: 'h',
+    }
+    const cfg = loadCfg('craft-001')
+    cfg.panel = { ...cfg.panel, ...fixturePanel }
+
     const saves = []
+    await page.route('**/craft-001/config.json*', r => r.fulfill({ json: structuredClone(cfg) }))
     await page.route('**/studio-api/save', async route => {
       saves.push(route.request().postDataJSON())
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
@@ -55,19 +68,31 @@ test.describe('studio.html', () => {
     await waitForStudioReady(page)
     await openBatchPanel(page)
     await selectExhibits(page, ['craft-001'])
-    await page.locator('#en-lmode').check()
-    await page.locator('#en-lgap').check()
-    await page.locator('#en-leader').check()
+    for (const id of ['lmode', 'lgap', 'ltail', 'laxis', 'l2axis', 'leader']) {
+      await page.locator(`#en-${id}`).check()
+    }
+    // 扰动 UI：若 straight 后仍写入这些值，说明失效字段未被正确跳过
+    await page.locator('#v-lmode').selectOption('orthogonal')
+    await page.locator('#v-lgap').fill('320')
+    await page.locator('#v-ltail').fill('320')
+    await page.locator('#v-laxis').selectOption('h')
+    await page.locator('#v-l2axis').selectOption('auto')
     await page.locator('#v-leader').selectOption('straight')
-    await expect(page.locator('#row-lmode')).toHaveAttribute('data-mode-off', '1')
-    await expect(page.locator('#row-lgap')).toHaveAttribute('data-mode-off', '1')
-    await expect(page.locator('#row-lmode')).toHaveClass(/dis/)
+    for (const id of ['lmode', 'lgap', 'ltail', 'laxis', 'l2axis']) {
+      await expect(page.locator(`#row-${id}`)).toHaveAttribute('data-mode-off', '1')
+      await expect(page.locator(`#row-${id}`)).toHaveClass(/dis/)
+    }
     await page.locator('#bapply').click()
     await page.waitForFunction(() => document.querySelector('#blog')?.textContent?.includes('完成'), null, { timeout: 15_000 })
     expect(saves).toHaveLength(1)
-    expect(saves[0].config.panel?.leader).toBe('straight')
-    expect(saves[0].config.panel?.elbowMode).toBeUndefined()
-    expect(saves[0].config.panel?.leaderGap).toBeUndefined()
+    const panel = saves[0].config.panel
+    expect(panel.leader).toBe('straight')
+    expect(panel.elbowMode).toBe('leg2-lock')
+    expect(panel.leaderGap).toBe(77)
+    expect(panel.leaderTail).toBe(63)
+    expect(panel.leg1Axis).toBe('v')
+    expect(panel.leg2Axis).toBe('h')
+    expect(panel.style).toBe('glass')
   })
 
   test('batch updates only selected paths per exhibit', async ({ page }) => {

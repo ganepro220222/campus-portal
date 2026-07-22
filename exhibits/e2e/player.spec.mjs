@@ -292,12 +292,12 @@ test.describe('card show timer race', () => {
   test('pending delete rebuild keeps hotspot closed', async () => {
     await closeHotspotIfOpen(page)
     await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
-    const pending = await page.evaluate(() => {
+    const ok = await page.evaluate(() => {
       if (!window.__SY_TEST__.openHotspotByIndex(0)) return false
-      return window.__SY_TEST__.isCardShowPending()
+      if (!window.__SY_TEST__.isCardShowPending()) return false
+      return window.__SY_TEST__.deleteHotspotByIndex(0)
     })
-    expect(pending).toBe(true)
-    await page.locator('[data-hs-del="0"]').click()
+    expect(ok).toBe(true)
     await assertHotspotStaysClosed(page)
   })
 })

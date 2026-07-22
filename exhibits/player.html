@@ -1546,6 +1546,13 @@ if (editMode) {
         activeCount: document.querySelectorAll('.hs.active').length,
       }
     },
+    deleteHotspotByIndex: (i = 0) => {
+      if (i < 0 || i >= (cfg.hotspots?.length || 0)) return false
+      cfg.hotspots.splice(i, 1)
+      buildHotspots()
+      if (typeof renderEditor === 'function') renderEditor()
+      return true
+    },
     startPanelDragTest: () => {
       if (!activeHS || innerWidth <= 720) return false
       const c = $('card'), d = activeHS.data

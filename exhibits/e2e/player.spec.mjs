@@ -402,6 +402,57 @@ test.describe('card show timer race', () => {
   })
 })
 
+test.describe('editor preset row layout', () => {
+  const LONG_PRESET = '夜间博物馆展柜暖色重点照明与低环境光展示方案'
+
+  test('long preset name keeps actions inside editor', async () => {
+    await reloadPlayer(page, {
+      presets: [{
+        id: 'long-preset',
+        label: { zh: LONG_PRESET, en: 'Long preset name' },
+        exposure: 1.05,
+        envMapIntensity: 1.35,
+        background: '#0f1118',
+        showAsButton: true,
+      }],
+    })
+    const presetSec = page.locator('#editor details').filter({ has: page.locator('summary', { hasText: '预设' }) })
+    await presetSec.locator('summary').click()
+    const actions = presetSec.locator('.ed-preset-actions').first()
+    const checkbox = actions.locator('input[type=checkbox]')
+    await expect(actions).toBeVisible()
+    await expect(checkbox).toBeVisible()
+
+    const layout = await page.evaluate(() => {
+      const editor = document.getElementById('editor')
+      const actionsEl = document.querySelector('.ed-preset-actions')
+      const nameEl = document.querySelector('.ed-preset-name')
+      if (!editor || !actionsEl || !nameEl) return null
+      const eb = editor.getBoundingClientRect()
+      const ab = actionsEl.getBoundingClientRect()
+      const cs = getComputedStyle(nameEl)
+      return {
+        editorRight: eb.right,
+        actionsRight: ab.right,
+        actionsLeft: ab.left,
+        textOverflow: cs.textOverflow,
+        scrollOverflow: nameEl.scrollWidth > nameEl.clientWidth,
+      }
+    })
+    expect(layout).toBeTruthy()
+    expect(layout.actionsRight).toBeLessThanOrEqual(layout.editorRight + 1)
+    expect(layout.actionsLeft).toBeGreaterThan(layout.editorRight - 280)
+    expect(layout.textOverflow).toBe('ellipsis')
+    expect(layout.scrollOverflow).toBe(true)
+
+    await expect(checkbox).toBeChecked()
+    await checkbox.click()
+    await expect(checkbox).not.toBeChecked()
+    await checkbox.click()
+    await expect(checkbox).toBeChecked()
+  })
+})
+
 test.describe('viewer rotate button', () => {
   test('closes open hotspot without edit drag hooks', async ({ browser }) => {
     const vpage = await browser.newPage()

@@ -165,7 +165,9 @@
   .editor h3 { font-size:13px; color:var(--gold); margin:14px 0 8px; letter-spacing:.5px; }
   .editor h3:first-child { margin-top:0; }
   .ed-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:7px 0; color:#cfd3e0; }
-  .ed-row > span { white-space:nowrap; }                                   /* 标签不换行 */
+  .ed-label { white-space:nowrap; flex:0 0 auto; }
+  .ed-preset-name { flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .ed-preset-actions, .ed-row-actions { flex:0 0 auto; white-space:nowrap; }
   .editor .ed-row > select.ed-in { flex:0 1 auto !important; min-width:0 !important; max-width:64%; text-overflow:ellipsis; }
   .ed-row input[type=range]{ flex:1; min-width:0; accent-color:var(--gold); }
   .ed-row input[type=color]{ width:30px; height:22px; border:none; background:none; padding:0; cursor:pointer; flex:0 0 auto; }
@@ -1079,17 +1081,18 @@ function ensureCfg() {
 function renderEditor() {
   ensureCfg()
   const g = cfg.materials.global, m = cfg.model, c = cfg.camera, L = cfg.lights
-  const rng = (k,label,min,max,step,val)=>`<div class="ed-row"><span>${label}</span><span class="ed-slider"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"><input type="number" class="ed-num" data-num="${k}" min="${min}" max="${max}" step="${step}" value="${val}"></span></div>`
-  const col = (k,label,val)=>`<div class="ed-row"><span>${label}</span><input type="color" data-k="${k}" value="${val}"></div>`
+  const rng = (k,label,min,max,step,val)=>`<div class="ed-row"><span class="ed-label">${label}</span><span class="ed-slider"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"><input type="number" class="ed-num" data-num="${k}" min="${min}" max="${max}" step="${step}" value="${val}"></span></div>`
+  const col = (k,label,val)=>`<div class="ed-row"><span class="ed-label">${label}</span><input type="color" data-k="${k}" value="${val}"></div>`
+  const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')
   const names = model ? materialNames() : []
   const auOpt = (sel)=>`<option value="">无</option>`+(cfg.audio||[]).map(a=>`<option value="${a.id}" ${sel===a.id?'selected':''}>${(a.label||a.id).replace(/</g,'&lt;')}</option>`).join('')
   const hs = cfg.hotspots.map((h,i)=>{
     const x=h.i18n?.zh||{}
-    return `<div class="ed-hs-item"><div class="ed-row"><b>#${i+1}</b><span><a data-hs-focus="${i}">更新机位</a> · <a data-hs-del="${i}" style="color:#e07a7a">删除</a></span></div>
+    return `<div class="ed-hs-item"><div class="ed-row"><b>#${i+1}</b><span class="ed-row-actions"><a data-hs-focus="${i}">更新机位</a> · <a data-hs-del="${i}" style="color:#e07a7a">删除</a></span></div>
       <input class="ed-in" data-hs-title="${i}" value="${(x.title||'').replace(/"/g,'&quot;')}" placeholder="标题">
       <textarea class="ed-in" data-hs-content="${i}" rows="4" placeholder="讲解文案">${x.content||''}</textarea>
-      <div class="ed-row"><span style="font-size:11.5px;color:#8a90a6">绑定语音</span><select class="ed-in" data-hs-audio="${i}" style="width:auto;margin:0;flex:0 0 auto">${auOpt(h.audio)}</select></div>
-      <div class="ed-row" style="gap:5px"><span style="font-size:11px;color:#8a90a6;flex:0 0 auto">位置</span>
+      <div class="ed-row"><span class="ed-label" style="font-size:11.5px;color:#8a90a6">绑定语音</span><select class="ed-in" data-hs-audio="${i}" style="width:auto;margin:0;flex:0 0 auto">${auOpt(h.audio)}</select></div>
+      <div class="ed-row" style="gap:5px"><span class="ed-label" style="font-size:11px;color:#8a90a6">位置</span>
         <input class="ed-num" style="flex:1;min-width:0;width:auto;text-align:center" type="number" step="0.01" data-hs-px="${i}" value="${(h.position||[0,0,0])[0]}">
         <input class="ed-num" style="flex:1;min-width:0;width:auto;text-align:center" type="number" step="0.01" data-hs-py="${i}" value="${(h.position||[0,0,0])[1]}">
         <input class="ed-num" style="flex:1;min-width:0;width:auto;text-align:center" type="number" step="0.01" data-hs-pz="${i}" value="${(h.position||[0,0,0])[2]}"></div>
@@ -1098,7 +1101,10 @@ function renderEditor() {
   const audioList = (cfg.audio||[]).map((a,i)=>`<div class="ed-hs-item"><div class="ed-row"><b>${a.id||('a'+(i+1))}</b><a data-au-del="${i}" style="color:#e07a7a">删除</a></div>
       <input class="ed-in" data-au-label="${i}" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="名称（下拉显示）">
       <input class="ed-in" data-au-src="${i}" value="${(a.src||'').replace(/"/g,'&quot;')}" placeholder="音频地址 .mp3/.m4a/.wav"></div>`).join('') || '<div class="ed-note">暂无语音。</div>'
-  const presets = cfg.presets.map((p,i)=>`<div class="ed-row"><span>${t(p.label)||p.id}</span><span style="flex:0 0 auto"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" data-pr-btn="${i}" ${p.showAsButton!==false?'checked':''}> 按钮</label> · <a data-pr-del="${i}" style="color:#e07a7a">删除</a></span></div>`).join('') || '<div class="ed-note">暂无预设。</div>'
+  const presets = cfg.presets.map((p,i)=>{
+    const name = esc(t(p.label)||p.id)
+    return `<div class="ed-row ed-preset-row"><span class="ed-preset-name" title="${name}">${name}</span><span class="ed-preset-actions"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" data-pr-btn="${i}" ${p.showAsButton!==false?'checked':''}> 按钮</label> · <a data-pr-del="${i}" style="color:#e07a7a">删除</a></span></div>`
+  }).join('') || '<div class="ed-note">暂无预设。</div>'
 
   const info = cfg.i18n?.zh || {}, ui = cfg.ui || {}
   const pan = cfg.panel || {}
@@ -1106,16 +1112,16 @@ function renderEditor() {
   <details class="ed-sec" open><summary>基本信息</summary>
     <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
     <input class="ed-in" id="ed-subtitle" value="${(info.subtitle||'').replace(/"/g,'&quot;')}" placeholder="副标题（标题下方小字）">
-    <label class="ed-row" style="margin-top:4px"><span>在页面显示名称/副标题</span><input type="checkbox" id="ed-showtitle" ${(cfg.ui&&cfg.ui.showTitle!==false)?'checked':''}></label>
+    <label class="ed-row" style="margin-top:4px"><span class="ed-label">在页面显示名称/副标题</span><input type="checkbox" id="ed-showtitle" ${(cfg.ui&&cfg.ui.showTitle!==false)?'checked':''}></label>
   </details>
 
   <details class="ed-sec"><summary>用户端按钮</summary>
     <div class="ed-note">勾选终端用户可见的功能按钮：</div>
-    <label class="ed-row"><span>自动旋转</span><input type="checkbox" data-ui="showAutoRotateButton" ${ui.showAutoRotateButton!==false?'checked':''}></label>
-    <label class="ed-row"><span>热点</span><input type="checkbox" data-ui="showHotspotButton" ${ui.showHotspotButton!==false?'checked':''}></label>
-    <label class="ed-row"><span>重置</span><input type="checkbox" data-ui="showResetButton" ${ui.showResetButton!==false?'checked':''}></label>
-    <label class="ed-row"><span>全屏</span><input type="checkbox" data-ui="showFullscreenButton" ${ui.showFullscreenButton!==false?'checked':''}></label>
-    <label class="ed-row"><span>光源预设按钮</span><input type="checkbox" data-ui="showPresets" ${ui.showPresets!==false?'checked':''}></label>
+    <label class="ed-row"><span class="ed-label">自动旋转</span><input type="checkbox" data-ui="showAutoRotateButton" ${ui.showAutoRotateButton!==false?'checked':''}></label>
+    <label class="ed-row"><span class="ed-label">热点</span><input type="checkbox" data-ui="showHotspotButton" ${ui.showHotspotButton!==false?'checked':''}></label>
+    <label class="ed-row"><span class="ed-label">重置</span><input type="checkbox" data-ui="showResetButton" ${ui.showResetButton!==false?'checked':''}></label>
+    <label class="ed-row"><span class="ed-label">全屏</span><input type="checkbox" data-ui="showFullscreenButton" ${ui.showFullscreenButton!==false?'checked':''}></label>
+    <label class="ed-row"><span class="ed-label">光源预设按钮</span><input type="checkbox" data-ui="showPresets" ${ui.showPresets!==false?'checked':''}></label>
     <div class="ed-note">光源按钮由下方「预设」段条目驱动：增删预设即增删按钮。</div>
   </details>
 
@@ -1167,41 +1173,41 @@ function renderEditor() {
   </details>
 
   <details class="ed-sec"><summary>环境 IBL</summary>
-    <label class="ed-row"><span>可见全景背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
+    <label class="ed-row"><span class="ed-label">可见全景背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
     <input class="ed-in" id="ed-pano" placeholder="全景图 URL（2:1 等距柱状）">
     <button class="ed-btn" id="ed-pano-load">加载全景</button>
     <div class="ed-note">无全景时自动降级为内置 RoomEnvironment。</div>
   </details>
 
   <details class="ed-sec"><summary>热点与面板样式</summary>
-    <div class="ed-row"><span>信息面板样式</span>
+    <div class="ed-row"><span class="ed-label">信息面板样式</span>
       <select class="ed-in" id="ed-panel-style" style="width:auto;margin:0;flex:0 0 auto">
         <option value="solid">黑底</option><option value="glass">毛玻璃</option><option value="transparent">透明</option><option value="outline">描边</option><option value="ribbon">色带标题</option><option value="minimal">极简竖线</option>
       </select></div>
-    <div class="ed-row"><span>引线样式（桌面）</span>
+    <div class="ed-row"><span class="ed-label">引线样式（桌面）</span>
       <select class="ed-in" id="ed-leader" style="width:auto;margin:0;flex:0 0 auto">
         <option value="elbow">折线</option><option value="straight">直线</option>
       </select></div>
-    <div class="ed-row"><span>面板方位</span>
+    <div class="ed-row"><span class="ed-label">面板方位</span>
       <select class="ed-in" id="ed-dir" style="width:auto;margin:0;flex:0 0 auto">
         <option value="auto" ${!(pan.dir)||pan.dir==='auto'?'selected':''}>自动（左/右）</option>
         <option value="free" ${pan.dir==='free'?'selected':''}>自由拖拽</option>
         <option value="right" ${pan.dir==='right'?'selected':''}>右</option><option value="left" ${pan.dir==='left'?'selected':''}>左</option><option value="up" ${pan.dir==='up'?'selected':''}>上</option><option value="down" ${pan.dir==='down'?'selected':''}>下</option>
         <option value="upright" ${pan.dir==='upright'?'selected':''}>右上</option><option value="downright" ${pan.dir==='downright'?'selected':''}>右下</option><option value="upleft" ${pan.dir==='upleft'?'selected':''}>左上</option><option value="downleft" ${pan.dir==='downleft'?'selected':''}>左下</option>
       </select></div>
-    <div class="ed-row" id="ed-elbow-mode-row"><span>拐角形成</span>
+    <div class="ed-row" id="ed-elbow-mode-row"><span class="ed-label">拐角形成</span>
       <select class="ed-in" id="ed-elbow-mode" style="width:auto;margin:0;flex:0 0 auto">
         <option value="orthogonal" ${(pan.elbowMode||'orthogonal')==='orthogonal'?'selected':''}>直角 L 形</option>
         <option value="leg1-lock" ${pan.elbowMode==='leg1-lock'?'selected':''}>定第一段</option>
         <option value="leg2-lock" ${pan.elbowMode==='leg2-lock'?'selected':''}>定第二段</option>
       </select></div>
-    <div class="ed-row" id="ed-leg1-row"><span>路径优先</span>
+    <div class="ed-row" id="ed-leg1-row"><span class="ed-label">路径优先</span>
       <select class="ed-in" id="ed-leg1-axis" style="width:auto;margin:0;flex:0 0 auto">
         <option value="auto" ${!(pan.leg1Axis)||pan.leg1Axis==='auto'?'selected':''}>自动</option>
         <option value="h" ${pan.leg1Axis==='h'?'selected':''}>水平优先</option>
         <option value="v" ${pan.leg1Axis==='v'?'selected':''}>竖直优先</option>
       </select></div>
-    <div class="ed-row" id="ed-leg2-row"><span>第二段方向</span>
+    <div class="ed-row" id="ed-leg2-row"><span class="ed-label">第二段方向</span>
       <select class="ed-in" id="ed-leg2-axis" style="width:auto;margin:0;flex:0 0 auto">
         <option value="auto" ${!(pan.leg2Axis)||pan.leg2Axis==='auto'?'selected':''}>自动</option>
         <option value="h" ${pan.leg2Axis==='h'?'selected':''}>水平</option>
@@ -1215,7 +1221,7 @@ function renderEditor() {
     <button class="ed-btn" id="ed-panel-reset" type="button">重置面板位置</button>
     ${col('hs.color','热点颜色', cfg.hotspotStyle.color||'#c8a86a')}
     ${rng('hs.size','热点大小', 18, 40, 1, num(cfg.hotspotStyle.size,26))}
-    <label class="ed-row"><span>热点脉冲动画</span><input type="checkbox" data-k="hs.pulse" ${cfg.hotspotStyle.pulse!==false?'checked':''}></label>
+    <label class="ed-row"><span class="ed-label">热点脉冲动画</span><input type="checkbox" data-k="hs.pulse" ${cfg.hotspotStyle.pulse!==false?'checked':''}></label>
     <div class="ed-note" id="ed-leader-note"></div>
   </details>
 

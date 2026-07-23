@@ -464,5 +464,14 @@ test('viewer output omits editor hotspot boot diagnostics', () => {
   assert.match(view, /ensureHotspotIds\(cfg\.hotspots \|\| \[\]\)/)
 })
 
+test('editor preset row uses dedicated label/actions classes', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'player.html'), 'utf8')
+  assert.match(html, /\.ed-label \{ white-space:nowrap/)
+  assert.match(html, /\.ed-preset-name \{[^}]*text-overflow:ellipsis/)
+  assert.match(html, /class="ed-preset-name"/)
+  assert.match(html, /class="ed-preset-actions"/)
+  assert.doesNotMatch(html, /\.ed-row > span \{ white-space:nowrap/)
+})
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

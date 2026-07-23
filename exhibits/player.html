@@ -1707,6 +1707,15 @@ if (editMode) {
       syncLeaderEditorUI()
       return true
     },
+    leaderKneeSnapshot: () => {
+      const k = activeHS?.data?.leaderKnee
+      return k ? [k[0], k[1]] : null
+    },
+    settleLeaderAnim: () => {
+      leaderT0 = performance.now() - 400
+      if (activeHS && $('card').classList.contains('show') && innerWidth > 720) updateCallout()
+      return true
+    },
     calloutSnapshot: () => {
       if (!activeHS) return null
       const card = $('card')

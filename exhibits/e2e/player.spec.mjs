@@ -89,18 +89,19 @@ test.describe('edit drag state', () => {
     await expect.poll(async () => page.evaluate(() => window.__SY_TEST__?.startKneeDragTest()), { timeout: 5_000 }).toBe(true)
     expect(await dragState(page)).toEqual({ kneeDrag: true, panelDrag: false })
     expect(await page.evaluate(() => window.__SY_TEST__?.nudgeKneeDragTest(30, 0))).toBe(true)
-    const mid = await calloutSnapshot(page)
+    await page.evaluate(() => window.__SY_TEST__?.settleLeaderAnim())
+    const midKnee = await page.evaluate(() => window.__SY_TEST__?.leaderKneeSnapshot())
+    expect(midKnee).toBeTruthy()
     await page.evaluate(() => {
       document.getElementById('hs-svg')?.dispatchEvent(
         new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 }))
     })
     expect(await dragState(page)).toEqual({ kneeDrag: false, panelDrag: false })
     expect(await page.evaluate(() => window.__SY_TEST__?.nudgeKneeDragTest(50, 40))).toBe(false)
-    await page.waitForTimeout(200)
-    const midPts = parseLeaderPoints(mid.points)
-    const afterPts = parseLeaderPoints((await calloutSnapshot(page)).points)
-    expect(afterPts[1]?.x).toBeCloseTo(midPts[1]?.x ?? 0, 0)
-    expect(afterPts[1]?.y).toBeCloseTo(midPts[1]?.y ?? 0, 0)
+    await page.evaluate(() => window.__SY_TEST__?.settleLeaderAnim())
+    const afterKnee = await page.evaluate(() => window.__SY_TEST__?.leaderKneeSnapshot())
+    expect(afterKnee[0]).toBeCloseTo(midKnee[0], 1)
+    expect(afterKnee[1]).toBeCloseTo(midKnee[1], 1)
   })
 
   test('closeHotspot clears drag and reopen works', async () => {

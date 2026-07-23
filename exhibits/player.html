@@ -165,6 +165,8 @@
   .editor h3 { font-size:13px; color:var(--gold); margin:14px 0 8px; letter-spacing:.5px; }
   .editor h3:first-child { margin-top:0; }
   .ed-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:7px 0; color:#cfd3e0; }
+  .ed-row > span { white-space:nowrap; }                                   /* 标签不换行 */
+  .editor .ed-row > select.ed-in { flex:0 1 auto !important; min-width:0 !important; max-width:64%; text-overflow:ellipsis; }
   .ed-row input[type=range]{ flex:1; min-width:0; accent-color:var(--gold); }
   .ed-row input[type=color]{ width:30px; height:22px; border:none; background:none; padding:0; cursor:pointer; flex:0 0 auto; }
   /* 滑条 + 数字输入 联动组件 */
@@ -1182,16 +1184,16 @@ function renderEditor() {
       </select></div>
     <div class="ed-row"><span>面板方位</span>
       <select class="ed-in" id="ed-dir" style="width:auto;margin:0;flex:0 0 auto">
-        <option value="auto" ${!(pan.dir)||pan.dir==='auto'?'selected':''}>自动（模型左/右侧）</option>
-        <option value="free" ${pan.dir==='free'?'selected':''}>自由（拖拽面板）</option>
+        <option value="auto" ${!(pan.dir)||pan.dir==='auto'?'selected':''}>自动（左/右）</option>
+        <option value="free" ${pan.dir==='free'?'selected':''}>自由拖拽</option>
         <option value="right" ${pan.dir==='right'?'selected':''}>右</option><option value="left" ${pan.dir==='left'?'selected':''}>左</option><option value="up" ${pan.dir==='up'?'selected':''}>上</option><option value="down" ${pan.dir==='down'?'selected':''}>下</option>
         <option value="upright" ${pan.dir==='upright'?'selected':''}>右上</option><option value="downright" ${pan.dir==='downright'?'selected':''}>右下</option><option value="upleft" ${pan.dir==='upleft'?'selected':''}>左上</option><option value="downleft" ${pan.dir==='downleft'?'selected':''}>左下</option>
       </select></div>
     <div class="ed-row" id="ed-elbow-mode-row"><span>拐角形成</span>
       <select class="ed-in" id="ed-elbow-mode" style="width:auto;margin:0;flex:0 0 auto">
         <option value="orthogonal" ${(pan.elbowMode||'orthogonal')==='orthogonal'?'selected':''}>直角 L 形</option>
-        <option value="leg1-lock" ${pan.elbowMode==='leg1-lock'?'selected':''}>定第一段（锁方向+长度）</option>
-        <option value="leg2-lock" ${pan.elbowMode==='leg2-lock'?'selected':''}>定第二段（板边入射）</option>
+        <option value="leg1-lock" ${pan.elbowMode==='leg1-lock'?'selected':''}>定第一段</option>
+        <option value="leg2-lock" ${pan.elbowMode==='leg2-lock'?'selected':''}>定第二段</option>
       </select></div>
     <div class="ed-row" id="ed-leg1-row"><span>路径优先</span>
       <select class="ed-in" id="ed-leg1-axis" style="width:auto;margin:0;flex:0 0 auto">

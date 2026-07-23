@@ -8,7 +8,8 @@ export default defineConfig({
   timeout: isCI ? 120_000 : 180_000,
   expect: { timeout: 15_000 },
   fullyParallel: true,
-  workers: isCI ? 1 : 2,
+  // 3D/WebGL 用例并行时 Windows 上 context 关闭与 trace 写入易超时；CI 已是 1 worker
+  workers: process.env.PW_WORKERS ? Number(process.env.PW_WORKERS) : 1,
   retries: isCI ? 1 : 0,
   reporter: isCI ? 'github' : [['list'], ['html', { open: 'never' }]],
   use: {
@@ -16,7 +17,7 @@ export default defineConfig({
     viewport: { width: 900, height: 700 },
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
-    trace: 'retain-on-failure',
+    trace: process.env.PW_TRACE === 'on' ? 'retain-on-failure' : (isCI ? 'retain-on-failure' : 'off'),
     video: isCI ? 'retain-on-failure' : 'off',
   },
   webServer: {

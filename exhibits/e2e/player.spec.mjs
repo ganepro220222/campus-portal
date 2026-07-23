@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import {
   gotoPlayer, reloadPlayer, openFirstHotspot, openFirstHotspotNoWait, closeHotspotIfOpen,
   calloutSnapshot, dragState, editCalloutUiState, parseLeaderPoints, segmentCount,
-  gotoViewerReady,
+  gotoViewerReady, releaseWebGL,
   viewerPendingEscapeSync,
 } from './helpers.mjs'
 
@@ -19,6 +19,7 @@ test.beforeAll(async ({ browser }) => {
 })
 
 test.afterAll(async () => {
+  await releaseWebGL(page)
   await page?.close()
 })
 

@@ -45,6 +45,19 @@ export async function waitForPlayerReady(page) {
   }, null, { timeout: 90_000 })
 }
 
+/** 关闭 WebGL 渲染循环并离开 3D 页，避免 Windows 上 browserContext.close 卡死 */
+export async function releaseWebGL(page) {
+  if (!page) return
+  try {
+    await page.evaluate(() => {
+      if (window.__SY_TEST__?.disposeForTest) window.__SY_TEST__.disposeForTest()
+    })
+  } catch { /* page may already be navigating */ }
+  try {
+    await page.goto('about:blank', { timeout: 10_000, waitUntil: 'commit' })
+  } catch { /* ignore teardown races */ }
+}
+
 /** 打开页面但不等 3D 模型（几何/壳页快测） */
 export async function gotoPlayerLight(page, opts = {}) {
   await injectCfg(page, opts)

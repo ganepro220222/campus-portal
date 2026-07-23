@@ -1717,6 +1717,13 @@ if (editMode) {
         points: $('hs-leader').getAttribute('points'),
       }
     },
+    disposeForTest: () => {
+      cancelAnimationFrame(raf)
+      raf = 0
+      try { controls?.dispose?.() } catch (_) {}
+      try { renderer?.dispose?.() } catch (_) {}
+      return true
+    },
   }
 }
 /* TEST-HOOKS-END */

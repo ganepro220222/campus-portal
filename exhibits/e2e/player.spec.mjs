@@ -384,6 +384,21 @@ test.describe('card show timer race', () => {
     expect(diag.invalidCount).toBe(2)
     expect(diag.changeCount).toBeGreaterThan(0)
   })
+
+  test('editor validate report shows duplicate and missing boot summaries together', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, {
+      viewport: { width: 900, height: 700 },
+      hotspots: [
+        { id: 'h1', position: [0, 1, 0], i18n: { zh: { title: 'A', content: 'a' } } },
+        { id: 'h1', position: [0.2, 1, 0], i18n: { zh: { title: 'B', content: 'b' } } },
+        { id: null, position: [0.4, 1, 0], i18n: { zh: { title: 'C', content: 'c' } } },
+      ],
+    })
+    const report = await page.evaluate(() => window.__SY_TEST__.validateReportText())
+    expect(report).toContain('加载时发现热点 id 重复')
+    expect(report).toContain('加载时发现热点缺 id')
+  })
 })
 
 test.describe('viewer rotate button', () => {

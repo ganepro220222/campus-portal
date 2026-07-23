@@ -12,7 +12,8 @@ import {
   anchorOnPanelEdge, getOrthPreferFirst, setOrthPreferFirst, clearOrthPreferFirst,
 } from './leader-geom.js'
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
-import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges } from './hotspot-id.mjs'
+import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
+import { buildViewerSrc } from './build-viewer.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -413,6 +414,19 @@ test('hotspot id: mergeHotspotIdChanges dedupes boot and save groups', () => {
   assert.equal(mergeHotspotIdChanges(boot, save).length, 2)
 })
 
+test('hotspot id: audit summary includes invalid dupes and missing together', () => {
+  const list = [{ id: 1 }, { id: 'h1' }, { id: 'h1' }, { id: '' }]
+  const audit = auditHotspotIds(list)
+  assert.equal(audit.invalid.length, 1)
+  assert.deepEqual(audit.dupes, ['h1'])
+  assert.equal(audit.missing, 1)
+  const parts = hotspotAuditSummaryParts(audit)
+  assert.equal(parts.length, 3)
+  assert.ok(parts.some(p => p.startsWith('热点 id 类型非法')))
+  assert.ok(parts.some(p => p.startsWith('热点 id 重复')))
+  assert.ok(parts.some(p => p.startsWith('热点缺 id')))
+})
+
 test('static deps: HTML module imports resolve to files', () => {
   const r = spawnSync(process.execPath, ['check-static-deps.mjs'], { cwd: ROOT, encoding: 'utf8' })
   assert.equal(r.status, 0, (r.stderr || r.stdout || 'check-static-deps failed').trim())
@@ -435,6 +449,19 @@ test('export viewer strips editMode and buildEditor', () => {
   const view = fs.readFileSync(path.join(ROOT, 'player.view.html'), 'utf8')
   assert.match(view, /const editMode = false \/\* viewer-only \*\//)
   assert.doesNotMatch(view, /buildEditor\(\)/)
+})
+
+test('viewer output omits editor hotspot boot diagnostics', () => {
+  const view = buildViewerSrc()
+  assert.match(view, /import \{ ensureHotspotIds \} from '\.\/hotspot-id\.mjs'/)
+  assert.doesNotMatch(view, /bootstrapHotspotIds/)
+  assert.doesNotMatch(view, /hotspotIdBootAudit/)
+  assert.doesNotMatch(view, /hotspotIdBootChanges/)
+  assert.doesNotMatch(view, /formatHotspotIdChanges/)
+  assert.doesNotMatch(view, /mergeHotspotIdChanges/)
+  assert.doesNotMatch(view, /hotspotBootAuditHadIssues/)
+  assert.doesNotMatch(view, /nextHotspotId/)
+  assert.match(view, /ensureHotspotIds\(cfg\.hotspots \|\| \[\]\)/)
 })
 
 console.log(`\n${pass} passed, ${fail} failed`)

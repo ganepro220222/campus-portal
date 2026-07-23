@@ -286,7 +286,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
-import { nextHotspotId, ensureHotspotIds, auditHotspotIds, hotspotIdIssueLabel, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues } from './hotspot-id.mjs'
+import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -1453,19 +1453,17 @@ function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x
   const hsAudit = auditHotspotIds(cfg.hotspots || [])
   const bootHadIssues = hotspotBootAuditHadIssues(hotspotIdBootAudit, hotspotIdBootChanges)
   if (bootHadIssues && hotspotIdBootAudit) {
-    if (hotspotIdBootAudit.invalid.length) {
-      p.push(wn('加载时发现热点 id 类型非法：' + hotspotIdBootAudit.invalid.map(x => `#${x.index + 1} ${hotspotIdIssueLabel(x.issue)}`).join(' · ')))
-    }
-    if (hotspotIdBootAudit.dupes.length) p.push(wn('加载时发现热点 id 重复：' + hotspotIdBootAudit.dupes.join(', ')))
-    else if (hotspotIdBootAudit.missing) p.push(wn('加载时发现热点缺 id：' + hotspotIdBootAudit.missing + ' 个'))
+    for (const line of hotspotAuditSummaryParts(hotspotIdBootAudit, {
+      invalid: '加载时发现热点 id 类型非法',
+      dupes: '加载时发现热点 id 重复',
+      missing: '加载时发现热点缺 id',
+    })) p.push(wn(line))
     if (hotspotIdBootChanges.length) p.push(wn('加载时已自动修正：' + formatHotspotIdChanges(hotspotIdBootChanges)))
   }
-  if (hsAudit.invalid.length) {
-    p.push(wn('热点 id 类型非法：' + hsAudit.invalid.map(x => `#${x.index + 1} ${hotspotIdIssueLabel(x.issue)}`).join(' · ')))
+  for (const line of hotspotAuditSummaryParts(hsAudit)) p.push(wn(line))
+  if (!hsAudit.invalid.length && !hsAudit.dupes.length && !hsAudit.missing) {
+    p.push(ok('热点 id 唯一' + (bootHadIssues ? '（加载后已修正）' : '')))
   }
-  if (hsAudit.dupes.length) p.push(wn('热点 id 重复：' + hsAudit.dupes.join(', ')))
-  else if (hsAudit.missing) p.push(wn('热点缺 id：' + hsAudit.missing + ' 个'))
-  else if (!hsAudit.invalid.length) p.push(ok('热点 id 唯一' + (bootHadIssues ? '（加载后已修正）' : '')))
   ;(cfg.audio||[]).forEach(a=>{ if(!a.src) p.push(wn('语音「'+(a.label||a.id)+'」缺文件')) })
   const st=modelStats(); p.push(st.tris>500000?wn('三角面偏多 '+st.tris.toLocaleString()):ok('三角面 '+st.tris.toLocaleString()))
   return p.join('<br>') }

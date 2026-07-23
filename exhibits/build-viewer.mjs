@@ -5,9 +5,11 @@ import { fileURLToPath } from 'node:url'
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.join(ROOT, 'player.view.html')
 const SRC = path.join(ROOT, 'player.html')
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
 export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
   return playerHtml
+    .replace(/\r\n/g, '\n')
     .replace(/[ \t]*\/\* EDITOR-CSS-START[\s\S]*?\/\* EDITOR-CSS-END \*\/\n?/, '')
     .replace(/[ \t]*<!-- EDITOR-HTML-START[\s\S]*?<!-- EDITOR-HTML-END -->\n?/, '')
     .replace(/[ \t]*\/\* EDITOR-JS-START[\s\S]*?\/\* EDITOR-JS-END \*\/\n?/, '')
@@ -15,6 +17,12 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
     .replace(/const editMode = params\.get\('mode'\) === 'edit'/, 'const editMode = false /* viewer-only */')
     .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/if \(editMode\) buildEditor\(\)/, '/* viewer-only: no editor */')
+    .replace(/import \{[^}]+\} from '\.\/hotspot-id\.mjs'/, "import { ensureHotspotIds } from './hotspot-id.mjs'")
+    .replace(/\nlet hotspotIdBootAudit = null, hotspotIdBootChanges = \[\][^\n]*\n/, '\n')
+    .replace(
+      /  if \(editMode\) \{[\s\S]*?bootstrapHotspotIds\(cfg\.hotspots \|\| \[\]\)[\s\S]*?  \} else \{\n    ensureHotspotIds\(cfg\.hotspots \|\| \[\]\)\n  \}/,
+      '  ensureHotspotIds(cfg.hotspots || [])',
+    )
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/\n+$/, '\n')
@@ -28,6 +36,7 @@ function usage() {
 }
 
 const check = process.argv.includes('--check')
+if (isMain) {
 if (process.argv.includes('-h') || process.argv.includes('--help')) {
   usage()
   process.exit(0)
@@ -53,3 +62,4 @@ if (check) {
 
 fs.writeFileSync(OUT, next, 'utf8')
 console.log('player.view.html written')
+}

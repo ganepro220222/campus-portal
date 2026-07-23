@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import {
   gotoPlayerLight, gotoViewerReady, resolveGeom, renderHiddenOverlapInPlayer,
-  HIDDEN_OVERLAP_GEOM, openFirstHotspot, calloutSnapshot, segmentCount,
+  HIDDEN_OVERLAP_GEOM, openFirstHotspot, calloutSnapshot, segmentCount, releaseWebGL,
 } from './helpers.mjs'
 
 const CRAFTS = ['craft-001', 'craft-002', 'craft-003', 'craft-004']
@@ -18,28 +18,32 @@ test.describe('public entry (fast)', () => {
   }
 
   test('player.view.html?mode=edit boots viewer and hides editor', async ({ page }) => {
-    await gotoViewerReady(page, { mode: 'edit', viewport: { width: 900, height: 700 } })
+    try {
+      await gotoViewerReady(page, { mode: 'edit', viewport: { width: 900, height: 700 } })
 
-    await expect(page.locator('#loading')).toHaveAttribute('hidden', '')
-    await expect(page.locator('#error')).toHaveAttribute('hidden', '')
-    await expect(page.locator('#topbar')).not.toHaveAttribute('hidden', '')
-    await expect(page.locator('canvas')).toHaveCount(1)
-    await expect(page.locator('#hs-layer .hs')).not.toHaveCount(0)
-    await expect(page.locator('#editor')).toHaveCount(0)
-    await expect(page.locator('#ed-badge')).toHaveCount(0)
+      await expect(page.locator('#loading')).toHaveAttribute('hidden', '')
+      await expect(page.locator('#error')).toHaveAttribute('hidden', '')
+      await expect(page.locator('#topbar')).not.toHaveAttribute('hidden', '')
+      await expect(page.locator('canvas')).toHaveCount(1)
+      await expect(page.locator('#hs-layer .hs')).not.toHaveCount(0)
+      await expect(page.locator('#editor')).toHaveCount(0)
+      await expect(page.locator('#ed-badge')).toHaveCount(0)
 
-    const flags = await page.evaluate(() => ({
-      editMode: /const editMode = false \/\* viewer-only \*\//.test(document.documentElement.innerHTML),
-      testHook: window.__SY_TEST__ == null,
-    }))
-    expect(flags.editMode).toBe(true)
-    expect(flags.testHook).toBe(true)
+      const flags = await page.evaluate(() => ({
+        editMode: /const editMode = false \/\* viewer-only \*\//.test(document.documentElement.innerHTML),
+        testHook: window.__SY_TEST__ == null,
+      }))
+      expect(flags.editMode).toBe(true)
+      expect(flags.testHook).toBe(true)
 
-    await openFirstHotspot(page)
-    const snap = await calloutSnapshot(page)
-    expect(snap?.cardShow).toBe(true)
-    expect(snap?.svgHidden).toBe(false)
-    expect(segmentCount(snap?.points || '')).toBeGreaterThan(0)
+      await openFirstHotspot(page)
+      const snap = await calloutSnapshot(page)
+      expect(snap?.cardShow).toBe(true)
+      expect(snap?.svgHidden).toBe(false)
+      expect(segmentCount(snap?.points || '')).toBeGreaterThan(0)
+    } finally {
+      await releaseWebGL(page)
+    }
   })
 })
 

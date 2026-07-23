@@ -69,6 +69,8 @@ npm run test:ci                   # 单元 + deps + viewer 同步校验 + E2E（
 
 E2E 分三类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 秒）、`e2e/player.spec.mjs`（3D 模型串行，约 2 分钟）、`e2e/studio.spec.mjs`（工作台启动与批量保存，约 30 秒）。本地若 8199 端口已有服务，Playwright 会复用，无需重复启动。
 
+3D 用例默认 **1 worker**（与 CI 一致），避免 Windows 上并行 WebGL 导致 `browserContext.close` / trace 写入超时。需要本地 trace 时可设 `PW_TRACE=on`；需要多 worker 时可设 `PW_WORKERS=2`（不推荐在 Windows 跑全量 3D）。
+
 ## 常用地址
 
 | 用途 | 地址 |

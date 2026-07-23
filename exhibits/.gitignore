@@ -1,6 +1,10 @@
 # 运行时备份（保存接口自动生成），不入库
 */.bak/
 
+# 便携运行时（安装脚本生成，可复制到其他电脑）
+_runtime/python/
+_runtime/node/
+
 # Playwright
 test-results/
 playwright-report/

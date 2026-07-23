@@ -12,8 +12,14 @@ exhibits/
   package.json         # exhibits 目录 ESM（Node 测试用）
   leader-geom.js       # 引线/面板布局纯函数（player 与 player.view 均依赖）
   leader-geom.test.mjs # 几何单元测试（node leader-geom.test.mjs）
-  serve.py             # Python 静态服务（修正 MIME，无 Node 时用）
-  start.sh / start.bat # 一键启动（Git Bash / Windows）
+  serve.py             # Python 本地服务（含保存 API；便携环境用）
+  打开工作台.bat       # 启动服务并打开浏览器
+  停止服务.bat         # 停止本地服务
+  安装便携环境.bat     # 首次：下载便携 Python（可整夹复制到其他电脑）
+  使用说明.txt         # 本地使用简明说明
+  _launch/             # 启动脚本逻辑（勿删）
+  _dev/                # Git Bash / Mac / Linux 脚本
+  _runtime/            # 便携 Python（安装后生成）
   vendor/              # Three.js 与 Draco / Basis 解码器
   studio.html          # 工作台：列出全部展品，点卡片进入编辑或预览
   studio-batch.mjs     # 工作台批量字段适用性与 ops 收集（studio.html 模块依赖）
@@ -30,27 +36,24 @@ exhibits/
 
 ## 本地运行
 
-在 **`exhibits/` 目录** 下启动（Git Bash）：
+### 日常使用
+
+1. **首次**：双击 **`安装便携环境.bat`**（联网一次，约 12MB 便携 Python 写入 `_runtime/python/`）
+2. **可复制整个 `exhibits/` 文件夹**到其他 Windows 电脑，无需重复安装
+3. **编辑**：双击 **`打开工作台.bat`** → 启动服务并打开浏览器
+4. **结束**：双击 **`停止服务.bat`**
+
+说明见 **`使用说明.txt`**。本机若已装 Node，可跳过便携环境安装。
+
+### 开发
 
 ```bash
-cd /d/shuyuan/exhibits
-bash start.sh
-# 或指定端口：bash start.sh 8199
+cd exhibits
+bash _dev/start.sh
+bash _dev/stop.sh
 ```
 
-Windows 双击或 CMD：`start.bat`（可选参数 `start.bat 8199`）
-
-启动后访问：
-
-| 用途 | 地址 |
-|---|---|
-| 工作台 | `http://127.0.0.1:8199/studio.html` |
-| 观看展品 | `http://127.0.0.1:8199/craft-001/` |
-| 编辑展品 | `http://127.0.0.1:8199/player.html?ex=craft-001&mode=edit` |
-
-`start.sh` 优先用 Node 工作台服务（含保存 API）；无 Node 时自动改用 `python serve.py`。
-
-**不要用** `python -m http.server`（曾导致播放器卡在「正在加载」；若必须用，请改用 `python serve.py 8199`）。
+启动顺序：便携 Python → 本机 Node → 本机 Python。勿用 `python -m http.server`（无保存 API，且 .mjs MIME 不正确）。
 
 须通过 HTTP 访问，不能直接双击 HTML 文件。
 

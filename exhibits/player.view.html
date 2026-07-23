@@ -237,7 +237,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
-import { nextHotspotId, ensureHotspotIds, auditHotspotIds, hotspotIdIssueLabel, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues } from './hotspot-id.mjs'
+import { ensureHotspotIds } from './hotspot-id.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -257,7 +257,6 @@ const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
 const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
 let auTracks = [], auIndex = -1     // 语音讲解播放器状态
-let hotspotIdBootAudit = null, hotspotIdBootChanges = []   // editor：加载时 ID 诊断（boot 前 audit）
 
 const t = o => (o && (o[lang] || o.zh || o.en)) || {}
 function hexToRgba(hex, a){
@@ -970,15 +969,7 @@ async function boot() {
     }
   }
   catch(e){ return showError('配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）', true) }
-  if (editMode) {
-    hotspotIdBootAudit = null
-    hotspotIdBootChanges = []
-    const boot = bootstrapHotspotIds(cfg.hotspots || [])
-    hotspotIdBootAudit = boot.audit
-    hotspotIdBootChanges = boot.changes
-  } else {
-    ensureHotspotIds(cfg.hotspots || [])
-  }
+  ensureHotspotIds(cfg.hotspots || [])
   if (!cfg?.assets?.model) return showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true)
   if (!initRenderer()) return showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信')
   document.title = t(cfg.i18n).title || '立体鉴赏'

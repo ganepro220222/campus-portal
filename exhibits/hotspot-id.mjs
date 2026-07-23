@@ -149,3 +149,18 @@ export function hotspotBootAuditHadIssues(audit, changes = []) {
   if (!audit) return changes.length > 0
   return !!(audit.invalid.length || audit.missing || audit.dupes.length || changes.length)
 }
+
+/** Independent summary lines for invalid, duplicate, and missing id issues. */
+export function hotspotAuditSummaryParts(audit, labels = {}) {
+  if (!audit) return []
+  const invalidLabel = labels.invalid ?? '热点 id 类型非法'
+  const dupesLabel = labels.dupes ?? '热点 id 重复'
+  const missingLabel = labels.missing ?? '热点缺 id'
+  const parts = []
+  if (audit.invalid?.length) {
+    parts.push(`${invalidLabel}：` + audit.invalid.map(x => `#${x.index + 1} ${hotspotIdIssueLabel(x.issue)}`).join(' · '))
+  }
+  if (audit.dupes?.length) parts.push(`${dupesLabel}：` + audit.dupes.join(', '))
+  if (audit.missing) parts.push(`${missingLabel}：` + audit.missing + ' 个')
+  return parts
+}

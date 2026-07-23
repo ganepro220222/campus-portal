@@ -86,26 +86,16 @@ test.describe('edit drag state', () => {
       panel: { leader: 'elbow', elbowMode: 'leg1-lock', leg1Axis: 'h', leaderGap: 48 },
     })
     await openFirstHotspot(page)
-    const knee = await page.evaluate(() => {
-      const pts = document.getElementById('hs-leader')?.getAttribute('points') || ''
-      const parts = pts.trim().split(/\s+/)
-      if (parts.length < 2) return null
-      const [x, y] = parts[1].split(',').map(Number)
-      return { x, y }
-    })
-    expect(knee).toBeTruthy()
-    await page.mouse.move(knee.x, knee.y)
-    await page.mouse.down()
-    await expect.poll(async () => (await dragState(page)).kneeDrag, { timeout: 5_000 }).toBe(true)
-    await page.mouse.move(knee.x + 30, knee.y)
+    await expect.poll(async () => page.evaluate(() => window.__SY_TEST__?.startKneeDragTest()), { timeout: 5_000 }).toBe(true)
+    expect(await dragState(page)).toEqual({ kneeDrag: true, panelDrag: false })
+    expect(await page.evaluate(() => window.__SY_TEST__?.nudgeKneeDragTest(30, 0))).toBe(true)
     const mid = await calloutSnapshot(page)
     await page.evaluate(() => {
       document.getElementById('hs-svg')?.dispatchEvent(
         new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 }))
     })
-    await page.mouse.up()
     expect(await dragState(page)).toEqual({ kneeDrag: false, panelDrag: false })
-    await page.mouse.move(knee.x + 80, knee.y + 40)
+    expect(await page.evaluate(() => window.__SY_TEST__?.nudgeKneeDragTest(50, 40))).toBe(false)
     await page.waitForTimeout(200)
     const midPts = parseLeaderPoints(mid.points)
     const afterPts = parseLeaderPoints((await calloutSnapshot(page)).points)

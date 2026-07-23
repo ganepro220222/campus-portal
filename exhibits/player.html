@@ -1685,6 +1685,28 @@ if (editMode) {
       try { c.setPointerCapture(1) } catch (_) {}
       return true
     },
+    startKneeDragTest: () => {
+      if (!activeHS || innerWidth <= 720 || !lastPts) return false
+      const O = leaderOpts(cfg.panel)
+      if (O.mode === 'orthogonal' || O.mode === 'leg2-lock' || O.leader === 'straight' || O.leader === 'line') return false
+      const kp = leaderKneePoint(lastPts)
+      if (!kp) return false
+      const svg = $('hs-svg'), d = activeHS.data
+      document.body.classList.add('edit-callout-knee')
+      if (!d.leaderKneeManual) { d.leaderKnee = [kp[0] - lastMx, kp[1] - lastMy]; d.leaderKneeManual = true }
+      kneeDrag = { sx: kp[0], sy: kp[1], ox: d.leaderKnee[0], oy: d.leaderKnee[1], pid: 1 }
+      try { svg.setPointerCapture(1) } catch (_) {}
+      syncLeaderEditorUI()
+      return true
+    },
+    nudgeKneeDragTest: (dx, dy) => {
+      if (!kneeDrag || !activeHS) return false
+      activeHS.data.leaderKnee = [kneeDrag.ox + dx, kneeDrag.oy + dy]
+      activeHS.data.leaderKneeManual = true
+      bumpLeader()
+      syncLeaderEditorUI()
+      return true
+    },
     calloutSnapshot: () => {
       if (!activeHS) return null
       const card = $('card')

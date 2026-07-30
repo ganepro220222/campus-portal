@@ -9,7 +9,7 @@ import {
   configFetchUrl,
   configExportFilename,
 } from './player-persist.mjs'
-import { getOrCreateInstanceId, readInstanceId, instanceIdPath } from './_server/studio-identity.mjs'
+import { computeRootHash, normalizeRootPath, getIdentityPayload } from './_server/studio-identity.mjs'
 
 function sphericalFromThree(cameraPos, pivot) {
   const s = new THREE.Spherical().setFromVector3(
@@ -78,23 +78,48 @@ test('camera round-trip idempotent twice', () => {
 
 console.log('studio-identity tests')
 
-test('getOrCreateInstanceId is stable per root', () => {
+test('computeRootHash is stable per root', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-id-'))
   try {
-    const a = getOrCreateInstanceId(tmp)
-    const b = getOrCreateInstanceId(tmp)
+    const a = computeRootHash(tmp)
+    const b = computeRootHash(tmp)
     assert.equal(a, b)
-    assert.equal(readInstanceId(tmp), a)
-    assert.ok(fs.existsSync(instanceIdPath(tmp)))
+    assert.equal(getIdentityPayload(tmp).rootHash, a)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
 })
 
-test('readInstanceId returns null when missing', () => {
+test('different roots produce different rootHash', () => {
+  const a = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-id-'))
+  const b = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-id-'))
+  try {
+    assert.notEqual(computeRootHash(a), computeRootHash(b))
+  } finally {
+    fs.rmSync(a, { recursive: true, force: true })
+    fs.rmSync(b, { recursive: true, force: true })
+  }
+})
+
+test('copied .studio-instance-id does not collide rootHash', () => {
+  const a = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-id-'))
+  const b = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-id-'))
+  try {
+    const legacy = path.join(a, '.studio-instance-id')
+    fs.writeFileSync(legacy, 'copied-uuid-should-not-matter\n')
+    fs.copyFileSync(legacy, path.join(b, '.studio-instance-id'))
+    assert.notEqual(computeRootHash(a), computeRootHash(b))
+  } finally {
+    fs.rmSync(a, { recursive: true, force: true })
+    fs.rmSync(b, { recursive: true, force: true })
+  }
+})
+
+test('normalizeRootPath strips trailing separators consistently', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-id-'))
   try {
-    assert.equal(readInstanceId(tmp), null)
+    const base = path.resolve(tmp)
+    assert.equal(normalizeRootPath(base + path.sep), normalizeRootPath(base))
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }

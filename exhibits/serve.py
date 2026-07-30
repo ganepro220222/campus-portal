@@ -12,19 +12,18 @@ exhibits 本地工作台服务（纯 Python 标准库，与 studio-server.mjs �
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import re
 import shutil
 import sys
 import time
-import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parent
-INSTANCE_ID_FILE = ROOT / '.studio-instance-id'
 NO_STORE = 'no-store, no-cache, must-revalidate'
 PORT = int(os.environ.get('PORT') or (sys.argv[1] if len(sys.argv) > 1 else 8199))
 USER = os.environ.get('STUDIO_USER', 'admin')
@@ -33,17 +32,23 @@ SAFE = re.compile(r'^[A-Za-z0-9_-]+$')
 BAK_KEEP = 20
 
 
-def get_or_create_instance_id() -> str:
-    if INSTANCE_ID_FILE.is_file():
-        existing = INSTANCE_ID_FILE.read_text(encoding='utf-8').strip()
-        if existing:
-            return existing
-    new_id = str(uuid.uuid4())
-    INSTANCE_ID_FILE.write_text(new_id + '\n', encoding='utf-8')
-    return new_id
+def normalize_root(root: Path) -> str:
+    s = str(root.resolve()).replace('\\', '/')
+    if os.name == 'nt':
+        s = s.lower()
+    return s
 
 
-INSTANCE_ID = get_or_create_instance_id()
+def compute_root_hash(root: Path) -> str:
+    return hashlib.sha256(normalize_root(root).encode()).hexdigest()[:32]
+
+
+def identity_payload(root: Path) -> dict:
+    h = compute_root_hash(root)
+    return {'rootHash': h, 'instanceId': h}
+
+
+ROOT_HASH = compute_root_hash(ROOT)
 
 MIME = {
     '.html': 'text/html; charset=utf-8',
@@ -127,6 +132,10 @@ class Handler(SimpleHTTPRequestHandler):
             return
         super().log_message(fmt, *args)
 
+    def _is_localhost(self) -> bool:
+        addr = self.client_address[0] if self.client_address else ''
+        return addr in ('127.0.0.1', '::1')
+
     def _authed(self) -> bool:
         if not PASS:
             return True
@@ -164,11 +173,13 @@ class Handler(SimpleHTTPRequestHandler):
         return unquote(urlparse(self.path).path)
 
     def do_GET(self):
-        if not self._authed():
-            return
         p = self._path()
         if p.startswith('/studio-api/identity'):
-            return self._json(200, {'instanceId': INSTANCE_ID})
+            if self._is_localhost() or self._authed():
+                return self._json(200, identity_payload(ROOT))
+            return
+        if not self._authed():
+            return
         if p.startswith('/studio-api/list'):
             try:
                 return self._json(200, {'exhibits': list_exhibits()})
@@ -229,5 +240,5 @@ if __name__ == '__main__':
     with HTTPServer(('', PORT), Handler) as httpd:
         print('Exhibits server: http://127.0.0.1:%s/studio.html  %s' % (
             PORT, '(auth on)' if PASS else '(no auth, local only)'))
-        print('  instance ID: %s' % INSTANCE_ID)
+        print('  rootHash: %s' % ROOT_HASH)
         httpd.serve_forever()

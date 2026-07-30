@@ -318,8 +318,9 @@ async function load() {
     try {
       const ir = await fetch('studio-api/identity', { cache: 'no-store' })
       if (ir.ok) {
-        const { instanceId } = await ir.json()
-        if (instanceId) $('s-count').textContent += ` · 实例 ${instanceId.slice(0, 8)}`
+        const { rootHash, instanceId } = await ir.json()
+        const id = rootHash || instanceId
+        if (id) $('s-count').textContent += ` · 实例 ${id.slice(0, 8)}`
       }
     } catch (_) {}
   }

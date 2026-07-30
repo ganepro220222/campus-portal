@@ -19,10 +19,10 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getOrCreateInstanceId } from './studio-identity.mjs'
+import { computeRootHash, getIdentityPayload } from './studio-identity.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
-const INSTANCE_ID = getOrCreateInstanceId(ROOT)
+const ROOT_HASH = computeRootHash(ROOT)
 const PORT = Number(process.env.PORT || 8199)
 const USER = process.env.STUDIO_USER || 'admin'
 const PASS = process.env.STUDIO_PASS || ''
@@ -44,11 +44,15 @@ function authed(req, res) {
   res.writeHead(401, { ...NO_STORE, 'WWW-Authenticate': 'Basic realm="3D Studio", charset="UTF-8"' }); res.end('需要登录')
   return false
 }
+function isLocalhost(req) {
+  const a = req.socket.remoteAddress || ''
+  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1'
+}
 const send = (res, code, type, body, extraHeaders = {}) => {
-  res.writeHead(code, { 'Content-Type': type, ...NO_STORE, ...extraHeaders })
+  res.writeHead(code, { 'Content-Type': type, ...extraHeaders })
   res.end(body)
 }
-const json = (res, code, obj) => send(res, code, 'application/json; charset=utf-8', JSON.stringify(obj))
+const json = (res, code, obj) => send(res, code, 'application/json; charset=utf-8', JSON.stringify(obj), NO_STORE)
 
 function listExhibits() {
   const out = []
@@ -107,11 +111,13 @@ function serveStatic(req, res, urlPath) {
 }
 
 http.createServer((req, res) => {
-  if (!authed(req, res)) return
   const u = req.url || '/'
   if (u.startsWith('/studio-api/identity')) {
-    return json(res, 200, { instanceId: INSTANCE_ID })
+    if (isLocalhost(req)) return json(res, 200, getIdentityPayload(ROOT))
+    if (!authed(req, res)) return
+    return json(res, 200, getIdentityPayload(ROOT))
   }
+  if (!authed(req, res)) return
   if (u.startsWith('/studio-api/list')) {
     try { return json(res, 200, { exhibits: listExhibits() }) } catch (e) { return json(res, 500, { error: String(e.message) }) }
   }
@@ -127,5 +133,5 @@ http.createServer((req, res) => {
   serveStatic(req, res, u)
 }).listen(PORT, () => {
   console.log(`▶ 3D 鉴赏工作台服务：http://127.0.0.1:${PORT}/studio.html   ${PASS ? '(Basic Auth 已启用)' : '(无鉴权·仅本机)'}`)
-  console.log(`   实例 ID：${INSTANCE_ID}`)
+  console.log(`   rootHash：${ROOT_HASH}`)
 })

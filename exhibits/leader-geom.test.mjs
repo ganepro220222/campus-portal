@@ -464,6 +464,13 @@ test('viewer output omits editor hotspot boot diagnostics', () => {
   assert.match(view, /ensureHotspotIds\(cfg\.hotspots \|\| \[\]\)/)
 })
 
+test('viewer output imports only configFetchUrl from player-persist', () => {
+  const view = buildViewerSrc()
+  assert.match(view, /import \{ configFetchUrl \} from '\.\/player-persist\.mjs'/)
+  assert.doesNotMatch(view, /applyExposureToCfg/)
+  assert.doesNotMatch(view, /configExportFilename/)
+})
+
 test('editor preset row uses dedicated label/actions classes', () => {
   const html = fs.readFileSync(path.join(ROOT, 'player.html'), 'utf8')
   assert.match(html, /\.ed-label \{ white-space:nowrap/)

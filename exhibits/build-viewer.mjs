@@ -18,6 +18,7 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
     .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/if \(editMode\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/import \{[^}]+\} from '\.\/hotspot-id\.mjs'/, "import { ensureHotspotIds } from './hotspot-id.mjs'")
+    .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, "import { configFetchUrl } from './player-persist.mjs'")
     .replace(/\nlet hotspotIdBootAudit = null, hotspotIdBootChanges = \[\][^\n]*\n/, '\n')
     .replace(
       /  if \(editMode\) \{[\s\S]*?bootstrapHotspotIds\(cfg\.hotspots \|\| \[\]\)[\s\S]*?  \} else \{\n    ensureHotspotIds\(cfg\.hotspots \|\| \[\]\)\n  \}/,

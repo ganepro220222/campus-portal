@@ -21,6 +21,10 @@ if "%RC%"=="3" (
   echo [ERROR] server did not start in 45s - run stop bat first
   goto end
 )
+if "%RC%"=="4" (
+  echo [ERROR] port %PORT% is used by another exhibits copy - run stop bat or use another port
+  goto end
+)
 
 echo Opening browser...
 call "_launch\open-browser.bat" "%URL%"

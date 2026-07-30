@@ -238,6 +238,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { ensureHotspotIds } from './hotspot-id.mjs'
+import { applyExposureToCfg, configFetchUrl, configExportFilename } from './player-persist.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -367,9 +368,10 @@ function materialNames() {
 function placeCamera() {
   const c = cfg.camera || {}
   camera.fov = num(c.fov, 40); camera.updateProjectionMatrix()
+  const pv = c.pivot || [0,0,0]; pivot.set(pv[0]||0, pv[1]||0, pv[2]||0)
   camera.position.setFromSpherical(new THREE.Spherical(num(c.distance,3.4), num(c.phi,1.2), num(c.theta,0.7)))
+  camera.position.add(pivot)
   initialCam.copy(camera.position)
-  const pv = c.pivot || [0,0,0]; pivot.set(pv[0]||0, pv[1]||0, pv[2]||0)  // 默认 (0,0,0)=模型中轴
   controls.target.copy(pivot)
   controls.minDistance = num(c.minDistance, 1.4)
   controls.maxDistance = num(c.maxDistance, 7)
@@ -962,7 +964,7 @@ async function boot() {
   try {
     if (window.__CFG__) cfg = window.__CFG__            // 便携单文件：内联配置，免 fetch（可双击 file:// 打开）
     else {
-      const url = BASE + 'config.json'
+      const url = configFetchUrl(BASE)
       const res = await fetch(url, { cache: 'no-cache' })
       if (!res.ok) throw new Error(`HTTP ${res.status} · ${url}`)
       cfg = await res.json()

@@ -1,0 +1,108 @@
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import * as THREE from './vendor/three.module.js'
+import {
+  applyExposureToCfg,
+  cameraPositionFromSpherical,
+  configFetchUrl,
+  configExportFilename,
+} from './player-persist.mjs'
+import { getOrCreateInstanceId, readInstanceId, instanceIdPath } from './_server/studio-identity.mjs'
+
+function sphericalFromThree(cameraPos, pivot) {
+  const s = new THREE.Spherical().setFromVector3(
+    new THREE.Vector3(...cameraPos).sub(new THREE.Vector3(...pivot)),
+  )
+  return { distance: +s.radius.toFixed(3), phi: +s.phi.toFixed(3), theta: +s.theta.toFixed(3) }
+}
+
+let pass = 0, fail = 0
+function test(name, fn) {
+  try { fn(); pass++; console.log('  ok', name) }
+  catch (e) { fail++; console.error(' FAIL', name, e.message) }
+}
+
+console.log('player-persist tests')
+
+test('applyExposureToCfg writes cfg.renderer.exposure', () => {
+  const cfg = {}
+  applyExposureToCfg(cfg, 1.42)
+  assert.equal(cfg.renderer.exposure, 1.42)
+})
+
+test('configFetchUrl adds cache buster', () => {
+  const u = configFetchUrl('craft-001/')
+  assert.match(u, /^craft-001\/config\.json\?_=\d+$/)
+})
+
+test('configExportFilename includes exhibit dir', () => {
+  assert.equal(configExportFilename('craft-002'), 'craft-002.config.json')
+  assert.equal(configExportFilename(''), 'config.json')
+})
+
+test('camera round-trip with zero pivot', () => {
+  const cam = [2, 2, 3]
+  const pivot = [0, 0, 0]
+  const sp = sphericalFromThree(cam, pivot)
+  const restored = cameraPositionFromSpherical(sp, pivot)
+  assert.ok(Math.abs(restored[0] - cam[0]) < 0.01)
+  assert.ok(Math.abs(restored[1] - cam[1]) < 0.01)
+  assert.ok(Math.abs(restored[2] - cam[2]) < 0.01)
+})
+
+test('camera round-trip with non-zero pivot Y (production bug)', () => {
+  const pivot = [0, 0.75, 0]
+  const cam = [2, 2, 3]
+  const sp = sphericalFromThree(cam, pivot)
+  const wrong = cameraPositionFromSpherical(sp, [0, 0, 0])
+  assert.ok(Math.abs(wrong[1] - cam[1]) > 0.5, 'old load without pivot should differ')
+  const restored = cameraPositionFromSpherical(sp, pivot)
+  assert.ok(Math.abs(restored[0] - cam[0]) < 0.01)
+  assert.ok(Math.abs(restored[1] - cam[1]) < 0.01)
+  assert.ok(Math.abs(restored[2] - cam[2]) < 0.01)
+})
+
+test('camera round-trip idempotent twice', () => {
+  const pivot = [0.2, 0.75, -0.1]
+  const cam = [1.5, 2.2, 2.8]
+  const sp1 = sphericalFromThree(cam, pivot)
+  const mid = cameraPositionFromSpherical(sp1, pivot)
+  const sp2 = sphericalFromThree(mid, pivot)
+  const again = cameraPositionFromSpherical(sp2, pivot)
+  assert.ok(Math.abs(again[0] - cam[0]) < 0.01)
+  assert.ok(Math.abs(again[1] - cam[1]) < 0.01)
+  assert.ok(Math.abs(again[2] - cam[2]) < 0.01)
+})
+
+console.log('studio-identity tests')
+
+test('getOrCreateInstanceId is stable per root', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-id-'))
+  try {
+    const a = getOrCreateInstanceId(tmp)
+    const b = getOrCreateInstanceId(tmp)
+    assert.equal(a, b)
+    assert.equal(readInstanceId(tmp), a)
+    assert.ok(fs.existsSync(instanceIdPath(tmp)))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('readInstanceId returns null when missing', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-id-'))
+  try {
+    assert.equal(readInstanceId(tmp), null)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+console.log('')
+if (fail) {
+  console.error(`player-persist: ${pass} passed, ${fail} failed`)
+  process.exit(1)
+}
+console.log(`player-persist: ${pass} passed`)

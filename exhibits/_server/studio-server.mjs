@@ -8,6 +8,7 @@
  * 提供：
  *   - 静态托管整个 exhibits/（并给 player.html 注入 window.__SAVE_API__，使「保存」直接写回）
  *   - GET  /studio-api/list        列出所有展品（工作台自动加载，免手维护 manifest）
+ *   - GET  /studio-api/identity    返回本目录实例 ID（启动器校验端口归属）
  *   - POST /studio-api/save        写回 <ex>/config.json，写前自动备份上一版到 <ex>/.bak/
  *   - Basic Auth 保护全部（生产务必设 STUDIO_PASS；不设则仅本机可用并告警）
  *
@@ -18,13 +19,16 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { getOrCreateInstanceId } from './studio-identity.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
+const INSTANCE_ID = getOrCreateInstanceId(ROOT)
 const PORT = Number(process.env.PORT || 8199)
 const USER = process.env.STUDIO_USER || 'admin'
 const PASS = process.env.STUDIO_PASS || ''
 const SAFE = /^[a-zA-Z0-9_-]+$/
 const BAK_KEEP = 20
+const NO_STORE = { 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0' }
 const MIME = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.mjs':'text/javascript; charset=utf-8',
   '.json':'application/json; charset=utf-8', '.css':'text/css; charset=utf-8', '.glb':'model/gltf-binary', '.gltf':'model/gltf+json',
   '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.webp':'image/webp', '.wav':'audio/wav', '.mp3':'audio/mpeg', '.m4a':'audio/mp4' }
@@ -37,10 +41,13 @@ function authed(req, res) {
   const [, b64] = h.split(' ')
   const [u, p] = Buffer.from(b64 || '', 'base64').toString().split(':')
   if (u === USER && p === PASS) return true
-  res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="3D Studio", charset="UTF-8"' }); res.end('需要登录')
+  res.writeHead(401, { ...NO_STORE, 'WWW-Authenticate': 'Basic realm="3D Studio", charset="UTF-8"' }); res.end('需要登录')
   return false
 }
-const send = (res, code, type, body) => { res.writeHead(code, { 'Content-Type': type }); res.end(body) }
+const send = (res, code, type, body, extraHeaders = {}) => {
+  res.writeHead(code, { 'Content-Type': type, ...NO_STORE, ...extraHeaders })
+  res.end(body)
+}
 const json = (res, code, obj) => send(res, code, 'application/json; charset=utf-8', JSON.stringify(obj))
 
 function listExhibits() {
@@ -90,17 +97,21 @@ function serveStatic(req, res, urlPath) {
   fs.readFile(full, (err, buf) => {
     if (err) return send(res, 404, 'text/plain; charset=utf-8', '404 Not Found: ' + rel)
     const ext = path.extname(full).toLowerCase()
+    const cacheExtra = ext === '.json' ? NO_STORE : {}
     if (path.basename(full) === 'player.html') {                                      // 注入保存地址
       const injected = buf.toString('utf8').replace('</head>', '<script>window.__SAVE_API__="/studio-api/save"</script>\n</head>')
-      return send(res, 200, MIME['.html'], injected)
+      return send(res, 200, MIME['.html'], injected, cacheExtra)
     }
-    send(res, 200, MIME[ext] || 'application/octet-stream', buf)
+    send(res, 200, MIME[ext] || 'application/octet-stream', buf, cacheExtra)
   })
 }
 
 http.createServer((req, res) => {
   if (!authed(req, res)) return
   const u = req.url || '/'
+  if (u.startsWith('/studio-api/identity')) {
+    return json(res, 200, { instanceId: INSTANCE_ID })
+  }
   if (u.startsWith('/studio-api/list')) {
     try { return json(res, 200, { exhibits: listExhibits() }) } catch (e) { return json(res, 500, { error: String(e.message) }) }
   }
@@ -116,4 +127,5 @@ http.createServer((req, res) => {
   serveStatic(req, res, u)
 }).listen(PORT, () => {
   console.log(`▶ 3D 鉴赏工作台服务：http://127.0.0.1:${PORT}/studio.html   ${PASS ? '(Basic Auth 已启用)' : '(无鉴权·仅本机)'}`)
+  console.log(`   实例 ID：${INSTANCE_ID}`)
 })

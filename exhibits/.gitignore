@@ -1,6 +1,9 @@
 # 运行时备份（保存接口自动生成），不入库
 */.bak/
 
+# 每份便携副本独立的工作台实例 ID（勿提交）
+.studio-instance-id
+
 # 便携运行时（安装脚本生成，可复制到其他电脑）
 _runtime/python/
 _runtime/node/

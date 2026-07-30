@@ -18,16 +18,32 @@ import re
 import shutil
 import sys
 import time
+import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parent
+INSTANCE_ID_FILE = ROOT / '.studio-instance-id'
+NO_STORE = 'no-store, no-cache, must-revalidate'
 PORT = int(os.environ.get('PORT') or (sys.argv[1] if len(sys.argv) > 1 else 8199))
 USER = os.environ.get('STUDIO_USER', 'admin')
 PASS = os.environ.get('STUDIO_PASS', '')
 SAFE = re.compile(r'^[A-Za-z0-9_-]+$')
 BAK_KEEP = 20
+
+
+def get_or_create_instance_id() -> str:
+    if INSTANCE_ID_FILE.is_file():
+        existing = INSTANCE_ID_FILE.read_text(encoding='utf-8').strip()
+        if existing:
+            return existing
+    new_id = str(uuid.uuid4())
+    INSTANCE_ID_FILE.write_text(new_id + '\n', encoding='utf-8')
+    return new_id
+
+
+INSTANCE_ID = get_or_create_instance_id()
 
 MIME = {
     '.html': 'text/html; charset=utf-8',
@@ -137,6 +153,9 @@ class Handler(SimpleHTTPRequestHandler):
         body = json.dumps(obj, ensure_ascii=False).encode('utf-8')
         self.send_response(code)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Cache-Control', NO_STORE)
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -148,6 +167,8 @@ class Handler(SimpleHTTPRequestHandler):
         if not self._authed():
             return
         p = self._path()
+        if p.startswith('/studio-api/identity'):
+            return self._json(200, {'instanceId': INSTANCE_ID})
         if p.startswith('/studio-api/list'):
             try:
                 return self._json(200, {'exhibits': list_exhibits()})
@@ -174,6 +195,10 @@ class Handler(SimpleHTTPRequestHandler):
             data = text.encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', ctype)
+        if full.suffix.lower() == '.json':
+            self.send_header('Cache-Control', NO_STORE)
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -204,4 +229,5 @@ if __name__ == '__main__':
     with HTTPServer(('', PORT), Handler) as httpd:
         print('Exhibits server: http://127.0.0.1:%s/studio.html  %s' % (
             PORT, '(auth on)' if PASS else '(no auth, local only)'))
+        print('  instance ID: %s' % INSTANCE_ID)
         httpd.serve_forever()

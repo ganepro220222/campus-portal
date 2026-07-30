@@ -2,6 +2,7 @@
 if /i "%~1"=="find_runtime" goto find_runtime
 if /i "%~1"=="port_listening" goto port_listening
 if /i "%~1"=="wait_port" goto wait_port
+if /i "%~1"=="verify_identity" goto verify_identity
 exit /b 1
 
 :find_runtime
@@ -57,3 +58,13 @@ ping -n 2 127.0.0.1 >nul
 set /a n-=1
 if !n! leq 0 exit /b 1
 goto wait_loop
+
+:verify_identity
+set "P=%~2"
+set "ROOT=%~3"
+set "NODE="
+if exist "%~dp0..\_runtime\node\node.exe" set "NODE=%~dp0..\_runtime\node\node.exe"
+if not defined NODE where node >nul 2>&1 && set "NODE=node"
+if not defined NODE exit /b 2
+"%NODE%" "%~dp0verify-identity.mjs" %P% "%ROOT%"
+exit /b %errorlevel%

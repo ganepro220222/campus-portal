@@ -21,8 +21,17 @@ header('Content-Type: application/json; charset=utf-8');
 $ROOT = realpath(__DIR__ . '/..');            // exhibits/
 $uri  = $_SERVER['REQUEST_URI'] ?? '';
 $action = $_GET['action'] ?? '';
+$isIdentity = $action === 'identity' || strpos($uri, 'identity') !== false;
 $isSave = $action === 'save' || strpos($uri, 'save') !== false;
 $isList = $action === 'list' || strpos($uri, 'list') !== false;
+
+$idFile = "$ROOT/.studio-instance-id";
+if (!is_file($idFile)) file_put_contents($idFile, sprintf("%s\n", bin2hex(random_bytes(16))));
+$instanceId = trim(file_get_contents($idFile));
+
+if ($isIdentity) {
+  echo json_encode(['instanceId' => $instanceId], JSON_UNESCAPED_UNICODE); exit;
+}
 
 if ($isList) {
   $out = [];

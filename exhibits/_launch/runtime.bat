@@ -62,9 +62,33 @@ goto wait_loop
 :verify_identity
 set "P=%~2"
 set "ROOT=%~3"
-set "NODE="
-if exist "%~dp0..\_runtime\node\node.exe" set "NODE=%~dp0..\_runtime\node\node.exe"
-if not defined NODE where node >nul 2>&1 && set "NODE=node"
-if not defined NODE exit /b 2
-"%NODE%" "%~dp0verify-identity.mjs" %P% "%ROOT%"
+set "RUNTIME=%~dp0..\_runtime"
+if exist "%RUNTIME%\python\python.exe" goto verify_py_portable
+where python >nul 2>&1
+if not errorlevel 1 goto verify_py_system
+where py >nul 2>&1
+if not errorlevel 1 goto verify_py_launcher
+if exist "%RUNTIME%\node\node.exe" goto verify_node_portable
+where node >nul 2>&1
+if not errorlevel 1 goto verify_node_system
+exit /b 2
+
+:verify_py_portable
+"%RUNTIME%\python\python.exe" "%~dp0verify-identity.py" %P% "%ROOT%"
+exit /b %errorlevel%
+
+:verify_py_system
+python "%~dp0verify-identity.py" %P% "%ROOT%"
+exit /b %errorlevel%
+
+:verify_py_launcher
+py -3 "%~dp0verify-identity.py" %P% "%ROOT%"
+exit /b %errorlevel%
+
+:verify_node_portable
+"%RUNTIME%\node\node.exe" "%~dp0verify-identity.mjs" %P% "%ROOT%"
+exit /b %errorlevel%
+
+:verify_node_system
+node "%~dp0verify-identity.mjs" %P% "%ROOT%"
 exit /b %errorlevel%

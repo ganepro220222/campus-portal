@@ -12,25 +12,31 @@
  */
 $USER = getenv('STUDIO_USER') ?: 'admin';
 $PASS = getenv('STUDIO_PASS') ?: '';
-if ($PASS !== '') {
-  if (!isset($_SERVER['PHP_AUTH_USER']) || $_SERVER['PHP_AUTH_USER'] !== $USER || ($_SERVER['PHP_AUTH_PW'] ?? '') !== $PASS) {
-    header('WWW-Authenticate: Basic realm="3D Studio"'); http_response_code(401); echo '需要登录'; exit;
-  }
-}
-header('Content-Type: application/json; charset=utf-8');
 $ROOT = realpath(__DIR__ . '/..');            // exhibits/
 $uri  = $_SERVER['REQUEST_URI'] ?? '';
 $action = $_GET['action'] ?? '';
 $isIdentity = $action === 'identity' || strpos($uri, 'identity') !== false;
 $isSave = $action === 'save' || strpos($uri, 'save') !== false;
 $isList = $action === 'list' || strpos($uri, 'list') !== false;
+$isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
 
-$idFile = "$ROOT/.studio-instance-id";
-if (!is_file($idFile)) file_put_contents($idFile, sprintf("%s\n", bin2hex(random_bytes(16))));
-$instanceId = trim(file_get_contents($idFile));
+function studio_root_hash(string $root): string {
+  $norm = str_replace('\\', '/', $root);
+  if (DIRECTORY_SEPARATOR === '\\') $norm = strtolower($norm);
+  return substr(hash('sha256', $norm), 0, 32);
+}
+
+if ($PASS !== '' && !($isIdentity && $isLocal)) {
+  if (!isset($_SERVER['PHP_AUTH_USER']) || $_SERVER['PHP_AUTH_USER'] !== $USER || ($_SERVER['PHP_AUTH_PW'] ?? '') !== $PASS) {
+    header('WWW-Authenticate: Basic realm="3D Studio"'); http_response_code(401); echo '需要登录'; exit;
+  }
+}
+header('Content-Type: application/json; charset=utf-8');
+
+$rootHash = studio_root_hash($ROOT);
 
 if ($isIdentity) {
-  echo json_encode(['instanceId' => $instanceId], JSON_UNESCAPED_UNICODE); exit;
+  echo json_encode(['rootHash' => $rootHash, 'instanceId' => $rootHash], JSON_UNESCAPED_UNICODE); exit;
 }
 
 if ($isList) {

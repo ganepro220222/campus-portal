@@ -1,0 +1,196 @@
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import net from 'node:net'
+import path from 'node:path'
+import { spawn, spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { computeRootHash } from './_server/studio-identity.mjs'
+
+const ROOT = path.dirname(fileURLToPath(import.meta.url))
+const LAUNCH = path.join(ROOT, '_launch')
+
+const tests = []
+function test(name, fn) { tests.push({ name, fn }) }
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const s = net.createServer()
+    s.listen(0, '127.0.0.1', () => {
+      const { port } = s.address()
+      s.close(() => resolve(port))
+    })
+    s.on('error', reject)
+  })
+}
+
+function waitForPort(port, ms = 8000) {
+  const t0 = Date.now()
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      const s = net.createConnection({ port, host: '127.0.0.1' })
+      s.once('connect', () => { s.destroy(); resolve() })
+      s.once('error', () => {
+        s.destroy()
+        if (Date.now() - t0 > ms) reject(new Error('port timeout'))
+        else setTimeout(tick, 80)
+      })
+    }
+    tick()
+  })
+}
+
+async function withStudioServer(fn) {
+  const port = await freePort()
+  const child = spawn(process.execPath, [path.join(ROOT, '_server', 'studio-server.mjs')], {
+    cwd: ROOT,
+    env: { ...process.env, PORT: String(port) },
+    stdio: 'pipe',
+  })
+  try {
+    await waitForPort(port)
+    await fn(port, child)
+  } finally {
+    child.kill()
+  }
+}
+
+async function fetchHead(url) {
+  const res = await fetch(url)
+  return { status: res.status, cc: res.headers.get('cache-control') || '' }
+}
+
+console.log('studio-launch tests')
+
+test('verify-identity.mjs exits 0 on matching rootHash', async () => {
+  await withStudioServer(async (port) => {
+    const r = spawnSync(process.execPath, [path.join(LAUNCH, 'verify-identity.mjs'), String(port), ROOT], {
+      cwd: ROOT, encoding: 'utf8',
+    })
+    assert.equal(r.status, 0, r.stderr || r.stdout)
+  })
+})
+
+test('verify-identity.mjs exits 4 on rootHash mismatch', async () => {
+  await withStudioServer(async (port) => {
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-other-'))
+    try {
+      const r = spawnSync(process.execPath, [path.join(LAUNCH, 'verify-identity.mjs'), String(port), other], {
+        cwd: ROOT, encoding: 'utf8',
+      })
+      assert.equal(r.status, 4, r.stderr || r.stdout)
+    } finally {
+      fs.rmSync(other, { recursive: true, force: true })
+    }
+  })
+})
+
+test('verify-identity.mjs works with STUDIO_PASS when credentials provided', async () => {
+  const port = await freePort()
+  const child = spawn(process.execPath, [path.join(ROOT, '_server', 'studio-server.mjs')], {
+    cwd: ROOT,
+    env: { ...process.env, PORT: String(port), STUDIO_PASS: 'secret' },
+    stdio: 'pipe',
+  })
+  try {
+    await waitForPort(port)
+    const good = spawnSync(process.execPath, [path.join(LAUNCH, 'verify-identity.mjs'), String(port), ROOT], {
+      cwd: ROOT, encoding: 'utf8', env: { ...process.env, STUDIO_USER: 'admin', STUDIO_PASS: 'secret' },
+    })
+    assert.equal(good.status, 0, good.stderr || good.stdout)
+  } finally {
+    child.kill()
+  }
+})
+
+test('verify-identity.py exits 0 on matching rootHash', async () => {
+  const py = spawnSync('python', ['--version'], { encoding: 'utf8' })
+  if (py.status !== 0) return 'skip'
+  await withStudioServer(async (port) => {
+    const r = spawnSync('python', [path.join(LAUNCH, 'verify-identity.py'), String(port), ROOT], {
+      cwd: ROOT, encoding: 'utf8',
+    })
+    assert.equal(r.status, 0, r.stderr || r.stdout)
+  })
+})
+
+test('Node server: config.json no-store, leader-geom.js cacheable', async () => {
+  await withStudioServer(async (port) => {
+    const cfg = await fetchHead(`http://127.0.0.1:${port}/craft-001/config.json`)
+    const js = await fetchHead(`http://127.0.0.1:${port}/leader-geom.js`)
+    assert.match(cfg.cc, /no-store/)
+    assert.equal(js.cc, '', 'static JS should not get Cache-Control: no-store')
+  })
+})
+
+test('Node identity endpoint allows localhost without STUDIO_PASS', async () => {
+  const port = await freePort()
+  const child = spawn(process.execPath, [path.join(ROOT, '_server', 'studio-server.mjs')], {
+    cwd: ROOT,
+    env: { ...process.env, PORT: String(port), STUDIO_PASS: 'secret' },
+    stdio: 'pipe',
+  })
+  try {
+    await waitForPort(port)
+    const res = await fetch(`http://127.0.0.1:${port}/studio-api/identity`)
+    assert.equal(res.status, 200)
+    const body = await res.json()
+    assert.equal(body.rootHash, computeRootHash(ROOT))
+  } finally {
+    child.kill()
+  }
+})
+
+test('ensure-server.bat returns 4 when another exhibits root owns the port', async () => {
+  if (process.platform !== 'win32') return 'skip'
+  const port = await freePort()
+  const child = spawn(process.execPath, [path.join(ROOT, '_server', 'studio-server.mjs')], {
+    cwd: ROOT,
+    env: { ...process.env, PORT: String(port) },
+    stdio: 'pipe',
+  })
+  const copyRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-copy-'))
+  fs.cpSync(path.join(ROOT, '_launch'), path.join(copyRoot, '_launch'), { recursive: true })
+  try {
+    await waitForPort(port)
+    const r = spawnSync('cmd.exe', ['/c', 'call _launch\\ensure-server.bat', String(port)], {
+      cwd: copyRoot, encoding: 'utf8',
+    })
+    assert.equal(r.status, 4, r.stdout + r.stderr)
+  } finally {
+    child.kill()
+    fs.rmSync(copyRoot, { recursive: true, force: true })
+  }
+})
+
+test('runtime.bat verify_identity returns 4 without swallowing exit code', async () => {
+  if (process.platform !== 'win32') return 'skip'
+  await withStudioServer(async (port) => {
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-other-'))
+    try {
+      const r = spawnSync('cmd.exe', ['/c', 'call _launch\\runtime.bat verify_identity', String(port), other], {
+        cwd: ROOT, encoding: 'utf8',
+      })
+      assert.equal(r.status, 4, r.stdout + r.stderr)
+    } finally {
+      fs.rmSync(other, { recursive: true, force: true })
+    }
+  })
+})
+
+let pass = 0, fail = 0, skip = 0
+for (const t of tests) {
+  try {
+    const r = await t.fn()
+    if (r === 'skip') { skip++; console.log(' skip', t.name); continue }
+    pass++; console.log('  ok', t.name)
+  } catch (e) {
+    fail++; console.error(' FAIL', t.name, e.message)
+  }
+}
+console.log('')
+if (fail) {
+  console.error(`studio-launch: ${pass} passed, ${fail} failed, ${skip} skipped`)
+  process.exit(1)
+}
+console.log(`studio-launch: ${pass} passed${skip ? `, ${skip} skipped` : ''}`)

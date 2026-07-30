@@ -1,30 +1,22 @@
 /**
- * Stable per-exhibits-root instance ID (portable copies each get their own).
- * Used by launchers to detect 8199 occupied by another directory's server.
+ * Per-exhibits-root identity from normalized absolute path (survives folder copy).
+ * Launchers compare rootHash to detect 8199 occupied by another directory.
  */
-import fs from 'node:fs'
-import path from 'node:path'
 import crypto from 'node:crypto'
+import path from 'node:path'
 
-export const INSTANCE_ID_FILE = '.studio-instance-id'
-
-export function instanceIdPath(root) {
-  return path.join(root, INSTANCE_ID_FILE)
+export function normalizeRootPath(root) {
+  const resolved = path.resolve(root)
+  const normalized = resolved.replace(/\\/g, '/')
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized
 }
 
-export function readInstanceId(root) {
-  try {
-    const id = fs.readFileSync(instanceIdPath(root), 'utf8').trim()
-    return id || null
-  } catch {
-    return null
-  }
+export function computeRootHash(root) {
+  return crypto.createHash('sha256').update(normalizeRootPath(root)).digest('hex').slice(0, 32)
 }
 
-export function getOrCreateInstanceId(root) {
-  const existing = readInstanceId(root)
-  if (existing) return existing
-  const id = crypto.randomUUID()
-  fs.writeFileSync(instanceIdPath(root), id + '\n', 'utf8')
-  return id
+/** JSON body for GET /studio-api/identity */
+export function getIdentityPayload(root) {
+  const rootHash = computeRootHash(root)
+  return { rootHash, instanceId: rootHash }
 }

@@ -11,7 +11,7 @@ const port = Number(process.argv[2] || 8199)
 const root = path.resolve(process.argv[3] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'))
 const url = `http://127.0.0.1:${port}/studio-api/identity`
 
-const headers = { cache: 'no-store' }
+const headers = {}
 const pass = process.env.STUDIO_PASS || ''
 if (pass) {
   const user = process.env.STUDIO_USER || 'admin'
@@ -20,7 +20,7 @@ if (pass) {
 
 let res
 try {
-  res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) })
+  res = await fetch(url, { cache: 'no-store', headers, signal: AbortSignal.timeout(5000) })
 } catch (e) {
   console.error('[ERROR] 无法连接 http://127.0.0.1:' + port + ' — ' + e.message)
   process.exit(4)

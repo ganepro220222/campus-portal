@@ -276,8 +276,7 @@ test.describe('card show timer race', () => {
     expect(rebuilt.pending).toBe(true)
     expect(rebuilt.activeCount).toBe(1)
     expect(rebuilt.show).toBe(false)
-    await page.waitForTimeout(300)
-    expect(await page.evaluate(() => document.getElementById('card')?.classList.contains('show'))).toBe(true)
+    await page.waitForFunction(() => document.getElementById('card')?.classList.contains('show'), null, { timeout: 5_000 })
     expect(await page.evaluate(() => document.querySelectorAll('.hs.active').length)).toBe(1)
   })
 

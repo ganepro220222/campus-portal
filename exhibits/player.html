@@ -291,6 +291,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
+import { applyExposureToCfg, configFetchUrl, configExportFilename } from './player-persist.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -421,9 +422,10 @@ function materialNames() {
 function placeCamera() {
   const c = cfg.camera || {}
   camera.fov = num(c.fov, 40); camera.updateProjectionMatrix()
+  const pv = c.pivot || [0,0,0]; pivot.set(pv[0]||0, pv[1]||0, pv[2]||0)
   camera.position.setFromSpherical(new THREE.Spherical(num(c.distance,3.4), num(c.phi,1.2), num(c.theta,0.7)))
+  camera.position.add(pivot)
   initialCam.copy(camera.position)
-  const pv = c.pivot || [0,0,0]; pivot.set(pv[0]||0, pv[1]||0, pv[2]||0)  // 默认 (0,0,0)=模型中轴
   controls.target.copy(pivot)
   controls.minDistance = num(c.minDistance, 1.4)
   controls.maxDistance = num(c.maxDistance, 7)
@@ -1016,7 +1018,7 @@ async function boot() {
   try {
     if (window.__CFG__) cfg = window.__CFG__            // 便携单文件：内联配置，免 fetch（可双击 file:// 打开）
     else {
-      const url = BASE + 'config.json'
+      const url = configFetchUrl(BASE)
       const res = await fetch(url, { cache: 'no-cache' })
       if (!res.ok) throw new Error(`HTTP ${res.status} · ${url}`)
       cfg = await res.json()
@@ -1154,7 +1156,7 @@ function renderEditor() {
   </details>
 
   <details class="ed-sec"><summary>材质</summary>
-    ${rng('g.exposure','曝光',0.4,2,0.01, renderer.toneMappingExposure)}
+    ${rng('g.exposure','曝光',0.4,2,0.01, num(cfg.renderer?.exposure, 1.05))}
     ${rng('g.env','环境光强',0,3,0.05, num(g.envMapIntensity,1.35))}
     ${rng('g.metal','金属度',0,1,0.01, num(g.metalness,0))}
     ${rng('g.rough','粗糙度',0,1,0.01, num(g.roughness,0.5))}
@@ -1263,7 +1265,7 @@ function wireEditor() {
   const ed = $('editor')
   function applyRange(k, v){
     switch(k){
-      case 'g.exposure': renderer.toneMappingExposure=v; break
+      case 'g.exposure': applyExposureToCfg(cfg, v); renderer.toneMappingExposure = v; break
       case 'g.env': g.envMapIntensity=v; applyMaterial(); break
       case 'g.metal': g.metalness=v; applyMaterial(); break
       case 'g.rough': g.roughness=v; applyMaterial(); break
@@ -1403,8 +1405,11 @@ function upsertOverride(){ const sel=document.getElementById('ed-matsel'); if(!s
   o.envMapIntensity=parseFloat(document.querySelector('[data-k="ov.env"]').value)
   applyMaterial() }
 function buildHUD_refresh(){ $('presets').innerHTML=''; $('actions').innerHTML=''; buildHUD(); renderText() }
-function downloadJSON(){ const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'})
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='config.json'; a.click() }
+function downloadJSON(){
+  const name = configExportFilename(EX)
+  const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'})
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click()
+  flash(`已导出 ${name} — 请重命名为 config.json 并覆盖 exhibits/${EX || 'craft-XXX'}/`) }
 // 截取「整器入镜」的一帧作缩略图/封面（临时把相机拉到刚好框住整个模型，拍完复位）
 function capturePoster(){
   if(!model) return renderer.domElement.toDataURL('image/jpeg',0.86)
@@ -1437,8 +1442,9 @@ async function doSave(){
   if (idWarn) warns.unshift(idWarn)
   if(errs.length){ flash('⚠ 无法保存：'+errs.join('；')); return }
   if(warns.length && !confirm('保存前提醒：\n· '+warns.join('\n· ')+'\n\n仍要保存吗？')) return
+  if (cfg.id && EX && cfg.id !== EX && !confirm(`配置 id「${cfg.id}」与当前展品目录「${EX}」不一致，仍要保存吗？`)) return
   const SAVE_API = window.__SAVE_API__ || (cfg.ui && cfg.ui.saveEndpoint) || ''
-  if(!SAVE_API){ downloadJSON(); clearHotspotIdDiagnostics(); flash('已导出 config.json —— 未配置服务器，请手动覆盖上传'); return }
+  if(!SAVE_API){ downloadJSON(); clearHotspotIdDiagnostics(); return }
   const btn=$('ed-save'), old=btn.textContent; btn.disabled=true; btn.textContent='保存中…'
   let poster=null
   try{ poster=capturePoster(); cfg.assets=cfg.assets||{}; cfg.assets.poster='assets/poster.jpg' }catch(e){}  // 保存即刷新缩略图

@@ -10,6 +10,7 @@
 | 方法 | 路径 | 作用 |
 |---|---|---|
 | GET | `/studio-api/list` | 扫描 `exhibits/` 下全部展品目录，供工作台自动加载 |
+| GET | `/studio-api/identity` | 返回本目录实例 ID（便携启动器用于校验 8199 端口归属） |
 | POST | `/studio-api/save` | 请求体 `{ ex, config, poster? }` → 写回 `<ex>/config.json`；写前自动备份上一版到 `<ex>/.bak/`（保留最近 20 份） |
 
 ## 前端约定

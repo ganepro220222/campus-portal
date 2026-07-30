@@ -314,6 +314,15 @@ async function load() {
   cards = items.map(render)
   $('grid').append(...cards.map(c => c.el))
   $('s-count').textContent = `${items.length} 件展品` + (source === 'api' ? ' · 自动列出' : '')
+  if (hasApi) {
+    try {
+      const ir = await fetch('studio-api/identity', { cache: 'no-store' })
+      if (ir.ok) {
+        const { instanceId } = await ir.json()
+        if (instanceId) $('s-count').textContent += ` · 实例 ${instanceId.slice(0, 8)}`
+      }
+    } catch (_) {}
+  }
   $('search').addEventListener('input', filter)
   buildBatchUI()
   if (!hasApi) { $('bnote').innerHTML = '⚠ 未检测到工作台服务：批量保存需先 <code>node _server/studio-server.mjs</code> 启动。'; }

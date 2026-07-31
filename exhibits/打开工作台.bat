@@ -26,17 +26,17 @@ set "RC=1"
 goto end
 
 :err_runtime
-echo [ERROR] no runtime - run INSTALL.bat or 安装便携环境.bat first
+echo [ERROR] 请先双击「安装便携环境.bat」
 set "RC=2"
 goto end
 
 :err_start
-echo [ERROR] server did not start in 45s - run STOP.bat or 停止服务.bat first
+echo [ERROR] 服务未启动，请先「停止服务.bat」后重试
 set "RC=3"
 goto end
 
 :err_port
-echo [ERROR] port %PORT% is used by another exhibits copy - run STOP.bat first
+echo [ERROR] 端口 %PORT% 已被占用，请先「停止服务.bat」
 set "RC=4"
 goto end
 

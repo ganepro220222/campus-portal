@@ -15,6 +15,8 @@ EXHIBIT_NUMERIC_MAX_DIGITS = 32
 def normalize_numeric_dir_suffix(digits: str) -> str:
     if not re.fullmatch(r'[0-9]+', digits):
         raise ValueError('非法展品编号')
+    if len(digits) > EXHIBIT_NUMERIC_MAX_DIGITS:
+        raise ValueError('展品编号过长')
     trimmed = re.sub(r'^0+(?=\d)', '', digits) or '0'
     if len(trimmed) > EXHIBIT_NUMERIC_MAX_DIGITS:
         raise ValueError('展品编号过长')
@@ -30,8 +32,8 @@ def _max_numeric_suffix(a: str, b: str) -> str:
 
 
 def _increment_numeric_suffix(digits: str) -> str:
-    n = int(re.sub(r'^0+(?=\d)', '', digits) or '0', 10) + 1
-    return str(n).zfill(3)
+    trimmed = re.sub(r'^0+(?=\d)', '', digits) or '0'
+    return normalize_numeric_dir_suffix(str(int(trimmed, 10) + 1))
 
 
 def escape_html(text: str) -> str:
@@ -44,8 +46,12 @@ def normalize_exhibit_dir(raw: str) -> str:
         raise ValueError('展品目录不能为空')
     if re.fullmatch(r'[0-9]+', s):
         s = f'craft-{normalize_numeric_dir_suffix(s)}'
-    elif not s.lower().startswith('craft-'):
-        s = f'craft-{s}'
+    else:
+        prefixed = re.fullmatch(r'craft-([0-9]+)$', s, re.I)
+        if prefixed:
+            s = f'craft-{normalize_numeric_dir_suffix(prefixed.group(1))}'
+        elif not s.lower().startswith('craft-'):
+            s = f'craft-{s}'
     if s == 'craft-' or not SAFE.match(s):
         raise ValueError(f'非法展品目录名：{s}')
     return s

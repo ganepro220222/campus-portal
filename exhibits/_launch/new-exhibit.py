@@ -14,9 +14,14 @@ from exhibit_create import create_exhibit, suggest_next_exhibit_dir  # noqa: E40
 
 def main() -> int:
     args = sys.argv[1:]
-    suggested = suggest_next_exhibit_dir(ROOT)
-    default_num = suggested.replace('craft-', '', 1)
-    dir_name = args[0] if args else input(f'展品编号（如 005 或 craft-005） [{default_num}]: ').strip() or default_num
+    try:
+        suggested = suggest_next_exhibit_dir(ROOT)
+        default_num = suggested.replace('craft-', '', 1)
+    except ValueError:
+        default_num = ''
+    dir_name = args[0] if args else input(
+        f'展品编号（如 005 或 craft-005） [{default_num}]: '
+    ).strip() or default_num
     title = args[1] if len(args) > 1 else input('展品名称（左上角显示）: ').strip()
     subtitle = args[2] if len(args) > 2 else ''
     try:

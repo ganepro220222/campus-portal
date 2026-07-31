@@ -12,6 +12,7 @@ export const EXHIBIT_NUMERIC_MAX_DIGITS = 32
 /** Strip leading zeros (keep one digit); pad to min 3 — never uses Number/int. */
 export function normalizeNumericDirSuffix(digits) {
   if (!/^[0-9]+$/.test(digits)) throw new Error('非法展品编号')
+  if (digits.length > EXHIBIT_NUMERIC_MAX_DIGITS) throw new Error('展品编号过长')
   const trimmed = digits.replace(/^0+(?=\d)/, '') || '0'
   if (trimmed.length > EXHIBIT_NUMERIC_MAX_DIGITS) throw new Error('展品编号过长')
   return trimmed.padStart(3, '0')
@@ -24,8 +25,9 @@ function maxNumericSuffix(a, b) {
 }
 
 function incrementNumericSuffix(digits) {
-  const n = BigInt(digits.replace(/^0+(?=\d)/, '') || '0') + 1n
-  return n.toString().padStart(3, '0')
+  const trimmed = digits.replace(/^0+(?=\d)/, '') || '0'
+  const next = (BigInt(trimmed) + 1n).toString()
+  return normalizeNumericDirSuffix(next)
 }
 
 /** Escape text for HTML text/title context (config JSON keeps raw user input). */
@@ -43,8 +45,13 @@ export function normalizeExhibitDir(input) {
   if (!s) throw new Error('展品目录不能为空')
   if (/^\d+$/.test(s)) {
     s = `craft-${normalizeNumericDirSuffix(s)}`
-  } else if (!/^craft-/i.test(s)) {
-    s = `craft-${s}`
+  } else {
+    const prefixedNumeric = /^craft-([0-9]+)$/i.exec(s)
+    if (prefixedNumeric) {
+      s = `craft-${normalizeNumericDirSuffix(prefixedNumeric[1])}`
+    } else if (!/^craft-/i.test(s)) {
+      s = `craft-${s}`
+    }
   }
   if (s === 'craft-' || !EXHIBIT_DIR_SAFE.test(s)) throw new Error('非法展品目录名：' + s)
   return s

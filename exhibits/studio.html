@@ -421,21 +421,26 @@ function setBatch(on) {
 }
 
 function suggestNextDir() {
+  const EXHIBIT_NUMERIC_MAX_DIGITS = 32
   let max = 0n
   for (const c of cards) {
     const m = /^craft-(\d+)$/i.exec(c.dir)
     if (m) {
-      const n = BigInt(m[1])
+      const n = BigInt(m[1].replace(/^0+(?=\d)/, '') || '0')
       if (n > max) max = n
     }
   }
-  return `craft-${String(max + 1n).padStart(3, '0')}`
+  const nextStr = (max + 1n).toString()
+  if (nextStr.length > EXHIBIT_NUMERIC_MAX_DIGITS) return null
+  return `craft-${nextStr.padStart(3, '0')}`
 }
 
 function openNewModal() {
   if (!hasApi) { alert('请先双击「打开工作台.bat」启动本地服务，再新建展品。'); return }
   if (!canCreate) { alert('当前服务未提供「新建展品」接口，请使用「新建展品.bat」或升级服务端。'); return }
-  $('newDir').value = suggestNextDir().replace(/^craft-/i, '')
+  const suggested = suggestNextDir()
+  $('newDir').value = suggested ? suggested.replace(/^craft-/i, '') : ''
+  $('newDir').placeholder = suggested ? '' : '编号已达上限，请手动输入非数字标识'
   $('newTitle').value = ''
   $('newSub').value = ''
   const m = $('newModal')

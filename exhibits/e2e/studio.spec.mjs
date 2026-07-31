@@ -17,15 +17,30 @@ async function gotoStudioWithListStub(page, capabilities) {
   const base = await listRes.json()
   const body = { exhibits: base.exhibits || [] }
   if (capabilities !== undefined) body.capabilities = capabilities
+  const bodyJson = JSON.stringify(body)
 
-  await page.unrouteAll({ behavior: 'ignoreErrors' })
-  await page.route('**/studio-api/list', route =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }),
-  )
-  const listWait = page.waitForResponse(r => r.url().includes('studio-api/list') && r.ok())
+  await page.addInitScript(jsonBody => {
+    const stub = JSON.parse(jsonBody)
+    const origFetch = window.fetch.bind(window)
+    window.fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : String(input))
+      if (url.includes('studio-api/list')) {
+        return Promise.resolve(new Response(JSON.stringify(stub), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }))
+      }
+      return origFetch(input, init)
+    }
+  }, bodyJson)
+
   await page.goto('/studio.html')
-  await listWait
   await page.waitForSelector('#grid .card', { timeout: 30_000 })
+  await expect.poll(async () => page.evaluate(async () => {
+    const r = await fetch('studio-api/list', { cache: 'no-cache' })
+    const d = await r.json()
+    return d.capabilities?.create === true
+  })).toBe(capabilities?.create === true)
 }
 
 async function openBatchPanel(page) {
@@ -204,12 +219,16 @@ test.describe('studio.html', () => {
       page.on('request', r => { if (r.url().includes('studio-api/create')) creates.push(r.url()) })
 
       await gotoStudioWithListStub(page, capabilities)
-      const [dialog] = await Promise.all([
-        page.waitForEvent('dialog'),
+
+      let capturedMessage = ''
+      await Promise.all([
+        page.waitForEvent('dialog').then(async dialog => {
+          capturedMessage = dialog.message()
+          await dialog.accept()
+        }),
         page.locator('#newToggle').click(),
       ])
-      expect(dialog.message()).toMatch(/未提供|新建展品/)
-      await dialog.accept()
+      expect(capturedMessage).toMatch(/未提供|新建展品/)
 
       await expect(page.locator('#newModal.open')).toHaveCount(0)
       expect(creates).toEqual([])

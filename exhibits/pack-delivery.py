@@ -24,51 +24,27 @@ EXCLUDE_FILES = frozenset({
 
 EXCLUDE_SUFFIXES = ('.test.mjs',)
 
-DELIVERY_README = f"""立体鉴赏系统 · 交付包
+DELIVERY_README = f"""立体鉴赏 · 交付说明
 打包日期：{date.today().isoformat()}
 
 【解压】
-  解压到任意路径（路径尽量不含特殊字符）。文件夹名保持 exhibits 或自定均可。
+  解压后应能看到：安装便携环境.bat、打开工作台.bat、新建展品.bat、停止服务.bat
 
-【首次使用（每台 Windows 电脑一次）】
-  1. 双击「INSTALL.bat」或「安装便携环境.bat」（约 12MB 便携 Python，需联网）
-  2. 双击「START.bat」或「打开工作台.bat」→ 浏览器打开编辑列表
-  3. 结束编辑后双击「STOP.bat」或「停止服务.bat」
-
-【若中文文件名 bat 闪退】
-  请只用英文文件名：INSTALL.bat → START.bat → NEW.bat → STOP.bat
+【首次使用】
+  1. 双击「安装便携环境.bat」（需联网，约 12MB）
+  2. 双击「打开工作台.bat」
+  3. 编辑完成后双击「停止服务.bat」
 
 【新建展品】
-  方式 A（推荐）：打开工作台 → 点「＋ 新建展品」
-  方式 B：双击「NEW.bat」或「新建展品.bat」，按提示输入编号和名称
-  然后把 model.glb 放入 craft-XXX/assets/，回到工作台刷新 → 编辑 → 保存
+  工作台里点「＋ 新建展品」，或双击「新建展品.bat」
+  然后把 model.glb 放入 craft-XXX/assets/，刷新后点「编辑」→ 保存
 
-【目录说明】
-  craft-001 … craft-004   示例展品（含模型与配置，可参考修改）
-  _template/              空白展品模板（新建时自动复制）
-  player.html             编辑器（勿删）
-  player.view.html        对外观看页（由 player.html 生成，已包含）
-  studio.html             工作台列表页
-  vendor/                 Three.js 与解码器（离线，勿删）
-  _launch/、_server/      启动与服务脚本（勿删）
-  serve.py                Python 服务端（便携环境使用）
-  使用说明.txt            简明说明
+【常见问题】
+  · 窗口一闪就关：先运行「安装便携环境.bat」
+  · 保存没反应：必须用「打开工作台.bat」启动，不要直接双击 html
+  · 端口被占用：先「停止服务.bat」
 
-【多台电脑】
-  在一台电脑安装便携环境后，可复制整个文件夹到其他 Windows 电脑；
-  若目标电脑未装过，仍需在该电脑运行一次「安装便携环境.bat」。
-
-【勿包含在本包内的内容】
-  node_modules、e2e、测试文件、playwright 报告等为开发用途，已排除。
-
-【安全提示】
-  默认仅本机 127.0.0.1 使用。若部署到服务器，请阅读 README.md 中鉴权说明，
-  务必设置 STUDIO_PASS，勿将编辑接口暴露到公网。
-
-【问题排查】
-  · 双击 bat 闪退：先运行「安装便携环境.bat」
-  · 保存不生效：确认用「打开工作台.bat」启动，而非直接双击 HTML
-  · 端口占用：先「停止服务.bat」，或改 打开工作台.bat 端口参数
+详细说明见「使用说明.txt」
 """
 
 

@@ -37,6 +37,8 @@ const REJECT_VECTORS = [
   '/',
   '\\',
   '9'.repeat(33),     // exceeds max digit length
+  'craft-' + '9'.repeat(33),
+  'craft-' + '0'.repeat(100) + '5',
 ]
 
 let pass = 0, fail = 0
@@ -142,6 +144,29 @@ test('suggestNextExhibitDir increments max craft number', () => {
   }
 })
 
+test('suggestNextExhibitDir rejects increment beyond numeric max digits', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-new-'))
+  try {
+    fs.mkdirSync(path.join(tmp, 'craft-' + '9'.repeat(32)))
+    assert.throws(() => suggestNextExhibitDir(tmp), /过长/)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('suggestNextExhibitDir result always passes normalizeExhibitDir', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-new-'))
+  try {
+    fs.mkdirSync(path.join(tmp, 'craft-003'))
+    fs.mkdirSync(path.join(tmp, 'craft-010'))
+    const suggested = suggestNextExhibitDir(tmp)
+    assert.equal(normalizeExhibitDir(suggested), suggested)
+    assert.equal(normalizeExhibitDir(suggested.replace(/^craft-/i, '')), suggested)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 test('normalizeExhibitDir long numeric strings preserve exact digits', () => {
   for (const [input, expected] of LONG_NORM_VECTORS) {
     assert.equal(normalizeExhibitDir(input), expected, input)
@@ -198,6 +223,7 @@ test('PHP studio_normalize_exhibit_dir matches Node long numeric vectors', () =>
   const php = spawnSync('php', ['-r', `
 function studio_normalize_numeric_suffix(string $digits): string {
   if (!ctype_digit($digits)) throw new Exception('非法展品编号');
+  if (strlen($digits) > 32) throw new Exception('展品编号过长');
   $trimmed = preg_replace('/^0+(?=\\d)/', '', $digits);
   if ($trimmed === '') $trimmed = '0';
   if (strlen($trimmed) > 32) throw new Exception('展品编号过长');
@@ -208,6 +234,8 @@ function studio_normalize_exhibit_dir(string $raw): string {
   if ($s === '') throw new Exception('展品目录不能为空');
   if (ctype_digit($s)) {
     $s = 'craft-' . studio_normalize_numeric_suffix($s);
+  } elseif (preg_match('/^craft-([0-9]+)$/i', $s, $m)) {
+    $s = 'craft-' . studio_normalize_numeric_suffix($m[1]);
   } elseif (stripos($s, 'craft-') !== 0) {
     $s = 'craft-' . $s;
   }
@@ -215,14 +243,23 @@ function studio_normalize_exhibit_dir(string $raw): string {
   return $s;
 }
 $vectors = json_decode(${JSON.stringify(JSON.stringify(all.map(v => v[0])))});
+$reject = json_decode(${JSON.stringify(JSON.stringify(REJECT_VECTORS))});
 $out = [];
 foreach ($vectors as $raw) $out[] = [ $raw, studio_normalize_exhibit_dir($raw) ];
-echo json_encode($out);
+$rej = [];
+foreach ($reject as $raw) {
+  try { studio_normalize_exhibit_dir($raw); $rej[] = [ $raw, null ]; }
+  catch (Exception $e) { $rej[] = [ $raw, 'err' ]; }
+}
+echo json_encode([ 'ok' => $out, 'reject' => $rej ]);
 `], { encoding: 'utf8' })
   if (php.status !== 0) return
-  const pairs = JSON.parse(php.stdout.trim())
+  const { ok: pairs, reject: phpReject } = JSON.parse(php.stdout.trim())
   for (const [input, got] of pairs) {
     assert.equal(got, normalizeExhibitDir(input), `php ${input}`)
+  }
+  for (const [input, err] of phpReject) {
+    assert.notEqual(err, null, `php unexpectedly accepted ${input}`)
   }
 })
 

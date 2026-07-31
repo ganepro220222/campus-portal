@@ -21,8 +21,11 @@ async function main() {
   let title = args[1]
   let subtitle = args[2] || ''
 
-  const suggested = suggestNextExhibitDir(ROOT)
-  if (!dir) dir = await ask('展品编号（如 005 或 craft-005）', suggested.replace(/^craft-/i, ''))
+  let suggestedDefault = ''
+  try {
+    suggestedDefault = suggestNextExhibitDir(ROOT).replace(/^craft-/i, '')
+  } catch { /* numeric suffix at max */ }
+  if (!dir) dir = await ask('展品编号（如 005 或 craft-005）', suggestedDefault)
   if (!title) title = await ask('展品名称（左上角显示）')
 
   const result = createExhibit(ROOT, { dir, title, subtitle })

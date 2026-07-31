@@ -27,6 +27,7 @@ function studio_escape_html(string $s): string {
 
 function studio_normalize_numeric_suffix(string $digits): string {
   if (!ctype_digit($digits)) throw new Exception('非法展品编号');
+  if (strlen($digits) > 32) throw new Exception('展品编号过长');
   $trimmed = preg_replace('/^0+(?=\d)/', '', $digits);
   if ($trimmed === '') $trimmed = '0';
   if (strlen($trimmed) > 32) throw new Exception('展品编号过长');
@@ -38,6 +39,8 @@ function studio_normalize_exhibit_dir(string $raw): string {
   if ($s === '') throw new Exception('展品目录不能为空');
   if (ctype_digit($s)) {
     $s = 'craft-' . studio_normalize_numeric_suffix($s);
+  } elseif (preg_match('/^craft-([0-9]+)$/i', $s, $m)) {
+    $s = 'craft-' . studio_normalize_numeric_suffix($m[1]);
   } elseif (stripos($s, 'craft-') !== 0) {
     $s = 'craft-' . $s;
   }

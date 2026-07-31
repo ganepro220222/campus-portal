@@ -101,6 +101,23 @@
   .blog { max-height:120px; overflow:auto; padding:0 clamp(16px,4vw,48px) 12px; font-size:12px;
     font-family:ui-monospace,monospace; color:rgba(230,234,245,.7); line-height:1.7; }
   .blog .ok { color:#7fd08a; } .blog .er { color:#e07a7a; } .blog .hd { color:#f4e6c8; }
+
+  .tbtn.primary { border-color:var(--gold); background:rgba(200,168,106,.22); color:#f4e6c8; font-weight:600; }
+  .modal { position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+    background:rgba(8,10,16,.72); backdrop-filter:blur(4px); padding:20px; }
+  .modal.open { display:flex; }
+  .modal-box { width:min(420px,100%); border-radius:16px; border:1px solid rgba(200,168,106,.35);
+    background:#14161f; padding:22px 22px 18px; box-shadow:0 20px 50px rgba(0,0,0,.55); }
+  .modal-box h2 { font-size:17px; color:#f4e6c8; margin-bottom:6px; }
+  .modal-box .hint { font-size:12.5px; color:rgba(230,234,245,.58); line-height:1.65; margin-bottom:16px; }
+  .modal-f { margin:12px 0; }
+  .modal-f label { display:block; font-size:12px; color:rgba(230,234,245,.72); margin-bottom:6px; }
+  .modal-f input { width:100%; padding:9px 12px; border-radius:9px; border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06); color:#eef0f5; font-size:13px; font-family:inherit; }
+  .modal-f input:focus { outline:none; border-color:var(--gold); }
+  .modal-acts { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+  .modal-acts .tbtn { min-width:88px; }
+  .modal-acts .tbtn.primary { background:linear-gradient(180deg,#d8bd86,#c8a86a); color:#241c0c; border-color:var(--gold); }
 </style>
 </head>
 <body>
@@ -111,15 +128,39 @@
   </div>
   <div class="toolbar">
     <input class="search" id="search" placeholder="搜索展品名称 / 目录…" autocomplete="off">
+    <button class="tbtn primary" id="newToggle">＋ 新建展品</button>
     <button class="tbtn" id="batchToggle">批量编辑</button>
   </div>
   <div class="grid" id="grid"></div>
-  <div class="empty" id="empty" hidden></div>
+  <div class="empty" id="empty" hidden>  </div>
+
+  <div class="modal" id="newModal" hidden>
+    <div class="modal-box" role="dialog" aria-labelledby="newModalTitle">
+      <h2 id="newModalTitle">新建展品</h2>
+      <p class="hint">从空白模板创建，不含旧展品的热点与文案。创建后请把 <code>model.glb</code> 放入 assets 文件夹，再进编辑器保存。</p>
+      <div class="modal-f">
+        <label for="newDir">展品编号</label>
+        <input id="newDir" placeholder="005 或 craft-005" autocomplete="off">
+      </div>
+      <div class="modal-f">
+        <label for="newTitle">展品名称</label>
+        <input id="newTitle" placeholder="左上角显示的名称" autocomplete="off">
+      </div>
+      <div class="modal-f">
+        <label for="newSub">副标题（可选）</label>
+        <input id="newSub" placeholder="如：非遗工艺 · 三维鉴赏" autocomplete="off">
+      </div>
+      <div class="modal-acts">
+        <button type="button" class="tbtn" id="newCancel">取消</button>
+        <button type="button" class="tbtn primary" id="newSubmit">创建</button>
+      </div>
+    </div>
+  </div>
 
   <div class="foot">
     <div><b>怎么用</b>：点卡片「编辑」直接进该展品编辑器（无需手打 URL），「预览」看观看版。</div>
     <div><b>批量编辑</b>：点右上「批量编辑」→ 勾选多件展品 → 在底部只勾选<b>要统一修改的字段</b>并设值 → 应用。<b>每件展品只覆盖被勾选的字段，其它设置各自保留、互不影响。</b></div>
-    <div><b>新增展品</b>：<b>有服务时</b>——把新的 <code>craft-XXX/</code> 文件夹（含 <code>model.glb</code> 等）放进 <code>exhibits/</code>，刷新本页即自动出现；进「编辑」<b>保存一次即自动生成缩略图</b>。<b>无服务时</b>——在 <code>manifest.json</code> 的 <code>exhibits</code> 加一行目录名。</div>
+    <div><b>新增展品</b>：点右上 <b>「＋ 新建展品」</b>，或双击根目录 <code>新建展品.bat</code>；创建后把 <code>model.glb</code> 放入新目录的 <code>assets/</code>，刷新本页 → 编辑 → 保存。</div>
     <div><b>注意</b>：本页为内部维护工具，<b>请勿随公开展品一起部署</b>（请放在本地或受保护路径）。</div>
   </div>
 
@@ -379,6 +420,53 @@ function setBatch(on) {
   if (!on) { selected.clear(); cards.forEach(c => c.el.classList.remove('sel')); refreshSel(); $('blog').hidden = true }
 }
 
+function suggestNextDir() {
+  let max = 0
+  for (const c of cards) {
+    const m = /^craft-(\d+)$/i.exec(c.dir)
+    if (m) max = Math.max(max, Number(m[1]))
+  }
+  return `craft-${String(max + 1).padStart(3, '0')}`
+}
+
+function openNewModal() {
+  if (!hasApi) { alert('请先双击「打开工作台.bat」启动本地服务，再新建展品。'); return }
+  $('newDir').value = suggestNextDir().replace(/^craft-/i, '')
+  $('newTitle').value = ''
+  $('newSub').value = ''
+  const m = $('newModal')
+  m.hidden = false
+  m.classList.add('open')
+  $('newTitle').focus()
+}
+function closeNewModal() {
+  const m = $('newModal')
+  m.classList.remove('open')
+  m.hidden = true
+}
+async function submitNewExhibit() {
+  const dir = $('newDir').value.trim()
+  const title = $('newTitle').value.trim()
+  const subtitle = $('newSub').value.trim()
+  if (!dir || !title) { alert('请填写展品编号和名称'); return }
+  $('newSubmit').disabled = true
+  try {
+    const r = await fetch('studio-api/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dir, title, subtitle }),
+    })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok || d.ok === false) throw new Error(d.error || ('HTTP ' + r.status))
+    closeNewModal()
+    location.reload()
+  } catch (e) {
+    alert('创建失败：' + e.message)
+  } finally {
+    $('newSubmit').disabled = false
+  }
+}
+
 function filter() {
   const q = $('search').value.trim().toLowerCase()
   let shown = 0
@@ -390,6 +478,10 @@ function showEmpty(msg) { $('empty').textContent = msg; $('empty').hidden = fals
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m])) }
 
 $('batchToggle').addEventListener('click', () => setBatch(!document.body.classList.contains('batch-open')))
+$('newToggle').addEventListener('click', openNewModal)
+$('newCancel').addEventListener('click', closeNewModal)
+$('newSubmit').addEventListener('click', submitNewExhibit)
+$('newModal').addEventListener('click', e => { if (e.target === $('newModal')) closeNewModal() })
 $('batchExit').addEventListener('click', () => setBatch(false))
 $('selAll').addEventListener('click', () => { cards.forEach(c => { if (!c.el.hidden && !c.el.querySelector('.subtitle').textContent.startsWith('⚠')) { selected.add(c.dir); c.el.classList.add('sel') } }); refreshSel() })
 $('selNone').addEventListener('click', () => { selected.clear(); cards.forEach(c => c.el.classList.remove('sel')); refreshSel() })

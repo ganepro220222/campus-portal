@@ -218,10 +218,23 @@ class Handler(SimpleHTTPRequestHandler):
         if not self._authed():
             return
         p = self._path()
+        length = int(self.headers.get('Content-Length') or 0)
+        if p.startswith('/studio-api/create'):
+            if length > 1_000_000:
+                self.send_error(413)
+                return
+            raw = self.rfile.read(length)
+            try:
+                from exhibit_create import create_exhibit
+                payload = json.loads(raw.decode('utf-8'))
+                created = create_exhibit(ROOT, payload.get('dir', ''), payload.get('title', ''), payload.get('subtitle') or '')
+                self._json(200, {'ok': True, **created})
+            except Exception as e:
+                self._json(400, {'ok': False, 'error': str(e)})
+            return
         if not p.startswith('/studio-api/save'):
             self.send_error(404)
             return
-        length = int(self.headers.get('Content-Length') or 0)
         if length > 5_000_000:
             self.send_error(413)
             return

@@ -1,3 +1,8 @@
 @echo off
 cd /d "%~dp0"
-call "_launch\install.bat" %*
+if errorlevel 1 (
+  echo [ERROR] cannot cd to script folder
+  pause
+  exit /b 1
+)
+call "%~dp0_launch\install.bat" %*

@@ -11,6 +11,7 @@
 |---|---|---|
 | GET | `/studio-api/list` | 扫描 `exhibits/` 下全部展品目录，供工作台自动加载 |
 | GET | `/studio-api/identity` | 返回本目录 rootHash（启动器校验 8199 端口归属；本机 localhost 免鉴权） |
+| POST | `/studio-api/create` | 请求体 `{ dir, title, subtitle? }` → 从 `_template/` 创建新展品目录 |
 | POST | `/studio-api/save` | 请求体 `{ ex, config, poster? }` → 写回 `<ex>/config.json`；写前自动备份上一版到 `<ex>/.bak/`（保留最近 20 份） |
 
 ## 前端约定

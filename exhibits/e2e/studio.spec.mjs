@@ -11,6 +11,23 @@ async function waitForStudioReady(page) {
   await page.waitForSelector('#bwrap .bf', { timeout: 15_000 })
 }
 
+async function gotoStudioWithListStub(page, capabilities) {
+  const listRes = await page.request.get('studio-api/list')
+  expect(listRes.ok()).toBeTruthy()
+  const base = await listRes.json()
+  const body = { exhibits: base.exhibits || [] }
+  if (capabilities !== undefined) body.capabilities = capabilities
+
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+  await page.route('**/studio-api/list', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }),
+  )
+  const listWait = page.waitForResponse(r => r.url().includes('studio-api/list') && r.ok())
+  await page.goto('/studio.html')
+  await listWait
+  await page.waitForSelector('#grid .card', { timeout: 30_000 })
+}
+
 async function openBatchPanel(page) {
   if (!(await page.locator('body.batch-open').count())) {
     await page.locator('#batchToggle').click()
@@ -172,21 +189,8 @@ test.describe('studio.html', () => {
     }
   })
 
-  async function mockListCapabilities(page, capabilities) {
-    const listRes = await page.request.get('studio-api/list')
-    const base = await listRes.json()
-    const body = { exhibits: base.exhibits || [] }
-    if (capabilities !== undefined) body.capabilities = capabilities
-    await page.route('**/studio-api/list', route =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }),
-    )
-    await page.reload()
-    await page.waitForSelector('#grid .card', { timeout: 30_000 })
-  }
-
   test('create modal opens when capabilities.create is true', async ({ page }) => {
-    await waitForStudioReady(page)
-    await mockListCapabilities(page, { create: true, save: true, batch: true })
+    await gotoStudioWithListStub(page, { create: true, save: true, batch: true })
     await page.locator('#newToggle').click()
     await expect(page.locator('#newModal.open')).toHaveCount(1)
   })
@@ -199,11 +203,11 @@ test.describe('studio.html', () => {
       const creates = []
       page.on('request', r => { if (r.url().includes('studio-api/create')) creates.push(r.url()) })
 
-      await waitForStudioReady(page)
-      await mockListCapabilities(page, capabilities)
-      const dialogPromise = page.waitForEvent('dialog')
-      await page.locator('#newToggle').click()
-      const dialog = await dialogPromise
+      await gotoStudioWithListStub(page, capabilities)
+      const [dialog] = await Promise.all([
+        page.waitForEvent('dialog'),
+        page.locator('#newToggle').click(),
+      ])
       expect(dialog.message()).toMatch(/未提供|新建展品/)
       await dialog.accept()
 

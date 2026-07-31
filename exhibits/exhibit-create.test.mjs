@@ -20,6 +20,15 @@ const NORM_VECTORS = [
   ['craft-007', 'craft-007'],
 ]
 
+const REJECT_VECTORS = [
+  '００５',           // fullwidth digits
+  '٠٠ٵ',             // Arabic-Indic digits (U+0665)
+  'craft-',
+  'craft-/',
+  '/',
+  '\\',
+]
+
 let pass = 0, fail = 0
 function test(name, fn) {
   try { fn(); pass++; console.log('  ok', name) }
@@ -123,6 +132,12 @@ test('suggestNextExhibitDir increments max craft number', () => {
   }
 })
 
+test('normalizeExhibitDir rejects unsafe inputs consistently', () => {
+  for (const input of REJECT_VECTORS) {
+    assert.throws(() => normalizeExhibitDir(input), /非法|不能为空/, input)
+  }
+})
+
 test('Python normalize_exhibit_dir matches Node vectors', () => {
   const py = spawnSync('python', ['-c', `
 import sys, json
@@ -134,6 +149,27 @@ print(json.dumps([[a, normalize_exhibit_dir(a)] for a in ${JSON.stringify(NORM_V
   const pairs = JSON.parse(py.stdout.trim())
   for (const [input, got] of pairs) {
     assert.equal(got, normalizeExhibitDir(input), `python ${input}`)
+  }
+})
+
+test('Python normalize_exhibit_dir rejects same unsafe vectors as Node', () => {
+  const py = spawnSync('python', ['-c', `
+import sys, json
+sys.path.insert(0, ${JSON.stringify(ROOT)})
+from exhibit_create import normalize_exhibit_dir
+out = []
+for raw in ${JSON.stringify(REJECT_VECTORS)}:
+  try:
+    normalize_exhibit_dir(raw)
+    out.append([raw, None])
+  except Exception as e:
+    out.append([raw, type(e).__name__])
+print(json.dumps(out))
+`], { encoding: 'utf8' })
+  if (py.status !== 0) return
+  const pairs = JSON.parse(py.stdout.trim())
+  for (const [input] of pairs) {
+    assert.throws(() => normalizeExhibitDir(input), /非法|不能为空/, `node ${input}`)
   }
 })
 

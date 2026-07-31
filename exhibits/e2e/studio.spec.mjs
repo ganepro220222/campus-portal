@@ -171,4 +171,44 @@ test.describe('studio.html', () => {
       if (fs.existsSync(testPath)) fs.rmSync(testPath, { recursive: true, force: true })
     }
   })
+
+  async function mockListCapabilities(page, capabilities) {
+    const listRes = await page.request.get('studio-api/list')
+    const base = await listRes.json()
+    const body = { exhibits: base.exhibits || [] }
+    if (capabilities !== undefined) body.capabilities = capabilities
+    await page.route('**/studio-api/list', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }),
+    )
+    await page.reload()
+    await page.waitForSelector('#grid .card', { timeout: 30_000 })
+  }
+
+  test('create modal opens when capabilities.create is true', async ({ page }) => {
+    await waitForStudioReady(page)
+    await mockListCapabilities(page, { create: true, save: true, batch: true })
+    await page.locator('#newToggle').click()
+    await expect(page.locator('#newModal.open')).toHaveCount(1)
+  })
+
+  for (const [label, capabilities] of [
+    ['false', { create: false, save: true, batch: true }],
+    ['missing', undefined],
+  ]) {
+    test(`create blocked when capabilities.create is ${label}`, async ({ page }) => {
+      const creates = []
+      const alerts = []
+      page.on('dialog', async d => { alerts.push(d.message()); await d.accept() })
+      page.on('request', r => { if (r.url().includes('studio-api/create')) creates.push(r.url()) })
+
+      await waitForStudioReady(page)
+      await mockListCapabilities(page, capabilities)
+      await page.locator('#newToggle').click()
+      await page.waitForTimeout(200)
+
+      expect(alerts.some(m => m.includes('未提供') || m.includes('新建展品'))).toBe(true)
+      await expect(page.locator('#newModal.open')).toHaveCount(0)
+      expect(creates).toEqual([])
+    })
+  }
 })

@@ -39,6 +39,13 @@ function studio_normalize_exhibit_dir(string $raw): string {
   return $s;
 }
 
+function studio_write_file(string $path, string $content): void {
+  $n = file_put_contents($path, $content);
+  if ($n === false || $n !== strlen($content)) {
+    throw new Exception("写入失败：$path");
+  }
+}
+
 function studio_validate_template(string $template): void {
   $cfg = "$template/config.json";
   $idx = "$template/index.html";
@@ -68,9 +75,12 @@ function studio_create_exhibit(string $root, string $dir, string $title, string 
   $tmp = "$root/._creating-$ex-" . bin2hex(random_bytes(4));
   try {
     studio_copy_tree($template, $tmp);
-    file_put_contents("$tmp/config.json", json_encode($templateCfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n");
+    $json = json_encode($templateCfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) throw new Exception('config.json 序列化失败');
+    studio_write_file("$tmp/config.json", $json . "\n");
     $safeTitle = studio_escape_html($name);
-    file_put_contents("$tmp/index.html", str_replace(['__EX__', '__TITLE__'], [$ex, $safeTitle], $templateIdx));
+    $index = str_replace(['__EX__', '__TITLE__'], [$ex, $safeTitle], $templateIdx);
+    studio_write_file("$tmp/index.html", $index);
     if (!@rename($tmp, $dest)) throw new Exception('无法完成展品目录创建');
   } catch (Throwable $e) {
     studio_rm_tree($tmp);

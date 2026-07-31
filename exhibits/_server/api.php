@@ -25,13 +25,19 @@ function studio_escape_html(string $s): string {
   return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function studio_normalize_numeric_suffix(string $digits): string {
+  if (!ctype_digit($digits)) throw new Exception('非法展品编号');
+  $trimmed = preg_replace('/^0+(?=\d)/', '', $digits);
+  if ($trimmed === '') $trimmed = '0';
+  if (strlen($trimmed) > 32) throw new Exception('展品编号过长');
+  return str_pad($trimmed, 3, '0', STR_PAD_LEFT);
+}
+
 function studio_normalize_exhibit_dir(string $raw): string {
   $s = trim($raw, " \t\n\r\0\x0B/\\");
   if ($s === '') throw new Exception('展品目录不能为空');
   if (ctype_digit($s)) {
-    $n = (int)$s;
-    if ($n < 0) throw new Exception('非法展品编号');
-    $s = sprintf('craft-%03d', $n);
+    $s = 'craft-' . studio_normalize_numeric_suffix($s);
   } elseif (stripos($s, 'craft-') !== 0) {
     $s = 'craft-' . $s;
   }

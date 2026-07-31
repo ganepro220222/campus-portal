@@ -179,8 +179,9 @@ test('runtime.bat verify_identity returns 4 without swallowing exit code', async
 })
 
 test('new-exhibit.bat uses CRLF for Windows cmd parsing', () => {
-  const bat = fs.readFileSync(path.join(LAUNCH, 'new-exhibit.bat'))
+  const bat = fs.readFileSync(path.join(LAUNCH, 'new-exhibit.bat'), 'utf8')
   assert.ok(bat.includes('\r\n'), 'new-exhibit.bat must use CRLF')
+  assert.doesNotMatch(bat, /EnableDelayedExpansion/i, 'must not expand ! in forwarded args')
 })
 
 test('new-exhibit.bat runs under cmd without batch line corruption', () => {
@@ -188,12 +189,38 @@ test('new-exhibit.bat runs under cmd without batch line corruption', () => {
   const r = spawnSync('cmd.exe', ['/c', 'call _launch\\new-exhibit.bat 99996'], {
     cwd: ROOT,
     encoding: 'utf8',
-    input: '\n',
+    input: '\r\n',
     timeout: 15_000,
   })
   const out = (r.stdout || '') + (r.stderr || '')
   assert.doesNotMatch(out, /'OOT"'|'evel'|'RROR\]'/)
   assert.match(out, /展品名称不能为空|\[ERROR\]/)
+})
+
+test('new-exhibit.bat preserves exclamation marks in CLI args', () => {
+  if (process.platform !== 'win32') return 'skip'
+  const ex = 'craft-99894'
+  const exPath = path.join(ROOT, ex)
+  if (fs.existsSync(exPath)) fs.rmSync(exPath, { recursive: true, force: true })
+  const title = '时代之声!'
+  const subtitle = 'A!UNDEFINED!B'
+  try {
+    const r = spawnSync(
+      'cmd.exe',
+      ['/d', '/s', '/c', `call _launch\\new-exhibit.bat 99894 ${title} ${subtitle}`],
+      { cwd: ROOT, encoding: 'utf8', input: '\r\n', timeout: 30_000 },
+    )
+    const out = (r.stdout || '') + (r.stderr || '')
+    assert.match(out, /\[OK\]|已创建/, out)
+
+    const cfgPath = path.join(exPath, 'config.json')
+    assert.ok(fs.existsSync(cfgPath), 'exhibit should be created')
+    const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'))
+    assert.equal(cfg.i18n.zh.title, title)
+    assert.equal(cfg.i18n.zh.subtitle, subtitle)
+  } finally {
+    if (fs.existsSync(exPath)) fs.rmSync(exPath, { recursive: true, force: true })
+  }
 })
 
 let pass = 0, fail = 0, skip = 0

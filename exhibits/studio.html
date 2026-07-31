@@ -185,7 +185,7 @@
 <script type="module">
 import { batchFieldApplies } from './studio-batch.mjs'
 const $ = id => document.getElementById(id)
-let cards = [], hasApi = false
+let cards = [], hasApi = false, canCreate = false
 const selected = new Set()   // 选中的展品目录名
 
 /* ---------- 批量字段注册表 ---------- */
@@ -334,7 +334,7 @@ async function load() {
   let items = null, source = ''
   try {
     const r = await fetch('studio-api/list', { cache: 'no-cache' })
-    if (r.ok) { const d = await r.json(); items = (d.exhibits || []).map(normApi); source = 'api'; hasApi = true }
+    if (r.ok) { const d = await r.json(); items = (d.exhibits || []).map(normApi); source = 'api'; hasApi = true; canCreate = d.capabilities?.create !== false }
   } catch (e) {}
   if (!items) {
     let mani
@@ -431,6 +431,7 @@ function suggestNextDir() {
 
 function openNewModal() {
   if (!hasApi) { alert('请先双击「打开工作台.bat」启动本地服务，再新建展品。'); return }
+  if (!canCreate) { alert('当前服务未提供「新建展品」接口，请使用「新建展品.bat」或升级服务端。'); return }
   $('newDir').value = suggestNextDir().replace(/^craft-/i, '')
   $('newTitle').value = ''
   $('newSub').value = ''

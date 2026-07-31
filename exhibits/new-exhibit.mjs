@@ -36,7 +36,7 @@ async function main() {
   console.log('  2. 刷新工作台 → 点「编辑」→ 调相机/热点 → 保存')
   console.log('')
   if (process.platform === 'win32') {
-    spawn('explorer.exe', [result.assetsDir], { detached: true, stdio: 'ignore' }).unref()
+    spawn('explorer.exe', [path.join(ROOT, result.assetsDir)], { detached: true, stdio: 'ignore' }).unref()
   }
 }
 

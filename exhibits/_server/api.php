@@ -16,9 +16,88 @@ $ROOT = realpath(__DIR__ . '/..');            // exhibits/
 $uri  = $_SERVER['REQUEST_URI'] ?? '';
 $action = $_GET['action'] ?? '';
 $isIdentity = $action === 'identity' || strpos($uri, 'identity') !== false;
+$isCreate = $action === 'create' || strpos($uri, 'create') !== false;
 $isSave = $action === 'save' || strpos($uri, 'save') !== false;
 $isList = $action === 'list' || strpos($uri, 'list') !== false;
 $isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
+
+function studio_escape_html(string $s): string {
+  return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function studio_normalize_exhibit_dir(string $raw): string {
+  $s = trim($raw, " \t\n\r\0\x0B/\\");
+  if ($s === '') throw new Exception('展品目录不能为空');
+  if (ctype_digit($s)) {
+    $n = (int)$s;
+    if ($n < 0) throw new Exception('非法展品编号');
+    $s = sprintf('craft-%03d', $n);
+  } elseif (stripos($s, 'craft-') !== 0) {
+    $s = 'craft-' . $s;
+  }
+  if ($s === 'craft-' || !preg_match('/^[A-Za-z0-9_-]+$/', $s)) throw new Exception('非法展品目录名：' . $s);
+  return $s;
+}
+
+function studio_validate_template(string $template): void {
+  $cfg = "$template/config.json";
+  $idx = "$template/index.html";
+  if (!is_file($cfg)) throw new Exception('模板缺少 config.json');
+  if (!is_file($idx)) throw new Exception('模板缺少 index.html');
+  json_decode(file_get_contents($cfg), true, 512, JSON_THROW_ON_ERROR);
+}
+
+function studio_create_exhibit(string $root, string $dir, string $title, string $subtitle = ''): array {
+  $ex = studio_normalize_exhibit_dir($dir);
+  $name = trim($title);
+  if ($name === '') throw new Exception('展品名称不能为空');
+  $sub = trim($subtitle);
+  $template = "$root/_template";
+  $dest = "$root/$ex";
+  studio_validate_template($template);
+  if (is_dir($dest)) throw new Exception("展品目录已存在：$ex");
+
+  $templateCfg = json_decode(file_get_contents("$template/config.json"), true, 512, JSON_THROW_ON_ERROR);
+  $templateIdx = file_get_contents("$template/index.html");
+  $templateCfg['id'] = $ex;
+  $templateCfg['i18n'] = $templateCfg['i18n'] ?? [];
+  $templateCfg['i18n']['zh'] = $templateCfg['i18n']['zh'] ?? [];
+  $templateCfg['i18n']['zh']['title'] = $name;
+  $templateCfg['i18n']['zh']['subtitle'] = $sub;
+
+  $tmp = "$root/._creating-$ex-" . bin2hex(random_bytes(4));
+  try {
+    studio_copy_tree($template, $tmp);
+    file_put_contents("$tmp/config.json", json_encode($templateCfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n");
+    $safeTitle = studio_escape_html($name);
+    file_put_contents("$tmp/index.html", str_replace(['__EX__', '__TITLE__'], [$ex, $safeTitle], $templateIdx));
+    if (!@rename($tmp, $dest)) throw new Exception('无法完成展品目录创建');
+  } catch (Throwable $e) {
+    studio_rm_tree($tmp);
+    throw $e;
+  }
+  return ['dir' => $ex, 'title' => $name, 'subtitle' => $sub, 'assetsDir' => "$ex/assets"];
+}
+
+function studio_copy_tree(string $src, string $dst): void {
+  if (!is_dir($dst) && !mkdir($dst, 0775, true) && !is_dir($dst)) throw new Exception("无法创建临时目录：$dst");
+  foreach (scandir($src) as $item) {
+    if ($item === '.' || $item === '..') continue;
+    $from = "$src/$item"; $to = "$dst/$item";
+    if (is_dir($from)) { studio_copy_tree($from, $to); continue; }
+    if (!copy($from, $to)) throw new Exception("复制失败：$from");
+  }
+}
+
+function studio_rm_tree(string $path): void {
+  if (!file_exists($path)) return;
+  if (is_file($path) || is_link($path)) { @unlink($path); return; }
+  foreach (scandir($path) as $item) {
+    if ($item === '.' || $item === '..') continue;
+    studio_rm_tree("$path/$item");
+  }
+  @rmdir($path);
+}
 
 function studio_root_hash(string $root): string {
   $norm = str_replace('\\', '/', $root);
@@ -56,7 +135,17 @@ if ($isList) {
     ];
   }
   usort($out, fn($a, $b) => $b['mtime'] <=> $a['mtime']);
-  echo json_encode(['exhibits' => $out], JSON_UNESCAPED_UNICODE); exit;
+  echo json_encode(['exhibits' => $out, 'capabilities' => ['save' => true, 'create' => true, 'batch' => true]], JSON_UNESCAPED_UNICODE); exit;
+}
+
+if ($isCreate && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+  $in = json_decode(file_get_contents('php://input'), true) ?: [];
+  try {
+    $created = studio_create_exhibit($ROOT, $in['dir'] ?? '', $in['title'] ?? '', $in['subtitle'] ?? '');
+    echo json_encode(['ok' => true] + $created, JSON_UNESCAPED_UNICODE); exit;
+  } catch (Throwable $e) {
+    http_response_code(400); echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE); exit;
+  }
 }
 
 if ($isSave && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {

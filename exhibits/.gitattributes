@@ -1,0 +1,2 @@
+# Windows cmd.exe requires CRLF; keep CRLF on Linux/macOS checkouts too (CI included).
+*.bat text eol=crlf

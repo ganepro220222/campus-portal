@@ -178,6 +178,24 @@ test('runtime.bat verify_identity returns 4 without swallowing exit code', async
   })
 })
 
+test('new-exhibit.bat uses CRLF for Windows cmd parsing', () => {
+  const bat = fs.readFileSync(path.join(LAUNCH, 'new-exhibit.bat'))
+  assert.ok(bat.includes('\r\n'), 'new-exhibit.bat must use CRLF')
+})
+
+test('new-exhibit.bat runs under cmd without batch line corruption', () => {
+  if (process.platform !== 'win32') return 'skip'
+  const r = spawnSync('cmd.exe', ['/c', 'call _launch\\new-exhibit.bat 99996'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    input: '\n',
+    timeout: 15_000,
+  })
+  const out = (r.stdout || '') + (r.stderr || '')
+  assert.doesNotMatch(out, /'OOT"'|'evel'|'RROR\]'/)
+  assert.match(out, /展品名称不能为空|\[ERROR\]/)
+})
+
 let pass = 0, fail = 0, skip = 0
 for (const t of tests) {
   try {

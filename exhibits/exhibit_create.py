@@ -9,6 +9,29 @@ from html import escape as html_escape
 from pathlib import Path
 
 SAFE = re.compile(r'^[A-Za-z0-9_-]+$')
+EXHIBIT_NUMERIC_MAX_DIGITS = 32
+
+
+def normalize_numeric_dir_suffix(digits: str) -> str:
+    if not re.fullmatch(r'[0-9]+', digits):
+        raise ValueError('非法展品编号')
+    trimmed = re.sub(r'^0+(?=\d)', '', digits) or '0'
+    if len(trimmed) > EXHIBIT_NUMERIC_MAX_DIGITS:
+        raise ValueError('展品编号过长')
+    return trimmed.zfill(3)
+
+
+def _max_numeric_suffix(a: str, b: str) -> str:
+    aa = int(re.sub(r'^0+(?=\d)', '', a) or '0', 10)
+    bb = int(re.sub(r'^0+(?=\d)', '', b) or '0', 10)
+    sa = re.sub(r'^0+(?=\d)', '', a) or '0'
+    sb = re.sub(r'^0+(?=\d)', '', b) or '0'
+    return sa if aa >= bb else sb
+
+
+def _increment_numeric_suffix(digits: str) -> str:
+    n = int(re.sub(r'^0+(?=\d)', '', digits) or '0', 10) + 1
+    return str(n).zfill(3)
 
 
 def escape_html(text: str) -> str:
@@ -20,10 +43,7 @@ def normalize_exhibit_dir(raw: str) -> str:
     if not s:
         raise ValueError('展品目录不能为空')
     if re.fullmatch(r'[0-9]+', s):
-        n = int(s, 10)
-        if n < 0:
-            raise ValueError('非法展品编号')
-        s = f'craft-{n:03d}'
+        s = f'craft-{normalize_numeric_dir_suffix(s)}'
     elif not s.lower().startswith('craft-'):
         s = f'craft-{s}'
     if s == 'craft-' or not SAFE.match(s):
@@ -32,14 +52,14 @@ def normalize_exhibit_dir(raw: str) -> str:
 
 
 def suggest_next_exhibit_dir(root: Path) -> str:
-    max_n = 0
+    max_n = '0'
     for p in root.iterdir():
         if not p.is_dir() or p.name.startswith('_') or p.name.startswith('.'):
             continue
         m = re.match(r'^craft-(\d+)$', p.name, re.I)
         if m:
-            max_n = max(max_n, int(m.group(1)))
-    return f'craft-{max_n + 1:03d}'
+            max_n = _max_numeric_suffix(max_n, m.group(1))
+    return f'craft-{_increment_numeric_suffix(max_n)}'
 
 
 def _validate_template(template: Path) -> None:

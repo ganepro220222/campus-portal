@@ -197,16 +197,16 @@ test.describe('studio.html', () => {
   ]) {
     test(`create blocked when capabilities.create is ${label}`, async ({ page }) => {
       const creates = []
-      const alerts = []
-      page.on('dialog', async d => { alerts.push(d.message()); await d.accept() })
       page.on('request', r => { if (r.url().includes('studio-api/create')) creates.push(r.url()) })
 
       await waitForStudioReady(page)
       await mockListCapabilities(page, capabilities)
+      const dialogPromise = page.waitForEvent('dialog')
       await page.locator('#newToggle').click()
-      await page.waitForTimeout(200)
+      const dialog = await dialogPromise
+      expect(dialog.message()).toMatch(/未提供|新建展品/)
+      await dialog.accept()
 
-      expect(alerts.some(m => m.includes('未提供') || m.includes('新建展品'))).toBe(true)
       await expect(page.locator('#newModal.open')).toHaveCount(0)
       expect(creates).toEqual([])
     })

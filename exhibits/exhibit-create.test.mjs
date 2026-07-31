@@ -17,7 +17,16 @@ const NORM_VECTORS = [
   ['5', 'craft-005'],
   ['005', 'craft-005'],
   ['0005', 'craft-005'],
+  ['0', 'craft-000'],
+  ['000', 'craft-000'],
   ['craft-007', 'craft-007'],
+]
+
+const LONG_NORM_VECTORS = [
+  ['9007199254740991', 'craft-9007199254740991'],
+  ['9007199254740992', 'craft-9007199254740992'],
+  ['9007199254740993', 'craft-9007199254740993'],
+  ['999999999999999999999', 'craft-999999999999999999999'],
 ]
 
 const REJECT_VECTORS = [
@@ -27,6 +36,7 @@ const REJECT_VECTORS = [
   'craft-/',
   '/',
   '\\',
+  '9'.repeat(33),     // exceeds max digit length
 ]
 
 let pass = 0, fail = 0
@@ -132,18 +142,27 @@ test('suggestNextExhibitDir increments max craft number', () => {
   }
 })
 
+test('normalizeExhibitDir long numeric strings preserve exact digits', () => {
+  for (const [input, expected] of LONG_NORM_VECTORS) {
+    assert.equal(normalizeExhibitDir(input), expected, input)
+  }
+  assert.equal(normalizeExhibitDir('9007199254740993'), 'craft-9007199254740993')
+  assert.notEqual(normalizeExhibitDir('9007199254740993'), 'craft-9007199254740992')
+})
+
 test('normalizeExhibitDir rejects unsafe inputs consistently', () => {
   for (const input of REJECT_VECTORS) {
-    assert.throws(() => normalizeExhibitDir(input), /非法|不能为空/, input)
+    assert.throws(() => normalizeExhibitDir(input), /非法|不能为空|过长/, input)
   }
 })
 
 test('Python normalize_exhibit_dir matches Node vectors', () => {
+  const all = [...NORM_VECTORS, ...LONG_NORM_VECTORS]
   const py = spawnSync('python', ['-c', `
 import sys, json
 sys.path.insert(0, ${JSON.stringify(ROOT)})
 from exhibit_create import normalize_exhibit_dir
-print(json.dumps([[a, normalize_exhibit_dir(a)] for a in ${JSON.stringify(NORM_VECTORS.map(v => v[0]))}]))
+print(json.dumps([[a, normalize_exhibit_dir(a)] for a in ${JSON.stringify(all.map(v => v[0]))}]))
 `], { encoding: 'utf8' })
   if (py.status !== 0) return
   const pairs = JSON.parse(py.stdout.trim())
@@ -168,8 +187,42 @@ print(json.dumps(out))
 `], { encoding: 'utf8' })
   if (py.status !== 0) return
   const pairs = JSON.parse(py.stdout.trim())
-  for (const [input] of pairs) {
-    assert.throws(() => normalizeExhibitDir(input), /非法|不能为空/, `node ${input}`)
+  for (const [input, errorType] of pairs) {
+    assert.notEqual(errorType, null, `python unexpectedly accepted ${input}`)
+    assert.throws(() => normalizeExhibitDir(input), /非法|不能为空|过长/, `node ${input}`)
+  }
+})
+
+test('PHP studio_normalize_exhibit_dir matches Node long numeric vectors', () => {
+  const all = [...NORM_VECTORS, ...LONG_NORM_VECTORS]
+  const php = spawnSync('php', ['-r', `
+function studio_normalize_numeric_suffix(string $digits): string {
+  if (!ctype_digit($digits)) throw new Exception('非法展品编号');
+  $trimmed = preg_replace('/^0+(?=\\d)/', '', $digits);
+  if ($trimmed === '') $trimmed = '0';
+  if (strlen($trimmed) > 32) throw new Exception('展品编号过长');
+  return str_pad($trimmed, 3, '0', STR_PAD_LEFT);
+}
+function studio_normalize_exhibit_dir(string $raw): string {
+  $s = trim($raw, " \\t\\n\\r\\0\\x0B/\\\\");
+  if ($s === '') throw new Exception('展品目录不能为空');
+  if (ctype_digit($s)) {
+    $s = 'craft-' . studio_normalize_numeric_suffix($s);
+  } elseif (stripos($s, 'craft-') !== 0) {
+    $s = 'craft-' . $s;
+  }
+  if ($s === 'craft-' || !preg_match('/^[A-Za-z0-9_-]+$/', $s)) throw new Exception('非法展品目录名：' . $s);
+  return $s;
+}
+$vectors = json_decode(${JSON.stringify(JSON.stringify(all.map(v => v[0])))});
+$out = [];
+foreach ($vectors as $raw) $out[] = [ $raw, studio_normalize_exhibit_dir($raw) ];
+echo json_encode($out);
+`], { encoding: 'utf8' })
+  if (php.status !== 0) return
+  const pairs = JSON.parse(php.stdout.trim())
+  for (const [input, got] of pairs) {
+    assert.equal(got, normalizeExhibitDir(input), `php ${input}`)
   }
 })
 

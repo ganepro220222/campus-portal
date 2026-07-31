@@ -6,6 +6,27 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 export const EXHIBIT_DIR_SAFE = /^[a-zA-Z0-9_-]+$/
+/** Max ASCII digits in a numeric craft suffix (no int conversion). */
+export const EXHIBIT_NUMERIC_MAX_DIGITS = 32
+
+/** Strip leading zeros (keep one digit); pad to min 3 — never uses Number/int. */
+export function normalizeNumericDirSuffix(digits) {
+  if (!/^[0-9]+$/.test(digits)) throw new Error('非法展品编号')
+  const trimmed = digits.replace(/^0+(?=\d)/, '') || '0'
+  if (trimmed.length > EXHIBIT_NUMERIC_MAX_DIGITS) throw new Error('展品编号过长')
+  return trimmed.padStart(3, '0')
+}
+
+function maxNumericSuffix(a, b) {
+  const aa = BigInt(a.replace(/^0+(?=\d)/, '') || '0')
+  const bb = BigInt(b.replace(/^0+(?=\d)/, '') || '0')
+  return aa >= bb ? a.replace(/^0+(?=\d)/, '') || '0' : b.replace(/^0+(?=\d)/, '') || '0'
+}
+
+function incrementNumericSuffix(digits) {
+  const n = BigInt(digits.replace(/^0+(?=\d)/, '') || '0') + 1n
+  return n.toString().padStart(3, '0')
+}
 
 /** Escape text for HTML text/title context (config JSON keeps raw user input). */
 export function escapeHtml(text) {
@@ -21,9 +42,7 @@ export function normalizeExhibitDir(input) {
   let s = String(input ?? '').trim().replace(/^[/\\]+|[/\\]+$/g, '')
   if (!s) throw new Error('展品目录不能为空')
   if (/^\d+$/.test(s)) {
-    const n = Number.parseInt(s, 10)
-    if (!Number.isFinite(n) || n < 0) throw new Error('非法展品编号')
-    s = `craft-${String(n).padStart(3, '0')}`
+    s = `craft-${normalizeNumericDirSuffix(s)}`
   } else if (!/^craft-/i.test(s)) {
     s = `craft-${s}`
   }
@@ -32,13 +51,13 @@ export function normalizeExhibitDir(input) {
 }
 
 export function suggestNextExhibitDir(root) {
-  let max = 0
+  let max = '0'
   for (const name of fs.readdirSync(root, { withFileTypes: true })) {
     if (!name.isDirectory() || name.name.startsWith('_') || name.name.startsWith('.')) continue
     const m = /^craft-(\d+)$/i.exec(name.name)
-    if (m) max = Math.max(max, Number(m[1]))
+    if (m) max = maxNumericSuffix(max, m[1])
   }
-  return `craft-${String(max + 1).padStart(3, '0')}`
+  return `craft-${incrementNumericSuffix(max)}`
 }
 
 function validateTemplate(templateDir) {

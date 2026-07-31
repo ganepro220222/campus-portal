@@ -2,12 +2,15 @@
 """Pack exhibits/ as a portable Windows zip for local editing."""
 from __future__ import annotations
 
+import os
 import zipfile
 from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-OUT = ROOT / 'exhibits-便携包.zip'
+OUT = Path(os.environ.get('PACK_OUT', ROOT / 'exhibits-便携包.zip'))
+if not OUT.is_absolute():
+    OUT = ROOT / OUT
 
 EXCLUDE_TOP_DIRS = frozenset({
     'node_modules', 'e2e', 'test-results', 'playwright-report', 'blob-report',

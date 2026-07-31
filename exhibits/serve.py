@@ -50,6 +50,8 @@ def identity_payload(root: Path) -> dict:
     return {'rootHash': h, 'instanceId': h}
 
 
+from pano_check import has_panorama_file
+
 ROOT_HASH = compute_root_hash(ROOT)
 
 MIME = {
@@ -88,7 +90,7 @@ def list_exhibits():
                 'subtitle': zh.get('subtitle') or '',
                 'hotspots': len(c.get('hotspots') or []),
                 'audio': len(c.get('audio') or []),
-                'hasPano': bool((c.get('assets') or {}).get('panorama')),
+                'hasPano': has_panorama_file(d, (c.get('assets') or {}).get('panorama')),
                 'poster': f"{d.name}/{(c.get('assets') or {}).get('poster')}" if (c.get('assets') or {}).get('poster') else '',
                 'mtime': int(st.st_mtime * 1000),
             })

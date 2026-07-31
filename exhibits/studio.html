@@ -346,7 +346,12 @@ async function load() {
     if (!list.length) return showEmpty('清单里还没有展品。复制一个 craft-XXX/ 目录并加进 manifest.json 的 exhibits。')
     items = await Promise.all(list.map(async e => {
       const dir = e.dir.replace(/\/$/, '')
-      try { const cfg = await (await fetch(`${dir}/config.json`, { cache: 'no-cache' })).json(); return normCfg(dir, cfg, e) }
+      try {
+        const cfg = await (await fetch(`${dir}/config.json`, { cache: 'no-cache' })).json()
+        const item = normCfg(dir, cfg, e)
+        item.hasPano = await panoFileExists(dir, cfg.assets?.panorama)
+        return item
+      }
       catch (err) { return { dir, title: (e && e.title) || dir, error: err.message } }
     }))
     source = 'manifest'
@@ -370,7 +375,13 @@ async function load() {
   if (!hasApi) { $('bnote').innerHTML = '⚠ 未检测到工作台服务：批量保存需先 <code>node _server/studio-server.mjs</code> 启动。'; }
 }
 const normApi = e => ({ dir: e.dir, title: e.title || e.dir, subtitle: e.subtitle || '', hotspots: e.hotspots || 0, audio: e.audio || 0, hasPano: !!e.hasPano, poster: e.poster || '', error: e.error })
-const normCfg = (dir, cfg, ov) => { const zh = (cfg.i18n && cfg.i18n.zh) || {}; return { dir, title: (ov && ov.title) || zh.title || dir, subtitle: zh.subtitle || '', hotspots: (cfg.hotspots || []).length, audio: (cfg.audio || []).length, hasPano: !!(cfg.assets && cfg.assets.panorama), poster: (cfg.assets && cfg.assets.poster) ? `${dir}/${cfg.assets.poster}` : '' } }
+const normCfg = (dir, cfg, ov) => { const zh = (cfg.i18n && cfg.i18n.zh) || {}; return { dir, title: (ov && ov.title) || zh.title || dir, subtitle: zh.subtitle || '', hotspots: (cfg.hotspots || []).length, audio: (cfg.audio || []).length, hasPano: false, poster: (cfg.assets && cfg.assets.poster) ? `${dir}/${cfg.assets.poster}` : '' } }
+async function panoFileExists(dir, p) {
+  const s = String(p || '').trim()
+  if (!s) return false
+  if (/^(https?:|data:|blob:|\/\/|\/)/.test(s)) return true
+  try { const r = await fetch(`${dir}/${s}`, { method: 'HEAD', cache: 'no-cache' }); return r.ok } catch { return false }
+}
 
 function render(r) {
   const el = document.createElement('div'); el.className = 'card'; el.dataset.dir = r.dir

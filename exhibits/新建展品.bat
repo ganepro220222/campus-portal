@@ -6,4 +6,6 @@ if errorlevel 1 (
   exit /b 1
 )
 call "%~dp0_launch\new-exhibit.bat" %*
+echo.
+pause
 exit /b %ERRORLEVEL%

@@ -184,6 +184,18 @@ test('new-exhibit.bat uses CRLF for Windows cmd parsing', () => {
   assert.doesNotMatch(bat, /EnableDelayedExpansion/i, 'must not expand ! in forwarded args')
 })
 
+test('all exhibits launcher bat files use CRLF', () => {
+  if (process.platform !== 'win32') return 'skip'
+  const bats = fs.readdirSync(ROOT).filter(n => n.endsWith('.bat'))
+    .concat(fs.readdirSync(LAUNCH).filter(n => n.endsWith('.bat')).map(n => `_launch/${n}`))
+  for (const rel of bats) {
+    const raw = fs.readFileSync(path.join(ROOT, rel))
+    const lfOnly = raw.filter(b => b === 0x0a).length - raw.filter((b, i, a) => b === 0x0a && a[i - 1] === 0x0d).length
+    assert.ok(raw.includes('\r\n'), `${rel} must use CRLF`)
+    assert.equal(lfOnly, 0, `${rel} must not use LF-only line endings`)
+  }
+})
+
 test('new-exhibit.bat runs under cmd without batch line corruption', () => {
   if (process.platform !== 'win32') return 'skip'
   const r = spawnSync('cmd.exe', ['/c', 'call _launch\\new-exhibit.bat 99996'], {

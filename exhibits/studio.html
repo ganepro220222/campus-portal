@@ -334,7 +334,7 @@ async function load() {
   let items = null, source = ''
   try {
     const r = await fetch('studio-api/list', { cache: 'no-cache' })
-    if (r.ok) { const d = await r.json(); items = (d.exhibits || []).map(normApi); source = 'api'; hasApi = true; canCreate = d.capabilities?.create !== false }
+    if (r.ok) { const d = await r.json(); items = (d.exhibits || []).map(normApi); source = 'api'; hasApi = true; canCreate = d.capabilities?.create === true }
   } catch (e) {}
   if (!items) {
     let mani

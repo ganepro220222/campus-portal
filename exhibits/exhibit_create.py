@@ -19,7 +19,7 @@ def normalize_exhibit_dir(raw: str) -> str:
     s = raw.strip().strip('/\\')
     if not s:
         raise ValueError('展品目录不能为空')
-    if s.isdigit():
+    if re.fullmatch(r'[0-9]+', s):
         n = int(s, 10)
         if n < 0:
             raise ValueError('非法展品编号')

@@ -24,6 +24,8 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 NO_STORE = 'no-store, no-cache, must-revalidate'
 PORT = int(os.environ.get('PORT') or (sys.argv[1] if len(sys.argv) > 1 else 8199))
 USER = os.environ.get('STUDIO_USER', 'admin')

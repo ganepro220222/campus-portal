@@ -235,6 +235,50 @@ test('new-exhibit.bat preserves exclamation marks in CLI args', () => {
   }
 })
 
+test('launcher bat files avoid parenthetical if blocks', () => {
+  const bats = fs.readdirSync(ROOT).filter(n => n.endsWith('.bat'))
+    .concat(fs.readdirSync(LAUNCH).filter(n => n.endsWith('.bat')).map(n => `_launch/${n}`))
+  for (const rel of bats) {
+    const text = fs.readFileSync(path.join(ROOT, rel), 'utf8')
+    for (const line of text.split(/\r?\n/)) {
+      const t = line.trim()
+      if (!/^if /i.test(t)) continue
+      if (/^echo /i.test(t)) continue
+      assert.doesNotMatch(t, /\(\s*$/, `${rel}: parenthetical if breaks paths with (2)`)
+    }
+  }
+})
+
+test('ensure-server.bat avoids trailing-backslash cd paths', () => {
+  const bat = fs.readFileSync(path.join(LAUNCH, 'ensure-server.bat'), 'utf8')
+  assert.doesNotMatch(bat, /cd \/d \\"%ROOT%\\"/, 'trailing backslash breaks quoted cd on Windows')
+  assert.doesNotMatch(bat, /\.\.\\"/, 'path ending in ..\\ before quote breaks cmd')
+  assert.doesNotMatch(bat, /\\"%%~fI/, 'escaped full path breaks cmd when path has spaces')
+  assert.match(bat, /\/D "%%~fI"/, 'must use start /D for exhibits root')
+})
+
+test('install.bat runs under cmd when cwd path contains parentheses', () => {
+  if (process.platform !== 'win32') return 'skip'
+  const tmp = path.join(os.tmpdir(), `exhibits-paren-${Date.now()}(2)`)
+  fs.rmSync(tmp, { recursive: true, force: true })
+  fs.mkdirSync(path.join(tmp, '_launch'), { recursive: true })
+  fs.copyFileSync(path.join(LAUNCH, 'install.bat'), path.join(tmp, '_launch', 'install.bat'))
+  fs.copyFileSync(path.join(LAUNCH, 'install-python.ps1'), path.join(tmp, '_launch', 'install-python.ps1'))
+  try {
+    const r = spawnSync('cmd.exe', ['/c', 'call _launch\\install.bat'], {
+      cwd: tmp,
+      encoding: 'utf8',
+      timeout: 120_000,
+    })
+    const out = (r.stdout || '') + (r.stderr || '')
+    assert.doesNotMatch(out, /此时不应有|unexpected at this time/i, out)
+    assert.notEqual(r.status, 255, `cmd parse error: ${out}`)
+    assert.ok(fs.existsSync(path.join(tmp, '_runtime', 'python', 'python.exe')), out)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 let pass = 0, fail = 0, skip = 0
 for (const t of tests) {
   try {

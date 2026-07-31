@@ -1,11 +1,14 @@
 @echo off
 cd /d "%~dp0"
-if errorlevel 1 (
-  echo [ERROR] cannot cd to script folder
-  pause
-  exit /b 1
-)
+if errorlevel 1 goto cd_fail
 call "%~dp0_launch\install.bat" %*
+set "RC=%ERRORLEVEL%"
 echo.
 pause
-exit /b %ERRORLEVEL%
+exit /b %RC%
+
+:cd_fail
+echo [ERROR] cannot cd to script folder
+echo Tip: if folder name has parentheses e.g. exhibits^(2^), rename to exhibits2
+pause
+exit /b 1

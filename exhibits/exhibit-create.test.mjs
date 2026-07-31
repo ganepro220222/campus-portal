@@ -98,6 +98,8 @@ test('createExhibit builds empty hotspot config', () => {
     assert.equal(cfg.id, 'craft-006')
     assert.equal(cfg.hotspots.length, 0)
     assert.equal(cfg.audio.length, 0)
+    assert.equal(cfg.assets.panorama, 'assets/panorama.jpg')
+    assert.equal(cfg.environment.mode, 'panorama')
     const idx = fs.readFileSync(path.join(tmp, 'craft-006', 'index.html'), 'utf8')
     assert.match(idx, /ex=craft-006/)
   } finally {

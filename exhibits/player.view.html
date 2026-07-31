@@ -395,6 +395,10 @@ function panoramaIBL(url) {
     tex.dispose(); pmrem.dispose()
   }, undefined, () => {/* 保底已是 RoomEnvironment */})
 }
+function loadPanoramaFromCfg() {
+  if (cfg.environment?.mode !== 'panorama' || !cfg.assets?.panorama) return
+  panoramaIBL(asset(cfg.assets.panorama))
+}
 
 /* ── 热点 ── */
 const CARD_PANEL_STYLES = ['solid', 'glass', 'transparent', 'outline', 'ribbon', 'minimal']
@@ -933,7 +937,7 @@ function start() {
     normalize(model); applyMaterial(); scene.add(model)
     placeCamera(); buildHotspots(); buildHUD(); renderText(); buildAudio(); wireAudio()
     // 背景真全景 IBL 后台加载，平滑接管
-    if (cfg.environment?.mode === 'panorama' && cfg.assets.panorama) panoramaIBL(asset(cfg.assets.panorama))
+    loadPanoramaFromCfg()
     $('topbar').removeAttribute('hidden'); $('hud').removeAttribute('hidden')
     $('loading').classList.add('fade'); setTimeout(()=>$('loading').setAttribute('hidden',''), 460)
     $('hint').classList.add('show'); setTimeout(()=>$('hint').classList.remove('show'), 2600)

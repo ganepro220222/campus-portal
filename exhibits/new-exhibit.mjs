@@ -35,7 +35,7 @@ async function main() {
   console.log('  目录:', path.join(ROOT, result.dir))
   console.log('')
   console.log('下一步：')
-  console.log('  1. 把 model.glb 放入', path.join(result.dir, 'assets'))
+  console.log('  1. 把 model.glb、panorama.jpg 放入', path.join(result.dir, 'assets'))
   console.log('  2. 刷新工作台 → 点「编辑」→ 调相机/热点 → 保存')
   console.log('')
   if (process.platform === 'win32') {

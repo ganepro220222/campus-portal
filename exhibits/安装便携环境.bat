@@ -6,3 +6,6 @@ if errorlevel 1 (
   exit /b 1
 )
 call "%~dp0_launch\install.bat" %*
+echo.
+pause
+exit /b %ERRORLEVEL%

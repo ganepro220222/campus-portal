@@ -1,4 +1,5 @@
 @echo off
+REM ASCII entry: stop local server (same as 停止服务.bat)
 cd /d "%~dp0"
 if errorlevel 1 (
   echo [ERROR] cannot cd to script folder

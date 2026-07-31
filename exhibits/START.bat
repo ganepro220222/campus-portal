@@ -1,4 +1,5 @@
 @echo off
+REM ASCII entry: open studio (same as 打开工作台.bat)
 cd /d "%~dp0"
 if errorlevel 1 goto cd_fail
 
@@ -21,22 +22,22 @@ echo If browser did not open, copy the URL above.
 goto end
 
 :cd_fail
-echo [ERROR] cannot cd to script folder
+echo [ERROR] cannot cd to script folder: %~dp0
 set "RC=1"
 goto end
 
 :err_runtime
-echo [ERROR] no runtime - run INSTALL.bat or 安装便携环境.bat first
+echo [ERROR] no Python/Node found. Run INSTALL.bat first.
 set "RC=2"
 goto end
 
 :err_start
-echo [ERROR] server did not start in 45s - run STOP.bat or 停止服务.bat first
+echo [ERROR] server did not start in 45s. Run STOP.bat and retry.
 set "RC=3"
 goto end
 
 :err_port
-echo [ERROR] port %PORT% is used by another exhibits copy - run STOP.bat first
+echo [ERROR] port %PORT% is used by another copy. Run STOP.bat first.
 set "RC=4"
 goto end
 

@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableDelayedExpansion
+setlocal DisableDelayedExpansion
 cd /d "%~dp0.."
 if errorlevel 1 goto cd_fail
 
@@ -16,27 +16,27 @@ goto no_runtime
 
 :run_py_portable
 "%RUNTIME%\python\python.exe" "%~dp0new-exhibit.py" %*
-set "RC=!ERRORLEVEL!"
+set "RC=%ERRORLEVEL%"
 goto done
 
 :run_py_system
 python "%~dp0new-exhibit.py" %*
-set "RC=!ERRORLEVEL!"
+set "RC=%ERRORLEVEL%"
 goto done
 
 :run_py_launcher
 py -3 "%~dp0new-exhibit.py" %*
-set "RC=!ERRORLEVEL!"
+set "RC=%ERRORLEVEL%"
 goto done
 
 :run_node_portable
 "%RUNTIME%\node\node.exe" "%~dp0..\new-exhibit.mjs" %*
-set "RC=!ERRORLEVEL!"
+set "RC=%ERRORLEVEL%"
 goto done
 
 :run_node_system
 node "%~dp0..\new-exhibit.mjs" %*
-set "RC=!ERRORLEVEL!"
+set "RC=%ERRORLEVEL%"
 goto done
 
 :cd_fail
@@ -51,4 +51,4 @@ goto done
 
 :done
 pause
-exit /b !RC!
+exit /b %RC%

@@ -1,46 +1,54 @@
 @echo off
-set "ROOT=%~dp0.."
-cd /d "%ROOT%"
-if errorlevel 1 (
-  echo [ERROR] cannot cd to exhibits root
-  pause
-  exit /b 1
-)
+setlocal EnableDelayedExpansion
+cd /d "%~dp0.."
+if errorlevel 1 goto cd_fail
 
 set "RUNTIME=%~dp0..\_runtime"
-if exist "%RUNTIME%\python\python.exe" (
-  "%RUNTIME%\python\python.exe" "%~dp0new-exhibit.py" %*
-  set "RC=%ERRORLEVEL%"
-  goto done
-)
+if exist "%RUNTIME%\python\python.exe" goto run_py_portable
 where python >nul 2>&1
-if not errorlevel 1 (
-  python "%~dp0new-exhibit.py" %*
-  set "RC=%ERRORLEVEL%"
-  goto done
-)
+if not errorlevel 1 goto run_py_system
 where py >nul 2>&1
-if not errorlevel 1 (
-  py -3 "%~dp0new-exhibit.py" %*
-  set "RC=%ERRORLEVEL%"
-  goto done
-)
-if exist "%RUNTIME%\node\node.exe" (
-  "%RUNTIME%\node\node.exe" "%ROOT%\new-exhibit.mjs" %*
-  set "RC=%ERRORLEVEL%"
-  goto done
-)
+if not errorlevel 1 goto run_py_launcher
+if exist "%RUNTIME%\node\node.exe" goto run_node_portable
 where node >nul 2>&1
-if not errorlevel 1 (
-  node "%ROOT%\new-exhibit.mjs" %*
-  set "RC=%ERRORLEVEL%"
-  goto done
-)
+if not errorlevel 1 goto run_node_system
+goto no_runtime
 
+:run_py_portable
+"%RUNTIME%\python\python.exe" "%~dp0new-exhibit.py" %*
+set "RC=!ERRORLEVEL!"
+goto done
+
+:run_py_system
+python "%~dp0new-exhibit.py" %*
+set "RC=!ERRORLEVEL!"
+goto done
+
+:run_py_launcher
+py -3 "%~dp0new-exhibit.py" %*
+set "RC=!ERRORLEVEL!"
+goto done
+
+:run_node_portable
+"%RUNTIME%\node\node.exe" "%~dp0..\new-exhibit.mjs" %*
+set "RC=!ERRORLEVEL!"
+goto done
+
+:run_node_system
+node "%~dp0..\new-exhibit.mjs" %*
+set "RC=!ERRORLEVEL!"
+goto done
+
+:cd_fail
+echo [ERROR] cannot cd to exhibits root
+set "RC=1"
+goto done
+
+:no_runtime
 echo [ERROR] need Python or Node - run 安装便携环境.bat first
-pause
-exit /b 2
+set "RC=2"
+goto done
 
 :done
 pause
-exit /b %RC%
+exit /b !RC!

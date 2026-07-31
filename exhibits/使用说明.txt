@@ -7,13 +7,17 @@
   停止服务.bat      结束本地服务
 
 【首次使用】
-  1. 双击「安装便携环境.bat」
+  1. 双击「安装便携环境.bat」（需联网，约 12MB）
   2. 双击「打开工作台.bat」
-  3. 把 model.glb 放进 craft-XXX/assets/ 后，在工作台点「编辑」→ 保存
+  3. 把 model.glb、panorama.jpg 放进 craft-XXX/assets/，刷新即可预览
 
-【新建展品】
-  打开工作台 → 点「＋ 新建展品」
-  或双击「新建展品.bat」，按提示填写
+【重要】解压路径不要含括号
+  Windows 会把 exhibits(2) 这类文件夹名搞乱脚本。
+  若解压后是 exhibits(2)，请改名为 exhibits2 再运行。
+
+【闪退排查】
+  双击「诊断.bat」查看缺什么；窗口仍一闪而过时：
+  Win+R → cmd → cd /d "解压路径" → 诊断.bat
 
 【注意】
   · 不要进入 _launch 文件夹里运行脚本

@@ -8,38 +8,45 @@ exit /b 1
 :find_runtime
 set "SRV_CMD="
 set "RUNTIME=%~dp0..\_runtime"
-if exist "%RUNTIME%\python\python.exe" (
-  set "SRV_CMD="%RUNTIME%\python\python.exe" serve.py %PORT%"
-  exit /b 0
-)
-if exist "%RUNTIME%\node\node.exe" (
-  set "SRV_CMD="%RUNTIME%\node\node.exe" _server\studio-server.mjs"
-  exit /b 0
-)
+if exist "%RUNTIME%\python\python.exe" goto rt_py_portable
+if exist "%RUNTIME%\node\node.exe" goto rt_node_portable
 where node >nul 2>&1
-if not errorlevel 1 (
-  set "SRV_CMD=node _server\studio-server.mjs"
-  exit /b 0
-)
-if exist "%ProgramFiles%\nodejs\node.exe" (
-  set "SRV_CMD="%ProgramFiles%\nodejs\node.exe" _server\studio-server.mjs"
-  exit /b 0
-)
-if exist "%LocalAppData%\Programs\node\node.exe" (
-  set "SRV_CMD="%LocalAppData%\Programs\node\node.exe" _server\studio-server.mjs"
-  exit /b 0
-)
+if not errorlevel 1 goto rt_node_system
+if exist "%ProgramFiles%\nodejs\node.exe" goto rt_node_pf
+if exist "%LocalAppData%\Programs\node\node.exe" goto rt_node_local
 where python >nul 2>&1
-if not errorlevel 1 (
-  set "SRV_CMD=python serve.py %PORT%"
-  exit /b 0
-)
+if not errorlevel 1 goto rt_py_system
 where py >nul 2>&1
-if not errorlevel 1 (
-  set "SRV_CMD=py -3 serve.py %PORT%"
-  exit /b 0
-)
+if not errorlevel 1 goto rt_py_launcher
 exit /b 1
+
+:rt_py_portable
+set "SRV_CMD="%RUNTIME%\python\python.exe" serve.py %PORT%"
+exit /b 0
+
+:rt_node_portable
+set "SRV_CMD="%RUNTIME%\node\node.exe" _server\studio-server.mjs"
+exit /b 0
+
+:rt_node_system
+set "SRV_CMD=node _server\studio-server.mjs"
+exit /b 0
+
+:rt_node_pf
+set "SRV_CMD="%ProgramFiles%\nodejs\node.exe" _server\studio-server.mjs"
+exit /b 0
+
+:rt_node_local
+set "SRV_CMD="%LocalAppData%\Programs\node\node.exe" _server\studio-server.mjs"
+exit /b 0
+
+:rt_py_system
+set "SRV_CMD=python serve.py %PORT%"
+exit /b 0
+
+:rt_py_launcher
+set "SRV_CMD=py -3 serve.py %PORT%"
+exit /b 0
 
 :port_listening
 set "P=%~2"

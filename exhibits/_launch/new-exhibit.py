@@ -35,7 +35,7 @@ def main() -> int:
     print('  目录:', ROOT / result['dir'])
     print('')
     print('下一步：')
-    print('  1. 把 model.glb 放入', result['dir'] + '/assets')
+    print('  1. 把 model.glb、panorama.jpg 放入', result['dir'] + '/assets')
     print('  2. 刷新工作台 → 点「编辑」→ 调相机/热点 → 保存')
     print('')
     if os.name == 'nt':

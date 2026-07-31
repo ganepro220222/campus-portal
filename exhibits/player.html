@@ -1442,7 +1442,7 @@ async function doSave(){
   if (idWarn) warns.unshift(idWarn)
   if(errs.length){ flash('⚠ 无法保存：'+errs.join('；')); return }
   if(warns.length && !confirm('保存前提醒：\n· '+warns.join('\n· ')+'\n\n仍要保存吗？')) return
-  if (cfg.id && EX && cfg.id !== EX && !confirm(`配置 id「${cfg.id}」与当前展品目录「${EX}」不一致，仍要保存吗？`)) return
+  if (EX) cfg.id = EX
   const SAVE_API = window.__SAVE_API__ || (cfg.ui && cfg.ui.saveEndpoint) || ''
   if(!SAVE_API){ downloadJSON(); clearHotspotIdDiagnostics(); return }
   const btn=$('ed-save'), old=btn.textContent; btn.disabled=true; btn.textContent='保存中…'

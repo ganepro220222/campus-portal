@@ -20,6 +20,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { computeRootHash, getIdentityPayload } from './studio-identity.mjs'
+import { createExhibit } from '../exhibit-create.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
 const ROOT_HASH = computeRootHash(ROOT)
@@ -120,6 +121,18 @@ http.createServer((req, res) => {
   if (!authed(req, res)) return
   if (u.startsWith('/studio-api/list')) {
     try { return json(res, 200, { exhibits: listExhibits() }) } catch (e) { return json(res, 500, { error: String(e.message) }) }
+  }
+  if (u.startsWith('/studio-api/create') && req.method === 'POST') {
+    let body = ''
+    req.on('data', c => { body += c; if (body.length > 1e6) req.destroy() })
+    req.on('end', () => {
+      try {
+        const { dir, title, subtitle } = JSON.parse(body)
+        const created = createExhibit(ROOT, { dir, title, subtitle })
+        json(res, 200, { ok: true, ...created })
+      } catch (e) { json(res, 400, { ok: false, error: String(e.message) }) }
+    })
+    return
   }
   if (u.startsWith('/studio-api/save') && req.method === 'POST') {
     let body = ''

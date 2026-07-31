@@ -124,6 +124,18 @@ function studio_root_hash(string $root): string {
   return substr(hash('sha256', $norm), 0, 32);
 }
 
+function studio_is_remote_panorama(string $p): bool {
+  return (bool)preg_match('#^(https?:|data:|blob:|//|/)#', trim($p));
+}
+
+function studio_has_panorama_file(string $root, string $exhibit, ?string $panorama): bool {
+  $p = trim((string)$panorama);
+  if ($p === '') return false;
+  if (studio_is_remote_panorama($p)) return true;
+  if ($p[0] === '/' || preg_match('#^[A-Za-z]:[\\\\/]#', $p)) return is_file($p);
+  return is_file("$root/$exhibit/$p");
+}
+
 if ($PASS !== '' && !($isIdentity && $isLocal)) {
   if (!isset($_SERVER['PHP_AUTH_USER']) || $_SERVER['PHP_AUTH_USER'] !== $USER || ($_SERVER['PHP_AUTH_PW'] ?? '') !== $PASS) {
     header('WWW-Authenticate: Basic realm="3D Studio"'); http_response_code(401); echo '需要登录'; exit;
@@ -148,7 +160,7 @@ if ($isList) {
     $out[] = [
       'dir' => $d, 'title' => $zh['title'] ?? $d, 'subtitle' => $zh['subtitle'] ?? '',
       'hotspots' => count($c['hotspots'] ?? []), 'audio' => count($c['audio'] ?? []),
-      'hasPano' => !empty($c['assets']['panorama']),
+      'hasPano' => studio_has_panorama_file($ROOT, $d, $c['assets']['panorama'] ?? ''),
       'poster' => !empty($c['assets']['poster']) ? "$d/" . $c['assets']['poster'] : '',
       'mtime' => filemtime($cp) * 1000,
     ];

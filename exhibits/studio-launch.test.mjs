@@ -257,6 +257,14 @@ test('ensure-server.bat avoids trailing-backslash cd paths', () => {
   assert.match(bat, /\/D "%%~fI"/, 'must use start /D for exhibits root')
 })
 
+test('open launcher only opens browser on ensure-server RC 0', () => {
+  for (const rel of ['打开工作台.bat', '_launch/open.bat']) {
+    const bat = fs.readFileSync(path.join(ROOT, rel), 'utf8')
+    assert.match(bat, /if not "%RC%"=="0"/i, `${rel} must gate browser on RC==0`)
+    assert.match(bat, /err_unknown|server check failed|启动检查失败/i, `${rel} must handle unknown RC`)
+  }
+})
+
 test('install.bat runs under cmd when cwd path contains parentheses', () => {
   if (process.platform !== 'win32') return 'skip'
   const tmp = path.join(os.tmpdir(), `exhibits-paren-${Date.now()}(2)`)

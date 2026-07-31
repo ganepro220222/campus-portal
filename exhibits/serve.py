@@ -182,7 +182,10 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if p.startswith('/studio-api/list'):
             try:
-                return self._json(200, {'exhibits': list_exhibits()})
+                return self._json(200, {
+                    'exhibits': list_exhibits(),
+                    'capabilities': {'save': True, 'create': True, 'batch': True},
+                })
             except Exception as e:
                 return self._json(500, {'error': str(e)})
         rel = p.lstrip('/') or 'studio.html'

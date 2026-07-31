@@ -149,4 +149,26 @@ test.describe('studio.html', () => {
     expect(log).toMatch(/✓ craft-002/)
     await expect(page.locator('#bapply')).toBeEnabled()
   })
+
+  test('create exhibit modal creates blank craft from template', async ({ page }) => {
+    const testDir = 'craft-987'
+    const testPath = path.join(ROOT, testDir)
+    if (fs.existsSync(testPath)) fs.rmSync(testPath, { recursive: true, force: true })
+    try {
+      await waitForStudioReady(page)
+      await page.locator('#newToggle').click()
+      await expect(page.locator('#newModal.open')).toHaveCount(1)
+      await page.fill('#newDir', '987')
+      await page.fill('#newTitle', 'E2E 新建测试')
+      await page.locator('#newSubmit').click()
+      await page.waitForSelector(`.card[data-dir="${testDir}"]`, { timeout: 20_000 })
+      const cfg = loadCfg(testDir)
+      expect(cfg.hotspots).toEqual([])
+      expect(cfg.i18n.zh.title).toBe('E2E 新建测试')
+      const idx = fs.readFileSync(path.join(testPath, 'index.html'), 'utf8')
+      expect(idx).toContain('ex=craft-987')
+    } finally {
+      if (fs.existsSync(testPath)) fs.rmSync(testPath, { recursive: true, force: true })
+    }
+  })
 })

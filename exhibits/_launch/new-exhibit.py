@@ -34,7 +34,7 @@ def main() -> int:
     print('  2. 刷新工作台 → 点「编辑」→ 调相机/热点 → 保存')
     print('')
     if os.name == 'nt':
-        subprocess.Popen(['explorer', result['assetsDir']])
+        subprocess.Popen(['explorer', str(ROOT / result['assetsDir'])])
     return 0
 
 

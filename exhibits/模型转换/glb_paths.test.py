@@ -10,10 +10,12 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from glb_paths import (  # noqa: E402
+    CROSS_ROOT_BATCH,
     MAX_OUTPUT_STEM_BYTES,
     cap_output_stem,
     cross_drive_relpath,
     final_output_name_bytes,
+    naming_root_from_saved_roots,
     safe_output_stem,
     safe_relpath,
 )
@@ -113,6 +115,51 @@ def _():
     cap_a = cap_output_stem(stem_a, rel_a)
     cap_b = cap_output_stem(stem_b, rel_b)
     ok(cap_a != cap_b)
+
+
+@test("naming_root_from_saved_roots 跨 Windows 盘符返回 CROSS_ROOT_BATCH")
+def _():
+    roots = [r"D:\proj", r"E:\proj"]
+    eq(naming_root_from_saved_roots(roots), CROSS_ROOT_BATCH)
+
+
+@test("跨根批次来源路径与添加顺序无关")
+def _():
+    order_de = [r"D:\proj\a.glb", r"E:\proj\b.glb"]
+    order_ed = list(reversed(order_de))
+
+    def by_path(paths):
+        return {p: safe_output_stem(p, CROSS_ROOT_BATCH) for p in paths}
+
+    eq(by_path(order_de), by_path(order_ed))
+    eq(by_path(order_de)[r"D:\proj\a.glb"], "D__proj__a")
+    eq(by_path(order_de)[r"E:\proj\b.glb"], "E__proj__b")
+
+    def rels_by_path(paths):
+        return {p: safe_relpath(p, CROSS_ROOT_BATCH) for p in paths}
+
+    eq(rels_by_path(order_de), rels_by_path(order_ed))
+
+
+@test("跨 UNC share 批次来源路径与顺序无关")
+def _():
+    order_ab = [r"\\serverA\share\a.glb", r"\\serverB\archive\b.glb"]
+    order_ba = list(reversed(order_ab))
+    eq(naming_root_from_saved_roots([r"\\serverA\share", r"\\serverB\archive"]), CROSS_ROOT_BATCH)
+    stems_a = {p: safe_output_stem(p, CROSS_ROOT_BATCH) for p in order_ab}
+    stems_b = {p: safe_output_stem(p, CROSS_ROOT_BATCH) for p in order_ba}
+    eq(stems_a, stems_b)
+    ok(stems_a[r"\\serverA\share\a.glb"].startswith("serverA__"))
+    ok(stems_a[r"\\serverB\archive\b.glb"].startswith("serverB__"))
+
+
+@test("同盘不同子目录仍使用公共上层 root")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        root_a = os.path.join(tmp, "A")
+        root_b = os.path.join(tmp, "B")
+        naming = naming_root_from_saved_roots([root_a, root_b])
+        eq(naming, os.path.abspath(tmp))
 
 
 @test("最终 GLB 文件名在 Windows 单组件限制内")

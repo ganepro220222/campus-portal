@@ -17,6 +17,7 @@ for _name in ("tkinter", "tkinter.ttk", "tkinter.filedialog", "tkinter.messagebo
     sys.modules[_name] = MagicMock()
 
 import batch_glb  # noqa: E402
+import glb_paths  # noqa: E402
 import glb_utils  # noqa: E402
 import obj2glb_gui  # noqa: E402
 
@@ -425,6 +426,7 @@ def _():
         {"path": r"D:\proj\a.glb", "root": r"D:\proj"},
         {"path": r"E:\proj\b.glb", "root": r"E:\proj"},
     ]
+    eq(obj2glb_gui.naming_root_for_items(items), glb_paths.CROSS_ROOT_BATCH)
     with tempfile.TemporaryDirectory() as out:
         gui = _make_gui()
         captured: list[tuple[str, str, dict]] = []
@@ -435,20 +437,35 @@ def _():
             captured.append((src, root, r))
             return r
 
-        with patch("glb_paths.os.path.relpath", side_effect=ValueError("cross")):
-            with patch.object(batch_glb, "process_one", side_effect=_fake):
-                gui._run_worker(items, out, dict(
-                    max_texture=2048, quality=85, texture_format="auto",
-                    reencode=True, overwrite=False, transform=False,
-                ))
+        with patch.object(batch_glb, "process_one", side_effect=_fake):
+            gui._run_worker(items, out, dict(
+                max_texture=2048, quality=85, texture_format="auto",
+                reencode=True, overwrite=False, transform=False,
+            ))
         eq(len(captured), 2)
-        ok(captured[0][1] == captured[1][1], captured)
+        eq(captured[0][1], glb_paths.CROSS_ROOT_BATCH)
+        eq(captured[1][1], glb_paths.CROSS_ROOT_BATCH)
         rels = [c[2]["来源相对路径"] for c in captured]
-        ok(rels[0] != rels[1], rels)
-        ok(rels[0].startswith("D__"), rels[0])
-        ok(rels[1].startswith("E__"), rels[1])
+        eq(rels, ["D__proj__a.glb", "E__proj__b.glb"])
         with open(os.path.join(out, "manifest.csv"), encoding="utf-8-sig") as f:
             eq(len(list(csv.DictReader(f))), 2)
+
+
+@test("跨盘批次命名与添加顺序无关")
+def _():
+    items_de = [
+        {"path": r"D:\proj\a.glb", "root": r"D:\proj"},
+        {"path": r"E:\proj\b.glb", "root": r"E:\proj"},
+    ]
+    items_ed = list(reversed(items_de))
+
+    def stems_by_path(items):
+        root = obj2glb_gui.naming_root_for_items(items)
+        return {i["path"]: glb_utils.safe_output_stem(i["path"], root) for i in items}
+
+    eq(stems_by_path(items_de), stems_by_path(items_ed))
+    eq(stems_by_path(items_de)[r"D:\proj\a.glb"], "D__proj__a")
+    eq(stems_by_path(items_de)[r"E:\proj\b.glb"], "E__proj__b")
 
 
 print("obj2glb_gui tests")

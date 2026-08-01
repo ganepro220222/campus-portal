@@ -13,8 +13,11 @@ from input_scan import collect_input_files, output_exclusion_for_input
 
 from glb_paths import (
     MAX_OUTPUT_STEM_BYTES,
+    CROSS_ROOT_BATCH,
     cap_output_stem,
     cross_drive_relpath,
+    is_cross_root_batch,
+    naming_root_from_saved_roots,
     safe_output_stem,
     safe_relpath,
 )

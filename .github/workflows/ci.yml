@@ -121,6 +121,7 @@ jobs:
           python input_scan.test.py
           python convert_cli.test.py
           python launch_gui.test.py
+          python obj2glb_gui.test.py
 
   exhibits:
     name: Exhibits (unit + Playwright)

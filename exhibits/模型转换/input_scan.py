@@ -30,6 +30,26 @@ def output_exclusion_for_input(input_dir: str, output_dir: str) -> set[str]:
     return set()
 
 
+def path_is_under(child: str, parent: str) -> bool:
+    """child 是否位于 parent 目录下（含 parent 自身）。"""
+    child_key = _canonical_path(child)
+    parent_key = _canonical_path(parent)
+    if child_key == parent_key:
+        return True
+    try:
+        return os.path.commonpath([child_key, parent_key]) == parent_key
+    except ValueError:
+        return False
+
+
+def input_under_excluded_output(src: str, input_root: str, output_dir: str) -> bool:
+    """源文件是否位于相对 input_root 应排除的输出子目录内。"""
+    for ex in output_exclusion_for_input(input_root, output_dir):
+        if path_is_under(src, ex):
+            return True
+    return False
+
+
 def collect_input_files(
     input_dir: str,
     recursive: bool = True,

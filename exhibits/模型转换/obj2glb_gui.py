@@ -17,6 +17,7 @@ import csv
 import json
 import queue
 import threading
+from typing import TypedDict
 
 # 让打包/直接运行都能找到同目录的引擎模块
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,6 +26,8 @@ if BASE_DIR not in sys.path:
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+
+from input_scan import input_under_excluded_output, output_exclusion_for_input
 
 # 依赖缺失时给出友好提示（而不是崩溃）
 _IMPORT_ERROR = None
@@ -39,11 +42,53 @@ TEX_SIZES = [("2048（推荐）", 2048), ("1024", 1024), ("4096", 4096), ("原�
 TEX_FORMATS = [("自动", "auto"), ("JPEG", "jpeg"), ("PNG", "png")]
 
 
+class InputItem(TypedDict):
+    path: str
+    root: str
+
+
+def common_input_root(paths: list[str]) -> str:
+    """多选文件时推断与 CLI 一致的输入根目录。"""
+    abs_paths = [os.path.abspath(p) for p in paths]
+    if not abs_paths:
+        raise ValueError("empty paths")
+    if len(abs_paths) == 1:
+        p = abs_paths[0]
+        return os.path.dirname(p) if os.path.isfile(p) else p
+    try:
+        common = os.path.commonpath(abs_paths)
+    except ValueError:
+        return os.path.dirname(abs_paths[0])
+    if os.path.isfile(common):
+        return os.path.dirname(common)
+    return common
+
+
+def default_output_dir(input_root: str) -> str:
+    return os.path.join(os.path.abspath(input_root), "output_glb")
+
+
+def scan_folder_inputs(folder: str, output_dir: str | None) -> list[str]:
+    """添加文件夹时扫描可转换文件，排除嵌套输出目录。"""
+    root = os.path.abspath(folder)
+    out = os.path.abspath(output_dir) if output_dir else default_output_dir(root)
+    exclude = output_exclusion_for_input(root, out)
+    return glb_utils.collect_input_files(root, recursive=True, exclude_dirs=exclude)
+
+
+def inputs_for_run(items: list[InputItem], out_dir: str) -> list[InputItem]:
+    """启动前再次过滤落在排除输出目录内的项。"""
+    return [
+        item for item in items
+        if not input_under_excluded_output(item["path"], item["root"], out_dir)
+    ]
+
+
 class ConverterGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.q: queue.Queue = queue.Queue()
-        self.inputs: list[str] = []      # 待处理文件绝对路径
+        self.inputs: list[InputItem] = []
         self.out_dir: str | None = None
         self.worker: threading.Thread | None = None
         self._build_ui()
@@ -137,31 +182,40 @@ class ConverterGUI:
         paths = filedialog.askopenfilenames(
             title="选择模型文件",
             filetypes=[("可转换模型", "*.obj *.glb *.zip"), ("所有文件", "*.*")])
-        self._append([p for p in paths if p.lower().endswith(SUPPORTED)])
+        picked = [p for p in paths if p.lower().endswith(SUPPORTED)]
+        if not picked:
+            return
+        self._append(picked, common_input_root(picked))
 
     def _add_folder(self):
         d = filedialog.askdirectory(title="选择包含模型的文件夹（含子目录）")
         if not d:
             return
         try:
-            found = glb_utils.collect_input_files(d, recursive=True)
+            found = scan_folder_inputs(d, self.out_dir)
         except Exception as e:  # noqa: BLE001
             messagebox.showerror("扫描失败", str(e)); return
         if not found:
             messagebox.showinfo("提示", "该文件夹内没有 .obj / .glb / .zip 文件。"); return
-        self._append(found)
+        root = os.path.abspath(d)
+        self._append(found, root)
         if self.out_dir is None:
-            self._set_out(os.path.join(d, "output_glb"))
+            self._set_out(default_output_dir(root))
 
-    def _append(self, paths):
+    def _append(self, paths: list[str], root: str):
         added = 0
+        abs_root = os.path.abspath(root)
+        known = {item["path"] for item in self.inputs}
         for p in paths:
             ap = os.path.abspath(p)
-            if ap not in self.inputs:
-                self.inputs.append(ap); self.lst.insert("end", ap); added += 1
+            if ap not in known:
+                self.inputs.append({"path": ap, "root": abs_root})
+                self.lst.insert("end", ap)
+                known.add(ap)
+                added += 1
         self.lbl_count.config(text=f"已选 {len(self.inputs)} 个")
         if added and self.out_dir is None and self.inputs:
-            self._set_out(os.path.join(os.path.dirname(self.inputs[0]), "output_glb"))
+            self._set_out(default_output_dir(self.inputs[0]["root"]))
 
     def _clear_inputs(self):
         self.inputs.clear(); self.lst.delete(0, "end"); self.lbl_count.config(text="已选 0 个")
@@ -200,10 +254,10 @@ class ConverterGUI:
         if not self.inputs:
             messagebox.showinfo("提示", "请先添加要转换的文件或文件夹。"); return
         if self.out_dir is None:
-            self._set_out(os.path.join(os.path.dirname(self.inputs[0]), "output_glb"))
-        if os.path.abspath(self.out_dir) in {os.path.dirname(p) for p in self.inputs} and any(
-                p.lower().endswith(".glb") for p in self.inputs):
-            pass  # 允许，但引擎自身也会避免自处理
+            self._set_out(default_output_dir(self.inputs[0]["root"]))
+        run_items = inputs_for_run(self.inputs, self.out_dir)
+        if not run_items:
+            messagebox.showinfo("提示", "排除输出目录后没有可转换的文件。"); return
         self.btn_run.config(state="disabled"); self.btn_open.config(state="disabled")
         self._clear_log()
         opts = dict(
@@ -214,21 +268,25 @@ class ConverterGUI:
             overwrite=self.var_overwrite.get(),
             transform=self.var_transform.get(),
         )
-        self.prog.config(value=0, maximum=len(self.inputs))
-        self.worker = threading.Thread(target=self._run_worker, args=(list(self.inputs), self.out_dir, opts), daemon=True)
+        self.prog.config(value=0, maximum=len(run_items))
+        self.worker = threading.Thread(
+            target=self._run_worker, args=(list(run_items), self.out_dir, opts), daemon=True,
+        )
         self.worker.start()
 
-    def _run_worker(self, files, out_dir, opts):
+    def _run_worker(self, items: list[InputItem], out_dir: str, opts: dict):
         try:
             os.makedirs(out_dir, exist_ok=True)
             results = []
             ok = fail = 0
-            self.q.put(("log", (f"共 {len(files)} 个文件，输出到：{out_dir}\n", "hd")))
-            for i, src in enumerate(files, 1):
+            self.q.put(("log", (f"共 {len(items)} 个文件，输出到：{out_dir}\n", "hd")))
+            for i, item in enumerate(items, 1):
+                src = item["path"]
+                root = item["root"]
                 name = os.path.basename(src)
-                self.q.put(("log", (f"[{i}/{len(files)}] {name} …\n", None)))
+                self.q.put(("log", (f"[{i}/{len(items)}] {name} …\n", None)))
                 r = batch_glb.process_one(
-                    src, os.path.dirname(src), out_dir,
+                    src, root, out_dir,
                     opts["max_texture"], opts["quality"], opts["texture_format"],
                     opts["reencode"], False, opts["overwrite"],
                 )
@@ -242,16 +300,17 @@ class ConverterGUI:
                     fail += 1
                     self.q.put(("log", (f"    ✗ {r['状态']}：{r['备注']}\n", "er")))
                 self.q.put(("prog", i))
-            # 汇总清单
             if results:
                 man = os.path.join(out_dir, "manifest.csv")
                 with open(man, "w", newline="", encoding="utf-8-sig") as f:
-                    w = csv.DictWriter(f, fieldnames=list(results[0].keys())); w.writeheader(); w.writerows(results)
+                    w = csv.DictWriter(f, fieldnames=batch_glb.RESULT_FIELDS)
+                    w.writeheader()
+                    w.writerows(results)
                 self.q.put(("log", (f"\n清单：{man}\n", "hd")))
             self.q.put(("log", (f"完成：成功 {ok} 个，失败 {fail} 个。\n", "ok" if not fail else "hd")))
             self.q.put(("done", None))
         except Exception as e:  # noqa: BLE001
-            self.q.put(("log", (f"\n发生错误：{e}\n", "er")))
+            self.q.put(("log", (f"\n发生错误：{type(e).__name__}: {e}\n", "er")))
             self.q.put(("done", None))
 
     def _write_transform(self, out_dir, r):

@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from input_scan import (  # noqa: E402
     _canonical_path,
     collect_input_files,
+    input_under_excluded_output,
     output_exclusion_for_input,
 )
 
@@ -123,6 +124,18 @@ def _():
         skip("非 Windows")
     ex = output_exclusion_for_input("C:\\Models", "D:\\Models\\输出GLB")
     eq(ex, set())
+
+
+@test("input_under_excluded_output 识别输出目录内文件")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "素材")
+        out = os.path.join(src, "输出GLB")
+        os.makedirs(out)
+        old = os.path.join(out, "old.glb")
+        open(old, "wb").write(b"x")
+        ok(input_under_excluded_output(old, src, out))
+        ok(not input_under_excluded_output(os.path.join(src, "a.obj"), src, out))
 
 
 print("input_scan tests")

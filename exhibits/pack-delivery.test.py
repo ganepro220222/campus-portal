@@ -50,6 +50,12 @@ NESTED_BUILD_PATHS = (
     '模型转换/__pycache__/batch_glb.cpython-311.pyc',
 )
 
+KEEP_CRAFT_ASSET_PATHS = (
+    'craft-001/assets/build/model.glb',
+    'craft-001/assets/dist/model.glb',
+    'craft-002/build/panorama.jpg',
+)
+
 
 def test_should_include_excludes_nested_build_artifacts() -> None:
     mod = _load_packer()
@@ -60,6 +66,10 @@ def test_should_include_excludes_nested_build_artifacts() -> None:
     ok_path = mod.ROOT / '模型转换' / 'convert_cli.py'
     if not mod.should_include(ok_path):
         raise RuntimeError('should include 模型转换/convert_cli.py')
+    for rel in KEEP_CRAFT_ASSET_PATHS:
+        path = mod.ROOT / Path(rel)
+        if not mod.should_include(path):
+            raise RuntimeError(f'should keep exhibit asset path: {rel}')
 
 
 def test_pack_delivery_zip() -> None:

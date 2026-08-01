@@ -34,6 +34,7 @@ from input_scan import (
     output_exclusion_for_input,
     validate_output_dir,
 )
+from glb_paths import naming_root_from_saved_roots
 
 # 依赖缺失时给出友好提示（而不是崩溃）
 _IMPORT_ERROR = None
@@ -94,16 +95,10 @@ def naming_root_for_items(items: list[InputItem]) -> str:
     """整批输入的统一命名根；优先尊重添加时保存的 InputItem.root。"""
     if not items:
         raise ValueError("empty items")
-    roots = [os.path.abspath(item["root"]) for item in items]
-    if len({_canonical_path(r) for r in roots}) == 1:
-        return roots[0]
-    try:
-        common = os.path.commonpath(roots)
-        if os.path.isfile(common):
-            return os.path.dirname(common)
-        return common
-    except ValueError:
-        return common_input_root([item["path"] for item in items])
+    return naming_root_from_saved_roots(
+        [item["root"] for item in items],
+        canonical_key=_canonical_path,
+    )
 
 
 def naming_root_for_item(item: InputItem, batch_root: str) -> str:

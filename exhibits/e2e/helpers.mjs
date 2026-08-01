@@ -27,12 +27,14 @@ export const HIDDEN_OVERLAP_GEOM = {
 }
 
 /** 注入 __CFG__（每次导航前 addInitScript，reload 前再调一次即可换配置） */
-export async function injectCfg(page, { panel = {}, camera = {}, hotspots, presets } = {}) {
+export async function injectCfg(page, { panel = {}, camera = {}, hotspots, presets, lights, environment } = {}) {
   const cfg = baseCfg()
   cfg.panel = { ...cfg.panel, ...panel }
   cfg.camera = { ...cfg.camera, autoRotate: false, ...camera }
   if (hotspots) cfg.hotspots = hotspots
   if (presets) cfg.presets = presets
+  if (lights) cfg.lights = { ...cfg.lights, ...lights }
+  if (environment) cfg.environment = { ...cfg.environment, ...environment }
   await page.addInitScript(data => { window.__CFG__ = data }, cfg)
   return cfg
 }

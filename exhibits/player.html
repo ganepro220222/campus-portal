@@ -292,6 +292,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { applyExposureToCfg, configFetchUrl, configExportFilename } from './player-persist.mjs'
+import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, defaultPosition, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness } from './light-rig.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -388,19 +389,31 @@ function applyMaterial() {
     })
   })
 }
-/* 四光源灯组（叠加在 IBL 之上，可编辑） */
-let lightRefs = {}
+/* 四光源灯组（叠加在 IBL 之上，可编辑）
+   方向光挂在 lightRig 上：勾选「灯光跟随相机」时整组绕 Y 轴跟着视角转，
+   否则 rig 不旋转，与历史行为完全一致。 */
+let lightRefs = {}, lightRig = null
 function buildLights() {
-  Object.values(lightRefs).forEach(l => scene.remove(l)); lightRefs = {}
+  Object.values(lightRefs).forEach(l => l.parent && l.parent.remove(l)); lightRefs = {}
+  if (lightRig) scene.remove(lightRig)
+  lightRig = new THREE.Group(); scene.add(lightRig)
   const L = cfg.lights || {}
-  const amb = new THREE.AmbientLight(new THREE.Color(L.ambient?.color||'#ffffff'), num(L.ambient?.intensity,0.25))
+  const amb = new THREE.AmbientLight(new THREE.Color(L.ambient?.color||'#ffffff'), effectiveIntensity('ambient', L.ambient))
   scene.add(amb); lightRefs.ambient = amb
-  ;['key','fill','rim'].forEach(k => {
+  LIGHT_KEYS.forEach(k => {
     const c = L[k] || {}
-    const d = new THREE.DirectionalLight(new THREE.Color(c.color||'#ffffff'), num(c.intensity, k==='key'?1.1:0.4))
-    const p = c.position || [3,5,4]; d.position.set(p[0],p[1],p[2])
-    scene.add(d); lightRefs[k] = d
+    const d = new THREE.DirectionalLight(new THREE.Color(c.color||LIGHT_DEFAULTS[k].color), effectiveIntensity(k, c))
+    const p = c.position || defaultPosition(k); d.position.set(p[0],p[1],p[2])
+    lightRig.add(d); lightRefs[k] = d
   })
+  updateLightRig()
+}
+/* 跟随相机：把灯组绕 Y 轴转到当前视角方位，任何角度都有主光 */
+function updateLightRig() {
+  if (!lightRig) return
+  const on = !!(cfg.lights && cfg.lights.followCamera) && camera && controls
+  const y = on ? Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z) : 0
+  if (lightRig.rotation.y !== y) lightRig.rotation.y = y   // 逐帧调用，值没变就别脏化矩阵
 }
 /* 统计 */
 function modelStats() {
@@ -435,6 +448,12 @@ function placeCamera() {
 }
 
 /* ── 环境 / IBL ── */
+/* 场景级环境光照：强度乘在所有材质的 IBL 上；旋转全景可整体改变高光落点 */
+function applyEnvironment() {
+  if (!scene) return
+  scene.environmentIntensity = num(cfg.environment?.intensity, 1)
+  scene.environmentRotation.y = num(cfg.environment?.rotationDeg, 0) * Math.PI / 180
+}
 function roomIBL() {
   const pmrem = new THREE.PMREMGenerator(renderer)
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
@@ -938,9 +957,10 @@ function applyPreset(p) {
   renderer.toneMappingExposure = num(p.exposure, renderer.toneMappingExposure)
   if (typeof p.envMapIntensity === 'number') { cfg.materials = cfg.materials||{}; cfg.materials.global = Object.assign(cfg.materials.global||{}, {envMapIntensity:p.envMapIntensity}); applyMaterial() }
   if (p.background) scene.background = cfg.environment?.visibleBackground ? scene.background : new THREE.Color(p.background)
-  if (p.lights) {   // 预设含四光源方案 → 应用灯组
+  if (p.lights) {   // 预设含四光源方案 → 应用灯组（含角度 / 启用 / 跟随相机）
     cfg.lights = cfg.lights || {}
-    ;['ambient','key','fill','rim'].forEach(k => { if (p.lights[k]) cfg.lights[k] = Object.assign(cfg.lights[k]||{}, p.lights[k]) })
+    ;['ambient', ...LIGHT_KEYS].forEach(k => { if (p.lights[k]) cfg.lights[k] = Object.assign(cfg.lights[k]||{}, p.lights[k]) })
+    if (typeof p.lights.followCamera === 'boolean') cfg.lights.followCamera = p.lights.followCamera
     buildLights()
   }
   document.querySelectorAll('#presets .preset').forEach(b=>b.classList.toggle('on', b.dataset.id===p.id))
@@ -948,7 +968,7 @@ function applyPreset(p) {
 
 function onResize() { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight) }
 let fps=0, _ft=performance.now(), _fc=0
-function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
+function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateLightRig(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
   _fc++; const n=performance.now(); if(n-_ft>=500){ fps=Math.round(_fc*1000/(n-_ft)); _fc=0; _ft=n } }
 /* 统一构造 GLTFLoader：挂载 Draco（几何压缩）+ KTX2/Basis（贴图压缩）解码器，自托管于 vendor/ */
 let _draco = null, _ktx2 = null
@@ -981,6 +1001,7 @@ function start() {
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false; controls.rotateSpeed = 0.9
   controls.addEventListener('start', ()=>{ controls.autoRotate=false; syncBtns() })
   roomIBL() // 先给内置环境，秒出反射
+  applyEnvironment() // 环境光照强度 / 全景旋转
   buildLights() // 四光源灯组（叠加在 IBL 上，可编辑）
 
   const modelUrl = asset(cfg.assets.model)
@@ -1084,12 +1105,40 @@ function ensureCfg() {
   ensureHotspotIds(cfg.hotspots)
 }
 
+/* 重绘编辑器会丢掉 <details> 的展开状态与滚动位置：先记下、绘完还原 */
+function captureEditorUIState(){
+  const box = $('editor'); if (!box) return null
+  const secs = box.querySelectorAll('details.ed-sec')
+  if (!secs.length) return null   // 首次渲染：让 HTML 里的默认展开生效
+  const open = []
+  secs.forEach(d => { if (d.open) open.push(d.querySelector('summary')?.textContent || '') })
+  return { open, scrollTop: box.scrollTop }
+}
+function restoreEditorUIState(st){
+  const box = $('editor'); if (!box || !st) return
+  box.querySelectorAll('details.ed-sec').forEach(d => {
+    d.open = st.open.includes(d.querySelector('summary')?.textContent || '') })
+  box.scrollTop = st.scrollTop
+}
+
 function renderEditor() {
   ensureCfg()
+  const uiState = captureEditorUIState()
   const g = cfg.materials.global, m = cfg.model, c = cfg.camera, L = cfg.lights
   const rng = (k,label,min,max,step,val)=>`<div class="ed-row"><span class="ed-label">${label}</span><span class="ed-slider"><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"><input type="number" class="ed-num" data-num="${k}" min="${min}" max="${max}" step="${step}" value="${val}"></span></div>`
   const col = (k,label,val)=>`<div class="ed-row"><span class="ed-label">${label}</span><input type="color" data-k="${k}" value="${val}"></div>`
   const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')
+  // 单盏灯：标题行（启用 + 颜色）→ 强度 →（方向光再加 方位角 / 仰角）
+  const lightBlock = (k, min, max, step) => {
+    const lc = L[k] || {}, d = LIGHT_DEFAULTS[k]
+    const head = `<div class="ed-row"><b>${LIGHT_LABELS[k]}</b><span class="ed-row-actions"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" data-lon="${k}" ${lc.enabled===false?'':'checked'}> 启用</label> <input type="color" data-k="l.${k}.c" value="${esc(lc.color||d.color)}"></span></div>`
+    const body = [rng(`l.${k}.i`,'强度',min,max,step, num(lc.intensity, d.intensity))]
+    if (k !== 'ambient') {
+      const a = positionToAngles(lc.position || d.position)
+      body.push(rng(`l.${k}.az`,'方位角°',-180,180,1, a.azimuth), rng(`l.${k}.el`,'仰角°',-90,90,1, a.elevation))
+    }
+    return `<div class="ed-hs-item">${head}${body.join('')}</div>`
+  }
   const names = model ? materialNames() : []
   const auOpt = (sel)=>`<option value="">无</option>`+(cfg.audio||[]).map(a=>`<option value="${a.id}" ${sel===a.id?'selected':''}>${(a.label||a.id).replace(/</g,'&lt;')}</option>`).join('')
   const hs = cfg.hotspots.map((h,i)=>{
@@ -1172,13 +1221,21 @@ function renderEditor() {
   </details>
 
   <details class="ed-sec"><summary>灯光（四光源）</summary>
-    ${rng('l.amb','环境光',0,1,0.01, num(L.ambient?.intensity,0.25))}${col('l.ambc','',L.ambient?.color||'#ffffff')}
-    ${rng('l.key','主光',0,3,0.05, num(L.key?.intensity,1.1))}${col('l.keyc','',L.key?.color||'#fff0e0')}
-    ${rng('l.fill','补光',0,2,0.05, num(L.fill?.intensity,0.35))}${col('l.fillc','',L.fill?.color||'#a9c4ff')}
-    ${rng('l.rim','轮廓光',0,2,0.05, num(L.rim?.intensity,0.5))}${col('l.rimc','',L.rim?.color||'#ffffff')}
+    ${lightBlock('ambient', 0, 2, 0.01)}
+    ${lightBlock('key', 0, 3, 0.05)}
+    ${lightBlock('fill', 0, 2, 0.05)}
+    ${lightBlock('rim', 0, 2, 0.05)}
+    <label class="ed-row"><span class="ed-label">灯光跟随相机</span><input type="checkbox" id="ed-light-follow" ${L.followCamera?'checked':''}></label>
+    <div class="ed-note">勾选后灯组绕模型跟着视角转，转到任何角度都有主光；不勾则灯固定在场景中。</div>
+    <button class="ed-btn" id="ed-light-diag">亮度诊断 ▾</button>
+    <div class="ed-note" id="ed-light-diagout"></div>
+    <button class="ed-btn" id="ed-light-reset">恢复出厂灯光</button>
   </details>
 
   <details class="ed-sec"><summary>环境 IBL</summary>
+    ${rng('e.int','环境光照',0,3,0.05, num(cfg.environment.intensity, 1))}
+    ${rng('e.rot','环境旋转°',-180,180,1, num(cfg.environment.rotationDeg, 0))}
+    <div class="ed-note">环境光照＝整个场景的环境亮度（模型偏暗优先调这里）；环境旋转＝转动全景图，改变高光与反射的落点。</div>
     <label class="ed-row"><span class="ed-label">可见全景背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
     <input class="ed-in" id="ed-pano" placeholder="assets/panorama.jpg 或 https://…" value="${esc(cfg.assets?.panorama||'')}">
     <button class="ed-btn" id="ed-pano-load">加载全景</button>
@@ -1261,14 +1318,27 @@ function renderEditor() {
     <div class="ed-note">未配置保存服务时：导出 config.json 后覆盖到对应展品目录并上传。</div>
   </details>`
 
+  restoreEditorUIState(uiState)
   wireEditor()
 }
 
 function wireEditor() {
   const g=cfg.materials.global, m=cfg.model, c=cfg.camera, L=cfg.lights
   const ed = $('editor')
+  // 灯光：l.<灯名>.<i|az|el>（强度 / 方位角 / 仰角），关闭的灯写配置但送 0 给渲染
+  function syncLightIntensity(k){ if (lightRefs[k]) lightRefs[k].intensity = effectiveIntensity(k, L[k]) }
+  function applyLight(k, what, v){
+    const c = L[k] = L[k] || {}
+    if (what === 'i') { c.intensity = v; syncLightIntensity(k); return }
+    c.position = withAngle(c, k, what, v)
+    if (lightRefs[k]) lightRefs[k].position.set(c.position[0], c.position[1], c.position[2])
+  }
   function applyRange(k, v){
+    const lm = /^l\.(ambient|key|fill|rim)\.(i|az|el)$/.exec(k)
+    if (lm) return applyLight(lm[1], lm[2], v)
     switch(k){
+      case 'e.int': cfg.environment.intensity=v; applyEnvironment(); break
+      case 'e.rot': cfg.environment.rotationDeg=v; applyEnvironment(); break
       case 'g.exposure': applyExposureToCfg(cfg, v); renderer.toneMappingExposure = v; break
       case 'g.env': g.envMapIntensity=v; applyMaterial(); break
       case 'g.metal': g.metalness=v; applyMaterial(); break
@@ -1284,10 +1354,6 @@ function wireEditor() {
       case 'c.min': c.minDistance=v; controls.minDistance=v; break
       case 'c.max': c.maxDistance=v; controls.maxDistance=v; break
       case 'c.pivy': c.pivot=[(c.pivot||[0,0,0])[0], v, (c.pivot||[0,0,0])[2]]; pivot.set(c.pivot[0],c.pivot[1],c.pivot[2]); if(!activeHS){ controls.target.copy(pivot); controls.update() } break
-      case 'l.amb': L.ambient=L.ambient||{}; L.ambient.intensity=v; lightRefs.ambient.intensity=v; break
-      case 'l.key': L.key=L.key||{}; L.key.intensity=v; lightRefs.key.intensity=v; break
-      case 'l.fill': L.fill=L.fill||{}; L.fill.intensity=v; lightRefs.fill.intensity=v; break
-      case 'l.rim': L.rim=L.rim||{}; L.rim.intensity=v; lightRefs.rim.intensity=v; break
       case 'hs.size': cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.size=v; buildHotspots(); break
       case 'leader.gap': cfg.panel=cfg.panel||{}; cfg.panel.leaderGap=v; clearLeaderParams(); break
       case 'leader.tail': cfg.panel=cfg.panel||{}; cfg.panel.leaderTail=v; clearLeaderParams(); break
@@ -1315,12 +1381,22 @@ function wireEditor() {
   })
   $('editor').querySelectorAll('input[type=color]').forEach(inp => inp.oninput = e => {
     const k=inp.dataset.k, col=new THREE.Color(e.target.value)
-    if(k==='l.ambc'){ L.ambient.color=e.target.value; lightRefs.ambient.color.copy(col) }
-    if(k==='l.keyc'){ L.key.color=e.target.value; lightRefs.key.color.copy(col) }
-    if(k==='l.fillc'){ L.fill.color=e.target.value; lightRefs.fill.color.copy(col) }
-    if(k==='l.rimc'){ L.rim.color=e.target.value; lightRefs.rim.color.copy(col) }
+    const lm=/^l\.(ambient|key|fill|rim)\.c$/.exec(k||'')
+    if(lm){ const n=lm[1]; L[n]=L[n]||{}; L[n].color=e.target.value; if(lightRefs[n]) lightRefs[n].color.copy(col) }
     if(k==='hs.color'){ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.color=e.target.value; buildHotspots() }
   })
+  // 灯光：单灯启用 / 跟随相机 / 亮度诊断 / 恢复出厂
+  ed.querySelectorAll('[data-lon]').forEach(cb => cb.onchange = e => {
+    const k=cb.dataset.lon; L[k]=L[k]||{}; L[k].enabled=e.target.checked; syncLightIntensity(k) })
+  { const f=document.getElementById('ed-light-follow')
+    if(f) f.onchange=e=>{ cfg.lights.followCamera=e.target.checked; updateLightRig() } }
+  { const b=document.getElementById('ed-light-diag'), o=document.getElementById('ed-light-diagout')
+    if(b&&o) b.onclick=()=>{
+      if(o.dataset.on==='1'){ o.innerHTML=''; o.dataset.on=''; b.textContent='亮度诊断 ▾'; return }
+      o.innerHTML=brightnessReport(); o.dataset.on='1'; b.textContent='收起诊断 ▴' } }
+  { const b=document.getElementById('ed-light-reset')
+    if(b) b.onclick=()=>{ if(!confirm('把四组光源恢复到出厂强度、颜色与角度？（其它设置不变）')) return
+      cfg.lights=defaultLights(); buildLights(); renderEditor(); flash('已恢复出厂灯光') } }
   const bg=$('editor').querySelector('[data-k="e.bg"]'); if(bg) bg.onchange=e=>{ cfg.environment.visibleBackground=e.target.checked; if(cfg.assets?.panorama) panoramaIBL(asset(cfg.assets.panorama)); if(!e.target.checked) scene.background=new THREE.Color(cfg.renderer?.background||'#0f1118') }
   const pulseCb=$('editor').querySelector('[data-k="hs.pulse"]'); if(pulseCb) pulseCb.onchange=e=>{ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.pulse=e.target.checked; buildHotspots() }
   // 用户端按钮显隐
@@ -1423,9 +1499,10 @@ function capturePoster(){
   const pos0=camera.position.clone(), tgt0=controls.target.clone()
   const dir=new THREE.Vector3(0.28,0.12,1).normalize()                       // 略带俯角的正面
   camera.position.copy(c).add(dir.multiplyScalar(fit)); controls.target.copy(c); camera.lookAt(c)
+  updateLightRig()   // 跟随相机时，封面用的也应是这一机位的灯位
   renderer.render(scene,camera)
   const url=renderer.domElement.toDataURL('image/jpeg',0.86)
-  camera.position.copy(pos0); controls.target.copy(tgt0); controls.update(); renderer.render(scene,camera)
+  camera.position.copy(pos0); controls.target.copy(tgt0); controls.update(); updateLightRig(); renderer.render(scene,camera)
   return url
 }
 // 保存前校验：errs 阻断保存，warns 提示确认
@@ -1461,6 +1538,22 @@ async function doSave(){
     flash('✓ 已保存到服务器（含缩略图）')
   }catch(e){ flash('✗ 保存失败：'+e.message+'（可改用「导出 config.json」手动上传）') }
   finally{ btn.disabled=false; btn.textContent=old }
+}
+/* 「模型偏暗」诊断：按最有效的顺序给出可执行建议，避免一味拉环境光 */
+function brightnessReport(){
+  const g=cfg.materials?.global||{}, L=cfg.lights||{}
+  const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  const icon = { warn:'⚠️', tip:'💡', ok:'✅' }
+  return diagnoseBrightness({
+    exposure: num(cfg.renderer?.exposure, 1.05),
+    envMapIntensity: num(g.envMapIntensity, 1.35),
+    envIntensity: num(cfg.environment?.intensity, 1),
+    ambient: num(L.ambient?.intensity, 0.25),
+    key: num(L.key?.intensity, 1.1),
+    metalness: num(g.metalness, 0),
+    roughness: num(g.roughness, 0.5),
+    hasPanorama: cfg.environment?.mode === 'panorama' && !!cfg.assets?.panorama,
+  }).map(x => `${icon[x.level]||''} ${esc(x.text)}`).join('<br>')
 }
 function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x}`
   p.push((cfg.i18n?.zh?.title)?ok('标题'):wn('缺标题'))
@@ -1766,6 +1859,19 @@ if (editMode) {
         points: $('hs-leader').getAttribute('points'),
       }
     },
+    lightState: () => ({
+      rigRotY: +(lightRig?.rotation.y ?? 0).toFixed(4),
+      camAzimuth: +Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z).toFixed(4),
+      envIntensity: scene?.environmentIntensity ?? null,
+      envRotY: +(scene?.environmentRotation.y ?? 0).toFixed(4),
+      lights: Object.fromEntries(Object.entries(lightRefs).map(([k, l]) => [k, {
+        intensity: +l.intensity.toFixed(4),
+        color: '#' + l.color.getHexString(),
+        pos: l.position ? [l.position.x, l.position.y, l.position.z].map(v => +v.toFixed(3)) : null,
+        inRig: l.parent === lightRig,
+      }])),
+      cfgLights: JSON.parse(JSON.stringify(cfg.lights || {})),
+    }),
     disposeForTest: () => {
       cancelAnimationFrame(raf)
       raf = 0

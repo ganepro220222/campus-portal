@@ -12,6 +12,8 @@ exhibits/
   package.json         # exhibits 目录 ESM（Node 测试用）
   leader-geom.js       # 引线/面板布局纯函数（player 与 player.view 均依赖）
   leader-geom.test.mjs # 几何单元测试（node leader-geom.test.mjs）
+  light-rig.mjs        # 灯光方位换算与亮度诊断纯函数（player 与 player.view 均依赖）
+  light-rig.test.mjs   # 灯光单元测试（node light-rig.test.mjs）
   serve.py             # Python 本地服务（含保存 API；便携环境用）
   打开工作台.bat       # 启动服务并打开浏览器
   停止服务.bat         # 停止本地服务
@@ -70,7 +72,7 @@ npm run test:e2e                  # Playwright 浏览器测试（smoke + 3D 播�
 npm run test:ci                   # 单元 + deps + viewer 同步校验 + E2E（CI 同款）
 ```
 
-E2E 分三类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 秒）、`e2e/player.spec.mjs`（3D 模型串行，约 2 分钟）、`e2e/studio.spec.mjs`（工作台启动与批量保存，约 30 秒）。本地若 8199 端口已有服务，Playwright 会复用，无需重复启动。
+E2E 分四类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 秒）、`e2e/player.spec.mjs`（3D 模型串行，约 2 分钟）、`e2e/studio.spec.mjs`（工作台启动与批量保存，约 30 秒）、`e2e/lighting.spec.mjs`（灯光角度/启用/跟随相机/环境 IBL，约 40 秒）。本地若 8199 端口已有服务，Playwright 会复用，无需重复启动。
 
 3D 用例默认 **1 worker**（与 CI 一致），避免 Windows 上并行 WebGL 导致 `browserContext.close` / trace 写入超时。需要本地 trace 时可设 `PW_TRACE=on`；需要多 worker 时可设 `PW_WORKERS=2`（不推荐在 Windows 跑全量 3D）。
 
@@ -90,8 +92,8 @@ E2E 分三类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 �
 - **模型摆放**：缩放、适配尺寸、位移 XYZ、旋转 Y°、复位模型。
 - **相机**：视场角、自动旋转速度、最近/最远距离、旋转轴 Y 偏移（默认 0 为模型中轴）、保存当前视角为默认。
 - **材质**：全局曝光、环境光强度、金属度、粗糙度；按材质名分组覆盖。
-- **灯光**：环境光、主光、补光、轮廓光 的强度与颜色。
-- **环境 IBL**：全景背景开关、更换全景图地址。
+- **灯光（四光源）**：环境光、主光、补光、轮廓光，每盏可单独 启用/停用、调 强度与颜色；三盏方向光另有 **方位角 / 仰角**（仰角为负即从下往上打光）。另有 **灯光跟随相机**（灯组随视角绕 Y 轴转，任何角度都有主光）、**亮度诊断**（按曝光 → 环境照明 → 金属度的顺序给出可执行建议）、**恢复出厂灯光**。
+- **环境 IBL**：环境光照强度（`scene.environmentIntensity`，模型偏暗优先调这里）、环境旋转（转动全景图改变高光落点）、全景背景开关、更换全景图地址。
 - **热点与面板**：面板样式（实底 / 毛玻璃 / 透明等）、热点颜色与大小、脉冲开关。
 - **热点**：Shift+点击模型表面新增；拖拽或数字输入微调位置；编辑标题与文案；更新聚焦机位；绑定语音。
 - **语音讲解**：新增/删除音频、修改名称与地址；多条时自动出现下拉切换。
@@ -121,13 +123,13 @@ exhibits/craft-XXX/
 
 - **公开访问（观看版）**：须在同一目录下保持相对路径部署以下文件：
   - `player.view.html`（编辑器「导出仅观看版」生成）
-  - `leader-geom.js`（播放器模块依赖，遗漏会导致浏览器加载失败）
+  - `leader-geom.js`、`light-rig.mjs`、`hotspot-id.mjs`、`player-persist.mjs`（播放器模块依赖，遗漏任一都会导致浏览器加载失败）
   - `vendor/`（Three.js 与解码器）
   - 各展品数据目录（`craft-XXX/config.json`、`assets/` 等）
   - 外链可指向 `…/craft-001/` 或 `…/player.view.html?ex=craft-001`
 - **编辑工作台（受保护路径）**：须**同时**部署以下文件（缺一会导致编辑器或工作台无法启动）：
   - `studio.html` + `studio-batch.mjs`（工作台 ES module 依赖，缺后者整页脚本不执行）
-  - `player.html` + `leader-geom.js`
+  - `player.html` + 上述全部模块依赖
   - `vendor/`
   - 各展品数据目录
   - 须 HTTP 访问；建议 `node _server/studio-server.mjs` 提供保存 API

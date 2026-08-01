@@ -18,9 +18,12 @@ test.describe('public entry (fast)', () => {
   }
 
   test('player.view.html?mode=edit boots viewer and hides editor', async ({ page }) => {
+    const pageErrors = []
+    page.on('pageerror', e => pageErrors.push(e.message))
     try {
       await gotoViewerReady(page, { mode: 'edit', viewport: { width: 900, height: 700 } })
 
+      expect(pageErrors).toEqual([])
       await expect(page.locator('#loading')).toHaveAttribute('hidden', '')
       await expect(page.locator('#error')).toHaveAttribute('hidden', '')
       await expect(page.locator('#topbar')).not.toHaveAttribute('hidden', '')
@@ -32,9 +35,11 @@ test.describe('public entry (fast)', () => {
       const flags = await page.evaluate(() => ({
         editMode: /const editMode = false \/\* viewer-only \*\//.test(document.documentElement.innerHTML),
         testHook: window.__SY_TEST__ == null,
+        booted: window.__SY_PLAYER?.booted === true,
       }))
       expect(flags.editMode).toBe(true)
       expect(flags.testHook).toBe(true)
+      expect(flags.booted).toBe(true)
 
       await openFirstHotspot(page)
       const snap = await calloutSnapshot(page)

@@ -239,7 +239,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { ensureHotspotIds } from './hotspot-id.mjs'
 import { configFetchUrl } from './player-persist.mjs'
-import { LIGHT_KEYS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, defaultPosition, effectiveIntensity, resolveShadow, resolveEnvSource } from './light-rig.mjs'
+import { LIGHT_KEYS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, defaultPosition, effectiveIntensity, resolveShadow, shadowWillLand, resolveEnvSource, createEnvLoadGuard } from './light-rig.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true

@@ -524,6 +524,7 @@ function applyEnvironment() {
    编辑器里反复切换环境预设时显存会一路涨上去。 */
 let _pmrem = null, envRT = null, envBg = null
 const envLoadGuard = createEnvLoadGuard()
+let envPanoFailed = ''   // 记下加载失败的全景地址，供编辑器如实显示当前环境
 function pmremGen() { if (!_pmrem) _pmrem = new THREE.PMREMGenerator(renderer); return _pmrem }
 function setEnvFromRT(rt, bg) {
   if (envRT && envRT !== rt) envRT.dispose()
@@ -585,8 +586,15 @@ function panoramaIBL(url) {
     if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); return }
     tex.mapping = THREE.EquirectangularReflectionMapping
     tex.colorSpace = THREE.SRGBColorSpace
+    envPanoFailed = ''
     setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
-  }, undefined, () => {/* 保底已是预设或 RoomEnvironment */})
+  }, undefined, () => {
+    // 全景文件缺失/加载失败：真正生效的是预设兜底，编辑器不能还显示「全景图」
+    if (!envLoadGuard.isCurrent(token)) return
+    envPanoFailed = expectedUrl
+    bootEnvironment()
+    if (typeof window.__edRefresh === 'function') window.__edRefresh()
+  })
 }
 /* 开场同步给出环境（预设是画布生成的，无需等待）；全景走异步，先用兜底顶着 */
 function bootEnvironment() {

@@ -78,6 +78,23 @@ test.describe('studio.html', () => {
     await expect(page.locator('#s-count')).not.toHaveText('')
   })
 
+  test('批量面板：环境预设对已配全景图的展品不生效，按选择实时说明', async ({ page }) => {
+    const pageErrors = []
+    page.on('pageerror', e => pageErrors.push(e.message))
+    await waitForStudioReady(page)
+    await expect(page.locator('#grid .card')).not.toHaveCount(0)
+    await page.click('#batchToggle')
+    await expect(page.locator('#hint-epreset')).toBeEmpty()   // 未选时不该吓人
+    await page.click('#selAll')
+    const hint = page.locator('#hint-epreset')
+    await expect(hint).toContainText('已配全景图')
+    await expect(hint).toContainText('不会生效')
+    await expect(hint).toHaveClass(/warn/)
+    await page.click('#selNone')
+    await expect(hint).toBeEmpty()
+    expect(pageErrors).toEqual([])
+  })
+
   test('straight leader filters elbow fields from batch save', async ({ page }) => {
     const fixturePanel = {
       style: 'glass',

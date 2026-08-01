@@ -320,6 +320,23 @@ test.describe('环境 IBL', () => {
     expect((await lightState()).envSource).toEqual({ kind: 'preset', preset: 'night' })
   })
 
+  test('全景文件加载失败时，编辑器如实显示回落到的预设而不是「全景图」', async () => {
+    await reloadPlayer(page, {
+      environment: { preset: 'gallery' },
+      assets: { panorama: 'assets/根本不存在.jpg' },
+    })
+    await page.waitForTimeout(1200)   // 等 TextureLoader 报错并回落
+    await page.evaluate(() => {
+      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+        d.open = (d.querySelector('summary')?.textContent || '').includes('环境 IBL')
+      }
+    })
+    await expect(page.locator('#editor')).toContainText('全景图加载失败')
+    await expect(page.locator('#editor')).toContainText('博物馆暖阁')
+    await expect(page.locator('#ed-env-preset')).toBeEnabled()   // 全景没生效，就别锁着人家
+    await expect(page.locator('#ed-pano-clear')).toHaveCount(1)
+  })
+
   test('去掉全景后按预设程序化生成环境，无需任何素材', async () => {
     await reloadPlayer(page, { environment: { mode: 'preset', preset: 'studio' }, assets: { panorama: '' } })
     let st = await lightState()

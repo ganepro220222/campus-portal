@@ -116,6 +116,7 @@ jobs:
 
       - name: Unit tests
         run: |
+          python glb_paths.test.py
           python glb_utils.test.py
           python batch_glb.test.py
           python input_scan.test.py

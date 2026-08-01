@@ -11,6 +11,14 @@ import struct
 
 from input_scan import collect_input_files, output_exclusion_for_input
 
+from glb_paths import (
+    MAX_OUTPUT_STEM_BYTES,
+    cap_output_stem,
+    cross_drive_relpath,
+    safe_output_stem,
+    safe_relpath,
+)
+
 try:
     import numpy as np
     import trimesh
@@ -51,49 +59,6 @@ def file_sha1(path: str) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def _drive_tag(drive: str) -> str:
-    """将 splitdrive 的 drive 段规范为不含分隔符的标签（含 UNC share）。"""
-    return (
-        drive.rstrip(":")
-        .lstrip("\\/")
-        .replace("\\", "__")
-        .replace("/", "__")
-    )
-
-
-def cross_drive_relpath(src_path: str, pathmod) -> str:
-    """跨盘符相对路径降级：用 pathmod 解析盘符并生成稳定标签（测试可传入 ntpath）。"""
-    abs_src = pathmod.abspath(src_path)
-    drive, tail = pathmod.splitdrive(abs_src)
-    drive_tag = _drive_tag(drive)
-    prefix = f"{drive_tag}__" if drive_tag else ""
-    return prefix + tail.lstrip("\\/").replace("\\", "__").replace("/", "__")
-
-
-def _looks_like_windows_path(path: str) -> bool:
-    if len(path) >= 2 and path[1] == ":" and path[0].isalpha():
-        return True
-    return path.startswith("\\\\") or path.startswith("//")
-
-
-def safe_relpath(src_path: str, input_root: str) -> str:
-    """相对路径；跨盘符（Windows）时退化为带盘符标签的稳定路径。"""
-    try:
-        return os.path.relpath(src_path, input_root)
-    except ValueError:
-        import ntpath
-
-        pathmod = ntpath if _looks_like_windows_path(src_path) else os.path
-        return cross_drive_relpath(src_path, pathmod)
-
-
-def safe_output_stem(src_path: str, input_root: str) -> str:
-    """根据来源相对路径生成安全文件名主干（不含哈希后缀）。"""
-    rel = safe_relpath(src_path, input_root)
-    stem = os.path.splitext(rel)[0]
-    return stem.replace(os.sep, "__").replace(" ", "_")
 
 
 def build_output_name_from_glb(stem: str, glb_path: str) -> str:

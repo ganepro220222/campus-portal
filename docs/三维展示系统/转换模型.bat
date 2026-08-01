@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul 2>&1
 cd /d "%~dp0"
 if errorlevel 1 goto cd_fail
 
@@ -51,7 +52,8 @@ goto end
 
 :need_deps
 echo.
-echo [需要安装依赖] 按上面那行命令装一次即可，之后就不用再装。
+echo [需要安装依赖] 请双击同目录的「安装转换依赖.bat」（联网，只需一次）。
+echo 或手动执行上面那行 pip 命令。
 goto end
 
 :bad_path

@@ -94,7 +94,8 @@ def main(argv: list[str] | None = None) -> int:
     lost = missing_packages()
     if lost:
         print("[缺少依赖] 还差：" + "、".join(lost))
-        print("请在此窗口执行下面这行安装（只需一次）：")
+        print("请双击同目录的「安装转换依赖.bat」自动安装（联网，只需一次）。")
+        print("或在此窗口手动执行：")
         print(f'    "{sys.executable}" -m pip install ' + " ".join(lost))
         print()
         return 2

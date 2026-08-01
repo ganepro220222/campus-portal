@@ -29,6 +29,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 from input_scan import (
+    _canonical_path,
     input_under_excluded_output,
     output_exclusion_for_input,
     validate_output_dir,
@@ -90,10 +91,19 @@ def inputs_for_run(items: list[InputItem], out_dir: str) -> list[InputItem]:
 
 
 def naming_root_for_items(items: list[InputItem]) -> str:
-    """整批输入的统一命名根（与 CLI 对多文件/commonpath 行为一致）。"""
+    """整批输入的统一命名根；优先尊重添加时保存的 InputItem.root。"""
     if not items:
         raise ValueError("empty items")
-    return common_input_root([item["path"] for item in items])
+    roots = [os.path.abspath(item["root"]) for item in items]
+    if len({_canonical_path(r) for r in roots}) == 1:
+        return roots[0]
+    try:
+        common = os.path.commonpath(roots)
+        if os.path.isfile(common):
+            return os.path.dirname(common)
+        return common
+    except ValueError:
+        return common_input_root([item["path"] for item in items])
 
 
 def naming_root_for_item(item: InputItem, batch_root: str) -> str:

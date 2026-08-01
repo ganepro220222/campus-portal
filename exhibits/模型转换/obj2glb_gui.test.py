@@ -411,7 +411,7 @@ def _():
 def _():
     from unittest.mock import patch
     batch = r"C:\A"
-    with patch("glb_utils.os.path.relpath", side_effect=ValueError("cross")):
+    with patch("glb_paths.os.path.relpath", side_effect=ValueError("cross")):
         stem_d = glb_utils.safe_output_stem(r"D:\B\model.glb", batch)
         stem_e = glb_utils.safe_output_stem(r"E:\B\model.glb", batch)
     eq(stem_d, "D__B__model")
@@ -435,7 +435,7 @@ def _():
             captured.append((src, root, r))
             return r
 
-        with patch("glb_utils.os.path.relpath", side_effect=ValueError("cross")):
+        with patch("glb_paths.os.path.relpath", side_effect=ValueError("cross")):
             with patch.object(batch_glb, "process_one", side_effect=_fake):
                 gui._run_worker(items, out, dict(
                     max_texture=2048, quality=85, texture_format="auto",

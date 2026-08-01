@@ -2,8 +2,8 @@
 """
 glb_utils 单元测试：python glb_utils.test.py
 
-纯函数部分（MTL 解析 / 体检 / GLB 读写与修复）不依赖 trimesh；
-末尾的端到端用例需要 trimesh，缺失时自动跳过。
+路径命名见 glb_paths.test.py（无 trimesh 依赖）。
+本文件其余部分需要 trimesh；缺失时自动跳过端到端用例。
 """
 from __future__ import annotations
 
@@ -62,55 +62,12 @@ try:
         patch_gltf_materials,
         read_glb,
         write_glb,
-        safe_relpath,
-        safe_output_stem,
-        cross_drive_relpath,
     )
 except SystemExit as e:  # glb_utils 在缺依赖时 SystemExit
     print(f"无法导入 glb_utils：{e}")
     sys.exit(1)
 
 print("glb_utils tests")
-
-
-@test("cross_drive_relpath 用 ntpath 解析 Windows 盘符（Linux CI 可验证）")
-def _():
-    import ntpath
-    eq(cross_drive_relpath(r"D:\B\model.glb", ntpath), "D__B__model.glb")
-    eq(cross_drive_relpath(r"E:\B\model.glb", ntpath), "E__B__model.glb")
-    ok(cross_drive_relpath(r"D:\B\model.glb", ntpath) != cross_drive_relpath(r"E:\B\model.glb", ntpath))
-
-
-@test("cross_drive_relpath 规范化 UNC share 前缀")
-def _():
-    import ntpath
-    a = cross_drive_relpath(r"\\serverA\share\B\model.glb", ntpath)
-    b = cross_drive_relpath(r"\\serverB\archive\B\model.glb", ntpath)
-    eq(a, "serverA__share__B__model.glb")
-    eq(b, "serverB__archive__B__model.glb")
-    ok(a != b)
-    ok(not a.startswith("\\\\"), a)
-
-
-@test("safe_relpath 在 relpath 失败时生成盘符标签且不含 ..")
-def _():
-    from unittest.mock import patch
-    with patch("glb_utils.os.path.relpath", side_effect=ValueError("cross")):
-        rel = safe_relpath(r"D:\B\model.glb", r"C:\A")
-        ok(rel.startswith("D__"), rel)
-        ok(".." not in rel)
-        ok(rel.endswith("B__model.glb") or "B__model" in rel, rel)
-
-
-@test("safe_relpath 跨盘同名文件得到不同标识")
-def _():
-    from unittest.mock import patch
-    with patch("glb_utils.os.path.relpath", side_effect=ValueError("cross")):
-        a = safe_relpath(r"D:\B\model.glb", r"C:\A")
-        b = safe_relpath(r"E:\B\model.glb", r"C:\A")
-        ok(a != b)
-        eq(safe_output_stem(r"D:\B\model.glb", r"C:\A"), "D__B__model")
-        eq(safe_output_stem(r"E:\B\model.glb", r"C:\A"), "E__B__model")
 
 
 # ── MTL 法线贴图解析 ──────────────────────────────────────────────

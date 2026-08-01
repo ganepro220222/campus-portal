@@ -295,6 +295,31 @@ test.describe('环境 IBL', () => {
     expect(st.hasEnvMap).toBe(true)
   })
 
+  test('全景接管时预设下拉禁用并常驻说明，不让人白选', async () => {
+    await reloadPlayer(page, { environment: { preset: 'studio' } })
+    const openEnv = () => page.evaluate(() => {
+      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+        d.open = (d.querySelector('summary')?.textContent || '').includes('环境 IBL')
+      }
+    })
+    await openEnv()
+    await expect(page.locator('#ed-env-preset')).toBeDisabled()
+    await expect(page.locator('#editor')).toContainText('预设被全景接管')
+    await expect(page.locator('#ed-pano-clear')).toHaveCount(1)
+
+    page.once('dialog', d => d.accept())
+    await page.click('#ed-pano-clear')
+    await openEnv()
+    await expect(page.locator('#ed-env-preset')).toBeEnabled()
+    await expect(page.locator('#editor')).not.toContainText('预设被全景接管')
+    await expect(page.locator('#ed-pano-clear')).toHaveCount(0)   // 已无全景可清
+    expect((await lightState()).envSource.kind).toBe('preset')
+
+    // 现在换预设必须真的生效
+    await page.selectOption('#ed-env-preset', 'night')
+    expect((await lightState()).envSource).toEqual({ kind: 'preset', preset: 'night' })
+  })
+
   test('去掉全景后按预设程序化生成环境，无需任何素材', async () => {
     await reloadPlayer(page, { environment: { mode: 'preset', preset: 'studio' }, assets: { panorama: '' } })
     let st = await lightState()

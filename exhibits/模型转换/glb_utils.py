@@ -53,15 +53,27 @@ def file_sha1(path: str) -> str:
     return digest.hexdigest()
 
 
+def cross_drive_relpath(src_path: str, pathmod) -> str:
+    """跨盘符相对路径降级：用 pathmod 解析盘符并生成稳定标签（测试可传入 ntpath）。"""
+    abs_src = pathmod.abspath(src_path)
+    drive, tail = pathmod.splitdrive(abs_src)
+    prefix = f"{drive.rstrip(':')}__" if drive else ""
+    return prefix + tail.lstrip("\\/").replace("\\", "__").replace("/", "__")
+
+
+def _looks_like_windows_path(path: str) -> bool:
+    return len(path) >= 2 and path[1] == ":" and path[0].isalpha()
+
+
 def safe_relpath(src_path: str, input_root: str) -> str:
     """相对路径；跨盘符（Windows）时退化为带盘符标签的稳定路径。"""
     try:
         return os.path.relpath(src_path, input_root)
     except ValueError:
-        abs_src = os.path.abspath(src_path)
-        drive, tail = os.path.splitdrive(abs_src)
-        prefix = f"{drive.rstrip(':')}__" if drive else ""
-        return prefix + tail.lstrip("\\/").replace("\\", "__").replace("/", "__")
+        import ntpath
+
+        pathmod = ntpath if _looks_like_windows_path(src_path) else os.path
+        return cross_drive_relpath(src_path, pathmod)
 
 
 def safe_output_stem(src_path: str, input_root: str) -> str:

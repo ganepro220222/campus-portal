@@ -422,25 +422,31 @@ def _():
 @test("跨盘批次 worker 仍处理全部项")
 def _():
     items = [
-        {"path": "/c/a.glb", "root": "/c"},
-        {"path": "/d/b.glb", "root": "/d"},
+        {"path": r"D:\proj\a.glb", "root": r"D:\proj"},
+        {"path": r"E:\proj\b.glb", "root": r"E:\proj"},
     ]
     with tempfile.TemporaryDirectory() as out:
         gui = _make_gui()
-        seen_roots = []
+        captured: list[tuple[str, str, dict]] = []
 
         def _fake(src, root, *_a, **_k):
-            seen_roots.append(root)
             r = batch_glb.empty_result(src, root)
             r.update({"状态": "成功", "GLB文件": os.path.basename(src), "体积MB": 1.0, "scale": ""})
+            captured.append((src, root, r))
             return r
 
-        with patch.object(batch_glb, "process_one", side_effect=_fake):
-            gui._run_worker(items, out, dict(
-                max_texture=2048, quality=85, texture_format="auto",
-                reencode=True, overwrite=False, transform=False,
-            ))
-        ok(len(set(seen_roots)) == 1, seen_roots)
+        with patch("glb_utils.os.path.relpath", side_effect=ValueError("cross")):
+            with patch.object(batch_glb, "process_one", side_effect=_fake):
+                gui._run_worker(items, out, dict(
+                    max_texture=2048, quality=85, texture_format="auto",
+                    reencode=True, overwrite=False, transform=False,
+                ))
+        eq(len(captured), 2)
+        ok(captured[0][1] == captured[1][1], captured)
+        rels = [c[2]["来源相对路径"] for c in captured]
+        ok(rels[0] != rels[1], rels)
+        ok(rels[0].startswith("D__"), rels[0])
+        ok(rels[1].startswith("E__"), rels[1])
         with open(os.path.join(out, "manifest.csv"), encoding="utf-8-sig") as f:
             eq(len(list(csv.DictReader(f))), 2)
 

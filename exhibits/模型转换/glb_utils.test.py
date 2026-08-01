@@ -64,12 +64,21 @@ try:
         write_glb,
         safe_relpath,
         safe_output_stem,
+        cross_drive_relpath,
     )
 except SystemExit as e:  # glb_utils 在缺依赖时 SystemExit
     print(f"无法导入 glb_utils：{e}")
     sys.exit(1)
 
 print("glb_utils tests")
+
+
+@test("cross_drive_relpath 用 ntpath 解析 Windows 盘符（Linux CI 可验证）")
+def _():
+    import ntpath
+    eq(cross_drive_relpath(r"D:\B\model.glb", ntpath), "D__B__model.glb")
+    eq(cross_drive_relpath(r"E:\B\model.glb", ntpath), "E__B__model.glb")
+    ok(cross_drive_relpath(r"D:\B\model.glb", ntpath) != cross_drive_relpath(r"E:\B\model.glb", ntpath))
 
 
 @test("safe_relpath 在 relpath 失败时生成盘符标签且不含 ..")

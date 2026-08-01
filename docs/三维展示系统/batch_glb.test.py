@@ -138,5 +138,53 @@ def _():
         ok("不是有效的 GLB" in r["备注"] or "GLB 格式校验" in r["备注"])
 
 
+@test("首文件读盘失败时 manifest 列齐全且第二文件仍可成功")
+def _():
+    import contextlib, io as _io
+    import batch_glb
+    from unittest.mock import patch
+
+    calls = {"n": 0}
+    orig_sha1 = batch_glb.file_sha1
+
+    def fake_sha1(p):
+        if os.path.basename(p) == "unreadable.glb":
+            raise OSError("模拟读盘失败")
+        return orig_sha1(p)
+
+    with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:
+        open(os.path.join(inp, "unreadable.glb"), "wb").write(b"x")
+        good = os.path.join(inp, "z-good.glb")
+        _make_box_glb(good)
+        saved = sys.argv
+        sys.argv = ["batch_glb.py", inp, "-o", out]
+        try:
+            with patch.object(batch_glb, "file_sha1", side_effect=fake_sha1):
+                with contextlib.redirect_stdout(_io.StringIO()):
+                    fail = batch_glb.main()
+        finally:
+            sys.argv = saved
+        eq(fail, 1)
+        manifest = os.path.join(out, "manifest.csv")
+        ok(os.path.isfile(manifest))
+        import csv
+        with open(manifest, encoding="utf-8-sig") as f:
+            rows = list(csv.DictReader(f))
+        eq(len(rows), 2)
+        eq(list(rows[0].keys()), batch_glb.RESULT_FIELDS)
+        eq(rows[0]["状态"], "失败")
+        ok(rows[1]["状态"].startswith("成功"))
+
+
+@test("empty_result 与 RESULT_FIELDS 一致")
+def _():
+    import batch_glb
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "x.glb")
+        open(p, "wb").write(b"x")
+        r = batch_glb.empty_result(p, d)
+        eq(list(r.keys()), batch_glb.RESULT_FIELDS)
+
+
 print(f"\n{_pass} passed, {_fail} failed")
 sys.exit(1 if _fail else 0)

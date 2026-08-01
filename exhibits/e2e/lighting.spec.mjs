@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { gotoPlayer, reloadPlayer, releaseWebGL } from './helpers.mjs'
 
 /** 3D 用例串行 + 复用同一 page，避免重复冷启动 WebGL */
@@ -339,6 +342,41 @@ test.describe('环境 IBL', () => {
 
     await page.selectOption('#ed-env-preset', 'night')
     expect((await lightState()).envSource).toEqual({ kind: 'preset', preset: 'night' })
+  })
+
+  test('全景加载失败后重试成功时，编辑器同步清除失败提示', async () => {
+    const panoUrl = 'assets/retry-pano.jpg'
+    let serveOk = false
+    const panoBytes = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../craft-001/assets/panorama.jpg'))
+    await page.route(`**/${panoUrl}`, route => {
+      if (serveOk) route.fulfill({ status: 200, contentType: 'image/jpeg', body: panoBytes })
+      else route.fulfill({ status: 404, body: 'not found' })
+    })
+    try {
+      await reloadPlayer(page, {
+        environment: { preset: 'gallery' },
+        assets: { panorama: panoUrl },
+      })
+      await page.waitForTimeout(1200)
+      await page.evaluate(() => {
+        for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+          d.open = (d.querySelector('summary')?.textContent || '').includes('环境 IBL')
+        }
+      })
+      await expect(page.locator('#editor')).toContainText('全景图加载失败')
+
+      serveOk = true
+      await page.fill('#ed-pano', panoUrl)
+      await page.click('#ed-pano-load')
+      await page.waitForFunction(() => {
+        const ed = document.getElementById('editor')
+        return ed && !ed.textContent.includes('全景图加载失败')
+      }, null, { timeout: 15_000 })
+      await expect(page.locator('#ed-env-preset')).toBeDisabled()
+      expect((await lightState()).envSource.kind).toBe('panorama')
+    } finally {
+      await page.unroute(`**/${panoUrl}`)
+    }
   })
 
   test('去掉全景后按预设程序化生成环境，无需任何素材', async () => {

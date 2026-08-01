@@ -597,8 +597,10 @@ function panoramaIBL(url) {
     if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); return }
     tex.mapping = THREE.EquirectangularReflectionMapping
     tex.colorSpace = THREE.SRGBColorSpace
+    const recovered = envPanoFailed === expectedUrl
     envPanoFailed = ''
     setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
+    if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
   }, undefined, () => {
     // 全景文件缺失/加载失败：真正生效的是预设兜底，编辑器不能还显示「全景图」
     if (!envLoadGuard.isCurrent(token)) return

@@ -178,7 +178,63 @@ def _():
             eq(call.args[1], naming)
 
 
-@test("添加文件夹保留 input_root，跨子目录同名 GLB 输出 stem 与 CLI 一致")
+@test("单文件子目录批次保留添加文件夹时的 root")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "素材")
+        a = os.path.join(src, "A", "model.glb")
+        os.makedirs(os.path.dirname(a))
+        open(a, "wb").write(b"x")
+        item = {"path": os.path.abspath(a), "root": os.path.abspath(src)}
+        naming = obj2glb_gui.naming_root_for_items([item])
+        eq(naming, os.path.abspath(src))
+        eq(glb_utils.safe_output_stem(a, naming), "A__model")
+
+
+@test("单文件子目录 worker 使用保存的 root，加入兄弟文件后 stem 不变")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "素材")
+        a = os.path.join(src, "A", "model.glb")
+        b = os.path.join(src, "B", "other.glb")
+        os.makedirs(os.path.dirname(a))
+        os.makedirs(os.path.dirname(b))
+        open(a, "wb").write(b"x")
+        open(b, "wb").write(b"y")
+        src_abs = os.path.abspath(src)
+        item_a = {"path": os.path.abspath(a), "root": src_abs}
+        out = os.path.join(tmp, "out")
+        gui = _make_gui()
+        captured: list[tuple[str, str]] = []
+
+        def _fake(src, root, *_a, **_k):
+            captured.append((src, root))
+            r = batch_glb.empty_result(src, root)
+            r.update({"状态": "成功", "GLB文件": "x.glb", "体积MB": 1.0, "scale": ""})
+            return r
+
+        with patch.object(batch_glb, "process_one", side_effect=_fake):
+            gui._run_worker([item_a], out, dict(
+                max_texture=2048, quality=85, texture_format="auto",
+                reencode=True, overwrite=False, transform=False,
+            ))
+        eq(captured[0][1], src_abs)
+        eq(batch_glb.empty_result(a, src_abs)["来源相对路径"], glb_utils.safe_relpath(a, src_abs))
+        stem_single = glb_utils.safe_output_stem(a, src_abs)
+
+        item_b = {"path": os.path.abspath(b), "root": src_abs}
+        captured.clear()
+        with patch.object(batch_glb, "process_one", side_effect=_fake):
+            gui._run_worker([item_a, item_b], out, dict(
+                max_texture=2048, quality=85, texture_format="auto",
+                reencode=True, overwrite=False, transform=False,
+            ))
+        eq(captured[0][1], src_abs)
+        eq(glb_utils.safe_output_stem(a, src_abs), stem_single)
+        eq(glb_utils.safe_output_stem(a, src_abs), "A__model")
+
+
+@test("添加文件夹多文件时 naming root 与 CLI 一致")
 def _():
     with tempfile.TemporaryDirectory() as tmp:
         src = os.path.join(tmp, "素材")
@@ -186,15 +242,15 @@ def _():
         b = os.path.join(src, "B", "model.glb")
         os.makedirs(os.path.dirname(a))
         os.makedirs(os.path.dirname(b))
-        payload = b"glTF" + b"\x00" * 8
-        open(a, "wb").write(payload)
-        open(b, "wb").write(payload)
         root = os.path.abspath(src)
-        stem_a = glb_utils.safe_output_stem(a, root)
-        stem_b = glb_utils.safe_output_stem(b, root)
-        eq(stem_a, "A__model")
-        eq(stem_b, "B__model")
-        ok(stem_a != stem_b)
+        items = [
+            {"path": os.path.abspath(a), "root": root},
+            {"path": os.path.abspath(b), "root": root},
+        ]
+        naming = obj2glb_gui.naming_root_for_items(items)
+        eq(naming, root)
+        eq(glb_utils.safe_output_stem(a, naming), "A__model")
+        eq(glb_utils.safe_output_stem(b, naming), "B__model")
 
 
 @test("_run_worker 按统一 naming root 调用 process_one")

@@ -9,6 +9,8 @@ import json
 import os
 import struct
 
+from input_scan import collect_input_files, output_exclusion_for_input
+
 try:
     import numpy as np
     import trimesh
@@ -714,45 +716,4 @@ def fix_glb_file(src: str, dst: str | None = None, metallic: float = OBJ_DEFAULT
     return True, notes
 
 
-def collect_input_files(
-    input_dir: str,
-    recursive: bool = True,
-    exclude_dirs: set[str] | None = None,
-) -> list[str]:
-    """
-    收集 .zip / .glb / .obj 输入文件。
-    exclude_dirs: 绝对路径集合，扫描时跳过（用于排除输出目录等）。
-    """
-    allowed = (".zip", ".glb", ".obj")
-    exclude_abs = {os.path.abspath(p) for p in (exclude_dirs or set())}
-    input_abs = os.path.abspath(input_dir)
-    files: list[str] = []
-
-    if recursive:
-        for dirpath, dirnames, filenames in os.walk(input_abs):
-            current = os.path.abspath(dirpath)
-            # 不进入排除目录
-            dirnames[:] = [
-                d for d in dirnames
-                if os.path.abspath(os.path.join(current, d)) not in exclude_abs
-            ]
-            if current in exclude_abs:
-                continue
-            for fn in sorted(filenames):
-                if fn.lower().endswith(allowed):
-                    files.append(os.path.join(current, fn))
-    else:
-        for fn in sorted(os.listdir(input_abs)):
-            if fn.lower().endswith(allowed):
-                files.append(os.path.join(input_abs, fn))
-
-    return files
-
-
-def output_exclusion_for_input(input_dir: str, output_dir: str) -> set[str]:
-    """若输出目录是输入目录的**真子目录**，返回应排除的绝对路径（不含相等情形）。"""
-    input_abs = os.path.abspath(input_dir)
-    output_abs = os.path.abspath(output_dir)
-    if output_abs.startswith(input_abs + os.sep):
-        return {output_abs}
-    return set()
+# collect_input_files / output_exclusion_for_input → input_scan.py（供 convert_cli 无依赖复用）

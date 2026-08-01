@@ -165,6 +165,44 @@ def _():
 
 # ── 端到端：真的跑一遍转换 ───────────────────────────────────
 
+@test("部分失败时返回 4 而不是 0")
+def _():
+    try:
+        import trimesh
+        from PIL import Image
+    except Exception:  # noqa: BLE001
+        print("     （跳过：未装 trimesh/pillow）")
+        return
+    import struct
+    import convert_cli
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "素材")
+        os.makedirs(src)
+        m = trimesh.creation.icosphere(subdivisions=1)
+        Image.new("RGB", (16, 16), (200, 160, 120)).save(os.path.join(src, "d.jpg"))
+        open(os.path.join(src, "m.mtl"), "w").write("newmtl mat0\nKd 0.8 0.7 0.6\nmap_Kd d.jpg\n")
+        lines = ["mtllib m.mtl", "usemtl mat0"]
+        for v in m.vertices:
+            lines.append("v %f %f %f" % tuple(v))
+        lines.append("vt 0 0")
+        for f in m.faces:
+            lines.append("f %d/1 %d/1 %d/1" % (f[0] + 1, f[1] + 1, f[2] + 1))
+        open(os.path.join(src, "good.obj"), "w").write("\n".join(lines) + "\n")
+        bad_json = b"{broken"
+        bad_json += b" " * ((4 - len(bad_json) % 4) % 4)
+        total = 12 + 8 + len(bad_json)
+        with open(os.path.join(src, "bad.glb"), "wb") as f:
+            f.write(struct.pack("<4sII", b"glTF", 2, total))
+            f.write(struct.pack("<I4s", len(bad_json), b"JSON") + bad_json)
+
+        out = os.path.join(tmp, "out")
+        import contextlib, io as _io
+        with contextlib.redirect_stdout(_io.StringIO()):
+            rc = convert_cli.main([src, out])
+        eq(rc, 4, "有失败项时应返回 4")
+        ok(os.path.isfile(os.path.join(out, "manifest.csv")))
+
+
 @test("端到端：给一个 OBJ 目录，产出 GLB 与 manifest.csv")
 def _():
     try:
@@ -229,7 +267,7 @@ def _():
     for label in ("done", "cancelled", "need_deps", "bad_path", "some_failed",
                   "no_files", "no_python", "cd_fail", "unknown", "end"):
         ok(f":{label}" in text, f"缺少标签 :{label}")
-    for rc in ("0", "1", "2", "3", "4", "5"):
+    for rc in ("0", "1", "2", "3", "4", "5", "9"):
         ok(f'"%RC%"=="{rc}"' in text, f"未分派退出码 {rc}")
     ok("pause" in text, "顶层入口必须 pause，否则出错时窗口一闪就关")
     ok(text.rstrip().endswith("exit /b %RC%"), "应以 exit /b %RC% 收尾")
@@ -242,13 +280,15 @@ def _():
     ok("python.org" in text)
 
 
-@test("优先用便携 Python，其次 py -3，再次 python")
+@test("优先用便携 Python（本目录或 exhibits），其次 py -3，再次 python")
 def _():
     text = open(BAT, encoding="utf-8").read()
+    ok("exhibits\\_runtime\\python\\python.exe" in text, "应探测 exhibits 便携 Python")
     i_portable = text.index("_runtime\\python\\python.exe")
+    i_exhibits = text.index("exhibits\\_runtime\\python\\python.exe")
     i_py = text.index("where py ")
     i_python = text.index("where python ")
-    ok(i_portable < i_py < i_python, "解释器探测顺序不对")
+    ok(i_portable < i_exhibits < i_py < i_python, "解释器探测顺序不对")
 
 
 @test("在 Windows 上真的能跑起来（非 Windows 自动跳过）")
@@ -258,7 +298,7 @@ def _():
         return
     with tempfile.TemporaryDirectory() as tmp:
         r = subprocess.run(["cmd.exe", "/c", "call", BAT, os.path.join(tmp, "不存在")],
-                           capture_output=True, text=True, timeout=120)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
         ok(r.returncode in (2, 3), f"返回码 {r.returncode}\n{r.stdout}")
 
 

@@ -335,6 +335,10 @@ test.describe('环境 IBL', () => {
     await expect(page.locator('#editor')).toContainText('博物馆暖阁')
     await expect(page.locator('#ed-env-preset')).toBeEnabled()   // 全景没生效，就别锁着人家
     await expect(page.locator('#ed-pano-clear')).toHaveCount(1)
+    expect((await lightState()).envSource).toEqual({ kind: 'preset', preset: 'gallery' })
+
+    await page.selectOption('#ed-env-preset', 'night')
+    expect((await lightState()).envSource).toEqual({ kind: 'preset', preset: 'night' })
   })
 
   test('去掉全景后按预设程序化生成环境，无需任何素材', async () => {

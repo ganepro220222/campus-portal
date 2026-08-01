@@ -55,6 +55,28 @@ def _make_gui() -> obj2glb_gui.ConverterGUI:
     return gui
 
 
+@test("日志与文件列表用界面字体族，避免中英文两种字形")
+def _():
+    gui = _make_gui()
+    eq(gui.f_log[0], gui.f_ui[0], "日志字体族应与界面一致（等宽字体没有汉字，会逐字回退）")
+
+
+@test("输出目录已存在时「打开输出目录」立刻可用，不必等转换跑完")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        gui = _make_gui()
+        gui._set_out(tmp)
+        gui.btn_open.config.assert_called_with(state="normal")
+
+
+@test("输出目录尚未创建时「打开输出目录」保持禁用")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        gui = _make_gui()
+        gui._set_out(os.path.join(tmp, "还没建出来"))
+        gui.btn_open.config.assert_called_with(state="disabled")
+
+
 @test("golden_geometry：内容比最小尺寸大时，窗口按内容走")
 def _():
     w, h, x, y = obj2glb_gui.golden_geometry(1016, 724, 1920, 1080)

@@ -7,7 +7,10 @@
   3. .obj + .mtl + 贴图 → 转换为自包含 GLB
 
 不支持 FBX；FBX 请先用 Blender 导出为 GLB/OBJ。
-复杂 PBR 多贴图资产请优先直接交付 GLB，OBJ 管线适合基础漫反射模型。
+
+OBJ 转换会自动修正金属度（规范缺省＝全金属→发黑）、补法线（无 vn 时防止变多面体）、
+接回 MTL 的法线贴图；直接给进来的 GLB 也会做一次无损材质修复（只改 JSON、不动几何）。
+manifest.csv 增加「三角面」「体检」两列，体检不通过的会写明原因。
 
 依赖：pip install trimesh pillow numpy
 
@@ -15,6 +18,7 @@
   python batch_glb.py 输入目录 -o 输出目录
   python batch_glb.py 输入目录 -o 输出目录 --max-texture 2048
   python batch_glb.py 输入目录 -o 输出目录 --texture-format auto
+  python batch_glb.py 输入目录 -o 输出目录 --normals flat   # 硬表面模型
 """
 from __future__ import annotations
 
@@ -27,15 +31,22 @@ import tempfile
 import zipfile
 
 from glb_utils import (
+    audit_glb_file,
     build_output_name_from_glb,
     collect_input_files,
     compute_transform,
+    ensure_scene_normals,
     file_sha1,
+    find_mtl_for_obj,
+    fix_glb_file,
     glb_stats,
     hash_obj_bundle,
+    obj_declares_normals,
     optimize_texture,
     output_exclusion_for_input,
+    parse_mtl_normal_maps,
     safe_output_stem,
+    upgrade_materials_to_pbr,
 )
 
 try:
@@ -78,6 +89,9 @@ def convert_obj(
     texture_format: str,
     reencode: bool,
     allow_alpha_loss: bool,
+    normals: str = "auto",
+    metallic: float = 0.0,
+    keep_normal_map: bool = True,
 ) -> tuple[str | None, list[str]]:
     try:
         scene = trimesh.load(obj_path, force="scene")
@@ -89,7 +103,16 @@ def convert_obj(
             reencode=reencode,
             allow_alpha_loss=allow_alpha_loss,
         )
-        scene.export(out_path)
+        # 无 vn 时补法线，否则 GLB 不带 NORMAL，圆润器物会渲染成多面体
+        notes += ensure_scene_normals(
+            scene, mode=normals, source_has_vn=obj_declares_normals(obj_path)
+        )
+        # 显式写 metallicFactor（不写＝规范默认全金属），并接回 MTL 的法线贴图
+        normal_maps = parse_mtl_normal_maps(find_mtl_for_obj(obj_path) or "") if keep_normal_map else {}
+        notes += upgrade_materials_to_pbr(
+            scene, normal_maps=normal_maps, metallic=metallic, max_texture=max_texture
+        )
+        scene.export(out_path, include_normals=True)
         return None, notes
     except Exception as e:
         return str(e), []
@@ -125,6 +148,10 @@ def process_one(
     reencode: bool,
     allow_alpha_loss: bool,
     overwrite: bool,
+    normals: str = "auto",
+    metallic: float = 0.0,
+    keep_normal_map: bool = True,
+    fix_glb: bool = True,
 ) -> dict:
     ext = os.path.splitext(src_path)[1].lower()
     rel_path = os.path.relpath(src_path, input_root)
@@ -143,6 +170,8 @@ def process_one(
         "网格数": "",
         "材质数": "",
         "贴图内嵌": "",
+        "三角面": "",
+        "体检": "",
         "scale": "",
         "offsetX": "",
         "offsetY": "",
@@ -188,6 +217,9 @@ def process_one(
                 texture_format,
                 reencode,
                 allow_alpha_loss,
+                normals,
+                metallic,
+                keep_normal_map,
             )
             if err:
                 result["状态"] = "失败"
@@ -201,6 +233,14 @@ def process_one(
             result["状态"] = "跳过"
             result["备注"] = f"不支持的格式 {ext}（FBX 请先导出为 GLB/OBJ）"
             return result
+
+        # 直接给进来的 GLB（含离线包里的）也做一次无损修复：只改 JSON，不动几何
+        if fix_glb and ext in (".zip", ".glb"):
+            changed, fix_notes = fix_glb_file(temp_path)
+            if changed:
+                result["处理方式"] += " + 材质修复"
+                result["备注"] = (result["备注"] + " | " if result["备注"] else "") \
+                    + "材质修复：" + "; ".join(fix_notes)
 
         stats = glb_stats(temp_path)
         if not stats:
@@ -222,6 +262,12 @@ def process_one(
         result["材质数"] = stats["materials"]
         result["贴图内嵌"] = "是" if stats["embedded"] else "否（外链，需修复）"
         result["体积MB"] = round(os.path.getsize(final_path) / 1024 / 1024, 2)
+
+        audit = audit_glb_file(final_path)
+        if audit:
+            result["三角面"] = audit["info"]["triangles"]
+            blockers = [i["text"] for i in audit["issues"] if i["level"] in ("error", "warn")]
+            result["体检"] = "；".join(blockers) if blockers else "通过"
 
         extra: list[str] = []
         if stats["extensions"]:
@@ -272,6 +318,22 @@ def main():
         "--no-reencode",
         action="store_true",
         help="仅 OBJ 转换时生效：不重编码贴图，仅按需缩放；GLB 输入始终原样复制",
+    )
+    parser.add_argument(
+        "--normals", choices=["auto", "smooth", "flat"], default="auto",
+        help="auto=有 vn 沿用、无 vn 生成平滑法线（默认）；smooth=强制平滑；flat=强制硬边",
+    )
+    parser.add_argument(
+        "--metallic", type=float, default=0.0,
+        help="金属度，默认 0。OBJ 没有金属度概念，不写会被规范当成 1.0（全金属→发黑）",
+    )
+    parser.add_argument(
+        "--no-normal-map", action="store_true",
+        help="不要接 MTL 里的法线/凹凸贴图（默认会接）",
+    )
+    parser.add_argument(
+        "--no-fix", action="store_true",
+        help="不要对直接给进来的 GLB 做无损材质修复（默认会修）",
     )
     parser.add_argument(
         "--allow-alpha-loss",
@@ -336,11 +398,17 @@ def main():
             not args.no_reencode,
             args.allow_alpha_loss,
             args.overwrite,
+            args.normals,
+            args.metallic,
+            not args.no_normal_map,
+            not args.no_fix,
         )
         results.append(r)
         if r["状态"].startswith("成功"):
             ok += 1
             print(f"      ✓ {r['处理方式']} → {r['GLB文件']} · {r['体积MB']}MB · glbSha1={r['glbSha1'][:8]}")
+            if r.get("体检"):
+                print(f"        体检：{r['体检']}")
         else:
             fail += 1
             print(f"      ✗ {r['状态']}：{r['备注']}")

@@ -95,6 +95,28 @@ jobs:
       - name: Build
         run: npm run build
 
+  glb-tools:
+    name: GLB Tools (OBJ→GLB 转换器)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs/三维展示系统
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 与合伙人机器上的安装说明保持一致，不额外装 scipy
+      - name: Install dependencies
+        run: pip install trimesh pillow numpy
+
+      - name: Unit tests
+        run: python glb_utils.test.py
+
   exhibits:
     name: Exhibits (unit + Playwright)
     runs-on: ubuntu-latest

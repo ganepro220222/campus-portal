@@ -292,7 +292,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { applyExposureToCfg, configFetchUrl, configExportFilename } from './player-persist.mjs'
-import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, defaultPosition, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness } from './light-rig.mjs'
+import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, resolveShadow, shadowWillLand, resolveEnvSource } from './light-rig.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -345,6 +345,10 @@ function initRenderer() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = num(cfg.renderer?.exposure, 1.05)
   renderer.outputColorSpace = THREE.SRGBColorSpace
+  // 阴影：模型与灯多为静态，关掉逐帧重算，只在灯位/模型/参数变化时刷新
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  renderer.shadowMap.autoUpdate = false
+  shadowMapSize = isMobile ? 512 : 1024
   return true
 }
 
@@ -364,6 +368,8 @@ function normalize(obj) {
   obj.rotation.set(r[0]*Math.PI/180, r[1]*Math.PI/180, r[2]*Math.PI/180)
   obj.updateMatrixWorld(true)
   modelBox.setFromObject(obj)
+  fitShadowToModel()   // 缩放/位移/旋转后地面与投影视锥跟着走
+  if (renderer && renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true
 }
 
 function applyMaterial() {
@@ -392,7 +398,7 @@ function applyMaterial() {
 /* 四光源灯组（叠加在 IBL 之上，可编辑）
    方向光挂在 lightRig 上：勾选「灯光跟随相机」时整组绕 Y 轴跟着视角转，
    否则 rig 不旋转，与历史行为完全一致。 */
-let lightRefs = {}, lightRig = null
+let lightRefs = {}, lightRig = null, shadowMapSize = 1024, groundShadow = null, contactShadow = null
 function buildLights() {
   Object.values(lightRefs).forEach(l => l.parent && l.parent.remove(l)); lightRefs = {}
   if (lightRig) scene.remove(lightRig)
@@ -404,16 +410,128 @@ function buildLights() {
     const c = L[k] || {}
     const d = new THREE.DirectionalLight(new THREE.Color(c.color||LIGHT_DEFAULTS[k].color), effectiveIntensity(k, c))
     const p = c.position || defaultPosition(k); d.position.set(p[0],p[1],p[2])
+    if (k === SHADOW_CASTER) {
+      d.shadow.mapSize.set(shadowMapSize, shadowMapSize)
+      d.shadow.bias = -0.0006
+      d.shadow.normalBias = 0.02
+    }
     lightRig.add(d); lightRefs[k] = d
   })
   updateLightRig()
+  applyShadow()
 }
 /* 跟随相机：把灯组绕 Y 轴转到当前视角方位，任何角度都有主光 */
 function updateLightRig() {
   if (!lightRig) return
   const on = !!(cfg.lights && cfg.lights.followCamera) && camera && controls
   const y = on ? Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z) : 0
-  if (lightRig.rotation.y !== y) lightRig.rotation.y = y   // 逐帧调用，值没变就别脏化矩阵
+  if (lightRig.rotation.y === y) return   // 逐帧调用，值没变就别脏化矩阵
+  lightRig.rotation.y = y
+  if (renderer && renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true
+}
+
+/* ── 落地阴影 ──
+   两层叠加，缺一不可：
+   · 接触阴影：正下方一块柔化圆斑，与灯位无关。相机接近平视、背景又是纯色时，
+     只有它能让器物「贴在台面上」而不是浮着。
+   · 主光投影：真实投影，随方位角/仰角移动，主光在水平面以下时自然消失。 */
+function contactShadowTexture() {
+  const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S
+  const ctx = cv.getContext('2d')
+  const g = ctx.createRadialGradient(S/2, S/2, 0, S/2, S/2, S/2)
+  g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.45, 'rgba(0,0,0,0.72)')
+  g.addColorStop(0.75, 'rgba(0,0,0,0.22)'); g.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S)
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t
+}
+/* 展台边缘的柔化遮罩：中心不透明、边缘化开，深色背景上不会出现生硬的圆盘轮廓 */
+function plateFadeTexture() {
+  const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S
+  const ctx = cv.getContext('2d')
+  const g = ctx.createRadialGradient(S/2, S/2, 0, S/2, S/2, S/2)
+  g.addColorStop(0, '#ffffff'); g.addColorStop(0.55, '#ffffff')
+  g.addColorStop(0.82, '#6a6a6a'); g.addColorStop(1, '#000000')
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S)
+  return new THREE.CanvasTexture(cv)
+}
+function disposeMesh(m) {
+  if (!m) return
+  scene.remove(m); m.geometry.dispose()
+  for (const k of ['map', 'alphaMap']) if (m.material[k]) m.material[k].dispose()
+  m.material.dispose()
+}
+function disposeShadowMeshes() {
+  disposeMesh(groundShadow); disposeMesh(contactShadow)
+  groundShadow = contactShadow = null
+}
+/* 展台开/关时换材质：开＝能被照亮也能接影子的实体台面，关＝只接影子的透明面 */
+function groundMaterialFor(s) {
+  return s.plate
+    ? new THREE.MeshStandardMaterial({
+        color: new THREE.Color(s.plateColor), roughness: 0.95, metalness: 0,
+        transparent: true, alphaMap: plateFadeTexture(), depthWrite: false,
+      })
+    : new THREE.ShadowMaterial({ transparent: true, depthWrite: false })
+}
+function applyShadow() {
+  if (!renderer || !scene) return
+  const s = resolveShadow(cfg)
+  renderer.shadowMap.enabled = s.enabled
+  Object.entries(lightRefs).forEach(([k, l]) => { l.castShadow = s.enabled && k === SHADOW_CASTER })
+  if (lightRefs[SHADOW_CASTER]) lightRefs[SHADOW_CASTER].shadow.radius = s.softness
+  if (model) model.traverse(o => { if (o.isMesh) o.castShadow = s.enabled })
+
+  if (!s.enabled) { disposeShadowMeshes(); return }
+  if (!groundShadow) {
+    groundShadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 64), groundMaterialFor(s))
+    groundShadow.rotation.x = -Math.PI / 2
+    groundShadow.receiveShadow = true
+    groundShadow.renderOrder = -2
+    scene.add(groundShadow)
+    contactShadow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.5, 64),
+      new THREE.MeshBasicMaterial({ map: contactShadowTexture(), transparent: true, depthWrite: false }),
+    )
+    contactShadow.rotation.x = -Math.PI / 2
+    contactShadow.renderOrder = -1
+    scene.add(contactShadow)
+  }
+  const isPlate = !!groundShadow.material.isMeshStandardMaterial
+  if (isPlate !== s.plate) {                      // 切换展台模式：换材质并释放旧的
+    const old = groundShadow.material
+    groundShadow.material = groundMaterialFor(s)
+    if (old.alphaMap) old.alphaMap.dispose()
+    old.dispose()
+  } else if (s.plate) {
+    groundShadow.material.color.set(s.plateColor)
+  }
+  groundShadow.material.opacity = s.plate ? 1 : s.opacity
+  contactShadow.material.opacity = Math.min(1, s.opacity * 0.85)
+  fitShadowToModel(s)
+  renderer.shadowMap.needsUpdate = true
+}
+/* 地面、接触斑与投影视锥跟着模型包围盒走，换模型/改摆放后不会错位或糊掉 */
+function fitShadowToModel(s) {
+  if (!groundShadow || !model) return
+  const sh = s || resolveShadow(cfg)
+  const size = modelBox.getSize(new THREE.Vector3())
+  const ctr = modelBox.getCenter(new THREE.Vector3())
+  const foot = Math.max(size.x, size.z, 0.1)
+  const y = modelBox.min.y + sh.groundOffset
+  groundShadow.scale.set(foot * 6, foot * 6, 1)
+  groundShadow.position.set(ctr.x, y, ctr.z)
+  if (contactShadow) {
+    // 柔化越大，接触斑铺得越开，与投影的观感保持一致
+    contactShadow.scale.setScalar(foot * (1.7 + sh.softness * 0.06))
+    contactShadow.position.set(ctr.x, y + 0.002, ctr.z)   // 抬 2mm 压过投影面，避免同面闪烁
+  }
+  const key = lightRefs[SHADOW_CASTER]
+  if (!key) return
+  const r = Math.max(size.x, size.y, size.z, 0.1) * 0.9   // 收紧视锥换取更锐利的阴影
+  const cam = key.shadow.camera
+  cam.left = -r; cam.right = r; cam.top = r; cam.bottom = -r
+  cam.near = 0.1; cam.far = key.position.length() + r * 2
+  cam.updateProjectionMatrix()
 }
 /* 统计 */
 function modelStats() {
@@ -454,23 +572,77 @@ function applyEnvironment() {
   scene.environmentIntensity = num(cfg.environment?.intensity, 1)
   scene.environmentRotation.y = num(cfg.environment?.rotationDeg, 0) * Math.PI / 180
 }
+/* 单例 PMREM + 显式释放上一份环境。
+   注意释放的是 renderTarget 而不是它的 texture：只 dispose 贴图会漏掉帧缓冲，
+   编辑器里反复切换环境预设时显存会一路涨上去。 */
+let _pmrem = null, envRT = null, envBg = null
+function pmremGen() { if (!_pmrem) _pmrem = new THREE.PMREMGenerator(renderer); return _pmrem }
+function setEnvFromRT(rt, bg) {
+  if (envRT && envRT !== rt) envRT.dispose()
+  envRT = rt
+  scene.environment = rt ? rt.texture : null
+  if (envBg && envBg !== bg) envBg.dispose()
+  envBg = bg || null
+  scene.background = (cfg.environment?.visibleBackground && envBg)
+    ? envBg : new THREE.Color(cfg.renderer?.background || '#0f1118')
+}
 function roomIBL() {
-  const pmrem = new THREE.PMREMGenerator(renderer)
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+  const room = new RoomEnvironment()
+  setEnvFromRT(pmremGen().fromScene(room, 0.04), null)
+  room.dispose()
+}
+const hexRGB = h => { const n = parseInt(String(h).slice(1), 16); return [(n>>16)&255, (n>>8)&255, n&255] }
+/* 程序化生成 2:1 等距柱状环境贴图：天地渐变 + 若干柔光区，不依赖任何 HDRI 素材 */
+function presetEquirect(p) {
+  const W = 512, H = 256
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H
+  const ctx = cv.getContext('2d')
+  const g = ctx.createLinearGradient(0, 0, 0, H)
+  g.addColorStop(0, p.sky); g.addColorStop(0.5, p.horizon); g.addColorStop(1, p.ground)
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+  ctx.globalCompositeOperation = 'lighter'
+  for (const s of p.spots) {
+    const r = s.r * H, cy = s.v * H, [rr, gg, bb] = hexRGB(s.c)
+    const passes = Math.max(1, Math.round(s.i)), a = s.i / passes
+    const xs = [s.u * W]
+    if (s.u * W - r < 0) xs.push(s.u * W + W)          // 经度环绕，接缝不留断口
+    if (s.u * W + r > W) xs.push(s.u * W - W)
+    for (const cx of xs) {
+      const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+      rg.addColorStop(0, `rgba(${rr},${gg},${bb},${a})`)
+      rg.addColorStop(1, `rgba(${rr},${gg},${bb},0)`)
+      ctx.fillStyle = rg
+      for (let i = 0; i < passes; i++) { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill() }
+    }
+  }
+  const tex = new THREE.CanvasTexture(cv)
+  tex.mapping = THREE.EquirectangularReflectionMapping
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+function presetIBL(name) {
+  const p = ENV_PRESETS[name]
+  if (!p || p.builtin) return roomIBL()
+  const tex = presetEquirect(p)
+  setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
 }
 function panoramaIBL(url) {
   new THREE.TextureLoader().load(url, tex => {
     tex.mapping = THREE.EquirectangularReflectionMapping
     tex.colorSpace = THREE.SRGBColorSpace
-    const pmrem = new THREE.PMREMGenerator(renderer)
-    scene.environment = pmrem.fromEquirectangular(tex).texture
-    if (cfg.environment?.visibleBackground) scene.background = tex
-    tex.dispose(); pmrem.dispose()
-  }, undefined, () => {/* 保底已是 RoomEnvironment */})
+    setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
+  }, undefined, () => {/* 保底已是预设或 RoomEnvironment */})
 }
-function loadPanoramaFromCfg() {
-  if (cfg.environment?.mode !== 'panorama' || !cfg.assets?.panorama) return
-  panoramaIBL(asset(cfg.assets.panorama))
+/* 开场同步给出环境（预设是画布生成的，无需等待）；全景走异步，先用兜底顶着 */
+function bootEnvironment() {
+  const src = resolveEnvSource(cfg)
+  if (src.kind === 'preset') presetIBL(src.preset); else roomIBL()
+}
+function applyEnvironmentIBL() {
+  const src = resolveEnvSource(cfg)
+  if (src.kind === 'panorama') panoramaIBL(asset(src.url))
+  else if (src.kind === 'preset') presetIBL(src.preset)
+  else roomIBL()
 }
 
 /* ── 热点 ── */
@@ -957,12 +1129,17 @@ function applyPreset(p) {
   renderer.toneMappingExposure = num(p.exposure, renderer.toneMappingExposure)
   if (typeof p.envMapIntensity === 'number') { cfg.materials = cfg.materials||{}; cfg.materials.global = Object.assign(cfg.materials.global||{}, {envMapIntensity:p.envMapIntensity}); applyMaterial() }
   if (p.background) scene.background = cfg.environment?.visibleBackground ? scene.background : new THREE.Color(p.background)
-  if (p.lights) {   // 预设含四光源方案 → 应用灯组（含角度 / 启用 / 跟随相机）
+  if (p.environment) {   // 环境预设 / 环境光照 / 环境旋转（不动 mode 与全景图，免得把展品的全景顶掉）
+    cfg.environment = Object.assign(cfg.environment || {}, p.environment)
+    applyEnvironmentIBL(); applyEnvironment()
+  }
+  if (p.lights) {   // 预设含灯光方案 → 应用灯组（含角度 / 启用 / 跟随相机）
     cfg.lights = cfg.lights || {}
     ;['ambient', ...LIGHT_KEYS].forEach(k => { if (p.lights[k]) cfg.lights[k] = Object.assign(cfg.lights[k]||{}, p.lights[k]) })
     if (typeof p.lights.followCamera === 'boolean') cfg.lights.followCamera = p.lights.followCamera
     buildLights()
   }
+  if (p.shadow) { cfg.shadow = Object.assign(cfg.shadow || {}, p.shadow); applyShadow() }
   document.querySelectorAll('#presets .preset').forEach(b=>b.classList.toggle('on', b.dataset.id===p.id))
 }
 
@@ -987,7 +1164,7 @@ function reloadModel(url, revoke) {
   makeLoader().load(url, gltf => {
     if (model) scene.remove(model)
     model = gltf.scene
-    normalize(model); applyMaterial(); scene.add(model); buildHotspots()
+    normalize(model); applyMaterial(); scene.add(model); applyShadow(); buildHotspots()
     if (revoke) URL.revokeObjectURL(url)
     if (window.__edRefresh) window.__edRefresh()
   }, undefined, () => alert('模型加载失败：请检查地址，跨域资源需服务器配置 CORS'))
@@ -1000,19 +1177,19 @@ function start() {
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false; controls.rotateSpeed = 0.9
   controls.addEventListener('start', ()=>{ controls.autoRotate=false; syncBtns() })
-  roomIBL() // 先给内置环境，秒出反射
+  bootEnvironment() // 先给内置环境/程序化预设，秒出反射
   applyEnvironment() // 环境光照强度 / 全景旋转
-  buildLights() // 四光源灯组（叠加在 IBL 上，可编辑）
+  buildLights() // 五光源灯组（叠加在 IBL 上，可编辑）
 
   const modelUrl = asset(cfg.assets.model)
   if (!modelUrl) return showError('模型地址无效', true)
 
   makeLoader().load(modelUrl, gltf => {
     model = gltf.scene
-    normalize(model); applyMaterial(); scene.add(model)
+    normalize(model); applyMaterial(); scene.add(model); applyShadow()
     placeCamera(); buildHotspots(); buildHUD(); renderText(); buildAudio(); wireAudio()
-    // 背景真全景 IBL 后台加载，平滑接管
-    loadPanoramaFromCfg()
+    // 全景 IBL 后台加载，平滑接管（预设环境已在 bootEnvironment 同步就位）
+    applyEnvironmentIBL()
     $('topbar').removeAttribute('hidden'); $('hud').removeAttribute('hidden')
     $('loading').classList.add('fade'); setTimeout(()=>$('loading').setAttribute('hidden',''), 460)
     $('hint').classList.add('show'); setTimeout(()=>$('hint').classList.remove('show'), 2600)
@@ -1131,7 +1308,7 @@ function renderEditor() {
   // 单盏灯：标题行（启用 + 颜色）→ 强度 →（方向光再加 方位角 / 仰角）
   const lightBlock = (k, min, max, step) => {
     const lc = L[k] || {}, d = LIGHT_DEFAULTS[k]
-    const head = `<div class="ed-row"><b>${LIGHT_LABELS[k]}</b><span class="ed-row-actions"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" data-lon="${k}" ${lc.enabled===false?'':'checked'}> 启用</label> <input type="color" data-k="l.${k}.c" value="${esc(lc.color||d.color)}"></span></div>`
+    const head = `<div class="ed-row"><b>${LIGHT_LABELS[k]}</b><span class="ed-row-actions"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" data-lon="${k}" ${isLightOn(lc, k)?'checked':''}> 启用</label> <input type="color" data-k="l.${k}.c" value="${esc(lc.color||d.color)}"></span></div>`
     const body = [rng(`l.${k}.i`,'强度',min,max,step, num(lc.intensity, d.intensity))]
     if (k !== 'ambient') {
       const a = positionToAngles(lc.position || d.position)
@@ -1163,6 +1340,9 @@ function renderEditor() {
 
   const info = cfg.i18n?.zh || {}, ui = cfg.ui || {}
   const pan = cfg.panel || {}
+  const sh = resolveShadow(cfg)
+  const envSrc = resolveEnvSource(cfg)
+  const envPresetNow = ENV_PRESETS[cfg.environment.preset] ? cfg.environment.preset : (envSrc.kind === 'preset' ? envSrc.preset : 'room')
   $('editor').innerHTML = `
   <details class="ed-sec" open><summary>基本信息</summary>
     <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
@@ -1220,11 +1400,12 @@ function renderEditor() {
     ${rng('ov.env','· 环境光强',0,3,0.05,1.5)}
   </details>
 
-  <details class="ed-sec"><summary>灯光（四光源）</summary>
+  <details class="ed-sec"><summary>灯光（五光源）</summary>
     ${lightBlock('ambient', 0, 2, 0.01)}
     ${lightBlock('key', 0, 3, 0.05)}
     ${lightBlock('fill', 0, 2, 0.05)}
     ${lightBlock('rim', 0, 2, 0.05)}
+    ${lightBlock('bounce', 0, 2, 0.05)}
     <label class="ed-row"><span class="ed-label">灯光跟随相机</span><input type="checkbox" id="ed-light-follow" ${L.followCamera?'checked':''}></label>
     <div class="ed-note">勾选后灯组绕模型跟着视角转，转到任何角度都有主光；不勾则灯固定在场景中。</div>
     <button class="ed-btn" id="ed-light-diag">亮度诊断 ▾</button>
@@ -1233,13 +1414,26 @@ function renderEditor() {
   </details>
 
   <details class="ed-sec"><summary>环境 IBL</summary>
+    <div class="ed-row"><span class="ed-label">环境预设</span>
+      <select class="ed-in" id="ed-env-preset" style="width:auto;margin:0;flex:0 1 auto">
+        ${ENV_PRESET_KEYS.map(k=>`<option value="${k}" ${envPresetNow===k?'selected':''}>${ENV_PRESETS[k].label}</option>`).join('')}
+      </select></div>
     ${rng('e.int','环境光照',0,3,0.05, num(cfg.environment.intensity, 1))}
     ${rng('e.rot','环境旋转°',-180,180,1, num(cfg.environment.rotationDeg, 0))}
-    <div class="ed-note">环境光照＝整个场景的环境亮度（模型偏暗优先调这里）；环境旋转＝转动全景图，改变高光与反射的落点。</div>
-    <label class="ed-row"><span class="ed-label">可见全景背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
+    <div class="ed-note">预设为程序化生成，不占体积。已配全景图时以全景为准，预设作为兜底。环境光照＝整个场景的环境亮度（模型偏暗优先调这里）；环境旋转＝转动环境，改变高光与反射的落点。</div>
+    <label class="ed-row"><span class="ed-label">可见环境背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
     <input class="ed-in" id="ed-pano" placeholder="assets/panorama.jpg 或 https://…" value="${esc(cfg.assets?.panorama||'')}">
     <button class="ed-btn" id="ed-pano-load">加载全景</button>
-    <div class="ed-note">无全景时自动降级为内置 RoomEnvironment。</div>
+    <button class="ed-btn" id="ed-pano-clear">清除全景（改用预设）</button>
+  </details>
+
+  <details class="ed-sec"><summary>落地阴影</summary>
+    <label class="ed-row"><span class="ed-label">开启投影</span><input type="checkbox" id="ed-shadow-on" ${sh.enabled?'checked':''}></label>
+    ${rng('sh.opacity','浓度',0,1,0.01, sh.opacity)}
+    ${rng('sh.soft','柔化',0,10,0.5, sh.softness)}
+    ${rng('sh.offset','地面高低',-0.3,0.3,0.005, sh.groundOffset)}
+    <div class="ed-row"><span class="ed-label">展台</span><span class="ed-row-actions"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" id="ed-shadow-plate" ${sh.plate?'checked':''}> 显示</label> <input type="color" data-k="sh.plateColor" value="${esc(sh.plateColor)}"></span></div>
+    <div class="ed-note">两层叠加：正下方的接触阴影让器物「贴在台面上」（与灯位无关），加上随主光角度移动的真实投影。深色背景下必须开展台，否则影子没有落处、等于没开。<span id="ed-shadow-warn"></span></div>
   </details>
 
   <details class="ed-sec"><summary>热点与面板样式</summary>
@@ -1300,7 +1494,7 @@ function renderEditor() {
   </details>
 
   <details class="ed-sec"><summary>预设（含灯光方案）</summary>
-    <div class="ed-note">新建预设会记录当前曝光/环境光强/背景 + 四光源灯组。前台最多显示 4 个按钮。</div>
+    <div class="ed-note">新建预设会记录当前曝光/环境光强/背景 + 五光源灯组 + 环境预设与旋转 + 落地阴影。不记录全景图本身，切换预设不会顶掉展品的全景。前台最多显示 4 个按钮。</div>
     ${presets}<button class="ed-btn" id="ed-pr-add">从当前状态新建预设</button>
   </details>
 
@@ -1329,16 +1523,30 @@ function wireEditor() {
   function syncLightIntensity(k){ if (lightRefs[k]) lightRefs[k].intensity = effectiveIntensity(k, L[k]) }
   function applyLight(k, what, v){
     const c = L[k] = L[k] || {}
-    if (what === 'i') { c.intensity = v; syncLightIntensity(k); return }
-    c.position = withAngle(c, k, what, v)
-    if (lightRefs[k]) lightRefs[k].position.set(c.position[0], c.position[1], c.position[2])
+    if (what === 'i') { c.intensity = v; syncLightIntensity(k) }
+    else {
+      c.position = withAngle(c, k, what, v)
+      if (lightRefs[k]) lightRefs[k].position.set(c.position[0], c.position[1], c.position[2])
+      if (k === SHADOW_CASTER) { fitShadowToModel(); syncShadowHint() }
+    }
+    if (renderer && renderer.shadowMap.enabled && k === SHADOW_CASTER) renderer.shadowMap.needsUpdate = true
+  }
+  function setShadow(key, v){ cfg.shadow = cfg.shadow || {}; cfg.shadow[key] = v; applyShadow() }
+  // 主光被关掉 / 转到水平面以下时，地面接不到影子——就地提示，不整段重绘
+  function syncShadowHint(){
+    const el = document.getElementById('ed-shadow-warn'); if (!el) return
+    el.innerHTML = (resolveShadow(cfg).enabled && !shadowWillLand(cfg))
+      ? '<b style="color:#e0b070">当前主光已关闭或在水平面以下，只剩接触阴影，没有方向性投影。</b>' : ''
   }
   function applyRange(k, v){
-    const lm = /^l\.(ambient|key|fill|rim)\.(i|az|el)$/.exec(k)
+    const lm = /^l\.(ambient|key|fill|rim|bounce)\.(i|az|el)$/.exec(k)
     if (lm) return applyLight(lm[1], lm[2], v)
     switch(k){
       case 'e.int': cfg.environment.intensity=v; applyEnvironment(); break
       case 'e.rot': cfg.environment.rotationDeg=v; applyEnvironment(); break
+      case 'sh.opacity': setShadow('opacity', v); break
+      case 'sh.soft': setShadow('softness', v); break
+      case 'sh.offset': setShadow('groundOffset', v); break
       case 'g.exposure': applyExposureToCfg(cfg, v); renderer.toneMappingExposure = v; break
       case 'g.env': g.envMapIntensity=v; applyMaterial(); break
       case 'g.metal': g.metalness=v; applyMaterial(); break
@@ -1381,13 +1589,33 @@ function wireEditor() {
   })
   $('editor').querySelectorAll('input[type=color]').forEach(inp => inp.oninput = e => {
     const k=inp.dataset.k, col=new THREE.Color(e.target.value)
-    const lm=/^l\.(ambient|key|fill|rim)\.c$/.exec(k||'')
+    const lm=/^l\.(ambient|key|fill|rim|bounce)\.c$/.exec(k||'')
     if(lm){ const n=lm[1]; L[n]=L[n]||{}; L[n].color=e.target.value; if(lightRefs[n]) lightRefs[n].color.copy(col) }
+    if(k==='sh.plateColor'){ cfg.shadow=cfg.shadow||{}; cfg.shadow.plateColor=e.target.value; applyShadow() }
     if(k==='hs.color'){ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.color=e.target.value; buildHotspots() }
   })
   // 灯光：单灯启用 / 跟随相机 / 亮度诊断 / 恢复出厂
   ed.querySelectorAll('[data-lon]').forEach(cb => cb.onchange = e => {
-    const k=cb.dataset.lon; L[k]=L[k]||{}; L[k].enabled=e.target.checked; syncLightIntensity(k) })
+    const k=cb.dataset.lon; L[k]=L[k]||{}; L[k].enabled=e.target.checked; syncLightIntensity(k)
+    if (renderer && renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true
+    syncShadowHint() })
+  { const c2=document.getElementById('ed-shadow-on')
+    if(c2) c2.onchange=e=>{ cfg.shadow=cfg.shadow||{}; cfg.shadow.enabled=e.target.checked; applyShadow(); syncShadowHint() } }
+  { const c3=document.getElementById('ed-shadow-plate')
+    if(c3) c3.onchange=e=>{ cfg.shadow=cfg.shadow||{}; cfg.shadow.plate=e.target.checked; applyShadow() } }
+  syncShadowHint()
+  { const s2=document.getElementById('ed-env-preset')
+    if(s2) s2.onchange=e=>{ cfg.environment.preset=e.target.value
+      if(cfg.assets?.panorama && cfg.environment.mode==='panorama') flash('已记录预设；当前仍以全景图为准，可点「清除全景」改用预设')
+      applyEnvironmentIBL(); applyEnvironment() } }
+  { const b2=document.getElementById('ed-pano-clear')
+    if(b2) b2.onclick=()=>{
+      if(!cfg.assets?.panorama && cfg.environment.mode!=='panorama') return flash('当前已在使用环境预设')
+      if(!confirm('清除全景图地址、改用上方的环境预设？')) return
+      if(cfg.assets) delete cfg.assets.panorama
+      cfg.environment.mode='preset'
+      cfg.environment.preset = ENV_PRESETS[cfg.environment.preset] ? cfg.environment.preset : 'studio'
+      applyEnvironmentIBL(); applyEnvironment(); renderEditor(); flash('已切换到环境预设，记得点保存') } }
   { const f=document.getElementById('ed-light-follow')
     if(f) f.onchange=e=>{ cfg.lights.followCamera=e.target.checked; updateLightRig() } }
   { const b=document.getElementById('ed-light-diag'), o=document.getElementById('ed-light-diagout')
@@ -1437,7 +1665,10 @@ function wireEditor() {
   el('ed-pr-add').onclick=()=>{ const shown=cfg.presets.filter(pp=>pp.showAsButton!==false).length
     cfg.presets.push({ id:'p'+(cfg.presets.length+1), label:{zh:'预设'+(cfg.presets.length+1),en:'Preset'+(cfg.presets.length+1)},
       exposure:+renderer.toneMappingExposure.toFixed(2), envMapIntensity:num(g.envMapIntensity,1.35), background:cfg.renderer?.background||'#0f1118',
-      lights: JSON.parse(JSON.stringify(cfg.lights||{})), showAsButton: shown<4 }); renderEditor(); buildHUD_refresh() }
+      lights: JSON.parse(JSON.stringify(cfg.lights||{})),
+      environment: { preset: cfg.environment?.preset, intensity: num(cfg.environment?.intensity,1), rotationDeg: num(cfg.environment?.rotationDeg,0) },
+      shadow: resolveShadow(cfg),
+      showAsButton: shown<4 }); renderEditor(); buildHUD_refresh() }
   $('editor').querySelectorAll('[data-pr-btn]').forEach(cb=>cb.onchange=e=>{ const idx=+cb.dataset.prBtn
     if(e.target.checked){ const shown=cfg.presets.filter((pp,j)=>j!==idx && pp.showAsButton!==false).length; if(shown>=4){ e.target.checked=false; flash('前台最多显示 4 个光源按钮'); return } }
     cfg.presets[idx].showAsButton=e.target.checked; buildHUD_refresh() })
@@ -1552,7 +1783,9 @@ function brightnessReport(){
     key: num(L.key?.intensity, 1.1),
     metalness: num(g.metalness, 0),
     roughness: num(g.roughness, 0.5),
-    hasPanorama: cfg.environment?.mode === 'panorama' && !!cfg.assets?.panorama,
+    hasPanorama: resolveEnvSource(cfg).kind !== 'room',
+    keyElevation: positionToAngles(L.key?.position || defaultPosition('key')).elevation,
+    bounceOn: isLightOn(L.bounce, 'bounce'),
   }).map(x => `${icon[x.level]||''} ${esc(x.text)}`).join('<br>')
 }
 function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x}`
@@ -1871,11 +2104,34 @@ if (editMode) {
         inRig: l.parent === lightRig,
       }])),
       cfgLights: JSON.parse(JSON.stringify(cfg.lights || {})),
+      envSource: resolveEnvSource(cfg),
+      envPreset: cfg.environment?.preset ?? null,
+      hasEnvMap: !!scene?.environment,
+      backgroundIsTexture: !!(scene?.background && scene.background.isTexture),
+      shadow: {
+        rendererEnabled: !!renderer?.shadowMap.enabled,
+        autoUpdate: !!renderer?.shadowMap.autoUpdate,
+        hasGround: !!groundShadow,
+        hasContact: !!contactShadow,
+        contactY: contactShadow ? +contactShadow.position.y.toFixed(3) : null,
+        contactSpan: contactShadow ? +contactShadow.scale.x.toFixed(3) : null,
+        contactOpacity: contactShadow ? +contactShadow.material.opacity.toFixed(3) : null,
+        plate: groundShadow ? !!groundShadow.material.isMeshStandardMaterial : null,
+        plateColor: (groundShadow && groundShadow.material.color) ? '#' + groundShadow.material.color.getHexString() : null,
+        groundY: groundShadow ? +groundShadow.position.y.toFixed(3) : null,
+        groundSpan: groundShadow ? +groundShadow.scale.x.toFixed(3) : null,
+        opacity: groundShadow ? +groundShadow.material.opacity.toFixed(3) : null,
+        casters: Object.entries(lightRefs).filter(([, l]) => l.castShadow).map(([k]) => k),
+        meshesCast: (() => { let n = 0; model?.traverse(o => { if (o.isMesh && o.castShadow) n++ }); return n })(),
+        radius: lightRefs[SHADOW_CASTER] ? lightRefs[SHADOW_CASTER].shadow.radius : null,
+        modelMinY: model ? +modelBox.min.y.toFixed(3) : null,
+      },
     }),
     disposeForTest: () => {
       cancelAnimationFrame(raf)
       raf = 0
       try { controls?.dispose?.() } catch (_) {}
+      try { envRT?.dispose?.(); _pmrem?.dispose?.() } catch (_) {}
       try { renderer?.dispose?.() } catch (_) {}
       return true
     },

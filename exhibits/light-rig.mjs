@@ -7,17 +7,92 @@
  * 方向光（DirectionalLight）只看方向不看距离，radius 仅用于保持配置数值稳定。
  */
 
-export const LIGHT_KEYS = ['key', 'fill', 'rim']
+export const LIGHT_KEYS = ['key', 'fill', 'rim', 'bounce']
 
-/** 与 _template/config.json 保持一致的出厂灯组 */
+/**
+ * 出厂灯组。前四项与 _template/config.json 一致。
+ * bounce（地面反射光）是 P1 新增的第五盏：仰角为负，专治「光都从上方来、器物底部死黑」。
+ * 它列在 LIGHT_OPTIONAL 里 —— 旧配置没有这个键时默认不亮，绝不改变既有展品的观感。
+ */
 export const LIGHT_DEFAULTS = {
   ambient: { color: '#ffffff', intensity: 0.25 },
   key: { color: '#fff0e0', intensity: 1.1, position: [5, 8, 6] },
   fill: { color: '#a9c4ff', intensity: 0.35, position: [-5, 2, -3] },
   rim: { color: '#ffffff', intensity: 0.5, position: [-2, 3, -7] },
+  bounce: { color: '#fff4e6', intensity: 0.3, position: [3.69, -8.19, 4.39] },
 }
 
-export const LIGHT_LABELS = { ambient: '环境光', key: '主光', fill: '补光', rim: '轮廓光' }
+/** 配置中缺席时默认关闭的灯（新增光源不得影响旧展品） */
+export const LIGHT_OPTIONAL = new Set(['bounce'])
+
+export const LIGHT_LABELS = {
+  ambient: '环境光', key: '主光', fill: '补光', rim: '轮廓光', bounce: '地面反射光',
+}
+
+/** 只有主光投影：多光源投影在网页端性价比极低，且会让阴影互相打架 */
+export const SHADOW_CASTER = 'key'
+
+/**
+ * 阴影出厂参数。
+ * plate（展台）默认随阴影一起开：深色背景上没有承影面，影子无处可落、等于没开。
+ * 阴影整体默认关闭，所以这不改变任何既有展品。
+ */
+export const SHADOW_DEFAULTS = {
+  enabled: false, opacity: 0.32, softness: 3, groundOffset: 0,
+  plate: true, plateColor: '#2b2f3a',
+}
+const HEX6 = /^#[0-9a-fA-F]{6}$/
+
+/**
+ * 环境预设：全部程序化生成 2:1 等距柱状贴图，不依赖任何 HDRI 素材。
+ * sky/ground 为天地基色，spots 为柔光区（u/v 为 0–1 归一化位置，r 为半径，i 为强度）。
+ */
+export const ENV_PRESETS = {
+  room: { label: '内置房间', builtin: true },
+  studio: {
+    label: '影棚柔光',
+    sky: '#3a3d45', ground: '#15161a', horizon: '#26282e',
+    spots: [
+      { u: 0.25, v: 0.14, r: 0.30, i: 3.2, c: '#ffffff' },
+      { u: 0.75, v: 0.22, r: 0.26, i: 1.5, c: '#eef2ff' },
+      { u: 0.50, v: 0.04, r: 0.40, i: 1.1, c: '#ffffff' },
+    ],
+  },
+  gallery: {
+    label: '博物馆暖阁',
+    sky: '#2a231c', ground: '#0d0b09', horizon: '#1a1512',
+    spots: [
+      { u: 0.50, v: 0.10, r: 0.20, i: 3.6, c: '#ffe6c2' },
+      { u: 0.12, v: 0.26, r: 0.16, i: 1.2, c: '#ffd8a8' },
+      { u: 0.86, v: 0.26, r: 0.16, i: 1.0, c: '#ffe9cf' },
+    ],
+  },
+  overcast: {
+    label: '户外阴天',
+    sky: '#c8d2dc', ground: '#6e7379', horizon: '#9aa3ac',
+    spots: [{ u: 0.5, v: 0.06, r: 0.55, i: 1.35, c: '#ffffff' }],
+  },
+  night: {
+    label: '夜展暗场',
+    sky: '#0d0f16', ground: '#050607', horizon: '#0a0b11',
+    spots: [
+      { u: 0.30, v: 0.16, r: 0.14, i: 2.2, c: '#cfe0ff' },
+      { u: 0.72, v: 0.20, r: 0.12, i: 1.4, c: '#ffd9b0' },
+    ],
+  },
+}
+
+export const ENV_PRESET_KEYS = Object.keys(ENV_PRESETS)
+
+/** 当前该用哪个环境：全景优先，其次预设，最后内置房间 */
+export function resolveEnvSource(cfg = {}) {
+  const env = cfg.environment || {}
+  if (env.mode === 'panorama' && cfg.assets && cfg.assets.panorama) {
+    return { kind: 'panorama', url: cfg.assets.panorama }
+  }
+  const preset = ENV_PRESETS[env.preset] ? env.preset : 'room'
+  return preset === 'room' ? { kind: 'room' } : { kind: 'preset', preset }
+}
 
 const DEG = 180 / Math.PI
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
@@ -36,15 +111,46 @@ export function defaultIntensity(key) {
   return fin(LIGHT_DEFAULTS[key]?.intensity, 0.4)
 }
 
-/** 一盏灯是否启用（缺省视为启用，保证旧配置行为不变） */
-export function isLightOn(conf) {
-  return !(conf && conf.enabled === false)
+/**
+ * 一盏灯是否启用。
+ * 已有的灯：缺省视为启用（旧配置行为不变）。
+ * 可选新增的灯（bounce）：配置里没写 enabled 就是关闭，避免给旧展品凭空加光。
+ */
+export function isLightOn(conf, key) {
+  if (conf && typeof conf.enabled === 'boolean') return conf.enabled
+  return !LIGHT_OPTIONAL.has(key)
 }
 
 /** 送进 three.js 的实际强度：关闭时为 0，不改动配置里的原始强度值 */
 export function effectiveIntensity(key, conf) {
-  if (!isLightOn(conf)) return 0
+  if (!isLightOn(conf, key)) return 0
   return fin(conf && conf.intensity, defaultIntensity(key))
+}
+
+/** 阴影参数归一化（含范围夹取，编辑器与渲染共用同一套值） */
+export function resolveShadow(cfg = {}) {
+  const s = cfg.shadow || {}
+  return {
+    enabled: s.enabled === true,
+    opacity: clamp(fin(s.opacity, SHADOW_DEFAULTS.opacity), 0, 1),
+    softness: clamp(fin(s.softness, SHADOW_DEFAULTS.softness), 0, 10),
+    groundOffset: clamp(fin(s.groundOffset, SHADOW_DEFAULTS.groundOffset), -1, 1),
+    plate: s.plate !== false,
+    plateColor: HEX6.test(s.plateColor) ? s.plateColor : SHADOW_DEFAULTS.plateColor,
+  }
+}
+
+/**
+ * 投影是否真的会落到地面上：主光被关掉、或从水平以下打上来时，地面接不到影子。
+ * 用于编辑器提示，避免「开了阴影却什么都没有」的困惑。
+ */
+export function shadowWillLand(cfg = {}) {
+  const s = resolveShadow(cfg)
+  if (!s.enabled) return false
+  const conf = (cfg.lights || {})[SHADOW_CASTER]
+  if (!isLightOn(conf, SHADOW_CASTER)) return false
+  if (effectiveIntensity(SHADOW_CASTER, conf) <= 0) return false
+  return positionToAngles(conf && conf.position ? conf.position : defaultPosition(SHADOW_CASTER)).elevation > 3
 }
 
 /** [x,y,z] → { azimuth, elevation, radius } */
@@ -111,10 +217,10 @@ export function diagnoseBrightness(s = {}) {
       text: `环境光已到 ${r1(ambient)}。环境光是各方向均匀打亮，再拉高只会让画面发灰、丢掉立体感。请改用下面几项提亮。`,
     })
   }
-  if (!s.hasPanorama) {
+  if (!s.hasCustomEnv) {
     out.push({
       level: 'tip',
-      text: '当前用的是内置 RoomEnvironment（偏暗、偏中性）。在「环境 IBL」里换一张明亮的全景图，比加灯有效得多。',
+      text: '当前用的是内置 RoomEnvironment（偏暗、偏中性）。在「环境 IBL」里选一个环境预设（影棚柔光 / 户外阴天最提亮），或换一张明亮的全景图 —— 比加灯有效得多。',
     })
   }
   if (exposure < 1.25) {
@@ -134,6 +240,12 @@ export function diagnoseBrightness(s = {}) {
   }
   if (roughness > 0.85) {
     out.push({ level: 'tip', text: `粗糙度 ${r1(roughness)} 很高，表面几乎不反光，观感会又暗又平。建议降到 0.4～0.6。` })
+  }
+  if (fin(s.keyElevation, 45) > 58 && !s.bounceOn) {
+    out.push({
+      level: 'tip',
+      text: `主光仰角 ${r1(fin(s.keyElevation, 45))}° 接近顶光，器物下半身会偏暗。勾选「地面反射光」补一层由下往上的弱光，这是博物馆器物摄影的标准做法。`,
+    })
   }
   if (!out.length) {
     out.push({

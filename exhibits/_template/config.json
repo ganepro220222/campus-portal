@@ -14,8 +14,16 @@
   },
   "model": {
     "scale": 1.0,
-    "position": [0, 0, 0],
-    "rotationDeg": [0, 0, 0],
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotationDeg": [
+      0,
+      0,
+      0
+    ],
     "autoCenter": true,
     "targetSize": 2.4
   },
@@ -41,20 +49,67 @@
     "useAsIBL": true,
     "visibleBackground": false,
     "intensity": 1.15,
-    "fallback": "room"
+    "fallback": "room",
+    "preset": "studio",
+    "rotationDeg": 0
+  },
+  "shadow": {
+    "enabled": true,
+    "opacity": 0.32,
+    "softness": 3,
+    "groundOffset": 0,
+    "plate": true,
+    "plateColor": "#2b2f3a"
   },
   "lights": {
-    "ambient": { "color": "#ffffff", "intensity": 0.25 },
-    "key": { "color": "#fff0e0", "intensity": 1.1, "position": [5, 8, 6] },
-    "fill": { "color": "#a9c4ff", "intensity": 0.35, "position": [-5, 2, -3] },
-    "rim": { "color": "#ffffff", "intensity": 0.5, "position": [-2, 3, -7] }
+    "ambient": {
+      "color": "#ffffff",
+      "intensity": 0.25
+    },
+    "key": {
+      "color": "#fff0e0",
+      "intensity": 1.1,
+      "position": [
+        5,
+        8,
+        6
+      ]
+    },
+    "fill": {
+      "color": "#a9c4ff",
+      "intensity": 0.35,
+      "position": [
+        -5,
+        2,
+        -3
+      ]
+    },
+    "rim": {
+      "color": "#ffffff",
+      "intensity": 0.5,
+      "position": [
+        -2,
+        3,
+        -7
+      ]
+    }
   },
   "materials": {
-    "global": { "metalness": 0.0, "roughness": 0.45, "envMapIntensity": 1.35 },
+    "global": {
+      "metalness": 0.0,
+      "roughness": 0.45,
+      "envMapIntensity": 1.35
+    },
     "overrides": []
   },
-  "hotspotStyle": { "color": "#c8a86a", "size": 26, "pulse": true },
-  "panel": { "style": "glass" },
+  "hotspotStyle": {
+    "color": "#c8a86a",
+    "size": 26,
+    "pulse": true
+  },
+  "panel": {
+    "style": "glass"
+  },
   "hotspots": [],
   "audio": [],
   "ui": {
@@ -67,8 +122,27 @@
     "hideEditorByDefault": true
   },
   "presets": [
-    { "id": "hall", "label": { "zh": "展厅光" }, "exposure": 1.08, "envMapIntensity": 1.35, "background": "#0f1118" },
-    { "id": "detail", "label": { "zh": "细节光" }, "exposure": 1.32, "envMapIntensity": 1.75, "background": "#07070b" }
+    {
+      "id": "hall",
+      "label": {
+        "zh": "展厅光"
+      },
+      "exposure": 1.08,
+      "envMapIntensity": 1.35,
+      "background": "#0f1118"
+    },
+    {
+      "id": "detail",
+      "label": {
+        "zh": "细节光"
+      },
+      "exposure": 1.32,
+      "envMapIntensity": 1.75,
+      "background": "#07070b"
+    }
   ],
-  "performance": { "mobilePixelRatio": 1.5, "desktopPixelRatio": 2 }
+  "performance": {
+    "mobilePixelRatio": 1.5,
+    "desktopPixelRatio": 2
+  }
 }

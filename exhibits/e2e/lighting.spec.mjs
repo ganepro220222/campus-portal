@@ -138,6 +138,113 @@ test.describe('灯光面板', () => {
   })
 })
 
+test.describe('地面反射光（第五盏）', () => {
+  test('旧配置里没有 bounce 键 → 面板显示未勾选，场景里也不亮', async () => {
+    await reloadPlayer(page, {})
+    await openLightSection()
+    await expect(page.locator('#editor [data-lon="bounce"]')).not.toBeChecked()
+    const st = await lightState()
+    expect(st.lights.bounce.intensity).toBe(0)
+    expect(st.cfgLights.bounce).toBeUndefined()
+  })
+
+  test('勾选后从下方补光，取消后回到不亮', async () => {
+    await openLightSection()
+    await page.check('#editor [data-lon="bounce"]')
+    let st = await lightState()
+    expect(st.lights.bounce.intensity).toBeGreaterThan(0)
+    expect(st.lights.bounce.pos[1]).toBeLessThan(0)   // 仰角为负才叫「地面反射」
+    expect(st.lights.bounce.inRig).toBe(true)
+    await page.uncheck('#editor [data-lon="bounce"]')
+    st = await lightState()
+    expect(st.lights.bounce.intensity).toBe(0)
+    expect(st.cfgLights.bounce.enabled).toBe(false)
+  })
+})
+
+test.describe('落地阴影', () => {
+  test('默认关闭：不建地面、不开投影，旧展品零变化', async () => {
+    await reloadPlayer(page, {})
+    const st = await lightState()
+    expect(st.shadow.rendererEnabled).toBe(false)
+    expect(st.shadow.hasGround).toBe(false)
+    expect(st.shadow.casters).toEqual([])
+    expect(st.shadow.meshesCast).toBe(0)
+  })
+
+  test('开启后：只有主光投影，接触阴影与地面贴着模型底面，模型全部投影', async () => {
+    await reloadPlayer(page, { shadow: { enabled: true } })
+    const st = await lightState()
+    expect(st.shadow.rendererEnabled).toBe(true)
+    expect(st.shadow.autoUpdate).toBe(false)          // 静态场景不逐帧重算阴影
+    expect(st.shadow.hasGround).toBe(true)
+    expect(st.shadow.hasContact).toBe(true)
+    expect(st.shadow.casters).toEqual(['key'])
+    expect(st.shadow.meshesCast).toBeGreaterThan(0)
+    expect(st.shadow.groundY).toBeCloseTo(st.shadow.modelMinY, 2)
+    expect(st.shadow.contactY).toBeCloseTo(st.shadow.modelMinY, 2)
+    expect(st.shadow.groundSpan).toBeGreaterThan(st.shadow.contactSpan)  // 承影面比接触斑大
+  })
+
+  test('展台默认随阴影开启，可单独关掉换回纯接影面', async () => {
+    let st = await lightState()
+    expect(st.shadow.plate).toBe(true)
+    expect(st.shadow.plateColor).toBe('#2b2f3a')
+    await page.evaluate(() => {
+      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+        if ((d.querySelector('summary')?.textContent || '').includes('落地阴影')) d.open = true
+      }
+    })
+    await page.uncheck('#ed-shadow-plate')
+    st = await lightState()
+    expect(st.shadow.plate).toBe(false)
+    expect(st.shadow.hasGround).toBe(true)     // 仍有承影面，只是不可见
+    await page.check('#ed-shadow-plate')
+    expect((await lightState()).shadow.plate).toBe(true)
+  })
+
+  test('浓度/柔化/地面高低三个滑条即时生效', async () => {
+    const base = (await lightState()).shadow.modelMinY
+    await setRange('sh.opacity', 0.75)
+    await setRange('sh.soft', 7)
+    await setRange('sh.offset', -0.12)
+    const st = await lightState()
+    expect(st.shadow.contactOpacity).toBeCloseTo(0.75 * 0.85, 2)
+    expect(st.shadow.radius).toBeCloseTo(7, 2)
+    expect(st.shadow.groundY).toBeCloseTo(base - 0.12, 2)
+    expect(st.shadow.contactY).toBeCloseTo(base - 0.12 + 0.002, 3)
+  })
+
+  test('关掉展台后，浓度作用在承影面上', async () => {
+    await page.uncheck('#ed-shadow-plate')
+    await setRange('sh.opacity', 0.6)
+    const st = await lightState()
+    expect(st.shadow.plate).toBe(false)
+    expect(st.shadow.opacity).toBeCloseTo(0.6, 2)
+    await page.check('#ed-shadow-plate')
+    expect((await lightState()).shadow.opacity).toBe(1)   // 展台自身不透明，浓度交给影子
+  })
+
+  test('关掉开关会拆掉地面，避免留下一块空平面', async () => {
+    await page.uncheck('#ed-shadow-on')
+    let st = await lightState()
+    expect(st.shadow.hasGround).toBe(false)
+    expect(st.shadow.meshesCast).toBe(0)
+    await page.check('#ed-shadow-on')
+    st = await lightState()
+    expect(st.shadow.hasGround).toBe(true)
+    expect(st.shadow.casters).toEqual(['key'])
+  })
+
+  test('主光转到水平面以下时提示「只剩接触阴影」', async () => {
+    await openLightSection()
+    await setRange('l.key.el', -40)
+    await expect(page.locator('#ed-shadow-warn')).toContainText('只剩接触阴影')
+    await setRange('l.key.el', 45)
+    await expect(page.locator('#ed-shadow-warn')).toBeEmpty()
+  })
+})
+
 test.describe('环境 IBL', () => {
   test('environment.intensity / rotationDeg 真正作用到场景', async () => {
     await reloadPlayer(page, { environment: { intensity: 2.2, rotationDeg: 90 } })
@@ -162,5 +269,80 @@ test.describe('环境 IBL', () => {
     const st = await lightState()
     expect(st.envIntensity).toBe(1)
     expect(st.envRotY).toBe(0)
+  })
+
+  test('有全景图时全景优先，预设只作兜底', async () => {
+    await reloadPlayer(page, { environment: { preset: 'studio' } })
+    const st = await lightState()
+    expect(st.envSource.kind).toBe('panorama')
+    expect(st.hasEnvMap).toBe(true)
+  })
+
+  test('去掉全景后按预设程序化生成环境，无需任何素材', async () => {
+    await reloadPlayer(page, { environment: { mode: 'preset', preset: 'studio' }, assets: { panorama: '' } })
+    let st = await lightState()
+    expect(st.envSource).toEqual({ kind: 'preset', preset: 'studio' })
+    expect(st.hasEnvMap).toBe(true)
+
+    await page.evaluate(() => {
+      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+        if ((d.querySelector('summary')?.textContent || '').includes('环境 IBL')) d.open = true
+      }
+    })
+    for (const name of ['gallery', 'overcast', 'night', 'room']) {
+      await page.selectOption('#ed-env-preset', name)
+      st = await lightState()
+      expect(st.envPreset).toBe(name)
+      expect(st.envSource.kind).toBe(name === 'room' ? 'room' : 'preset')
+      expect(st.hasEnvMap).toBe(true)   // 每次切换都必须留下可用环境，不能变成空
+    }
+  })
+
+  test('可见环境背景：程序化预设也能当背景显示', async () => {
+    await reloadPlayer(page, {
+      environment: { mode: 'preset', preset: 'overcast', visibleBackground: true },
+      assets: { panorama: '' },
+    })
+    expect((await lightState()).backgroundIsTexture).toBe(true)
+    await reloadPlayer(page, {
+      environment: { mode: 'preset', preset: 'overcast', visibleBackground: false },
+      assets: { panorama: '' },
+    })
+    expect((await lightState()).backgroundIsTexture).toBe(false)
+  })
+})
+
+test.describe('预设（灯光方案）', () => {
+  test('应用预设会一并还原环境与阴影，但不动展品的全景图', async () => {
+    await reloadPlayer(page, {
+      environment: { intensity: 1.15, rotationDeg: 0 },
+      shadow: { enabled: false },
+      presets: [{
+        id: 'p1', label: { zh: '带阴影方案' }, exposure: 1.3, envMapIntensity: 1.5,
+        environment: { preset: 'studio', intensity: 2.1, rotationDeg: 60 },
+        shadow: { enabled: true, opacity: 0.5, softness: 4, groundOffset: 0 },
+        lights: { key: { intensity: 1.4, position: [5, 8, 6] }, bounce: { enabled: true, intensity: 0.4 } },
+        showAsButton: true,
+      }],
+    })
+    await page.click('#presets .preset[data-id="p1"]')
+    const st = await lightState()
+    expect(st.envIntensity).toBeCloseTo(2.1, 3)
+    expect(st.envRotY).toBeCloseTo(Math.PI / 3, 3)
+    expect(st.shadow.rendererEnabled).toBe(true)
+    expect(st.shadow.hasGround).toBe(true)
+    expect(st.lights.bounce.intensity).toBeCloseTo(0.4, 3)
+    expect(st.envSource.kind).toBe('panorama')   // 全景图仍在，没被预设顶掉
+  })
+
+  test('旧预设（没有 environment / shadow 字段）照常工作', async () => {
+    await reloadPlayer(page, {
+      shadow: { enabled: false },
+      presets: [{ id: 'old', label: { zh: '老预设' }, exposure: 1.4, envMapIntensity: 1.6, showAsButton: true }],
+    })
+    await page.click('#presets .preset[data-id="old"]')
+    const st = await lightState()
+    expect(st.shadow.rendererEnabled).toBe(false)
+    expect(st.envIntensity).toBeCloseTo(1.15, 3)
   })
 })

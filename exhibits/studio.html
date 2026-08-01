@@ -379,8 +379,9 @@ const normCfg = (dir, cfg, ov) => { const zh = (cfg.i18n && cfg.i18n.zh) || {}; 
 async function panoFileExists(dir, p) {
   const s = String(p || '').trim()
   if (!s) return false
-  if (/^(https?:|data:|blob:|\/\/|\/)/.test(s)) return true
-  try { const r = await fetch(`${dir}/${s}`, { method: 'HEAD', cache: 'no-cache' }); return r.ok } catch { return false }
+  if (/^(https?:|data:|blob:|\/\/)/.test(s)) return true
+  const url = s.startsWith('/') ? s : `${dir}/${s}`
+  try { const r = await fetch(url, { method: 'HEAD', cache: 'no-cache' }); return r.ok } catch { return false }
 }
 
 function render(r) {

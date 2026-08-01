@@ -4,20 +4,29 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_REMOTE = re.compile(r'^(https?:|data:|blob:|//|/)')
+_REMOTE = re.compile(r'^(https?:|data:|blob:|//)')
 
 
 def is_remote_panorama_url(path: str | None) -> bool:
     return bool(_REMOTE.match(str(path or '').strip()))
 
 
-def has_panorama_file(exhibit_dir: Path, panorama_path: str | None) -> bool:
+def has_panorama_file(
+    exhibit_dir: Path,
+    panorama_path: str | None,
+    exhibits_root: Path | None = None,
+) -> bool:
     p = str(panorama_path or '').strip()
     if not p:
         return False
     if is_remote_panorama_url(p):
         return True
-    local = Path(p)
-    if not local.is_absolute():
-        local = exhibit_dir / p
+    if p.startswith('/'):
+        if not exhibits_root:
+            return False
+        local = exhibits_root / p.lstrip('/')
+    else:
+        local = Path(p)
+        if not local.is_absolute():
+            local = exhibit_dir / p
     return local.is_file()

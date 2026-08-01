@@ -25,7 +25,8 @@ def main() -> int:
 
         with zipfile.ZipFile(out) as zf:
             names = set(zf.namelist())
-            for required in ('serve.py', 'exhibit_create.py', '拷贝说明.txt', '_launch/start-server.bat', 'studio.html'):
+            for required in ('serve.py', 'exhibit_create.py', 'pano-check.mjs', 'pano_check.py',
+                             '拷贝说明.txt', '_launch/start-server.bat', 'studio.html'):
                 if required not in names:
                     raise RuntimeError(f'missing {required} in zip')
             for forbidden in ('node_modules/', 'e2e/'):

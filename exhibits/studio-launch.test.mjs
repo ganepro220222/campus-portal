@@ -123,6 +123,34 @@ test('Node server: config.json no-store, leader-geom.js cacheable', async () => 
   })
 })
 
+test('Node server create API works end-to-end', async () => {
+  const EX = 'craft-99886'
+  fs.rmSync(path.join(ROOT, EX), { recursive: true, force: true })
+  try {
+    await withStudioServer(async (port) => {
+      const create = await fetch(`http://127.0.0.1:${port}/studio-api/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dir: '99886', title: 'Node smoke', subtitle: '' }),
+      })
+      const created = await create.json()
+      assert.equal(create.status, 200, JSON.stringify(created))
+      assert.equal(created.ok, true)
+      assert.ok(fs.existsSync(path.join(ROOT, EX, 'config.json')))
+      const list = await (await fetch(`http://127.0.0.1:${port}/studio-api/list`)).json()
+      const row = list.exhibits.find(e => e.dir === EX)
+      assert.equal(row?.hasPano, false)
+      const assets = path.join(ROOT, EX, 'assets')
+      fs.mkdirSync(assets, { recursive: true })
+      fs.writeFileSync(path.join(assets, 'panorama.jpg'), 'x')
+      const list2 = await (await fetch(`http://127.0.0.1:${port}/studio-api/list`)).json()
+      assert.equal(list2.exhibits.find(e => e.dir === EX)?.hasPano, true)
+    })
+  } finally {
+    fs.rmSync(path.join(ROOT, EX), { recursive: true, force: true })
+  }
+})
+
 test('Node identity endpoint allows localhost without STUDIO_PASS', async () => {
   const port = await freePort()
   const child = spawn(process.execPath, [path.join(ROOT, '_server', 'studio-server.mjs')], {

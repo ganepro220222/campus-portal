@@ -125,14 +125,15 @@ function studio_root_hash(string $root): string {
 }
 
 function studio_is_remote_panorama(string $p): bool {
-  return (bool)preg_match('#^(https?:|data:|blob:|//|/)#', trim($p));
+  return (bool)preg_match('#^(https?:|data:|blob:|//)#', trim($p));
 }
 
 function studio_has_panorama_file(string $root, string $exhibit, ?string $panorama): bool {
   $p = trim((string)$panorama);
   if ($p === '') return false;
   if (studio_is_remote_panorama($p)) return true;
-  if ($p[0] === '/' || preg_match('#^[A-Za-z]:[\\\\/]#', $p)) return is_file($p);
+  if ($p[0] === '/') return is_file("$root/" . ltrim($p, '/'));
+  if (preg_match('#^[A-Za-z]:[\\\\/]#', $p)) return is_file($p);
   return is_file("$root/$exhibit/$p");
 }
 

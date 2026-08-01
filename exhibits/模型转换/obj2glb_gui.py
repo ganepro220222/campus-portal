@@ -53,15 +53,23 @@ NORMAL_MODES = [("自动（推荐）", "auto"), ("强制平滑", "smooth"), ("�
 
 # ---------- 外观：与工作台同一套「墨底 + 描金」，正文区仍用浅色（Windows 工具的习惯） ----------
 INK = "#1b1f2a"
-INK_SUB = "#8f97ab"
+INK_TOP = "#2a3145"       # 顶栏渐变上端
+INK_BOTTOM = "#12151d"    # 顶栏渐变下端
+INK_SUB = "#9aa2b6"
 GOLD = "#c8a86a"
+GOLD_LT = "#dcc189"
 GOLD_DK = "#9c7c33"
-CANVAS = "#f2f3f6"
+CANVAS = "#e9ebf1"        # 比卡片深一档，卡片才有浮起来的层次
 CARD = "#ffffff"
-LINE = "#dee2ea"
+LINE = "#dbe0e9"
+SHADOW = "#d3d8e3"        # 卡片右下 2px 投影
+BTN_FACE = "#f4f6f9"
+BTN_EDGE = "#c8cedb"
 TEXT = "#1f2430"
 MUTED = "#7b8194"
-LOG_BG = "#fbfbfd"
+WELL_BG = "#f6f8fc"       # 列表 / 日志的「凹槽」底色，跟卡片白拉开层次
+WELL_EDGE = "#c9d1e0"     # 凹槽描边，比卡片描边深一档
+LOG_BG = WELL_BG
 LOG_OK = "#1f7a45"
 LOG_ER = "#c0392b"
 LOG_WARN = "#9a6b1e"
@@ -189,8 +197,12 @@ class ConverterGUI:
         self.f_ui = (ui, 10)
         self.f_bold = (ui, 10, "bold")
         self.f_small = (ui, 9)
-        self.f_title = (ui, 14, "bold")
-        self.f_mono = (mono, 9)
+        self.f_title = (ui, 15, "bold")
+        # 日志与文件列表统一用界面字体：等宽字体（Consolas 等）没有汉字，
+        # 中文会逐字回退到别的字体，同一行里冒出两种字形——就是「字体不统一」的来源。
+        # 中英文都由同一个族（微软雅黑 / 苹方 / Noto）出，观感才干净。
+        self.f_log = (ui, 9)
+        self.f_mono = (mono, 9)   # 仍留给纯 ASCII 场景
 
         st = ttk.Style(self.root)
         try:
@@ -204,35 +216,46 @@ class ConverterGUI:
         st.configure("Muted.TLabel", background=CARD, foreground=MUTED, font=self.f_small)
         st.configure("Field.TLabel", background=CARD, foreground=MUTED, font=self.f_small)
 
-        st.configure("TButton", background="#eceef3", foreground=TEXT, relief="flat",
-                     borderwidth=1, padding=(13, 6), font=self.f_ui)
+        st.configure("TButton", background=BTN_FACE, foreground=TEXT, relief="raised",
+                     borderwidth=1, padding=(13, 6), font=self.f_ui,
+                     bordercolor=BTN_EDGE, lightcolor="#ffffff", darkcolor="#dfe4ee")
         st.map("TButton",
-               background=[("pressed", "#dfe3ec"), ("active", "#e3e7f0"), ("disabled", "#f4f5f8")],
-               foreground=[("disabled", "#b3b8c6")],
-               bordercolor=[("!disabled", LINE)])
+               background=[("pressed", "#e4e8f0"), ("active", "#fbfcfe"), ("disabled", "#eef0f4")],
+               foreground=[("disabled", "#a9afbd")],
+               bordercolor=[("disabled", "#dde1e9"), ("focus", GOLD), ("!disabled", BTN_EDGE)],
+               lightcolor=[("pressed", "#dfe4ee")], darkcolor=[("pressed", "#ffffff")])
         st.configure("Accent.TButton", background=GOLD, foreground="#2c2208",
-                     padding=(20, 7), font=self.f_bold)
+                     padding=(20, 7), font=self.f_bold, bordercolor="#a4813a",
+                     lightcolor=GOLD_LT, darkcolor="#a98a45")
         st.map("Accent.TButton",
-               background=[("pressed", "#b1904f"), ("active", "#d6b87e"), ("disabled", "#e9eaef")],
-               foreground=[("disabled", "#b3b8c6")])
+               background=[("pressed", "#b1904f"), ("active", "#d3b57a"), ("disabled", "#e4e6ec")],
+               foreground=[("disabled", "#a9afbd")],
+               bordercolor=[("disabled", "#d6dae3")],
+               lightcolor=[("pressed", "#a98a45")], darkcolor=[("pressed", GOLD_LT)])
 
         st.configure("TCheckbutton", background=CARD, foreground=TEXT, font=self.f_ui,
                      indicatorbackground=CARD, indicatorforeground=GOLD_DK, padding=(0, 3))
         st.map("TCheckbutton",
                background=[("active", CARD)],
                indicatorbackground=[("selected", CARD), ("active", "#fbf6ea")])
+        st.configure("Sunken.TFrame", background="#f8fafd")
+        st.configure("Sunken.TCheckbutton", background="#f8fafd", foreground=TEXT, font=self.f_ui,
+                     indicatorbackground=CARD, indicatorforeground=GOLD_DK, padding=(0, 3))
+        st.map("Sunken.TCheckbutton", background=[("active", "#f8fafd")],
+               indicatorbackground=[("selected", CARD), ("active", "#fbf6ea")])
         st.configure("TCombobox", fieldbackground=CARD, background=CARD, foreground=TEXT,
                      arrowcolor=MUTED, bordercolor=LINE, lightcolor=CARD, darkcolor=CARD, padding=4)
         st.map("TCombobox", fieldbackground=[("readonly", CARD)],
                bordercolor=[("focus", GOLD)], arrowcolor=[("active", GOLD_DK)])
-        st.configure("TEntry", fieldbackground="#f7f8fb", bordercolor=LINE,
-                     lightcolor="#f7f8fb", darkcolor="#f7f8fb", padding=5)
-        st.configure("Horizontal.TScale", background=CARD, troughcolor="#e6e9f0")
-        st.configure("TProgressbar", background=GOLD, troughcolor="#e6e9f0",
-                     bordercolor=LINE, lightcolor=GOLD, darkcolor=GOLD, thickness=9)
-        st.configure("Vertical.TScrollbar", background="#e6e9f0", troughcolor=CARD,
-                     bordercolor=CARD, arrowcolor=MUTED)
-        st.map("Vertical.TScrollbar", background=[("active", "#d4d9e4")])
+        st.configure("TEntry", fieldbackground=WELL_BG, bordercolor=WELL_EDGE,
+                     lightcolor=WELL_BG, darkcolor=WELL_BG, padding=5)
+        st.configure("Horizontal.TScale", background=CARD, troughcolor="#e4e8f0",
+                     bordercolor=LINE, lightcolor=CARD, darkcolor="#dfe4ee")
+        st.configure("TProgressbar", background=GOLD, troughcolor="#e4e8f0",
+                     bordercolor=LINE, lightcolor=GOLD_LT, darkcolor="#a98a45", thickness=10)
+        st.configure("Vertical.TScrollbar", background="#ccd2df", troughcolor="#f4f6f9",
+                     bordercolor="#f4f6f9", arrowcolor="#8b93a5", relief="flat")
+        st.map("Vertical.TScrollbar", background=[("active", "#b7bfd0")])
 
         # 下拉弹窗是独立的 tk Listbox，配色得单独交代
         for opt, val in (("background", CARD), ("foreground", TEXT),
@@ -243,19 +266,27 @@ class ConverterGUI:
             except Exception:  # noqa: BLE001
                 pass
 
-    def _card(self, parent, step: str, title: str, expand: bool = False):
+    def _card(self, parent, step: str, title: str, expand: bool = False, well: bool = False):
         """一张带标题的白卡片；返回内容容器。"""
         how = {"fill": "both", "expand": True} if expand else {"fill": "x"}
         wrap = tk.Frame(parent, bg=CANVAS)
-        wrap.pack(pady=(0, 12), **how)
+        wrap.pack(pady=(0, 13), **how)
+
         head = tk.Frame(wrap, bg=CANVAS)
-        head.pack(fill="x", pady=(0, 5))
+        head.pack(fill="x", pady=(0, 6))
+        tk.Frame(head, bg=GOLD, width=3, height=14).pack(side="left", padx=(0, 8))  # 描金竖条
         if step:
             tk.Label(head, text=step, bg=CANVAS, fg=GOLD_DK, font=self.f_bold).pack(side="left")
         tk.Label(head, text=title, bg=CANVAS, fg=TEXT, font=self.f_bold).pack(side="left")
-        box = tk.Frame(wrap, bg=CARD, highlightbackground=LINE, highlightcolor=LINE,
+
+        # Tk 没有 box-shadow，用一层比底色深的垫片露出右下 2px 当投影
+        shade = tk.Frame(wrap, bg=SHADOW)
+        shade.pack(**how)
+        box = tk.Frame(shade, bg=WELL_BG if well else CARD,
+                       highlightbackground=WELL_EDGE if well else LINE,
+                       highlightcolor=WELL_EDGE if well else LINE,
                        highlightthickness=1, bd=0)
-        box.pack(**how)
+        box.pack(fill="both", expand=True, padx=(0, 2), pady=(0, 2))
         return box
 
     def _build_ui(self):
@@ -266,13 +297,9 @@ class ConverterGUI:
         except Exception:  # noqa: BLE001
             pass
 
-        # 顶栏：给工具一个身份，也把「这是干什么的」一句话说清
-        head = tk.Frame(self.root, bg=INK)
-        head.pack(fill="x")
-        tk.Label(head, text="OBJ → GLB 转换器", bg=INK, fg="#f0e3c6",
-                 font=self.f_title).pack(anchor="w", padx=18, pady=(13, 0))
-        tk.Label(head, text="选文件 → 设选项 → 转出自包含 GLB（贴图内嵌，可直接放进展品 assets/）",
-                 bg=INK, fg=INK_SUB, font=self.f_small).pack(anchor="w", padx=18, pady=(3, 13))
+        # 顶栏：给工具一个身份，也把「这是干什么的」一句话说清。
+        # 文字直接画在 Canvas 上——Label 的不透明底色会在渐变上留一块死斑。
+        self._build_header()
         tk.Frame(self.root, bg=GOLD, height=2).pack(fill="x")
 
         body = tk.Frame(self.root, bg=CANVAS)
@@ -299,17 +326,17 @@ class ConverterGUI:
         self.lbl_count = ttk.Label(row, text="已选 0 个", style="Field.TLabel")
         self.lbl_count.pack(side="right")
 
-        lst_wrap = tk.Frame(f_in, bg=LINE)          # 1px 边框靠外层底色画，省得跟 Listbox 抢焦点框
+        lst_wrap = tk.Frame(f_in, bg=WELL_EDGE)     # 1px 边框靠外层底色画，省得跟 Listbox 抢焦点框
         lst_wrap.pack(fill="both", expand=True, padx=12)
         self.lst = tk.Listbox(lst_wrap, height=5, bd=0, highlightthickness=0, activestyle="none",
-                              bg=CARD, fg=TEXT, selectbackground="#f2e7cd", selectforeground=TEXT,
-                              font=self.f_mono, width=20)
+                              bg=WELL_BG, fg=TEXT, selectbackground="#f0e2c2", selectforeground=TEXT,
+                              font=self.f_log, width=20)
         self.lst.pack(side="left", fill="both", expand=True, padx=1, pady=1)
         sb_lst = ttk.Scrollbar(lst_wrap, command=self.lst.yview)
         sb_lst.pack(side="right", fill="y", padx=(0, 1), pady=1)
         self.lst.config(xscrollcommand=None, yscrollcommand=sb_lst.set)
         # 空列表是一大块白，给个说明比空着强
-        self.lbl_empty = tk.Label(self.lst, bg=CARD, fg="#a7adbc", font=self.f_small, justify="center",
+        self.lbl_empty = tk.Label(self.lst, bg=WELL_BG, fg="#a2a9ba", font=self.f_small, justify="center",
                                   text="还没有选择模型\n点上方「添加文件…」或「添加文件夹…」")
         self._sync_empty()
 
@@ -359,22 +386,26 @@ class ConverterGUI:
                         ).grid(row=2, column=2, columnspan=2, sticky="w", pady=(10, 0))
         g.columnconfigure(1, weight=1)
 
-        sep = tk.Frame(f_opt, bg=LINE, height=1); sep.pack(fill="x", padx=12)
-        g2 = ttk.Frame(f_opt); g2.pack(fill="x", padx=12, pady=(10, 12))
+        sep = tk.Frame(f_opt, bg=LINE, height=1); sep.pack(fill="x")
+        g2 = tk.Frame(f_opt, bg="#f8fafd"); g2.pack(fill="both", expand=True)
+        g2in = ttk.Frame(g2, style="Sunken.TFrame"); g2in.pack(fill="x", padx=12, pady=(10, 12))
         self.var_noreenc = tk.BooleanVar(value=False)
-        ttk.Checkbutton(g2, text="不重编码贴图（最高画质，忽略质量 / 格式，仅按上限缩放）",
+        ttk.Checkbutton(g2in, style="Sunken.TCheckbutton",
+                        text="不重编码贴图（最高画质，忽略质量 / 格式，仅按上限缩放）",
                         variable=self.var_noreenc).pack(anchor="w")
         self.var_transform = tk.BooleanVar(value=True)
-        ttk.Checkbutton(g2, text="导出归一化参数 transform.json（可直接填入展品 config）",
+        ttk.Checkbutton(g2in, style="Sunken.TCheckbutton",
+                        text="导出归一化参数 transform.json（可直接填入展品 config）",
                         variable=self.var_transform).pack(anchor="w")
         self.var_overwrite = tk.BooleanVar(value=False)
-        ttk.Checkbutton(g2, text="覆盖已存在的同名 GLB",
+        ttk.Checkbutton(g2in, style="Sunken.TCheckbutton", text="覆盖已存在的同名 GLB",
                         variable=self.var_overwrite).pack(anchor="w")
 
         # 4) 执行条（浮在卡片之外，动作和内容分开）
         f_run = tk.Frame(body, bg=CANVAS); f_run.grid(row=1, column=0, sticky="ew", pady=(0, 12))
         self.btn_run = ttk.Button(f_run, text="开始转换", style="Accent.TButton", command=self._start)
         self.btn_run.pack(side="left")
+        # 目录已存在就随时可用（原来必须等一次转换跑完才亮，看着像坏的）
         self.btn_open = ttk.Button(f_run, text="打开输出目录", command=self._open_out, state="disabled")
         self.btn_open.pack(side="left", padx=8)
         self.lbl_status = tk.Label(f_run, text="就绪", bg=CANVAS, fg=MUTED, font=self.f_small)
@@ -384,8 +415,8 @@ class ConverterGUI:
 
         # 5) 日志：唯一会跟着窗口一起长大的区域
         log_host = tk.Frame(body, bg=CANVAS); log_host.grid(row=2, column=0, sticky="nsew")
-        f_log = self._card(log_host, "", "日志", expand=True)
-        self.txt = tk.Text(f_log, height=10, wrap="word", state="disabled", font=self.f_mono,
+        f_log = self._card(log_host, "", "日志", expand=True, well=True)
+        self.txt = tk.Text(f_log, height=10, wrap="word", state="disabled", font=self.f_log,
                            bd=0, highlightthickness=0, bg=LOG_BG, fg=TEXT,
                            padx=10, pady=8, spacing1=1, insertbackground=TEXT)
         self.txt.pack(side="left", fill="both", expand=True, padx=(1, 0), pady=1)
@@ -399,6 +430,44 @@ class ConverterGUI:
 
         self._fit_window()
 
+    def _build_header(self):
+        title = "OBJ → GLB 转换器"
+        sub = "选文件 → 设选项 → 转出自包含 GLB（贴图内嵌，可直接放进展品 assets/）"
+        pad_x, pad_y, gap = 20, 15, 6
+        try:
+            fh_t = tkfont.Font(root=self.root, font=self.f_title).metrics("linespace")
+            fh_s = tkfont.Font(root=self.root, font=self.f_small).metrics("linespace")
+            height = int(pad_y * 2 + fh_t + gap + fh_s)
+        except Exception:  # noqa: BLE001  # mock / 无显示环境
+            fh_t, fh_s, height = 22, 16, 74
+        cv = tk.Canvas(self.root, height=height, highlightthickness=0, bd=0, bg=INK)
+        cv.pack(fill="x")
+        cv.bind("<Configure>", lambda e: self._paint_header(cv, e.width, e.height,
+                                                            title, sub, pad_x, pad_y, fh_t, gap))
+        self.canvas_head = cv
+
+    @staticmethod
+    def _lerp_hex(c1: str, c2: str, t: float) -> str:
+        a = (int(c1[1:3], 16), int(c1[3:5], 16), int(c1[5:7], 16))
+        b = (int(c2[1:3], 16), int(c2[3:5], 16), int(c2[5:7], 16))
+        return "#%02x%02x%02x" % tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+
+    def _paint_header(self, cv, w, h, title, sub, pad_x, pad_y, fh_t, gap):
+        """竖向渐变 + 右下角一抹暖光；每次尺寸变化重画。"""
+        try:
+            cv.delete("all")
+            steps = max(1, min(int(h), 120))
+            for i in range(steps):
+                y0 = int(i * h / steps)
+                y1 = int((i + 1) * h / steps)
+                cv.create_rectangle(0, y0, w, y1 + 1, width=0,
+                                    fill=self._lerp_hex(INK_TOP, INK_BOTTOM, i / max(1, steps - 1)))
+            cv.create_text(pad_x, pad_y, anchor="nw", text=title, fill="#f2e6ca", font=self.f_title)
+            cv.create_text(pad_x, pad_y + fh_t + gap, anchor="nw", text=sub,
+                           fill=INK_SUB, font=self.f_small)
+        except Exception:  # noqa: BLE001
+            pass
+
     def _fit_window(self):
         """把窗口调成刚好装下内容的大小并居中——不同 DPI / 字号下都成立。"""
         try:
@@ -410,6 +479,14 @@ class ConverterGUI:
             return
         self.root.geometry(f"{w}x{h}+{x}+{y}")
         self.root.minsize(min(w, MIN_W), min(h, MIN_H))
+
+    def _sync_open_btn(self):
+        """输出目录真实存在时就让「打开输出目录」可用，不必等转换结束。"""
+        try:
+            usable = bool(self.out_dir) and os.path.isdir(self.out_dir)
+            self.btn_open.config(state="normal" if usable else "disabled")
+        except Exception:  # noqa: BLE001
+            pass
 
     def _sync_empty(self):
         """列表为空时在框内居中显示说明，有内容就撤掉。"""
@@ -485,6 +562,7 @@ class ConverterGUI:
             self.ent_out.xview_moveto(1.0)      # 长路径优先露出尾部（真正在意的那一段）
         except Exception:  # noqa: BLE001
             pass
+        self._sync_open_btn()
 
     def _open_out(self):
         if self.out_dir and os.path.isdir(self.out_dir):
@@ -656,8 +734,7 @@ class ConverterGUI:
                 elif kind == "done":
                     self.btn_run.config(state="normal")
                     self._status(data or "完成")
-                    if self.out_dir and os.path.isdir(self.out_dir):
-                        self.btn_open.config(state="normal")
+                    self._sync_open_btn()
         except queue.Empty:
             pass
         self.root.after(120, self._drain_queue)

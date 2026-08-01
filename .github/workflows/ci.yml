@@ -100,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: docs/三维展示系统
+        working-directory: exhibits/模型转换
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,7 +118,9 @@ jobs:
         run: |
           python glb_utils.test.py
           python batch_glb.test.py
+          python input_scan.test.py
           python convert_cli.test.py
+          python launch_gui.test.py
 
   exhibits:
     name: Exhibits (unit + Playwright)

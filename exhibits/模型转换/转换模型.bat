@@ -1,23 +1,19 @@
 @echo off
 chcp 65001 >nul 2>&1
+set PYTHONIOENCODING=utf-8
 cd /d "%~dp0"
 if errorlevel 1 goto cd_fail
 
 set "PY="
-if exist "_runtime\python\python.exe" goto use_portable
-if exist "..\..\exhibits\_runtime\python\python.exe" goto use_exhibits_portable
+if exist "..\_runtime\python\python.exe" goto use_exhibits_portable
 where py >nul 2>&1
 if not errorlevel 1 goto use_launcher
 where python >nul 2>&1
 if not errorlevel 1 goto use_python
 goto no_python
 
-:use_portable
-set "PY="%~dp0_runtime\python\python.exe""
-goto run
-
 :use_exhibits_portable
-set "PY="%~dp0..\..\exhibits\_runtime\python\python.exe""
+set "PY="%~dp0..\_runtime\python\python.exe""
 goto run
 
 :use_launcher

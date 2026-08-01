@@ -1,1 +1,3 @@
+test/output/*.glb
+test/output/*.transform.json
 test/output_glb/*.glb

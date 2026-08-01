@@ -24,7 +24,7 @@ exhibits/craft-001/
 ## 本地原型
 
 - 静态页面原型：`test/4/index.html`
-- 批处理脚本：`docs/三维展示系统/batch_glb.py`
+- 批处理脚本：`exhibits/模型转换/batch_glb.py`
 - 设计参考（热点 + 环境切换）：`docs/三维展示系统/工艺品立体鉴赏_演示.html`
 
 ## 确认事项

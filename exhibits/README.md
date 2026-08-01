@@ -19,6 +19,7 @@ exhibits/
   停止服务.bat         # 停止本地服务
   安装便携环境.bat     # 首次：下载便携 Python（可整夹复制到其他电脑）
   使用说明.txt         # 本地使用简明说明
+  模型转换/            # OBJ→GLB 批处理与图形转换器（见 模型转换/使用说明.md）
   _launch/             # 启动脚本逻辑（勿删）
   _dev/                # Git Bash / Mac / Linux 脚本
   _runtime/            # 便携 Python（安装后生成）

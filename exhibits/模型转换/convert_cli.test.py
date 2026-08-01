@@ -200,6 +200,27 @@ def _():
         ok(got[0].endswith("新.obj"))
 
 
+@test("Windows 输入路径仅大小写不同仍排除嵌套输出")
+def _():
+    if os.name != "nt":
+        skip("非 Windows")
+    from convert_cli import find_convertible
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "Models")
+        out = os.path.join(src, "输出GLB")
+        os.makedirs(out)
+        open(os.path.join(src, "新.obj"), "w").write("x")
+        open(os.path.join(out, "旧.glb"), "wb").write(b"x")
+        abs_src = os.path.abspath(src)
+        if abs_src[1:3] == ":\\":
+            alt_src = (abs_src[0].swapcase() if abs_src[0].isalpha() else abs_src[0]) + abs_src[1:]
+        else:
+            alt_src = abs_src
+        got = find_convertible(alt_src, out)
+        eq(len(got), 1)
+        ok(got[0].endswith("新.obj"))
+
+
 @test("输出为输入兄弟目录 → 不排除，只扫描输入树内文件")
 def _():
     from convert_cli import find_convertible
@@ -351,15 +372,14 @@ def _():
     ok("python.org" in text)
 
 
-@test("优先用便携 Python（本目录或 exhibits），其次 py -3，再次 python")
+@test("优先用 exhibits 便携 Python，其次 py -3，再次 python")
 def _():
     text = open(BAT, encoding="utf-8").read()
-    ok("exhibits\\_runtime\\python\\python.exe" in text, "应探测 exhibits 便携 Python")
-    i_portable = text.index("_runtime\\python\\python.exe")
-    i_exhibits = text.index("exhibits\\_runtime\\python\\python.exe")
+    ok("..\\_runtime\\python\\python.exe" in text, "应探测 exhibits 便携 Python")
+    i_exhibits = text.index("..\\_runtime\\python\\python.exe")
     i_py = text.index("where py ")
     i_python = text.index("where python ")
-    ok(i_portable < i_exhibits < i_py < i_python, "解释器探测顺序不对")
+    ok(i_exhibits < i_py < i_python, "解释器探测顺序不对")
 
 
 @test("转换模型.bat 与安装转换依赖.bat 使用 UTF-8 控制台")
@@ -426,7 +446,7 @@ def _():
         ok(r.returncode == 3, f"返回码 {r.returncode}\n{r.stdout}\n{r.stderr}")
 
 
-@test("docs/三维展示系统/.gitattributes 规定 bat 工作区 CRLF、Git 索引 LF")
+@test("exhibits/模型转换/.gitattributes 规定 bat 工作区 CRLF、Git 索引 LF")
 def _():
     ga = os.path.join(HERE, ".gitattributes")
     ok(os.path.isfile(ga), "缺少 .gitattributes")

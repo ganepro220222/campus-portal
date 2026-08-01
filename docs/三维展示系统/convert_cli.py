@@ -14,18 +14,18 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+
 REQUIRED = (("trimesh", "trimesh"), ("PIL", "pillow"), ("numpy", "numpy"))
-CONVERTIBLE = (".obj", ".glb", ".zip")
+
+from input_scan import collect_input_files, output_exclusion_for_input  # noqa: E402
 
 
-def find_convertible(root: str) -> list[str]:
-    """递归找出可转换的文件。空文件夹要单独报，不能混进「部分失败」里。"""
-    found = []
-    for dirpath, _dirnames, filenames in os.walk(root):
-        for fn in sorted(filenames):
-            if fn.lower().endswith(CONVERTIBLE):
-                found.append(os.path.join(dirpath, fn))
-    return found
+def find_convertible(input_dir: str, output_dir: str | None = None) -> list[str]:
+    """与 batch_glb 共用扫描规则；输出为输入子目录时排除其中的旧产物。"""
+    exclude = output_exclusion_for_input(input_dir, output_dir) if output_dir else set()
+    return collect_input_files(input_dir, recursive=True, exclude_dirs=exclude)
 
 
 def missing_packages() -> list[str]:
@@ -109,11 +109,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[路径有误] {err}")
         return 3 if src_raw.strip() else 1
 
-    found = find_convertible(src)
+    found = find_convertible(src, dst)
     if not found:
         print()
         print(f"[没有可转换的文件] {src}")
         print("这个文件夹里没有找到 .obj / .glb / .zip。")
+        if output_exclusion_for_input(src, dst):
+            print("（已排除输出目录内的旧 GLB；请在输出目录外放入待转换素材。）")
         print("请确认拖对了文件夹（要的是装着 obj+mtl+贴图 的那个）。")
         return 5
 
@@ -139,7 +141,12 @@ def run_batch(src: str, dst: str) -> int:
         code = e.code
         if code is None:
             return 0
-        return code if isinstance(code, int) else 9
+        if not isinstance(code, int):
+            return 9
+        # batch 仍用 1 表示参数/内部错误；勿与 convert_cli 的「用户取消(1)」混淆
+        if code == 1:
+            return 9
+        return code
     finally:
         sys.argv = saved
 

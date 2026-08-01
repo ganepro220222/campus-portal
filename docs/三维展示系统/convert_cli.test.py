@@ -20,21 +20,41 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.dirname(os.path.abspath(__file__))
 BAT = os.path.join(HERE, "转换模型.bat")
 
-_pass = _fail = 0
+_pass = _fail = _skip = 0
+
+
+class SkipTest(Exception):
+    """显式跳过（不计入 passed）。"""
+
+
+def skip(reason: str = "") -> None:
+    raise SkipTest(reason)
 
 
 def test(name):
     def deco(fn):
-        global _pass, _fail
+        global _pass, _fail, _skip
         try:
             fn()
             _pass += 1
             print("  ok", name)
+        except SkipTest as e:
+            _skip += 1
+            tail = f" ({e})" if str(e) else ""
+            print("  skip", name + tail)
         except Exception as e:  # noqa: BLE001
             _fail += 1
             print(" FAIL", name, "->", f"{type(e).__name__}: {e}")
         return fn
     return deco
+
+
+def _needs_glb_deps() -> None:
+    try:
+        import trimesh  # noqa: F401
+        from PIL import Image  # noqa: F401
+    except Exception:  # noqa: BLE001
+        skip("未装 trimesh/pillow")
 
 
 def eq(a, b, msg=""):
@@ -133,14 +153,66 @@ def _():
 def _():
     import contextlib, io as _io
     import convert_cli
+    from unittest.mock import patch
     with tempfile.TemporaryDirectory() as tmp:
         src = os.path.join(tmp, "空的")
         os.makedirs(src)
         buf = _io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            rc = convert_cli.main([src, os.path.join(tmp, "out")])
+        with patch.object(convert_cli, "missing_packages", return_value=[]):
+            with contextlib.redirect_stdout(buf):
+                rc = convert_cli.main([src, os.path.join(tmp, "out")])
         eq(rc, 5)
         ok("没有可转换的文件" in buf.getvalue())
+
+
+@test("嵌套输出目录内仅有旧 GLB → 返回 5 且不进入 batch")
+def _():
+    import contextlib, io as _io
+    import convert_cli
+    from unittest.mock import patch
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "素材")
+        out = os.path.join(src, "输出GLB")
+        os.makedirs(out)
+        open(os.path.join(out, "旧.glb"), "wb").write(b"x")
+        buf = _io.StringIO()
+        with patch.object(convert_cli, "missing_packages", return_value=[]):
+            with patch.object(convert_cli, "run_batch") as rb:
+                with contextlib.redirect_stdout(buf):
+                    rc = convert_cli.main([src, out])
+                rb.assert_not_called()
+        eq(rc, 5)
+        ok("没有可转换的文件" in buf.getvalue())
+        ok("排除输出目录" in buf.getvalue())
+
+
+@test("输入根另有 OBJ、输出子目录有旧 GLB → 只计根目录素材")
+def _():
+    from convert_cli import find_convertible
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "素材")
+        out = os.path.join(src, "输出GLB")
+        os.makedirs(out)
+        open(os.path.join(src, "新.obj"), "w").write("x")
+        open(os.path.join(out, "旧.glb"), "wb").write(b"x")
+        got = find_convertible(src, out)
+        eq(len(got), 1)
+        ok(got[0].endswith("新.obj"))
+
+
+@test("输出为输入兄弟目录 → 不排除，只扫描输入树内文件")
+def _():
+    from convert_cli import find_convertible
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "素材")
+        out = os.path.join(tmp, "输出GLB")
+        os.makedirs(src)
+        os.makedirs(out)
+        open(os.path.join(src, "a.obj"), "w").write("x")
+        open(os.path.join(out, "b.glb"), "wb").write(b"x")
+        got = find_convertible(src, out)
+        eq(len(got), 1)
+        ok(got[0].endswith("a.obj"))
 
 
 @test("能递归找出 obj/glb/zip，忽略其它文件")
@@ -168,14 +240,12 @@ def _():
 
 @test("部分失败时返回 4 而不是 0")
 def _():
-    try:
-        import trimesh
-        from PIL import Image
-    except Exception:  # noqa: BLE001
-        print("     （跳过：未装 trimesh/pillow）")
-        return
+    _needs_glb_deps()
+    import trimesh
+    from PIL import Image
     import struct
     import convert_cli
+    from unittest.mock import patch
     with tempfile.TemporaryDirectory() as tmp:
         src = os.path.join(tmp, "素材")
         os.makedirs(src)
@@ -198,21 +268,20 @@ def _():
 
         out = os.path.join(tmp, "out")
         import contextlib, io as _io
-        with contextlib.redirect_stdout(_io.StringIO()):
-            rc = convert_cli.main([src, out])
+        with patch.object(convert_cli, "missing_packages", return_value=[]):
+            with contextlib.redirect_stdout(_io.StringIO()):
+                rc = convert_cli.main([src, out])
         eq(rc, 4, "有失败项时应返回 4")
         ok(os.path.isfile(os.path.join(out, "manifest.csv")))
 
 
 @test("端到端：给一个 OBJ 目录，产出 GLB 与 manifest.csv")
 def _():
-    try:
-        import trimesh
-        from PIL import Image
-    except Exception:  # noqa: BLE001
-        print("     （跳过：未装 trimesh/pillow）")
-        return
+    _needs_glb_deps()
+    import trimesh
+    from PIL import Image
     import convert_cli
+    from unittest.mock import patch
     with tempfile.TemporaryDirectory() as tmp:
         src = os.path.join(tmp, "素材")
         os.makedirs(src)
@@ -229,8 +298,9 @@ def _():
 
         out = os.path.join(tmp, "out")
         import contextlib, io as _io
-        with contextlib.redirect_stdout(_io.StringIO()):
-            rc = convert_cli.main([src, out])
+        with patch.object(convert_cli, "missing_packages", return_value=[]):
+            with contextlib.redirect_stdout(_io.StringIO()):
+                rc = convert_cli.main([src, out])
         eq(rc, 0)
         names = os.listdir(out)
         ok(any(n.endswith(".glb") for n in names), names)
@@ -346,12 +416,14 @@ def _():
 @test("在 Windows 上真的能跑起来（非 Windows 自动跳过）")
 def _():
     if os.name != "nt":
-        print("     （跳过：非 Windows）")
-        return
+        skip("非 Windows")
     with tempfile.TemporaryDirectory() as tmp:
-        r = subprocess.run(["cmd.exe", "/c", "call", BAT, os.path.join(tmp, "不存在")],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
-        ok(r.returncode in (2, 3), f"返回码 {r.returncode}\n{r.stdout}")
+        bad = os.path.join(tmp, "no_such_input_dir")
+        r = subprocess.run(
+            ["cmd.exe", "/c", "call", BAT, bad],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
+        )
+        ok(r.returncode == 3, f"返回码 {r.returncode}\n{r.stdout}\n{r.stderr}")
 
 
 @test("docs/三维展示系统/.gitattributes 规定 bat 工作区 CRLF、Git 索引 LF")
@@ -363,8 +435,7 @@ def _():
     ok(b"\r\n" in raw, "工作区 bat 应为 CRLF")
     git = shutil.which("git")
     if not git:
-        print("     （跳过：无 git）")
-        return
+        skip("无 git")
     root = subprocess.run(
         [git, "rev-parse", "--show-toplevel"],
         cwd=HERE,
@@ -372,8 +443,7 @@ def _():
         text=True,
     )
     if root.returncode != 0:
-        print("     （跳过：不在 Git worktree）")
-        return
+        skip("不在 Git worktree")
     repo = root.stdout.strip()
     rel = os.path.relpath(BAT, repo).replace("\\", "/")
     r = subprocess.run([git, "show", f":{rel}"], cwd=repo, capture_output=True)
@@ -381,5 +451,6 @@ def _():
     ok(b"\r" not in r.stdout, "Git 索引内 bat 应为 LF（由 eol=crlf 归一化）")
 
 
-print(f"\nconvert_cli: {_pass} passed" + (f", {_fail} FAILED" if _fail else ""))
+print(f"\nconvert_cli: {_pass} passed" + (f", {_skip} skipped" if _skip else "")
+      + (f", {_fail} FAILED" if _fail else ""))
 sys.exit(1 if _fail else 0)

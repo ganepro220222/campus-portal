@@ -401,7 +401,7 @@ def main():
     files = collect_input_files(args.input, recursive=args.recursive, exclude_dirs=exclude)
     if not files:
         print("未找到可处理的文件（支持 .zip / .glb / .obj；FBX 请先导出）")
-        sys.exit(1)
+        sys.exit(5)
 
     print(f"发现 {len(files)} 个待处理文件（recursive={args.recursive}）\n")
 

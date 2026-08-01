@@ -16,9 +16,11 @@ import {
   withAngle,
   defaultLights,
   diagnoseBrightness,
+  brightnessInputs,
   resolveShadow,
   shadowWillLand,
   resolveEnvSource,
+  createEnvLoadGuard,
 } from './light-rig.mjs'
 
 let pass = 0, fail = 0
@@ -344,6 +346,33 @@ test('warn 永远排在 tip 之前', () => {
   const firstTip = r.findIndex((x) => x.level === 'tip')
   const lastWarn = r.map((x) => x.level).lastIndexOf('warn')
   assert.ok(lastWarn < firstTip, '警告应排在建议之前')
+})
+
+test('brightnessInputs：preset 环境 hasCustomEnv=true', () => {
+  const cfg = { environment: { mode: 'preset', preset: 'studio', intensity: 1 }, lights: defaultLights() }
+  const inputs = brightnessInputs(cfg)
+  assert.equal(inputs.hasCustomEnv, true)
+  const tips = diagnoseBrightness(inputs).filter((x) => x.level === 'tip').map((x) => x.text).join('\n')
+  assert.ok(!/RoomEnvironment/.test(tips), 'preset 环境不应提示换 RoomEnvironment')
+})
+
+test('brightnessInputs：room 环境 hasCustomEnv=false', () => {
+  const cfg = { environment: { mode: 'preset', preset: 'room', intensity: 1 }, lights: defaultLights() }
+  const inputs = brightnessInputs(cfg)
+  assert.equal(inputs.hasCustomEnv, false)
+  const tips = diagnoseBrightness(inputs).filter((x) => x.level === 'tip').map((x) => x.text).join('\n')
+  assert.match(tips, /RoomEnvironment/)
+})
+
+test('createEnvLoadGuard 使旧 token 失效', () => {
+  const g = createEnvLoadGuard()
+  const t1 = g.next()
+  assert.equal(g.isCurrent(t1), true)
+  g.invalidate()
+  assert.equal(g.isCurrent(t1), false)
+  const t2 = g.next()
+  assert.equal(g.isCurrent(t2), true)
+  assert.equal(g.isCurrent(t1), false)
 })
 
 console.log(`\nlight-rig: ${pass} passed${fail ? `, ${fail} FAILED` : ''}`)

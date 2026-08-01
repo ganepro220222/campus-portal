@@ -45,7 +45,7 @@ from glb_utils import (
     hash_obj_bundle,
     obj_declares_normals,
     optimize_texture,
-    parse_mtl_normal_maps,
+    parse_obj_normal_maps,
     safe_output_stem,
     upgrade_materials_to_pbr,
 )
@@ -108,7 +108,7 @@ def convert(
         print(f"  法线：{note}")
 
     # 材质：显式写 metallicFactor（不写＝规范默认全金属），并接回 MTL 的法线贴图
-    normal_maps = parse_mtl_normal_maps(find_mtl_for_obj(obj_path) or "") if keep_normal_map else {}
+    normal_maps = parse_obj_normal_maps(obj_path) if keep_normal_map else {}
     for note in upgrade_materials_to_pbr(
         scene, normal_maps=normal_maps, metallic=metallic, roughness=roughness,
         double_sided=double_sided, max_texture=max_texture,
@@ -293,6 +293,9 @@ def main():
         sys.exit(1)
     if not 1 <= args.quality <= 100:
         print("--quality 必须在 1~100 之间")
+        sys.exit(1)
+    if not 0 <= args.metallic <= 1:
+        print("--metallic 必须在 0~1 之间")
         sys.exit(1)
 
     success = convert(

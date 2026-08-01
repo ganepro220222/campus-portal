@@ -44,7 +44,7 @@ from glb_utils import (
     obj_declares_normals,
     optimize_texture,
     output_exclusion_for_input,
-    parse_mtl_normal_maps,
+    parse_obj_normal_maps,
     safe_output_stem,
     upgrade_materials_to_pbr,
 )
@@ -108,7 +108,7 @@ def convert_obj(
             scene, mode=normals, source_has_vn=obj_declares_normals(obj_path)
         )
         # 显式写 metallicFactor（不写＝规范默认全金属），并接回 MTL 的法线贴图
-        normal_maps = parse_mtl_normal_maps(find_mtl_for_obj(obj_path) or "") if keep_normal_map else {}
+        normal_maps = parse_obj_normal_maps(obj_path) if keep_normal_map else {}
         notes += upgrade_materials_to_pbr(
             scene, normal_maps=normal_maps, metallic=metallic, max_texture=max_texture
         )
@@ -236,11 +236,13 @@ def process_one(
 
         # 直接给进来的 GLB（含离线包里的）也做一次无损修复：只改 JSON，不动几何
         if fix_glb and ext in (".zip", ".glb"):
-            changed, fix_notes = fix_glb_file(temp_path)
+            changed, fix_notes = fix_glb_file(temp_path, metallic=metallic)
+            if fix_notes and fix_notes != ["无需修复"]:
+                prefix = "材质修复：" if changed else "材质检查："
+                result["备注"] = (result["备注"] + " | " if result["备注"] else "") \
+                    + prefix + "; ".join(fix_notes)
             if changed:
                 result["处理方式"] += " + 材质修复"
-                result["备注"] = (result["备注"] + " | " if result["备注"] else "") \
-                    + "材质修复：" + "; ".join(fix_notes)
 
         stats = glb_stats(temp_path)
         if not stats:
@@ -289,6 +291,12 @@ def process_one(
             result["状态"] = "成功（归一化失败，需手动调整）"
             result["备注"] = (result["备注"] + " | " if result["备注"] else "") + str(e)
 
+        return result
+
+    except Exception as e:
+        result["状态"] = "失败"
+        result["备注"] = (result["备注"] + " | " if result["备注"] else "") \
+            + f"处理异常：{type(e).__name__}: {e}"
         return result
 
     finally:
@@ -365,6 +373,9 @@ def main():
     if not 1 <= args.quality <= 100:
         print("--quality 必须在 1~100 之间")
         sys.exit(1)
+    if not 0 <= args.metallic <= 1:
+        print("--metallic 必须在 0~1 之间")
+        sys.exit(1)
 
     input_abs = os.path.abspath(args.input)
     output_abs = os.path.abspath(args.output)
@@ -388,21 +399,29 @@ def main():
     ok = fail = 0
     for i, path in enumerate(files, 1):
         print(f"[{i}/{len(files)}] {os.path.relpath(path, args.input)}")
-        r = process_one(
-            path,
-            args.input,
-            args.output,
-            args.max_texture,
-            args.quality,
-            args.texture_format,
-            not args.no_reencode,
-            args.allow_alpha_loss,
-            args.overwrite,
-            args.normals,
-            args.metallic,
-            not args.no_normal_map,
-            not args.no_fix,
-        )
+        try:
+            r = process_one(
+                path,
+                args.input,
+                args.output,
+                args.max_texture,
+                args.quality,
+                args.texture_format,
+                not args.no_reencode,
+                args.allow_alpha_loss,
+                args.overwrite,
+                args.normals,
+                args.metallic,
+                not args.no_normal_map,
+                not args.no_fix,
+            )
+        except Exception as e:
+            r = {
+                "名称": os.path.splitext(os.path.basename(path))[0],
+                "来源相对路径": os.path.relpath(path, args.input),
+                "状态": "失败",
+                "备注": f"处理异常：{type(e).__name__}: {e}",
+            }
         results.append(r)
         if r["状态"].startswith("成功"):
             ok += 1

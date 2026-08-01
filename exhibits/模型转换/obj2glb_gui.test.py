@@ -133,6 +133,51 @@ def _():
         ok(kept[0]["path"].endswith("a.obj"))
 
 
+@test("naming_root_for_items：分两次添加的不同目录共享上层命名根")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        a = os.path.join(tmp, "A", "model.glb")
+        b = os.path.join(tmp, "B", "model.glb")
+        os.makedirs(os.path.dirname(a))
+        os.makedirs(os.path.dirname(b))
+        items = [
+            {"path": os.path.abspath(a), "root": os.path.dirname(a)},
+            {"path": os.path.abspath(b), "root": os.path.dirname(b)},
+        ]
+        naming = obj2glb_gui.naming_root_for_items(items)
+        eq(naming, os.path.abspath(tmp))
+        eq(glb_utils.safe_output_stem(a, naming), "A__model")
+        eq(glb_utils.safe_output_stem(b, naming), "B__model")
+
+
+@test("两次添加文件后 worker 使用统一 naming root")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        a = os.path.join(tmp, "A", "model.glb")
+        b = os.path.join(tmp, "B", "model.glb")
+        os.makedirs(os.path.dirname(a))
+        os.makedirs(os.path.dirname(b))
+        open(a, "wb").write(b"x")
+        open(b, "wb").write(b"x")
+        gui = _make_gui()
+        with patch.object(obj2glb_gui.filedialog, "askopenfilenames", side_effect=[[a], [b]]):
+            gui._add_files()
+            gui._add_files()
+        eq(len(gui.inputs), 2)
+        naming = obj2glb_gui.naming_root_for_items(gui.inputs)
+        out = os.path.join(tmp, "out")
+        fake = batch_glb.empty_result(a, naming)
+        fake.update({"状态": "成功", "GLB文件": "x.glb", "体积MB": 1.0, "scale": ""})
+        with patch.object(batch_glb, "process_one", return_value=fake) as po:
+            gui._run_worker(list(gui.inputs), out, dict(
+                max_texture=2048, quality=85, texture_format="auto",
+                reencode=True, overwrite=False, transform=False,
+            ))
+        eq(po.call_count, 2)
+        for call in po.call_args_list:
+            eq(call.args[1], naming)
+
+
 @test("添加文件夹保留 input_root，跨子目录同名 GLB 输出 stem 与 CLI 一致")
 def _():
     with tempfile.TemporaryDirectory() as tmp:
@@ -152,7 +197,7 @@ def _():
         ok(stem_a != stem_b)
 
 
-@test("_run_worker 按 item.root 调用 process_one")
+@test("_run_worker 按统一 naming root 调用 process_one")
 def _():
     with tempfile.TemporaryDirectory() as tmp:
         src = os.path.join(tmp, "素材")
@@ -161,8 +206,9 @@ def _():
         open(a, "w").write("x")
         out = os.path.join(tmp, "out")
         item = {"path": os.path.abspath(a), "root": os.path.abspath(src)}
+        naming = obj2glb_gui.naming_root_for_items([item])
         gui = _make_gui()
-        fake = batch_glb.empty_result(a, src)
+        fake = batch_glb.empty_result(a, naming)
         fake["状态"] = "成功"
         fake["GLB文件"] = "a-deadbeef.glb"
         fake["体积MB"] = 1.0
@@ -175,7 +221,7 @@ def _():
         po.assert_called_once()
         args = po.call_args[0]
         eq(args[0], item["path"])
-        eq(args[1], item["root"])
+        eq(args[1], naming)
         eq(args[2], out)
 
 
@@ -204,6 +250,44 @@ def _():
         with open(man, encoding="utf-8-sig") as f:
             row = next(csv.DictReader(f))
         eq(list(row.keys()), batch_glb.RESULT_FIELDS)
+
+
+@test("transform 写入失败不中断批次，manifest 仍含两行")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        a = os.path.join(tmp, "A", "a.obj")
+        b = os.path.join(tmp, "B", "b.obj")
+        os.makedirs(os.path.dirname(a))
+        os.makedirs(os.path.dirname(b))
+        items = [
+            {"path": os.path.abspath(a), "root": os.path.dirname(a)},
+            {"path": os.path.abspath(b), "root": os.path.dirname(b)},
+        ]
+        out = os.path.join(tmp, "out")
+        gui = _make_gui()
+
+        def _fake(src, root, *_a, **_k):
+            r = batch_glb.empty_result(src, root)
+            r.update({
+                "状态": "成功",
+                "GLB文件": os.path.basename(src).replace(".obj", "-abc.glb"),
+                "体积MB": 1.0,
+                "scale": 1.0,
+            })
+            return r
+
+        with patch.object(batch_glb, "process_one", side_effect=_fake):
+            with patch.object(gui, "_write_transform", side_effect=["disk full", None]):
+                gui._run_worker(items, out, dict(
+                    max_texture=2048, quality=85, texture_format="auto",
+                    reencode=True, overwrite=False, transform=True,
+                ))
+        man = os.path.join(out, "manifest.csv")
+        ok(os.path.isfile(man))
+        with open(man, encoding="utf-8-sig") as f:
+            rows = list(csv.DictReader(f))
+        eq(len(rows), 2)
+        ok("transform 写入失败" in rows[0]["备注"] or "disk full" in rows[0]["备注"])
 
 
 print("obj2glb_gui tests")

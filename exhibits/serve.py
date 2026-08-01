@@ -50,7 +50,7 @@ def identity_payload(root: Path) -> dict:
     return {'rootHash': h, 'instanceId': h}
 
 
-from pano_check import has_panorama_file
+from pano_check import has_asset_file
 
 ROOT_HASH = compute_root_hash(ROOT)
 
@@ -83,6 +83,7 @@ def list_exhibits():
         try:
             c = json.loads(cp.read_text(encoding='utf-8'))
             zh = (c.get('i18n') or {}).get('zh') or {}
+            assets = c.get('assets') or {}
             st = cp.stat()
             out.append({
                 'dir': d.name,
@@ -90,8 +91,12 @@ def list_exhibits():
                 'subtitle': zh.get('subtitle') or '',
                 'hotspots': len(c.get('hotspots') or []),
                 'audio': len(c.get('audio') or []),
-                'hasPano': has_panorama_file(d, (c.get('assets') or {}).get('panorama'), ROOT),
-                'poster': f"{d.name}/{(c.get('assets') or {}).get('poster')}" if (c.get('assets') or {}).get('poster') else '',
+                'hasPano': has_asset_file(d, assets.get('panorama'), ROOT),
+                # 工作台按这两项做「分组 / 待完善」筛选：模型是否真在盘上、当前用的是哪套背景
+                'hasModel': has_asset_file(d, assets.get('model'), ROOT),
+                'panorama': assets.get('panorama') or '',
+                'envPreset': (c.get('environment') or {}).get('preset') or 'room',
+                'poster': f"{d.name}/{assets.get('poster')}" if assets.get('poster') else '',
                 'mtime': int(st.st_mtime * 1000),
             })
         except Exception as e:

@@ -128,8 +128,9 @@ function studio_is_remote_panorama(string $p): bool {
   return (bool)preg_match('#^(https?:|data:|blob:|//)#', trim($p));
 }
 
-function studio_has_panorama_file(string $root, string $exhibit, ?string $panorama): bool {
-  $p = trim((string)$panorama);
+/** 通用资源存在性判断（模型 / 全景共用同一套路径解析规则） */
+function studio_has_asset_file(string $root, string $exhibit, ?string $asset): bool {
+  $p = trim((string)$asset);
   if ($p === '') return false;
   if (studio_is_remote_panorama($p)) return true;
   if ($p[0] === '/') return is_file("$root/" . ltrim($p, '/'));
@@ -161,7 +162,11 @@ if ($isList) {
     $out[] = [
       'dir' => $d, 'title' => $zh['title'] ?? $d, 'subtitle' => $zh['subtitle'] ?? '',
       'hotspots' => count($c['hotspots'] ?? []), 'audio' => count($c['audio'] ?? []),
-      'hasPano' => studio_has_panorama_file($ROOT, $d, $c['assets']['panorama'] ?? ''),
+      'hasPano' => studio_has_asset_file($ROOT, $d, $c['assets']['panorama'] ?? ''),
+      // 工作台按这两项做「分组 / 待完善」筛选：模型是否真在盘上、当前用的是哪套背景
+      'hasModel' => studio_has_asset_file($ROOT, $d, $c['assets']['model'] ?? ''),
+      'panorama' => $c['assets']['panorama'] ?? '',
+      'envPreset' => $c['environment']['preset'] ?? 'room',
       'poster' => !empty($c['assets']['poster']) ? "$d/" . $c['assets']['poster'] : '',
       'mtime' => filemtime($cp) * 1000,
     ];

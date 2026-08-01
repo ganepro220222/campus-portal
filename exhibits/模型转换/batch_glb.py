@@ -95,6 +95,7 @@ def convert_obj(
     normals: str = "auto",
     metallic: float = 0.0,
     keep_normal_map: bool = True,
+    double_sided: bool | None = None,
 ) -> tuple[str | None, list[str]]:
     try:
         scene = trimesh.load(obj_path, force="scene")
@@ -113,7 +114,8 @@ def convert_obj(
         # 显式写 metallicFactor（不写＝规范默认全金属），并接回 MTL 的法线贴图
         normal_maps = parse_obj_normal_maps(obj_path) if keep_normal_map else {}
         notes += upgrade_materials_to_pbr(
-            scene, normal_maps=normal_maps, metallic=metallic, max_texture=max_texture
+            scene, normal_maps=normal_maps, metallic=metallic, max_texture=max_texture,
+            double_sided=double_sided,
         )
         scene.export(out_path, include_normals=True)
         return None, notes
@@ -187,6 +189,7 @@ def process_one(
     metallic: float = 0.0,
     keep_normal_map: bool = True,
     fix_glb: bool = True,
+    double_sided: bool | None = None,
 ) -> dict:
     result = empty_result(src_path, input_root)
     temp_path = ""
@@ -233,6 +236,7 @@ def process_one(
                 normals,
                 metallic,
                 keep_normal_map,
+                double_sided,
             )
             if err:
                 result["状态"] = "失败"
@@ -351,6 +355,10 @@ def main():
     parser.add_argument(
         "--no-normal-map", action="store_true",
         help="不要接 MTL 里的法线/凹凸贴图（默认会接）",
+    )
+    parser.add_argument(
+        "--double-sided", dest="double_sided", action="store_true", default=None,
+        help="强制双面渲染（法线朝向混乱、从某些角度看有破洞时用）",
     )
     parser.add_argument(
         "--no-fix", action="store_true",

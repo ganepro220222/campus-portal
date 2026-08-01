@@ -97,12 +97,8 @@ def naming_root_for_items(items: list[InputItem]) -> str:
 
 
 def naming_root_for_item(item: InputItem, batch_root: str) -> str:
-    """同盘用批次统一根；跨盘时回退到该项自己的 root。"""
-    try:
-        os.path.relpath(item["path"], batch_root)
-        return batch_root
-    except ValueError:
-        return item["root"]
+    """转换命名统一使用批次根；跨盘相对路径由 safe_relpath 加盘符标签。"""
+    return batch_root
 
 
 class ConverterGUI:
@@ -329,7 +325,10 @@ class ConverterGUI:
                     ok += 1
                     self.q.put(("log", (f"    ✓ {r['处理方式']} → {r['GLB文件']} · {r['体积MB']}MB\n", "ok")))
                     if opts["transform"] and r.get("scale") != "":
-                        terr = self._write_transform(out_dir, r)
+                        try:
+                            terr = self._write_transform(out_dir, r)
+                        except Exception as e:  # noqa: BLE001
+                            terr = f"transform 写入失败：{type(e).__name__}: {e}"
                         if terr:
                             r["备注"] = (r["备注"] + " | " if r["备注"] else "") + terr
                             self.q.put(("log", (f"    ⚠ {terr}\n", "er")))
@@ -363,19 +362,30 @@ class ConverterGUI:
             "meshes": r.get("网格数"), "materials": r.get("材质数"), "sizeMb": r["体积MB"],
             "transform": {k: r[k] for k in ("scale", "offsetX", "offsetY", "offsetZ", "floorOffsetY")},
         }
-        fd, tmp = tempfile.mkstemp(suffix=".transform.json", prefix=".tmp_", dir=out_dir)
-        os.close(fd)
+        tmp = ""
+        fd: int | None = None
         try:
+            fd, tmp = tempfile.mkstemp(suffix=".transform.json", prefix=".tmp_", dir=out_dir)
+            os.close(fd)
+            fd = None
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
             os.replace(tmp, final)
+            tmp = ""
             return None
         except Exception as e:  # noqa: BLE001
-            try:
-                os.remove(tmp)
-            except OSError:
-                pass
             return f"transform 写入失败：{type(e).__name__}: {e}"
+        finally:
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            if tmp:
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
 
     # ---------- 队列刷新（主线程）----------
     def _drain_queue(self):

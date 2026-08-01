@@ -12,9 +12,9 @@ OUT = Path(os.environ.get('PACK_OUT', ROOT / 'exhibits-便携包.zip'))
 if not OUT.is_absolute():
     OUT = ROOT / OUT
 
-EXCLUDE_TOP_DIRS = frozenset({
+EXCLUDE_ANY_DIRS = frozenset({
     'node_modules', 'e2e', 'test-results', 'playwright-report', 'blob-report',
-    '__pycache__', '_dev',
+    '__pycache__', '_dev', '.venv-build', 'build', 'dist',
 })
 
 EXCLUDE_FILES = frozenset({
@@ -56,17 +56,17 @@ def should_include(path: Path) -> bool:
     parts = rel.parts
     if not parts:
         return False
-    if parts[0] in EXCLUDE_TOP_DIRS:
+    if any(part in EXCLUDE_ANY_DIRS for part in parts[:-1]):
         return False
-    if any(p.startswith('._creating') or p.startswith('.') and p not in ('.',) for p in parts):
-        # keep normal files; skip hidden temp dirs
-        if any(p.startswith('._creating') for p in parts):
-            return False
+    if any(p.startswith('._creating') for p in parts):
+        return False
     if parts[0].startswith('_test'):
         return False
     if path.name in EXCLUDE_FILES:
         return False
     if path.name.endswith(EXCLUDE_SUFFIXES):
+        return False
+    if path.suffix == '.spec':
         return False
     if '.bak' in parts:
         return False

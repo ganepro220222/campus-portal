@@ -252,6 +252,44 @@ def _():
         eq(list(row.keys()), batch_glb.RESULT_FIELDS)
 
 
+@test("mkstemp 失败不中断批次且第二项仍处理")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        a = os.path.join(tmp, "A", "a.obj")
+        b = os.path.join(tmp, "B", "b.obj")
+        os.makedirs(os.path.dirname(a))
+        os.makedirs(os.path.dirname(b))
+        items = [
+            {"path": os.path.abspath(a), "root": os.path.dirname(a)},
+            {"path": os.path.abspath(b), "root": os.path.dirname(b)},
+        ]
+        out = os.path.join(tmp, "out")
+        gui = _make_gui()
+
+        def _fake(src, root, *_a, **_k):
+            r = batch_glb.empty_result(src, root)
+            r.update({
+                "状态": "成功",
+                "GLB文件": os.path.basename(src).replace(".obj", "-abc.glb"),
+                "体积MB": 1.0,
+                "scale": 1.0,
+            })
+            return r
+
+        with patch.object(batch_glb, "process_one", side_effect=_fake) as po:
+            with patch("obj2glb_gui.tempfile.mkstemp", side_effect=OSError("disk full")):
+                gui._run_worker(items, out, dict(
+                    max_texture=2048, quality=85, texture_format="auto",
+                    reencode=True, overwrite=False, transform=True,
+                ))
+        eq(po.call_count, 2)
+        man = os.path.join(out, "manifest.csv")
+        with open(man, encoding="utf-8-sig") as f:
+            rows = list(csv.DictReader(f))
+        eq(len(rows), 2)
+        ok("transform 写入失败" in rows[0]["备注"])
+
+
 @test("transform 写入失败不中断批次，manifest 仍含两行")
 def _():
     with tempfile.TemporaryDirectory() as tmp:
@@ -307,11 +345,22 @@ def _():
                 ok(err.called)
 
 
-@test("naming_root_for_item 在 relpath 跨盘失败时回退 item.root")
+@test("naming_root_for_item 始终返回 batch root")
 def _():
     item = {"path": "/data/d/file.glb", "root": "/data/d"}
-    with patch("obj2glb_gui.os.path.relpath", side_effect=ValueError("cross")):
-        eq(obj2glb_gui.naming_root_for_item(item, "/other/root"), "/data/d")
+    eq(obj2glb_gui.naming_root_for_item(item, "/other/root"), "/other/root")
+
+
+@test("跨盘同名 GLB 经 batch root 得到不同输出 stem")
+def _():
+    from unittest.mock import patch
+    batch = r"C:\A"
+    with patch("glb_utils.os.path.relpath", side_effect=ValueError("cross")):
+        stem_d = glb_utils.safe_output_stem(r"D:\B\model.glb", batch)
+        stem_e = glb_utils.safe_output_stem(r"E:\B\model.glb", batch)
+    eq(stem_d, "D__B__model")
+    eq(stem_e, "E__B__model")
+    ok(stem_d != stem_e)
 
 
 @test("跨盘批次 worker 仍处理全部项")
@@ -330,13 +379,12 @@ def _():
             r.update({"状态": "成功", "GLB文件": os.path.basename(src), "体积MB": 1.0, "scale": ""})
             return r
 
-        with patch("obj2glb_gui.naming_root_for_item", side_effect=lambda it, _b: it["root"]):
-            with patch.object(batch_glb, "process_one", side_effect=_fake):
-                gui._run_worker(items, out, dict(
-                    max_texture=2048, quality=85, texture_format="auto",
-                    reencode=True, overwrite=False, transform=False,
-                ))
-        eq(seen_roots, ["/c", "/d"])
+        with patch.object(batch_glb, "process_one", side_effect=_fake):
+            gui._run_worker(items, out, dict(
+                max_texture=2048, quality=85, texture_format="auto",
+                reencode=True, overwrite=False, transform=False,
+            ))
+        ok(len(set(seen_roots)) == 1, seen_roots)
         with open(os.path.join(out, "manifest.csv"), encoding="utf-8-sig") as f:
             eq(len(list(csv.DictReader(f))), 2)
 

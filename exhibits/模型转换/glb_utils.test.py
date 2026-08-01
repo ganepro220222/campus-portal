@@ -63,6 +63,7 @@ try:
         read_glb,
         write_glb,
         safe_relpath,
+        safe_output_stem,
     )
 except SystemExit as e:  # glb_utils 在缺依赖时 SystemExit
     print(f"无法导入 glb_utils：{e}")
@@ -71,12 +72,25 @@ except SystemExit as e:  # glb_utils 在缺依赖时 SystemExit
 print("glb_utils tests")
 
 
-@test("safe_relpath 在 relpath 失败时不抛异常")
+@test("safe_relpath 在 relpath 失败时生成盘符标签且不含 ..")
 def _():
     from unittest.mock import patch
     with patch("glb_utils.os.path.relpath", side_effect=ValueError("cross")):
-        rel = safe_relpath(r"D:\B\b.glb", r"C:\A")
-        ok("D__" in rel or "b.glb" in rel, rel)
+        rel = safe_relpath(r"D:\B\model.glb", r"C:\A")
+        ok(rel.startswith("D__"), rel)
+        ok(".." not in rel)
+        ok(rel.endswith("B__model.glb") or "B__model" in rel, rel)
+
+
+@test("safe_relpath 跨盘同名文件得到不同标识")
+def _():
+    from unittest.mock import patch
+    with patch("glb_utils.os.path.relpath", side_effect=ValueError("cross")):
+        a = safe_relpath(r"D:\B\model.glb", r"C:\A")
+        b = safe_relpath(r"E:\B\model.glb", r"C:\A")
+        ok(a != b)
+        eq(safe_output_stem(r"D:\B\model.glb", r"C:\A"), "D__B__model")
+        eq(safe_output_stem(r"E:\B\model.glb", r"C:\A"), "E__B__model")
 
 
 # ── MTL 法线贴图解析 ──────────────────────────────────────────────

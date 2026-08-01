@@ -55,6 +55,50 @@ def _make_gui() -> obj2glb_gui.ConverterGUI:
     return gui
 
 
+@test("golden_geometry：内容比最小尺寸大时，窗口按内容走")
+def _():
+    w, h, x, y = obj2glb_gui.golden_geometry(1016, 724, 1920, 1080)
+    eq((w, h), (1016, 724))
+    eq(x, (1920 - 1016) // 2)
+    ok(0 <= y <= 1080 - 724)
+
+
+@test("golden_geometry：内容太小则撑到最小尺寸，保证日志有地方待")
+def _():
+    w, h, _x, _y = obj2glb_gui.golden_geometry(400, 300, 1920, 1080)
+    eq((w, h), (obj2glb_gui.MIN_W, obj2glb_gui.MIN_H))
+
+
+@test("golden_geometry：内容比屏幕大时收进屏幕，但不小于最小尺寸")
+def _():
+    w, h, x, y = obj2glb_gui.golden_geometry(2000, 2000, 1366, 768)
+    eq(w, 1366 - 80)
+    eq(h, 768 - 90)
+    eq((x, y), (40, (768 - 678) // 3))
+    # 极端矮屏：宁可超出也不能小于最小尺寸，否则控件会被裁掉
+    w2, h2, _x2, _y2 = obj2glb_gui.golden_geometry(2000, 2000, 640, 400)
+    eq((w2, h2), (obj2glb_gui.MIN_W, obj2glb_gui.MIN_H))
+
+
+@test("golden_geometry：坐标不会为负（窗口不跑到屏幕外）")
+def _():
+    _w, _h, x, y = obj2glb_gui.golden_geometry(2000, 2000, 800, 600)
+    ok(x >= 0 and y >= 0, f"{x},{y}")
+
+
+@test("pick_font：按优先级挑第一个装了的字体")
+def _():
+    fams = ("Arial", "Microsoft YaHei", "Segoe UI")
+    eq(obj2glb_gui.pick_font(fams, ("Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI"), "X"), "Microsoft YaHei")
+    eq(obj2glb_gui.pick_font(fams, ("Segoe UI",), "X"), "Segoe UI")
+
+
+@test("pick_font：一个都没有就退回 Tk 自带族，不抛错")
+def _():
+    eq(obj2glb_gui.pick_font((), ("Microsoft YaHei UI",), "TkDefaultFont"), "TkDefaultFont")
+    eq(obj2glb_gui.pick_font(None, ("Consolas",), "TkFixedFont"), "TkFixedFont")
+
+
 @test("scan_folder_inputs 排除默认 output_glb 内旧 GLB")
 def _():
     with tempfile.TemporaryDirectory() as tmp:

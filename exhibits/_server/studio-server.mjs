@@ -20,6 +20,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { computeRootHash, getIdentityPayload } from './studio-identity.mjs'
+import { createExhibit } from '../exhibit-create.mjs'
 import { hasPanoramaFile } from '../pano-check.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
@@ -65,7 +66,7 @@ function listExhibits() {
       const c = JSON.parse(fs.readFileSync(cp, 'utf8')); const zh = (c.i18n && c.i18n.zh) || {}
       out.push({ dir: d.name, title: zh.title || d.name, subtitle: zh.subtitle || '',
         hotspots: (c.hotspots || []).length, audio: (c.audio || []).length,
-        hasPano: hasPanoramaFile(path.join(ROOT, d.name), c.assets && c.assets.panorama),
+        hasPano: hasPanoramaFile(path.join(ROOT, d.name), c.assets && c.assets.panorama, ROOT),
         poster: (c.assets && c.assets.poster) ? d.name + '/' + c.assets.poster : '',
         mtime: fs.statSync(cp).mtimeMs })
     } catch (e) { out.push({ dir: d.name, title: d.name, error: String(e.message) }) }

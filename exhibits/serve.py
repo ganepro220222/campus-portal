@@ -90,7 +90,7 @@ def list_exhibits():
                 'subtitle': zh.get('subtitle') or '',
                 'hotspots': len(c.get('hotspots') or []),
                 'audio': len(c.get('audio') or []),
-                'hasPano': has_panorama_file(d, (c.get('assets') or {}).get('panorama')),
+                'hasPano': has_panorama_file(d, (c.get('assets') or {}).get('panorama'), ROOT),
                 'poster': f"{d.name}/{(c.get('assets') or {}).get('poster')}" if (c.get('assets') or {}).get('poster') else '',
                 'mtime': int(st.st_mtime * 1000),
             })

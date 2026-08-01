@@ -45,10 +45,35 @@ test('new template dir without panorama file is false', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
   try {
     fs.cpSync(path.join(ROOT, '_template'), path.join(tmp, 'craft-test'), { recursive: true })
-    assert.equal(hasPanoramaFile(path.join(tmp, 'craft-test'), 'assets/panorama.jpg'), false)
+    assert.equal(hasPanoramaFile(path.join(tmp, 'craft-test'), 'assets/panorama.jpg', tmp), false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
+})
+
+test('root-relative missing returns false', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
+  try {
+    assert.equal(hasPanoramaFile(tmp, '/definitely-missing.jpg', tmp), false)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('root-relative existing returns true', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
+  try {
+    fs.mkdirSync(path.join(tmp, 'media'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, 'media', 'p.jpg'), 'x')
+    assert.equal(hasPanoramaFile(tmp, '/media/p.jpg', tmp), true)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('protocol-relative URL counts as remote', () => {
+  assert.ok(isRemotePanoramaUrl('//cdn.example.com/p.jpg'))
+  assert.ok(hasPanoramaFile('/tmp/x', '//cdn.example.com/p.jpg'))
 })
 
 console.log('')

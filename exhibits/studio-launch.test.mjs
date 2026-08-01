@@ -293,6 +293,17 @@ test('open launcher only opens browser on ensure-server RC 0', () => {
   }
 })
 
+test('internal launchers do not pause; top-level entry bats do', () => {
+  for (const rel of ['_launch/install.bat', '_launch/new-exhibit.bat', '_launch/stop.bat']) {
+    const bat = fs.readFileSync(path.join(ROOT, rel), 'utf8')
+    assert.doesNotMatch(bat, /\bpause\b/i, `${rel} must not pause (caller owns UX)`)
+  }
+  for (const rel of ['安装便携环境.bat', '新建展品.bat', '停止服务.bat', '打开工作台.bat']) {
+    const bat = fs.readFileSync(path.join(ROOT, rel), 'utf8')
+    assert.match(bat, /\bpause\b/i, `${rel} must pause once for double-click users`)
+  }
+})
+
 test('install.bat runs under cmd when cwd path contains parentheses', () => {
   if (process.platform !== 'win32') return 'skip'
   const tmp = path.join(os.tmpdir(), `exhibits-paren-${Date.now()}(2)`)

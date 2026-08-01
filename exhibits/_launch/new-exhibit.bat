@@ -50,5 +50,4 @@ set "RC=2"
 goto done
 
 :done
-pause
 exit /b %RC%

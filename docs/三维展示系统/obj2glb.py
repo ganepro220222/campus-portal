@@ -2,7 +2,12 @@
 OBJ → GLB 本地转换工具
 将 obj + mtl + 贴图 转换为自包含的 GLB 文件（贴图内嵌，无外部依赖）
 
-OBJ 管线适合基础漫反射模型；复杂 PBR 多贴图资产请优先直接交付 GLB。
+转换时自动修正三处 OBJ 管线的固有缺陷（都会直接影响观感）：
+  1. 金属度：OBJ/MTL 没有金属度概念，而 glTF 规范里 metallicFactor 缺省＝1.0（全金属），
+     模型在偏暗环境里会发黑、加多少灯都救不回来。这里显式写 0。
+  2. 法线：源文件无 vn 时自动生成平滑法线，否则按规范只能按面法线渲染，圆润器物变多面体。
+  3. 法线贴图：把 MTL 里的 norm / map_Bump 接到 glTF 的 normalTexture（默认只会带走 diffuse）。
+转换结束会打印一份资产体检报告。
 
 依赖：pip install trimesh pillow numpy
 用法：
@@ -10,6 +15,8 @@ OBJ 管线适合基础漫反射模型；复杂 PBR 多贴图资产请优先直�
   python obj2glb.py 模型.obj --output 输出.glb
   python obj2glb.py 模型.obj --max-texture 2048 --sidecar
   python obj2glb.py 模型.obj --output-dir ./out   # 按 GLB 内容哈希命名
+  python obj2glb.py 模型.obj --normals flat       # 硬表面模型（建筑/器械）
+  python obj2glb.py --fix 已转好的.glb            # 体检并无损修复旧文件
 """
 from __future__ import annotations
 
@@ -26,13 +33,21 @@ except ImportError:
     sys.exit(1)
 
 from glb_utils import (
+    audit_glb_file,
+    fix_glb_file,
     build_output_name_from_glb,
     compute_transform,
+    ensure_scene_normals,
     file_sha1,
+    find_mtl_for_obj,
+    format_audit,
     glb_stats,
     hash_obj_bundle,
+    obj_declares_normals,
     optimize_texture,
+    parse_mtl_normal_maps,
     safe_output_stem,
+    upgrade_materials_to_pbr,
 )
 
 
@@ -46,6 +61,11 @@ def convert(
     reencode: bool = True,
     allow_alpha_loss: bool = False,
     sidecar: bool = False,
+    normals: str = "auto",
+    metallic: float = 0.0,
+    roughness: float | None = None,
+    double_sided: bool | None = None,
+    keep_normal_map: bool = True,
 ) -> bool:
     if not os.path.isfile(obj_path):
         print(f"文件不存在：{obj_path}")
@@ -82,10 +102,23 @@ def convert(
     for note in notes:
         print(f"  贴图：{note}")
 
+    # 法线：源无 vn 时必须生成，否则 GLB 不带 NORMAL，圆润器物会渲染成多面体
+    has_vn = obj_declares_normals(obj_path)
+    for note in ensure_scene_normals(scene, mode=normals, source_has_vn=has_vn):
+        print(f"  法线：{note}")
+
+    # 材质：显式写 metallicFactor（不写＝规范默认全金属），并接回 MTL 的法线贴图
+    normal_maps = parse_mtl_normal_maps(find_mtl_for_obj(obj_path) or "") if keep_normal_map else {}
+    for note in upgrade_materials_to_pbr(
+        scene, normal_maps=normal_maps, metallic=metallic, roughness=roughness,
+        double_sided=double_sided, max_texture=max_texture,
+    ):
+        print(f"  材质：{note}")
+
     fd, temp_path = tempfile.mkstemp(suffix=".glb", prefix=".tmp_")
     os.close(fd)
     try:
-        scene.export(temp_path)
+        scene.export(temp_path, include_normals=True)
 
         stats = glb_stats(temp_path)
         if not stats:
@@ -120,6 +153,11 @@ def convert(
         print(f"贴图内嵌：{'是' if stats['embedded'] else '否（需修复）'}")
         if stats["warnings"]:
             print(f"警告：{', '.join(stats['warnings'])}")
+
+        audit = audit_glb_file(final_path)
+        if audit:
+            print("\n资产体检：")
+            print(format_audit(audit))
 
         if sidecar:
             try:
@@ -157,9 +195,31 @@ def convert(
             os.remove(temp_path)
 
 
+def run_fix(glb_path: str, metallic: float) -> bool:
+    """体检并修复一个现成的 GLB（金属度/粗糙度）。法线缺失需重新转换，报告里会说明。"""
+    if not os.path.isfile(glb_path):
+        print(f"文件不存在：{glb_path}")
+        return False
+    before = audit_glb_file(glb_path)
+    if before is None:
+        print("不是有效的 GLB 2.0 文件")
+        return False
+    print(f"体检：{glb_path}")
+    print(format_audit(before))
+
+    changed, notes = fix_glb_file(glb_path, metallic=metallic)
+    print("\n修复：" + ("；".join(notes) if notes else "无"))
+    if changed:
+        after = audit_glb_file(glb_path)
+        print(f"新 glbSha1：{file_sha1(glb_path)}")
+        print("\n修复后体检：")
+        print(format_audit(after))
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(description="OBJ → GLB 转换工具")
-    parser.add_argument("input", help="输入的 .obj 文件路径")
+    parser.add_argument("input", nargs="?", help="输入的 .obj 文件路径（用 --fix 时可省略）")
     parser.add_argument("-o", "--output", help="指定输出 .glb 路径（不按时会按 glbSha1 命名）")
     parser.add_argument(
         "--output-dir",
@@ -194,7 +254,36 @@ def main():
         action="store_true",
         help="输出 .transform.json（含 sourceSha1 / objBundleSha1 / glbSha1）",
     )
+    parser.add_argument(
+        "--normals", choices=["auto", "smooth", "flat"], default="auto",
+        help="auto=有 vn 沿用、无 vn 生成平滑法线（默认）；smooth=强制平滑；flat=强制硬边",
+    )
+    parser.add_argument(
+        "--metallic", type=float, default=0.0,
+        help="金属度，默认 0。OBJ 没有金属度概念，不写会被规范当成 1.0（全金属→发黑）",
+    )
+    parser.add_argument(
+        "--roughness", type=float,
+        help="粗糙度；不指定则按 MTL 的 Ns 换算，换算不出时用 0.6",
+    )
+    parser.add_argument(
+        "--double-sided", dest="double_sided", action="store_true", default=None,
+        help="强制双面渲染（法线朝向混乱、从某些角度看有破洞时用）",
+    )
+    parser.add_argument(
+        "--no-normal-map", action="store_true",
+        help="不要接 MTL 里的法线/凹凸贴图（默认会接）",
+    )
+    parser.add_argument(
+        "--fix", metavar="GLB",
+        help="修复已转好的 GLB（只改 JSON、不动几何），并输出体检报告",
+    )
     args = parser.parse_args()
+
+    if args.fix:
+        sys.exit(0 if run_fix(args.fix, args.metallic) else 1)
+    if not args.input:
+        parser.error("需要输入的 .obj 文件路径，或用 --fix 修复现成 GLB")
 
     if args.output and args.output_dir:
         print("不能同时指定 --output 与 --output-dir")
@@ -216,6 +305,11 @@ def main():
         not args.no_reencode,
         args.allow_alpha_loss,
         args.sidecar,
+        args.normals,
+        args.metallic,
+        args.roughness,
+        args.double_sided,
+        not args.no_normal_map,
     )
     sys.exit(0 if success else 1)
 

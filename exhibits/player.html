@@ -578,6 +578,7 @@ function applyEnvironment() {
    编辑器里反复切换环境预设时显存会一路涨上去。 */
 let _pmrem = null, envRT = null, envBg = null
 const envLoadGuard = createEnvLoadGuard()
+let envPanoFailed = ''   // 记下加载失败的全景地址，供编辑器如实显示当前环境
 function pmremGen() { if (!_pmrem) _pmrem = new THREE.PMREMGenerator(renderer); return _pmrem }
 function setEnvFromRT(rt, bg) {
   if (envRT && envRT !== rt) envRT.dispose()
@@ -639,8 +640,15 @@ function panoramaIBL(url) {
     if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); return }
     tex.mapping = THREE.EquirectangularReflectionMapping
     tex.colorSpace = THREE.SRGBColorSpace
+    envPanoFailed = ''
     setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
-  }, undefined, () => {/* 保底已是预设或 RoomEnvironment */})
+  }, undefined, () => {
+    // 全景文件缺失/加载失败：真正生效的是预设兜底，编辑器不能还显示「全景图」
+    if (!envLoadGuard.isCurrent(token)) return
+    envPanoFailed = expectedUrl
+    bootEnvironment()
+    if (typeof window.__edRefresh === 'function') window.__edRefresh()
+  })
 }
 /* 开场同步给出环境（预设是画布生成的，无需等待）；全景走异步，先用兜底顶着 */
 function bootEnvironment() {
@@ -1352,7 +1360,9 @@ function renderEditor() {
   const sh = resolveShadow(cfg)
   const envSrc = resolveEnvSource(cfg)
   const envPresetNow = ENV_PRESETS[cfg.environment.preset] ? cfg.environment.preset : (envSrc.kind === 'preset' ? envSrc.preset : 'room')
-  const panoRules = envSrc.kind === 'panorama'   // 全景接管时预设不生效，UI 必须说清楚而不是让人白选
+  // 全景接管时预设不生效；但若全景加载失败，实际跑的是预设兜底，UI 必须如实说
+  const panoBroken = envSrc.kind === 'panorama' && envPanoFailed && asset(envSrc.url) === envPanoFailed
+  const panoRules = envSrc.kind === 'panorama' && !panoBroken
   $('editor').innerHTML = `
   <details class="ed-sec" open><summary>基本信息</summary>
     <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
@@ -1424,7 +1434,8 @@ function renderEditor() {
   </details>
 
   <details class="ed-sec"><summary>环境 IBL</summary>
-    <div class="ed-row"><span class="ed-label">当前环境</span><b style="color:${panoRules?'#7fc7a5':'#c8a86a'}">${panoRules?'全景图':ENV_PRESETS[envPresetNow].label}</b></div>
+    <div class="ed-row"><span class="ed-label">当前环境</span><b style="color:${panoRules?'#7fc7a5':(panoBroken?'#e07a7a':'#c8a86a')}">${panoRules?'全景图':ENV_PRESETS[envPresetNow].label}</b></div>
+    ${panoBroken?`<div class="ed-note"><b style="color:#e07a7a">全景图加载失败</b>（${esc(cfg.assets?.panorama||'')}），已回落到上面这个预设。请检查文件是否存在，或点「清除全景」改用预设。</div>`:''}
     <div class="ed-row"><span class="ed-label">环境预设</span>
       <select class="ed-in" id="ed-env-preset" style="width:auto;margin:0;flex:0 1 auto" ${panoRules?'disabled':''}>
         ${ENV_PRESET_KEYS.map(k=>`<option value="${k}" ${envPresetNow===k?'selected':''}>${ENV_PRESETS[k].label}</option>`).join('')}
@@ -1436,7 +1447,7 @@ function renderEditor() {
     <label class="ed-row"><span class="ed-label">可见环境背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
     <input class="ed-in" id="ed-pano" placeholder="assets/panorama.jpg 或 https://…" value="${esc(cfg.assets?.panorama||'')}">
     <button class="ed-btn" id="ed-pano-load">加载全景</button>
-    ${panoRules?'<button class="ed-btn" id="ed-pano-clear">清除全景（改用预设）</button>':''}
+    ${(panoRules||panoBroken)?'<button class="ed-btn" id="ed-pano-clear">清除全景（改用预设）</button>':''}
   </details>
 
   <details class="ed-sec"><summary>落地阴影</summary>

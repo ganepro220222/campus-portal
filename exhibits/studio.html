@@ -77,10 +77,12 @@
   .bpanel .bhead .sel-n { font-size:13px; color:var(--gold); }
   .bpanel .bhead .grow { flex:1; }
   .bwrap { display:flex; gap:22px; overflow:auto; padding:16px clamp(16px,4vw,48px) 4px; }
+  .bf-hint { flex-basis:100%; font-size:11.5px; line-height:1.5; color:#8a90a6; margin:2px 0 0 26px; }
+  .bf-hint.warn { color:#e0b070; }
   .bgroup { flex:0 0 260px; border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px 14px;
     background:rgba(255,255,255,.03); }
   .bgroup h4 { font-size:13px; color:#f4e6c8; margin-bottom:10px; letter-spacing:.3px; }
-  .bf { display:flex; align-items:center; gap:8px; margin:7px 0; font-size:12.5px; color:rgba(230,234,245,.85); }
+  .bf { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:7px 0; font-size:12.5px; color:rgba(230,234,245,.85); }
   .bf > .bf-en { flex:0 0 auto; width:15px; height:15px; accent-color:var(--gold); cursor:pointer; }
   .bf .lb { flex:0 0 92px; color:rgba(230,234,245,.7); }
   .bf .ctl { flex:1; min-width:0; display:flex; align-items:center; gap:6px; }
@@ -202,7 +204,7 @@ const LIGHT_SCHEMES = {
 const GROUPS = [
   { title:'环境 IBL / 背景', fields:[
     { id:'pano', path:'assets.panorama', label:'全景贴图', type:'text', ph:'assets/panorama.jpg 或 https://…', def:'' },
-    { id:'epreset', path:'environment.preset', label:'环境预设', type:'select', opts:ENV_PRESET_OPTS, def:'room' },
+    { id:'epreset', path:'environment.preset', label:'环境预设', type:'select', opts:ENV_PRESET_OPTS, def:'room', hint:'pano' },
     { id:'ibl',  path:'environment.intensity', label:'环境光照', type:'range', min:0, max:3, step:0.05, def:1.15 },
     { id:'erot', path:'environment.rotationDeg', label:'环境旋转°', type:'range', min:-180, max:180, step:1, def:0 },
     { id:'bgvis',path:'environment.visibleBackground', label:'显示环境背景', type:'bool', def:false },
@@ -310,7 +312,8 @@ function fieldRow(f) {
   else if (f.type === 'range') ctl = `<input type="range" id="v-${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}"><span class="val" id="o-${f.id}">${f.def}</span>`
   else if (f.type === 'select') ctl = `<select id="v-${f.id}">${f.opts.map(([v, l]) => `<option value="${v}" ${v === f.def ? 'selected' : ''}>${l}</option>`).join('')}</select>`
   else if (f.type === 'scheme') ctl = `<select id="v-${f.id}">${Object.entries(LIGHT_SCHEMES).map(([k, s]) => `<option value="${k}" ${k === f.def ? 'selected' : ''}>${s.label}</option>`).join('')}</select>`
-  return `<label class="bf dis" id="row-${f.id}"><input type="checkbox" class="bf-en" id="en-${f.id}"><span class="lb">${f.label}</span><span class="ctl">${ctl}</span></label>`
+  const hint = f.hint ? `<span class="bf-hint" id="hint-${f.id}"></span>` : ''
+  return `<label class="bf dis" id="row-${f.id}"><input type="checkbox" class="bf-en" id="en-${f.id}"><span class="lb">${f.label}</span><span class="ctl">${ctl}</span>${hint}</label>`
 }
 
 /* ---------- 应用（逐个展品独立写回，绝不相互覆盖） ---------- */
@@ -420,7 +423,7 @@ function render(r) {
       </div>
     </div>`
   if (!r.error) el.querySelector('.pick').addEventListener('click', () => toggleSel(r.dir, el))
-  return { el, key: (title + ' ' + r.dir).toLowerCase(), dir: r.dir }
+  return { el, key: (title + ' ' + r.dir).toLowerCase(), dir: r.dir, hasPano: !!r.hasPano }
 }
 
 /* ---------- 选择 / 批量模式 ---------- */
@@ -434,6 +437,18 @@ function refreshSel() {
   $('selN').textContent = `已选 ${n} 件`
   $('bapply').textContent = `应用到 ${n} 件展品`
   $('bapply').disabled = n === 0 || !hasApi
+  syncPresetHint()
+}
+/* 环境预设对「已配全景图」的展品不生效——按当前选择实时说明，别让人白改 */
+function syncPresetHint() {
+  const el = $('hint-epreset'); if (!el) return
+  const picked = cards.filter(c => selected.has(c.dir))
+  const ruled = picked.filter(c => c.hasPano)
+  if (!picked.length || !ruled.length) { el.textContent = ''; el.classList.remove('warn'); return }
+  el.classList.add('warn')
+  el.textContent = ruled.length === picked.length
+    ? `选中的 ${picked.length} 件都已配全景图，全景优先，此项对它们不会生效`
+    : `选中的 ${picked.length} 件中有 ${ruled.length} 件已配全景图，此项对这 ${ruled.length} 件不会生效`
 }
 function setBatch(on) {
   document.body.classList.toggle('batch-open', on)

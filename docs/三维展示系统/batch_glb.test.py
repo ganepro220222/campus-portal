@@ -107,6 +107,27 @@ def _():
         eq(mf, 0.37)
 
 
+@test("main() 返回失败计数供 convert_cli 判断部分失败")
+def _():
+    with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:
+        bad_json = b"{broken"
+        bad_json += b" " * ((4 - len(bad_json) % 4) % 4)
+        total = 12 + 8 + len(bad_json)
+        with open(os.path.join(inp, "bad.glb"), "wb") as f:
+            f.write(struct.pack("<4sII", b"glTF", 2, total))
+            f.write(struct.pack("<I4s", len(bad_json), b"JSON") + bad_json)
+        import contextlib, io as _io
+        import batch_glb
+        saved = sys.argv
+        sys.argv = ["batch_glb.py", inp, "-o", out]
+        try:
+            with contextlib.redirect_stdout(_io.StringIO()):
+                fail = batch_glb.main()
+        finally:
+            sys.argv = saved
+        eq(fail, 1)
+
+
 @test("无效 GLB 的具体 fix 原因写入备注")
 def _():
     with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:

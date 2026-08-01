@@ -132,16 +132,24 @@ def run_batch(src: str, dst: str) -> int:
     saved = sys.argv
     sys.argv = ["batch_glb.py", src, "-o", dst]
     try:
-        batch_glb.main()
-        return 0
+        fail = batch_glb.main()
+        return 4 if fail else 0
     except SystemExit as e:
-        return 4 if e.code else 0
+        code = e.code
+        if code is None:
+            return 0
+        return code if isinstance(code, int) else 9
     finally:
         sys.argv = saved
 
 
 if __name__ == "__main__":
-    code = main()
+    try:
+        code = main()
+    except Exception as e:  # noqa: BLE001
+        print()
+        print(f"[程序异常] {type(e).__name__}: {e}")
+        code = 9
     print()
     if code == 0:
         print("[完成] 输出目录里的 manifest.csv 记录了每个模型的体检结果。")

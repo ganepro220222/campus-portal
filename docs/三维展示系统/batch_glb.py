@@ -443,7 +443,12 @@ def main():
     print(f"GLB 输出目录：{args.output}/")
     print(f"清单文件：{manifest}")
     print("输出文件名以 glbSha1 为准；OBJ 另记录 objBundleSha1 便于追溯 MTL/贴图变更。")
+    return fail
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        n_fail = main()
+    except SystemExit:
+        raise
+    sys.exit(4 if n_fail else 0)

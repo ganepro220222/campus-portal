@@ -30,6 +30,18 @@ def output_exclusion_for_input(input_dir: str, output_dir: str) -> set[str]:
     return set()
 
 
+OUTPUT_SAME_AS_INPUT_MSG = "输出文件夹不能和输入文件夹相同（否则产物会混进素材里）"
+
+
+def validate_output_dir(input_roots: list[str], output_dir: str) -> str | None:
+    """输出目录不得与任一输入根相同（Windows 大小写不敏感）。返回错误说明或 None。"""
+    out_key = _canonical_path(output_dir)
+    for root in input_roots:
+        if _canonical_path(root) == out_key:
+            return OUTPUT_SAME_AS_INPUT_MSG
+    return None
+
+
 def path_is_under(child: str, parent: str) -> bool:
     """child 是否位于 parent 目录下（含 parent 自身）。"""
     child_key = _canonical_path(child)

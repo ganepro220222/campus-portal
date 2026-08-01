@@ -28,7 +28,11 @@ if BASE_DIR not in sys.path:
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-from input_scan import input_under_excluded_output, output_exclusion_for_input
+from input_scan import (
+    input_under_excluded_output,
+    output_exclusion_for_input,
+    validate_output_dir,
+)
 
 # 依赖缺失时给出友好提示（而不是崩溃）
 _IMPORT_ERROR = None
@@ -90,6 +94,15 @@ def naming_root_for_items(items: list[InputItem]) -> str:
     if not items:
         raise ValueError("empty items")
     return common_input_root([item["path"] for item in items])
+
+
+def naming_root_for_item(item: InputItem, batch_root: str) -> str:
+    """同盘用批次统一根；跨盘时回退到该项自己的 root。"""
+    try:
+        os.path.relpath(item["path"], batch_root)
+        return batch_root
+    except ValueError:
+        return item["root"]
 
 
 class ConverterGUI:
@@ -266,6 +279,13 @@ class ConverterGUI:
         run_items = inputs_for_run(self.inputs, self.out_dir)
         if not run_items:
             messagebox.showinfo("提示", "排除输出目录后没有可转换的文件。"); return
+        out_err = validate_output_dir([item["root"] for item in run_items], self.out_dir)
+        if out_err:
+            messagebox.showerror(
+                "输出目录无效",
+                out_err + "\n请选择 output_glb 等独立子目录。",
+            )
+            return
         self.btn_run.config(state="disabled"); self.btn_open.config(state="disabled")
         self._clear_log()
         opts = dict(
@@ -291,16 +311,17 @@ class ConverterGUI:
             self.q.put(("log", (f"共 {len(items)} 个文件，输出到：{out_dir}\n", "hd")))
             for i, item in enumerate(items, 1):
                 src = item["path"]
+                item_root = naming_root_for_item(item, naming_root)
                 name = os.path.basename(src)
                 self.q.put(("log", (f"[{i}/{len(items)}] {name} …\n", None)))
                 try:
                     r = batch_glb.process_one(
-                        src, naming_root, out_dir,
+                        src, item_root, out_dir,
                         opts["max_texture"], opts["quality"], opts["texture_format"],
                         opts["reencode"], False, opts["overwrite"],
                     )
                 except Exception as e:  # noqa: BLE001
-                    r = batch_glb.empty_result(src, naming_root)
+                    r = batch_glb.empty_result(src, item_root)
                     r["状态"] = "失败"
                     r["备注"] = f"处理异常：{type(e).__name__}: {e}"
                 results.append(r)

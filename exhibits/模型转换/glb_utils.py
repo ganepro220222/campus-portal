@@ -53,9 +53,20 @@ def file_sha1(path: str) -> str:
     return digest.hexdigest()
 
 
+def safe_relpath(src_path: str, input_root: str) -> str:
+    """相对路径；跨盘符（Windows）时退化为带盘符标签的稳定路径。"""
+    try:
+        return os.path.relpath(src_path, input_root)
+    except ValueError:
+        abs_src = os.path.abspath(src_path)
+        drive, tail = os.path.splitdrive(abs_src)
+        prefix = f"{drive.rstrip(':')}__" if drive else ""
+        return prefix + tail.lstrip("\\/").replace("\\", "__").replace("/", "__")
+
+
 def safe_output_stem(src_path: str, input_root: str) -> str:
     """根据来源相对路径生成安全文件名主干（不含哈希后缀）。"""
-    rel = os.path.relpath(src_path, input_root)
+    rel = safe_relpath(src_path, input_root)
     stem = os.path.splitext(rel)[0]
     return stem.replace(os.sep, "__").replace(" ", "_")
 

@@ -13,6 +13,7 @@ from input_scan import (  # noqa: E402
     collect_input_files,
     input_under_excluded_output,
     output_exclusion_for_input,
+    validate_output_dir,
 )
 
 _pass = _fail = _skip = 0
@@ -136,6 +137,28 @@ def _():
         open(old, "wb").write(b"x")
         ok(input_under_excluded_output(old, src, out))
         ok(not input_under_excluded_output(os.path.join(src, "a.obj"), src, out))
+
+
+@test("validate_output_dir 拒绝输出与输入根相同")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "素材")
+        os.makedirs(src)
+        from input_scan import OUTPUT_SAME_AS_INPUT_MSG
+        eq(validate_output_dir([src], src), OUTPUT_SAME_AS_INPUT_MSG)
+        ok(validate_output_dir([src], os.path.join(tmp, "out")) is None)
+
+
+@test("validate_output_dir Windows 大小写不同仍视为相同")
+def _():
+    if os.name != "nt":
+        skip("非 Windows")
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "Models")
+        os.makedirs(src)
+        from input_scan import OUTPUT_SAME_AS_INPUT_MSG
+        alt = src[0].swapcase() + src[1:] if src[0].isalpha() else src
+        eq(validate_output_dir([src], alt), OUTPUT_SAME_AS_INPUT_MSG)
 
 
 print("input_scan tests")

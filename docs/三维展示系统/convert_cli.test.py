@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -300,6 +301,25 @@ def _():
         r = subprocess.run(["cmd.exe", "/c", "call", BAT, os.path.join(tmp, "不存在")],
                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
         ok(r.returncode in (2, 3), f"返回码 {r.returncode}\n{r.stdout}")
+
+
+@test("docs/三维展示系统/.gitattributes 规定 bat 工作区 CRLF、Git 索引 LF")
+def _():
+    ga = os.path.join(HERE, ".gitattributes")
+    ok(os.path.isfile(ga), "缺少 .gitattributes")
+    ok("*.bat text eol=crlf" in open(ga, encoding="utf-8").read())
+    raw = open(BAT, "rb").read()
+    ok(b"\r\n" in raw, "工作区 bat 应为 CRLF")
+    git = shutil.which("git")
+    if not git:
+        print("     （跳过：无 git）")
+        return
+    rel = os.path.relpath(BAT, os.path.dirname(os.path.dirname(os.path.dirname(HERE)))).replace("\\", "/")
+    r = subprocess.run([git, "show", f":{rel}"], capture_output=True, cwd=os.path.dirname(os.path.dirname(os.path.dirname(HERE))))
+    if r.returncode != 0:
+        print("     （跳过：bat 尚未入索引）")
+        return
+    ok(b"\r" not in r.stdout, "Git 索引内 bat 应为 LF（由 eol=crlf 归一化）")
 
 
 print(f"\nconvert_cli: {_pass} passed" + (f", {_fail} FAILED" if _fail else ""))

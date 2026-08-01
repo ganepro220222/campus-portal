@@ -138,6 +138,38 @@ def _finalize_output(
     return final_path, out_name, None
 
 
+RESULT_FIELDS = [
+    "名称",
+    "来源相对路径",
+    "sourceSha1",
+    "objBundleSha1",
+    "glbSha1",
+    "处理方式",
+    "GLB文件",
+    "体积MB",
+    "网格数",
+    "材质数",
+    "贴图内嵌",
+    "三角面",
+    "体检",
+    "scale",
+    "offsetX",
+    "offsetY",
+    "offsetZ",
+    "floorOffsetY",
+    "状态",
+    "备注",
+]
+
+
+def empty_result(src_path: str, input_root: str) -> dict:
+    """构造固定 schema 的空结果行，供 process_one / main 异常路径共用。"""
+    result = {k: "" for k in RESULT_FIELDS}
+    result["名称"] = os.path.splitext(os.path.basename(src_path))[0]
+    result["来源相对路径"] = os.path.relpath(src_path, input_root)
+    return result
+
+
 def process_one(
     src_path: str,
     input_root: str,
@@ -153,44 +185,22 @@ def process_one(
     keep_normal_map: bool = True,
     fix_glb: bool = True,
 ) -> dict:
-    ext = os.path.splitext(src_path)[1].lower()
-    rel_path = os.path.relpath(src_path, input_root)
-    stem = safe_output_stem(src_path, input_root)
-    source_sha1 = file_sha1(src_path)
-
-    result = {
-        "名称": os.path.splitext(os.path.basename(src_path))[0],
-        "来源相对路径": rel_path,
-        "sourceSha1": source_sha1,
-        "objBundleSha1": "",
-        "glbSha1": "",
-        "处理方式": "",
-        "GLB文件": "",
-        "体积MB": "",
-        "网格数": "",
-        "材质数": "",
-        "贴图内嵌": "",
-        "三角面": "",
-        "体检": "",
-        "scale": "",
-        "offsetX": "",
-        "offsetY": "",
-        "offsetZ": "",
-        "floorOffsetY": "",
-        "状态": "",
-        "备注": "",
-    }
-
-    if ext == ".obj":
-        try:
-            result["objBundleSha1"] = hash_obj_bundle(src_path)
-        except Exception as e:
-            result["备注"] = f"资产包哈希失败：{e}"
-
-    fd, temp_path = tempfile.mkstemp(suffix=".glb", prefix=".tmp_", dir=out_dir)
-    os.close(fd)
-
+    result = empty_result(src_path, input_root)
+    temp_path = ""
     try:
+        ext = os.path.splitext(src_path)[1].lower()
+        stem = safe_output_stem(src_path, input_root)
+        result["sourceSha1"] = file_sha1(src_path)
+
+        if ext == ".obj":
+            try:
+                result["objBundleSha1"] = hash_obj_bundle(src_path)
+            except Exception as e:
+                result["备注"] = f"资产包哈希失败：{e}"
+
+        fd, temp_path = tempfile.mkstemp(suffix=".glb", prefix=".tmp_", dir=out_dir)
+        os.close(fd)
+
         texture_notes: list[str] = []
 
         if ext == ".zip":
@@ -416,16 +426,15 @@ def main():
                 not args.no_fix,
             )
         except Exception as e:
-            r = {
-                "名称": os.path.splitext(os.path.basename(path))[0],
-                "来源相对路径": os.path.relpath(path, args.input),
-                "状态": "失败",
-                "备注": f"处理异常：{type(e).__name__}: {e}",
-            }
+            r = empty_result(path, args.input)
+            r["状态"] = "失败"
+            r["备注"] = f"处理异常：{type(e).__name__}: {e}"
         results.append(r)
         if r["状态"].startswith("成功"):
             ok += 1
-            print(f"      ✓ {r['处理方式']} → {r['GLB文件']} · {r['体积MB']}MB · glbSha1={r['glbSha1'][:8]}")
+            glb_sha = r.get("glbSha1") or ""
+            sha_hint = f" · glbSha1={glb_sha[:8]}" if len(glb_sha) >= 8 else ""
+            print(f"      ✓ {r['处理方式']} → {r['GLB文件']} · {r['体积MB']}MB{sha_hint}")
             if r.get("体检"):
                 print(f"        体检：{r['体检']}")
         else:
@@ -434,7 +443,7 @@ def main():
 
     manifest = os.path.join(args.output, "manifest.csv")
     with open(manifest, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=list(results[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=RESULT_FIELDS)
         writer.writeheader()
         writer.writerows(results)
 

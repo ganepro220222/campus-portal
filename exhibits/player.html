@@ -1352,6 +1352,7 @@ function renderEditor() {
   const sh = resolveShadow(cfg)
   const envSrc = resolveEnvSource(cfg)
   const envPresetNow = ENV_PRESETS[cfg.environment.preset] ? cfg.environment.preset : (envSrc.kind === 'preset' ? envSrc.preset : 'room')
+  const panoRules = envSrc.kind === 'panorama'   // 全景接管时预设不生效，UI 必须说清楚而不是让人白选
   $('editor').innerHTML = `
   <details class="ed-sec" open><summary>基本信息</summary>
     <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
@@ -1423,17 +1424,19 @@ function renderEditor() {
   </details>
 
   <details class="ed-sec"><summary>环境 IBL</summary>
+    <div class="ed-row"><span class="ed-label">当前环境</span><b style="color:${panoRules?'#7fc7a5':'#c8a86a'}">${panoRules?'全景图':ENV_PRESETS[envPresetNow].label}</b></div>
     <div class="ed-row"><span class="ed-label">环境预设</span>
-      <select class="ed-in" id="ed-env-preset" style="width:auto;margin:0;flex:0 1 auto">
+      <select class="ed-in" id="ed-env-preset" style="width:auto;margin:0;flex:0 1 auto" ${panoRules?'disabled':''}>
         ${ENV_PRESET_KEYS.map(k=>`<option value="${k}" ${envPresetNow===k?'selected':''}>${ENV_PRESETS[k].label}</option>`).join('')}
       </select></div>
+    ${panoRules?'<div class="ed-note"><b style="color:#e0b070">该展品已配全景图，预设被全景接管、改了不会有变化。</b>要改用预设，先点下方「清除全景」。</div>':''}
     ${rng('e.int','环境光照',0,3,0.05, num(cfg.environment.intensity, 1))}
     ${rng('e.rot','环境旋转°',-180,180,1, num(cfg.environment.rotationDeg, 0))}
-    <div class="ed-note">预设为程序化生成，不占体积。已配全景图时以全景为准，预设作为兜底。环境光照＝整个场景的环境亮度（模型偏暗优先调这里）；环境旋转＝转动环境，改变高光与反射的落点。</div>
+    <div class="ed-note">预设为程序化生成，不占体积。环境光照＝整个场景的环境亮度（模型偏暗优先调这里）；环境旋转＝转动环境，改变高光与反射的落点 —— 这两项对全景与预设都生效。</div>
     <label class="ed-row"><span class="ed-label">可见环境背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
     <input class="ed-in" id="ed-pano" placeholder="assets/panorama.jpg 或 https://…" value="${esc(cfg.assets?.panorama||'')}">
     <button class="ed-btn" id="ed-pano-load">加载全景</button>
-    <button class="ed-btn" id="ed-pano-clear">清除全景（改用预设）</button>
+    ${panoRules?'<button class="ed-btn" id="ed-pano-clear">清除全景（改用预设）</button>':''}
   </details>
 
   <details class="ed-sec"><summary>落地阴影</summary>
@@ -1617,11 +1620,9 @@ function wireEditor() {
   syncShadowHint()
   { const s2=document.getElementById('ed-env-preset')
     if(s2) s2.onchange=e=>{ cfg.environment.preset=e.target.value
-      if(cfg.assets?.panorama && cfg.environment.mode==='panorama') flash('已记录预设；当前仍以全景图为准，可点「清除全景」改用预设')
-      applyEnvironmentIBL(); applyEnvironment() } }
+      applyEnvironmentIBL(); applyEnvironment(); renderEditor() } }
   { const b2=document.getElementById('ed-pano-clear')
     if(b2) b2.onclick=()=>{
-      if(!cfg.assets?.panorama && cfg.environment.mode!=='panorama') return flash('当前已在使用环境预设')
       if(!confirm('清除全景图地址、改用上方的环境预设？')) return
       if(cfg.assets) delete cfg.assets.panorama
       cfg.environment.mode='preset'
@@ -1671,7 +1672,7 @@ function wireEditor() {
   el('ed-m-reset').onclick=()=>{ m.scale=1; m.position=[0,0,0]; m.rotationDeg=[0,0,0]; normalize(model); renderEditor() }
   el('ed-cam-save').onclick=()=>{ const s=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target))
     c.distance=+s.radius.toFixed(3); c.phi=+s.phi.toFixed(3); c.theta=+s.theta.toFixed(3); initialCam.copy(camera.position); flash('已保存当前视角') }
-  el('ed-pano-load').onclick=()=>{ const u=el('ed-pano').value.trim(); if(!u) return; cfg.assets=cfg.assets||{}; cfg.assets.panorama=u; cfg.environment=cfg.environment||{}; cfg.environment.mode='panorama'; panoramaIBL(asset(u)); flash('已加载全景，记得点保存') }
+  el('ed-pano-load').onclick=()=>{ const u=el('ed-pano').value.trim(); if(!u) return; cfg.assets=cfg.assets||{}; cfg.assets.panorama=u; cfg.environment=cfg.environment||{}; cfg.environment.mode='panorama'; panoramaIBL(asset(u)); renderEditor(); flash('已加载全景，记得点保存') }
   el('ed-matsel')?.addEventListener('change', loadOverride); loadOverride()
   el('ed-pr-add').onclick=()=>{ const shown=cfg.presets.filter(pp=>pp.showAsButton!==false).length
     cfg.presets.push({ id:'p'+(cfg.presets.length+1), label:{zh:'预设'+(cfg.presets.length+1),en:'Preset'+(cfg.presets.length+1)},

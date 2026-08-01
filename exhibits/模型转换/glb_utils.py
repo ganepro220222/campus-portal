@@ -53,16 +53,29 @@ def file_sha1(path: str) -> str:
     return digest.hexdigest()
 
 
+def _drive_tag(drive: str) -> str:
+    """将 splitdrive 的 drive 段规范为不含分隔符的标签（含 UNC share）。"""
+    return (
+        drive.rstrip(":")
+        .lstrip("\\/")
+        .replace("\\", "__")
+        .replace("/", "__")
+    )
+
+
 def cross_drive_relpath(src_path: str, pathmod) -> str:
     """跨盘符相对路径降级：用 pathmod 解析盘符并生成稳定标签（测试可传入 ntpath）。"""
     abs_src = pathmod.abspath(src_path)
     drive, tail = pathmod.splitdrive(abs_src)
-    prefix = f"{drive.rstrip(':')}__" if drive else ""
+    drive_tag = _drive_tag(drive)
+    prefix = f"{drive_tag}__" if drive_tag else ""
     return prefix + tail.lstrip("\\/").replace("\\", "__").replace("/", "__")
 
 
 def _looks_like_windows_path(path: str) -> bool:
-    return len(path) >= 2 and path[1] == ":" and path[0].isalpha()
+    if len(path) >= 2 and path[1] == ":" and path[0].isalpha():
+        return True
+    return path.startswith("\\\\") or path.startswith("//")
 
 
 def safe_relpath(src_path: str, input_root: str) -> str:

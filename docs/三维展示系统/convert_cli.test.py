@@ -3,7 +3,7 @@
 转换入口测试：python convert_cli.test.py
 
 覆盖两块：
-  1. convert_cli 的路径规整与校验（合伙人最容易踩的：拖拽带引号、路径写错、输入=输出）
+  1. convert_cli 的路径规整与校验（拖拽带引号、路径写错、输入=输出等常见踩坑）
   2. 转换模型.bat 的结构（CRLF、无 delayed expansion、无括号 if 块、退出码分支齐全）
      —— 这些正是本仓库 bat 曾经闪退的真实原因，不能只靠肉眼。
 """
@@ -290,6 +290,57 @@ def _():
     i_py = text.index("where py ")
     i_python = text.index("where python ")
     ok(i_portable < i_exhibits < i_py < i_python, "解释器探测顺序不对")
+
+
+@test("转换模型.bat 与安装转换依赖.bat 使用 UTF-8 控制台")
+def _():
+    for name in ("转换模型.bat", "安装转换依赖.bat"):
+        p = os.path.join(HERE, name)
+        ok(os.path.isfile(p), name)
+        ok("chcp 65001" in open(p, encoding="utf-8").read(), name)
+
+
+@test("缺依赖提示指向「安装转换依赖.bat」")
+def _():
+    import io
+    import contextlib
+    from unittest.mock import patch
+    with patch("convert_cli.missing_packages", return_value=["trimesh"]):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = __import__("convert_cli").main([])
+        eq(rc, 2)
+        ok("安装转换依赖.bat" in buf.getvalue())
+
+
+@test("enable_site_packages 解开嵌入式 Python 的 #import site")
+def _():
+    from install_glb_deps import enable_site_packages
+    with tempfile.TemporaryDirectory() as d:
+        pth = os.path.join(d, "python312._pth")
+        open(pth, "w", encoding="utf-8").write("python312.zip\n.\n\n#import site\n")
+        ok2, _, _ = enable_site_packages(d)
+        ok(ok2)
+        text = open(pth, encoding="utf-8").read()
+        ok("import site" in text and "#import site" not in text)
+
+
+@test("enable_site_packages 对完整 Python 无 ._pth 也返回成功")
+def _():
+    from install_glb_deps import enable_site_packages
+    with tempfile.TemporaryDirectory() as d:
+        ok2, msg, changed = enable_site_packages(d)
+        ok(ok2)
+        ok(not changed)
+        ok("完整 Python" in msg)
+
+
+@test("pick_gui_python 无 tkinter 时返回 no_tk")
+def _():
+    from python_env import pick_gui_python
+    py, reason = pick_gui_python([["nonexistent-python-xyz.exe"]])
+    eq(py, None)
+    eq(reason, "no_tk")
 
 
 @test("在 Windows 上真的能跑起来（非 Windows 自动跳过）")

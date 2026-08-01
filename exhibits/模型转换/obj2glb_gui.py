@@ -17,6 +17,7 @@ import csv
 import json
 import queue
 import threading
+import tempfile
 from typing import TypedDict
 
 # 让打包/直接运行都能找到同目录的引擎模块
@@ -82,6 +83,13 @@ def inputs_for_run(items: list[InputItem], out_dir: str) -> list[InputItem]:
         item for item in items
         if not input_under_excluded_output(item["path"], item["root"], out_dir)
     ]
+
+
+def naming_root_for_items(items: list[InputItem]) -> str:
+    """整批输入的统一命名根（与 CLI 对多文件/commonpath 行为一致）。"""
+    if not items:
+        raise ValueError("empty items")
+    return common_input_root([item["path"] for item in items])
 
 
 class ConverterGUI:
@@ -275,54 +283,78 @@ class ConverterGUI:
         self.worker.start()
 
     def _run_worker(self, items: list[InputItem], out_dir: str, opts: dict):
+        results: list[dict] = []
+        ok = fail = 0
+        naming_root = naming_root_for_items(items)
         try:
             os.makedirs(out_dir, exist_ok=True)
-            results = []
-            ok = fail = 0
             self.q.put(("log", (f"共 {len(items)} 个文件，输出到：{out_dir}\n", "hd")))
             for i, item in enumerate(items, 1):
                 src = item["path"]
-                root = item["root"]
                 name = os.path.basename(src)
                 self.q.put(("log", (f"[{i}/{len(items)}] {name} …\n", None)))
-                r = batch_glb.process_one(
-                    src, root, out_dir,
-                    opts["max_texture"], opts["quality"], opts["texture_format"],
-                    opts["reencode"], False, opts["overwrite"],
-                )
+                try:
+                    r = batch_glb.process_one(
+                        src, naming_root, out_dir,
+                        opts["max_texture"], opts["quality"], opts["texture_format"],
+                        opts["reencode"], False, opts["overwrite"],
+                    )
+                except Exception as e:  # noqa: BLE001
+                    r = batch_glb.empty_result(src, naming_root)
+                    r["状态"] = "失败"
+                    r["备注"] = f"处理异常：{type(e).__name__}: {e}"
                 results.append(r)
                 if r["状态"].startswith("成功"):
                     ok += 1
                     self.q.put(("log", (f"    ✓ {r['处理方式']} → {r['GLB文件']} · {r['体积MB']}MB\n", "ok")))
                     if opts["transform"] and r.get("scale") != "":
-                        self._write_transform(out_dir, r)
+                        terr = self._write_transform(out_dir, r)
+                        if terr:
+                            r["备注"] = (r["备注"] + " | " if r["备注"] else "") + terr
+                            self.q.put(("log", (f"    ⚠ {terr}\n", "er")))
                 else:
                     fail += 1
                     self.q.put(("log", (f"    ✗ {r['状态']}：{r['备注']}\n", "er")))
                 self.q.put(("prog", i))
-            if results:
-                man = os.path.join(out_dir, "manifest.csv")
-                with open(man, "w", newline="", encoding="utf-8-sig") as f:
-                    w = csv.DictWriter(f, fieldnames=batch_glb.RESULT_FIELDS)
-                    w.writeheader()
-                    w.writerows(results)
-                self.q.put(("log", (f"\n清单：{man}\n", "hd")))
-            self.q.put(("log", (f"完成：成功 {ok} 个，失败 {fail} 个。\n", "ok" if not fail else "hd")))
-            self.q.put(("done", None))
         except Exception as e:  # noqa: BLE001
             self.q.put(("log", (f"\n发生错误：{type(e).__name__}: {e}\n", "er")))
+        finally:
+            if results:
+                try:
+                    man = os.path.join(out_dir, "manifest.csv")
+                    with open(man, "w", newline="", encoding="utf-8-sig") as f:
+                        w = csv.DictWriter(f, fieldnames=batch_glb.RESULT_FIELDS)
+                        w.writeheader()
+                        w.writerows(results)
+                    self.q.put(("log", (f"\n清单：{man}\n", "hd")))
+                except Exception as e:  # noqa: BLE001
+                    self.q.put(("log", (f"\nmanifest 写入失败：{type(e).__name__}: {e}\n", "er")))
+            self.q.put(("log", (f"完成：成功 {ok} 个，失败 {fail} 个。\n", "ok" if not fail else "hd")))
             self.q.put(("done", None))
 
-    def _write_transform(self, out_dir, r):
+    def _write_transform(self, out_dir: str, r: dict) -> str | None:
+        """写入 transform sidecar；失败返回错误说明，不抛出。"""
         stem = os.path.splitext(r["GLB文件"])[0]
+        final = os.path.join(out_dir, stem + ".transform.json")
         payload = {
             "source": r["来源相对路径"], "glb": r["GLB文件"],
             "glbSha1": r["glbSha1"], "objBundleSha1": r["objBundleSha1"],
             "meshes": r.get("网格数"), "materials": r.get("材质数"), "sizeMb": r["体积MB"],
             "transform": {k: r[k] for k in ("scale", "offsetX", "offsetY", "offsetZ", "floorOffsetY")},
         }
-        with open(os.path.join(out_dir, stem + ".transform.json"), "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2)
+        fd, tmp = tempfile.mkstemp(suffix=".transform.json", prefix=".tmp_", dir=out_dir)
+        os.close(fd)
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            os.replace(tmp, final)
+            return None
+        except Exception as e:  # noqa: BLE001
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            return f"transform 写入失败：{type(e).__name__}: {e}"
 
     # ---------- 队列刷新（主线程）----------
     def _drain_queue(self):

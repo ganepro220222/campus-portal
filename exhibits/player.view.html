@@ -239,6 +239,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { ensureHotspotIds } from './hotspot-id.mjs'
 import { configFetchUrl } from './player-persist.mjs'
+import { LIGHT_KEYS, LIGHT_DEFAULTS, defaultPosition, effectiveIntensity } from './light-rig.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -334,19 +335,31 @@ function applyMaterial() {
     })
   })
 }
-/* 四光源灯组（叠加在 IBL 之上，可编辑） */
-let lightRefs = {}
+/* 四光源灯组（叠加在 IBL 之上，可编辑）
+   方向光挂在 lightRig 上：勾选「灯光跟随相机」时整组绕 Y 轴跟着视角转，
+   否则 rig 不旋转，与历史行为完全一致。 */
+let lightRefs = {}, lightRig = null
 function buildLights() {
-  Object.values(lightRefs).forEach(l => scene.remove(l)); lightRefs = {}
+  Object.values(lightRefs).forEach(l => l.parent && l.parent.remove(l)); lightRefs = {}
+  if (lightRig) scene.remove(lightRig)
+  lightRig = new THREE.Group(); scene.add(lightRig)
   const L = cfg.lights || {}
-  const amb = new THREE.AmbientLight(new THREE.Color(L.ambient?.color||'#ffffff'), num(L.ambient?.intensity,0.25))
+  const amb = new THREE.AmbientLight(new THREE.Color(L.ambient?.color||'#ffffff'), effectiveIntensity('ambient', L.ambient))
   scene.add(amb); lightRefs.ambient = amb
-  ;['key','fill','rim'].forEach(k => {
+  LIGHT_KEYS.forEach(k => {
     const c = L[k] || {}
-    const d = new THREE.DirectionalLight(new THREE.Color(c.color||'#ffffff'), num(c.intensity, k==='key'?1.1:0.4))
-    const p = c.position || [3,5,4]; d.position.set(p[0],p[1],p[2])
-    scene.add(d); lightRefs[k] = d
+    const d = new THREE.DirectionalLight(new THREE.Color(c.color||LIGHT_DEFAULTS[k].color), effectiveIntensity(k, c))
+    const p = c.position || defaultPosition(k); d.position.set(p[0],p[1],p[2])
+    lightRig.add(d); lightRefs[k] = d
   })
+  updateLightRig()
+}
+/* 跟随相机：把灯组绕 Y 轴转到当前视角方位，任何角度都有主光 */
+function updateLightRig() {
+  if (!lightRig) return
+  const on = !!(cfg.lights && cfg.lights.followCamera) && camera && controls
+  const y = on ? Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z) : 0
+  if (lightRig.rotation.y !== y) lightRig.rotation.y = y   // 逐帧调用，值没变就别脏化矩阵
 }
 /* 统计 */
 function modelStats() {
@@ -381,6 +394,12 @@ function placeCamera() {
 }
 
 /* ── 环境 / IBL ── */
+/* 场景级环境光照：强度乘在所有材质的 IBL 上；旋转全景可整体改变高光落点 */
+function applyEnvironment() {
+  if (!scene) return
+  scene.environmentIntensity = num(cfg.environment?.intensity, 1)
+  scene.environmentRotation.y = num(cfg.environment?.rotationDeg, 0) * Math.PI / 180
+}
 function roomIBL() {
   const pmrem = new THREE.PMREMGenerator(renderer)
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
@@ -884,9 +903,10 @@ function applyPreset(p) {
   renderer.toneMappingExposure = num(p.exposure, renderer.toneMappingExposure)
   if (typeof p.envMapIntensity === 'number') { cfg.materials = cfg.materials||{}; cfg.materials.global = Object.assign(cfg.materials.global||{}, {envMapIntensity:p.envMapIntensity}); applyMaterial() }
   if (p.background) scene.background = cfg.environment?.visibleBackground ? scene.background : new THREE.Color(p.background)
-  if (p.lights) {   // 预设含四光源方案 → 应用灯组
+  if (p.lights) {   // 预设含四光源方案 → 应用灯组（含角度 / 启用 / 跟随相机）
     cfg.lights = cfg.lights || {}
-    ;['ambient','key','fill','rim'].forEach(k => { if (p.lights[k]) cfg.lights[k] = Object.assign(cfg.lights[k]||{}, p.lights[k]) })
+    ;['ambient', ...LIGHT_KEYS].forEach(k => { if (p.lights[k]) cfg.lights[k] = Object.assign(cfg.lights[k]||{}, p.lights[k]) })
+    if (typeof p.lights.followCamera === 'boolean') cfg.lights.followCamera = p.lights.followCamera
     buildLights()
   }
   document.querySelectorAll('#presets .preset').forEach(b=>b.classList.toggle('on', b.dataset.id===p.id))
@@ -894,7 +914,7 @@ function applyPreset(p) {
 
 function onResize() { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight) }
 let fps=0, _ft=performance.now(), _fc=0
-function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
+function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateLightRig(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
   _fc++; const n=performance.now(); if(n-_ft>=500){ fps=Math.round(_fc*1000/(n-_ft)); _fc=0; _ft=n } }
 /* 统一构造 GLTFLoader：挂载 Draco（几何压缩）+ KTX2/Basis（贴图压缩）解码器，自托管于 vendor/ */
 let _draco = null, _ktx2 = null
@@ -927,6 +947,7 @@ function start() {
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false; controls.rotateSpeed = 0.9
   controls.addEventListener('start', ()=>{ controls.autoRotate=false; syncBtns() })
   roomIBL() // 先给内置环境，秒出反射
+  applyEnvironment() // 环境光照强度 / 全景旋转
   buildLights() // 四光源灯组（叠加在 IBL 上，可编辑）
 
   const modelUrl = asset(cfg.assets.model)

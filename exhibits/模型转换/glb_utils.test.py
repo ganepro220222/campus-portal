@@ -81,6 +81,17 @@ def _():
     ok(cross_drive_relpath(r"D:\B\model.glb", ntpath) != cross_drive_relpath(r"E:\B\model.glb", ntpath))
 
 
+@test("cross_drive_relpath 规范化 UNC share 前缀")
+def _():
+    import ntpath
+    a = cross_drive_relpath(r"\\serverA\share\B\model.glb", ntpath)
+    b = cross_drive_relpath(r"\\serverB\archive\B\model.glb", ntpath)
+    eq(a, "serverA__share__B__model.glb")
+    eq(b, "serverB__archive__B__model.glb")
+    ok(a != b)
+    ok(not a.startswith("\\\\"), a)
+
+
 @test("safe_relpath 在 relpath 失败时生成盘符标签且不含 ..")
 def _():
     from unittest.mock import patch

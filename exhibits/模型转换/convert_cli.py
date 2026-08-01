@@ -19,7 +19,7 @@ if HERE not in sys.path:
 
 REQUIRED = (("trimesh", "trimesh"), ("PIL", "pillow"), ("numpy", "numpy"))
 
-from input_scan import collect_input_files, output_exclusion_for_input  # noqa: E402
+from input_scan import collect_input_files, output_exclusion_for_input, validate_output_dir  # noqa: E402
 
 
 def find_convertible(input_dir: str, output_dir: str | None = None) -> list[str]:
@@ -67,8 +67,9 @@ def resolve_io(in_raw: str, out_raw: str, default_out_name: str = "输出GLB") -
     dst = clean_path(out_raw)
     if not dst:
         dst = os.path.join(os.path.dirname(src.rstrip(os.sep)) or src, default_out_name)
-    if os.path.abspath(dst) == os.path.abspath(src):
-        return src, dst, "输出文件夹不能和输入文件夹相同（否则产物会混进素材里）"
+    same_err = validate_output_dir([src], dst)
+    if same_err:
+        return src, dst, same_err
     if os.path.exists(dst) and not os.path.isdir(dst):
         return src, dst, f"输出路径已被一个文件占用：{dst}"
     return src, dst, None

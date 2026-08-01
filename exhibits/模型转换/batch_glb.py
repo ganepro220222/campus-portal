@@ -30,6 +30,8 @@ import sys
 import tempfile
 import zipfile
 
+from input_scan import validate_output_dir
+
 from glb_utils import (
     audit_glb_file,
     build_output_name_from_glb,
@@ -46,6 +48,7 @@ from glb_utils import (
     output_exclusion_for_input,
     parse_obj_normal_maps,
     safe_output_stem,
+    safe_relpath,
     upgrade_materials_to_pbr,
 )
 
@@ -166,7 +169,7 @@ def empty_result(src_path: str, input_root: str) -> dict:
     """构造固定 schema 的空结果行，供 process_one / main 异常路径共用。"""
     result = {k: "" for k in RESULT_FIELDS}
     result["名称"] = os.path.splitext(os.path.basename(src_path))[0]
-    result["来源相对路径"] = os.path.relpath(src_path, input_root)
+    result["来源相对路径"] = safe_relpath(src_path, input_root)
     return result
 
 
@@ -389,8 +392,9 @@ def main():
 
     input_abs = os.path.abspath(args.input)
     output_abs = os.path.abspath(args.output)
-    if input_abs == output_abs:
-        print("错误：输出目录不能与输入目录相同，请使用独立目录（例如 -o 处理结果）")
+    same_err = validate_output_dir([input_abs], output_abs)
+    if same_err:
+        print(f"错误：{same_err}请使用独立目录（例如 -o 处理结果）")
         sys.exit(1)
 
     os.makedirs(args.output, exist_ok=True)

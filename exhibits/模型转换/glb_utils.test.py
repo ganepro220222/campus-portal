@@ -62,12 +62,21 @@ try:
         patch_gltf_materials,
         read_glb,
         write_glb,
+        safe_relpath,
     )
 except SystemExit as e:  # glb_utils 在缺依赖时 SystemExit
     print(f"无法导入 glb_utils：{e}")
     sys.exit(1)
 
 print("glb_utils tests")
+
+
+@test("safe_relpath 在 relpath 失败时不抛异常")
+def _():
+    from unittest.mock import patch
+    with patch("glb_utils.os.path.relpath", side_effect=ValueError("cross")):
+        rel = safe_relpath(r"D:\B\b.glb", r"C:\A")
+        ok("D__" in rel or "b.glb" in rel, rel)
 
 
 # ── MTL 法线贴图解析 ──────────────────────────────────────────────

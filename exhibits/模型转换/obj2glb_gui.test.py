@@ -290,6 +290,57 @@ def _():
         ok("transform 写入失败" in rows[0]["备注"] or "disk full" in rows[0]["备注"])
 
 
+@test("_start 拒绝输出目录与输入根相同")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "素材")
+        os.makedirs(src)
+        a = os.path.join(src, "a.obj")
+        open(a, "w").write("x")
+        gui = _make_gui()
+        gui.inputs = [{"path": os.path.abspath(a), "root": os.path.abspath(src)}]
+        gui.out_dir = os.path.abspath(src)
+        with patch.object(obj2glb_gui.messagebox, "showerror") as err:
+            with patch.object(gui, "_run_worker") as worker:
+                gui._start()
+                worker.assert_not_called()
+                ok(err.called)
+
+
+@test("naming_root_for_item 在 relpath 跨盘失败时回退 item.root")
+def _():
+    item = {"path": "/data/d/file.glb", "root": "/data/d"}
+    with patch("obj2glb_gui.os.path.relpath", side_effect=ValueError("cross")):
+        eq(obj2glb_gui.naming_root_for_item(item, "/other/root"), "/data/d")
+
+
+@test("跨盘批次 worker 仍处理全部项")
+def _():
+    items = [
+        {"path": "/c/a.glb", "root": "/c"},
+        {"path": "/d/b.glb", "root": "/d"},
+    ]
+    with tempfile.TemporaryDirectory() as out:
+        gui = _make_gui()
+        seen_roots = []
+
+        def _fake(src, root, *_a, **_k):
+            seen_roots.append(root)
+            r = batch_glb.empty_result(src, root)
+            r.update({"状态": "成功", "GLB文件": os.path.basename(src), "体积MB": 1.0, "scale": ""})
+            return r
+
+        with patch("obj2glb_gui.naming_root_for_item", side_effect=lambda it, _b: it["root"]):
+            with patch.object(batch_glb, "process_one", side_effect=_fake):
+                gui._run_worker(items, out, dict(
+                    max_texture=2048, quality=85, texture_format="auto",
+                    reencode=True, overwrite=False, transform=False,
+                ))
+        eq(seen_roots, ["/c", "/d"])
+        with open(os.path.join(out, "manifest.csv"), encoding="utf-8-sig") as f:
+            eq(len(list(csv.DictReader(f))), 2)
+
+
 print("obj2glb_gui tests")
 print(f"\nobj2glb_gui: {_pass} passed" + (f", {_fail} FAILED" if _fail else ""))
 sys.exit(1 if _fail else 0)

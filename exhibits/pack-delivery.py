@@ -14,8 +14,15 @@ if not OUT.is_absolute():
 
 EXCLUDE_ANY_DIRS = frozenset({
     'node_modules', 'e2e', 'test-results', 'playwright-report', 'blob-report',
-    '__pycache__', '_dev', '.venv-build', 'build', 'dist',
+    '__pycache__', '_dev',
 })
+
+# 仅排除模型转换器 EXE 构建产物，不误伤展品 assets/build、assets/dist 等常见目录名
+EXCLUDE_REL_PREFIXES = (
+    '模型转换/.venv-build/',
+    '模型转换/build/',
+    '模型转换/dist/',
+)
 
 EXCLUDE_FILES = frozenset({
     '.gitignore', '.gitattributes', '.studio-instance-id',
@@ -66,11 +73,13 @@ def should_include(path: Path) -> bool:
         return False
     if path.name.endswith(EXCLUDE_SUFFIXES):
         return False
-    if path.suffix == '.spec':
+    rel_posix = rel.as_posix()
+    if any(rel_posix.startswith(prefix) for prefix in EXCLUDE_REL_PREFIXES):
+        return False
+    if path.suffix == '.spec' and parts[0] == '模型转换':
         return False
     if '.bak' in parts:
         return False
-    rel_posix = rel.as_posix()
     if rel_posix.startswith('_runtime/python') or rel_posix.startswith('_runtime/node'):
         return False
     return True

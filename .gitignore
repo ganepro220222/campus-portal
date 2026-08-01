@@ -61,13 +61,8 @@ tmp-export-test.xlsx
 docs/开发协作三大原则.md
 *.bundle
 
-# OBJ→GLB 图形转换器（仅本地/合伙人交付，不进远端）
-docs/三维展示系统/obj2glb_gui.py
-docs/三维展示系统/README-转换器.md
-docs/三维展示系统/install.bat
-docs/三维展示系统/run.bat
-docs/三维展示系统/build-exe.bat
-docs/三维展示系统/build-exe-venv.bat
-docs/三维展示系统/.venv-build/
-docs/三维展示系统/dist/
-docs/三维展示系统/*.spec
+# OBJ→GLB 转换器本地构建产物（不进远端）
+exhibits/模型转换/.venv-build/
+exhibits/模型转换/dist/
+exhibits/模型转换/build/
+exhibits/模型转换/*.spec

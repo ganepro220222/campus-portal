@@ -169,7 +169,7 @@ def main() -> int:
         print("[完成] 依赖已就绪。")
         print("  · 命令行：双击「转换模型.bat」")
         if reason == "no_tk":
-            print("  · 图形界面：当前环境无 tkinter，需安装完整 Python 或打包 exe（见 README-转换器.md）")
+            print("  · 图形界面：当前环境无 tkinter，需安装完整 Python 或打包 exe（见 使用说明.md）")
         else:
             print("  · 图形界面：双击「打开转换器.bat」")
     return rc

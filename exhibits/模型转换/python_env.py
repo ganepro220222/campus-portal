@@ -38,8 +38,7 @@ def python_candidates(tool_dir: str | None = None) -> list[list[str]]:
             out.append(argv)
 
     for rel in (
-        os.path.join(here, "_runtime", "python", "python.exe"),
-        os.path.normpath(os.path.join(here, "..", "..", "exhibits", "_runtime", "python", "python.exe")),
+        os.path.normpath(os.path.join(here, "..", "_runtime", "python", "python.exe")),
     ):
         if os.path.isfile(rel):
             add([rel])

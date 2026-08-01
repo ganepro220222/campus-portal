@@ -10,21 +10,21 @@ test/
   4/          # 静态 H5 原型：index.html + model.glb + BJ.jpg
   7/          # 编号 7
   8/          # 编号 8
-  output_glb/ # 批处理输出（git 可不提交 *.glb，可本地重新生成）
+  output/     # 批处理输出（git 可不提交 *.glb，可本地重新生成）
 ```
 
 ## 1. OBJ → GLB（批处理）
 
 ```bash
-cd docs/三维展示系统
+cd exhibits/模型转换
 pip install trimesh pillow numpy
 
 # Windows 建议先设 UTF-8，避免控制台乱码
 export PYTHONIOENCODING=utf-8   # Git Bash
-python batch_glb.py ../../test -o ../../test/output_glb --max-texture 2048 --overwrite
+python batch_glb.py ../../test -o ../../test/output --max-texture 2048 --overwrite
 ```
 
-检查 `test/output_glb/manifest.csv`：`贴图内嵌=是`，体积建议 ≤ 3MB（当前约 1.7–2.3MB）。
+检查 `test/output/manifest.csv`：`贴图内嵌=是`，体积建议 ≤ 3MB（当前约 1.7–2.3MB）。
 
 ## 2. 本地预览静态展包
 
@@ -35,7 +35,7 @@ python -m http.server 8088
 # 浏览器打开 http://localhost:8088/index.html
 ```
 
-将 `test/output_glb/` 中对应 GLB 复制为 `test/4/model.glb` 可替换预览模型。
+将 `test/output/` 中对应 GLB 复制为 `test/4/model.glb` 可替换预览模型。
 
 ## 3. 部署到服务器（VR 展馆热点目标）
 

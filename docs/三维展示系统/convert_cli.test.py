@@ -314,11 +314,19 @@ def _():
     if not git:
         print("     （跳过：无 git）")
         return
-    rel = os.path.relpath(BAT, os.path.dirname(os.path.dirname(os.path.dirname(HERE)))).replace("\\", "/")
-    r = subprocess.run([git, "show", f":{rel}"], capture_output=True, cwd=os.path.dirname(os.path.dirname(os.path.dirname(HERE))))
-    if r.returncode != 0:
-        print("     （跳过：bat 尚未入索引）")
+    root = subprocess.run(
+        [git, "rev-parse", "--show-toplevel"],
+        cwd=HERE,
+        capture_output=True,
+        text=True,
+    )
+    if root.returncode != 0:
+        print("     （跳过：不在 Git worktree）")
         return
+    repo = root.stdout.strip()
+    rel = os.path.relpath(BAT, repo).replace("\\", "/")
+    r = subprocess.run([git, "show", f":{rel}"], cwd=repo, capture_output=True)
+    ok(r.returncode == 0, f"git show :{rel} 失败：{r.stderr.decode(errors='replace')}")
     ok(b"\r" not in r.stdout, "Git 索引内 bat 应为 LF（由 eol=crlf 归一化）")
 
 

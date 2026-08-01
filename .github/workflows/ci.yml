@@ -118,6 +118,7 @@ jobs:
         run: |
           python glb_utils.test.py
           python batch_glb.test.py
+          python convert_cli.test.py
 
   exhibits:
     name: Exhibits (unit + Playwright)

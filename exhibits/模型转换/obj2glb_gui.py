@@ -47,6 +47,8 @@ except (Exception, SystemExit) as e:  # glb_utils 缺依赖时会 raise SystemEx
 SUPPORTED = (".obj", ".glb", ".zip")
 TEX_SIZES = [("2048（推荐）", 2048), ("1024", 1024), ("4096", 4096), ("原始不限", None)]
 TEX_FORMATS = [("自动", "auto"), ("JPEG", "jpeg"), ("PNG", "png")]
+# 硬表面模型（建筑/器械）必须选「硬边」，否则棱角会被抹圆且事后无法补救
+NORMAL_MODES = [("自动（推荐）", "auto"), ("强制平滑", "smooth"), ("硬边", "flat")]
 
 
 class InputItem(TypedDict):
@@ -170,15 +172,23 @@ class ConverterGUI:
         self.lbl_q = ttk.Label(g, text="85"); self.lbl_q.grid(row=1, column=2, sticky="w", padx=(6, 0), pady=(8, 0))
         g.columnconfigure(1, weight=1)
 
+        ttk.Label(g, text="法线处理：").grid(row=2, column=0, sticky="w", pady=(8, 0))
+        self.var_normals = tk.StringVar(value=NORMAL_MODES[0][0])
+        ttk.Combobox(g, textvariable=self.var_normals, values=[s[0] for s in NORMAL_MODES],
+                     state="readonly", width=14).grid(row=2, column=1, sticky="w", pady=(8, 0))
+        self.var_double = tk.BooleanVar(value=False)
+        ttk.Checkbutton(g, text="双面渲染（有破洞时勾）", variable=self.var_double
+                        ).grid(row=2, column=2, columnspan=2, sticky="w", pady=(8, 0))
+
         self.var_noreenc = tk.BooleanVar(value=False)
         ttk.Checkbutton(g, text="不重编码贴图（最高画质，忽略质量/格式，仅按上限缩放）",
-                        variable=self.var_noreenc).grid(row=2, column=0, columnspan=4, sticky="w", pady=(8, 0))
+                        variable=self.var_noreenc).grid(row=3, column=0, columnspan=4, sticky="w", pady=(8, 0))
         self.var_transform = tk.BooleanVar(value=True)
         ttk.Checkbutton(g, text="导出归一化参数 transform.json（可直接填入展品 config）",
-                        variable=self.var_transform).grid(row=3, column=0, columnspan=4, sticky="w")
+                        variable=self.var_transform).grid(row=4, column=0, columnspan=4, sticky="w")
         self.var_overwrite = tk.BooleanVar(value=False)
         ttk.Checkbutton(g, text="覆盖已存在的同名 GLB",
-                        variable=self.var_overwrite).grid(row=4, column=0, columnspan=4, sticky="w")
+                        variable=self.var_overwrite).grid(row=5, column=0, columnspan=4, sticky="w")
 
         # 4) 执行 + 日志
         f_run = ttk.Frame(self.root); f_run.pack(fill="x", **pad)
@@ -267,6 +277,13 @@ class ConverterGUI:
     def _tex_size(self):
         return dict(TEX_SIZES)[self.var_size.get()]
 
+    def _normals(self):
+        label = self.var_normals.get()
+        for text, value in NORMAL_MODES:
+            if text == label:
+                return value
+        return "auto"
+
     def _tex_fmt(self):
         return dict(TEX_FORMATS)[self.var_fmt.get()]
 
@@ -296,6 +313,8 @@ class ConverterGUI:
             reencode=not self.var_noreenc.get(),
             overwrite=self.var_overwrite.get(),
             transform=self.var_transform.get(),
+            normals=self._normals(),
+            double_sided=True if self.var_double.get() else None,
         )
         self.prog.config(value=0, maximum=len(run_items))
         self.worker = threading.Thread(
@@ -320,6 +339,8 @@ class ConverterGUI:
                         src, item_root, out_dir,
                         opts["max_texture"], opts["quality"], opts["texture_format"],
                         opts["reencode"], False, opts["overwrite"],
+                        normals=opts.get("normals", "auto"),
+                        double_sided=opts.get("double_sided"),
                     )
                 except Exception as e:  # noqa: BLE001
                     r = batch_glb.empty_result(src, item_root)
@@ -329,6 +350,9 @@ class ConverterGUI:
                 if r["状态"].startswith("成功"):
                     ok += 1
                     self.q.put(("log", (f"    ✓ {r['处理方式']} → {r['GLB文件']} · {r['体积MB']}MB\n", "ok")))
+                    check = str(r.get("体检") or "")
+                    if check and check != "通过":
+                        self.q.put(("log", (f"    ⚠ 体检：{check}\n", "hd")))
                     if opts["transform"] and r.get("scale") != "":
                         try:
                             terr = self._write_transform(out_dir, r)

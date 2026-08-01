@@ -1,4 +1,4 @@
-/** Whether a configured panorama path resolves to an existing local file (or remote URL). */
+/** Whether a configured asset path (panorama, model, …) resolves to an existing local file (or remote URL). */
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -19,8 +19,9 @@ export function resolvePanoramaLocalPath(exhibitDir, panoramaPath, exhibitsRoot 
   return path.join(exhibitDir, p)
 }
 
-export function hasPanoramaFile(exhibitDir, panoramaPath, exhibitsRoot = null) {
-  const p = String(panoramaPath ?? '').trim()
+/** 通用资源存在性判断（模型 / 全景 / 封面共用同一套路径解析规则） */
+export function hasAssetFile(exhibitDir, assetPath, exhibitsRoot = null) {
+  const p = String(assetPath ?? '').trim()
   if (!p) return false
   if (isRemotePanoramaUrl(p)) return true
   const local = resolvePanoramaLocalPath(exhibitDir, p, exhibitsRoot)

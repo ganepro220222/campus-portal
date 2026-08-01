@@ -18,7 +18,7 @@
   .head h1 { font-size:22px; font-weight:700; letter-spacing:.5px; }
   .head .sub { font-size:13px; color:rgba(230,234,245,.6); }
   .head .count { margin-left:auto; font-size:13px; color:var(--gold); align-self:center; }
-  .toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:18px 0 24px; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:18px 0 10px; }
   .search { flex:1; min-width:200px; max-width:360px; padding:9px 14px; border:1px solid rgba(255,255,255,.14);
     border-radius:10px; background:rgba(255,255,255,.05); color:#eef0f5; font-size:13px; font-family:inherit; }
   .search:focus { outline:none; border-color:var(--gold); }
@@ -26,6 +26,24 @@
     border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#eef0f5; font-family:inherit; }
   .tbtn:hover { background:rgba(255,255,255,.12); }
   .tbtn.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
+
+  /* 视图栏：排序 + 筛选（上百件展品时靠它定位，而不是靠滚） */
+  .viewbar { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; margin:0 0 22px; }
+  .viewbar .lab { font-size:12.5px; color:rgba(230,234,245,.5); }
+  .tsel { padding:8px 12px; border-radius:10px; font-size:12.5px; font-family:inherit; cursor:pointer;
+    border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#eef0f5; }
+  .tsel:focus { outline:none; border-color:var(--gold); }
+  .dirbtn { padding:8px 12px; border-radius:10px; font-size:12.5px; font-family:inherit; cursor:pointer; white-space:nowrap;
+    border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#eef0f5; transition:.18s; }
+  .dirbtn:hover { background:rgba(255,255,255,.12); }
+  .vsep { width:1px; align-self:stretch; margin:2px 4px; background:rgba(255,255,255,.1); }
+  .chip { padding:7px 13px; border-radius:999px; font-size:12.5px; font-family:inherit; cursor:pointer; transition:.18s;
+    border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:rgba(230,234,245,.82); }
+  .chip:hover { background:rgba(255,255,255,.1); }
+  .chip .n { margin-left:.45em; font-variant-numeric:tabular-nums; color:rgba(230,234,245,.45); font-size:11.5px; }
+  .chip.on { border-color:var(--gold); background:rgba(200,168,106,.18); color:#f4e6c8; }
+  .chip.on .n { color:rgba(244,230,200,.7); }
+  .chip.zero { opacity:.4; }
 
   .grid { display:grid; gap:18px; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); }
   .card { position:relative; border:1px solid rgba(255,255,255,.1); border-radius:16px; overflow:hidden; background:rgba(255,255,255,.03);
@@ -42,6 +60,8 @@
   .badge { font-size:11px; padding:2px 9px; border-radius:999px; background:rgba(255,255,255,.07);
     border:1px solid rgba(255,255,255,.1); color:rgba(230,234,245,.8); }
   .badge.warn { color:#e6a23c; border-color:rgba(230,162,60,.35); background:rgba(230,162,60,.1); }
+  /* 背景环境徽标：一眼看出哪些展品共用同一张全景 / 同一套预设，文件名过长时省略 */
+  .badge.env { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .dir { font-size:11px; color:rgba(230,234,245,.4); font-family:ui-monospace,monospace; word-break:break-all; }
   .acts { display:flex; gap:8px; margin-top:auto; padding-top:6px; }
   .btn { flex:1; text-align:center; padding:9px 8px; border-radius:9px; font-size:13px; cursor:pointer; transition:.18s;
@@ -65,6 +85,9 @@
     font-size:12.5px; color:rgba(230,234,245,.5); line-height:1.9; }
   .foot code { background:rgba(255,255,255,.07); padding:1px 6px; border-radius:5px; font-size:12px; }
   .foot b { color:rgba(230,234,245,.75); }
+  /* 加粗片段夹在正文中间时两侧过挤，补一点点气口（行首/行尾的不补） */
+  .foot b:not(:first-child) { margin-left:.18em; }
+  .foot b:not(:last-child) { margin-right:.18em; }
 
   /* 批量编辑面板（底部抽屉） */
   .bpanel { position:fixed; left:0; right:0; bottom:0; z-index:40; transform:translateY(100%); transition:transform .25s;
@@ -129,9 +152,17 @@
     <span class="count" id="s-count"></span>
   </div>
   <div class="toolbar">
-    <input class="search" id="search" placeholder="搜索展品名称 / 目录…" autocomplete="off">
+    <input class="search" id="search" placeholder="搜索展品名称 / 目录 / 背景…" autocomplete="off">
     <button class="tbtn primary" id="newToggle">＋ 新建展品</button>
     <button class="tbtn" id="batchToggle">批量编辑</button>
+  </div>
+  <div class="viewbar" id="viewbar" hidden>
+    <span class="lab">排序</span>
+    <select class="tsel" id="sortSel" aria-label="排序方式"></select>
+    <button class="dirbtn" id="sortDir" type="button" title="切换升序 / 降序">↑ 升序</button>
+    <span class="vsep"></span>
+    <span class="lab">筛选</span>
+    <span id="filters"></span>
   </div>
   <div class="grid" id="grid"></div>
   <div class="empty" id="empty" hidden>  </div>
@@ -161,6 +192,7 @@
 
   <div class="foot">
     <div><b>怎么用</b>：点卡片「编辑」直接进该展品编辑器（无需手打 URL），「预览」看观看版。</div>
+    <div><b>排序 / 筛选</b>：展品多时用「待完善优先」先处理有缺口的；按<b>背景环境</b>排序可让用同一张全景图的展品挨在一起，方便成批统一。筛选按钮上的数字是当前件数，排序选择会记在本机。</div>
     <div><b>批量编辑</b>：点右上「批量编辑」→ 勾选多件展品 → 在底部只勾选<b>要统一修改的字段</b>并设值 → 应用。<b>每件展品只覆盖被勾选的字段，其它设置各自保留、互不影响。</b></div>
     <div><b>新增展品</b>：点右上 <b>「＋ 新建展品」</b>，或双击根目录 <code>新建展品.bat</code>；创建后把 <code>model.glb</code> 放入新目录的 <code>assets/</code>，刷新本页 → 编辑 → 保存。</div>
     <div><b>注意</b>：本页为内部维护工具，<b>请勿随公开展品一起部署</b>（请放在本地或受保护路径）。</div>
@@ -186,9 +218,23 @@
 
 <script type="module">
 import { batchFieldApplies } from './studio-batch.mjs'
+import {
+  SORTS, FILTERS, ENV_PRESET_LABELS, envLabel,
+  sortItems, filterItems, filterCounts, defaultDesc, normalizeView,
+} from './studio-sort.mjs'
 const $ = id => document.getElementById(id)
-let cards = [], hasApi = false, canCreate = false
+let cards = [], items = [], hasApi = false, canCreate = false
+let countSuffix = ''
+const VIEW_KEY = 'studio.view.v1'
+let view = normalizeView(readView())
 const selected = new Set()   // 选中的展品目录名
+
+function readView() {
+  try { return JSON.parse(localStorage.getItem(VIEW_KEY) || '{}') } catch { return {} }
+}
+function saveView() {
+  try { localStorage.setItem(VIEW_KEY, JSON.stringify(view)) } catch {}
+}
 
 /* ---------- 批量字段注册表 ---------- */
 // 每个字段带 path（写入 config 的点路径）、type、以及独立的“启用”开关。
@@ -196,7 +242,7 @@ const selected = new Set()   // 选中的展品目录名
 const PANEL_STYLES = [['solid','实底'],['glass','毛玻璃'],['transparent','透明'],['outline','描边'],['ribbon','缎带'],['minimal','极简']]
 const LEADERS = [['elbow','折线'],['straight','直线']]
 const DIRS = [['auto','自动'],['free','自由'],['right','右'],['left','左'],['up','上'],['down','下'],['upright','右上'],['downright','右下'],['upleft','左上'],['downleft','左下']]
-const ENV_PRESET_OPTS = [['room','内置房间'],['studio','影棚柔光'],['gallery','博物馆暖阁'],['overcast','户外阴天'],['night','夜展暗场']]
+const ENV_PRESET_OPTS = Object.entries(ENV_PRESET_LABELS)   // 与 light-rig 的预设保持单一来源
 const LIGHT_SCHEMES = {
   hall:   { label:'展厅光', ops:[['renderer.exposure',1.05],['environment.intensity',1.35]] },
   detail: { label:'细节光', ops:[['renderer.exposure',1.32],['environment.intensity',1.75]] },
@@ -344,52 +390,68 @@ async function applyBatch() {
 
 /* ---------- 加载展品列表 ---------- */
 async function load() {
-  let items = null, source = ''
+  let list = null, source = ''
   try {
     const r = await fetch('studio-api/list', { cache: 'no-cache' })
-    if (r.ok) { const d = await r.json(); items = (d.exhibits || []).map(normApi); source = 'api'; hasApi = true; canCreate = d.capabilities?.create === true }
+    if (r.ok) { const d = await r.json(); list = (d.exhibits || []).map(normApi); source = 'api'; hasApi = true; canCreate = d.capabilities?.create === true }
   } catch (e) {}
-  if (!items) {
+  if (!list) {
     let mani
     try { mani = await (await fetch('manifest.json', { cache: 'no-cache' })).json() }
     catch (e) { return showEmpty('读取展品清单失败：' + e.message) }
     $('s-title').textContent = mani.title || $('s-title').textContent
     $('s-sub').textContent = mani.subtitle || $('s-sub').textContent
-    const list = (mani.exhibits || []).map(e => typeof e === 'string' ? { dir: e } : e)
-    if (!list.length) return showEmpty('清单里还没有展品。复制一个 craft-XXX/ 目录并加进 manifest.json 的 exhibits。')
-    items = await Promise.all(list.map(async e => {
+    const entries = (mani.exhibits || []).map(e => typeof e === 'string' ? { dir: e } : e)
+    if (!entries.length) return showEmpty('清单里还没有展品。复制一个 craft-XXX/ 目录并加进 manifest.json 的 exhibits。')
+    list = await Promise.all(entries.map(async e => {
       const dir = e.dir.replace(/\/$/, '')
       try {
         const cfg = await (await fetch(`${dir}/config.json`, { cache: 'no-cache' })).json()
         const item = normCfg(dir, cfg, e)
-        item.hasPano = await panoFileExists(dir, cfg.assets?.panorama)
+        const [pano, model] = await Promise.all([
+          assetExists(dir, cfg.assets?.panorama),
+          assetExists(dir, cfg.assets?.model),
+        ])
+        item.hasPano = pano
+        item.hasModel = model
         return item
       }
       catch (err) { return { dir, title: (e && e.title) || dir, error: err.message } }
     }))
     source = 'manifest'
   }
+  items = list
   document.title = $('s-title').textContent
   cards = items.map(render)
   $('grid').append(...cards.map(c => c.el))
-  $('s-count').textContent = `${items.length} 件展品` + (source === 'api' ? ' · 自动列出' : '')
+  countSuffix = source === 'api' ? ' · 自动列出' : ''
+  buildViewBar()
+  applyView()
   if (hasApi) {
     try {
       const ir = await fetch('studio-api/identity', { cache: 'no-store' })
       if (ir.ok) {
         const { rootHash, instanceId } = await ir.json()
         const id = rootHash || instanceId
-        if (id) $('s-count').textContent += ` · 实例 ${id.slice(0, 8)}`
+        if (id) { countSuffix += ` · 实例 ${id.slice(0, 8)}`; applyView() }
       }
     } catch (_) {}
   }
-  $('search').addEventListener('input', filter)
+  $('search').addEventListener('input', applyView)
   buildBatchUI()
   if (!hasApi) { $('bnote').innerHTML = '⚠ 未检测到工作台服务：批量保存需先 <code>node _server/studio-server.mjs</code> 启动。'; }
 }
-const normApi = e => ({ dir: e.dir, title: e.title || e.dir, subtitle: e.subtitle || '', hotspots: e.hotspots || 0, audio: e.audio || 0, hasPano: !!e.hasPano, poster: e.poster || '', error: e.error })
-const normCfg = (dir, cfg, ov) => { const zh = (cfg.i18n && cfg.i18n.zh) || {}; return { dir, title: (ov && ov.title) || zh.title || dir, subtitle: zh.subtitle || '', hotspots: (cfg.hotspots || []).length, audio: (cfg.audio || []).length, hasPano: false, poster: (cfg.assets && cfg.assets.poster) ? `${dir}/${cfg.assets.poster}` : '' } }
-async function panoFileExists(dir, p) {
+// hasModel 只在服务端明确给出时才置 false（未知一律不判「缺模型」，免得静态托管误报）
+const normApi = e => ({ dir: e.dir, title: e.title || e.dir, subtitle: e.subtitle || '', hotspots: e.hotspots || 0, audio: e.audio || 0,
+  hasPano: !!e.hasPano, hasModel: typeof e.hasModel === 'boolean' ? e.hasModel : undefined,
+  panorama: e.panorama || '', envPreset: e.envPreset || 'room',
+  poster: e.poster || '', mtime: e.mtime || 0, error: e.error })
+const normCfg = (dir, cfg, ov) => { const zh = (cfg.i18n && cfg.i18n.zh) || {}; const as = cfg.assets || {}; return {
+  dir, title: (ov && ov.title) || zh.title || dir, subtitle: zh.subtitle || '',
+  hotspots: (cfg.hotspots || []).length, audio: (cfg.audio || []).length,
+  hasPano: false, panorama: as.panorama || '', envPreset: (cfg.environment && cfg.environment.preset) || 'room',
+  poster: as.poster ? `${dir}/${as.poster}` : '', mtime: 0 } }
+async function assetExists(dir, p) {
   const s = String(p || '').trim()
   if (!s) return false
   if (/^(https?:|data:|blob:|\/\/)/.test(s)) return true
@@ -402,10 +464,14 @@ function render(r) {
   const title = r.title || r.dir
   const subtitle = r.error ? ('⚠️ 读取失败：' + r.error) : (r.subtitle || '')
   const poster = r.poster || ''
+  const env = esc(envLabel(r))
   const badges = r.error ? '' : `
     <span class="badge">热点 ${r.hotspots || 0}</span>
     <span class="badge">语音 ${r.audio || 0}</span>
-    ${r.hasPano ? '<span class="badge">全景</span>' : '<span class="badge warn">无全景</span>'}`
+    ${r.hasModel === false ? '<span class="badge warn">缺模型</span>' : ''}
+    ${r.hasPano
+      ? `<span class="badge env" title="背景环境：${env}">${env}</span>`
+      : `<span class="badge warn env" title="未配全景图，当前用环境预设：${env}">无全景 · ${env}</span>`}`
 
   el.innerHTML = `
     <div class="pick" title="点选/取消选择"><span class="box">✓</span></div>
@@ -423,7 +489,53 @@ function render(r) {
       </div>
     </div>`
   if (!r.error) el.querySelector('.pick').addEventListener('click', () => toggleSel(r.dir, el))
-  return { el, key: (title + ' ' + r.dir).toLowerCase(), dir: r.dir, hasPano: !!r.hasPano }
+  return { el, item: r, dir: r.dir, hasPano: !!r.hasPano }
+}
+
+/* ---------- 排序 / 筛选视图 ---------- */
+function buildViewBar() {
+  $('sortSel').innerHTML = SORTS.map(s => `<option value="${s.id}">${s.label}</option>`).join('')
+  $('sortSel').value = view.sort
+  const counts = filterCounts(items)
+  $('filters').innerHTML = FILTERS.map(f =>
+    `<button type="button" class="chip" data-filter="${f.id}">${f.label}<span class="n">${counts[f.id]}</span></button>`).join('')
+  $('filters').querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => { view.filter = btn.dataset.filter; saveView(); applyView() })
+  })
+  $('sortSel').addEventListener('change', () => {
+    view.sort = $('sortSel').value
+    view.desc = defaultDesc(view.sort)   // 换排序方式时给回该方式最自然的方向
+    saveView(); applyView()
+  })
+  $('sortDir').addEventListener('click', () => { view.desc = !view.desc; saveView(); applyView() })
+  $('viewbar').hidden = false
+}
+
+function applyView() {
+  const raw = $('search').value
+  const q = raw.trim()
+  const counts = filterCounts(items)
+  const visible = new Set(filterItems(items, view.filter, q).map(i => i.dir))
+  const byDir = new Map(cards.map(c => [c.dir, c]))
+  // 重新 append 已在 DOM 中的节点＝移动，不重建，选中状态与事件监听都保留
+  $('grid').append(...sortItems(items, view.sort, view.desc).map(i => byDir.get(i.dir).el).filter(Boolean))
+  cards.forEach(c => { c.el.hidden = !visible.has(c.dir) })
+
+  $('sortSel').value = view.sort
+  $('sortDir').textContent = view.desc ? '↓ 降序' : '↑ 升序'
+  $('filters').querySelectorAll('.chip').forEach(btn => {
+    const id = btn.dataset.filter
+    btn.classList.toggle('on', id === view.filter)
+    btn.classList.toggle('zero', counts[id] === 0)
+    btn.querySelector('.n').textContent = counts[id]
+  })
+
+  const shown = visible.size, total = items.length
+  $('s-count').textContent = (shown === total ? `${total} 件展品` : `显示 ${shown} / 共 ${total} 件`) + countSuffix
+  if (shown) { $('empty').hidden = true; return }
+  const why = q ? `没有匹配「${raw}」的展品` : '这个筛选下没有展品'
+  $('empty').textContent = `${why}。${view.filter === 'all' ? '' : '（当前筛选：' + (FILTERS.find(f => f.id === view.filter)?.label || '') + '）'}`
+  $('empty').hidden = false
 }
 
 /* ---------- 选择 / 批量模式 ---------- */
@@ -513,13 +625,6 @@ async function submitNewExhibit() {
   }
 }
 
-function filter() {
-  const q = $('search').value.trim().toLowerCase()
-  let shown = 0
-  cards.forEach(c => { const ok = !q || c.key.includes(q); c.el.hidden = !ok; if (ok) shown++ })
-  $('empty').hidden = shown > 0
-  if (!shown) { $('empty').textContent = '没有匹配「' + $('search').value + '」的展品。'; $('empty').hidden = false }
-}
 function showEmpty(msg) { $('empty').textContent = msg; $('empty').hidden = false; $('grid').hidden = true }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m])) }
 
@@ -529,7 +634,8 @@ $('newCancel').addEventListener('click', closeNewModal)
 $('newSubmit').addEventListener('click', submitNewExhibit)
 $('newModal').addEventListener('click', e => { if (e.target === $('newModal')) closeNewModal() })
 $('batchExit').addEventListener('click', () => setBatch(false))
-$('selAll').addEventListener('click', () => { cards.forEach(c => { if (!c.el.hidden && !c.el.querySelector('.subtitle').textContent.startsWith('⚠')) { selected.add(c.dir); c.el.classList.add('sel') } }); refreshSel() })
+// 只全选「当前可见且能读出配置」的：配置坏掉的展品批量写回必然失败
+$('selAll').addEventListener('click', () => { cards.forEach(c => { if (!c.el.hidden && !c.item.error) { selected.add(c.dir); c.el.classList.add('sel') } }); refreshSel() })
 $('selNone').addEventListener('click', () => { selected.clear(); cards.forEach(c => c.el.classList.remove('sel')); refreshSel() })
 $('bapply').addEventListener('click', applyBatch)
 

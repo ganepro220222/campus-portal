@@ -43,6 +43,28 @@ async function gotoStudioWithListStub(page, capabilities) {
   })).toBe(capabilities?.create === true)
 }
 
+/** 用构造的展品列表打开工作台（真实 craft-00x 四件都很齐全，测不出筛选） */
+async function gotoStudioWithExhibits(page, exhibits) {
+  const bodyJson = JSON.stringify({ exhibits, capabilities: { create: true, save: true, batch: true } })
+  await page.addInitScript(json => {
+    const stub = JSON.parse(json)
+    const origFetch = window.fetch.bind(window)
+    window.fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : String(input))
+      if (url.includes('studio-api/list')) {
+        return Promise.resolve(new Response(JSON.stringify(stub), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      return origFetch(input, init)
+    }
+  }, bodyJson)
+  await page.goto('/studio.html')
+  await page.waitForSelector('#grid .card', { timeout: 30_000 })
+  await expect(page.locator('#grid .card')).toHaveCount(exhibits.length)
+}
+
+const domOrder = page => page.$$eval('#grid .card', els => els.map(e => e.dataset.dir))
+const visibleOrder = page => page.$$eval('#grid .card:not([hidden])', els => els.map(e => e.dataset.dir))
+
 async function openBatchPanel(page) {
   if (!(await page.locator('body.batch-open').count())) {
     await page.locator('#batchToggle').click()
@@ -76,6 +98,97 @@ test.describe('studio.html', () => {
     expect(reqFailed.filter(u => u.includes('studio-batch'))).toEqual([])
     await expect(page.locator('#grid .card')).not.toHaveCount(0)
     await expect(page.locator('#s-count')).not.toHaveText('')
+  })
+
+  test('默认按目录序号升序，方向按钮翻转顺序且刷新后保持', async ({ page }) => {
+    await waitForStudioReady(page)
+    const asc = await domOrder(page)
+    expect(asc).toEqual([...asc].sort())            // craft-001 … craft-004
+    await expect(page.locator('#sortDir')).toHaveText('↑ 升序')
+
+    await page.locator('#sortDir').click()
+    await expect(page.locator('#sortDir')).toHaveText('↓ 降序')
+    expect(await domOrder(page)).toEqual([...asc].reverse())
+
+    await page.reload()
+    await page.waitForSelector('#grid .card')
+    await expect(page.locator('#sortDir')).toHaveText('↓ 降序')
+    expect(await domOrder(page)).toEqual([...asc].reverse())
+  })
+
+  test('排序不重建卡片：重排后批量选中状态保留', async ({ page }) => {
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-002'])
+    await page.locator('#sortDir').click()
+    await expect(page.locator('.card[data-dir="craft-002"].sel')).toHaveCount(1)
+    await expect(page.locator('#selN')).toHaveText('已选 1 件')
+    await page.locator('#sortSel').selectOption('title')
+    await expect(page.locator('.card[data-dir="craft-002"].sel')).toHaveCount(1)
+  })
+
+  test('筛选：待完善 / 缺模型 各自命中，计数与实际显示一致', async ({ page }) => {
+    const pageErrors = []
+    page.on('pageerror', e => pageErrors.push(e.message))
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-101', title: '齐全件', hotspots: 2, hasPano: true, hasModel: true, panorama: 'assets/sunset.jpg', poster: 'craft-101/assets/poster.jpg', mtime: 300 },
+      { dir: 'craft-102', title: '缺模型件', hotspots: 0, hasPano: false, hasModel: false, envPreset: 'gallery', poster: '', mtime: 100 },
+      { dir: 'craft-103', title: '无全景件', hotspots: 1, hasPano: false, hasModel: true, envPreset: 'gallery', poster: 'craft-103/assets/poster.jpg', mtime: 200 },
+    ])
+
+    const chip = label => page.locator(`#filters .chip`, { hasText: label })
+    await expect(chip('待完善')).toContainText('2')
+    await expect(chip('缺模型')).toContainText('1')
+    expect(await visibleOrder(page)).toEqual(['craft-101', 'craft-102', 'craft-103'])
+
+    await chip('待完善').click()
+    expect(await visibleOrder(page)).toEqual(['craft-102', 'craft-103'])
+    await expect(page.locator('#s-count')).toContainText('显示 2 / 共 3 件')
+
+    await chip('缺模型').click()
+    expect(await visibleOrder(page)).toEqual(['craft-102'])
+
+    await chip('全部').click()
+    expect(await visibleOrder(page)).toHaveLength(3)
+    await expect(page.locator('#s-count')).toContainText('3 件展品')
+    expect(pageErrors).toEqual([])
+  })
+
+  test('筛选与搜索叠加；无结果时给出可理解的空态', async ({ page }) => {
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-101', title: '青瓷瓶', hotspots: 2, hasPano: true, hasModel: true, panorama: 'assets/sunset.jpg', poster: 'p.jpg', mtime: 300 },
+      { dir: 'craft-102', title: '木雕摆件', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'gallery', poster: 'p.jpg', mtime: 100 },
+    ])
+    await page.fill('#search', '木雕')
+    expect(await visibleOrder(page)).toEqual(['craft-102'])
+    await page.locator('#filters .chip', { hasText: '无全景' }).click()
+    expect(await visibleOrder(page)).toEqual(['craft-102'])
+    await page.fill('#search', '青瓷')
+    expect(await visibleOrder(page)).toEqual([])
+    await expect(page.locator('#empty')).toBeVisible()
+    await expect(page.locator('#empty')).toContainText('青瓷')
+    await expect(page.locator('#empty')).toContainText('无全景')
+  })
+
+  test('按最后编辑 / 名称排序，并在卡片上标出背景环境', async ({ page }) => {
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-101', title: '乙器', hotspots: 1, hasPano: true, hasModel: true, panorama: 'assets/sunset.jpg', poster: 'p.jpg', mtime: 100 },
+      { dir: 'craft-102', title: '甲器', hotspots: 1, hasPano: true, hasModel: true, panorama: 'pano/sunset.jpg', poster: 'p.jpg', mtime: 300 },
+      { dir: 'craft-103', title: '丙器', hotspots: 1, hasPano: false, hasModel: true, envPreset: 'gallery', poster: 'p.jpg', mtime: 200 },
+    ])
+    // 同一张全景图（路径不同）应显示同一个背景标签，便于一眼分组
+    await expect(page.locator('.card[data-dir="craft-101"] .badge.env')).toHaveText('全景 · sunset.jpg')
+    await expect(page.locator('.card[data-dir="craft-102"] .badge.env')).toHaveText('全景 · sunset.jpg')
+    await expect(page.locator('.card[data-dir="craft-103"] .badge.env')).toHaveText('无全景 · 博物馆暖阁')
+
+    await page.locator('#sortSel').selectOption('mtime')
+    await expect(page.locator('#sortDir')).toHaveText('↓ 降序')   // 时间类默认从新到旧
+    expect(await domOrder(page)).toEqual(['craft-102', 'craft-103', 'craft-101'])
+
+    await page.locator('#sortSel').selectOption('env')
+    await expect(page.locator('#sortDir')).toHaveText('↑ 升序')
+    const byEnv = await domOrder(page)
+    expect(byEnv.indexOf('craft-102') - byEnv.indexOf('craft-101')).toBe(1)   // 同背景相邻
   })
 
   test('批量面板：环境预设对已配全景图的展品不生效，按选择实时说明', async ({ page }) => {

@@ -24,8 +24,10 @@ exhibits/
   _dev/                # Git Bash / Mac / Linux 脚本
   _runtime/            # 便携 Python（安装后生成）
   vendor/              # Three.js 与 Draco / Basis 解码器
-  studio.html          # 工作台：列出全部展品，点卡片进入编辑或预览
+  studio.html          # 工作台：列出全部展品，可排序 / 筛选，点卡片进入编辑或预览
   studio-batch.mjs     # 工作台批量字段适用性与 ops 收集（studio.html 模块依赖）
+  studio-sort.mjs      # 工作台排序 / 筛选 / 背景分组纯函数（studio.html 模块依赖）
+  studio-sort.test.mjs # 排序筛选单元测试（node studio-sort.test.mjs）
   manifest.json        # 展品目录清单（启用保存服务时可自动扫描，无需手改）
   craft-001/
     config.json        # 该展品的配置（标题、相机、材质、热点、光照、语音等）
@@ -73,7 +75,7 @@ npm run test:e2e                  # Playwright 浏览器测试（smoke + 3D 播�
 npm run test:ci                   # 单元 + deps + viewer 同步校验 + E2E（CI 同款）
 ```
 
-E2E 分四类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 秒）、`e2e/player.spec.mjs`（3D 模型串行，约 2 分钟）、`e2e/studio.spec.mjs`（工作台启动与批量保存，约 30 秒）、`e2e/lighting.spec.mjs`（灯光角度/启用/跟随相机/地面反射光/落地阴影/环境预设/预设方案，约 90 秒）。本地若 8199 端口已有服务，Playwright 会复用，无需重复启动。
+E2E 分四类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 秒）、`e2e/player.spec.mjs`（3D 模型串行，约 2 分钟）、`e2e/studio.spec.mjs`（工作台启动、排序筛选、批量保存，约 40 秒）、`e2e/lighting.spec.mjs`（灯光角度/启用/跟随相机/地面反射光/落地阴影/环境预设/预设方案，约 90 秒）。本地若 8199 端口已有服务，Playwright 会复用，无需重复启动。
 
 3D 用例默认 **1 worker**（与 CI 一致），避免 Windows 上并行 WebGL 导致 `browserContext.close` / trace 写入超时。需要本地 trace 时可设 `PW_TRACE=on`；需要多 worker 时可设 `PW_WORKERS=2`（不推荐在 Windows 跑全量 3D）。
 
@@ -84,6 +86,14 @@ E2E 分四类：`e2e/smoke.spec.mjs`（公开入口、几何 fallback，约 15 �
 | 工作台 | `…/studio.html` |
 | 观看某展品 | `…/player.view.html?ex=craft-001` 或 `…/craft-001/` |
 | 编辑某展品 | `…/player.html?ex=craft-001&mode=edit` |
+
+## 工作台功能
+
+- **列表**：自动列出全部展品（启用保存服务时无需维护 `manifest.json`），卡片显示封面、热点/语音数量与**背景环境**。
+- **排序**：目录序号（自然序，`craft-2` 排在 `craft-10` 前）、最后编辑、展品名称、**待完善优先**、**背景环境**、热点数量；可切换升/降序。选择记在本机浏览器，下次打开保持不变。
+- **筛选**：全部 / 待完善 / 缺模型 / 缺封面 / 无全景，按钮上直接显示件数；可与搜索框叠加使用。
+- **背景分组**：卡片上的背景徽标标出该展品用的全景图文件名或环境预设；按「背景环境」排序即可让同背景的展品挨在一起，便于成批统一。
+- **批量编辑**：勾选多件展品 → 只勾选要统一修改的字段 → 应用；每件展品只覆盖被勾选的字段，其余各自保留。
 
 ## 编辑器功能
 
@@ -130,7 +140,7 @@ exhibits/craft-XXX/
   - 各展品数据目录（`craft-XXX/config.json`、`assets/` 等）
   - 外链可指向 `…/craft-001/` 或 `…/player.view.html?ex=craft-001`
 - **编辑工作台（受保护路径）**：须**同时**部署以下文件（缺一会导致编辑器或工作台无法启动）：
-  - `studio.html` + `studio-batch.mjs`（工作台 ES module 依赖，缺后者整页脚本不执行）
+  - `studio.html` + `studio-batch.mjs` + `studio-sort.mjs`（工作台 ES module 依赖，缺任一整页脚本不执行）
   - `player.html` + 上述全部模块依赖
   - `vendor/`
   - 各展品数据目录

@@ -179,6 +179,102 @@ def _():
             eq(call.args[1], naming)
 
 
+@test("法线模式与双面渲染会传给 process_one（GUI 新增选项真的生效）")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        gui = _make_gui()
+        a = os.path.join(tmp, "a.obj")
+        open(a, "w").write("v 0 0 0\n")
+        with patch.object(obj2glb_gui.filedialog, "askopenfilenames", return_value=[a]):
+            gui._add_files()
+        out = os.path.join(tmp, "out")
+        naming = obj2glb_gui.naming_root_for_items(gui.inputs)
+        fake = batch_glb.empty_result(a, naming)
+        fake.update({"状态": "成功", "GLB文件": "x.glb", "体积MB": 1.0, "scale": ""})
+        with patch.object(batch_glb, "process_one", return_value=fake) as po:
+            gui._run_worker(list(gui.inputs), out, dict(
+                max_texture=2048, quality=85, texture_format="auto",
+                reencode=True, overwrite=False, transform=False,
+                normals="flat", double_sided=True,
+            ))
+        eq(po.call_count, 1)
+        kw = po.call_args_list[0].kwargs
+        eq(kw.get("normals"), "flat", "normals 应按关键字传给 process_one")
+        eq(kw.get("double_sided"), True, "double_sided 应按关键字传给 process_one")
+
+
+@test("GUI 用的关键字参数名确实存在于 process_one 签名中")
+def _():
+    import inspect
+
+    params = inspect.signature(batch_glb.process_one).parameters
+    for name in ("normals", "double_sided"):
+        eq(name in params, True, f"process_one 缺少参数 {name}")
+
+
+@test("旧调用方不传新选项时按默认值，不抛 KeyError")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        gui = _make_gui()
+        a = os.path.join(tmp, "a.obj")
+        open(a, "w").write("v 0 0 0\n")
+        with patch.object(obj2glb_gui.filedialog, "askopenfilenames", return_value=[a]):
+            gui._add_files()
+        naming = obj2glb_gui.naming_root_for_items(gui.inputs)
+        fake = batch_glb.empty_result(a, naming)
+        fake.update({"状态": "成功", "GLB文件": "x.glb", "体积MB": 1.0, "scale": ""})
+        with patch.object(batch_glb, "process_one", return_value=fake) as po:
+            gui._run_worker(list(gui.inputs), os.path.join(tmp, "out"), dict(
+                max_texture=2048, quality=85, texture_format="auto",
+                reencode=True, overwrite=False, transform=False,
+            ))
+        eq(po.call_count, 1)
+        kw = po.call_args_list[0].kwargs
+        eq(kw.get("normals"), "auto")
+        eq(kw.get("double_sided"), None)
+
+
+@test("体检未通过时会写进日志，而不是只躺在 manifest.csv 里")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        gui = _make_gui()
+        a = os.path.join(tmp, "a.obj")
+        open(a, "w").write("v 0 0 0\n")
+        with patch.object(obj2glb_gui.filedialog, "askopenfilenames", return_value=[a]):
+            gui._add_files()
+        naming = obj2glb_gui.naming_root_for_items(gui.inputs)
+        fake = batch_glb.empty_result(a, naming)
+        fake.update({"状态": "成功", "GLB文件": "x.glb", "体积MB": 1.0, "scale": "",
+                     "体检": "1/1 个网格没有法线（NORMAL）"})
+        with patch.object(batch_glb, "process_one", return_value=fake):
+            gui._run_worker(list(gui.inputs), os.path.join(tmp, "out"), dict(
+                max_texture=2048, quality=85, texture_format="auto",
+                reencode=True, overwrite=False, transform=False,
+            ))
+        logs = "".join(str(item[1][0]) for item in list(gui.q.queue) if item[0] == "log")
+        ok("体检" in logs and "没有法线" in logs, logs[:200])
+
+
+@test("体检通过时不刷屏")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        gui = _make_gui()
+        a = os.path.join(tmp, "a.obj")
+        open(a, "w").write("v 0 0 0\n")
+        with patch.object(obj2glb_gui.filedialog, "askopenfilenames", return_value=[a]):
+            gui._add_files()
+        naming = obj2glb_gui.naming_root_for_items(gui.inputs)
+        fake = batch_glb.empty_result(a, naming)
+        fake.update({"状态": "成功", "GLB文件": "x.glb", "体积MB": 1.0, "scale": "", "体检": "通过"})
+        with patch.object(batch_glb, "process_one", return_value=fake):
+            gui._run_worker(list(gui.inputs), os.path.join(tmp, "out"), dict(
+                max_texture=2048, quality=85, texture_format="auto",
+                reencode=True, overwrite=False, transform=False,
+            ))
+        logs = "".join(str(item[1][0]) for item in list(gui.q.queue) if item[0] == "log")
+        ok("体检" not in logs, logs[:200])
+
+
 @test("单文件子目录批次保留添加文件夹时的 root")
 def _():
     with tempfile.TemporaryDirectory() as tmp:

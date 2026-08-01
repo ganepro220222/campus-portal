@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { hasPanoramaFile, isRemotePanoramaUrl } from './pano-check.mjs'
+import { hasAssetFile, isRemotePanoramaUrl } from './pano-check.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -17,13 +17,13 @@ console.log('pano-check tests')
 
 test('remote URLs count as available', () => {
   assert.ok(isRemotePanoramaUrl('https://example.com/p.jpg'))
-  assert.ok(hasPanoramaFile('/tmp/x', 'https://example.com/p.jpg'))
+  assert.ok(hasAssetFile('/tmp/x', 'https://example.com/p.jpg'))
 })
 
 test('missing local file returns false', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
   try {
-    assert.equal(hasPanoramaFile(tmp, 'assets/panorama.jpg'), false)
+    assert.equal(hasAssetFile(tmp, 'assets/panorama.jpg'), false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
@@ -35,7 +35,7 @@ test('existing local file returns true', () => {
     const assets = path.join(tmp, 'assets')
     fs.mkdirSync(assets)
     fs.writeFileSync(path.join(assets, 'panorama.jpg'), 'x')
-    assert.equal(hasPanoramaFile(tmp, 'assets/panorama.jpg'), true)
+    assert.equal(hasAssetFile(tmp, 'assets/panorama.jpg'), true)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
@@ -45,7 +45,7 @@ test('new template dir without panorama file is false', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
   try {
     fs.cpSync(path.join(ROOT, '_template'), path.join(tmp, 'craft-test'), { recursive: true })
-    assert.equal(hasPanoramaFile(path.join(tmp, 'craft-test'), 'assets/panorama.jpg', tmp), false)
+    assert.equal(hasAssetFile(path.join(tmp, 'craft-test'), 'assets/panorama.jpg', tmp), false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
@@ -54,7 +54,7 @@ test('new template dir without panorama file is false', () => {
 test('root-relative missing returns false', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
   try {
-    assert.equal(hasPanoramaFile(tmp, '/definitely-missing.jpg', tmp), false)
+    assert.equal(hasAssetFile(tmp, '/definitely-missing.jpg', tmp), false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
@@ -65,7 +65,21 @@ test('root-relative existing returns true', () => {
   try {
     fs.mkdirSync(path.join(tmp, 'media'), { recursive: true })
     fs.writeFileSync(path.join(tmp, 'media', 'p.jpg'), 'x')
-    assert.equal(hasPanoramaFile(tmp, '/media/p.jpg', tmp), true)
+    assert.equal(hasAssetFile(tmp, '/media/p.jpg', tmp), true)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('hasAssetFile 同样适用于模型文件（工作台「缺模型」判断）', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-asset-'))
+  try {
+    const assets = path.join(tmp, 'assets')
+    fs.mkdirSync(assets)
+    fs.writeFileSync(path.join(assets, 'model.glb'), 'x')
+    assert.equal(hasAssetFile(tmp, 'assets/model.glb'), true)
+    assert.equal(hasAssetFile(tmp, 'assets/missing.glb'), false)
+    assert.equal(hasAssetFile(tmp, ''), false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
@@ -73,7 +87,7 @@ test('root-relative existing returns true', () => {
 
 test('protocol-relative URL counts as remote', () => {
   assert.ok(isRemotePanoramaUrl('//cdn.example.com/p.jpg'))
-  assert.ok(hasPanoramaFile('/tmp/x', '//cdn.example.com/p.jpg'))
+  assert.ok(hasAssetFile('/tmp/x', '//cdn.example.com/p.jpg'))
 })
 
 console.log('')

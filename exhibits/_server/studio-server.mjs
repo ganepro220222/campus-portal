@@ -21,7 +21,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { computeRootHash, getIdentityPayload } from './studio-identity.mjs'
 import { createExhibit } from '../exhibit-create.mjs'
-import { hasPanoramaFile } from '../pano-check.mjs'
+import { hasAssetFile } from '../pano-check.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
 const ROOT_HASH = computeRootHash(ROOT)
@@ -64,10 +64,15 @@ function listExhibits() {
     if (!fs.existsSync(cp)) continue
     try {
       const c = JSON.parse(fs.readFileSync(cp, 'utf8')); const zh = (c.i18n && c.i18n.zh) || {}
+      const exDir = path.join(ROOT, d.name), assets = c.assets || {}
       out.push({ dir: d.name, title: zh.title || d.name, subtitle: zh.subtitle || '',
         hotspots: (c.hotspots || []).length, audio: (c.audio || []).length,
-        hasPano: hasPanoramaFile(path.join(ROOT, d.name), c.assets && c.assets.panorama, ROOT),
-        poster: (c.assets && c.assets.poster) ? d.name + '/' + c.assets.poster : '',
+        hasPano: hasAssetFile(exDir, assets.panorama, ROOT),
+        // 工作台按这两项做「分组 / 待完善」筛选：模型是否真在盘上、当前用的是哪套背景
+        hasModel: hasAssetFile(exDir, assets.model, ROOT),
+        panorama: assets.panorama || '',
+        envPreset: (c.environment && c.environment.preset) || 'room',
+        poster: assets.poster ? d.name + '/' + assets.poster : '',
         mtime: fs.statSync(cp).mtimeMs })
     } catch (e) { out.push({ dir: d.name, title: d.name, error: String(e.message) }) }
   }

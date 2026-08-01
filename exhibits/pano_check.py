@@ -11,12 +11,13 @@ def is_remote_panorama_url(path: str | None) -> bool:
     return bool(_REMOTE.match(str(path or '').strip()))
 
 
-def has_panorama_file(
+def has_asset_file(
     exhibit_dir: Path,
-    panorama_path: str | None,
+    asset_path: str | None,
     exhibits_root: Path | None = None,
 ) -> bool:
-    p = str(panorama_path or '').strip()
+    """通用资源存在性判断（模型 / 全景共用同一套路径解析规则）。"""
+    p = str(asset_path or '').strip()
     if not p:
         return False
     if is_remote_panorama_url(p):

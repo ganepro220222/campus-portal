@@ -54,7 +54,7 @@
     "rotationDeg": 0
   },
   "shadow": {
-    "enabled": true,
+    "enabled": false,
     "opacity": 0.32,
     "softness": 3,
     "groundOffset": 0,

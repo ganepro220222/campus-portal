@@ -422,8 +422,9 @@ function groundMaterialFor(s) {
 function applyShadow() {
   if (!renderer || !scene) return
   const s = resolveShadow(cfg)
+  const casterOn = shadowWillLand(cfg)
   renderer.shadowMap.enabled = s.enabled
-  Object.entries(lightRefs).forEach(([k, l]) => { l.castShadow = s.enabled && k === SHADOW_CASTER })
+  Object.entries(lightRefs).forEach(([k, l]) => { l.castShadow = casterOn && k === SHADOW_CASTER })
   if (lightRefs[SHADOW_CASTER]) lightRefs[SHADOW_CASTER].shadow.radius = s.softness
   if (model) model.traverse(o => { if (o.isMesh) o.castShadow = s.enabled })
 
@@ -522,6 +523,7 @@ function applyEnvironment() {
    注意释放的是 renderTarget 而不是它的 texture：只 dispose 贴图会漏掉帧缓冲，
    编辑器里反复切换环境预设时显存会一路涨上去。 */
 let _pmrem = null, envRT = null, envBg = null
+const envLoadGuard = createEnvLoadGuard()
 function pmremGen() { if (!_pmrem) _pmrem = new THREE.PMREMGenerator(renderer); return _pmrem }
 function setEnvFromRT(rt, bg) {
   if (envRT && envRT !== rt) envRT.dispose()
@@ -533,6 +535,7 @@ function setEnvFromRT(rt, bg) {
     ? envBg : new THREE.Color(cfg.renderer?.background || '#0f1118')
 }
 function roomIBL() {
+  envLoadGuard.invalidate()
   const room = new RoomEnvironment()
   setEnvFromRT(pmremGen().fromScene(room, 0.04), null)
   room.dispose()
@@ -567,13 +570,19 @@ function presetEquirect(p) {
   return tex
 }
 function presetIBL(name) {
+  envLoadGuard.invalidate()
   const p = ENV_PRESETS[name]
   if (!p || p.builtin) return roomIBL()
   const tex = presetEquirect(p)
   setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
 }
 function panoramaIBL(url) {
+  const token = envLoadGuard.next()
+  const expectedUrl = url
   new THREE.TextureLoader().load(url, tex => {
+    if (!envLoadGuard.isCurrent(token)) { tex.dispose(); return }
+    const src = resolveEnvSource(cfg)
+    if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); return }
     tex.mapping = THREE.EquirectangularReflectionMapping
     tex.colorSpace = THREE.SRGBColorSpace
     setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)

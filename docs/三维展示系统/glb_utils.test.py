@@ -52,10 +52,13 @@ try:
         OBJ_FALLBACK_ROUGHNESS,
         audit_gltf,
         find_mtl_for_obj,
+        find_mtls_for_obj,
         fix_glb_file,
         format_audit,
+        hash_obj_bundle,
         obj_declares_normals,
         parse_mtl_normal_maps,
+        parse_obj_normal_maps,
         patch_gltf_materials,
         read_glb,
         write_glb,
@@ -146,9 +149,45 @@ def _():
         o = os.path.join(tmp, "a.obj")
         open(o, "w").write("mtllib m.mtl\nv 0 0 0\n")
         eq(os.path.basename(find_mtl_for_obj(o)), "m.mtl")
+        eq([os.path.basename(p) for p in find_mtls_for_obj(o)], ["m.mtl"])
         o2 = os.path.join(tmp, "b.obj")
         open(o2, "w").write("mtllib 不存在.mtl\n")
         eq(find_mtl_for_obj(o2), None)
+        eq(find_mtls_for_obj(o2), [])
+
+
+@test("多条 mtllib 与同行多个 MTL 全部解析")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        open(os.path.join(tmp, "a.mtl"), "w", encoding="utf-8").write("newmtl A\nnorm na.png\n")
+        open(os.path.join(tmp, "b.mtl"), "w", encoding="utf-8").write("newmtl B\nnorm nb.png\n")
+        open(os.path.join(tmp, "na.png"), "wb").write(b"x")
+        open(os.path.join(tmp, "nb.png"), "wb").write(b"x")
+        o = os.path.join(tmp, "multi.obj")
+        open(o, "w", encoding="utf-8").write("mtllib a.mtl\nmtllib b.mtl\nv 0 0 0\n")
+        eq([os.path.basename(p) for p in find_mtls_for_obj(o)], ["a.mtl", "b.mtl"])
+        maps = parse_obj_normal_maps(o)
+        eq(set(maps.keys()), {"A", "B"})
+        eq(os.path.basename(maps["A"]), "na.png")
+        eq(os.path.basename(maps["B"]), "nb.png")
+        o2 = os.path.join(tmp, "inline.obj")
+        open(o2, "w", encoding="utf-8").write("mtllib a.mtl b.mtl\nv 0 0 0\n")
+        eq([os.path.basename(p) for p in find_mtls_for_obj(o2)], ["a.mtl", "b.mtl"])
+
+
+@test("hash_obj_bundle 纳入全部 MTL 贴图")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        open(os.path.join(tmp, "a.mtl"), "w").write("newmtl A\nmap_Kd da.jpg\n")
+        open(os.path.join(tmp, "b.mtl"), "w").write("newmtl B\nmap_Kd db.jpg\n")
+        open(os.path.join(tmp, "da.jpg"), "wb").write(b"a")
+        open(os.path.join(tmp, "db.jpg"), "wb").write(b"b")
+        o = os.path.join(tmp, "t.obj")
+        open(o, "w").write("mtllib a.mtl\nmtllib b.mtl\nv 0 0 0\n")
+        h1 = hash_obj_bundle(o)
+        open(os.path.join(tmp, "db.jpg"), "wb").write(b"b2")
+        h2 = hash_obj_bundle(o)
+        ok(h1 != h2, "次要 MTL 贴图变更应影响 bundle 哈希")
 
 
 # ── 体检 ────────────────────────────────────────────────────────
@@ -330,6 +369,22 @@ def _():
         q = os.path.join(tmp, "y.glb")
         open(q, "wb").write(struct.pack("<4sII", b"glTF", 2, 999) + b"\x00" * 4)
         eq(read_glb(q), None)
+
+
+@test("合法头但 malformed JSON chunk 安全返回 None")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        p = os.path.join(tmp, "bad-json.glb")
+        bad_json = b"{not valid json"
+        bad_json += b" " * ((4 - len(bad_json) % 4) % 4)
+        total = 12 + 8 + len(bad_json)
+        with open(p, "wb") as f:
+            f.write(struct.pack("<4sII", b"glTF", 2, total))
+            f.write(struct.pack("<I4s", len(bad_json), b"JSON") + bad_json)
+        eq(read_glb(p), None)
+        changed, notes = fix_glb_file(p)
+        eq(changed, False)
+        ok(notes and "GLB" in notes[0])
 
 
 @test("无 BIN 块的 GLB 也能读写")

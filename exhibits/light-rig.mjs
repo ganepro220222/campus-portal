@@ -255,3 +255,32 @@ export function diagnoseBrightness(s = {}) {
   }
   return out
 }
+
+/** 亮度诊断入参：编辑器与 player 共用，避免字段接线不一致 */
+export function brightnessInputs(cfg = {}) {
+  const g = cfg.materials?.global || {}
+  const L = cfg.lights || {}
+  const src = resolveEnvSource(cfg)
+  return {
+    exposure: fin(cfg.renderer?.exposure, 1.05),
+    envMapIntensity: fin(g.envMapIntensity, 1.35),
+    envIntensity: fin(cfg.environment?.intensity, 1),
+    ambient: fin(L.ambient?.intensity, 0.25),
+    key: fin(L.key?.intensity, 1.1),
+    metalness: fin(g.metalness, 0),
+    roughness: fin(g.roughness, 0.5),
+    hasCustomEnv: src.kind !== 'room',
+    keyElevation: positionToAngles(L.key?.position || defaultPosition('key')).elevation,
+    bounceOn: isLightOn(L.bounce, 'bounce'),
+  }
+}
+
+/** 递增 token，使过期的全景/环境异步加载 callback 失效 */
+export function createEnvLoadGuard() {
+  let token = 0
+  return {
+    next() { return ++token },
+    invalidate() { token += 1; return token },
+    isCurrent(t) { return t === token },
+  }
+}

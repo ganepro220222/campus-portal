@@ -122,21 +122,69 @@ def _textures_from_mtl(mtl_path: str) -> list[str]:
     return textures
 
 
-def find_mtl_for_obj(obj_path: str) -> str | None:
-    """读取 OBJ 的 mtllib 指令，返回第一个存在的 .mtl 绝对路径。"""
+def _parse_mtllib_names(line: str) -> list[str]:
+    """解析 mtllib 行，支持同行多个文件名与引号路径。"""
+    lower = line.lower()
+    if not lower.startswith("mtllib "):
+        return []
+    rest = line.split(None, 1)[1].strip() if len(line.split(None, 1)) > 1 else ""
+    if not rest:
+        return []
+    names: list[str] = []
+    i = 0
+    while i < len(rest):
+        ch = rest[i]
+        if ch in "\"'":
+            end = rest.find(ch, i + 1)
+            if end <= i:
+                break
+            names.append(rest[i + 1:end])
+            i = end + 1
+        elif ch.isspace():
+            i += 1
+        else:
+            j = i
+            while j < len(rest) and not rest[j].isspace():
+                j += 1
+            names.append(rest[i:j].strip('"').strip("'"))
+            i = j
+    return [n for n in names if n]
+
+
+def find_mtls_for_obj(obj_path: str) -> list[str]:
+    """读取 OBJ 的全部 mtllib 指令，按声明顺序返回存在的 .mtl 绝对路径（去重）。"""
     obj_abs = os.path.abspath(obj_path)
     obj_dir = os.path.dirname(obj_abs)
+    found: list[str] = []
+    seen: set[str] = set()
     try:
         with open(obj_abs, encoding="utf-8", errors="ignore") as f:
             for raw in f:
                 if raw.lower().startswith("mtllib "):
-                    name = raw.split(None, 1)[1].strip().strip('"').strip("'")
-                    path = os.path.normpath(os.path.join(obj_dir, name))
-                    if os.path.isfile(path):
-                        return os.path.abspath(path)
+                    for name in _parse_mtllib_names(raw):
+                        path = os.path.normpath(os.path.join(obj_dir, name))
+                        if os.path.isfile(path):
+                            abs_path = os.path.abspath(path)
+                            if abs_path not in seen:
+                                seen.add(abs_path)
+                                found.append(abs_path)
     except OSError:
-        return None
-    return None
+        return []
+    return found
+
+
+def find_mtl_for_obj(obj_path: str) -> str | None:
+    """读取 OBJ 的 mtllib 指令，返回第一个存在的 .mtl 绝对路径。"""
+    mtls = find_mtls_for_obj(obj_path)
+    return mtls[0] if mtls else None
+
+
+def parse_obj_normal_maps(obj_path: str) -> dict[str, str]:
+    """合并 OBJ 引用的全部 MTL 中的法线/凹凸贴图；同名材质以后声明的为准。"""
+    merged: dict[str, str] = {}
+    for mtl_path in find_mtls_for_obj(obj_path):
+        merged.update(parse_mtl_normal_maps(mtl_path))
+    return merged
 
 
 def parse_mtl_normal_maps(mtl_path: str) -> dict[str, str]:
@@ -197,14 +245,9 @@ def hash_obj_bundle(obj_path: str) -> str:
     obj_dir = os.path.dirname(obj_abs)
     bundle_abs: list[str] = [obj_abs]
 
-    with open(obj_abs, encoding="utf-8", errors="ignore") as f:
-        for raw in f:
-            if raw.lower().startswith("mtllib "):
-                mtl_name = raw.split(None, 1)[1].strip().strip('"').strip("'")
-                mtl_path = os.path.normpath(os.path.join(obj_dir, mtl_name))
-                if os.path.isfile(mtl_path):
-                    bundle_abs.append(os.path.abspath(mtl_path))
-                    bundle_abs.extend(_textures_from_mtl(mtl_path))
+    for mtl_path in find_mtls_for_obj(obj_abs):
+        bundle_abs.append(mtl_path)
+        bundle_abs.extend(_textures_from_mtl(mtl_path))
 
     digest = hashlib.sha1()
     for abs_path in sorted(set(bundle_abs)):
@@ -632,7 +675,10 @@ def read_glb(path: str) -> tuple[dict, bytes] | None:
             return None
         kind = ctype.decode("ascii", errors="ignore").strip("\x00")
         if kind == "JSON":
-            gltf = json.loads(body.decode("utf-8"))
+            try:
+                gltf = json.loads(body.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return None
         elif kind == "BIN":
             binary = body
         offset += 8 + length

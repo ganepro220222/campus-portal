@@ -292,7 +292,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { applyExposureToCfg, configFetchUrl, configExportFilename } from './player-persist.mjs'
-import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, resolveShadow, shadowWillLand, resolveEnvSource } from './light-rig.mjs'
+import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, createEnvLoadGuard } from './light-rig.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -476,8 +476,9 @@ function groundMaterialFor(s) {
 function applyShadow() {
   if (!renderer || !scene) return
   const s = resolveShadow(cfg)
+  const casterOn = shadowWillLand(cfg)
   renderer.shadowMap.enabled = s.enabled
-  Object.entries(lightRefs).forEach(([k, l]) => { l.castShadow = s.enabled && k === SHADOW_CASTER })
+  Object.entries(lightRefs).forEach(([k, l]) => { l.castShadow = casterOn && k === SHADOW_CASTER })
   if (lightRefs[SHADOW_CASTER]) lightRefs[SHADOW_CASTER].shadow.radius = s.softness
   if (model) model.traverse(o => { if (o.isMesh) o.castShadow = s.enabled })
 
@@ -576,6 +577,7 @@ function applyEnvironment() {
    注意释放的是 renderTarget 而不是它的 texture：只 dispose 贴图会漏掉帧缓冲，
    编辑器里反复切换环境预设时显存会一路涨上去。 */
 let _pmrem = null, envRT = null, envBg = null
+const envLoadGuard = createEnvLoadGuard()
 function pmremGen() { if (!_pmrem) _pmrem = new THREE.PMREMGenerator(renderer); return _pmrem }
 function setEnvFromRT(rt, bg) {
   if (envRT && envRT !== rt) envRT.dispose()
@@ -587,6 +589,7 @@ function setEnvFromRT(rt, bg) {
     ? envBg : new THREE.Color(cfg.renderer?.background || '#0f1118')
 }
 function roomIBL() {
+  envLoadGuard.invalidate()
   const room = new RoomEnvironment()
   setEnvFromRT(pmremGen().fromScene(room, 0.04), null)
   room.dispose()
@@ -621,13 +624,19 @@ function presetEquirect(p) {
   return tex
 }
 function presetIBL(name) {
+  envLoadGuard.invalidate()
   const p = ENV_PRESETS[name]
   if (!p || p.builtin) return roomIBL()
   const tex = presetEquirect(p)
   setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
 }
 function panoramaIBL(url) {
+  const token = envLoadGuard.next()
+  const expectedUrl = url
   new THREE.TextureLoader().load(url, tex => {
+    if (!envLoadGuard.isCurrent(token)) { tex.dispose(); return }
+    const src = resolveEnvSource(cfg)
+    if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); return }
     tex.mapping = THREE.EquirectangularReflectionMapping
     tex.colorSpace = THREE.SRGBColorSpace
     setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
@@ -1772,21 +1781,9 @@ async function doSave(){
 }
 /* 「模型偏暗」诊断：按最有效的顺序给出可执行建议，避免一味拉环境光 */
 function brightnessReport(){
-  const g=cfg.materials?.global||{}, L=cfg.lights||{}
   const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;')
   const icon = { warn:'⚠️', tip:'💡', ok:'✅' }
-  return diagnoseBrightness({
-    exposure: num(cfg.renderer?.exposure, 1.05),
-    envMapIntensity: num(g.envMapIntensity, 1.35),
-    envIntensity: num(cfg.environment?.intensity, 1),
-    ambient: num(L.ambient?.intensity, 0.25),
-    key: num(L.key?.intensity, 1.1),
-    metalness: num(g.metalness, 0),
-    roughness: num(g.roughness, 0.5),
-    hasPanorama: resolveEnvSource(cfg).kind !== 'room',
-    keyElevation: positionToAngles(L.key?.position || defaultPosition('key')).elevation,
-    bounceOn: isLightOn(L.bounce, 'bounce'),
-  }).map(x => `${icon[x.level]||''} ${esc(x.text)}`).join('<br>')
+  return diagnoseBrightness(brightnessInputs(cfg)).map(x => `${icon[x.level]||''} ${esc(x.text)}`).join('<br>')
 }
 function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x}`
   p.push((cfg.i18n?.zh?.title)?ok('标题'):wn('缺标题'))

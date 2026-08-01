@@ -2,6 +2,11 @@ import assert from 'node:assert/strict'
 import {
   LIGHT_KEYS,
   LIGHT_DEFAULTS,
+  LIGHT_OPTIONAL,
+  LIGHT_LABELS,
+  SHADOW_CASTER,
+  ENV_PRESETS,
+  ENV_PRESET_KEYS,
   defaultPosition,
   defaultIntensity,
   isLightOn,
@@ -11,6 +16,9 @@ import {
   withAngle,
   defaultLights,
   diagnoseBrightness,
+  resolveShadow,
+  shadowWillLand,
+  resolveEnvSource,
 } from './light-rig.mjs'
 
 let pass = 0, fail = 0
@@ -62,10 +70,14 @@ test('anglesToPosition 与 positionToAngles 互为逆运算', () => {
   }
 })
 
-test('出厂三盏灯的仰角都在上方（合伙人反馈的现象可复现）', () => {
-  for (const k of LIGHT_KEYS) {
+test('出厂三盏主要灯的仰角都在上方（合伙人反馈的现象可复现）', () => {
+  for (const k of ['key', 'fill', 'rim']) {
     assert.ok(positionToAngles(LIGHT_DEFAULTS[k].position).elevation > 0, k)
   }
+})
+
+test('地面反射光的仰角在下方，才谈得上「反射」', () => {
+  assert.ok(positionToAngles(LIGHT_DEFAULTS.bounce.position).elevation < -30)
 })
 
 test('radius 为 0 或非法时取安全半径 10 且方向正确', () => {
@@ -122,10 +134,26 @@ test('反复微调不会累积漂移', () => {
 /* ── 启用 / 强度 ── */
 
 test('缺省视为启用，旧配置行为不变', () => {
-  assert.equal(isLightOn(undefined), true)
-  assert.equal(isLightOn({}), true)
-  assert.equal(isLightOn({ enabled: true }), true)
-  assert.equal(isLightOn({ enabled: false }), false)
+  assert.equal(isLightOn(undefined, 'key'), true)
+  assert.equal(isLightOn({}, 'key'), true)
+  assert.equal(isLightOn({ enabled: true }, 'key'), true)
+  assert.equal(isLightOn({ enabled: false }, 'key'), false)
+})
+
+test('新增的地面反射光：旧配置里没有就不亮，写了 enabled 才听配置', () => {
+  assert.ok(LIGHT_OPTIONAL.has('bounce'))
+  assert.equal(isLightOn(undefined, 'bounce'), false)
+  assert.equal(isLightOn({}, 'bounce'), false)
+  assert.equal(effectiveIntensity('bounce', undefined), 0)
+  assert.equal(effectiveIntensity('bounce', { intensity: 0.8 }), 0)
+  assert.equal(effectiveIntensity('bounce', { intensity: 0.8, enabled: true }), 0.8)
+  assert.equal(effectiveIntensity('bounce', { enabled: true }), LIGHT_DEFAULTS.bounce.intensity)
+})
+
+test('每盏灯都有中文名，投影只由主光产生', () => {
+  for (const k of ['ambient', ...LIGHT_KEYS]) assert.ok(LIGHT_LABELS[k], k)
+  assert.equal(SHADOW_CASTER, 'key')
+  assert.ok(LIGHT_KEYS.includes(SHADOW_CASTER))
 })
 
 test('关闭的灯实际强度为 0，但配置里的强度值保留', () => {
@@ -149,7 +177,92 @@ test('defaultPosition / defaultLights 返回副本，改不坏常量', () => {
   const d = defaultLights()
   d.key.intensity = 999
   assert.equal(LIGHT_DEFAULTS.key.intensity, 1.1)
-  assert.deepEqual(Object.keys(d).sort(), ['ambient', 'fill', 'key', 'rim'])
+  assert.deepEqual(Object.keys(d).sort(), ['ambient', 'bounce', 'fill', 'key', 'rim'])
+  // 恢复出厂后地面反射光应回到「不亮」
+  assert.equal(effectiveIntensity('bounce', d.bounce), 0)
+})
+
+/* ── 阴影 ── */
+
+test('阴影默认关闭，旧展品观感零变化', () => {
+  assert.equal(resolveShadow({}).enabled, false)
+  assert.equal(resolveShadow({ shadow: {} }).enabled, false)
+  assert.equal(resolveShadow({ shadow: { enabled: 'yes' } }).enabled, false)
+  assert.equal(resolveShadow({ shadow: { enabled: true } }).enabled, true)
+})
+
+test('阴影参数被夹取到安全范围', () => {
+  const s = resolveShadow({ shadow: { enabled: true, opacity: 9, softness: -4, groundOffset: 88 } })
+  assert.equal(s.opacity, 1)
+  assert.equal(s.softness, 0)
+  assert.equal(s.groundOffset, 1)
+  const t = resolveShadow({ shadow: { enabled: true, opacity: 'x', softness: null } })
+  assert.equal(t.opacity, 0.32)
+  assert.equal(t.softness, 3)
+})
+
+test('展台随阴影一起默认开启（深色背景下没有承影面 = 白开）', () => {
+  assert.equal(resolveShadow({ shadow: { enabled: true } }).plate, true)
+  assert.equal(resolveShadow({ shadow: { enabled: true, plate: false } }).plate, false)
+  assert.equal(resolveShadow({ shadow: { enabled: true, plate: 0 } }).plate, true)   // 只有显式 false 才关
+})
+
+test('展台颜色必须是 6 位色值，非法值回落到出厂色', () => {
+  assert.equal(resolveShadow({ shadow: { plateColor: '#123abc' } }).plateColor, '#123abc')
+  for (const bad of ['red', '#fff', 'javascript:x', 42, null, '#12345g']) {
+    assert.equal(resolveShadow({ shadow: { plateColor: bad } }).plateColor, '#2b2f3a')
+  }
+})
+
+test('主光在水平以下 / 被关掉 / 强度为 0 时，地面接不到影子', () => {
+  const on = { shadow: { enabled: true }, lights: { key: { position: [5, 8, 6], intensity: 1.1 } } }
+  assert.equal(shadowWillLand(on), true)
+  assert.equal(shadowWillLand({ ...on, shadow: { enabled: false } }), false)
+  assert.equal(shadowWillLand({ ...on, lights: { key: { position: [5, 8, 6], enabled: false } } }), false)
+  assert.equal(shadowWillLand({ ...on, lights: { key: { position: [5, 8, 6], intensity: 0 } } }), false)
+  assert.equal(shadowWillLand({ ...on, lights: { key: { position: [5, -8, 6] } } }), false)
+  assert.equal(shadowWillLand({ ...on, lights: { key: { position: [5, 0.05, 6] } } }), false)  // 几乎水平
+  assert.equal(shadowWillLand({ shadow: { enabled: true } }), true)                            // 缺 lights 用出厂方向
+})
+
+/* ── 环境预设 ── */
+
+test('全景优先于预设，预设优先于内置房间', () => {
+  assert.deepEqual(resolveEnvSource({}), { kind: 'room' })
+  assert.deepEqual(resolveEnvSource({ environment: { preset: 'studio' } }), { kind: 'preset', preset: 'studio' })
+  assert.deepEqual(
+    resolveEnvSource({ environment: { mode: 'panorama', preset: 'studio' }, assets: { panorama: 'a.jpg' } }),
+    { kind: 'panorama', url: 'a.jpg' },
+  )
+})
+
+test('声明了 panorama 模式却没有全景文件 → 回落到预设/房间，不留空环境', () => {
+  assert.deepEqual(resolveEnvSource({ environment: { mode: 'panorama' } }), { kind: 'room' })
+  assert.deepEqual(
+    resolveEnvSource({ environment: { mode: 'panorama', preset: 'gallery' } }),
+    { kind: 'preset', preset: 'gallery' },
+  )
+})
+
+test('未知预设名回落到内置房间，不抛异常', () => {
+  assert.deepEqual(resolveEnvSource({ environment: { preset: 'nope' } }), { kind: 'room' })
+  assert.deepEqual(resolveEnvSource({ environment: { preset: null } }), { kind: 'room' })
+})
+
+test('每个环境预设都可渲染：有中文名，非内置的有天地色与柔光区', () => {
+  assert.ok(ENV_PRESET_KEYS.includes('room'))
+  for (const k of ENV_PRESET_KEYS) {
+    const p = ENV_PRESETS[k]
+    assert.ok(p.label, k)
+    if (p.builtin) continue
+    for (const c of [p.sky, p.ground, p.horizon]) assert.match(c, /^#[0-9a-f]{6}$/i, `${k} 颜色`)
+    assert.ok(p.spots.length >= 1, k)
+    p.spots.forEach(s => {
+      assert.ok(s.u >= 0 && s.u <= 1 && s.v >= 0 && s.v <= 1, `${k} 柔光区位置`)
+      assert.ok(s.r > 0 && s.i > 0, `${k} 柔光区尺寸/强度`)
+      assert.match(s.c, /^#[0-9a-f]{6}$/i, `${k} 柔光区颜色`)
+    })
+  }
 })
 
 test('未知灯名不抛异常', () => {
@@ -162,13 +275,13 @@ test('未知灯名不抛异常', () => {
 const texts = (list) => list.map((x) => x.text).join('\n')
 
 test('高金属度 + 低环境 → 首条就是金属度警告', () => {
-  const r = diagnoseBrightness({ metalness: 1, envMapIntensity: 1, envIntensity: 1, hasPanorama: true })
+  const r = diagnoseBrightness({ metalness: 1, envMapIntensity: 1, envIntensity: 1, hasCustomEnv: true })
   assert.equal(r[0].level, 'warn')
   assert.match(r[0].text, /金属度/)
 })
 
 test('环境照明按 场景级 × 材质级 相乘判定', () => {
-  const dark = { metalness: 1, envMapIntensity: 1.4, envIntensity: 0.5, hasPanorama: true }
+  const dark = { metalness: 1, envMapIntensity: 1.4, envIntensity: 0.5, hasCustomEnv: true }
   assert.ok(diagnoseBrightness(dark).some(x => x.level === 'warn' && /金属度/.test(x.text)))
   // 同样的材质级强度，把场景级提上去后金属度警告消失
   const bright = { ...dark, envIntensity: 1.4 }
@@ -176,33 +289,45 @@ test('环境照明按 场景级 × 材质级 相乘判定', () => {
 })
 
 test('环境照明偏低时同时点名两个来源', () => {
-  const t = texts(diagnoseBrightness({ envMapIntensity: 1, envIntensity: 1, hasPanorama: true, exposure: 1.4 }))
+  const t = texts(diagnoseBrightness({ envMapIntensity: 1, envIntensity: 1, hasCustomEnv: true, exposure: 1.4 }))
   assert.match(t, /环境 IBL → 环境光照/)
   assert.match(t, /材质 → 环境光强/)
 })
 
 test('环境光拉过头 → 明确劝阻', () => {
-  const r = diagnoseBrightness({ ambient: 1.8, hasPanorama: true, exposure: 1.4, envMapIntensity: 1.8 })
+  const r = diagnoseBrightness({ ambient: 1.8, hasCustomEnv: true, exposure: 1.4, envMapIntensity: 1.8 })
   assert.ok(r.some((x) => x.level === 'warn' && /环境光/.test(x.text)))
 })
 
 test('低曝光 / 低环境光强 会被点名', () => {
-  const r = texts(diagnoseBrightness({ exposure: 1.0, envMapIntensity: 1.0, hasPanorama: true }))
+  const r = texts(diagnoseBrightness({ exposure: 1.0, envMapIntensity: 1.0, hasCustomEnv: true }))
   assert.match(r, /曝光/)
   assert.match(r, /环境光强/)
 })
 
-test('无全景图时提示换环境贴图', () => {
-  assert.match(texts(diagnoseBrightness({ hasPanorama: false })), /全景图/)
+test('用内置房间时提示换环境预设或全景图', () => {
+  const t = texts(diagnoseBrightness({ hasCustomEnv: false }))
+  assert.match(t, /环境预设/)
+  assert.match(t, /全景图/)
 })
 
 test('参数都正常时给出「正常」结论且只有一条', () => {
   const r = diagnoseBrightness({
     exposure: 1.4, envMapIntensity: 1.8, ambient: 0.25, key: 1.2,
-    metalness: 0, roughness: 0.5, hasPanorama: true,
+    metalness: 0, roughness: 0.5, hasCustomEnv: true, keyElevation: 45,
   })
   assert.equal(r.length, 1)
   assert.equal(r[0].level, 'ok')
+})
+
+test('主光接近顶光时建议开地面反射光；已开则不再啰嗦', () => {
+  const base = {
+    exposure: 1.4, envMapIntensity: 1.8, ambient: 0.25, key: 1.2,
+    metalness: 0, roughness: 0.5, hasCustomEnv: true,
+  }
+  assert.match(texts(diagnoseBrightness({ ...base, keyElevation: 78 })), /地面反射光/)
+  assert.ok(!/地面反射光/.test(texts(diagnoseBrightness({ ...base, keyElevation: 78, bounceOn: true }))))
+  assert.ok(!/地面反射光/.test(texts(diagnoseBrightness({ ...base, keyElevation: 40 }))))
 })
 
 test('空入参不抛异常且必有结论', () => {

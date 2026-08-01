@@ -194,15 +194,25 @@ const selected = new Set()   // 选中的展品目录名
 const PANEL_STYLES = [['solid','实底'],['glass','毛玻璃'],['transparent','透明'],['outline','描边'],['ribbon','缎带'],['minimal','极简']]
 const LEADERS = [['elbow','折线'],['straight','直线']]
 const DIRS = [['auto','自动'],['free','自由'],['right','右'],['left','左'],['up','上'],['down','下'],['upright','右上'],['downright','右下'],['upleft','左上'],['downleft','左下']]
+const ENV_PRESET_OPTS = [['room','内置房间'],['studio','影棚柔光'],['gallery','博物馆暖阁'],['overcast','户外阴天'],['night','夜展暗场']]
 const LIGHT_SCHEMES = {
   hall:   { label:'展厅光', ops:[['renderer.exposure',1.05],['environment.intensity',1.35]] },
   detail: { label:'细节光', ops:[['renderer.exposure',1.32],['environment.intensity',1.75]] },
 }
 const GROUPS = [
-  { title:'全景 / 背景 IBL', fields:[
+  { title:'环境 IBL / 背景', fields:[
     { id:'pano', path:'assets.panorama', label:'全景贴图', type:'text', ph:'assets/panorama.jpg 或 https://…', def:'' },
-    { id:'ibl',  path:'environment.intensity', label:'IBL 强度', type:'range', min:0, max:3, step:0.05, def:1.15 },
-    { id:'bgvis',path:'environment.visibleBackground', label:'显示全景背景', type:'bool', def:false },
+    { id:'epreset', path:'environment.preset', label:'环境预设', type:'select', opts:ENV_PRESET_OPTS, def:'room' },
+    { id:'ibl',  path:'environment.intensity', label:'环境光照', type:'range', min:0, max:3, step:0.05, def:1.15 },
+    { id:'erot', path:'environment.rotationDeg', label:'环境旋转°', type:'range', min:-180, max:180, step:1, def:0 },
+    { id:'bgvis',path:'environment.visibleBackground', label:'显示环境背景', type:'bool', def:false },
+  ]},
+  { title:'落地阴影', fields:[
+    { id:'shon',    path:'shadow.enabled',    label:'开启投影',  type:'bool', def:false },
+    { id:'shop',    path:'shadow.opacity',    label:'阴影浓度',  type:'range', min:0, max:1, step:0.01, def:0.32 },
+    { id:'shsoft',  path:'shadow.softness',   label:'阴影柔化',  type:'range', min:0, max:10, step:0.5, def:3 },
+    { id:'shplate', path:'shadow.plate',      label:'显示展台',  type:'bool', def:true },
+    { id:'shcolor', path:'shadow.plateColor', label:'展台颜色',  type:'color', def:'#2b2f3a' },
   ]},
   { title:'用户端显隐（按钮 / 信息）', fields:[
     { id:'b1', path:'ui.showAutoRotateButton', label:'自动旋转按钮', type:'bool', def:true },

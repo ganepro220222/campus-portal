@@ -243,6 +243,23 @@ test.describe('落地阴影', () => {
     await setRange('l.key.el', 45)
     await expect(page.locator('#ed-shadow-warn')).toBeEmpty()
   })
+
+  test('编辑器关闭主光时 key.castShadow 立即同步', async () => {
+    await openLightSection()
+    expect((await lightState()).shadow.casters).toEqual(['key'])
+    await page.uncheck('#editor [data-lon="key"]')
+    expect((await lightState()).shadow.casters).toEqual([])
+    await page.check('#editor [data-lon="key"]')
+    expect((await lightState()).shadow.casters).toEqual(['key'])
+  })
+
+  test('主光强度归零时 key.castShadow 立即同步', async () => {
+    await openLightSection()
+    await setRange('l.key.i', 0)
+    expect((await lightState()).shadow.casters).toEqual([])
+    await setRange('l.key.i', 1.1)
+    expect((await lightState()).shadow.casters).toEqual(['key'])
+  })
 })
 
 test.describe('环境 IBL', () => {

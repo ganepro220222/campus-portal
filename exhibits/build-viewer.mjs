@@ -7,6 +7,19 @@ const OUT = path.join(ROOT, 'player.view.html')
 const SRC = path.join(ROOT, 'player.html')
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
+export const VIEWER_LIGHT_RIG_IMPORTS = [
+  'LIGHT_KEYS',
+  'LIGHT_DEFAULTS',
+  'SHADOW_CASTER',
+  'ENV_PRESETS',
+  'defaultPosition',
+  'effectiveIntensity',
+  'resolveShadow',
+  'shadowWillLand',
+  'resolveEnvSource',
+  'createEnvLoadGuard',
+]
+
 export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
   return playerHtml
     .replace(/\r\n/g, '\n')
@@ -19,7 +32,7 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
     .replace(/if \(editMode\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/import \{[^}]+\} from '\.\/hotspot-id\.mjs'/, "import { ensureHotspotIds } from './hotspot-id.mjs'")
     .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, "import { configFetchUrl } from './player-persist.mjs'")
-    .replace(/import \{[^}]+\} from '\.\/light-rig\.mjs'/, "import { LIGHT_KEYS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, defaultPosition, effectiveIntensity, resolveShadow, resolveEnvSource } from './light-rig.mjs'")
+    .replace(/import \{[^}]+\} from '\.\/light-rig\.mjs'/, `import { ${VIEWER_LIGHT_RIG_IMPORTS.join(', ')} } from './light-rig.mjs'`)
     .replace(/\nlet hotspotIdBootAudit = null, hotspotIdBootChanges = \[\][^\n]*\n/, '\n')
     .replace(
       /  if \(editMode\) \{[\s\S]*?bootstrapHotspotIds\(cfg\.hotspots \|\| \[\]\)[\s\S]*?  \} else \{\n    ensureHotspotIds\(cfg\.hotspots \|\| \[\]\)\n  \}/,

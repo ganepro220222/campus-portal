@@ -1530,15 +1530,19 @@ function wireEditor() {
   const ed = $('editor')
   // 灯光：l.<灯名>.<i|az|el>（强度 / 方位角 / 仰角），关闭的灯写配置但送 0 给渲染
   function syncLightIntensity(k){ if (lightRefs[k]) lightRefs[k].intensity = effectiveIntensity(k, L[k]) }
+  function syncLightAndShadow(k) {
+    syncLightIntensity(k)
+    if (k === SHADOW_CASTER) applyShadow()
+    syncShadowHint()
+  }
   function applyLight(k, what, v){
     const c = L[k] = L[k] || {}
-    if (what === 'i') { c.intensity = v; syncLightIntensity(k) }
+    if (what === 'i') { c.intensity = v }
     else {
       c.position = withAngle(c, k, what, v)
       if (lightRefs[k]) lightRefs[k].position.set(c.position[0], c.position[1], c.position[2])
-      if (k === SHADOW_CASTER) { fitShadowToModel(); syncShadowHint() }
     }
-    if (renderer && renderer.shadowMap.enabled && k === SHADOW_CASTER) renderer.shadowMap.needsUpdate = true
+    syncLightAndShadow(k)
   }
   function setShadow(key, v){ cfg.shadow = cfg.shadow || {}; cfg.shadow[key] = v; applyShadow() }
   // 主光被关掉 / 转到水平面以下时，地面接不到影子——就地提示，不整段重绘
@@ -1605,9 +1609,7 @@ function wireEditor() {
   })
   // 灯光：单灯启用 / 跟随相机 / 亮度诊断 / 恢复出厂
   ed.querySelectorAll('[data-lon]').forEach(cb => cb.onchange = e => {
-    const k=cb.dataset.lon; L[k]=L[k]||{}; L[k].enabled=e.target.checked; syncLightIntensity(k)
-    if (renderer && renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true
-    syncShadowHint() })
+    const k=cb.dataset.lon; L[k]=L[k]||{}; L[k].enabled=e.target.checked; syncLightAndShadow(k) })
   { const c2=document.getElementById('ed-shadow-on')
     if(c2) c2.onchange=e=>{ cfg.shadow=cfg.shadow||{}; cfg.shadow.enabled=e.target.checked; applyShadow(); syncShadowHint() } }
   { const c3=document.getElementById('ed-shadow-plate')

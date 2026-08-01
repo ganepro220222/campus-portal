@@ -471,6 +471,21 @@ test('viewer output imports only configFetchUrl from player-persist', () => {
   assert.doesNotMatch(view, /configExportFilename/)
 })
 
+test('viewer output imports every light-rig symbol it uses', () => {
+  const view = buildViewerSrc()
+  const imp = view.match(/import \{([^}]+)\} from '\.\/light-rig\.mjs'/)
+  assert.ok(imp, 'viewer must import light-rig.mjs')
+  const imported = new Set(imp[1].split(',').map(s => s.trim()))
+  const body = view.replace(/import \{[^}]+\} from '\.\/light-rig\.mjs'/, '')
+  const rigSrc = fs.readFileSync(path.join(ROOT, 'light-rig.mjs'), 'utf8')
+  const exported = [...rigSrc.matchAll(/^export (?:const|function) (\w+)/gm)].map(m => m[1])
+  for (const sym of exported) {
+    if (new RegExp(`\\b${sym}\\b`).test(body)) {
+      assert.ok(imported.has(sym), `viewer uses ${sym} but import omits it`)
+    }
+  }
+})
+
 test('editor preset row uses dedicated label/actions classes', () => {
   const html = fs.readFileSync(path.join(ROOT, 'player.html'), 'utf8')
   assert.match(html, /\.ed-label \{ white-space:nowrap/)

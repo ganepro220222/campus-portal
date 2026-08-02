@@ -424,30 +424,43 @@ function buildBatchUI() {
   syncBatchFieldModes()
 }
 
-/* 全景图候选下拉：服务端扫出来的 2:1 图片。
-   写进 config 的值统一加 ../ 前缀 —— 相对路径以展品目录为基准，../ 退到 exhibits/ 根，
-   部署到任何子路径下都成立；用 / 开头的站点根绝对路径换个部署前缀就 404 了。 */
+/* 全景图候选下拉：已配置全景 + 公共背景目录里的 2:1 图（不全树扫描）。
+   写进 config 的值统一加 ../ 前缀 —— 相对路径以展品目录为基准，../ 退到 exhibits/ 根。 */
 function panoValueFor(rootRelPath) { return '../' + rootRelPath }
+function panoOptionLabel(c) {
+  const tag = c.source === 'configured' ? '已配置' : '公共背景'
+  return `${tag} · ${c.path}（${c.width}×${c.height}）`
+}
 function fillPanoPicker() {
   const sel = $('pick-pano'); if (!sel) return
   if (!panoCandidates.length) { sel.hidden = true; return }
   sel.hidden = false
-  sel.innerHTML = '<option value="">（手动输入）</option>' +
-    panoCandidates.map(c => `<option value="${esc(panoValueFor(c.path))}">${esc(c.path)}（${c.width}×${c.height}）</option>`).join('')
-  sel.addEventListener('change', () => {
+  const configured = panoCandidates.filter(c => c.source === 'configured')
+  const shared = panoCandidates.filter(c => c.source === 'shared')
+  let html = '<option value="">（手动输入）</option>'
+  if (configured.length) {
+    html += `<optgroup label="正在使用的全景">${configured.map(c =>
+      `<option value="${esc(panoValueFor(c.path))}">${esc(panoOptionLabel(c))}</option>`).join('')}</optgroup>`
+  }
+  if (shared.length) {
+    html += `<optgroup label="公共背景">${shared.map(c =>
+      `<option value="${esc(panoValueFor(c.path))}">${esc(panoOptionLabel(c))}</option>`).join('')}</optgroup>`
+  }
+  sel.innerHTML = html
+  sel.onchange = () => {
     if (!sel.value) return
     const input = $('v-pano')
     input.value = sel.value
     $('en-pano').checked = true          // 选了图就等于要改这一项，省一次勾选
     syncBatchFieldModes()
-  })
+  }
 }
 function fieldRow(f) {
   let ctl = ''
   if (f.type === 'bool') ctl = `<label class="swi"><input type="checkbox" id="v-${f.id}" ${f.def ? 'checked' : ''}> 显示 / 开启</label>`
   else if (f.type === 'switch') ctl = `<label class="swi"><input type="checkbox" id="v-${f.id}" ${f.def ? 'checked' : ''}> 勾选${f.on || '显示'} · 取消${f.off || '隐藏'}</label>`
   else if (f.type === 'text') ctl = (f.picker === 'pano'
-      ? `<select id="pick-${f.id}" class="bpick" title="从 exhibits/ 下扫出来的 2:1 全景图里选"><option value="">（手动输入）</option></select>`
+      ? `<select id="pick-${f.id}" class="bpick" title="从已配置全景与公共背景目录里选"><option value="">（手动输入）</option></select>`
       : '') + `<input type="text" id="v-${f.id}" placeholder="${f.ph || ''}" value="${f.def || ''}">`
   else if (f.type === 'color') ctl = `<input type="color" id="v-${f.id}" value="${f.def}">`
   else if (f.type === 'range') ctl = `<input type="range" id="v-${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}"><span class="val" id="o-${f.id}">${f.def}</span>`

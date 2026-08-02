@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from pathlib import Path
 
@@ -81,6 +82,7 @@ def asset_fingerprint(
 # ---------- 全景图候选清单（批量编辑的下拉选择用；与 pano-check.mjs 保持一致） ----------
 PANO_EXT = {'.jpg', '.jpeg', '.png', '.webp'}
 PANO_SKIP_DIRS = {'node_modules', 'vendor', '_runtime', '_dev', 'e2e', 'test-results', 'playwright-report'}
+PANO_PUBLIC_DIRS = ['共享背景', '_panoramas', 'shared/panoramas']
 # 等距柱状投影固有 2:1；放宽到 1.7 会把 16:9（1.778）的截图也收进来
 PANO_RATIO_MIN = 1.9
 PANO_RATIO_MAX = 2.1
@@ -131,36 +133,116 @@ def is_panorama_ratio(size) -> bool:
     return PANO_RATIO_MIN <= r <= PANO_RATIO_MAX
 
 
-def list_panorama_candidates(exhibits_root: Path) -> list[dict]:
-    """扫 exhibits/ 下所有接近 2:1 的图片，path 相对 exhibits/、正斜杠。"""
-    out: list[dict] = []
+def panorama_to_root_rel(exhibit_dir: Path, panorama_path: str | None, exhibits_root: Path | None) -> str | None:
+    p = str(panorama_path or '').strip()
+    if not p or is_remote_panorama_url(p):
+        return None
+    if p.startswith('/'):
+        if not exhibits_root:
+            return None
+        local = exhibits_root / p.lstrip('/')
+    elif Path(p).is_absolute():
+        local = Path(p)
+    else:
+        local = exhibit_dir / p
+    if not exhibits_root:
+        return None
+    try:
+        rel = local.resolve().relative_to(exhibits_root.resolve())
+    except ValueError:
+        return None
+    return rel.as_posix()
 
-    def walk(d: Path, rel: str):
-        if len(out) >= PANO_MAX_SCAN:
+
+def _read_local_image_meta(exhibits_root: Path, root_rel: str) -> dict | None:
+    full = exhibits_root.joinpath(*root_rel.split('/'))
+    if full.suffix.lower() not in PANO_EXT:
+        return None
+    try:
+        if not full.is_file():
+            return None
+        with open(full, 'rb') as f:
+            size = image_size(f.read(65536))
+    except OSError:
+        return None
+    if not is_panorama_ratio(size):
+        return None
+    return {'width': size[0], 'height': size[1]}
+
+
+def _list_exhibit_dirs(exhibits_root: Path) -> list[str]:
+    out: list[str] = []
+    try:
+        items = sorted(exhibits_root.iterdir(), key=lambda x: x.name)
+    except OSError:
+        return out
+    for it in items:
+        if not it.is_dir() or it.name.startswith('_') or it.name.startswith('.'):
+            continue
+        if (it / 'config.json').is_file():
+            out.append(it.name)
+    return out
+
+
+def list_panorama_candidates(exhibits_root: Path) -> list[dict]:
+    """可信来源的全景候选：config 引用 + 公共目录；path 相对 exhibits/、正斜杠。"""
+    root = exhibits_root.resolve()
+    merged: dict[str, dict] = {}
+
+    def add(entry: dict) -> None:
+        if len(merged) >= PANO_MAX_SCAN:
+            return
+        prev = merged.get(entry['path'])
+        if not prev or (prev.get('source') == 'shared' and entry.get('source') == 'configured'):
+            merged[entry['path']] = entry
+
+    for ex in _list_exhibit_dirs(root):
+        if len(merged) >= PANO_MAX_SCAN:
+            break
+        exhibit_dir = root / ex
+        try:
+            cfg = json.loads((exhibit_dir / 'config.json').read_text(encoding='utf-8'))
+        except (OSError, json.JSONDecodeError):
+            continue
+        pano = (cfg.get('assets') or {}).get('panorama')
+        if not pano or is_remote_panorama_url(pano):
+            continue
+        root_rel = panorama_to_root_rel(exhibit_dir, pano, root)
+        if not root_rel:
+            continue
+        meta = _read_local_image_meta(root, root_rel)
+        if meta:
+            add({'path': root_rel, **meta, 'source': 'configured'})
+
+    def walk_shared(d: Path, rel: str) -> None:
+        if len(merged) >= PANO_MAX_SCAN:
             return
         try:
             items = sorted(d.iterdir(), key=lambda x: x.name)
         except OSError:
             return
         for it in items:
-            if len(out) >= PANO_MAX_SCAN:
+            if len(merged) >= PANO_MAX_SCAN:
                 return
             if it.name.startswith('.'):
                 continue
             r = f'{rel}/{it.name}' if rel else it.name
             if it.is_dir():
                 if it.name not in PANO_SKIP_DIRS:
-                    walk(it, r)
+                    walk_shared(it, r)
                 continue
-            if not it.is_file() or it.suffix.lower() not in PANO_EXT:
+            if not it.is_file():
                 continue
-            try:
-                with open(it, 'rb') as f:
-                    size = image_size(f.read(65536))
-            except OSError:
-                continue
-            if is_panorama_ratio(size):
-                out.append({'path': r, 'width': size[0], 'height': size[1]})
+            meta = _read_local_image_meta(root, r)
+            if meta:
+                add({'path': r, **meta, 'source': 'shared'})
 
-    walk(Path(exhibits_root), '')
-    return sorted(out, key=lambda x: x['path'])
+    for pub in PANO_PUBLIC_DIRS:
+        if len(merged) >= PANO_MAX_SCAN:
+            break
+        pub_dir = root.joinpath(*pub.split('/'))
+        if pub_dir.is_dir():
+            walk_shared(pub_dir, pub.replace('\\', '/'))
+
+    order = {'configured': 0, 'shared': 1}
+    return sorted(merged.values(), key=lambda x: (order.get(x.get('source'), 9), x['path']))

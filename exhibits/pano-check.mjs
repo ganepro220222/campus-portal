@@ -96,14 +96,15 @@ export function assetFingerprint(exhibitDir, assetPath, exhibitsRoot = null) {
 /*
  * 全景图候选清单
  * --------------
- * 批量编辑里「全景贴图」原本只能手打路径，100+ 件展品共用几张背景时又最需要它。
- * 服务端扫一遍 exhibits/，把「看起来像等距柱状全景图」的挑出来给前端做下拉。
- *
- * 判据只有一条：宽高比接近 2:1（等距柱状投影的固有比例）。只读图头拿尺寸，
- * 不解码像素，几十张图也就几毫秒。识别不了尺寸的一律不收——宁可漏，不可错。
+ * 批量编辑「全景贴图」下拉：只列可信来源，不全树扫描。
+ *   1. 各展品 config 里实际声明的 assets.panorama（本地文件）；
+ *   2. 约定公共目录（共享背景/、_panoramas/、shared/panoramas/）下的 2:1 图片。
+ * 宽高比 1.9～2.1 仅作格式校验，不作「发现全景」的依据——2:1 贴图/横幅不能进候选。
  */
 const PANO_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp'])
 const PANO_SKIP_DIRS = new Set(['node_modules', 'vendor', '_runtime', '_dev', 'e2e', 'test-results', 'playwright-report'])
+/** 公共全景目录（相对 exhibits/ 根）；仅在这些目录内扫描未配置的 2:1 图 */
+export const PANO_PUBLIC_DIRS = ['共享背景', '_panoramas', 'shared/panoramas']
 // 等距柱状投影固有 2:1。放到 1.7 会把 16:9 的截图（1.778）也当成全景图 —— 宁可漏，不可错。
 export const PANO_RATIO_MIN = 1.9
 export const PANO_RATIO_MAX = 2.1
@@ -152,30 +153,109 @@ export function isPanoramaRatio(size) {
   return r >= PANO_RATIO_MIN && r <= PANO_RATIO_MAX
 }
 
-/** 扫描 exhibitsRoot 下所有 2:1 图片，返回 [{ path, width, height }]（path 相对 exhibits/，正斜杠） */
-export function listPanoramaCandidates(exhibitsRoot) {
-  const out = []
+/** config 里的 panorama 路径 → exhibits/ 根相对路径（正斜杠）；远程 URL 返回 null */
+export function panoramaToRootRel(exhibitDir, panoramaPath, exhibitsRoot) {
+  const p = String(panoramaPath ?? '').trim()
+  if (!p || isRemotePanoramaUrl(p)) return null
+  let abs
+  if (p.startsWith('/')) {
+    if (!exhibitsRoot) return null
+    abs = path.join(exhibitsRoot, p.replace(/^\/+/, ''))
+  } else if (path.isAbsolute(p)) {
+    abs = p
+  } else {
+    abs = path.join(exhibitDir, p)
+  }
+  if (!exhibitsRoot) return null
+  const rel = path.relative(exhibitsRoot, abs)
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null
+  return rel.split(path.sep).join('/')
+}
+
+function readLocalImageMeta(exhibitsRoot, rootRel) {
+  const full = path.join(exhibitsRoot, ...rootRel.split('/'))
+  if (!PANO_EXT.has(path.extname(full).toLowerCase())) return null
+  let fd = null
   const head = Buffer.alloc(65536)
-  const walk = (dir, rel) => {
-    if (out.length >= PANO_MAX_SCAN) return
+  try {
+    if (!fs.statSync(full).isFile()) return null
+    fd = fs.openSync(full, 'r')
+    const n = fs.readSync(fd, head, 0, head.length, 0)
+    const size = imageSize(head.subarray(0, n))
+    if (!isPanoramaRatio(size)) return null
+    return { width: size.width, height: size.height }
+  } catch {
+    return null
+  } finally {
+    if (fd !== null) { try { fs.closeSync(fd) } catch {} }
+  }
+}
+
+function addCandidate(map, entry) {
+  if (map.size >= PANO_MAX_SCAN) return
+  const prev = map.get(entry.path)
+  if (!prev || (prev.source === 'shared' && entry.source === 'configured')) map.set(entry.path, entry)
+}
+
+function listExhibitDirs(exhibitsRoot) {
+  const out = []
+  let items
+  try { items = fs.readdirSync(exhibitsRoot, { withFileTypes: true }) } catch { return out }
+  for (const it of items) {
+    if (!it.isDirectory() || it.name.startsWith('_') || it.name.startsWith('.')) continue
+    try {
+      if (fs.statSync(path.join(exhibitsRoot, it.name, 'config.json')).isFile()) out.push(it.name)
+    } catch { /* 非展品目录 */ }
+  }
+  return out.sort()
+}
+
+/** 扫描可信来源，返回 [{ path, width, height, source }]（path 相对 exhibits/，正斜杠） */
+export function listPanoramaCandidates(exhibitsRoot) {
+  const root = path.resolve(exhibitsRoot)
+  const map = new Map()
+
+  for (const ex of listExhibitDirs(root)) {
+    if (map.size >= PANO_MAX_SCAN) break
+    const exhibitDir = path.join(root, ex)
+    let cfg
+    try { cfg = JSON.parse(fs.readFileSync(path.join(exhibitDir, 'config.json'), 'utf8')) } catch { continue }
+    const pano = cfg?.assets?.panorama
+    if (!pano || isRemotePanoramaUrl(pano)) continue
+    const rootRel = panoramaToRootRel(exhibitDir, pano, root)
+    if (!rootRel) continue
+    const meta = readLocalImageMeta(root, rootRel)
+    if (meta) addCandidate(map, { path: rootRel, ...meta, source: 'configured' })
+  }
+
+  const walkShared = (dir, rel) => {
+    if (map.size >= PANO_MAX_SCAN) return
     let items
     try { items = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
     for (const it of items) {
-      if (out.length >= PANO_MAX_SCAN) return
+      if (map.size >= PANO_MAX_SCAN) return
       if (it.name.startsWith('.')) continue
       const full = path.join(dir, it.name)
-      const r = rel ? rel + '/' + it.name : it.name
-      if (it.isDirectory()) { if (!PANO_SKIP_DIRS.has(it.name)) walk(full, r); continue }
-      if (!it.isFile() || !PANO_EXT.has(path.extname(it.name).toLowerCase())) continue
-      let fd = null
-      try {
-        fd = fs.openSync(full, 'r')
-        const n = fs.readSync(fd, head, 0, head.length, 0)
-        const size = imageSize(head.subarray(0, n))
-        if (isPanoramaRatio(size)) out.push({ path: r, width: size.width, height: size.height })
-      } catch { /* 读不出就跳过 */ } finally { if (fd !== null) { try { fs.closeSync(fd) } catch {} } }
+      const r = rel ? `${rel}/${it.name}` : it.name
+      if (it.isDirectory()) {
+        if (!PANO_SKIP_DIRS.has(it.name)) walkShared(full, r)
+        continue
+      }
+      if (!it.isFile()) continue
+      const meta = readLocalImageMeta(root, r)
+      if (meta) addCandidate(map, { path: r, ...meta, source: 'shared' })
     }
   }
-  walk(exhibitsRoot, '')
-  return out.sort((a, b) => a.path.localeCompare(b.path))
+
+  for (const pub of PANO_PUBLIC_DIRS) {
+    if (map.size >= PANO_MAX_SCAN) break
+    const dir = path.join(root, ...pub.split('/'))
+    try {
+      if (fs.statSync(dir).isDirectory()) walkShared(dir, pub.replace(/\\/g, '/'))
+    } catch { /* 目录不存在 */ }
+  }
+
+  const order = { configured: 0, shared: 1 }
+  return [...map.values()].sort((a, b) =>
+    (order[a.source] - order[b.source]) || a.path.localeCompare(b.path))
 }

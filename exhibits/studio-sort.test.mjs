@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import {
   naturalKey, compareNatural, completeness, envKey, envLabel, panoramaUrlKey, PANORAMA_LABEL_NAME_MAX,
-  dataUriEnvKey, clearEnvKeyCache, ENV_PRESET_LABELS,
+  dataUriEnvKey, clearEnvKeyCache, ENV_PRESET_LABELS, usesPanorama,
   SORTS, SORT_IDS, DEFAULT_SORT, sortSpec, defaultDesc, sortItems,
   FILTERS, FILTER_IDS, filterSpec, searchKey, filterItems, filterCounts,
   viewItems, normalizeView,
@@ -16,6 +16,9 @@ function test(name, fn) {
 const dirs = list => list.map(i => i.dir)
 
 console.log('studio-sort tests')
+
+/** 测试用：正在使用全景 IBL 的展品 */
+const usingPano = (extra = {}) => ({ envMode: 'panorama', usesPanorama: true, hasPano: true, ...extra })
 
 /* ---------- 自然序 ---------- */
 
@@ -49,7 +52,7 @@ test('naturalKey 容忍 null / undefined / 数字', () => {
 
 /* ---------- 完成度 ---------- */
 
-const full = { dir: 'craft-001', title: '甲', hasModel: true, poster: 'craft-001/assets/poster.jpg', hotspots: 3, hasPano: true }
+const full = { dir: 'craft-001', title: '甲', hasModel: true, poster: 'craft-001/assets/poster.jpg', hotspots: 3, hasPano: true, usesPanorama: true, envMode: 'panorama', panorama: 'assets/pano.jpg' }
 
 test('完成度：齐全的展品满分且无缺项', () => {
   const r = completeness(full)
@@ -75,7 +78,7 @@ test('完成度：hasModel 未知（字段缺失）不算缺模型', () => {
 
 test('完成度：缺项文案齐全', () => {
   const r = completeness({ dir: 'craft-009', error: 'x' })
-  assert.deepEqual(r.missing, ['配置读不出', '缺封面', '无热点', '无全景'])
+  assert.deepEqual(r.missing, ['配置读不出', '缺封面', '无热点', '无全景文件'])
 })
 
 /* ---------- 背景环境（分组） ---------- */
@@ -86,46 +89,46 @@ test('环境预设标签与 light-rig 的预设键完全一致', () => {
 
 test('envKey：相同远程 URL 归为一组', () => {
   const url = 'https://cdn.example.com/bg/sunset.jpg'
-  const a = { dir: 'craft-001', hasPano: true, panorama: url }
-  const b = { dir: 'craft-002', hasPano: true, panorama: url }
+  const a = { ...usingPano(), dir: 'craft-001', panorama: url }
+  const b = { ...usingPano(), dir: 'craft-002', panorama: url }
   assert.equal(envKey(a), envKey(b))
 })
 
 test('envKey：不同展品同 basename 的相对路径不应合并', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/panorama.jpg' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: 'assets/panorama.jpg' }
   assert.notEqual(envKey(a), envKey(b))
 })
 
 test('envKey：panoramaHash 优先于路径', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/a.jpg', panoramaHash: 'abc123' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/b.jpg', panoramaHash: 'abc123' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'assets/a.jpg', panoramaHash: 'abc123' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: 'assets/b.jpg', panoramaHash: 'abc123' }
   assert.equal(envKey(a), envKey(b))
 })
 
 test('envKey：scheme 与 hostname 大小写不同视为同一远程 URL', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'HTTPS://CDN.EXAMPLE.COM/bg/sunset.jpg' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'https://cdn.example.com/bg/sunset.jpg' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'HTTPS://CDN.EXAMPLE.COM/bg/sunset.jpg' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: 'https://cdn.example.com/bg/sunset.jpg' }
   assert.equal(envKey(a), envKey(b))
 })
 
 test('envKey：path 大小写不同不得合并', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'https://cdn.example.com/A.jpg' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'https://cdn.example.com/a.jpg' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'https://cdn.example.com/A.jpg' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: 'https://cdn.example.com/a.jpg' }
   assert.notEqual(envKey(a), envKey(b))
 })
 
 test('envKey：query 大小写不同不得合并', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'https://cdn.example.com/x.jpg?token=ABC' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'https://cdn.example.com/x.jpg?token=abc' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'https://cdn.example.com/x.jpg?token=ABC' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: 'https://cdn.example.com/x.jpg?token=abc' }
   assert.notEqual(envKey(a), envKey(b))
 })
 
 test('envKey：protocol-relative URL 仅规范化 hostname', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: '//CDN.EXAMPLE.COM/x.jpg' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: '//cdn.example.com/x.jpg' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: '//CDN.EXAMPLE.COM/x.jpg' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: '//cdn.example.com/x.jpg' }
   assert.equal(envKey(a), envKey(b))
-  const c = { dir: 'craft-003', hasPano: true, panorama: '//cdn.example.com/X.jpg' }
+  const c = { ...usingPano(), dir: 'craft-003', hasPano: true, panorama: '//cdn.example.com/X.jpg' }
   assert.notEqual(envKey(a), envKey(c))
 })
 
@@ -135,27 +138,27 @@ test('panoramaUrlKey：data/blob 不做整条小写化', () => {
 })
 
 test('envKey：根相对 path 大小写不同不得合并', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: '/shared/A.jpg' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: '/shared/a.jpg' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: '/shared/A.jpg' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: '/shared/a.jpg' }
   assert.notEqual(envKey(a), envKey(b))
 })
 
 test('envKey：不同文件名不归为一组', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/sunset.jpg' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/dawn.jpg' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'assets/sunset.jpg' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: 'assets/dawn.jpg' }
   assert.notEqual(envKey(a), envKey(b))
 })
 
 test('envLabel：取不出文件名的本地路径不误称「远程图片」', () => {
-  assert.equal(envLabel({ hasPano: true, panorama: 'assets/' }), '全景 · 本地图片')
-  assert.equal(envLabel({ hasPano: true, panorama: 'https://cdn.example.com/' }), '全景 · 远程图片')
+  assert.equal(envLabel({ ...usingPano(), panorama: 'assets/' }), '全景 · 本地图片')
+  assert.equal(envLabel({ ...usingPano(), panorama: 'https://cdn.example.com/' }), '全景 · 远程图片')
 })
 
 test('envKey：服务端给了内容指纹时，同一张图复制进不同目录也归为一组', () => {
   clearEnvKeyCache()
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '86f9f80fbcad3d86' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '86f9f80fbcad3d86' }
-  const c = { dir: 'craft-003', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '0123456789abcdef' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '86f9f80fbcad3d86' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '86f9f80fbcad3d86' }
+  const c = { ...usingPano(), dir: 'craft-003', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '0123456789abcdef' }
   // 断言 key 的确切形态，而不只是「两者相等」——只断言相等的话，
   // 缓存串味等原因也能让它「碰巧相等」，测试就废了（实测发生过）。
   assert.equal(envKey(a), 'pano-hash:86f9f80fbcad3d86')
@@ -166,22 +169,22 @@ test('envKey：服务端给了内容指纹时，同一张图复制进不同目�
 
 test('envKey：缓存不得把有指纹的项与无指纹的项串味', () => {
   clearEnvKeyCache()
-  const noHash = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg' }
-  const withHash = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: 'aaaa1111bbbb2222' }
+  const noHash = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg' }
+  const withHash = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: 'aaaa1111bbbb2222' }
   assert.equal(envKey(noHash), 'pano:craft-001/assets/panorama.jpg')
   assert.equal(envKey(withHash), 'pano-hash:aaaa1111bbbb2222')   // 先算过无指纹的，也不能被缓存带偏
   assert.equal(envKey(noHash), 'pano:craft-001/assets/panorama.jpg')
 })
 
 test('envKey：指纹大小写不敏感，前后空白不影响分组', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'a.jpg', panoramaHash: 'ABC123' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'b.jpg', panoramaHash: ' abc123 ' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'a.jpg', panoramaHash: 'ABC123' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: 'b.jpg', panoramaHash: ' abc123 ' }
   assert.equal(envKey(a), envKey(b))
 })
 
 test('envKey：没有指纹时退回路径分组（静态托管、无服务端的场景）', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/panorama.jpg' }
+  const a = { ...usingPano(), dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '' }
+  const b = { ...usingPano(), dir: 'craft-002', hasPano: true, panorama: 'assets/panorama.jpg' }
   assert.equal(envKey(a), 'pano:craft-001/assets/panorama.jpg')
   assert.notEqual(envKey(a), envKey(b))
 })
@@ -192,6 +195,12 @@ test('envKey：配了 panorama 但文件不存在时不算全景，退回预设'
   assert.equal(envLabel(it), '博物馆暖阁')
 })
 
+test('usesPanorama：有文件但 mode 不是 panorama 时不算在用全景', () => {
+  const it = { dir: 'craft-005', hasPano: true, panorama: 'assets/pano.jpg', envPreset: 'gallery' }
+  assert.equal(usesPanorama(it), false)
+  assert.equal(envKey(it), 'preset:gallery')
+})
+
 test('envKey：未知 / 缺失预设回落到 room', () => {
   assert.equal(envKey({ dir: 'a' }), 'preset:room')
   assert.equal(envKey({ dir: 'a', envPreset: 'nonsense' }), 'preset:room')
@@ -199,56 +208,56 @@ test('envKey：未知 / 缺失预设回落到 room', () => {
 })
 
 test('envLabel：全景显示文件名，不显示整条路径', () => {
-  assert.equal(envLabel({ hasPano: true, panorama: 'assets/pano/sunset.jpg' }), '全景 · sunset.jpg')
-  assert.equal(envLabel({ hasPano: true, panorama: 'C:\\pano\\sunset.jpg' }), '全景 · sunset.jpg')
+  assert.equal(envLabel({ ...usingPano(), panorama: 'assets/pano/sunset.jpg' }), '全景 · sunset.jpg')
+  assert.equal(envLabel({ ...usingPano(), panorama: 'C:\\pano\\sunset.jpg' }), '全景 · sunset.jpg')
 })
 
 test('envLabel：远程 / 根相对 / hash 全景不误显示为内置房间', () => {
   assert.equal(
-    envLabel({ hasPano: true, panorama: 'https://cdn.example.com/bg/sunset.jpg' }),
+    envLabel({ ...usingPano(), panorama: 'https://cdn.example.com/bg/sunset.jpg' }),
     '全景 · sunset.jpg',
   )
   assert.equal(
-    envLabel({ hasPano: true, panorama: '//cdn.example.com/bg/sunset.jpg' }),
+    envLabel({ ...usingPano(), panorama: '//cdn.example.com/bg/sunset.jpg' }),
     '全景 · sunset.jpg',
   )
-  assert.equal(envLabel({ hasPano: true, panorama: '/shared/bg.jpg' }), '全景 · bg.jpg')
-  assert.equal(envLabel({ hasPano: true, panorama: 'data:image/png;base64,AbC' }), '全景 · 内嵌图片')
-  assert.equal(envLabel({ hasPano: true, panorama: 'blob:https://example.com/u' }), '全景 · 临时图片')
+  assert.equal(envLabel({ ...usingPano(), panorama: '/shared/bg.jpg' }), '全景 · bg.jpg')
+  assert.equal(envLabel({ ...usingPano(), panorama: 'data:image/png;base64,AbC' }), '全景 · 内嵌图片')
+  assert.equal(envLabel({ ...usingPano(), panorama: 'blob:https://example.com/u' }), '全景 · 临时图片')
   assert.equal(
-    envLabel({ hasPano: true, panorama: 'blob:https://example.com/u', panoramaHash: 'abc123' }),
+    envLabel({ ...usingPano(), panorama: 'blob:https://example.com/u', panoramaHash: 'abc123' }),
     '全景 · 临时图片',
   )
 })
 
 test('envLabel：data URI 不泄漏 Base64，且 label 有长度上限', () => {
   const big = 'data:image/jpeg;base64,' + 'A'.repeat(1_000_000)
-  const item = { hasPano: true, panorama: big }
+  const item = { ...usingPano(), panorama: big }
   const label = envLabel(item)
   assert.equal(label, '全景 · 内嵌图片')
   assert.ok(label.length < 32)
   assert.ok(!label.includes('AAAA'))
-  assert.ok(!searchKey({ dir: 'c', title: 't', ...item }).includes('aaaa'))
+  assert.ok(!searchKey({ ...usingPano(), dir: 'c', title: 't', ...item }).includes('aaaa'))
 })
 
 test('envKey：data URI 使用紧凑 identity，不含 Base64 主体', () => {
   clearEnvKeyCache()
   const big = 'data:image/jpeg;base64,' + 'A'.repeat(1_000_000)
-  const item = { hasPano: true, panorama: big }
+  const item = { ...usingPano(), panorama: big }
   const key = envKey(item)
   assert.ok(key.length < 256, `key 过长：${key.length}`)
   assert.ok(key.startsWith('pano-data:image/jpeg:'))
   assert.ok(!key.includes('AAAA'))
   assert.equal(envKey(item), key, '同一 URI 应命中缓存')
-  const other = { hasPano: true, panorama: 'data:image/jpeg;base64,' + 'B'.repeat(100) }
+  const other = { ...usingPano(), panorama: 'data:image/jpeg;base64,' + 'B'.repeat(100) }
   assert.notEqual(envKey(item), envKey(other))
 })
 
 test('sortItems：大量 data URI 环境排序在合理时间内完成', () => {
   clearEnvKeyCache()
   const items = Array.from({ length: 100 }, (_, i) => ({
+    ...usingPano(),
     dir: `craft-${String(i).padStart(3, '0')}`,
-    hasPano: true,
     panorama: 'data:image/jpeg;base64,' + 'A'.repeat(50_000 + i),
   }))
   const t0 = performance.now()
@@ -259,26 +268,26 @@ test('sortItems：大量 data URI 环境排序在合理时间内完成', () => {
 
 test('envLabel：签名 URL 只显示 pathname basename，不含 query/fragment', () => {
   const signed = 'https://cdn.example.com/bg/pano.jpg?X-Amz-Credential=PUBLIC&X-Amz-Signature=TOPSECRET#view'
-  assert.equal(envLabel({ hasPano: true, panorama: signed }), '全景 · pano.jpg')
-  const sk = searchKey({ dir: 'c', title: 't', hasPano: true, panorama: signed })
+  assert.equal(envLabel({ ...usingPano(), panorama: signed }), '全景 · pano.jpg')
+  const sk = searchKey({ ...usingPano(), dir: 'c', title: 't', hasPano: true, panorama: signed })
   assert.ok(!sk.includes('topsecret'))
   assert.ok(!sk.includes('credential'))
 })
 
 test('envLabel：HTTP URL 无 basename 时使用远程图片', () => {
-  assert.equal(envLabel({ hasPano: true, panorama: 'https://cdn.example.com/' }), '全景 · 远程图片')
+  assert.equal(envLabel({ ...usingPano(), panorama: 'https://cdn.example.com/' }), '全景 · 远程图片')
 })
 
 test('envLabel：过长 basename 截断', () => {
   const long = 'x'.repeat(PANORAMA_LABEL_NAME_MAX + 50) + '.jpg'
-  const label = envLabel({ hasPano: true, panorama: 'assets/' + long })
+  const label = envLabel({ ...usingPano(), panorama: 'assets/' + long })
   assert.ok(label.endsWith('…'))
   assert.ok(label.length <= '全景 · '.length + PANORAMA_LABEL_NAME_MAX + 1)
 })
 
 test('searchKey：远程与根相对全景可被「全景」搜到', () => {
-  const remote = { dir: 'craft-1', title: '甲', hasPano: true, panorama: 'https://cdn/x.jpg' }
-  const root = { dir: 'craft-2', title: '乙', hasPano: true, panorama: '/shared/x.jpg' }
+  const remote = { ...usingPano(), dir: 'craft-1', title: '甲', hasPano: true, panorama: 'https://cdn/x.jpg' }
+  const root = { ...usingPano(), dir: 'craft-2', title: '乙', hasPano: true, panorama: '/shared/x.jpg' }
   assert.ok(searchKey(remote).includes('全景'))
   assert.ok(searchKey(root).includes('全景'))
 })
@@ -290,9 +299,9 @@ test('envLabel：读不出配置的展品不编造环境', () => {
 test('按背景环境排序时，同背景的展品一定相邻', () => {
   const shared = 'https://cdn.example.com/shared/sunset.jpg'
   const items = [
-    { dir: 'craft-001', hasPano: true, panorama: shared },
+    { ...usingPano(), dir: 'craft-001', panorama: shared },
     { dir: 'craft-002', envPreset: 'gallery' },
-    { dir: 'craft-003', hasPano: true, panorama: shared },
+    { ...usingPano(), dir: 'craft-003', panorama: shared },
     { dir: 'craft-004', envPreset: 'gallery' },
   ]
   const keys = sortItems(items, 'env').map(envKey)
@@ -418,7 +427,7 @@ test('搜索匹配名称 / 目录 / 副标题，大小写不敏感', () => {
 
 test('搜索也能搜到背景环境（如「全景」「暖阁」）', () => {
   const items = [
-    { dir: 'craft-1', title: '甲', hasPano: true, panorama: 'assets/sunset.jpg' },
+    { ...usingPano(), dir: 'craft-1', title: '甲', panorama: 'assets/sunset.jpg' },
     { dir: 'craft-2', title: '乙', envPreset: 'gallery' },
   ]
   assert.deepEqual(dirs(filterItems(items, 'all', 'sunset')), ['craft-1'])

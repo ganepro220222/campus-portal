@@ -367,6 +367,23 @@ test('batch: collectBatchOps excludes panel.elbowMode when leader straight', () 
   assert.equal(ops[0].path, 'panel.leader')
 })
 
+test('batch: pano expandOps 同时写入 assets.panorama 与 environment.mode', () => {
+  const pano = {
+    id: 'pano', path: 'assets.panorama', type: 'text',
+    expandOps(v) {
+      const s = String(v ?? '').trim()
+      if (!s) return []
+      return [{ path: 'assets.panorama', value: v }, { path: 'environment.mode', value: 'panorama' }]
+    },
+  }
+  const ops = collectBatchOps({ pano }, {
+    enabled: () => true, modeOff: () => false, value: () => '../shared/bg.jpg', schemeOps: () => [],
+  })
+  assert.equal(ops.length, 2)
+  assert.deepEqual(ops.find(o => o.path === 'assets.panorama'), { path: 'assets.panorama', value: '../shared/bg.jpg' })
+  assert.deepEqual(ops.find(o => o.path === 'environment.mode'), { path: 'environment.mode', value: 'panorama' })
+})
+
 function hsList(ids) {
   return ids.map(id => (id == null ? {} : { id }))
 }

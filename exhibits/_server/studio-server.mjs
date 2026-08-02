@@ -68,6 +68,8 @@ function listExhibits() {
       out.push({ dir: d.name, title: zh.title || d.name, subtitle: zh.subtitle || '',
         hotspots: (c.hotspots || []).length, audio: (c.audio || []).length,
         hasPano: hasAssetFile(exDir, assets.panorama, ROOT),
+        usesPanorama: (c.environment?.mode === 'panorama') && hasAssetFile(exDir, assets.panorama, ROOT),
+        envMode: (c.environment && c.environment.mode) || '',
         // 背景分组只能按内容判断：路径既会误并（各展品自带的 assets/panorama.jpg
         // 其实是不同的图）也会误分（同一张图复制进多个目录）
         panoramaHash: assetFingerprint(exDir, assets.panorama, ROOT),

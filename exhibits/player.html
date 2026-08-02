@@ -323,6 +323,7 @@ import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { applyExposureToCfg, configFetchUrl, configExportFilename } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, createEnvLoadGuard } from './light-rig.mjs'
+import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern } from './material-override.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -412,15 +413,7 @@ function applyMaterial() {
       if (typeof g.roughness === 'number') m.roughness = g.roughness
       if (typeof g.metalness === 'number') m.metalness = g.metalness
       if (typeof g.envMapIntensity === 'number') m.envMapIntensity = g.envMapIntensity
-      // 按材质名覆盖（分组）
-      const name = (m.name||'').toLowerCase()
-      ov.forEach(o2 => {
-        if (o2.namePattern && name.includes(String(o2.namePattern).toLowerCase())) {
-          if (typeof o2.roughness==='number') m.roughness=o2.roughness
-          if (typeof o2.metalness==='number') m.metalness=o2.metalness
-          if (typeof o2.envMapIntensity==='number') m.envMapIntensity=o2.envMapIntensity
-        }
-      })
+      applyOverrideFields(m, pickOverrideForMaterial(ov, m.name))
       m.needsUpdate = true
     })
   })
@@ -1847,10 +1840,8 @@ let ovSelName = ''
 function findOverride(name){ return (cfg.materials?.overrides || []).find(x => x.namePattern === name) }
 /** 除自己以外、还会按子串命中该材质的覆盖条目（与 applyMaterial 的匹配规则一致） */
 function matchingPatterns(name){
-  const low = String(name || '').toLowerCase()
-  return (cfg.materials?.overrides || [])
-    .filter(x => x.namePattern && x.namePattern !== name && low.includes(String(x.namePattern).toLowerCase()))
-    .map(x => x.namePattern)
+  const pat = matchingOverridePattern(name, cfg.materials?.overrides)
+  return pat ? [pat] : []
 }
 function overrideCountHTML(){
   const n = (cfg.materials?.overrides || []).length

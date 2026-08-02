@@ -264,6 +264,7 @@ import * as LG from './leader-geom.js'
 import { ensureHotspotIds } from './hotspot-id.mjs'
 import { configFetchUrl } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, defaultPosition, effectiveIntensity, resolveShadow, shadowWillLand, resolveEnvSource, createEnvLoadGuard } from './light-rig.mjs'
+import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern } from './material-override.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -352,15 +353,7 @@ function applyMaterial() {
       if (typeof g.roughness === 'number') m.roughness = g.roughness
       if (typeof g.metalness === 'number') m.metalness = g.metalness
       if (typeof g.envMapIntensity === 'number') m.envMapIntensity = g.envMapIntensity
-      // 按材质名覆盖（分组）
-      const name = (m.name||'').toLowerCase()
-      ov.forEach(o2 => {
-        if (o2.namePattern && name.includes(String(o2.namePattern).toLowerCase())) {
-          if (typeof o2.roughness==='number') m.roughness=o2.roughness
-          if (typeof o2.metalness==='number') m.metalness=o2.metalness
-          if (typeof o2.envMapIntensity==='number') m.envMapIntensity=o2.envMapIntensity
-        }
-      })
+      applyOverrideFields(m, pickOverrideForMaterial(ov, m.name))
       m.needsUpdate = true
     })
   })

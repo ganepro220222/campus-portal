@@ -55,21 +55,33 @@ def _make_gui() -> obj2glb_gui.ConverterGUI:
     return gui
 
 
-@test("源码里不允许绕过 _combo 直接构造 Combobox（否则又会踩聚焦空白的坑）")
+@test("本目录任何 .py 都不许绕过 _combo 直接构造 Combobox（否则又会踩聚焦空白的坑）")
 def _():
     import ast as _ast
+    import glob as _glob
 
-    src = open(os.path.join(HERE, "obj2glb_gui.py"), encoding="utf-8").read()
-    tree = _ast.parse(src)
-    outside = []
-    for fn in _ast.walk(tree):
-        if not isinstance(fn, _ast.FunctionDef):
+    files = sorted(_glob.glob(os.path.join(HERE, "*.py")))
+    ok(len(files) >= 5, f"没扫到源码文件，用例本身失效了：{files}")
+    scanned = outside = 0
+    bad = []
+    for path in files:
+        if path.endswith(".test.py"):
             continue
-        for node in _ast.walk(fn):
+        tree = _ast.parse(open(path, encoding="utf-8").read())
+        # 顶层（不在任何函数里）的构造同样要算上
+        in_combo = set()
+        for fn in _ast.walk(tree):
+            if isinstance(fn, _ast.FunctionDef) and fn.name == "_combo":
+                in_combo |= {id(n) for n in _ast.walk(fn)}
+        for node in _ast.walk(tree):
             if (isinstance(node, _ast.Call) and isinstance(node.func, _ast.Attribute)
-                    and node.func.attr == "Combobox" and fn.name != "_combo"):
-                outside.append((fn.name, node.lineno))
-    eq(outside, [], f"这些地方直接构造了 Combobox，应改走 _combo(): {outside}")
+                    and node.func.attr == "Combobox"):
+                scanned += 1
+                if id(node) not in in_combo:
+                    outside += 1
+                    bad.append((os.path.basename(path), node.lineno))
+    ok(scanned >= 1, "一个 Combobox 都没扫到，选择器可能写错了")
+    eq(bad, [], f"这些地方直接构造了 Combobox，应改走 _combo(): {bad}")
 
 
 @test("_lerp_hex 端点与中点插值正确（顶栏渐变靠它）")

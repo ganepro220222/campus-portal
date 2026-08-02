@@ -315,12 +315,25 @@ test.describe('studio.html', () => {
     await waitForStudioReady(page)
     await openBatchPanel(page)
     await selectExhibits(page, ['craft-001'])
+    await expect(page.locator('#row-panoClear input[type=checkbox]')).toHaveCount(1)
+    await expect(page.locator('#v-panoClear')).toHaveCount(0)
     await page.locator('#en-panoClear').check()
     await page.locator('#bapply').click()
     await page.waitForFunction(() => document.querySelector('#blog')?.textContent?.includes('完成'), null, { timeout: 20_000 })
     expect(saves).toHaveLength(1)
     expect(saves[0].config.assets.panorama).toBe('')
     expect(saves[0].config.environment.mode).toBe('preset')
+  })
+
+  test('批量全景与清除互斥：选候选后启用清除会取消全景项', async ({ page }) => {
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    const opts = await page.$$eval('#pick-pano option', els => els.map(o => o.value))
+    await page.selectOption('#pick-pano', opts[1])
+    await expect(page.locator('#en-pano')).toBeChecked()
+    await page.locator('#en-panoClear').check()
+    await expect(page.locator('#en-pano')).not.toBeChecked()
+    await expect(page.locator('#en-panoClear')).toBeChecked()
   })
 
   test('批量五光源：写入 lights.*，方位角/仰角合成 position，未勾选的灯一律不碰', async ({ page }) => {

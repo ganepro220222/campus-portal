@@ -196,9 +196,12 @@ export function defaultLights() {
  */
 export function diagnoseBrightness(s = {}) {
   const exposure = fin(s.exposure, 1.05)
-  const envMap = fin(s.envMapIntensity, 1.35)
-  const envScene = fin(s.envIntensity, 1)
-  const env = envMap * envScene // 场景级 × 材质级 = 实际打到模型上的环境照明
+  // 环境照明只有场景级这一个来源。曾经这里乘了一个材质级的 envMapIntensity，那是错的：
+  // three.js 里 material.envMapIntensity 只作用于材质自带的 envMap；IBL 来自
+  // scene.environment 时，该 uniform 每帧被 scene.environmentIntensity 覆写
+  // （WebGLRenderer：material.envMap === null && scene.environment !== null 分支）。
+  // 乘上一个从不生效的系数，会让阈值判断整体偏移、并把用户引到一个没用的滑条上。
+  const env = fin(s.envIntensity, 1)
   const ambient = fin(s.ambient, 0.25)
   const key = fin(s.key, 1.1)
   const metalness = fin(s.metalness, 0)
@@ -232,7 +235,7 @@ export function diagnoseBrightness(s = {}) {
   if (env < 1.4) {
     out.push({
       level: 'tip',
-      text: `环境照明 ${r1(env)} 偏低（＝「环境 IBL → 环境光照」${r1(envScene)} × 「材质 → 环境光强」${r1(envMap)}）。PBR 材质主要靠环境照明，先把「环境 IBL → 环境光照」提到 1.5～2。`,
+      text: `环境照明 ${r1(env)} 偏低。PBR 材质主要靠环境照明，先把「环境 IBL → 环境光照」提到 1.5～2。`,
     })
   }
   if (key < 0.8) {
@@ -263,7 +266,6 @@ export function brightnessInputs(cfg = {}) {
   const src = resolveEnvSource(cfg)
   return {
     exposure: fin(cfg.renderer?.exposure, 1.05),
-    envMapIntensity: fin(g.envMapIntensity, 1.35),
     envIntensity: fin(cfg.environment?.intensity, 1),
     ambient: fin(L.ambient?.intensity, 0.25),
     key: fin(L.key?.intensity, 1.1),

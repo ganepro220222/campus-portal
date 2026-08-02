@@ -8,7 +8,7 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 async function waitForStudioReady(page) {
   await page.goto('/studio.html')
   await page.waitForSelector('#grid .card', { timeout: 30_000 })
-  await page.waitForSelector('#bwrap .bf', { timeout: 15_000 })
+  await page.waitForSelector('#bwrap .bf', { state: 'attached', timeout: 15_000 })
 }
 
 async function gotoStudioWithListStub(page, capabilities) {
@@ -364,6 +364,44 @@ test.describe('studio.html', () => {
       await expect(page.locator(`#v-l-${k}-pos-az`)).toHaveCount(1)
       await expect(page.locator(`#v-l-${k}-pos-el`)).toHaveCount(1)
     }
+  })
+
+  /* 老坑：flex item 的自动最小尺寸是 min-content，方位那两根滑条不显式 min-width:0
+     就会把整块顶出卡片外（实测右溢 110px）。窄屏更容易触发，所以三档宽度都验。 */
+  for (const width of [900, 1280, 1600]) {
+    test(`${width}px：批量面板里没有任何控件溢出所在卡片（方位滑条老坑）`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await waitForStudioReady(page)
+      await openBatchPanel(page)
+      await page.evaluate(() => document.querySelectorAll('details.bsub').forEach(d => { d.open = true }))
+      const over = await page.evaluate(() => [...document.querySelectorAll('#bwrap *')].filter(el => {
+        const par = el.parentElement
+        if (!par) return false
+        const r = el.getBoundingClientRect(), pr = par.getBoundingClientRect()
+        if (!r.width || !r.height) return false
+        if (getComputedStyle(par).overflow !== 'visible') return false   // 可滚动容器允许内容更宽
+        return r.right > pr.right + 1.5 || r.left < pr.left - 1.5
+      }).map(el => {
+        const r = el.getBoundingClientRect(), pr = el.parentElement.getBoundingClientRect()
+        return `${el.tagName.toLowerCase()}.${(el.className || '').toString().trim().split(/\s+/).join('.')} 溢出 ${Math.round(Math.max(r.right - pr.right, pr.left - r.left))}px`
+      }))
+      expect(over).toEqual([])
+    })
+  }
+
+  test('批量面板：方位两根滑条各占一整行，且都在卡片内', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 900 })
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    await page.evaluate(() => document.querySelectorAll('details.bsub').forEach(d => { d.open = true }))
+    const geo = await page.evaluate(() => {
+      const card = document.querySelector('#row-l-key-pos').closest('.bgroup')
+      const cr = card.getBoundingClientRect()
+      const rows = ['az', 'el'].map(ax => document.getElementById('v-l-key-pos-' + ax).closest('.bang').getBoundingClientRect())
+      return { cardRight: cr.right, rows: rows.map(r => ({ right: r.right, top: Math.round(r.top) })) }
+    })
+    for (const r of geo.rows) expect(r.right).toBeLessThanOrEqual(geo.cardRight + 1)
+    expect(geo.rows[0].top).not.toBe(geo.rows[1].top)     // 各占一行，不是并排挤在一起
   })
 
   test('batch updates only selected paths per exhibit', async ({ page }) => {

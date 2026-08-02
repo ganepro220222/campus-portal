@@ -14,6 +14,7 @@ import {
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { buildViewerSrc } from './build-viewer.mjs'
+import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -312,6 +313,42 @@ test('batch: collectBatchOps skips modeOff fields', () => {
   })
   assert.equal(ops.length, 1)
   assert.equal(ops[0].path, 'panel.style')
+})
+
+test('batch: angle 字段写成 position 数组，且方位角与仰角必须成对写入', () => {
+  const pos = { id: 'l-key-pos', path: 'lights.key.position', type: 'angle', az: -30, el: 35, radius: 10 }
+  const ops = collectBatchOps({ pos }, {
+    enabled: () => true,
+    modeOff: () => false,
+    value: () => { throw new Error('angle 字段不该走 value()') },
+    schemeOps: () => [],
+    anglePosition: f => anglesToPosition(f.az, f.el, f.radius),
+  })
+  assert.equal(ops.length, 1)
+  assert.equal(ops[0].path, 'lights.key.position')
+  assert.ok(Array.isArray(ops[0].value) && ops[0].value.length === 3)
+  // 反解回角度必须还是原来那一对
+  const back = positionToAngles(ops[0].value)
+  assert.ok(Math.abs(back.azimuth - (-30)) < 0.2, `方位角 ${back.azimuth}`)
+  assert.ok(Math.abs(back.elevation - 35) < 0.2, `仰角 ${back.elevation}`)
+})
+
+test('batch: 未勾选的 angle 字段不产生 op', () => {
+  const pos = { id: 'l-key-pos', path: 'lights.key.position', type: 'angle', az: 0, el: 45, radius: 10 }
+  const ops = collectBatchOps({ pos }, {
+    enabled: () => false, modeOff: () => false, value: () => null, schemeOps: () => [],
+    anglePosition: () => [1, 2, 3],
+  })
+  assert.deepEqual(ops, [])
+})
+
+test('batch: anglePosition 返回空值时跳过（不写坏 config）', () => {
+  const pos = { id: 'l-key-pos', path: 'lights.key.position', type: 'angle', az: 0, el: 45, radius: 10 }
+  const ops = collectBatchOps({ pos }, {
+    enabled: () => true, modeOff: () => false, value: () => null, schemeOps: () => [],
+    anglePosition: () => null,
+  })
+  assert.deepEqual(ops, [])
 })
 
 test('batch: collectBatchOps excludes panel.elbowMode when leader straight', () => {

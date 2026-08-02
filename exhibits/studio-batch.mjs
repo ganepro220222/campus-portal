@@ -10,7 +10,13 @@ export function batchFieldModeOff(field, mode, leader) {
   return !batchFieldApplies(field, mode, leader)
 }
 
-/** 与 studio.html enabledOps 等价的纯数据收集 */
+/**
+ * 与 studio.html enabledOps 等价的纯数据收集。
+ *
+ * type='angle' 是灯光方位用的复合字段：方位角与仰角必须成对写入。
+ * 批量的语义是「把这批展品统一设成同一个值」，只写方位角、让各展品保留各自的仰角
+ * 既说不清也做不到 —— ops 是一次算好后套到每件展品上的，不知道对方原来的仰角。
+ */
 export function collectBatchOps(fields, state) {
   const ops = []
   for (const f of Object.values(fields)) {
@@ -19,6 +25,11 @@ export function collectBatchOps(fields, state) {
     if (state.applies && !state.applies(f)) continue
     if (f.type === 'scheme') {
       for (const [p, v] of state.schemeOps(f.id) || []) ops.push({ path: p, value: v })
+      continue
+    }
+    if (f.type === 'angle') {
+      const pos = state.anglePosition(f)
+      if (pos) ops.push({ path: f.path, value: pos })
       continue
     }
     const v = state.value(f)

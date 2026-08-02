@@ -62,23 +62,46 @@
   .preset { appearance:none; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.06);
     color:rgba(238,240,245,.82); font-size:12px; padding:5px 15px; border-radius:999px; cursor:pointer; transition:.2s; }
   .preset.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
-  .actions { display:flex; gap:10px; }
+  .actions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; }
   .btn { appearance:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;
     height:44px; min-width:64px; padding:0 14px; border:1px solid rgba(255,255,255,.16); border-radius:14px;
     background:rgba(255,255,255,.08); backdrop-filter:blur(10px); color:#eef0f5; font-size:13px; cursor:pointer; transition:.18s; }
   .btn:active { transform:scale(.96); }
   .btn.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
   .btn .ic { font-size:16px; line-height:1; }
+  /* 标签任何情况下都不许拆开：宽度不够时 320px 上「自动旋转」会被压成一字一行。
+     实测 4 个按钮横排需要约 466px 视口；不够就整块换行，而不是把字掰断。 */
+  .btn .tx { white-space:nowrap; }
+  .presets { flex-wrap:wrap; justify-content:center; }
+  .preset { white-space:nowrap; }
+  /* 窄屏改成「图标在上、文字在下」——手机工具条的通行做法：
+     既留住图标（去掉图标观感更差），又能让四个按钮在 320px 上排成一行。 */
+  @media (max-width: 400px) {
+    .actions { gap:8px; }
+    .btn { flex-direction:column; gap:3px; height:auto; min-width:0; padding:7px 10px; border-radius:12px; }
+    .btn .ic { font-size:17px; }
+    .btn .tx { font-size:11px; line-height:1.2; }
+  }
 
   /* 语音讲解 小型播放器（左上，标题下方） */
   .audio { position:absolute; left:16px; top:calc(env(safe-area-inset-top) + 88px); z-index:7;
     display:flex; align-items:center; gap:10px; width:min(300px,78vw); padding:8px 12px;
     background:rgba(20,22,32,.72); backdrop-filter:blur(12px);
-    border:1px solid rgba(255,255,255,.14); border-radius:14px; }
+    border:1px solid rgba(255,255,255,.14); border-radius:14px;
+    transition:width .22s ease, padding .22s ease; }
   .au-btn { flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:1px solid var(--gold);
     background:rgba(200,168,106,.18); color:#f4e6c8; font-size:12px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; transition:.18s; }
   .au-btn:active { transform:scale(.94); }
+  /* 折叠态：只剩一颗圆钮。手机竖屏这条 300px 的横条正压在器物上半身，
+     收起来能把画面还给模型；点圆钮＝展开（不直接播放，避免在安静环境里误触出声）。 */
+  .audio.mini { width:auto; padding:5px; gap:0; }
+  .audio.mini .au-mid, .audio.mini .au-collapse { display:none; }
+  .audio.mini .au-btn { width:38px; height:38px; font-size:14px; }
+  .audio.mini.playing .au-btn { box-shadow:0 0 0 3px rgba(200,168,106,.28); }
+  .au-collapse { flex:0 0 auto; width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.16);
+    background:transparent; color:rgba(238,240,245,.7); font-size:11px; line-height:1; cursor:pointer; transition:.18s; }
+  .au-collapse:hover { background:rgba(255,255,255,.1); color:#f4e6c8; }
   .au-mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
   .au-top { display:flex; align-items:center; gap:8px; font-size:11.5px; color:rgba(238,240,245,.82); }
   .au-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -178,6 +201,7 @@
       </div>
       <div class="au-bar" id="au-bar"><i id="au-prog"></i></div>
     </div>
+    <button class="au-collapse" id="au-collapse" aria-label="收起语音讲解播放器" title="收起">▾</button>
   </div>
   <audio id="au-el" preload="none"></audio>
 
@@ -258,7 +282,7 @@ const initialCam = new THREE.Vector3()
 const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
 const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
-let auTracks = [], auIndex = -1     // 语音讲解播放器状态
+let auTracks = [], auIndex = -1, auPlaying = false   // 语音讲解播放器状态
 
 const t = o => (o && (o[lang] || o.zh || o.en)) || {}
 function hexToRgba(hex, a){
@@ -1044,6 +1068,7 @@ function buildAudio(){
     sel.setAttribute('hidden',''); name.removeAttribute('hidden'); name.textContent = auTracks[0].label || '语音讲解'
   }
   auIndex = -1; selectTrack(0, false)
+  setAudioMini(audioCollapsedDefault())
 }
 function selectTrack(i, play){
   const el = $('au-el'), tr = auTracks[i]; if(!tr) return
@@ -1054,14 +1079,44 @@ function selectTrack(i, play){
 }
 function playTrackById(id){
   const i = auTracks.findIndex(a=>a.id===id); if(i<0) return
+  setAudioMini(false)   // 热点触发播放＝用户此刻正在听，进度与切换都得看得见
   if (i===auIndex && !$('au-el').paused) return
   selectTrack(i, true)
 }
-function auIcon(p){ $('au-play').textContent = p ? '❚❚' : '▶' }
+/* 折叠态图标不能用 ▶ —— 折叠时点它是「展开」而不是「播放」，用 ▶ 就是在骗人。
+   用 ♪ 表示「这里有语音」；正在播放时给圆钮加一圈描金环，收起也看得出状态。 */
+// 播放状态由 onplay/onpause 唯一维护；不带参调用＝只按当前状态重绘（折叠切换时用）。
+// 别从 currentTime 反推：刚开始播的那一瞬 currentTime 还是 0，描金环会闪一下。
+function auIcon(p){
+  if (typeof p === 'boolean') auPlaying = p
+  const mini = $('audio').classList.contains('mini')
+  $('audio').classList.toggle('playing', auPlaying)
+  const btn = $('au-play')
+  btn.textContent = mini ? '♪' : (auPlaying ? '❚❚' : '▶')
+  btn.setAttribute('aria-label', mini
+    ? (auPlaying ? '展开语音讲解播放器（正在播放）' : '展开语音讲解播放器')
+    : '播放/暂停语音讲解（空格键）')
+}
+/** 默认折叠与否：auto＝手机折叠、桌面展开（两端的空间约束本来就不同） */
+function audioCollapsedDefault(){
+  const v = cfg.ui?.audioCollapsed
+  if (v === true || v === false) return v
+  return matchMedia('(pointer:coarse)').matches || innerWidth < 768
+}
+function setAudioMini(mini){
+  $('audio').classList.toggle('mini', !!mini)
+  auIcon()
+}
 function auFmt(s){ if(!isFinite(s)||s<0) return '0:00'; const m=Math.floor(s/60), ss=Math.floor(s%60); return m+':'+String(ss).padStart(2,'0') }
 function wireAudio(){
   const el = $('au-el')
-  $('au-play').onclick = () => { if(!auTracks.length) return; if(auIndex<0) selectTrack(0,false); el.paused ? el.play().catch(()=>{}) : el.pause() }
+  $('au-play').onclick = () => {
+    if(!auTracks.length) return
+    if ($('audio').classList.contains('mini')) { setAudioMini(false); return }   // 折叠态：点＝展开
+    if(auIndex<0) selectTrack(0,false)
+    el.paused ? el.play().catch(()=>{}) : el.pause()
+  }
+  $('au-collapse').onclick = () => setAudioMini(true)
   el.onplay = ()=>auIcon(true); el.onpause = ()=>auIcon(false); el.onended = ()=>{ auIcon(false); $('au-prog').style.width='0%' }
   el.ontimeupdate = ()=>{ const p = el.duration ? el.currentTime/el.duration*100 : 0; $('au-prog').style.width=p+'%'; $('au-time').textContent=auFmt(el.currentTime) }
   $('au-bar').onclick = e => { if(!el.duration) return; const r=$('au-bar').getBoundingClientRect(); el.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*el.duration }
@@ -1117,7 +1172,7 @@ function buildHUD() {
 function applyPreset(p) {
   activePreset = p.id
   renderer.toneMappingExposure = num(p.exposure, renderer.toneMappingExposure)
-  if (typeof p.envMapIntensity === 'number') { cfg.materials = cfg.materials||{}; cfg.materials.global = Object.assign(cfg.materials.global||{}, {envMapIntensity:p.envMapIntensity}); applyMaterial() }
+  // 旧预设里可能带 envMapIntensity —— 该值在本架构下不生效（见「材质」段说明），直接忽略
   if (p.background) scene.background = cfg.environment?.visibleBackground ? scene.background : new THREE.Color(p.background)
   if (p.environment) {   // 环境预设 / 环境光照 / 环境旋转（不动 mode 与全景图，免得把展品的全景顶掉）
     cfg.environment = Object.assign(cfg.environment || {}, p.environment)

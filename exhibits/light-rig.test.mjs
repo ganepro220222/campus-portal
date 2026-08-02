@@ -20,6 +20,8 @@ import {
   resolveShadow,
   shadowWillLand,
   resolveEnvSource,
+  supportsVisibleBackground,
+  supportsVisibleBackgroundForSource,
   createEnvLoadGuard,
 } from './light-rig.mjs'
 
@@ -249,6 +251,14 @@ test('声明了 panorama 模式却没有全景文件 → 回落到预设/房间�
 test('未知预设名回落到内置房间，不抛异常', () => {
   assert.deepEqual(resolveEnvSource({ environment: { preset: 'nope' } }), { kind: 'room' })
   assert.deepEqual(resolveEnvSource({ environment: { preset: null } }), { kind: 'room' })
+})
+
+test('supportsVisibleBackground：room 不支持，preset/panorama 支持', () => {
+  assert.equal(supportsVisibleBackground({ environment: { preset: 'room' } }), false)
+  assert.equal(supportsVisibleBackground({ environment: { mode: 'preset', preset: 'gallery' } }), true)
+  assert.equal(supportsVisibleBackground({ environment: { mode: 'panorama' }, assets: { panorama: 'a.jpg' } }), true)
+  assert.equal(supportsVisibleBackgroundForSource({ kind: 'room' }), false)
+  assert.equal(supportsVisibleBackgroundForSource({ kind: 'preset', preset: 'studio' }), true)
 })
 
 test('每个环境预设都可渲染：有中文名，非内置的有天地色与柔光区', () => {

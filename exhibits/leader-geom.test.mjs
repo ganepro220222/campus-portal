@@ -384,6 +384,22 @@ test('batch: pano expandOps 同时写入 assets.panorama 与 environment.mode', 
   assert.deepEqual(ops.find(o => o.path === 'environment.mode'), { path: 'environment.mode', value: 'panorama' })
 })
 
+test('batch: panoClear 清除全景路径并改回 preset mode', () => {
+  const panoClear = {
+    id: 'panoClear', type: 'bool',
+    expandOps(v) {
+      if (!v) return []
+      return [{ path: 'assets.panorama', value: '' }, { path: 'environment.mode', value: 'preset' }]
+    },
+  }
+  const ops = collectBatchOps({ panoClear }, {
+    enabled: () => true, modeOff: () => false, value: () => true, schemeOps: () => [],
+  })
+  assert.equal(ops.length, 2)
+  assert.deepEqual(ops.find(o => o.path === 'assets.panorama'), { path: 'assets.panorama', value: '' })
+  assert.deepEqual(ops.find(o => o.path === 'environment.mode'), { path: 'environment.mode', value: 'preset' })
+})
+
 function hsList(ids) {
   return ids.map(id => (id == null ? {} : { id }))
 }

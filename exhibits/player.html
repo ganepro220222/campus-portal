@@ -322,7 +322,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { applyExposureToCfg, configFetchUrl, configExportFilename } from './player-persist.mjs'
-import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, createEnvLoadGuard } from './light-rig.mjs'
+import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
@@ -1453,6 +1453,8 @@ function renderEditor() {
   // 全景接管时预设不生效；但若全景加载失败，实际跑的是预设兜底，UI 必须如实说
   const panoBroken = envSrc.kind === 'panorama' && envPanoFailed && asset(envSrc.url) === envPanoFailed
   const panoRules = envSrc.kind === 'panorama' && !panoBroken
+  const effSrc = effectiveEnvSource()
+  const bgSupported = supportsVisibleBackgroundForSource(effSrc)
   $('editor').innerHTML = `
   <details class="ed-sec" open><summary>基本信息</summary>
     <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
@@ -1504,7 +1506,7 @@ function renderEditor() {
     ${rng('g.rough','粗糙度',0,1,0.01, num(g.roughness,0.5))}
     <div class="ed-note">要调环境亮度请用「环境 IBL → 环境光照」。这里不再提供材质级的环境光强：
       本播放器的 IBL 来自场景环境，three.js 会用场景值覆写材质上的同名参数，那个滑条调了不会有任何变化。</div>
-    <div class="ed-note">按材质名覆盖（分组）：<span id="ed-ov-count">${overrideCountHTML()}</span></div>
+    <div class="ed-note">按材质名精确覆盖：<span id="ed-ov-count">${overrideCountHTML()}</span> 编辑器只建精确条目；config 里已有的短名称「包含」规则仍会在运行时生效。</div>
     <div class="ed-hs-item">
       <div class="ed-row"><select class="ed-in" id="ed-matsel" style="margin:0">${names.length?names.map(n=>`<option${n===ovSelName?' selected':''}>${esc(n)}</option>`).join(''):'<option value="">（模型无命名材质）</option>'}</select>
         <span class="ed-row-actions"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" id="ed-ov-on"> 启用覆盖</label></span></div>
@@ -1538,7 +1540,8 @@ function renderEditor() {
     ${rng('e.int','环境光照',0,3,0.05, num(cfg.environment.intensity, 1))}
     ${rng('e.rot','环境旋转°',-180,180,1, num(cfg.environment.rotationDeg, 0))}
     <div class="ed-note">预设为程序化生成，不占体积。环境光照＝整个场景的环境亮度（模型偏暗优先调这里）；环境旋转＝转动环境，改变高光与反射的落点 —— 这两项对全景与预设都生效。</div>
-    <label class="ed-row"><span class="ed-label">可见环境背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground?'checked':''}></label>
+    <label class="ed-row${bgSupported ? '' : ' ed-dis'}"><span class="ed-label">可见环境背景</span><input type="checkbox" data-k="e.bg" ${cfg.environment.visibleBackground && bgSupported ? 'checked' : ''} ${bgSupported ? '' : 'disabled'}></label>
+    ${bgSupported ? '' : '<div class="ed-note">内置房间没有可显示的背景图，此项仅对影棚/博物馆等预设或全景图生效。</div>'}
     <input class="ed-in" id="ed-pano" placeholder="assets/panorama.jpg 或 https://…" value="${esc(cfg.assets?.panorama||'')}">
     <button class="ed-btn" id="ed-pano-load">加载全景</button>
     ${(panoRules||panoBroken)?'<button class="ed-btn" id="ed-pano-clear">清除全景（改用预设）</button>':''}
@@ -1732,7 +1735,9 @@ function wireEditor() {
   syncShadowHint()
   { const s2=document.getElementById('ed-env-preset')
     if(s2) s2.onchange=e=>{ cfg.environment.preset=e.target.value
-      applyEnvironmentIBL(); applyEnvironment(); renderEditor() } }
+      if (!supportsVisibleBackgroundForSource({ kind: e.target.value === 'room' ? 'room' : 'preset', preset: e.target.value }))
+        cfg.environment.visibleBackground = false
+      applyEnvironmentIBL(); applyEnvironment(); applyVisibleBackgroundPreview(); renderEditor() } }
   { const b2=document.getElementById('ed-pano-clear')
     if(b2) b2.onclick=()=>{
       if(!confirm('清除全景图地址、改用上方的环境预设？')) return
@@ -1883,7 +1888,7 @@ function syncOverrideEnabled(){
   const byGroup = !enabled && sel.value ? matchingPatterns(sel.value).join('、') : ''
   if(note) note.textContent = !sel.value ? ''
     : enabled ? `「${sel.value}」使用下面的值，上方全局金属度 / 粗糙度对它不生效。`
-    : byGroup ? `「${sel.value}」被覆盖条目「${byGroup}」按名称分组命中，跟着那条走。勾选可为它单独建一条。`
+    : byGroup ? `「${sel.value}」被旧配置中的名称包含规则「${byGroup}」命中，跟着那条走。勾选可为它单独建一条精确覆盖。`
               : `「${sel.value}」跟随上方全局设置。勾选后才会单独覆盖。`
 }
 function loadOverride(){
@@ -2319,6 +2324,8 @@ if (editMode) {
       envPreset: cfg.environment?.preset ?? null,
       hasEnvMap: !!scene?.environment,
       backgroundIsTexture: !!(scene?.background && scene.background.isTexture),
+      visibleBgSupported: supportsVisibleBackgroundForSource(effectiveEnvSource()),
+      visibleBgDisabled: !!document.querySelector('[data-k="e.bg"]')?.disabled,
       shadow: {
         rendererEnabled: !!renderer?.shadowMap.enabled,
         autoUpdate: !!renderer?.shadowMap.autoUpdate,

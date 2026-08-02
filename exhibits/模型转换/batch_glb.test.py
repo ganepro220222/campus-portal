@@ -176,6 +176,33 @@ def _():
         ok(rows[1]["状态"].startswith("成功"))
 
 
+@test("main() --double-sided 传给 process_one")
+def _():
+    import contextlib, io as _io
+    import batch_glb
+    from unittest.mock import patch
+
+    captured = []
+
+    def _fake(src, input_root, out_dir, *a, **kw):
+        captured.append(kw.get("double_sided"))
+        r = batch_glb.empty_result(src, input_root)
+        r.update({"状态": "成功", "GLB文件": "x.glb", "体积MB": 1.0, "scale": ""})
+        return r
+
+    with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:
+        open(os.path.join(inp, "a.glb"), "wb").write(b"x")
+        saved = sys.argv
+        sys.argv = ["batch_glb.py", inp, "-o", out, "--double-sided"]
+        try:
+            with patch.object(batch_glb, "process_one", side_effect=_fake):
+                with contextlib.redirect_stdout(_io.StringIO()):
+                    batch_glb.main()
+        finally:
+            sys.argv = saved
+        eq(captured, [True])
+
+
 @test("empty_result 与 RESULT_FIELDS 一致")
 def _():
     import batch_glb

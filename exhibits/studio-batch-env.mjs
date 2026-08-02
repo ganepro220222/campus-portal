@@ -58,6 +58,12 @@ export function cfgFromEnvState(state) {
   }
 }
 
+/** 批量 ops 应用后，该 card 是否仍由全景接管（与 resolveEnvSource 语义一致） */
+export function cardUsesPanoramaAfterOps(card, ops = []) {
+  const after = applyEnvOps(cardEnvState(card), ops)
+  return after.mode === 'panorama' && !!String(after.panorama ?? '').trim()
+}
+
 /** 批量 ops 应用后，该 card 是否支持可见环境背景（与 resolveEnvSource 语义一致） */
 export function cardSupportsVisibleBgAfterOps(card, ops = []) {
   return supportsVisibleBackground(cfgFromEnvState(applyEnvOps(cardEnvState(card), ops)))
@@ -103,4 +109,19 @@ export function batchBgvisWarn({ ops = [], picked = [], enBgvis } = {}) {
   if (batchVisibleBgTarget(ops) !== true) return ''
   if (!picked.length) return ''
   return batchBgvisWarnFromCardsAfterOps(picked, ops)
+}
+
+/** 「环境预设」批量项的警告文案；本批完成后仍用全景的展品才提示 */
+export function batchPresetHint({ picked = [], ops = [] } = {}) {
+  if (!picked.length) return ''
+  let ruled = 0
+  for (const c of picked) {
+    if (cardUsesPanoramaAfterOps(c, ops)) ruled++
+  }
+  if (!ruled) return ''
+  const total = picked.length
+  if (ruled === total) {
+    return `选中的 ${total} 件都在用全景，环境预设对它们不会生效`
+  }
+  return `选中的 ${total} 件中有 ${ruled} 件在用全景，此项对这 ${ruled} 件不会生效`
 }

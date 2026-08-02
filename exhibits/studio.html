@@ -242,7 +242,7 @@
 
 <script type="module">
 import { batchFieldApplies } from './studio-batch.mjs'
-import { batchBgvisWarn } from './studio-batch-env.mjs'
+import { batchBgvisWarn, batchPresetHint } from './studio-batch-env.mjs'
 import { panoValueFor, panoOptgroupLabel, panoOptionLabel } from './studio-pano-labels.mjs'
 import {
   SORTS, FILTERS, ENV_PRESET_LABELS, envLabel,
@@ -434,21 +434,21 @@ function buildBatchUI() {
     // 勾了某盏灯的任一字段，就把它所在的小节展开，免得勾了却看不见
     en.addEventListener('change', () => { if (en.checked) en.closest('details.bsub')?.setAttribute('open', '') })
   }
-  $('en-pano')?.addEventListener('change', () => { syncPanoMutualExclusion('pano'); syncBatchEnvHints() })
-  $('en-panoClear')?.addEventListener('change', () => { syncPanoMutualExclusion('clear'); syncBatchEnvHints() })
+  $('en-pano')?.addEventListener('change', () => { syncPanoMutualExclusion('pano'); syncBatchEnvHintsAll() })
+  $('en-panoClear')?.addEventListener('change', () => { syncPanoMutualExclusion('clear'); syncBatchEnvHintsAll() })
   $('v-pano')?.addEventListener('input', () => {
     if ($('en-pano')?.checked) syncPanoMutualExclusion('pano')
-    syncBatchEnvHints()
+    syncBatchEnvHintsAll()
   })
-  $('v-epreset')?.addEventListener('change', () => { syncPresetHint(); syncBatchEnvHints() })
-  $('en-bgvis')?.addEventListener('change', syncBatchEnvHints)
-  $('v-bgvis')?.addEventListener('change', syncBatchEnvHints)
-  $('en-epreset')?.addEventListener('change', syncBatchEnvHints)
+  $('v-epreset')?.addEventListener('change', syncBatchEnvHintsAll)
+  $('en-bgvis')?.addEventListener('change', syncBatchEnvHintsAll)
+  $('v-bgvis')?.addEventListener('change', syncBatchEnvHintsAll)
+  $('en-epreset')?.addEventListener('change', syncBatchEnvHintsAll)
   $('v-lmode')?.addEventListener('change', syncBatchFieldModes)
   $('v-leader')?.addEventListener('change', syncBatchFieldModes)
   fillPanoPicker()
   syncBatchFieldModes()
-  syncBatchEnvHints()
+  syncBatchEnvHintsAll()
 }
 
 function syncPanoMutualExclusion(from) {
@@ -487,7 +487,7 @@ function fillPanoPicker() {
     $('en-pano').checked = true          // 选了图就等于要改这一项，省一次勾选
     syncPanoMutualExclusion('pano')
     syncBatchFieldModes()
-    syncBatchEnvHints()
+    syncBatchEnvHintsAll()
   }
 }
 function fieldRow(f) {
@@ -748,8 +748,7 @@ function refreshSel() {
   $('selN').textContent = `已选 ${n} 件`
   $('bapply').textContent = `应用到 ${n} 件展品`
   $('bapply').disabled = n === 0 || !hasApi
-  syncPresetHint()
-  syncBatchEnvHints()
+  syncBatchEnvHintsAll()
 }
 /* 内置 room 无可显示背景图——批量勾选「显示环境背景」且预设为 room 时提示 */
 function syncBatchEnvHints() {
@@ -767,16 +766,17 @@ function syncBatchEnvHints() {
   if (warn) { el.classList.add('warn'); el.textContent = warn }
   else { el.textContent = ''; el.classList.remove('warn') }
 }
-/* 环境预设对「正在用全景」的展品不生效——按当前选择实时说明，别让人白改 */
+/* 环境预设对「正在用全景」的展品不生效——按本批 ops 模拟后仍接管的才提示 */
+function syncBatchEnvHintsAll() {
+  syncPresetHint()
+  syncBatchEnvHints()
+}
 function syncPresetHint() {
   const el = $('hint-epreset'); if (!el) return
   const picked = cards.filter(c => selected.has(c.dir))
-  const ruled = picked.filter(c => c.usesPanorama)
-  if (!picked.length || !ruled.length) { el.textContent = ''; el.classList.remove('warn'); return }
-  el.classList.add('warn')
-  el.textContent = ruled.length === picked.length
-    ? `选中的 ${picked.length} 件都在用全景，环境预设对它们不会生效`
-    : `选中的 ${picked.length} 件中有 ${ruled.length} 件在用全景，此项对这 ${ruled.length} 件不会生效`
+  const warn = batchPresetHint({ picked, ops: enabledOps() })
+  if (warn) { el.classList.add('warn'); el.textContent = warn }
+  else { el.textContent = ''; el.classList.remove('warn') }
 }
 function setBatch(on) {
   document.body.classList.toggle('batch-open', on)

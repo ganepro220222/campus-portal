@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {
   inferBatchEnvEffect,
   batchBgvisWarn,
+  batchPresetHint,
   batchBgvisWarnFromCards,
   batchBgvisWarnFromCardsAfterOps,
   batchVisibleBgTarget,
@@ -9,6 +10,7 @@ import {
   cardEnvState,
   cardSupportsVisibleBg,
   cardSupportsVisibleBgAfterOps,
+  cardUsesPanoramaAfterOps,
 } from './studio-batch-env.mjs'
 
 let pass = 0, fail = 0
@@ -172,6 +174,40 @@ test('batchBgvisWarnFromCardsAfterOps：与 batchBgvisWarn 一致', () => {
     batchBgvisWarn({ ops, picked, enBgvis: true }),
     batchBgvisWarnFromCardsAfterOps(picked, ops),
   )
+})
+
+test('cardUsesPanoramaAfterOps：仅改 preset 时全景仍接管', () => {
+  assert.equal(cardUsesPanoramaAfterOps(pano, [{ path: 'environment.preset', value: 'room' }]), true)
+})
+
+test('batchPresetHint：全景 + 仅 preset 时警告', () => {
+  const msg = batchPresetHint({ picked: [pano], ops: [{ path: 'environment.preset', value: 'gallery' }] })
+  assert.match(msg, /不会生效/)
+})
+
+test('batchPresetHint：全景 + 清除 + preset 时不警告', () => {
+  const ops = [
+    ...clearOps,
+    { path: 'environment.preset', value: 'gallery' },
+  ]
+  assert.equal(batchPresetHint({ picked: [pano], ops }), '')
+})
+
+test('batchPresetHint：全景 + 设新全景 + preset 时警告', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '../shared/a.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    { path: 'environment.preset', value: 'gallery' },
+  ]
+  assert.match(batchPresetHint({ picked: [pano], ops }), /不会生效/)
+})
+
+test('batchPresetHint：room 展品改 preset 不警告', () => {
+  assert.equal(batchPresetHint({ picked: [room], ops: [{ path: 'environment.preset', value: 'gallery' }] }), '')
+})
+
+test('batchPresetHint：混合全景/room + 清除后全部用 preset 不警告', () => {
+  assert.equal(batchPresetHint({ picked: [pano, room], ops: [...clearOps, { path: 'environment.preset', value: 'gallery' }] }), '')
 })
 
 console.log('')

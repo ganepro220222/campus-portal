@@ -6,8 +6,9 @@ import os
 import subprocess
 import sys
 import tempfile
+import re
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent
 
@@ -33,16 +34,35 @@ GLB_REQUIRED = (
     '模型转换/python_env.py',
 )
 
-# 页面的 ES module 硬依赖：少任何一个，整页脚本直接不执行（页面白屏），
-# 而这类「排除规则写宽了顺手删掉素材」的事故本仓库已经发生过一次
-# （44f9615 曾全局排除 build/dist）。所以必须逐个断言，不能只查 studio.html。
-WEB_REQUIRED = (
-    'studio.html', 'studio-batch.mjs', 'studio-sort.mjs',
-    'player.html', 'player.view.html',
-    'leader-geom.js', 'light-rig.mjs', 'hotspot-id.mjs', 'player-persist.mjs',
-    'manifest.json', '_server/studio-server.mjs',
-    'vendor/three.module.js',
-)
+# 页面入口：必须在 ZIP 里，缺一个功能就没了。
+# 它们的 ES module 依赖不写死在这里——见 iter_page_imports()，从页面源码现推，
+# 以后加删模块无需同步维护清单（清单会悄悄过期，这正是要防的事）。
+WEB_PAGES = ('studio.html', 'player.html', 'player.view.html')
+WEB_REQUIRED = (*WEB_PAGES, 'manifest.json', '_server/studio-server.mjs')
+
+# import 'x' / import a from "x" / importmap 里的 "three": "./vendor/three.module.js"
+_IMPORT_RE = re.compile(r"""import\s+(?:[\w*{}\s,]+\s+from\s+)?['"]([^'"]+)['"]""")
+_IMPORTMAP_RE = re.compile(r"""["'](\.{1,2}/[^"']+\.(?:m?js))["']""")
+
+
+def iter_page_imports(page: str, text: str):
+    """页面里所有相对路径的 module 依赖（含 importmap），换算成 ZIP 内的路径。"""
+    base = PurePosixPath(page).parent
+    specs = set(_IMPORT_RE.findall(text))
+    # importmap 不一定在 <head> 里（player.html 就在 body），全文扫
+    for block in re.findall(r'<script type="importmap">(.*?)</script>', text, re.S):
+        specs |= set(_IMPORTMAP_RE.findall(block))
+    for spec in specs:
+        if not spec.startswith(('./', '../')):
+            continue
+        yield str((base / spec).as_posix()).replace('/./', '/')
+
+
+def resolve_in_zip(target: str, names: set[str]) -> str | None:
+    for cand in (target, target + '.mjs', target + '.js'):
+        if cand in names:
+            return cand
+    return None
 
 FORBIDDEN_PREFIXES = (
     'node_modules/',
@@ -84,6 +104,7 @@ def test_should_include_excludes_nested_build_artifacts() -> None:
 
 
 def test_pack_delivery_zip() -> None:
+    mod = _load_packer()
     with tempfile.TemporaryDirectory(prefix='exhibits-pack-') as td:
         out = Path(td) / 'test.zip'
         env = os.environ.copy()
@@ -111,9 +132,28 @@ def test_pack_delivery_zip() -> None:
             ):
                 if required not in names:
                     raise RuntimeError(f'missing {required} in zip')
-            # vendor/ 是 Three.js 与解码器，缺了 3D 页面加载即失败
-            if not any(n.startswith('vendor/addons/loaders/GLTFLoader.js') for n in names):
-                raise RuntimeError('missing vendor/ loaders in zip')
+            # 页面的 module 依赖从源码现推，避免清单过期
+            for page in WEB_PAGES:
+                text = zf.read(page).decode('utf-8')
+                deps = list(iter_page_imports(page, text))
+                if not deps:
+                    raise RuntimeError(f'{page}: 没解析到任何 module 依赖，正则可能失效了')
+                for dep in deps:
+                    if resolve_in_zip(dep, names) is None:
+                        raise RuntimeError(f'{page} imports {dep}, 但 ZIP 里没有')
+
+            # vendor/ 整目录逐一比对，而不是抽查某一个文件。
+            # 期望集合直接来自文件系统，**不能**过 should_include——否则一旦有人
+            # 把 vendor 写进排除规则，期望集合会跟着缩水，用例就变成自证自洽。
+            on_disk = {
+                p.relative_to(ROOT).as_posix()
+                for p in (ROOT / 'vendor').rglob('*') if p.is_file()
+            }
+            if not on_disk:
+                raise RuntimeError('vendor/ 目录为空，检查用例本身失效了')
+            missing_vendor = sorted(on_disk - names)
+            if missing_vendor:
+                raise RuntimeError(f'vendor 缺失 {len(missing_vendor)} 个：{missing_vendor[:5]}')
             for forbidden in FORBIDDEN_PREFIXES:
                 if any(n.startswith(forbidden) for n in names):
                     raise RuntimeError(f'forbidden prefix {forbidden}')

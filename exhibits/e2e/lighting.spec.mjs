@@ -447,3 +447,168 @@ test.describe('预设（灯光方案）', () => {
     expect(st.envIntensity).toBeCloseTo(1.15, 3)
   })
 })
+
+test.describe('材质覆盖', () => {
+  const openMat = () => page.evaluate(() => {
+    for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+      if ((d.querySelector('summary')?.textContent || '').trim() === '材质') d.open = true
+    }
+  })
+  const ovState = () => page.evaluate(() => ({
+    on: document.getElementById('ed-ov-on').checked,
+    disabled: document.querySelector('#editor input[type=range][data-k="ov.metal"]').disabled,
+    metal: +document.querySelector('#editor input[type=range][data-k="ov.metal"]').value,
+    rough: +document.querySelector('#editor input[type=range][data-k="ov.rough"]').value,
+    note: document.getElementById('ed-ov-note').textContent.trim(),
+  }))
+  const toggleOv = () => page.evaluate(() => {
+    const c = document.getElementById('ed-ov-on'); c.checked = !c.checked
+    c.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  const mats = () => page.evaluate(() => window.__SY_TEST__.materialsConfig())
+  const live = () => page.evaluate(() => window.__SY_TEST__.materialLive())
+
+  test.beforeEach(async () => {
+    await reloadPlayer(page, { mode: 'edit' })
+    await openMat()
+  })
+
+  test('失效的 envMapIntensity 滑条已从界面移除（全局与覆盖各一处）', async () => {
+    await expect(page.locator('#editor input[type=range][data-k="g.env"]')).toHaveCount(0)
+    await expect(page.locator('#editor input[type=range][data-k="ov.env"]')).toHaveCount(0)
+    // 曝光 / 金属度 / 粗糙度 三根必须还在
+    for (const k of ['g.exposure', 'g.metal', 'g.rough']) {
+      await expect(page.locator(`#editor input[type=range][data-k="${k}"]`)).toHaveCount(1)
+    }
+  })
+
+  test('默认未启用覆盖：滑条禁用、回填材质真实值、config 不写任何东西', async () => {
+    const st = await ovState()
+    expect(st.on).toBe(false)
+    expect(st.disabled).toBe(true)
+    expect(st.note).toContain('跟随上方全局设置')
+    const cur = (await live())[0]
+    expect(st.metal).toBeCloseTo(cur.metalness, 5)
+    expect(st.rough).toBeCloseTo(cur.roughness, 5)
+    expect((await mats()).overrides || []).toEqual([])
+  })
+
+  test('未启用时拖覆盖滑条不写 config（老实现会静默建条目）', async () => {
+    await setRange('ov.metal', 1)
+    await setRange('ov.rough', 0.05)
+    expect((await mats()).overrides || []).toEqual([])
+  })
+
+  test('勾选启用＝按当前真实值建条目，材质实际取值不跳变', async () => {
+    const before = (await live())[0]
+    await toggleOv()
+    const ov = (await mats()).overrides
+    expect(ov).toHaveLength(1)
+    expect(ov[0].metalness).toBeCloseTo(before.metalness, 5)
+    expect(ov[0].roughness).toBeCloseTo(before.roughness, 5)
+    const after = (await live())[0]
+    expect(after.metalness).toBeCloseTo(before.metalness, 5)
+    expect(after.roughness).toBeCloseTo(before.roughness, 5)
+  })
+
+  test('只动一项就只写一项——另一项必须保持原值', async () => {
+    const before = (await live())[0]
+    await toggleOv()
+    await setRange('ov.rough', 0.93)
+    const o = (await mats()).overrides[0]
+    expect(o.roughness).toBeCloseTo(0.93, 5)
+    expect(o.metalness).toBeCloseTo(before.metalness, 5)   // 没碰过，不能被改
+    expect('envMapIntensity' in o).toBe(false)             // 失效字段不得再写进 config
+  })
+
+  test('取消勾选＝删除该条目，材质回到全局值', async () => {
+    await toggleOv()
+    await setRange('ov.metal', 1)
+    expect((await live())[0].metalness).toBeCloseTo(1, 5)
+    await setRange('g.metal', 0.3)
+    expect((await live())[0].metalness).toBeCloseTo(1, 5)  // 覆盖压住全局，这是正确语义
+    await toggleOv()
+    expect((await mats()).overrides).toEqual([])
+    expect((await live())[0].metalness).toBeCloseTo(0.3, 5)  // 回到全局值
+    expect((await ovState()).disabled).toBe(true)
+  })
+
+  test('存在覆盖时，全局滑条旁给出「对它不生效」的提示', async () => {
+    await toggleOv()
+    await page.evaluate(() => window.__edRefresh && window.__edRefresh())
+    await openMat()
+    await expect(page.locator('#editor')).toContainText('个材质被覆盖')
+  })
+
+  /* 多材质：craft-001 的模型只有一个材质，切换材质相关的回归在它身上测不出来。
+     renderEditor 会整段重建面板，<select> 是新元素、默认落回第一项 —— 曾经因此
+     「给第 2 个材质开覆盖」会当场跳回第 1 个材质，用户再点一次就在错材质上多出一条。 */
+  test.describe('多材质', () => {
+    const matSel = () => page.evaluate(() => document.getElementById('ed-matsel').value)
+    const pickMat = name => page.selectOption('#ed-matsel', name)
+
+    test.beforeEach(async () => {
+      await reloadPlayer(page, { mode: 'edit', assets: { model: '../e2e/fixtures/two-material.gltf' } })
+      await openMat()
+    })
+
+    test('下拉列出模型里的全部具名材质', async () => {
+      expect(await page.$$eval('#ed-matsel option', os => os.map(o => o.value))).toEqual(['Body', 'Trim'])
+    })
+
+    test('给第二个材质开覆盖后，选中项不得跳回第一个', async () => {
+      await pickMat('Trim')
+      expect(await matSel()).toBe('Trim')
+      await toggleOv()
+      expect(await matSel()).toBe('Trim')                       // 面板重绘不许顶掉选择
+      expect(await page.isChecked('#ed-ov-on')).toBe(true)
+      const ov = (await mats()).overrides
+      expect(ov.map(x => x.namePattern)).toEqual(['Trim'])       // 只有 Trim，不许连坐 Body
+      expect((await ovState()).note).toContain('Trim')
+    })
+
+    test('拖动写进当前选中的材质，另一个材质不受影响', async () => {
+      await pickMat('Trim')
+      await toggleOv()
+      await setRange('ov.metal', 0.77)
+      const ov = (await mats()).overrides
+      expect(ov).toHaveLength(1)
+      expect(ov[0]).toMatchObject({ namePattern: 'Trim' })
+      expect(ov[0].metalness).toBeCloseTo(0.77, 5)
+      const byName = Object.fromEntries((await live()).map(m => [m.name, m]))
+      expect(byName.Trim.metalness).toBeCloseTo(0.77, 5)
+      expect(byName.Body.metalness).not.toBeCloseTo(0.77, 5)
+    })
+
+    test('切回没有覆盖的材质：勾选框复位、滑条禁用、回填它自己的真实值', async () => {
+      await pickMat('Trim')
+      await toggleOv()
+      await setRange('ov.metal', 0.77)
+      await pickMat('Body')
+      const st = await ovState()
+      expect(st.on).toBe(false)
+      expect(st.disabled).toBe(true)
+      const body = (await live()).find(m => m.name === 'Body')
+      expect(st.metal).toBeCloseTo(body.metalness, 5)
+      // 再切回去，覆盖值必须原样回来
+      await pickMat('Trim')
+      const back = await ovState()
+      expect(back.on).toBe(true)
+      expect(back.metal).toBeCloseTo(0.77, 5)
+    })
+
+    test('被别人的 namePattern 按子串命中时，提示要说清是跟着那条走', async () => {
+      // applyMaterial 用 includes 匹配：'Bod' 会连带命中 'Body'
+      await page.evaluate(() => {
+        window.__SY_TEST__.setOverridesForTest([{ namePattern: 'Bod', metalness: 0.9 }])
+      })
+      await page.evaluate(() => window.__edRefresh())
+      await openMat()
+      await pickMat('Body')
+      const st = await ovState()
+      expect(st.on).toBe(false)                    // 没有自己的条目
+      expect(st.note).toContain('按名称分组命中')   // 但不能说「跟随上方全局设置」
+      expect(st.note).toContain('Bod')
+    })
+  })
+})

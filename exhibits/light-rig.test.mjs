@@ -277,34 +277,42 @@ test('未知灯名不抛异常', () => {
 const texts = (list) => list.map((x) => x.text).join('\n')
 
 test('高金属度 + 低环境 → 首条就是金属度警告', () => {
-  const r = diagnoseBrightness({ metalness: 1, envMapIntensity: 1, envIntensity: 1, hasCustomEnv: true })
+  const r = diagnoseBrightness({ metalness: 1, envIntensity: 1, hasCustomEnv: true })
   assert.equal(r[0].level, 'warn')
   assert.match(r[0].text, /金属度/)
 })
 
-test('环境照明按 场景级 × 材质级 相乘判定', () => {
-  const dark = { metalness: 1, envMapIntensity: 1.4, envIntensity: 0.5, hasCustomEnv: true }
+test('环境照明只认场景级（envIntensity），不再乘材质级', () => {
+  const dark = { metalness: 1, envIntensity: 0.5, hasCustomEnv: true }
   assert.ok(diagnoseBrightness(dark).some(x => x.level === 'warn' && /金属度/.test(x.text)))
-  // 同样的材质级强度，把场景级提上去后金属度警告消失
-  const bright = { ...dark, envIntensity: 1.4 }
+  const bright = { ...dark, envIntensity: 2 }
   assert.ok(!diagnoseBrightness(bright).some(x => /金属度/.test(x.text)))
 })
 
-test('环境照明偏低时同时点名两个来源', () => {
-  const t = texts(diagnoseBrightness({ envMapIntensity: 1, envIntensity: 1, hasCustomEnv: true, exposure: 1.4 }))
+test('material.envMapIntensity 已失效：传进来也不得影响任何结论', () => {
+  // three.js 里该值只作用于材质自带 envMap；我们的 IBL 来自 scene.environment，
+  // uniform 每帧被 scene.environmentIntensity 覆写。诊断若把它算进去，阈值会整体偏移。
+  const base = { metalness: 1, envIntensity: 0.5, hasCustomEnv: true, exposure: 1.4 }
+  const a = texts(diagnoseBrightness(base))
+  const b = texts(diagnoseBrightness({ ...base, envMapIntensity: 99 }))
+  assert.equal(a, b, 'envMapIntensity 不该改变任何一条建议')
+})
+
+test('环境照明偏低时只点名场景级那一个来源', () => {
+  const t = texts(diagnoseBrightness({ envIntensity: 1, hasCustomEnv: true, exposure: 1.4 }))
   assert.match(t, /环境 IBL → 环境光照/)
-  assert.match(t, /材质 → 环境光强/)
+  assert.doesNotMatch(t, /材质 → 环境光强/, '不能再把用户引到失效的滑条上')
 })
 
 test('环境光拉过头 → 明确劝阻', () => {
-  const r = diagnoseBrightness({ ambient: 1.8, hasCustomEnv: true, exposure: 1.4, envMapIntensity: 1.8 })
+  const r = diagnoseBrightness({ ambient: 1.8, hasCustomEnv: true, exposure: 1.4, envIntensity: 1.8 })
   assert.ok(r.some((x) => x.level === 'warn' && /环境光/.test(x.text)))
 })
 
-test('低曝光 / 低环境光强 会被点名', () => {
-  const r = texts(diagnoseBrightness({ exposure: 1.0, envMapIntensity: 1.0, hasCustomEnv: true }))
+test('低曝光 / 低环境照明 会被点名', () => {
+  const r = texts(diagnoseBrightness({ exposure: 1.0, envIntensity: 1.0, hasCustomEnv: true }))
   assert.match(r, /曝光/)
-  assert.match(r, /环境光强/)
+  assert.match(r, /环境照明/)
 })
 
 test('用内置房间时提示换环境预设或全景图', () => {
@@ -315,7 +323,7 @@ test('用内置房间时提示换环境预设或全景图', () => {
 
 test('参数都正常时给出「正常」结论且只有一条', () => {
   const r = diagnoseBrightness({
-    exposure: 1.4, envMapIntensity: 1.8, ambient: 0.25, key: 1.2,
+    exposure: 1.4, envIntensity: 1.8, ambient: 0.25, key: 1.2,
     metalness: 0, roughness: 0.5, hasCustomEnv: true, keyElevation: 45,
   })
   assert.equal(r.length, 1)
@@ -324,7 +332,7 @@ test('参数都正常时给出「正常」结论且只有一条', () => {
 
 test('主光接近顶光时建议开地面反射光；已开则不再啰嗦', () => {
   const base = {
-    exposure: 1.4, envMapIntensity: 1.8, ambient: 0.25, key: 1.2,
+    exposure: 1.4, envIntensity: 1.8, ambient: 0.25, key: 1.2,
     metalness: 0, roughness: 0.5, hasCustomEnv: true,
   }
   assert.match(texts(diagnoseBrightness({ ...base, keyElevation: 78 })), /地面反射光/)
@@ -342,7 +350,7 @@ test('空入参不抛异常且必有结论', () => {
 })
 
 test('warn 永远排在 tip 之前', () => {
-  const r = diagnoseBrightness({ metalness: 1, ambient: 1.5, exposure: 0.8, envMapIntensity: 0.5, key: 0.2, roughness: 0.95 })
+  const r = diagnoseBrightness({ metalness: 1, ambient: 1.5, exposure: 0.8, envIntensity: 0.5, key: 0.2, roughness: 0.95 })
   const firstTip = r.findIndex((x) => x.level === 'tip')
   const lastWarn = r.map((x) => x.level).lastIndexOf('warn')
   assert.ok(lastWarn < firstTip, '警告应排在建议之前')

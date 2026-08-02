@@ -113,7 +113,8 @@
     background:rgba(255,255,255,.03); }
   .bgroup h4 { font-size:13px; color:#f4e6c8; margin-bottom:10px; letter-spacing:.3px; }
   .bf { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:7px 0; font-size:12.5px; color:rgba(230,234,245,.85); }
-  .bf > .bf-en { flex:0 0 auto; width:15px; height:15px; accent-color:var(--gold); cursor:pointer; }
+  .bf input[type=checkbox] { accent-color:var(--gold); }   /* 取值勾选框原本是系统蓝，与左侧金色启用框不搭 */
+  .bf > .bf-en { flex:0 0 auto; width:15px; height:15px; cursor:pointer; }
   .bf .lb { flex:0 0 92px; color:rgba(230,234,245,.7); }
   .bf .ctl { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
   .bpick { flex:1 1 100%; margin-bottom:4px; }
@@ -124,6 +125,21 @@
   .bf .ctl .val { flex:0 0 34px; text-align:right; font-variant-numeric:tabular-nums; color:var(--gold); font-size:11.5px; }
   .bf .swi { flex:1; }
   .bf.dis { opacity:.42; }
+  /* 五光源：每盏灯一个可折叠小节，默认收起，否则 20 多行会把抽屉撑到全屏 */
+  .bsub { border-top:1px solid rgba(255,255,255,.07); margin-top:6px; padding-top:4px; }
+  .bsub:first-of-type { border-top:none; margin-top:0; }
+  .bsub > summary { cursor:pointer; font-size:12.5px; color:rgba(230,234,245,.78); padding:4px 0; list-style:none; }
+  .bsub > summary::-webkit-details-marker { display:none; }
+  .bsub > summary::before { content:'▸'; display:inline-block; width:1em; color:var(--gold); transition:transform .15s; }
+  .bsub[open] > summary::before { transform:rotate(90deg); }
+  .bsub > summary:hover { color:#f4e6c8; }
+  /* 方位：两根滑条各占一行，且整块另起一行 —— 挤在 .ctl 那一列里放不下，
+     滑条会顶出卡片外（min-width 默认是 min-content，不显式归零就压不回来）。 */
+  .bf.ang { flex-wrap:wrap; }
+  .bf.ang > .ctl { flex:1 1 100%; min-width:0; margin-left:26px; }   /* 26px＝复选框列宽，与上面各行左对齐 */
+  .bang { flex:1 1 100%; min-width:0; display:flex; align-items:center; gap:6px; }
+  .bang i { flex:0 0 42px; font-style:normal; font-size:11.5px; color:rgba(230,234,245,.55); }
+  .bang input[type=range] { flex:1 1 auto; min-width:0; accent-color:var(--gold); }
   .bfoot { display:flex; align-items:center; gap:14px; padding:12px clamp(16px,4vw,48px); flex-wrap:wrap;
     border-top:1px solid rgba(255,255,255,.08); }
   .bfoot .note { font-size:12px; color:rgba(230,234,245,.55); flex:1; min-width:180px; line-height:1.6; }
@@ -230,6 +246,10 @@ import {
   SORTS, FILTERS, ENV_PRESET_LABELS, envLabel,
   sortItems, filterItems, filterCounts, defaultDesc, normalizeView,
 } from './studio-sort.mjs'
+import {
+  LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, LIGHT_OPTIONAL,
+  anglesToPosition, positionToAngles,
+} from './light-rig.mjs'
 const $ = id => document.getElementById(id)
 let cards = [], items = [], panoCandidates = [], hasApi = false, canCreate = false
 let countSuffix = ''
@@ -255,6 +275,27 @@ const LIGHT_SCHEMES = {
   hall:   { label:'展厅光', ops:[['renderer.exposure',1.05],['environment.intensity',1.35]] },
   detail: { label:'细节光', ops:[['renderer.exposure',1.32],['environment.intensity',1.75]] },
 }
+/* 五光源批量：每盏灯一个可折叠小节，默认收起，免得抽屉被撑高。
+   方位角 / 仰角合成一个「方位」字段一起写 position —— 见 studio-batch 里的说明。 */
+const LIGHT_KEYS_ORDERED = ['ambient', ...LIGHT_KEYS]
+const LIGHT_RANGE = { ambient:[0,2,0.01], key:[0,3,0.05], fill:[0,2,0.05], rim:[0,2,0.05], bounce:[0,2,0.05] }
+const lightSub = k => {
+  const d = LIGHT_DEFAULTS[k]
+  const [min, max, step] = LIGHT_RANGE[k]
+  const ang = positionToAngles(d.position || [0, 0, 0])
+  const fields = [
+    // bounce 缺省即关闭，批量默认值必须跟着这个语义，不能顺手把所有展品的地面反射光打开
+    { id:`l-${k}-on`, path:`lights.${k}.enabled`, label:'启用', type:'bool', def:!LIGHT_OPTIONAL.has(k) },
+    { id:`l-${k}-i`, path:`lights.${k}.intensity`, label:'强度', type:'range', min, max, step, def:d.intensity },
+    { id:`l-${k}-c`, path:`lights.${k}.color`, label:'颜色', type:'color', def:d.color },
+  ]
+  if (k !== 'ambient') {
+    fields.push({ id:`l-${k}-pos`, path:`lights.${k}.position`, label:'方位',
+      type:'angle', az:ang.azimuth, el:ang.elevation, radius:ang.radius })
+  }
+  return { title:LIGHT_LABELS[k], fields }
+}
+
 const GROUPS = [
   { title:'环境 IBL / 背景', fields:[
     { id:'pano', path:'assets.panorama', label:'全景贴图', type:'text', picker:'pano', ph:'assets/panorama.jpg 或 https://…', def:'' },
@@ -262,6 +303,12 @@ const GROUPS = [
     { id:'ibl',  path:'environment.intensity', label:'环境光照', type:'range', min:0, max:3, step:0.05, def:1.15 },
     { id:'erot', path:'environment.rotationDeg', label:'环境旋转°', type:'range', min:-180, max:180, step:1, def:0 },
     { id:'bgvis',path:'environment.visibleBackground', label:'显示环境背景', type:'bool', def:false },
+  ]},
+  { title:'灯光（五光源）', subs:[
+    ...LIGHT_KEYS_ORDERED.map(lightSub),
+    { title:'整组', fields:[
+      { id:'lfollow', path:'lights.followCamera', label:'跟随相机', type:'bool', def:false },
+    ]},
   ]},
   { title:'落地阴影', fields:[
     { id:'shon',    path:'shadow.enabled',    label:'开启投影',  type:'bool', def:false },
@@ -277,6 +324,7 @@ const GROUPS = [
     { id:'b4', path:'ui.showFullscreenButton', label:'全屏按钮',     type:'bool', def:true },
     { id:'b5', path:'ui.showPresets',          label:'光源预设按钮', type:'bool', def:true },
     { id:'b6', path:'ui.showTitle',            label:'名称/副标题',  type:'switch', def:true, on:'显示', off:'隐藏' },
+    { id:'b7', path:'ui.audioCollapsed',       label:'语音播放器',   type:'switch', def:false, on:'默认收起', off:'默认展开' },
   ]},
   { title:'信息面板样式', fields:[
     { id:'pstyle', path:'panel.style',  label:'面板样式', type:'select', opts:PANEL_STYLES, def:'glass' },
@@ -295,7 +343,8 @@ const GROUPS = [
     { id:'hpulse', path:'hotspotStyle.pulse', label:'热点脉冲', type:'bool', def:true },
   ]},
 ]
-const FIELDS = {}; GROUPS.forEach(g => g.fields.forEach(f => FIELDS[f.id] = f))
+const groupFields = g => g.fields || g.subs.flatMap(sub => sub.fields)
+const FIELDS = {}; GROUPS.forEach(g => groupFields(g).forEach(f => FIELDS[f.id] = f))
 
 function setPath(o, path, val) {
   const ks = path.split('.'); let t = o
@@ -313,6 +362,7 @@ function enabledOps() {
     if (row?.dataset.modeOff === '1') continue
     if (!batchFieldApplies(f, mode, leader)) continue
     if (f.type === 'scheme') { (LIGHT_SCHEMES[$('v-' + f.id).value] || {}).ops.forEach(([p, v]) => ops.push({ path: p, value: v })); continue }
+    if (f.type === 'angle') { ops.push({ path: f.path, value: anglePosition(f) }); continue }
     let v
     if (f.type === 'bool' || f.type === 'switch') v = $('v-' + f.id).checked
     else if (f.type === 'range') v = Number($('v-' + f.id).value)
@@ -321,6 +371,13 @@ function enabledOps() {
     ops.push({ path: f.path, value: v })
   }
   return ops
+}
+
+/** 方位字段：两根滑条 → position 数组（半径沿用出厂值，方向光只看方向） */
+function anglePosition(f) {
+  const az = Number($('v-' + f.id + '-az').value)
+  const el = Number($('v-' + f.id + '-el').value)
+  return anglesToPosition(az, el, f.radius)
 }
 
 function syncBatchFieldModes() {
@@ -346,12 +403,20 @@ function syncBatchFieldModes() {
 /* ---------- 批量面板 UI ---------- */
 function buildBatchUI() {
   $('bwrap').innerHTML = GROUPS.map(g => `
-    <div class="bgroup"><h4>${g.title}</h4>${g.fields.map(fieldRow).join('')}</div>`).join('')
+    <div class="bgroup"><h4>${g.title}</h4>${g.subs
+      ? g.subs.map(sub => `<details class="bsub"><summary>${sub.title}</summary>${sub.fields.map(fieldRow).join('')}</details>`).join('')
+      : g.fields.map(fieldRow).join('')}</div>`).join('')
   // 交互：启用开关切换灰显；范围值实时显示
   for (const f of Object.values(FIELDS)) {
     const en = $('en-' + f.id), row = $('row-' + f.id)
     en.addEventListener('change', () => { syncBatchFieldModes(); row.classList.toggle('dis', !en.checked || row.dataset.modeOff === '1') })
     if (f.type === 'range') { const v = $('v-' + f.id), out = $('o-' + f.id); v.addEventListener('input', () => out.textContent = v.value) }
+    if (f.type === 'angle') for (const ax of ['az', 'el']) {
+      const v = $('v-' + f.id + '-' + ax), out = $('o-' + f.id + '-' + ax)
+      v.addEventListener('input', () => out.textContent = v.value)
+    }
+    // 勾了某盏灯的任一字段，就把它所在的小节展开，免得勾了却看不见
+    en.addEventListener('change', () => { if (en.checked) en.closest('details.bsub')?.setAttribute('open', '') })
   }
   $('v-lmode')?.addEventListener('change', syncBatchFieldModes)
   $('v-leader')?.addEventListener('change', syncBatchFieldModes)
@@ -388,8 +453,11 @@ function fieldRow(f) {
   else if (f.type === 'range') ctl = `<input type="range" id="v-${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}"><span class="val" id="o-${f.id}">${f.def}</span>`
   else if (f.type === 'select') ctl = `<select id="v-${f.id}">${f.opts.map(([v, l]) => `<option value="${v}" ${v === f.def ? 'selected' : ''}>${l}</option>`).join('')}</select>`
   else if (f.type === 'scheme') ctl = `<select id="v-${f.id}">${Object.entries(LIGHT_SCHEMES).map(([k, s]) => `<option value="${k}" ${k === f.def ? 'selected' : ''}>${s.label}</option>`).join('')}</select>`
+  else if (f.type === 'angle') ctl = `
+    <span class="bang"><i>方位角</i><input type="range" id="v-${f.id}-az" min="-180" max="180" step="1" value="${f.az}"><span class="val" id="o-${f.id}-az">${f.az}</span></span>
+    <span class="bang"><i>仰角</i><input type="range" id="v-${f.id}-el" min="-90" max="90" step="1" value="${f.el}"><span class="val" id="o-${f.id}-el">${f.el}</span></span>`
   const hint = f.hint ? `<span class="bf-hint" id="hint-${f.id}"></span>` : ''
-  return `<label class="bf dis" id="row-${f.id}"><input type="checkbox" class="bf-en" id="en-${f.id}"><span class="lb">${f.label}</span><span class="ctl">${ctl}</span>${hint}</label>`
+  return `<label class="bf dis${f.type === 'angle' ? ' ang' : ''}" id="row-${f.id}"><input type="checkbox" class="bf-en" id="en-${f.id}"><span class="lb">${f.label}</span><span class="ctl">${ctl}</span>${hint}</label>`
 }
 
 /* ---------- 应用（逐个展品独立写回，绝不相互覆盖） ---------- */

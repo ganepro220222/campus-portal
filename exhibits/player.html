@@ -62,23 +62,46 @@
   .preset { appearance:none; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.06);
     color:rgba(238,240,245,.82); font-size:12px; padding:5px 15px; border-radius:999px; cursor:pointer; transition:.2s; }
   .preset.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
-  .actions { display:flex; gap:10px; }
+  .actions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; }
   .btn { appearance:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;
     height:44px; min-width:64px; padding:0 14px; border:1px solid rgba(255,255,255,.16); border-radius:14px;
     background:rgba(255,255,255,.08); backdrop-filter:blur(10px); color:#eef0f5; font-size:13px; cursor:pointer; transition:.18s; }
   .btn:active { transform:scale(.96); }
   .btn.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
   .btn .ic { font-size:16px; line-height:1; }
+  /* 标签任何情况下都不许拆开：宽度不够时 320px 上「自动旋转」会被压成一字一行。
+     实测 4 个按钮横排需要约 466px 视口；不够就整块换行，而不是把字掰断。 */
+  .btn .tx { white-space:nowrap; }
+  .presets { flex-wrap:wrap; justify-content:center; }
+  .preset { white-space:nowrap; }
+  /* 窄屏改成「图标在上、文字在下」——手机工具条的通行做法：
+     既留住图标（去掉图标观感更差），又能让四个按钮在 320px 上排成一行。 */
+  @media (max-width: 400px) {
+    .actions { gap:8px; }
+    .btn { flex-direction:column; gap:3px; height:auto; min-width:0; padding:7px 10px; border-radius:12px; }
+    .btn .ic { font-size:17px; }
+    .btn .tx { font-size:11px; line-height:1.2; }
+  }
 
   /* 语音讲解 小型播放器（左上，标题下方） */
   .audio { position:absolute; left:16px; top:calc(env(safe-area-inset-top) + 88px); z-index:7;
     display:flex; align-items:center; gap:10px; width:min(300px,78vw); padding:8px 12px;
     background:rgba(20,22,32,.72); backdrop-filter:blur(12px);
-    border:1px solid rgba(255,255,255,.14); border-radius:14px; }
+    border:1px solid rgba(255,255,255,.14); border-radius:14px;
+    transition:width .22s ease, padding .22s ease; }
   .au-btn { flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:1px solid var(--gold);
     background:rgba(200,168,106,.18); color:#f4e6c8; font-size:12px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; transition:.18s; }
   .au-btn:active { transform:scale(.94); }
+  /* 折叠态：只剩一颗圆钮。手机竖屏这条 300px 的横条正压在器物上半身，
+     收起来能把画面还给模型；点圆钮＝展开（不直接播放，避免在安静环境里误触出声）。 */
+  .audio.mini { width:auto; padding:5px; gap:0; }
+  .audio.mini .au-mid, .audio.mini .au-collapse { display:none; }
+  .audio.mini .au-btn { width:38px; height:38px; font-size:14px; }
+  .audio.mini.playing .au-btn { box-shadow:0 0 0 3px rgba(200,168,106,.28); }
+  .au-collapse { flex:0 0 auto; width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.16);
+    background:transparent; color:rgba(238,240,245,.7); font-size:11px; line-height:1; cursor:pointer; transition:.18s; }
+  .au-collapse:hover { background:rgba(255,255,255,.1); color:#f4e6c8; }
   .au-mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
   .au-top { display:flex; align-items:center; gap:8px; font-size:11.5px; color:rgba(238,240,245,.82); }
   .au-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -170,6 +193,8 @@
   .ed-preset-actions, .ed-row-actions { flex:0 0 auto; white-space:nowrap; }
   .editor .ed-row > select.ed-in { flex:0 1 auto !important; min-width:0 !important; max-width:64%; text-overflow:ellipsis; }
   .ed-row input[type=range]{ flex:1; min-width:0; accent-color:var(--gold); }
+  /* 勾选框不给 accent-color 就是系统蓝，在这套金/深色面板里格外扎眼 */
+  .editor input[type=checkbox] { accent-color:var(--gold); }
   .ed-row input[type=color]{ width:30px; height:22px; border:none; background:none; padding:0; cursor:pointer; flex:0 0 auto; }
   /* 滑条 + 数字输入 联动组件 */
   .ed-slider { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
@@ -179,6 +204,7 @@
   .ed-num::-webkit-outer-spin-button, .ed-num::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
   .ed-num:focus { outline:none; border-color:var(--gold); }
   .ed-note { color:#8a90a6; line-height:1.6; margin:6px 0; }
+  .ed-row.ed-dis { opacity:.45; }   /* 未启用覆盖时把那两行压下去，别让人以为能调 */
   .ed-sec { border:1px solid rgba(255,255,255,.08); border-radius:8px; margin:8px 0; padding:2px 10px; }
   .ed-sec summary { cursor:pointer; color:var(--gold); font-size:13px; font-weight:600; padding:8px 0; letter-spacing:.5px; list-style:none; }
   .ed-sec summary::-webkit-details-marker { display:none; }
@@ -187,7 +213,10 @@
   .ed-in { width:100%; margin:5px 0; padding:7px 9px; border:1px solid rgba(255,255,255,.14); border-radius:7px;
     background:rgba(255,255,255,.05); color:#eef0f5; font-size:12px; font-family:inherit; }
   .editor select.ed-in { color:#eef0f5; }
-  .editor select option { background:#14161f; color:#eef0f5; }   /* 修复下拉项浅底浅字看不清 */
+  /* 原生下拉弹窗是系统浅底：option 显式配色兜底，color-scheme 让弹窗本体与其滚动条
+     也转深色（「面板方位」有 10 项会出滚动条）。与 studio.html 的同名修复保持一致。 */
+  select { color-scheme:dark; }
+  select option { background:#14161f; color:#eef0f5; }
   textarea.ed-in { resize:vertical; min-height:76px; line-height:1.6; }
   .ed-file { display:block; text-align:center; margin:5px 0; padding:8px; border:1px dashed rgba(255,255,255,.22);
     border-radius:7px; color:#cfd3e0; cursor:pointer; font-size:12px; }
@@ -227,6 +256,7 @@
       </div>
       <div class="au-bar" id="au-bar"><i id="au-prog"></i></div>
     </div>
+    <button class="au-collapse" id="au-collapse" aria-label="收起语音讲解播放器" title="收起">▾</button>
   </div>
   <audio id="au-el" preload="none"></audio>
 
@@ -311,7 +341,7 @@ const initialCam = new THREE.Vector3()
 const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
 const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
-let auTracks = [], auIndex = -1     // 语音讲解播放器状态
+let auTracks = [], auIndex = -1, auPlaying = false   // 语音讲解播放器状态
 let hotspotIdBootAudit = null, hotspotIdBootChanges = []   // editor：加载时 ID 诊断（boot 前 audit）
 
 const t = o => (o && (o[lang] || o.zh || o.en)) || {}
@@ -1098,6 +1128,7 @@ function buildAudio(){
     sel.setAttribute('hidden',''); name.removeAttribute('hidden'); name.textContent = auTracks[0].label || '语音讲解'
   }
   auIndex = -1; selectTrack(0, false)
+  setAudioMini(audioCollapsedDefault())
 }
 function selectTrack(i, play){
   const el = $('au-el'), tr = auTracks[i]; if(!tr) return
@@ -1108,14 +1139,44 @@ function selectTrack(i, play){
 }
 function playTrackById(id){
   const i = auTracks.findIndex(a=>a.id===id); if(i<0) return
+  setAudioMini(false)   // 热点触发播放＝用户此刻正在听，进度与切换都得看得见
   if (i===auIndex && !$('au-el').paused) return
   selectTrack(i, true)
 }
-function auIcon(p){ $('au-play').textContent = p ? '❚❚' : '▶' }
+/* 折叠态图标不能用 ▶ —— 折叠时点它是「展开」而不是「播放」，用 ▶ 就是在骗人。
+   用 ♪ 表示「这里有语音」；正在播放时给圆钮加一圈描金环，收起也看得出状态。 */
+// 播放状态由 onplay/onpause 唯一维护；不带参调用＝只按当前状态重绘（折叠切换时用）。
+// 别从 currentTime 反推：刚开始播的那一瞬 currentTime 还是 0，描金环会闪一下。
+function auIcon(p){
+  if (typeof p === 'boolean') auPlaying = p
+  const mini = $('audio').classList.contains('mini')
+  $('audio').classList.toggle('playing', auPlaying)
+  const btn = $('au-play')
+  btn.textContent = mini ? '♪' : (auPlaying ? '❚❚' : '▶')
+  btn.setAttribute('aria-label', mini
+    ? (auPlaying ? '展开语音讲解播放器（正在播放）' : '展开语音讲解播放器')
+    : '播放/暂停语音讲解（空格键）')
+}
+/** 默认折叠与否：auto＝手机折叠、桌面展开（两端的空间约束本来就不同） */
+function audioCollapsedDefault(){
+  const v = cfg.ui?.audioCollapsed
+  if (v === true || v === false) return v
+  return matchMedia('(pointer:coarse)').matches || innerWidth < 768
+}
+function setAudioMini(mini){
+  $('audio').classList.toggle('mini', !!mini)
+  auIcon()
+}
 function auFmt(s){ if(!isFinite(s)||s<0) return '0:00'; const m=Math.floor(s/60), ss=Math.floor(s%60); return m+':'+String(ss).padStart(2,'0') }
 function wireAudio(){
   const el = $('au-el')
-  $('au-play').onclick = () => { if(!auTracks.length) return; if(auIndex<0) selectTrack(0,false); el.paused ? el.play().catch(()=>{}) : el.pause() }
+  $('au-play').onclick = () => {
+    if(!auTracks.length) return
+    if ($('audio').classList.contains('mini')) { setAudioMini(false); return }   // 折叠态：点＝展开
+    if(auIndex<0) selectTrack(0,false)
+    el.paused ? el.play().catch(()=>{}) : el.pause()
+  }
+  $('au-collapse').onclick = () => setAudioMini(true)
   el.onplay = ()=>auIcon(true); el.onpause = ()=>auIcon(false); el.onended = ()=>{ auIcon(false); $('au-prog').style.width='0%' }
   el.ontimeupdate = ()=>{ const p = el.duration ? el.currentTime/el.duration*100 : 0; $('au-prog').style.width=p+'%'; $('au-time').textContent=auFmt(el.currentTime) }
   $('au-bar').onclick = e => { if(!el.duration) return; const r=$('au-bar').getBoundingClientRect(); el.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*el.duration }
@@ -1171,7 +1232,7 @@ function buildHUD() {
 function applyPreset(p) {
   activePreset = p.id
   renderer.toneMappingExposure = num(p.exposure, renderer.toneMappingExposure)
-  if (typeof p.envMapIntensity === 'number') { cfg.materials = cfg.materials||{}; cfg.materials.global = Object.assign(cfg.materials.global||{}, {envMapIntensity:p.envMapIntensity}); applyMaterial() }
+  // 旧预设里可能带 envMapIntensity —— 该值在本架构下不生效（见「材质」段说明），直接忽略
   if (p.background) scene.background = cfg.environment?.visibleBackground ? scene.background : new THREE.Color(p.background)
   if (p.environment) {   // 环境预设 / 环境光照 / 环境旋转（不动 mode 与全景图，免得把展品的全景顶掉）
     cfg.environment = Object.assign(cfg.environment || {}, p.environment)
@@ -1361,6 +1422,7 @@ function renderEditor() {
     return `<div class="ed-hs-item">${head}${body.join('')}</div>`
   }
   const names = model ? materialNames() : []
+  if (!names.includes(ovSelName)) ovSelName = names[0] || ''   // 换模型后旧材质名可能已不存在
   const auOpt = (sel)=>`<option value="">无</option>`+(cfg.audio||[]).map(a=>`<option value="${a.id}" ${sel===a.id?'selected':''}>${(a.label||a.id).replace(/</g,'&lt;')}</option>`).join('')
   const hs = cfg.hotspots.map((h,i)=>{
     const x=h.i18n?.zh||{}
@@ -1437,14 +1499,18 @@ function renderEditor() {
 
   <details class="ed-sec"><summary>材质</summary>
     ${rng('g.exposure','曝光',0.4,2,0.01, num(cfg.renderer?.exposure, 1.05))}
-    ${rng('g.env','环境光强',0,3,0.05, num(g.envMapIntensity,1.35))}
     ${rng('g.metal','金属度',0,1,0.01, num(g.metalness,0))}
     ${rng('g.rough','粗糙度',0,1,0.01, num(g.roughness,0.5))}
-    <div class="ed-note">按材质名覆盖（分组）：</div>
-    <select class="ed-in" id="ed-matsel">${names.length?names.map(n=>`<option>${n}</option>`).join(''):'<option value="">（模型无命名材质）</option>'}</select>
-    ${rng('ov.metal','· 金属度',0,1,0.01,0.5)}
-    ${rng('ov.rough','· 粗糙度',0,1,0.01,0.3)}
-    ${rng('ov.env','· 环境光强',0,3,0.05,1.5)}
+    <div class="ed-note">要调环境亮度请用「环境 IBL → 环境光照」。这里不再提供材质级的环境光强：
+      本播放器的 IBL 来自场景环境，three.js 会用场景值覆写材质上的同名参数，那个滑条调了不会有任何变化。</div>
+    <div class="ed-note">按材质名覆盖（分组）：<span id="ed-ov-count">${overrideCountHTML()}</span></div>
+    <div class="ed-hs-item">
+      <div class="ed-row"><select class="ed-in" id="ed-matsel" style="margin:0">${names.length?names.map(n=>`<option${n===ovSelName?' selected':''}>${esc(n)}</option>`).join(''):'<option value="">（模型无命名材质）</option>'}</select>
+        <span class="ed-row-actions"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" id="ed-ov-on"> 启用覆盖</label></span></div>
+      ${rng('ov.metal','· 金属度',0,1,0.01, num(g.metalness,0))}
+      ${rng('ov.rough','· 粗糙度',0,1,0.01, num(g.roughness,0.5))}
+      <div class="ed-note" id="ed-ov-note"></div>
+    </div>
   </details>
 
   <details class="ed-sec"><summary>灯光（五光源）</summary>
@@ -1538,6 +1604,13 @@ function renderEditor() {
 
   <details class="ed-sec"><summary>语音讲解</summary>
     <div class="ed-note">音频放同目录/指定目录；多条自动出现下拉切换，可在热点里绑定自动播放。</div>
+    <div class="ed-row"><span class="ed-label">播放器默认</span>
+      <select class="ed-in" id="ed-au-collapsed" style="width:auto;margin:0;flex:0 1 auto">
+        <option value="auto" ${cfg.ui?.audioCollapsed === true || cfg.ui?.audioCollapsed === false ? '' : 'selected'}>自动（手机收起 / 桌面展开）</option>
+        <option value="open" ${cfg.ui?.audioCollapsed === false ? 'selected' : ''}>始终展开</option>
+        <option value="mini" ${cfg.ui?.audioCollapsed === true ? 'selected' : ''}>始终收起</option>
+      </select></div>
+    <div class="ed-note">收起后只剩一颗圆钮，点它展开；热点绑定的语音自动播放时会自动展开。手机竖屏下展开的播放器会压住器物上半身，默认收起观感更好。</div>
     ${audioList}
     <input class="ed-in" id="ed-au-url" placeholder="音频 URL（.mp3/.m4a/.wav）">
     <button class="ed-btn" id="ed-au-add">新增语音</button>
@@ -1602,7 +1675,6 @@ function wireEditor() {
       case 'sh.soft': setShadow('softness', v); break
       case 'sh.offset': setShadow('groundOffset', v); break
       case 'g.exposure': applyExposureToCfg(cfg, v); renderer.toneMappingExposure = v; break
-      case 'g.env': g.envMapIntensity=v; applyMaterial(); break
       case 'g.metal': g.metalness=v; applyMaterial(); break
       case 'g.rough': g.roughness=v; applyMaterial(); break
       case 'm.scale': m.scale=v; normalize(model); break
@@ -1619,7 +1691,8 @@ function wireEditor() {
       case 'hs.size': cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.size=v; buildHotspots(); break
       case 'leader.gap': cfg.panel=cfg.panel||{}; cfg.panel.leaderGap=v; clearLeaderParams(); break
       case 'leader.tail': cfg.panel=cfg.panel||{}; cfg.panel.leaderTail=v; clearLeaderParams(); break
-      case 'ov.metal': case 'ov.rough': case 'ov.env': upsertOverride(); break
+      case 'ov.metal': upsertOverride('metalness'); break
+      case 'ov.rough': upsertOverride('roughness'); break
     }
   }
   // 滑条 → 联动数字框
@@ -1711,10 +1784,19 @@ function wireEditor() {
   el('ed-cam-save').onclick=()=>{ const s=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target))
     c.distance=+s.radius.toFixed(3); c.phi=+s.phi.toFixed(3); c.theta=+s.theta.toFixed(3); initialCam.copy(camera.position); flash('已保存当前视角') }
   el('ed-pano-load').onclick=()=>{ const u=el('ed-pano').value.trim(); if(!u) return; cfg.assets=cfg.assets||{}; cfg.assets.panorama=u; cfg.environment=cfg.environment||{}; cfg.environment.mode='panorama'; panoramaIBL(asset(u)); renderEditor(); flash('已加载全景，记得点保存') }
-  el('ed-matsel')?.addEventListener('change', loadOverride); loadOverride()
+  el('ed-au-collapsed')?.addEventListener('change', e => {
+    const v = e.target.value
+    cfg.ui = cfg.ui || {}
+    if (v === 'auto') delete cfg.ui.audioCollapsed
+    else cfg.ui.audioCollapsed = (v === 'mini')
+    setAudioMini(audioCollapsedDefault())
+  })
+  el('ed-matsel')?.addEventListener('change', loadOverride)
+  el('ed-ov-on')?.addEventListener('change', toggleOverride)
+  loadOverride()
   el('ed-pr-add').onclick=()=>{ const shown=cfg.presets.filter(pp=>pp.showAsButton!==false).length
     cfg.presets.push({ id:'p'+(cfg.presets.length+1), label:{zh:'预设'+(cfg.presets.length+1),en:'Preset'+(cfg.presets.length+1)},
-      exposure:+renderer.toneMappingExposure.toFixed(2), envMapIntensity:num(g.envMapIntensity,1.35), background:cfg.renderer?.background||'#0f1118',
+      exposure:+renderer.toneMappingExposure.toFixed(2), background:cfg.renderer?.background||'#0f1118',
       lights: JSON.parse(JSON.stringify(cfg.lights||{})),
       environment: { preset: cfg.environment?.preset, intensity: num(cfg.environment?.intensity,1), rotationDeg: num(cfg.environment?.rotationDeg,0) },
       shadow: resolveShadow(cfg),
@@ -1752,19 +1834,101 @@ function wireEditor() {
     const h=cfg.hotspots[+inp.getAttribute(`data-hs-${ax}`)]; if(!h) return
     h.position=(h.position||[0,0,0]).slice(); h.position[ai]=parseFloat(inp.value)||0; buildHotspots() }))
 }
-function loadOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
-  const o=(cfg.materials.overrides||[]).find(x=>x.namePattern===sel.value)||{}
-  const set=(k,v)=>{ if(typeof v!=='number') return
-    const i=document.querySelector(`input[type=range][data-k="${k}"]`); if(i) i.value=v
-    const n=document.querySelector(`.ed-num[data-num="${k}"]`); if(n) n.value=v }
-  set('ov.metal',o.metalness); set('ov.rough',o.roughness); set('ov.env',o.envMapIntensity) }
-function upsertOverride(){ const sel=document.getElementById('ed-matsel'); if(!sel||!sel.value) return
-  let o=cfg.materials.overrides.find(x=>x.namePattern===sel.value)
+/* ---------- 按材质名覆盖 ----------
+   规则只有一条：编辑器只写用户真正动过的那一项。
+   老实现无条件写入 metalness / roughness / envMapIntensity 三项，且滑条初值是硬编码的
+   0.5 / 0.3 / 1.5 —— 只拖一根滑条就会把另外两项一并按硬编码值写死，画面「突然跳一下」，
+   之后上方的全局值对这个材质再也不起作用。 */
+const OV_FIELDS = { 'ov.metal': 'metalness', 'ov.rough': 'roughness' }
+/* renderEditor 会整段重建面板（拖热点、勾选覆盖等都会触发），<select> 是新元素、默认落回第一项。
+   选中的材质名必须记在 DOM 之外，否则「给第 2 个材质开覆盖」会当场跳回第 1 个材质，
+   用户以为没生效、再点一次，就在错误的材质上凭空多出一条覆盖。 */
+let ovSelName = ''
+function findOverride(name){ return (cfg.materials?.overrides || []).find(x => x.namePattern === name) }
+/** 除自己以外、还会按子串命中该材质的覆盖条目（与 applyMaterial 的匹配规则一致） */
+function matchingPatterns(name){
+  const low = String(name || '').toLowerCase()
+  return (cfg.materials?.overrides || [])
+    .filter(x => x.namePattern && x.namePattern !== name && low.includes(String(x.namePattern).toLowerCase()))
+    .map(x => x.namePattern)
+}
+function overrideCountHTML(){
+  const n = (cfg.materials?.overrides || []).length
+  return n ? `<b style="color:#e0b070">已有 ${n} 个材质被覆盖，上面的全局金属度 / 粗糙度对它们不生效。</b>` : ''
+}
+/** 该材质此刻的真实取值（先全局、再已有覆盖），用于回填滑条，避免一勾就跳变 */
+function materialCurrent(name){
+  const g = cfg.materials?.global || {}
+  const out = { metalness: num(g.metalness, 0), roughness: num(g.roughness, 0.5) }
+  if (model) model.traverse(o => {
+    if (!o.isMesh) return
+    ;[].concat(o.material).forEach(m => {
+      if (m && m.name === name && 'roughness' in m) { out.metalness = m.metalness; out.roughness = m.roughness }
+    })
+  })
+  return out
+}
+function setOvUI(k, v){
+  const i=document.querySelector(`input[type=range][data-k="${k}"]`); if(i) i.value=v
+  const n=document.querySelector(`.ed-num[data-num="${k}"]`); if(n) n.value=v
+}
+function syncOverrideEnabled(){
+  const sel=document.getElementById('ed-matsel'), on=document.getElementById('ed-ov-on')
+  const note=document.getElementById('ed-ov-note'); if(!sel||!on) return
+  const enabled = on.checked && !!sel.value
+  Object.keys(OV_FIELDS).forEach(k=>{
+    document.querySelectorAll(`[data-k="${k}"],[data-num="${k}"]`).forEach(el=>{ el.disabled=!enabled; el.closest('.ed-row')?.classList.toggle('ed-dis', !enabled) })
+  })
+  // 没有自己的条目，但被别人的 namePattern 按子串「分组」命中时也得说清楚，
+  // 否则会写着「跟随全局」、实际却在跟着另一条覆盖走（applyMaterial 用的是 includes）
+  const byGroup = !enabled && sel.value ? matchingPatterns(sel.value).join('、') : ''
+  if(note) note.textContent = !sel.value ? ''
+    : enabled ? `「${sel.value}」使用下面的值，上方全局金属度 / 粗糙度对它不生效。`
+    : byGroup ? `「${sel.value}」被覆盖条目「${byGroup}」按名称分组命中，跟着那条走。勾选可为它单独建一条。`
+              : `「${sel.value}」跟随上方全局设置。勾选后才会单独覆盖。`
+}
+function loadOverride(){
+  const sel=document.getElementById('ed-matsel'), on=document.getElementById('ed-ov-on')
+  if(!sel||!on) return
+  ovSelName = sel.value
+  const o = sel.value ? findOverride(sel.value) : null
+  on.checked = !!o
+  // 没有覆盖时回填该材质的真实现值——这样勾上「启用覆盖」画面不会跳
+  const cur = sel.value ? materialCurrent(sel.value) : { metalness: 0, roughness: 0.5 }
+  setOvUI('ov.metal', typeof o?.metalness === 'number' ? o.metalness : cur.metalness)
+  setOvUI('ov.rough', typeof o?.roughness === 'number' ? o.roughness : cur.roughness)
+  syncOverrideEnabled()
+}
+/** 只写 field 这一项；其余保持原样（没设过就不写） */
+function upsertOverride(field){
+  const sel=document.getElementById('ed-matsel'), on=document.getElementById('ed-ov-on')
+  if(!sel||!sel.value||!on||!on.checked) return
+  cfg.materials = cfg.materials || {}; cfg.materials.overrides = cfg.materials.overrides || []
+  let o=findOverride(sel.value)
   if(!o){ o={namePattern:sel.value}; cfg.materials.overrides.push(o) }
-  o.metalness=parseFloat(document.querySelector('[data-k="ov.metal"]').value)
-  o.roughness=parseFloat(document.querySelector('[data-k="ov.rough"]').value)
-  o.envMapIntensity=parseFloat(document.querySelector('[data-k="ov.env"]').value)
-  applyMaterial() }
+  const k = Object.keys(OV_FIELDS).find(x => OV_FIELDS[x] === field)
+  const el = k && document.querySelector(`[data-k="${k}"]`)
+  if (el) o[field] = parseFloat(el.value)
+  applyMaterial()
+}
+/** 勾选＝以当前真实值建立覆盖（不改观感）；取消＝删掉这条，回到全局 */
+function toggleOverride(){
+  const sel=document.getElementById('ed-matsel'), on=document.getElementById('ed-ov-on')
+  if(!sel||!sel.value||!on) return
+  cfg.materials = cfg.materials || {}; cfg.materials.overrides = cfg.materials.overrides || []
+  if(on.checked){
+    if(!findOverride(sel.value)){
+      const cur = materialCurrent(sel.value)
+      cfg.materials.overrides.push({ namePattern: sel.value, metalness: cur.metalness, roughness: cur.roughness })
+      setOvUI('ov.metal', cur.metalness); setOvUI('ov.rough', cur.roughness)
+    }
+  } else {
+    cfg.materials.overrides = cfg.materials.overrides.filter(x => x.namePattern !== sel.value)
+  }
+  // 只把「已有 N 个材质被覆盖」这句就地更新掉；整段重绘会顶掉滚动位置与焦点，不值当
+  const cnt = document.getElementById('ed-ov-count'); if (cnt) cnt.innerHTML = overrideCountHTML()
+  syncOverrideEnabled(); applyMaterial()
+}
 function buildHUD_refresh(){ $('presets').innerHTML=''; $('actions').innerHTML=''; buildHUD(); renderText() }
 function downloadJSON(){
   const name = configExportFilename(EX)
@@ -1906,6 +2070,14 @@ async function exportViewerOnly(){
 /* TEST-HOOKS-START — build-viewer 剔除，仅 edit 模式 E2E */
 if (editMode) {
   window.__SY_TEST__ = {
+    // 材质覆盖用例要断言「只写动过的那一项」，必须能读到 config 原样
+    materialsConfig: () => JSON.parse(JSON.stringify(cfg.materials || {})),
+    materialLive: () => { const out = []
+      model && model.traverse(o => { if (!o.isMesh) return
+        ;[].concat(o.material).forEach(m => { if (m && 'roughness' in m) out.push({ name: m.name, metalness: m.metalness, roughness: m.roughness }) }) })
+      return out },
+    // 「按子串分组命中」的提示用例：手工构造一条 namePattern 短于材质名的覆盖
+    setOverridesForTest: list => { cfg.materials = cfg.materials || {}; cfg.materials.overrides = list; applyMaterial() },
     dragState: () => ({ kneeDrag: kneeDrag != null, panelDrag: panelDrag != null }),
     openHotspotByIndex: (i = 0) => {
       const item = hotspots[i]

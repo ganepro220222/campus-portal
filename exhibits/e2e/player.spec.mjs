@@ -469,3 +469,111 @@ test.describe('viewer rotate button', () => {
     await vpage.close()
   })
 })
+
+test.describe('语音播放器 折叠', () => {
+  const st = () => page.evaluate(() => {
+    const a = document.getElementById('audio'), r = a.getBoundingClientRect()
+    return {
+      mini: a.classList.contains('mini'),
+      playing: a.classList.contains('playing'),
+      w: Math.round(r.width),
+      icon: document.getElementById('au-play').textContent,
+      aria: document.getElementById('au-play').getAttribute('aria-label'),
+      midVisible: getComputedStyle(document.querySelector('.au-mid')).display !== 'none',
+    }
+  })
+
+  test('桌面默认展开，手机默认收起（auto）', async () => {
+    await reloadPlayer(page, { viewport: { width: 1100, height: 800 } })
+    await page.waitForSelector('#audio:not([hidden])')
+    expect((await st()).mini).toBe(false)
+
+    await reloadPlayer(page, { viewport: { width: 390, height: 800 } })
+    await page.waitForSelector('#audio:not([hidden])')
+    const m = await st()
+    expect(m.mini).toBe(true)
+    expect(m.midVisible).toBe(false)
+    expect(m.w).toBeLessThan(70)          // 只剩一颗圆钮，不再压住器物
+  })
+
+  test('ui.audioCollapsed 显式取值覆盖 auto', async () => {
+    await reloadPlayer(page, { viewport: { width: 390, height: 800 }, ui: { audioCollapsed: false } })
+    await page.waitForSelector('#audio:not([hidden])')
+    expect((await st()).mini).toBe(false)          // 手机上也强制展开
+
+    await reloadPlayer(page, { viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: true } })
+    await page.waitForSelector('#audio:not([hidden])')
+    expect((await st()).mini).toBe(true)           // 桌面上也强制收起
+  })
+
+  test('折叠态点圆钮＝展开，不直接播放（图标也不能是 ▶）', async () => {
+    await reloadPlayer(page, { viewport: { width: 390, height: 800 } })
+    await page.waitForSelector('#audio:not([hidden])')
+    const before = await st()
+    expect(before.mini).toBe(true)
+    expect(before.icon).not.toBe('▶')             // 折叠时点它不是播放，就不能画成播放
+    expect(before.aria).toContain('展开')
+
+    await page.locator('#au-play').click()
+    expect((await st()).mini).toBe(false)
+    expect(await page.evaluate(() => document.getElementById('au-el').paused)).toBe(true)  // 没有偷偷出声
+  })
+
+  test('展开态可收起；播放中收起仍能看出「正在播放」', async () => {
+    await reloadPlayer(page, { viewport: { width: 1100, height: 800 } })
+    await page.waitForSelector('#audio:not([hidden])')
+    await page.evaluate(() => { const el = document.getElementById('au-el'); el.dispatchEvent(new Event('play')) })
+    expect((await st()).icon).toBe('❚❚')
+    await page.locator('#au-collapse').click()
+    const m = await st()
+    expect(m.mini).toBe(true)
+    expect(m.playing).toBe(true)                  // 圆钮上有描金环
+    expect(m.aria).toContain('正在播放')
+  })
+
+  test('热点绑定的语音自动播放时，播放器自动展开', async () => {
+    const hs = [{ id: 'h1', position: [0, 0.2, 0.6], audio: 'a1', i18n: { zh: { title: '甲', body: '乙' } } }]
+    await reloadPlayer(page, { viewport: { width: 390, height: 800 }, hotspots: hs })
+    await page.waitForSelector('#audio:not([hidden])')
+    expect((await st()).mini).toBe(true)
+    await openFirstHotspot(page)
+    await expect.poll(async () => (await st()).mini).toBe(false)
+  })
+})
+
+/* 手机窄屏 HUD：320px 上「自动旋转」四个字曾被压成一字一行，图标与文字还各占一行。
+   用 Range.getClientRects() 数真实行数 —— 只看元素高度分不清「两行文字」和「图标在上文字在下」。 */
+test.describe('HUD 按钮 窄屏排版', () => {
+  const btnLines = () => page.evaluate(() => {
+    const lines = el => { const r = document.createRange(); r.selectNodeContents(el); return r.getClientRects().length }
+    return [...document.querySelectorAll('#actions .btn, #presets .preset')].map(el => {
+      const tx = el.querySelector('.tx') || el
+      const b = el.getBoundingClientRect()
+      return { t: tx.textContent.trim(), lines: lines(tx), w: Math.round(b.width), right: b.right }
+    })
+  })
+
+  for (const width of [320, 360, 414]) {
+    test(`${width}px：按钮文字一律不折行，且不超出视口`, async () => {
+      await reloadPlayer(page, { viewport: { width, height: 780 } })
+      await page.waitForSelector('#actions .btn')
+      const btns = await btnLines()
+      expect(btns.length).toBeGreaterThan(0)
+      for (const b of btns) {
+        expect(b.lines, `「${b.t}」被折成 ${b.lines} 行`).toBe(1)
+        expect(b.right, `「${b.t}」超出视口右边`).toBeLessThanOrEqual(width + 1)
+      }
+      // 整条工具栏不许把页面撑出横向滚动条
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+    })
+  }
+
+  test('≤400px 改为「图标在上、文字在下」；宽屏仍是横排', async () => {
+    const dir = () => page.evaluate(() => getComputedStyle(document.querySelector('#actions .btn')).flexDirection)
+    await reloadPlayer(page, { viewport: { width: 360, height: 780 } })
+    await page.waitForSelector('#actions .btn')
+    expect(await dir()).toBe('column')
+    await page.setViewportSize({ width: 414, height: 780 })
+    expect(await dir()).toBe('row')
+  })
+})

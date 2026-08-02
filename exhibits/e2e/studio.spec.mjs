@@ -392,6 +392,31 @@ test.describe('studio.html', () => {
     await expect(page.locator('#hint-bgvis')).toHaveClass(/warn/)
   })
 
+  test('仅改环境预设：全景展品提示 preset 当前不生效', async ({ page }) => {
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-331', title: '全景', hotspots: 0, hasPano: true, usesPanorama: true, envMode: 'panorama', envPreset: 'room', panorama: 'assets/p.jpg', hasModel: true, mtime: 100 },
+    ])
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-331'])
+    await page.locator('#en-epreset').check()
+    await expect(page.locator('#hint-epreset')).toHaveClass(/warn/)
+    await expect(page.locator('#hint-epreset')).toContainText('不会生效')
+  })
+
+  test('清除全景+环境预设：preset 提示不误报', async ({ page }) => {
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-332', title: '全景', hotspots: 0, hasPano: true, usesPanorama: true, envMode: 'panorama', envPreset: 'room', panorama: 'assets/p.jpg', hasModel: true, mtime: 100 },
+    ])
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-332'])
+    await page.locator('#en-epreset').check()
+    await page.selectOption('#v-epreset', 'gallery')
+    await expect(page.locator('#hint-epreset')).toHaveClass(/warn/)
+    await page.locator('#en-panoClear').check()
+    await expect(page.locator('#hint-epreset')).not.toHaveClass(/warn/)
+    await expect(page.locator('#hint-epreset')).toHaveText('')
+  })
+
   test('连续批量：room→gallery 保存后第二次 bgvis 不误报', async ({ page }) => {
     let exhibit = {
       dir: 'craft-301', title: '测试器', hotspots: 0, hasPano: false, usesPanorama: false,

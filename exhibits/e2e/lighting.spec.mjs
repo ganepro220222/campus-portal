@@ -166,6 +166,12 @@ test.describe('地面反射光（第五盏）', () => {
 })
 
 test.describe('落地阴影', () => {
+  const openShadowSection = () => page.evaluate(() => {
+    for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+      if ((d.querySelector('summary')?.textContent || '').includes('落地阴影')) d.open = true
+    }
+  })
+
   test('默认关闭：不建地面、不开投影，旧展品零变化', async () => {
     await reloadPlayer(page, {})
     const st = await lightState()
@@ -206,16 +212,44 @@ test.describe('落地阴影', () => {
     expect((await lightState()).shadow.plate).toBe(true)
   })
 
-  test('浓度/柔化/地面高低三个滑条即时生效', async () => {
+  test('浓度/柔化/承影面高低三个滑条即时生效', async () => {
     const base = (await lightState()).shadow.modelMinY
     await setRange('sh.opacity', 0.75)
     await setRange('sh.soft', 7)
-    await setRange('sh.offset', -0.12)
+    await setRange('sh.offset', -0.06)
     const st = await lightState()
     expect(st.shadow.contactOpacity).toBeCloseTo(0.75 * 0.85, 2)
     expect(st.shadow.radius).toBeCloseTo(7, 2)
-    expect(st.shadow.groundY).toBeCloseTo(base - 0.12, 2)
-    expect(st.shadow.contactY).toBeCloseTo(base - 0.12 + 0.002, 3)
+    expect(st.shadow.groundY).toBeCloseTo(base - 0.06, 2)
+    expect(st.shadow.contactY).toBeCloseTo(base - 0.06 + 0.002, 3)
+    expect(st.shadow.modelMinY).toBeCloseTo(base, 5)   // 动的是承影面，器物不许跟着走
+  })
+
+  /* 这根滑条只挪承影面。量程收窄前是 ±0.3，能把承影面推到离器物底面 0.3 远，
+     器物看着就像浮在空中——被当成 bug 报过。要挪器物请用 模型摆放 → 位移。 */
+  test('承影面高低：量程收在 ±0.08，接触斑始终贴着承影面', async () => {
+    const slider = page.locator('#editor input[type=range][data-k="sh.offset"]')
+    await expect(slider).toHaveAttribute('min', '-0.08')
+    await expect(slider).toHaveAttribute('max', '0.08')
+    const base = (await lightState()).shadow.modelMinY
+    for (const v of [-0.08, 0, 0.08]) {
+      await setRange('sh.offset', v)
+      const st = await lightState()
+      expect(st.shadow.modelMinY).toBeCloseTo(base, 5)
+      expect(st.shadow.groundY).toBeCloseTo(base + v, 3)
+      expect(st.shadow.contactY - st.shadow.groundY).toBeCloseTo(0.002, 3)   // 接触斑不许脱离承影面
+    }
+  })
+
+  test('承影面高低：老配置里的大数值不会被滑条截断', async () => {
+    await reloadPlayer(page, { shadow: { enabled: true, groundOffset: -0.25 } })
+    // reload 会把 details 状态清回默认；本段后面的用例要点这里面的控件，得重新展开
+    await openShadowSection()
+    const slider = page.locator('#editor input[type=range][data-k="sh.offset"]')
+    await expect(slider).toHaveAttribute('min', '-0.25')       // 量程临时放宽到装得下
+    await expect(slider).toHaveValue('-0.25')
+    const st = await lightState()
+    expect(st.shadow.groundY).toBeCloseTo(st.shadow.modelMinY - 0.25, 3)
   })
 
   test('关掉展台后，浓度作用在承影面上', async () => {
@@ -643,12 +677,15 @@ test.describe('材质覆盖', () => {
       await page.evaluate(() => window.__edRefresh())
       await openMat()
       await pickMat('Body')
-      const st = await ovState()
-      expect(st.on).toBe(false)
-      expect(st.note).toContain('Body')
-      expect(st.note).not.toContain('Bod')
+      // 材质真实取值：精确条目 0.3 压过子串条目 0.9，这是这条规则的全部意义
       const body = (await live()).find(m => m.name === 'Body')
       expect(body.metalness).toBeCloseTo(0.3, 5)
+      // 「Body」有自己的条目，所以勾选框是选中的，提示走「使用下面的值」那一支
+      const st = await ovState()
+      expect(st.on).toBe(true)
+      expect(st.metal).toBeCloseTo(0.3, 5)
+      expect(st.note).toContain('「Body」')
+      expect(st.note).not.toContain('分组命中')   // 有自己的条目就不该说是被别人带的
     })
 
     test('被别人的 namePattern 按子串命中时，提示要说清是跟着那条走', async () => {

@@ -117,9 +117,16 @@
   .bf > .bf-en { flex:0 0 auto; width:15px; height:15px; cursor:pointer; }
   .bf .lb { flex:0 0 92px; color:rgba(230,234,245,.7); }
   .bf .ctl { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
-  .bpick { flex:1 1 100%; margin-bottom:4px; }
   .bf .ctl select, .bf .ctl input[type=text] { flex:1; min-width:0; padding:5px 8px; border-radius:7px; font-size:12px;
     border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#eef0f5; font-family:inherit; }
+  /* 全景候选下拉必须独占一行：跟输入框并排时两边各剩 126px，选项名和路径都只露得出半截。
+     选择器写得比 `.bf .ctl select` 更具体，否则那条的 flex:1 会把 100% 基准盖掉。 */
+  .bf .ctl select.bpick { flex:1 1 100%; margin-bottom:4px; }
+  /* 控件占两行时标签要顶着第一行，居中会让它悬在两个控件中间 */
+  .bf.twoline > .bf-en, .bf.twoline > .lb { align-self:flex-start; margin-top:6px; }
+  /* 动作行（勾了就执行，没有取值控件）：标签不占固定列宽，说明跟在后面像一句话 */
+  .bf.act > .lb { flex:0 0 auto; }
+  .act-note { color:#8a90a6; font-size:11.5px; line-height:1.5; }
   .bf .ctl input[type=range] { flex:1; min-width:0; accent-color:var(--gold); }
   .bf .ctl input[type=color] { width:34px; height:24px; padding:0; border:1px solid rgba(255,255,255,.2); border-radius:6px; background:none; }
   .bf .ctl .val { flex:0 0 34px; text-align:right; font-variant-numeric:tabular-nums; color:var(--gold); font-size:11.5px; }
@@ -306,7 +313,7 @@ const GROUPS = [
         if (!s) return []
         return [{ path: 'assets.panorama', value: v }, { path: 'environment.mode', value: 'panorama' }]
       } },
-    { id:'panoClear', label:'清除全景（改用预设）', type:'action',
+    { id:'panoClear', label:'清除全景', type:'action', note:'勾选后本批改用环境预设',
       expandOps() {
         return [{ path: 'assets.panorama', value: '' }, { path: 'environment.mode', value: 'preset' }]
       } },
@@ -501,12 +508,13 @@ function fieldRow(f) {
   else if (f.type === 'range') ctl = `<input type="range" id="v-${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}"><span class="val" id="o-${f.id}">${f.def}</span>`
   else if (f.type === 'select') ctl = `<select id="v-${f.id}">${f.opts.map(([v, l]) => `<option value="${v}" ${v === f.def ? 'selected' : ''}>${l}</option>`).join('')}</select>`
   else if (f.type === 'scheme') ctl = `<select id="v-${f.id}">${Object.entries(LIGHT_SCHEMES).map(([k, s]) => `<option value="${k}" ${k === f.def ? 'selected' : ''}>${s.label}</option>`).join('')}</select>`
-  else if (f.type === 'action') ctl = `<span class="act-note">勾选左侧即对本批展品执行</span>`
+  else if (f.type === 'action') ctl = `<span class="act-note">${f.note || '勾选左侧即对本批展品执行'}</span>`
   else if (f.type === 'angle') ctl = `
     <span class="bang"><i>方位角</i><input type="range" id="v-${f.id}-az" min="-180" max="180" step="1" value="${f.az}"><span class="val" id="o-${f.id}-az">${f.az}</span></span>
     <span class="bang"><i>仰角</i><input type="range" id="v-${f.id}-el" min="-90" max="90" step="1" value="${f.el}"><span class="val" id="o-${f.id}-el">${f.el}</span></span>`
   const hint = f.hint ? `<span class="bf-hint" id="hint-${f.id}"></span>` : ''
-  return `<label class="bf dis${f.type === 'angle' ? ' ang' : ''}" id="row-${f.id}"><input type="checkbox" class="bf-en" id="en-${f.id}"><span class="lb">${f.label}</span><span class="ctl">${ctl}</span>${hint}</label>`
+  const mod = f.type === 'angle' ? ' ang' : f.type === 'action' ? ' act' : f.picker ? ' twoline' : ''
+  return `<label class="bf dis${mod}" id="row-${f.id}"><input type="checkbox" class="bf-en" id="en-${f.id}"><span class="lb">${f.label}</span><span class="ctl">${ctl}</span>${hint}</label>`
 }
 
 /* ---------- 应用（逐个展品独立写回，绝不相互覆盖） ---------- */

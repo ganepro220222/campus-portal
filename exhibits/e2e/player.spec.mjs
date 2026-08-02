@@ -577,3 +577,74 @@ test.describe('HUD 按钮 窄屏排版', () => {
     expect(await dir()).toBe('row')
   })
 })
+
+/* 「· 可拖拽」提示与描边样式的短横曾抢同一个 ::after：描边下提示会继承那条规则的
+   absolute + 32×2px，被裁成半行掉到标题底下（用户截图报的就是这个）。 */
+test.describe('面板样式 × 编辑态拖拽提示', () => {
+  const hint = () => page.evaluate(() => {
+    const t = document.getElementById('card-title')
+    const cs = getComputedStyle(t, '::after')
+    const r = t.getBoundingClientRect()
+    // 提示是 ::after 的 content，量不到自己的盒子，改用「标题整体是否被撑到两行」判断
+    const range = document.createRange(); range.selectNodeContents(t)
+    return { content: cs.content, position: cs.position, width: cs.width, height: cs.height,
+      titleLines: range.getClientRects().length, titleH: Math.round(r.height) }
+  })
+
+  for (const style of PANEL_STYLES) {
+    test(`${style}：提示完整成行，不被样式装饰的尺寸截断`, async () => {
+      await closeHotspotIfOpen(page)
+      await reloadPlayer(page, { viewport: { width: 1200, height: 800 }, panel: { style } })
+      await openFirstHotspot(page)
+      await page.waitForFunction(() => document.body.classList.contains('edit-callout'), null, { timeout: 10_000 })
+      const h = await hint()
+      expect(h.content).toContain('可拖拽')
+      expect(h.position).toBe('static')          // 一旦是 absolute 就是被那条短横规则串了
+      expect(h.width).not.toBe('32px')
+      expect(h.height).not.toBe('2px')
+      expect(h.titleLines).toBe(1)               // 提示跟标题同一行，没有掉下去
+    })
+  }
+
+  test('描边样式的标题短横仍在（改挂 ::before 后没丢）', async () => {
+    await closeHotspotIfOpen(page)
+    await reloadPlayer(page, { viewport: { width: 1200, height: 800 }, panel: { style: 'outline' } })
+    await openFirstHotspot(page)
+    const bar = await page.evaluate(() => {
+      const cs = getComputedStyle(document.getElementById('card-title'), '::before')
+      return { position: cs.position, width: cs.width, height: cs.height, bg: cs.backgroundColor }
+    })
+    expect(bar.position).toBe('absolute')
+    expect(bar.width).toBe('32px')
+    expect(bar.height).toBe('2px')
+    expect(bar.bg).not.toBe('rgba(0, 0, 0, 0)')
+  })
+})
+
+/* HUD 图标改成内联 SVG：字符图标来自不同回退字体，墨迹基线差 1–2.5px，横看一排是歪的 */
+test.describe('HUD 图标对齐', () => {
+  for (const width of [360, 900]) {
+    test(`${width}px：四个图标墨迹垂直居中完全一致`, async () => {
+      await reloadPlayer(page, { viewport: { width, height: 780 } })
+      await page.waitForSelector('#actions .btn svg')
+      const centers = await page.evaluate(() => [...document.querySelectorAll('#actions .btn')].map(btn => {
+        const svg = btn.querySelector('svg'), br = btn.getBoundingClientRect(), sr = svg.getBoundingClientRect()
+        let y0 = 1e9, y1 = -1e9
+        for (const el of svg.querySelectorAll('path,circle')) {
+          const bb = el.getBBox(), sw = el.getAttribute('stroke') === 'none' ? 0 : 1.8
+          y0 = Math.min(y0, bb.y - sw / 2); y1 = Math.max(y1, bb.y + bb.height + sw / 2)
+        }
+        return sr.top - br.top + (y0 + y1) / 2 * (sr.height / 24)
+      }))
+      expect(centers).toHaveLength(4)
+      expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(0.5)
+    })
+  }
+
+  test('图标是 SVG 而不是字符（缺字的机器会显示豆腐块）', async () => {
+    await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
+    await expect(page.locator('#actions .btn .ic svg')).toHaveCount(4)
+    const txt = await page.$$eval('#actions .btn .ic', els => els.map(e => e.textContent.trim()).join(''))
+    expect(txt).toBe('')
+  })
+})

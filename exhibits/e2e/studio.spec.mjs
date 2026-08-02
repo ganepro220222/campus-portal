@@ -210,8 +210,8 @@ test.describe('studio.html', () => {
     await expect(page.locator('#hint-epreset')).toBeEmpty()   // 未选时不该吓人
     await page.click('#selAll')
     const hint = page.locator('#hint-epreset')
-    await expect(hint).toContainText('已配全景图')
-    await expect(hint).toContainText('不会生效')
+    await expect(hint).toContainText('都在用全景')   // 文案随 batchPresetHint 改过，断言跟着走
+    await expect(hint).toContainText('环境预设对它们不会生效')
     await expect(hint).toHaveClass(/warn/)
     await page.click('#selNone')
     await expect(hint).toBeEmpty()
@@ -602,6 +602,44 @@ test.describe('studio.html', () => {
     })
     for (const r of geo.rows) expect(r.right).toBeLessThanOrEqual(geo.cardRight + 1)
     expect(geo.rows[0].top).not.toBe(geo.rows[1].top)     // 各占一行，不是并排挤在一起
+  })
+
+  /* 全景候选下拉与手输框并排时各剩 126px，选项名和路径都只露半截。
+     `.bpick` 那条被后面更具体的 `.bf .ctl select` 用 flex:1 盖掉了，所以选择器要写得更具体。 */
+  test('全景贴图：候选下拉独占一行，与输入框上下排列且各自够宽', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 900 })
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    const g = await page.evaluate(() => {
+      const r = el => { const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width) } }
+      return { pick: r(document.getElementById('pick-pano')), input: r(document.getElementById('v-pano')),
+        card: r(document.getElementById('row-pano').closest('.bgroup')) }
+    })
+    expect(g.pick.x).toBe(g.input.x)                 // 左对齐＝各占一整行
+    expect(g.input.y).toBeGreaterThan(g.pick.y)      // 下拉在上、输入在下
+    expect(g.pick.w).toBeGreaterThan(200)            // 并排时只有 126
+    expect(g.input.w).toBeGreaterThan(200)
+    expect(g.pick.x + g.pick.w).toBeLessThanOrEqual(g.card.x + g.card.w + 1)
+  })
+
+  test('清除全景：标签与说明同一行，不被 92px 标签列压成两行', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 900 })
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    const g = await page.evaluate(() => {
+      const row = document.getElementById('row-panoClear')
+      const lb = row.querySelector('.lb'), note = row.querySelector('.act-note')
+      const lines = el => { const r = document.createRange(); r.selectNodeContents(el); return r.getClientRects().length }
+      const rr = row.getBoundingClientRect()
+      return { lbLines: lines(lb), noteLines: lines(note),
+        sameRow: Math.abs(lb.getBoundingClientRect().top - note.getBoundingClientRect().top) < 6,
+        rowH: Math.round(rr.height),
+        right: note.getBoundingClientRect().right, cardRight: row.closest('.bgroup').getBoundingClientRect().right }
+    })
+    expect(g.lbLines).toBe(1)
+    expect(g.noteLines).toBe(1)
+    expect(g.sameRow).toBe(true)
+    expect(g.right).toBeLessThanOrEqual(g.cardRight + 1)
   })
 
   test('batch updates only selected paths per exhibit', async ({ page }) => {

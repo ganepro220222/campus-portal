@@ -55,6 +55,47 @@ def _make_gui() -> obj2glb_gui.ConverterGUI:
     return gui
 
 
+@test("源码里不允许绕过 _combo 直接构造 Combobox（否则又会踩聚焦空白的坑）")
+def _():
+    import ast as _ast
+
+    src = open(os.path.join(HERE, "obj2glb_gui.py"), encoding="utf-8").read()
+    tree = _ast.parse(src)
+    outside = []
+    for fn in _ast.walk(tree):
+        if not isinstance(fn, _ast.FunctionDef):
+            continue
+        for node in _ast.walk(fn):
+            if (isinstance(node, _ast.Call) and isinstance(node.func, _ast.Attribute)
+                    and node.func.attr == "Combobox" and fn.name != "_combo"):
+                outside.append((fn.name, node.lineno))
+    eq(outside, [], f"这些地方直接构造了 Combobox，应改走 _combo(): {outside}")
+
+
+@test("_lerp_hex 端点与中点插值正确（顶栏渐变靠它）")
+def _():
+    lerp = obj2glb_gui.ConverterGUI._lerp_hex
+    eq(lerp("#000000", "#ffffff", 0.0), "#000000")
+    eq(lerp("#000000", "#ffffff", 1.0), "#ffffff")
+    eq(lerp("#000000", "#ffffff", 0.5), "#808080")
+    eq(lerp("#2a3145", "#12151d", 0.0), "#2a3145")
+    eq(lerp("#2a3145", "#12151d", 1.0), "#12151d")
+
+
+@test("顶栏尺寸没变时不重画（拖动窗口边缘 Configure 连发会闪）")
+def _():
+    gui = _make_gui()
+    cv = MagicMock()
+    gui._head_size = None
+    gui._paint_header(cv, 900, 74, "t", "s", 20, 15, 22, 6)
+    eq(gui._head_size, (900, 74))
+    n = cv.delete.call_count
+    gui._paint_header(cv, 900, 74, "t", "s", 20, 15, 22, 6)
+    eq(cv.delete.call_count, n, "同尺寸不该再重画")
+    gui._paint_header(cv, 1000, 74, "t", "s", 20, 15, 22, 6)
+    ok(cv.delete.call_count > n, "尺寸变了应当重画")
+
+
 @test("只读下拉框的选中色与常态一致（否则聚焦时空白 / 选完留钢蓝底）")
 def _():
     m = obj2glb_gui.combobox_readonly_colors()

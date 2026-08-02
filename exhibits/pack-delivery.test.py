@@ -33,6 +33,17 @@ GLB_REQUIRED = (
     '模型转换/python_env.py',
 )
 
+# 页面的 ES module 硬依赖：少任何一个，整页脚本直接不执行（页面白屏），
+# 而这类「排除规则写宽了顺手删掉素材」的事故本仓库已经发生过一次
+# （44f9615 曾全局排除 build/dist）。所以必须逐个断言，不能只查 studio.html。
+WEB_REQUIRED = (
+    'studio.html', 'studio-batch.mjs', 'studio-sort.mjs',
+    'player.html', 'player.view.html',
+    'leader-geom.js', 'light-rig.mjs', 'hotspot-id.mjs', 'player-persist.mjs',
+    'manifest.json', '_server/studio-server.mjs',
+    'vendor/three.module.js',
+)
+
 FORBIDDEN_PREFIXES = (
     'node_modules/',
     'e2e/',
@@ -94,11 +105,15 @@ def test_pack_delivery_zip() -> None:
             names = set(zf.namelist())
             for required in (
                 'serve.py', 'exhibit_create.py', 'pano-check.mjs', 'pano_check.py',
-                '拷贝说明.txt', '_launch/start-server.bat', 'studio.html',
+                '拷贝说明.txt', '_launch/start-server.bat',
+                *WEB_REQUIRED,
                 *GLB_REQUIRED,
             ):
                 if required not in names:
                     raise RuntimeError(f'missing {required} in zip')
+            # vendor/ 是 Three.js 与解码器，缺了 3D 页面加载即失败
+            if not any(n.startswith('vendor/addons/loaders/GLTFLoader.js') for n in names):
+                raise RuntimeError('missing vendor/ loaders in zip')
             for forbidden in FORBIDDEN_PREFIXES:
                 if any(n.startswith(forbidden) for n in names):
                     raise RuntimeError(f'forbidden prefix {forbidden}')

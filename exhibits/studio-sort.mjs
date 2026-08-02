@@ -62,6 +62,25 @@ export function completeness(item = {}) {
 
 const baseName = p => String(p ?? '').trim().split(/[\\/]/).pop() || ''
 
+/** 徽标/搜索用的全景展示名上限（分组 identity 不受此限制）。 */
+export const PANORAMA_LABEL_NAME_MAX = 120
+
+/** 全景展示名：data/blob 用短标签，避免 Base64 进入 DOM 与搜索。 */
+function panoramaDisplayName(p) {
+  const s = String(p ?? '').trim()
+  if (/^data:/i.test(s)) return '内嵌图片'
+  if (/^blob:/i.test(s)) return '临时图片'
+  const name = baseName(normSlashes(s))
+  if (name) {
+    return name.length > PANORAMA_LABEL_NAME_MAX
+      ? name.slice(0, PANORAMA_LABEL_NAME_MAX) + '…'
+      : name
+  }
+  const norm = normSlashes(s)
+  if (/^https?:\/\//i.test(norm) || norm.startsWith('//')) return '远程图片'
+  return '远程图片'
+}
+
 function normSlashes(p) {
   return String(p ?? '').trim().replace(/\\/g, '/')
 }
@@ -113,7 +132,7 @@ export function envKey(item = {}) {
 }
 
 export function envLabel(item = {}) {
-  if (item.hasPano && item.panorama) return '全景 · ' + baseName(item.panorama)
+  if (item.hasPano && item.panorama) return '全景 · ' + panoramaDisplayName(item.panorama)
   if (item.error) return ''
   const key = envKey(item)
   return ENV_PRESET_LABELS[key.slice('preset:'.length)] || ENV_PRESET_LABELS.room

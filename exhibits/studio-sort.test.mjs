@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {
-  naturalKey, compareNatural, completeness, envKey, envLabel, panoramaUrlKey, ENV_PRESET_LABELS,
+  naturalKey, compareNatural, completeness, envKey, envLabel, panoramaUrlKey, PANORAMA_LABEL_NAME_MAX, ENV_PRESET_LABELS,
   SORTS, SORT_IDS, DEFAULT_SORT, sortSpec, defaultDesc, sortItems,
   FILTERS, FILTER_IDS, filterSpec, searchKey, filterItems, filterCounts,
   viewItems, normalizeView,
@@ -172,13 +172,33 @@ test('envLabel：远程 / 根相对 / hash 全景不误显示为内置房间', (
     '全景 · sunset.jpg',
   )
   assert.equal(envLabel({ hasPano: true, panorama: '/shared/bg.jpg' }), '全景 · bg.jpg')
-  const dataLabel = envLabel({ hasPano: true, panorama: 'data:image/png;base64,AbC' })
-  assert.notEqual(dataLabel, '内置房间')
-  assert.ok(dataLabel.startsWith('全景 · '))
+  assert.equal(envLabel({ hasPano: true, panorama: 'data:image/png;base64,AbC' }), '全景 · 内嵌图片')
+  assert.equal(envLabel({ hasPano: true, panorama: 'blob:https://example.com/u' }), '全景 · 临时图片')
   assert.equal(
     envLabel({ hasPano: true, panorama: 'blob:https://example.com/u', panoramaHash: 'abc123' }),
-    '全景 · u',
+    '全景 · 临时图片',
   )
+})
+
+test('envLabel：data URI 不泄漏 Base64，且 label 有长度上限', () => {
+  const big = 'data:image/jpeg;base64,' + 'A'.repeat(1_000_000)
+  const item = { hasPano: true, panorama: big }
+  const label = envLabel(item)
+  assert.equal(label, '全景 · 内嵌图片')
+  assert.ok(label.length < 32)
+  assert.ok(!label.includes('AAAA'))
+  assert.ok(!searchKey({ dir: 'c', title: 't', ...item }).includes('aaaa'))
+})
+
+test('envLabel：HTTP URL 无 basename 时使用远程图片', () => {
+  assert.equal(envLabel({ hasPano: true, panorama: 'https://cdn.example.com/' }), '全景 · 远程图片')
+})
+
+test('envLabel：过长 basename 截断', () => {
+  const long = 'x'.repeat(PANORAMA_LABEL_NAME_MAX + 50) + '.jpg'
+  const label = envLabel({ hasPano: true, panorama: 'assets/' + long })
+  assert.ok(label.endsWith('…'))
+  assert.ok(label.length <= '全景 · '.length + PANORAMA_LABEL_NAME_MAX + 1)
 })
 
 test('searchKey：远程与根相对全景可被「全景」搜到', () => {

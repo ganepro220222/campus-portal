@@ -2,7 +2,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "node leader-geom.test.mjs && node material-override.test.mjs && node studio-pano-labels.test.mjs && node player-persist.test.mjs && node light-rig.test.mjs && node studio-sort.test.mjs && node exhibit-create.test.mjs && node studio-launch.test.mjs && node pano-check.test.mjs && python serve-import.test.py && python pack-delivery.test.py",
+    "test": "node leader-geom.test.mjs && node material-override.test.mjs && node studio-pano-labels.test.mjs && node studio-batch-env.test.mjs && node player-persist.test.mjs && node light-rig.test.mjs && node studio-sort.test.mjs && node exhibit-create.test.mjs && node studio-launch.test.mjs && node pano-check.test.mjs && python serve-import.test.py && python pack-delivery.test.py",
     "check:deps": "node check-static-deps.mjs",
     "test:e2e": "playwright test",
     "test:ci": "node leader-geom.test.mjs && node player-persist.test.mjs && node light-rig.test.mjs && node studio-sort.test.mjs && node exhibit-create.test.mjs && node studio-launch.test.mjs && node pano-check.test.mjs && python serve-import.test.py && python pack-delivery.test.py && node check-static-deps.mjs && node build-viewer.mjs --check && playwright test",

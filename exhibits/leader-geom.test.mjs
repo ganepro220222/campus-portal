@@ -12,6 +12,7 @@ import {
   anchorOnPanelEdge, getOrthPreferFirst, setOrthPreferFirst, clearOrthPreferFirst,
 } from './leader-geom.js'
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
+import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { buildViewerSrc } from './build-viewer.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
@@ -384,20 +385,42 @@ test('batch: pano expandOps 同时写入 assets.panorama 与 environment.mode', 
   assert.deepEqual(ops.find(o => o.path === 'environment.mode'), { path: 'environment.mode', value: 'panorama' })
 })
 
-test('batch: panoClear 清除全景路径并改回 preset mode', () => {
+test('batch: panoClear action 勾选即清除全景并改 preset mode', () => {
   const panoClear = {
-    id: 'panoClear', type: 'bool',
-    expandOps(v) {
-      if (!v) return []
+    id: 'panoClear', type: 'action',
+    expandOps() {
       return [{ path: 'assets.panorama', value: '' }, { path: 'environment.mode', value: 'preset' }]
     },
   }
   const ops = collectBatchOps({ panoClear }, {
-    enabled: () => true, modeOff: () => false, value: () => true, schemeOps: () => [],
+    enabled: () => true, modeOff: () => false, schemeOps: () => [],
   })
   assert.equal(ops.length, 2)
   assert.deepEqual(ops.find(o => o.path === 'assets.panorama'), { path: 'assets.panorama', value: '' })
   assert.deepEqual(ops.find(o => o.path === 'environment.mode'), { path: 'environment.mode', value: 'preset' })
+})
+
+test('batch: pano 与 panoClear 同时启用时以后者为准', () => {
+  const pano = {
+    id: 'pano', type: 'text',
+    expandOps(v) {
+      const s = String(v ?? '').trim()
+      if (!s) return []
+      return [{ path: 'assets.panorama', value: v }, { path: 'environment.mode', value: 'panorama' }]
+    },
+  }
+  const panoClear = {
+    id: 'panoClear', type: 'action',
+    expandOps() {
+      return [{ path: 'assets.panorama', value: '' }, { path: 'environment.mode', value: 'preset' }]
+    },
+  }
+  const ops = collectBatchOps({ pano, panoClear }, {
+    enabled: () => true, modeOff: () => false,
+    value: f => (f.id === 'pano' ? '../shared/a.jpg' : undefined),
+    schemeOps: () => [],
+  })
+  assert.deepEqual(inferBatchEnvEffect(ops), { kind: 'preset', preset: 'room', cleared: true })
 })
 
 function hsList(ids) {

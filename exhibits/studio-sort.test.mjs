@@ -28,14 +28,22 @@ test('自然序：补零与不补零的编号等价', () => {
   assert.ok(compareNatural('craft-007', 'craft-8') < 0)
 })
 
-test('自然序：超长数字不溢出（padStart 12 位内）', () => {
-  assert.ok(compareNatural('craft-999999999999', 'craft-1000000000000') !== 0)
+test('自然序：13/14 位编号按数值排序（不能退化成字典序）', () => {
+  assert.ok(compareNatural('craft-9999999999999', 'craft-10000000000000') < 0)
+  assert.ok(compareNatural('craft-10000000000000', 'craft-9999999999999') > 0)
+})
+
+test('自然序：32 位编号边界同样按数值排序', () => {
+  const low = 'craft-9999999999999999999999999999999'
+  const high = 'craft-10000000000000000000000000000000'
+  assert.ok(compareNatural(low, high) < 0)
+  assert.ok(compareNatural(high, low) > 0)
 })
 
 test('naturalKey 容忍 null / undefined / 数字', () => {
   assert.equal(naturalKey(null), '')
   assert.equal(naturalKey(undefined), '')
-  assert.equal(naturalKey(12), '000000000012')
+  assert.equal(naturalKey(12), '0212')
 })
 
 /* ---------- 完成度 ---------- */

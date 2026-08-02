@@ -92,6 +92,8 @@ def list_exhibits():
                 'hotspots': len(c.get('hotspots') or []),
                 'audio': len(c.get('audio') or []),
                 'hasPano': has_asset_file(d, assets.get('panorama'), ROOT),
+                'usesPanorama': (c.get('environment') or {}).get('mode') == 'panorama' and has_asset_file(d, assets.get('panorama'), ROOT),
+                'envMode': (c.get('environment') or {}).get('mode') or '',
                 # 背景分组只能按内容判断：路径既会误并（各展品自带的 assets/panorama.jpg
                 # 其实是不同的图）也会误分（同一张图复制进多个目录）
                 'panoramaHash': asset_fingerprint(d, assets.get('panorama'), ROOT),

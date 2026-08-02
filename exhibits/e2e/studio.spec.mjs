@@ -131,7 +131,7 @@ test.describe('studio.html', () => {
     const pageErrors = []
     page.on('pageerror', e => pageErrors.push(e.message))
     await gotoStudioWithExhibits(page, [
-      { dir: 'craft-101', title: '齐全件', hotspots: 2, hasPano: true, hasModel: true, panorama: 'assets/sunset.jpg', poster: 'craft-101/assets/poster.jpg', mtime: 300 },
+      { dir: 'craft-101', title: '齐全件', hotspots: 2, hasPano: true, usesPanorama: true, envMode: 'panorama', hasModel: true, panorama: 'assets/sunset.jpg', poster: 'craft-101/assets/poster.jpg', mtime: 300 },
       { dir: 'craft-102', title: '缺模型件', hotspots: 0, hasPano: false, hasModel: false, envPreset: 'gallery', poster: '', mtime: 100 },
       { dir: 'craft-103', title: '无全景件', hotspots: 1, hasPano: false, hasModel: true, envPreset: 'gallery', poster: 'craft-103/assets/poster.jpg', mtime: 200 },
     ])
@@ -156,7 +156,7 @@ test.describe('studio.html', () => {
 
   test('筛选与搜索叠加；无结果时给出可理解的空态', async ({ page }) => {
     await gotoStudioWithExhibits(page, [
-      { dir: 'craft-101', title: '青瓷瓶', hotspots: 2, hasPano: true, hasModel: true, panorama: 'assets/sunset.jpg', poster: 'p.jpg', mtime: 300 },
+      { dir: 'craft-101', title: '青瓷瓶', hotspots: 2, hasPano: true, usesPanorama: true, envMode: 'panorama', hasModel: true, panorama: 'assets/sunset.jpg', poster: 'p.jpg', mtime: 300 },
       { dir: 'craft-102', title: '木雕摆件', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'gallery', poster: 'p.jpg', mtime: 100 },
     ])
     await page.fill('#search', '木雕')
@@ -172,8 +172,8 @@ test.describe('studio.html', () => {
 
   test('按最后编辑排序，并在卡片上标出背景环境', async ({ page }) => {
     await gotoStudioWithExhibits(page, [
-      { dir: 'craft-101', title: '乙器', hotspots: 1, hasPano: true, hasModel: true, panorama: 'assets/sunset.jpg', poster: 'p.jpg', mtime: 100 },
-      { dir: 'craft-102', title: '甲器', hotspots: 1, hasPano: true, hasModel: true, panorama: 'pano/sunset.jpg', poster: 'p.jpg', mtime: 300 },
+      { dir: 'craft-101', title: '乙器', hotspots: 1, hasPano: true, usesPanorama: true, envMode: 'panorama', hasModel: true, panorama: 'assets/sunset.jpg', poster: 'p.jpg', mtime: 100 },
+      { dir: 'craft-102', title: '甲器', hotspots: 1, hasPano: true, usesPanorama: true, envMode: 'panorama', hasModel: true, panorama: 'pano/sunset.jpg', poster: 'p.jpg', mtime: 300 },
       { dir: 'craft-103', title: '丙器', hotspots: 1, hasPano: false, hasModel: true, envPreset: 'gallery', poster: 'p.jpg', mtime: 200 },
     ])
     await expect(page.locator('.card[data-dir="craft-101"] .badge.env')).toHaveText('全景 · sunset.jpg')
@@ -190,9 +190,9 @@ test.describe('studio.html', () => {
     // assets/panorama.jpg 名字一样但往往是不同的图，不能靠名字归组。
     const SAME = '86f9f80fbcad3d86', OTHER = '0123456789abcdef'
     await gotoStudioWithExhibits(page, [
-      { dir: 'craft-101', title: '甲', hotspots: 1, hasPano: true, hasModel: true, panorama: 'assets/panorama.jpg', panoramaHash: SAME, poster: 'p.jpg', mtime: 100 },
-      { dir: 'craft-102', title: '乙', hotspots: 1, hasPano: true, hasModel: true, panorama: 'assets/panorama.jpg', panoramaHash: OTHER, poster: 'p.jpg', mtime: 200 },
-      { dir: 'craft-103', title: '丙', hotspots: 1, hasPano: true, hasModel: true, panorama: 'bg/dawn.jpg', panoramaHash: SAME, poster: 'p.jpg', mtime: 300 },
+      { dir: 'craft-101', title: '甲', hotspots: 1, hasPano: true, usesPanorama: true, envMode: 'panorama', hasModel: true, panorama: 'assets/panorama.jpg', panoramaHash: SAME, poster: 'p.jpg', mtime: 100 },
+      { dir: 'craft-102', title: '乙', hotspots: 1, hasPano: true, usesPanorama: true, envMode: 'panorama', hasModel: true, panorama: 'assets/panorama.jpg', panoramaHash: OTHER, poster: 'p.jpg', mtime: 200 },
+      { dir: 'craft-103', title: '丙', hotspots: 1, hasPano: true, usesPanorama: true, envMode: 'panorama', hasModel: true, panorama: 'bg/dawn.jpg', panoramaHash: SAME, poster: 'p.jpg', mtime: 300 },
     ])
     await page.locator('#sortSel').selectOption('env')
     const byEnv = await domOrder(page)
@@ -299,6 +299,7 @@ test.describe('studio.html', () => {
     await page.waitForFunction(() => document.querySelector('#blog')?.textContent?.includes('完成'), null, { timeout: 20_000 })
     expect(saves).toHaveLength(1)
     expect(saves[0].config.assets.panorama).toBe(opts[1])
+    expect(saves[0].config.environment.mode).toBe('panorama')
   })
 
   test('批量五光源：写入 lights.*，方位角/仰角合成 position，未勾选的灯一律不碰', async ({ page }) => {

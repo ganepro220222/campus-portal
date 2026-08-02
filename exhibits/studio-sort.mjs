@@ -50,7 +50,7 @@ export function completeness(item = {}) {
   if (item.hasModel === false) missing.push('缺模型')
   if (!item.poster) missing.push('缺封面')
   if (!item.hotspots) missing.push('无热点')
-  if (!item.hasPano) missing.push('无全景')
+  if (!item.hasPano) missing.push('无全景文件')
   let score = 100
   if (item.error) score -= 60
   if (item.hasModel === false) score -= 25
@@ -70,6 +70,13 @@ function truncateDisplayName(name) {
   return name.length > PANORAMA_LABEL_NAME_MAX
     ? name.slice(0, PANORAMA_LABEL_NAME_MAX) + '…'
     : name
+}
+
+/** 展品是否正在使用全景 IBL（非仅「磁盘上有全景文件」） */
+export function usesPanorama(item = {}) {
+  if (typeof item.usesPanorama === 'boolean') return item.usesPanorama
+  const mode = item.envMode ?? item.environment?.mode
+  return mode === 'panorama' && !!item.hasPano && !!String(item.panorama || '').trim()
 }
 
 function pathnameBaseName(raw, protocolRelative = false) {
@@ -193,7 +200,7 @@ function computePanoEnvKey(item, raw) {
 
 /** 背景分组 identity：hash > 远程 URL > 根相对路径 > 展品目录+相对路径。 */
 export function envKey(item = {}) {
-  if (item.hasPano && item.panorama) {
+  if (usesPanorama(item)) {
     const hash = String(item.panoramaHash ?? '').trim().toLowerCase()
     if (hash) return 'pano-hash:' + hash
     const raw = normSlashes(item.panorama)
@@ -209,7 +216,7 @@ export function envKey(item = {}) {
 }
 
 export function envLabel(item = {}) {
-  if (item.hasPano && item.panorama) return '全景 · ' + panoramaDisplayName(item.panorama)
+  if (usesPanorama(item)) return '全景 · ' + panoramaDisplayName(item.panorama)
   if (item.error) return ''
   const key = envKey(item)
   return ENV_PRESET_LABELS[key.slice('preset:'.length)] || ENV_PRESET_LABELS.room
@@ -256,7 +263,7 @@ export const FILTERS = [
   { id: 'todo', label: '待完善', test: it => completeness(it).missing.length > 0 },
   { id: 'nomodel', label: '缺模型', test: it => it.hasModel === false || !!it.error },
   { id: 'noposter', label: '缺封面', test: it => !it.poster },
-  { id: 'nopano', label: '无全景', test: it => !it.hasPano },
+  { id: 'nopano', label: '无全景', test: it => !usesPanorama(it) },
 ]
 
 export const FILTER_IDS = FILTERS.map(f => f.id)

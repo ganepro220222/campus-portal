@@ -303,6 +303,8 @@ if ($isList) {
       'dir' => $d, 'title' => $zh['title'] ?? $d, 'subtitle' => $zh['subtitle'] ?? '',
       'hotspots' => count($c['hotspots'] ?? []), 'audio' => count($c['audio'] ?? []),
       'hasPano' => studio_has_asset_file($ROOT, $d, $c['assets']['panorama'] ?? ''),
+      'usesPanorama' => (($c['environment']['mode'] ?? '') === 'panorama') && studio_has_asset_file($ROOT, $d, $c['assets']['panorama'] ?? ''),
+      'envMode' => $c['environment']['mode'] ?? '',
       // 背景分组只能按内容判断：路径既会误并（各展品的 assets/panorama.jpg）
       // 也会误分（同一张图复制进多个目录）
       'panoramaHash' => studio_asset_fingerprint($ROOT, $d, $c['assets']['panorama'] ?? ''),

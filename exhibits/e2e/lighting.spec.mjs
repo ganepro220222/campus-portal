@@ -597,6 +597,24 @@ test.describe('材质覆盖', () => {
       expect(back.metal).toBeCloseTo(0.77, 5)
     })
 
+    test('精确 namePattern 优先于更短的子串规则', async () => {
+      await page.evaluate(() => {
+        window.__SY_TEST__.setOverridesForTest([
+          { namePattern: 'Bod', metalness: 0.9 },
+          { namePattern: 'Body', metalness: 0.3 },
+        ])
+      })
+      await page.evaluate(() => window.__edRefresh())
+      await openMat()
+      await pickMat('Body')
+      const st = await ovState()
+      expect(st.on).toBe(false)
+      expect(st.note).toContain('Body')
+      expect(st.note).not.toContain('Bod')
+      const body = (await live()).find(m => m.name === 'Body')
+      expect(body.metalness).toBeCloseTo(0.3, 5)
+    })
+
     test('被别人的 namePattern 按子串命中时，提示要说清是跟着那条走', async () => {
       // applyMaterial 用 includes 匹配：'Bod' 会连带命中 'Body'
       await page.evaluate(() => {

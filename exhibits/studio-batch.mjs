@@ -34,6 +34,10 @@ export function collectBatchOps(fields, state) {
     }
     const v = state.value(f)
     if (f.type === 'text' && v === '') continue
+    if (f.expandOps) {
+      for (const op of f.expandOps(v)) ops.push(op)
+      continue
+    }
     ops.push({ path: f.path, value: v })
   }
   return ops

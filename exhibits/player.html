@@ -68,7 +68,9 @@
     background:rgba(255,255,255,.08); backdrop-filter:blur(10px); color:#eef0f5; font-size:13px; cursor:pointer; transition:.18s; }
   .btn:active { transform:scale(.96); }
   .btn.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
-  .btn .ic { font-size:16px; line-height:1; }
+  /* 图标是 1em 见方的内联 SVG：display:flex 去掉 inline 元素的基线间隙，
+     四个按钮的图标才会严丝合缝地落在同一条水平线上。 */
+  .btn .ic { display:flex; font-size:17px; line-height:1; }
   /* 标签任何情况下都不许拆开：宽度不够时 320px 上「自动旋转」会被压成一字一行。
      实测 4 个按钮横排需要约 466px 视口；不够就整块换行，而不是把字掰断。 */
   .btn .tx { white-space:nowrap; }
@@ -79,7 +81,7 @@
   @media (max-width: 400px) {
     .actions { gap:8px; }
     .btn { flex-direction:column; gap:3px; height:auto; min-width:0; padding:7px 10px; border-radius:12px; }
-    .btn .ic { font-size:17px; }
+    .btn .ic { font-size:18px; }
     .btn .tx { font-size:11px; line-height:1.2; }
   }
 
@@ -135,7 +137,9 @@
   /* 描边：细金边 + 标题下短横，接近直角 */
   .card.st-outline { background:rgba(12,14,20,.42); backdrop-filter:blur(10px); border:1.5px solid var(--gold); border-radius:6px; box-shadow:0 12px 32px rgba(0,0,0,.45); }
   .card.st-outline .card-title { padding-bottom:9px; position:relative; }
-  .card.st-outline .card-title::after { content:""; position:absolute; left:0; bottom:2px; width:32px; height:2px; background:var(--gold); border-radius:2px; }
+  /* 短横用 ::before：::after 留给编辑模式的「· 可拖拽」提示。
+     两者都挂 ::after 时，提示文字会继承这里的 absolute + 32×2px 尺寸，被裁成半行掉到标题下面。 */
+  .card.st-outline .card-title::before { content:""; position:absolute; left:0; bottom:2px; width:32px; height:2px; background:var(--gold); border-radius:2px; }
   /* 色带标题：标题嵌在金色色带内，正文在深色区（版式不同） */
   .card.st-ribbon { background:rgba(18,20,29,.94); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,.1); border-radius:14px; box-shadow:0 18px 44px rgba(0,0,0,.5); padding:0; overflow:hidden; }
   .card.st-ribbon .card-title { margin:0; padding:12px 20px; background:linear-gradient(90deg,var(--gold),#e6cf9a); color:#0b0d14; font-weight:800; }
@@ -1195,6 +1199,24 @@ function renderText() {
   labelBtns()
 }
 const BTN = { rotate:{zh:'自动旋转',en:'Auto'}, hot:{zh:'热点',en:'Hotspots'}, reset:{zh:'重置',en:'Reset'}, full:{zh:'全屏',en:'Full'} }
+/* HUD 图标用内联 SVG 而不是 ↻ ◈ ⤢ ⛶ 这类字符。
+   这些码位多半落在回退字体上，各家的字面大小与基线都不一样：实测同为 17px 行高时，
+   ◈ 的墨迹比 ↻ 低 2.5px、⤢ 低 1px，四个图标横看一排是歪的；缺字的机器还会显示豆腐块。
+   统一 24×24 viewBox + 同一线宽后，对齐与粗细都由我们自己说了算。 */
+const ICONS = (() => {
+  const svg = d => `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
+    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`
+  return {
+    // 环形箭头：自动旋转
+    rotate: svg('<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/>'),
+    // 菱形描点：热点
+    hot: svg('<path d="M12 3.2 20.8 12 12 20.8 3.2 12z"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/>'),
+    // 四角向内收：重置视角
+    reset: svg('<path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/>'),
+    // 四角向外展：全屏
+    full: svg('<path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/>'),
+  }
+})()
 function labelBtns(){ document.querySelectorAll('#actions .btn').forEach(b=>{ const k=b.dataset.k; if(BTN[k]) b.querySelector('.tx').textContent = BTN[k][lang] }) }
 function syncBtns(){
   const r=document.querySelector('[data-k=rotate]'); if(r){ r.classList.toggle('on', controls.autoRotate); r.setAttribute('aria-pressed', controls.autoRotate) }
@@ -1211,9 +1233,9 @@ function buildHUD() {
     b.onclick=()=>applyPreset(p); pr.appendChild(b)
   })
   const act = $('actions')
-  const mk = (k, ic, on, fn) => { const b=document.createElement('button'); b.className='btn'+(on?' on':''); b.dataset.k=k
-    b.innerHTML=`<span class="ic">${ic}</span><span class="tx"></span>`; b.onclick=fn; act.appendChild(b) }
-  if (ui.showAutoRotateButton!==false) mk('rotate','↻', controls.autoRotate, ()=>{
+  const mk = (k, on, fn) => { const b=document.createElement('button'); b.className='btn'+(on?' on':''); b.dataset.k=k
+    b.innerHTML=`<span class="ic">${ICONS[k]}</span><span class="tx"></span>`; b.onclick=fn; act.appendChild(b) }
+  if (ui.showAutoRotateButton!==false) mk('rotate', controls.autoRotate, ()=>{
     controls.autoRotate=!controls.autoRotate
     if (controls.autoRotate && activeHS) {   // 开启自转：收起讲解并回到模型中轴，避免绕热点旋转
       clearActiveHotspot({ refocus: false })
@@ -1221,9 +1243,9 @@ function buildHUD() {
     }
     syncBtns()
   })
-  if (ui.showHotspotButton!==false && (cfg.hotspots||[]).length) mk('hot','◈', true, ()=>{ hotspotsVisible=!hotspotsVisible; if(!hotspotsVisible) closeHotspot(); syncBtns() })
-  if (ui.showResetButton!==false) mk('reset','⤢', false, ()=>{ closeHotspot() })
-  if (ui.showFullscreenButton!==false) mk('full','⛶', false, ()=>{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen() })
+  if (ui.showHotspotButton!==false && (cfg.hotspots||[]).length) mk('hot', true, ()=>{ hotspotsVisible=!hotspotsVisible; if(!hotspotsVisible) closeHotspot(); syncBtns() })
+  if (ui.showResetButton!==false) mk('reset', false, ()=>{ closeHotspot() })
+  if (ui.showFullscreenButton!==false) mk('full', false, ()=>{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen() })
   labelBtns(); syncBtns()   // 初始化 aria-pressed 等状态
   // 高亮与当前状态匹配的预设（让默认预设显示为选中）
   if (renderer) { const cur=renderer.toneMappingExposure
@@ -1448,6 +1470,10 @@ function renderEditor() {
   const info = cfg.i18n?.zh || {}, ui = cfg.ui || {}
   const pan = cfg.panel || {}
   const sh = resolveShadow(cfg)
+  /* 承影面高低是「贴合微调」，正常用不到几厘米；量程收到 ±0.08（模型标准高度 2.4 的 3%），
+     再大就是把承影面推离器物底面、看着像器物浮在空中——那不是这根滑条该干的事。
+     老配置若已写了更大的值，把量程临时放宽到装得下它，免得滑条位置和实际值对不上。 */
+  const groundRange = Math.max(0.08, Math.abs(num(sh.groundOffset, 0)))
   const envSrc = resolveEnvSource(cfg)
   const envPresetNow = ENV_PRESETS[cfg.environment.preset] ? cfg.environment.preset : (envSrc.kind === 'preset' ? envSrc.preset : 'room')
   // 全景接管时预设不生效；但若全景加载失败，实际跑的是预设兜底，UI 必须如实说
@@ -1551,7 +1577,8 @@ function renderEditor() {
     <label class="ed-row"><span class="ed-label">开启投影</span><input type="checkbox" id="ed-shadow-on" ${sh.enabled?'checked':''}></label>
     ${rng('sh.opacity','浓度',0,1,0.01, sh.opacity)}
     ${rng('sh.soft','柔化',0,10,0.5, sh.softness)}
-    ${rng('sh.offset','地面高低',-0.3,0.3,0.005, sh.groundOffset)}
+    ${rng('sh.offset','承影面高低',-groundRange,groundRange,0.002, sh.groundOffset)}
+    <div class="ed-note">承影面＝展台与影子所在的那层平面，只动它、不动器物。默认贴着模型底面；模型底部有圈足或包围盒略大时，往上推一点能消掉器物与影子之间的缝。<b style="color:#8a90a6">要抬高或压低器物本身，请用「模型摆放 → 位移 Y」。</b></div>
     <div class="ed-row"><span class="ed-label">展台</span><span class="ed-row-actions"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" id="ed-shadow-plate" ${sh.plate?'checked':''}> 显示</label> <input type="color" data-k="sh.plateColor" value="${esc(sh.plateColor)}"></span></div>
     <div class="ed-note">两层叠加：正下方的接触阴影让器物「贴在台面上」（与灯位无关），加上随主光角度移动的真实投影。深色背景下必须开展台，否则影子没有落处、等于没开。<span id="ed-shadow-warn"></span></div>
   </details>

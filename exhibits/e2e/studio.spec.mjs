@@ -170,13 +170,12 @@ test.describe('studio.html', () => {
     await expect(page.locator('#empty')).toContainText('无全景')
   })
 
-  test('按最后编辑 / 名称排序，并在卡片上标出背景环境', async ({ page }) => {
+  test('按最后编辑排序，并在卡片上标出背景环境', async ({ page }) => {
     await gotoStudioWithExhibits(page, [
       { dir: 'craft-101', title: '乙器', hotspots: 1, hasPano: true, hasModel: true, panorama: 'assets/sunset.jpg', poster: 'p.jpg', mtime: 100 },
       { dir: 'craft-102', title: '甲器', hotspots: 1, hasPano: true, hasModel: true, panorama: 'pano/sunset.jpg', poster: 'p.jpg', mtime: 300 },
       { dir: 'craft-103', title: '丙器', hotspots: 1, hasPano: false, hasModel: true, envPreset: 'gallery', poster: 'p.jpg', mtime: 200 },
     ])
-    // 同一张全景图（路径不同）应显示同一个背景标签，便于一眼分组
     await expect(page.locator('.card[data-dir="craft-101"] .badge.env')).toHaveText('全景 · sunset.jpg')
     await expect(page.locator('.card[data-dir="craft-102"] .badge.env')).toHaveText('全景 · sunset.jpg')
     await expect(page.locator('.card[data-dir="craft-103"] .badge.env')).toHaveText('无全景 · 博物馆暖阁')
@@ -184,11 +183,22 @@ test.describe('studio.html', () => {
     await page.locator('#sortSel').selectOption('mtime')
     await expect(page.locator('#sortDir')).toHaveText('↓ 降序')   // 时间类默认从新到旧
     expect(await domOrder(page)).toEqual(['craft-102', 'craft-103', 'craft-101'])
+  })
 
+  test('按背景环境排序：同内容（同指纹）的展品挨在一起，同名不同图的不合并', async ({ page }) => {
+    // 「同背景」的判据是服务端给的内容指纹，不是文件名——各展品自带的
+    // assets/panorama.jpg 名字一样但往往是不同的图，不能靠名字归组。
+    const SAME = '86f9f80fbcad3d86', OTHER = '0123456789abcdef'
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-101', title: '甲', hotspots: 1, hasPano: true, hasModel: true, panorama: 'assets/panorama.jpg', panoramaHash: SAME, poster: 'p.jpg', mtime: 100 },
+      { dir: 'craft-102', title: '乙', hotspots: 1, hasPano: true, hasModel: true, panorama: 'assets/panorama.jpg', panoramaHash: OTHER, poster: 'p.jpg', mtime: 200 },
+      { dir: 'craft-103', title: '丙', hotspots: 1, hasPano: true, hasModel: true, panorama: 'bg/dawn.jpg', panoramaHash: SAME, poster: 'p.jpg', mtime: 300 },
+    ])
     await page.locator('#sortSel').selectOption('env')
-    await expect(page.locator('#sortDir')).toHaveText('↑ 升序')
     const byEnv = await domOrder(page)
-    expect(byEnv.indexOf('craft-102') - byEnv.indexOf('craft-101')).toBe(1)   // 同背景相邻
+    // 101 与 103 路径不同但内容相同 → 必须相邻；102 路径与 101 相同但内容不同 → 不得夹在中间
+    expect(Math.abs(byEnv.indexOf('craft-103') - byEnv.indexOf('craft-101'))).toBe(1)
+    expect(Math.abs(byEnv.indexOf('craft-102') - byEnv.indexOf('craft-101'))).not.toBe(1)
   })
 
   test('批量面板：环境预设对已配全景图的展品不生效，按选择实时说明', async ({ page }) => {

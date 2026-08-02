@@ -21,7 +21,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { computeRootHash, getIdentityPayload } from './studio-identity.mjs'
 import { createExhibit } from '../exhibit-create.mjs'
-import { hasAssetFile } from '../pano-check.mjs'
+import { assetFingerprint, hasAssetFile } from '../pano-check.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
 const ROOT_HASH = computeRootHash(ROOT)
@@ -68,6 +68,9 @@ function listExhibits() {
       out.push({ dir: d.name, title: zh.title || d.name, subtitle: zh.subtitle || '',
         hotspots: (c.hotspots || []).length, audio: (c.audio || []).length,
         hasPano: hasAssetFile(exDir, assets.panorama, ROOT),
+        // 背景分组只能按内容判断：路径既会误并（各展品自带的 assets/panorama.jpg
+        // 其实是不同的图）也会误分（同一张图复制进多个目录）
+        panoramaHash: assetFingerprint(exDir, assets.panorama, ROOT),
         // 工作台按这两项做「分组 / 待完善」筛选：模型是否真在盘上、当前用的是哪套背景
         hasModel: hasAssetFile(exDir, assets.model, ROOT),
         panorama: assets.panorama || '',

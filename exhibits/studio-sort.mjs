@@ -102,7 +102,7 @@ function panoramaDisplayName(p) {
     return name ? truncateDisplayName(name) : '远程图片'
   }
   const name = baseName(norm)
-  return name ? truncateDisplayName(name) : '远程图片'
+  return name ? truncateDisplayName(name) : '本地图片'   // 取不出文件名的本地路径
 }
 
 function normSlashes(p) {
@@ -172,9 +172,12 @@ export function clearEnvKeyCache() {
   _envKeyCache.clear()
 }
 
+/**
+ * 缓存键只服务「没有内容指纹」这条路径 —— 有指纹时 envKey 早已直接返回，根本走不到这里。
+ * 曾经这里也按 hash 建过键，那是个陷阱：一旦上面的分支改动，同 hash 不同路径的项会
+ * 命中彼此的缓存、拿到对方的 key，测试反而看不出问题（实测能把注入的回归完全掩盖）。
+ */
 function panoEnvCacheKey(item, raw) {
-  const hash = String(item.panoramaHash ?? '').trim().toLowerCase()
-  if (hash) return 'hash:' + hash
   if (/^data:/i.test(raw) || /^blob:/i.test(raw) || isRemotePanorama(raw)) return 'remote:' + raw
   return 'local:' + normSlashes(item.dir) + '\0' + raw
 }

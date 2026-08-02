@@ -50,7 +50,7 @@ def identity_payload(root: Path) -> dict:
     return {'rootHash': h, 'instanceId': h}
 
 
-from pano_check import has_asset_file
+from pano_check import asset_fingerprint, has_asset_file
 
 ROOT_HASH = compute_root_hash(ROOT)
 
@@ -92,6 +92,9 @@ def list_exhibits():
                 'hotspots': len(c.get('hotspots') or []),
                 'audio': len(c.get('audio') or []),
                 'hasPano': has_asset_file(d, assets.get('panorama'), ROOT),
+                # 背景分组只能按内容判断：路径既会误并（各展品自带的 assets/panorama.jpg
+                # 其实是不同的图）也会误分（同一张图复制进多个目录）
+                'panoramaHash': asset_fingerprint(d, assets.get('panorama'), ROOT),
                 # 工作台按这两项做「分组 / 待完善」筛选：模型是否真在盘上、当前用的是哪套背景
                 'hasModel': has_asset_file(d, assets.get('model'), ROOT),
                 'panorama': assets.get('panorama') or '',

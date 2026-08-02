@@ -451,7 +451,7 @@ async function load() {
 // hasModel 只在服务端明确给出时才置 false（未知一律不判「缺模型」，免得静态托管误报）
 const normApi = e => ({ dir: e.dir, title: e.title || e.dir, subtitle: e.subtitle || '', hotspots: e.hotspots || 0, audio: e.audio || 0,
   hasPano: !!e.hasPano, hasModel: typeof e.hasModel === 'boolean' ? e.hasModel : undefined,
-  panorama: e.panorama || '', envPreset: e.envPreset || 'room',
+  panorama: e.panorama || '', panoramaHash: e.panoramaHash || '', envPreset: e.envPreset || 'room',
   poster: e.poster || '', mtime: e.mtime || 0, error: e.error })
 const normCfg = (dir, cfg, ov) => { const zh = (cfg.i18n && cfg.i18n.zh) || {}; const as = cfg.assets || {}; return {
   dir, title: (ov && ov.title) || zh.title || dir, subtitle: zh.subtitle || '',

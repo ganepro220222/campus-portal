@@ -146,6 +146,46 @@ test('envKey：不同文件名不归为一组', () => {
   assert.notEqual(envKey(a), envKey(b))
 })
 
+test('envLabel：取不出文件名的本地路径不误称「远程图片」', () => {
+  assert.equal(envLabel({ hasPano: true, panorama: 'assets/' }), '全景 · 本地图片')
+  assert.equal(envLabel({ hasPano: true, panorama: 'https://cdn.example.com/' }), '全景 · 远程图片')
+})
+
+test('envKey：服务端给了内容指纹时，同一张图复制进不同目录也归为一组', () => {
+  clearEnvKeyCache()
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '86f9f80fbcad3d86' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '86f9f80fbcad3d86' }
+  const c = { dir: 'craft-003', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '0123456789abcdef' }
+  // 断言 key 的确切形态，而不只是「两者相等」——只断言相等的话，
+  // 缓存串味等原因也能让它「碰巧相等」，测试就废了（实测发生过）。
+  assert.equal(envKey(a), 'pano-hash:86f9f80fbcad3d86')
+  assert.equal(envKey(b), 'pano-hash:86f9f80fbcad3d86')
+  assert.equal(envKey(a), envKey(b))     // 同内容 → 同组（这是这个功能的全部意义）
+  assert.notEqual(envKey(a), envKey(c))  // 同路径同文件名但内容不同 → 不同组
+})
+
+test('envKey：缓存不得把有指纹的项与无指纹的项串味', () => {
+  clearEnvKeyCache()
+  const noHash = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg' }
+  const withHash = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: 'aaaa1111bbbb2222' }
+  assert.equal(envKey(noHash), 'pano:craft-001/assets/panorama.jpg')
+  assert.equal(envKey(withHash), 'pano-hash:aaaa1111bbbb2222')   // 先算过无指纹的，也不能被缓存带偏
+  assert.equal(envKey(noHash), 'pano:craft-001/assets/panorama.jpg')
+})
+
+test('envKey：指纹大小写不敏感，前后空白不影响分组', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'a.jpg', panoramaHash: 'ABC123' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'b.jpg', panoramaHash: ' abc123 ' }
+  assert.equal(envKey(a), envKey(b))
+})
+
+test('envKey：没有指纹时退回路径分组（静态托管、无服务端的场景）', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg', panoramaHash: '' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/panorama.jpg' }
+  assert.equal(envKey(a), 'pano:craft-001/assets/panorama.jpg')
+  assert.notEqual(envKey(a), envKey(b))
+})
+
 test('envKey：配了 panorama 但文件不存在时不算全景，退回预设', () => {
   const it = { dir: 'craft-004', hasPano: false, panorama: 'assets/missing.jpg', envPreset: 'gallery' }
   assert.equal(envKey(it), 'preset:gallery')

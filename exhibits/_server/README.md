@@ -9,10 +9,25 @@
 
 | 方法 | 路径 | 作用 |
 |---|---|---|
-| GET | `/studio-api/list` | 扫描 `exhibits/` 下全部展品目录，供工作台自动加载 |
+| GET | `/studio-api/list` | 扫描 `exhibits/` 下全部展品目录，供工作台自动加载（字段见下） |
 | GET | `/studio-api/identity` | 返回本目录 rootHash（启动器校验 8199 端口归属；本机 localhost 免鉴权） |
 | POST | `/studio-api/create` | 请求体 `{ dir, title, subtitle? }` → 从 `_template/` 创建新展品目录 |
 | POST | `/studio-api/save` | 请求体 `{ ex, config, poster? }` → 写回 `<ex>/config.json`；写前自动备份上一版到 `<ex>/.bak/`（保留最近 20 份） |
+
+### `/studio-api/list` 返回字段
+
+| 字段 | 说明 |
+|---|---|
+| `dir` / `title` / `subtitle` / `hotspots` / `audio` / `poster` / `mtime` | 卡片展示与排序用 |
+| `hasPano` / `hasModel` | 全景图、模型文件是否真在盘上（工作台「待完善 / 缺模型」筛选） |
+| `panorama` / `envPreset` | 当前背景的配置原值 |
+| `panoramaHash` | **全景图内容指纹**（16 位十六进制），工作台按它给背景分组 |
+
+`panoramaHash` 为什么必须由服务端给：路径判断不了「是不是同一张背景」——只比文件名会把
+各展品自带的 `assets/panorama.jpg`（其实是不同的图）误并成一组，只比全路径又会把同一张图
+复制进多个目录的情况拆成多组。算法为「文件长度 + 头 64KiB + 尾 64KiB 的 SHA-1 前 16 位」，
+无论文件多大都是常数开销；三份服务端实现必须给出同一个值（`pano-check.test.mjs` 有跨实现
+一致性测试）。远程 URL / data URI / 文件缺失时返回空串，前端退回按路径分组。
 
 ## 前端约定
 

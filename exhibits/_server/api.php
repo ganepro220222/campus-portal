@@ -128,15 +128,52 @@ function studio_is_remote_panorama(string $p): bool {
   return (bool)preg_match('#^(https?:|data:|blob:|//)#', trim($p));
 }
 
+/** 资源路径解析（模型 / 全景共用）；远程或空路径返回 null */
+function studio_resolve_asset_path(string $root, string $exhibit, ?string $asset): ?string {
+  $p = trim((string)$asset);
+  if ($p === '' || studio_is_remote_panorama($p)) return null;
+  if ($p[0] === '/') return "$root/" . ltrim($p, '/');
+  if (preg_match('#^[A-Za-z]:[\\\\/]#', $p)) return $p;
+  return "$root/$exhibit/$p";
+}
+
 /** 通用资源存在性判断（模型 / 全景共用同一套路径解析规则） */
 function studio_has_asset_file(string $root, string $exhibit, ?string $asset): bool {
   $p = trim((string)$asset);
   if ($p === '') return false;
   if (studio_is_remote_panorama($p)) return true;
-  if ($p[0] === '/') return is_file("$root/" . ltrim($p, '/'));
-  if (preg_match('#^[A-Za-z]:[\\\\/]#', $p)) return is_file($p);
-  return is_file("$root/$exhibit/$p");
+  $local = studio_resolve_asset_path($root, $exhibit, $p);
+  return $local !== null && is_file($local);
 }
+
+// 与 pano-check.mjs / pano_check.py 保持一致；改算法请同步改版本号（说明见 pano-check.mjs）
+const STUDIO_FINGERPRINT_VERSION = 'v1';
+const STUDIO_FINGERPRINT_CHUNK = 65536;
+const STUDIO_FINGERPRINT_LENGTH = 16;
+
+/** 本地资源内容指纹（长度 + 头尾各 64KiB）；远程 / 缺失 / 读不出一律返回 '' */
+function studio_asset_fingerprint(string $root, string $exhibit, ?string $asset): string {
+  $local = studio_resolve_asset_path($root, $exhibit, $asset);
+  if ($local === null || !is_file($local)) return '';
+  $size = filesize($local);
+  if ($size === false) return '';
+  $fh = @fopen($local, 'rb');
+  if ($fh === false) return '';
+  $ctx = hash_init('sha1');
+  hash_update($ctx, STUDIO_FINGERPRINT_VERSION . '|' . $size . '|');
+  $headLen = min($size, STUDIO_FINGERPRINT_CHUNK);
+  if ($headLen > 0) hash_update_stream($ctx, $fh, $headLen);
+  $tailStart = max(STUDIO_FINGERPRINT_CHUNK, $size - STUDIO_FINGERPRINT_CHUNK);
+  if ($size > $tailStart) {
+    fseek($fh, $tailStart);
+    hash_update_stream($ctx, $fh, $size - $tailStart);
+  }
+  fclose($fh);
+  return substr(hash_final($ctx), 0, STUDIO_FINGERPRINT_LENGTH);
+}
+
+// 只加载函数、不执行请求分发（供单元测试比对三份实现的指纹算法；保持本文件单文件可部署）
+if (defined('STUDIO_API_LIB_ONLY')) return;
 
 if ($PASS !== '' && !($isIdentity && $isLocal)) {
   if (!isset($_SERVER['PHP_AUTH_USER']) || $_SERVER['PHP_AUTH_USER'] !== $USER || ($_SERVER['PHP_AUTH_PW'] ?? '') !== $PASS) {
@@ -163,6 +200,9 @@ if ($isList) {
       'dir' => $d, 'title' => $zh['title'] ?? $d, 'subtitle' => $zh['subtitle'] ?? '',
       'hotspots' => count($c['hotspots'] ?? []), 'audio' => count($c['audio'] ?? []),
       'hasPano' => studio_has_asset_file($ROOT, $d, $c['assets']['panorama'] ?? ''),
+      // 背景分组只能按内容判断：路径既会误并（各展品的 assets/panorama.jpg）
+      // 也会误分（同一张图复制进多个目录）
+      'panoramaHash' => studio_asset_fingerprint($ROOT, $d, $c['assets']['panorama'] ?? ''),
       // 工作台按这两项做「分组 / 待完善」筛选：模型是否真在盘上、当前用的是哪套背景
       'hasModel' => studio_has_asset_file($ROOT, $d, $c['assets']['model'] ?? ''),
       'panorama' => $c['assets']['panorama'] ?? '',

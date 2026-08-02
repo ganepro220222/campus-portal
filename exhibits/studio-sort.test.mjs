@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import {
-  naturalKey, compareNatural, completeness, envKey, envLabel, panoramaUrlKey, PANORAMA_LABEL_NAME_MAX, ENV_PRESET_LABELS,
+  naturalKey, compareNatural, completeness, envKey, envLabel, panoramaUrlKey, PANORAMA_LABEL_NAME_MAX,
+  dataUriEnvKey, clearEnvKeyCache, ENV_PRESET_LABELS,
   SORTS, SORT_IDS, DEFAULT_SORT, sortSpec, defaultDesc, sortItems,
   FILTERS, FILTER_IDS, filterSpec, searchKey, filterItems, filterCounts,
   viewItems, normalizeView,
@@ -188,6 +189,40 @@ test('envLabel：data URI 不泄漏 Base64，且 label 有长度上限', () => {
   assert.ok(label.length < 32)
   assert.ok(!label.includes('AAAA'))
   assert.ok(!searchKey({ dir: 'c', title: 't', ...item }).includes('aaaa'))
+})
+
+test('envKey：data URI 使用紧凑 identity，不含 Base64 主体', () => {
+  clearEnvKeyCache()
+  const big = 'data:image/jpeg;base64,' + 'A'.repeat(1_000_000)
+  const item = { hasPano: true, panorama: big }
+  const key = envKey(item)
+  assert.ok(key.length < 256, `key 过长：${key.length}`)
+  assert.ok(key.startsWith('pano-data:image/jpeg:'))
+  assert.ok(!key.includes('AAAA'))
+  assert.equal(envKey(item), key, '同一 URI 应命中缓存')
+  const other = { hasPano: true, panorama: 'data:image/jpeg;base64,' + 'B'.repeat(100) }
+  assert.notEqual(envKey(item), envKey(other))
+})
+
+test('sortItems：大量 data URI 环境排序在合理时间内完成', () => {
+  clearEnvKeyCache()
+  const items = Array.from({ length: 100 }, (_, i) => ({
+    dir: `craft-${String(i).padStart(3, '0')}`,
+    hasPano: true,
+    panorama: 'data:image/jpeg;base64,' + 'A'.repeat(50_000 + i),
+  }))
+  const t0 = performance.now()
+  sortItems(items, 'env')
+  const ms = performance.now() - t0
+  assert.ok(ms < 3000, `环境排序过慢：${ms.toFixed(0)}ms`)
+})
+
+test('envLabel：签名 URL 只显示 pathname basename，不含 query/fragment', () => {
+  const signed = 'https://cdn.example.com/bg/pano.jpg?X-Amz-Credential=PUBLIC&X-Amz-Signature=TOPSECRET#view'
+  assert.equal(envLabel({ hasPano: true, panorama: signed }), '全景 · pano.jpg')
+  const sk = searchKey({ dir: 'c', title: 't', hasPano: true, panorama: signed })
+  assert.ok(!sk.includes('topsecret'))
+  assert.ok(!sk.includes('credential'))
 })
 
 test('envLabel：HTTP URL 无 basename 时使用远程图片', () => {

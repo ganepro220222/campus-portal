@@ -302,6 +302,27 @@ test.describe('studio.html', () => {
     expect(saves[0].config.environment.mode).toBe('panorama')
   })
 
+  test('批量清除全景：写空路径并改回 preset mode', async ({ page }) => {
+    const cfg = loadCfg('craft-001')
+    cfg.environment = { ...(cfg.environment || {}), mode: 'panorama' }
+    cfg.assets = { ...(cfg.assets || {}), panorama: '../craft-001/assets/panorama.jpg' }
+    await page.route('**/craft-001/config.json*', r => r.fulfill({ json: structuredClone(cfg) }))
+    const saves = []
+    await page.route('**/studio-api/save', async route => {
+      saves.push(route.request().postDataJSON())
+      await route.fulfill({ json: { ok: true } })
+    })
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-001'])
+    await page.locator('#en-panoClear').check()
+    await page.locator('#bapply').click()
+    await page.waitForFunction(() => document.querySelector('#blog')?.textContent?.includes('完成'), null, { timeout: 20_000 })
+    expect(saves).toHaveLength(1)
+    expect(saves[0].config.assets.panorama).toBe('')
+    expect(saves[0].config.environment.mode).toBe('preset')
+  })
+
   test('批量五光源：写入 lights.*，方位角/仰角合成 position，未勾选的灯一律不碰', async ({ page }) => {
     const cfg = loadCfg('craft-001')
     await page.route('**/craft-001/config.json*', r => r.fulfill({ json: structuredClone(cfg) }))

@@ -436,6 +436,17 @@ test.describe('环境 IBL', () => {
     })
     expect((await lightState()).backgroundIsTexture).toBe(false)
   })
+
+  test('内置 room 不支持可见环境背景：checkbox 禁用', async () => {
+    await reloadPlayer(page, {
+      environment: { mode: 'preset', preset: 'room', visibleBackground: true },
+      assets: { panorama: '' },
+    })
+    const st = await lightState()
+    expect(st.visibleBgSupported).toBe(false)
+    expect(st.visibleBgDisabled).toBe(true)
+    expect(st.backgroundIsTexture).toBe(false)
+  })
 })
 
 test.describe('预设（灯光方案）', () => {
@@ -650,7 +661,7 @@ test.describe('材质覆盖', () => {
       await pickMat('Body')
       const st = await ovState()
       expect(st.on).toBe(false)                    // 没有自己的条目
-      expect(st.note).toContain('按名称分组命中')   // 但不能说「跟随上方全局设置」
+      expect(st.note).toContain('名称包含')   // 但不能说「跟随上方全局设置」
       expect(st.note).toContain('Bod')
     })
 

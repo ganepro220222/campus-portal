@@ -94,6 +94,17 @@ export function resolveEnvSource(cfg = {}) {
   return preset === 'room' ? { kind: 'room' } : { kind: 'preset', preset }
 }
 
+/** 当前环境来源是否支持「可见环境背景」（room 仅有 PMREM，无可显示的全景贴图） */
+export function supportsVisibleBackgroundForSource(src = {}) {
+  if (src.kind === 'panorama') return !!src.url
+  if (src.kind === 'preset') return !ENV_PRESETS[src.preset]?.builtin
+  return false
+}
+
+export function supportsVisibleBackground(cfg = {}) {
+  return supportsVisibleBackgroundForSource(resolveEnvSource(cfg))
+}
+
 const DEG = 180 / Math.PI
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 const fin = (v, d) => (typeof v === 'number' && isFinite(v) ? v : d)

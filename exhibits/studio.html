@@ -242,13 +242,14 @@
 
 <script type="module">
 import { batchFieldApplies } from './studio-batch.mjs'
+import { panoValueFor, panoOptgroupLabel, panoOptionLabel } from './studio-pano-labels.mjs'
 import {
   SORTS, FILTERS, ENV_PRESET_LABELS, envLabel,
   sortItems, filterItems, filterCounts, defaultDesc, normalizeView,
 } from './studio-sort.mjs'
 import {
   LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, LIGHT_OPTIONAL,
-  anglesToPosition, positionToAngles,
+  anglesToPosition, positionToAngles, supportsVisibleBackground,
 } from './light-rig.mjs'
 const $ = id => document.getElementById(id)
 let cards = [], items = [], panoCandidates = [], hasApi = false, canCreate = false
@@ -304,10 +305,15 @@ const GROUPS = [
         if (!s) return []
         return [{ path: 'assets.panorama', value: v }, { path: 'environment.mode', value: 'panorama' }]
       } },
+    { id:'panoClear', label:'清除全景（改用预设）', type:'bool', def:false,
+      expandOps(v) {
+        if (!v) return []
+        return [{ path: 'assets.panorama', value: '' }, { path: 'environment.mode', value: 'preset' }]
+      } },
     { id:'epreset', path:'environment.preset', label:'环境预设', type:'select', opts:ENV_PRESET_OPTS, def:'room', hint:'pano' },
     { id:'ibl',  path:'environment.intensity', label:'环境光照', type:'range', min:0, max:3, step:0.05, def:1.15 },
     { id:'erot', path:'environment.rotationDeg', label:'环境旋转°', type:'range', min:-180, max:180, step:1, def:0 },
-    { id:'bgvis',path:'environment.visibleBackground', label:'显示环境背景', type:'bool', def:false },
+    { id:'bgvis',path:'environment.visibleBackground', label:'显示环境背景', type:'bool', def:false, hint:'env' },
   ]},
   { title:'灯光（五光源）', subs:[
     ...LIGHT_KEYS_ORDERED.map(lightSub),
@@ -426,17 +432,15 @@ function buildBatchUI() {
   }
   $('v-lmode')?.addEventListener('change', syncBatchFieldModes)
   $('v-leader')?.addEventListener('change', syncBatchFieldModes)
+  $('v-epreset')?.addEventListener('change', () => { syncPresetHint(); syncBatchEnvHints() })
+  $('en-bgvis')?.addEventListener('change', syncBatchEnvHints)
   fillPanoPicker()
   syncBatchFieldModes()
+  syncBatchEnvHints()
 }
 
 /* 全景图候选下拉：已配置全景 + 公共背景目录里的 2:1 图（不全树扫描）。
    写进 config 的值统一加 ../ 前缀 —— 相对路径以展品目录为基准，../ 退到 exhibits/ 根。 */
-function panoValueFor(rootRelPath) { return '../' + rootRelPath }
-function panoOptionLabel(c) {
-  const tag = c.source === 'configured' ? '已配置' : '公共背景'
-  return `${tag} · ${c.path}（${c.width}×${c.height}）`
-}
 function fillPanoPicker() {
   const sel = $('pick-pano'); if (!sel) return
   if (!panoCandidates.length) { sel.hidden = true; return }
@@ -445,11 +449,11 @@ function fillPanoPicker() {
   const shared = panoCandidates.filter(c => c.source === 'shared')
   let html = '<option value="">（手动输入）</option>'
   if (configured.length) {
-    html += `<optgroup label="正在使用的全景">${configured.map(c =>
+    html += `<optgroup label="${esc(panoOptgroupLabel('configured'))}">${configured.map(c =>
       `<option value="${esc(panoValueFor(c.path))}">${esc(panoOptionLabel(c))}</option>`).join('')}</optgroup>`
   }
   if (shared.length) {
-    html += `<optgroup label="公共背景">${shared.map(c =>
+    html += `<optgroup label="${esc(panoOptgroupLabel('shared'))}">${shared.map(c =>
       `<option value="${esc(panoValueFor(c.path))}">${esc(panoOptionLabel(c))}</option>`).join('')}</optgroup>`
   }
   sel.innerHTML = html
@@ -674,7 +678,23 @@ function refreshSel() {
   $('bapply').disabled = n === 0 || !hasApi
   syncPresetHint()
 }
-/* 环境预设对「已配全景图」的展品不生效——按当前选择实时说明，别让人白改 */
+/* 内置 room 无可显示背景图——批量勾选「显示环境背景」且预设为 room 时提示 */
+function syncBatchEnvHints() {
+  const el = $('hint-bgvis'); if (!el) return
+  const preset = $('v-epreset')?.value || 'room'
+  const en = $('en-bgvis')?.checked
+  if (en && preset === 'room') {
+    el.classList.add('warn')
+    el.textContent = '内置房间没有可显示的背景图；请改用影棚/博物馆等预设，或先批量设全景。'
+  } else if (en && !supportsVisibleBackground({ environment: { mode: 'preset', preset } })) {
+    el.classList.add('warn')
+    el.textContent = '当前批量预设不支持可见背景。'
+  } else {
+    el.textContent = ''
+    el.classList.remove('warn')
+  }
+}
+/* 环境预设对「正在用全景」的展品不生效——按当前选择实时说明，别让人白改 */
 function syncPresetHint() {
   const el = $('hint-epreset'); if (!el) return
   const picked = cards.filter(c => selected.has(c.dir))

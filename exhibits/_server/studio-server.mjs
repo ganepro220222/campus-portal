@@ -21,7 +21,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { computeRootHash, getIdentityPayload } from './studio-identity.mjs'
 import { createExhibit } from '../exhibit-create.mjs'
-import { assetFingerprint, hasAssetFile } from '../pano-check.mjs'
+import { assetFingerprint, hasAssetFile, listPanoramaCandidates } from '../pano-check.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
 const ROOT_HASH = computeRootHash(ROOT)
@@ -129,7 +129,7 @@ http.createServer((req, res) => {
   }
   if (!authed(req, res)) return
   if (u.startsWith('/studio-api/list')) {
-    try { return json(res, 200, { exhibits: listExhibits(), capabilities: { save: true, create: true, batch: true } }) } catch (e) { return json(res, 500, { error: String(e.message) }) }
+    try { return json(res, 200, { exhibits: listExhibits(), panoramas: listPanoramaCandidates(ROOT), capabilities: { save: true, create: true, batch: true } }) } catch (e) { return json(res, 500, { error: String(e.message) }) }
   }
   if (u.startsWith('/studio-api/create') && req.method === 'POST') {
     let body = ''

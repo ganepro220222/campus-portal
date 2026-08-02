@@ -267,6 +267,105 @@ test.describe('studio.html', () => {
     expect(panel.style).toBe('glass')
   })
 
+  test('全景图候选下拉：列出扫到的 2:1 图，选中即填入路径并自动勾选', async ({ page }) => {
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    const opts = await page.$$eval('#pick-pano option', els => els.map(o => o.value))
+    expect(opts[0]).toBe('')                                   // 第一项是「手动输入」
+    expect(opts.length).toBeGreaterThan(1)
+    // 写进 config 的值必须是 ../ 开头：相对展品目录、部署到任何子路径都成立
+    for (const v of opts.slice(1)) expect(v.startsWith('../')).toBe(true)
+
+    expect(await page.isChecked('#en-pano')).toBe(false)
+    await page.selectOption('#pick-pano', opts[1])
+    expect(await page.inputValue('#v-pano')).toBe(opts[1])
+    expect(await page.isChecked('#en-pano')).toBe(true)        // 选了图＝要改这一项
+  })
+
+  test('全景图候选：选中后应用，写进各展品 config 的就是这条相对路径', async ({ page }) => {
+    const cfg = loadCfg('craft-001')
+    await page.route('**/craft-001/config.json*', r => r.fulfill({ json: structuredClone(cfg) }))
+    const saves = []
+    await page.route('**/studio-api/save', async route => {
+      saves.push(route.request().postDataJSON())
+      await route.fulfill({ json: { ok: true } })
+    })
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-001'])
+    const opts = await page.$$eval('#pick-pano option', els => els.map(o => o.value))
+    await page.selectOption('#pick-pano', opts[1])
+    await page.locator('#bapply').click()
+    await page.waitForFunction(() => document.querySelector('#blog')?.textContent?.includes('完成'), null, { timeout: 20_000 })
+    expect(saves).toHaveLength(1)
+    expect(saves[0].config.assets.panorama).toBe(opts[1])
+  })
+
+  test('批量五光源：写入 lights.*，方位角/仰角合成 position，未勾选的灯一律不碰', async ({ page }) => {
+    const cfg = loadCfg('craft-001')
+    await page.route('**/craft-001/config.json*', r => r.fulfill({ json: structuredClone(cfg) }))
+    const saves = []
+    await page.route('**/studio-api/save', async route => {
+      saves.push(route.request().postDataJSON())
+      await route.fulfill({ json: { ok: true } })
+    })
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-001'])
+
+    // 只勾主光的「强度」和「方位」，以及整组的「跟随相机」
+    await page.evaluate(() => {
+      for (const id of ['en-l-key-i', 'en-l-key-pos', 'en-lfollow']) document.getElementById(id).click()
+      const set = (id, v) => { const el = document.getElementById(id); el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })) }
+      set('v-l-key-i', 2.2)
+      set('v-l-key-pos-az', -30)
+      set('v-l-key-pos-el', 35)
+      document.getElementById('v-lfollow').checked = true
+    })
+    await page.locator('#bapply').click()
+    await page.waitForFunction(() => document.querySelector('#blog')?.textContent?.includes('完成'), null, { timeout: 20_000 })
+
+    expect(saves).toHaveLength(1)
+    const L = saves[0].config.lights
+    expect(L.key.intensity).toBeCloseTo(2.2, 5)
+    expect(L.followCamera).toBe(true)
+    // 位置由两个角度合成；反解回来必须是原来那一对
+    expect(Array.isArray(L.key.position)).toBe(true)
+    const [x, y, z] = L.key.position
+    const r = Math.hypot(x, y, z)
+    expect(Math.asin(y / r) * 180 / Math.PI).toBeCloseTo(35, 1)
+    expect(Math.atan2(x, z) * 180 / Math.PI).toBeCloseTo(-30, 1)
+    // 没勾的字段一律保持原值
+    expect(L.key.color).toBe(cfg.lights.key.color)
+    expect(L.fill).toEqual(cfg.lights.fill)
+    expect(L.rim).toEqual(cfg.lights.rim)
+    expect('enabled' in L.key).toBe(false)          // 没勾「启用」就不该写 enabled
+  })
+
+  test('批量灯光：地面反射光默认值保持「缺省即关闭」，不因批量而被打开', async ({ page }) => {
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    // bounce 是可选灯，其「启用」默认值必须是 false；其余四盏默认 true
+    const defs = await page.evaluate(() => ({
+      bounce: document.getElementById('v-l-bounce-on').checked,
+      key: document.getElementById('v-l-key-on').checked,
+      ambient: document.getElementById('v-l-ambient-on').checked,
+    }))
+    expect(defs.bounce).toBe(false)
+    expect(defs.key).toBe(true)
+    expect(defs.ambient).toBe(true)
+  })
+
+  test('批量灯光：环境光没有方位角/仰角（点光源没有方向）', async ({ page }) => {
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    await expect(page.locator('#v-l-ambient-pos-az')).toHaveCount(0)
+    for (const k of ['key', 'fill', 'rim', 'bounce']) {
+      await expect(page.locator(`#v-l-${k}-pos-az`)).toHaveCount(1)
+      await expect(page.locator(`#v-l-${k}-pos-el`)).toHaveCount(1)
+    }
+  })
+
   test('batch updates only selected paths per exhibit', async ({ page }) => {
     const cfg001 = loadCfg('craft-001')
     const cfg002 = loadCfg('craft-002')

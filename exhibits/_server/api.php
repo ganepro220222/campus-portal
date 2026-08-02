@@ -172,6 +172,44 @@ function studio_asset_fingerprint(string $root, string $exhibit, ?string $asset)
   return substr(hash_final($ctx), 0, STUDIO_FINGERPRINT_LENGTH);
 }
 
+// ---------- 全景图候选清单（与 pano-check.mjs / pano_check.py 一致；PHP 直接用 getimagesize） ----------
+const STUDIO_PANO_EXT = ['jpg', 'jpeg', 'png', 'webp'];
+const STUDIO_PANO_SKIP_DIRS = ['node_modules', 'vendor', '_runtime', '_dev', 'e2e', 'test-results', 'playwright-report'];
+// 等距柱状投影固有 2:1；放宽到 1.7 会把 16:9（1.778）的截图也收进来
+const STUDIO_PANO_RATIO_MIN = 1.9;
+const STUDIO_PANO_RATIO_MAX = 2.1;
+const STUDIO_PANO_MAX_SCAN = 400;
+
+function studio_list_panorama_candidates(string $root): array {
+  $out = [];
+  $walk = function (string $dir, string $rel) use (&$walk, &$out, $root) {
+    if (count($out) >= STUDIO_PANO_MAX_SCAN) return;
+    $items = @scandir($dir);
+    if ($items === false) return;
+    sort($items);
+    foreach ($items as $name) {
+      if (count($out) >= STUDIO_PANO_MAX_SCAN) return;
+      if ($name === '.' || $name === '..' || $name[0] === '.') continue;
+      $full = "$dir/$name";
+      $r = $rel === '' ? $name : "$rel/$name";
+      if (is_dir($full)) {
+        if (!in_array($name, STUDIO_PANO_SKIP_DIRS, true)) $walk($full, $r);
+        continue;
+      }
+      $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+      if (!in_array($ext, STUDIO_PANO_EXT, true)) continue;
+      $size = @getimagesize($full);
+      if (!$size || empty($size[0]) || empty($size[1])) continue;
+      $ratio = $size[0] / $size[1];
+      if ($ratio < STUDIO_PANO_RATIO_MIN || $ratio > STUDIO_PANO_RATIO_MAX) continue;
+      $out[] = ['path' => $r, 'width' => $size[0], 'height' => $size[1]];
+    }
+  };
+  $walk($root, '');
+  usort($out, fn($a, $b) => strcmp($a['path'], $b['path']));
+  return $out;
+}
+
 // 只加载函数、不执行请求分发（供单元测试比对三份实现的指纹算法；保持本文件单文件可部署）
 if (defined('STUDIO_API_LIB_ONLY')) return;
 
@@ -212,7 +250,11 @@ if ($isList) {
     ];
   }
   usort($out, fn($a, $b) => $b['mtime'] <=> $a['mtime']);
-  echo json_encode(['exhibits' => $out, 'capabilities' => ['save' => true, 'create' => true, 'batch' => true]], JSON_UNESCAPED_UNICODE); exit;
+  echo json_encode([
+    'exhibits' => $out,
+    'panoramas' => studio_list_panorama_candidates($ROOT),
+    'capabilities' => ['save' => true, 'create' => true, 'batch' => true],
+  ], JSON_UNESCAPED_UNICODE); exit;
 }
 
 if ($isCreate && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {

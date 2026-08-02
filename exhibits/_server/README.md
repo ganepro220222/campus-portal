@@ -21,7 +21,12 @@
 | `dir` / `title` / `subtitle` / `hotspots` / `audio` / `poster` / `mtime` | 卡片展示与排序用 |
 | `hasPano` / `hasModel` | 全景图、模型文件是否真在盘上（工作台「待完善 / 缺模型」筛选） |
 | `panorama` / `envPreset` | 当前背景的配置原值 |
+| `panoramas`（顶层，非展品字段） | 可选的全景图清单，见下 |
 | `panoramaHash` | **全景图内容指纹**（16 位十六进制），工作台按它给背景分组 |
+
+`/studio-api/list` 顶层还返回 `panoramas`：扫 `exhibits/` 下所有**宽高比接近 2:1**（等距柱状投影
+的固有比例，阈值 1.9–2.1）的图片，供批量编辑的「全景贴图」下拉选择。只读图头拿尺寸、不解码像素，
+跳过 `vendor/`、`node_modules/`、`_runtime/` 等目录，上限 400 张。
 
 `panoramaHash` 为什么必须由服务端给：路径判断不了「是不是同一张背景」——只比文件名会把
 各展品自带的 `assets/panorama.jpg`（其实是不同的图）误并成一组，只比全路径又会把同一张图

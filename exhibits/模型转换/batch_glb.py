@@ -432,10 +432,11 @@ def main():
                 not args.no_reencode,
                 args.allow_alpha_loss,
                 args.overwrite,
-                args.normals,
-                args.metallic,
-                not args.no_normal_map,
-                not args.no_fix,
+                normals=args.normals,
+                metallic=args.metallic,
+                keep_normal_map=not args.no_normal_map,
+                fix_glb=not args.no_fix,
+                double_sided=args.double_sided,
             )
         except Exception as e:
             r = empty_result(path, args.input)

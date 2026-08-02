@@ -162,6 +162,32 @@ test('envLabel：全景显示文件名，不显示整条路径', () => {
   assert.equal(envLabel({ hasPano: true, panorama: 'C:\\pano\\sunset.jpg' }), '全景 · sunset.jpg')
 })
 
+test('envLabel：远程 / 根相对 / hash 全景不误显示为内置房间', () => {
+  assert.equal(
+    envLabel({ hasPano: true, panorama: 'https://cdn.example.com/bg/sunset.jpg' }),
+    '全景 · sunset.jpg',
+  )
+  assert.equal(
+    envLabel({ hasPano: true, panorama: '//cdn.example.com/bg/sunset.jpg' }),
+    '全景 · sunset.jpg',
+  )
+  assert.equal(envLabel({ hasPano: true, panorama: '/shared/bg.jpg' }), '全景 · bg.jpg')
+  const dataLabel = envLabel({ hasPano: true, panorama: 'data:image/png;base64,AbC' })
+  assert.notEqual(dataLabel, '内置房间')
+  assert.ok(dataLabel.startsWith('全景 · '))
+  assert.equal(
+    envLabel({ hasPano: true, panorama: 'blob:https://example.com/u', panoramaHash: 'abc123' }),
+    '全景 · u',
+  )
+})
+
+test('searchKey：远程与根相对全景可被「全景」搜到', () => {
+  const remote = { dir: 'craft-1', title: '甲', hasPano: true, panorama: 'https://cdn/x.jpg' }
+  const root = { dir: 'craft-2', title: '乙', hasPano: true, panorama: '/shared/x.jpg' }
+  assert.ok(searchKey(remote).includes('全景'))
+  assert.ok(searchKey(root).includes('全景'))
+})
+
 test('envLabel：读不出配置的展品不编造环境', () => {
   assert.equal(envLabel({ dir: 'craft-x', error: 'boom' }), '')
 })

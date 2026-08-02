@@ -113,9 +113,9 @@ export function envKey(item = {}) {
 }
 
 export function envLabel(item = {}) {
+  if (item.hasPano && item.panorama) return '全景 · ' + baseName(item.panorama)
+  if (item.error) return ''
   const key = envKey(item)
-  if (key.startsWith('pano:')) return '全景 · ' + baseName(item.panorama)
-  if (key === 'zz:error') return ''
   return ENV_PRESET_LABELS[key.slice('preset:'.length)] || ENV_PRESET_LABELS.room
 }
 

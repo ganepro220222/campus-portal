@@ -264,7 +264,7 @@ import * as LG from './leader-geom.js'
 import { ensureHotspotIds } from './hotspot-id.mjs'
 import { configFetchUrl } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, defaultPosition, effectiveIntensity, resolveShadow, shadowWillLand, resolveEnvSource, createEnvLoadGuard } from './light-rig.mjs'
-import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern } from './material-override.mjs'
+import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -650,6 +650,14 @@ function applyEnvironmentIBL() {
     panoramaIBL(asset(src.url))
   } else if (src.kind === 'preset') presetIBL(src.preset)
   else roomIBL()
+}
+
+/** 编辑器勾选「可见环境背景」时即时同步 scene.background（preset/room 的 envBg 可能已在内存里） */
+function applyVisibleBackgroundPreview() {
+  const on = !!cfg.environment?.visibleBackground
+  if (on && envBg) scene.background = envBg
+  else if (!on) scene.background = new THREE.Color(cfg.renderer?.background || '#0f1118')
+  else applyEnvironmentIBL()
 }
 
 /* ── 热点 ── */

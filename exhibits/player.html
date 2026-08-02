@@ -323,7 +323,7 @@ import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { applyExposureToCfg, configFetchUrl, configExportFilename } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, createEnvLoadGuard } from './light-rig.mjs'
-import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern } from './material-override.mjs'
+import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -710,6 +710,14 @@ function applyEnvironmentIBL() {
     panoramaIBL(asset(src.url))
   } else if (src.kind === 'preset') presetIBL(src.preset)
   else roomIBL()
+}
+
+/** 编辑器勾选「可见环境背景」时即时同步 scene.background（preset/room 的 envBg 可能已在内存里） */
+function applyVisibleBackgroundPreview() {
+  const on = !!cfg.environment?.visibleBackground
+  if (on && envBg) scene.background = envBg
+  else if (!on) scene.background = new THREE.Color(cfg.renderer?.background || '#0f1118')
+  else applyEnvironmentIBL()
 }
 
 /* ── 热点 ── */
@@ -1741,7 +1749,7 @@ function wireEditor() {
   { const b=document.getElementById('ed-light-reset')
     if(b) b.onclick=()=>{ if(!confirm('把四组光源恢复到出厂强度、颜色与角度？（其它设置不变）')) return
       cfg.lights=defaultLights(); buildLights(); renderEditor(); flash('已恢复出厂灯光') } }
-  const bg=$('editor').querySelector('[data-k="e.bg"]'); if(bg) bg.onchange=e=>{ cfg.environment.visibleBackground=e.target.checked; if(cfg.assets?.panorama) panoramaIBL(asset(cfg.assets.panorama)); if(!e.target.checked) scene.background=new THREE.Color(cfg.renderer?.background||'#0f1118') }
+  const bg=$('editor').querySelector('[data-k="e.bg"]'); if(bg) bg.onchange=e=>{ cfg.environment.visibleBackground=e.target.checked; applyVisibleBackgroundPreview() }
   const pulseCb=$('editor').querySelector('[data-k="hs.pulse"]'); if(pulseCb) pulseCb.onchange=e=>{ cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.pulse=e.target.checked; buildHotspots() }
   // 用户端按钮显隐
   $('editor').querySelectorAll('[data-ui]').forEach(cb=>cb.onchange=e=>{ cfg.ui=cfg.ui||{}; cfg.ui[cb.dataset.ui]=e.target.checked; buildHUD_refresh() })
@@ -1837,7 +1845,7 @@ const OV_FIELDS = { 'ov.metal': 'metalness', 'ov.rough': 'roughness' }
    选中的材质名必须记在 DOM 之外，否则「给第 2 个材质开覆盖」会当场跳回第 1 个材质，
    用户以为没生效、再点一次，就在错误的材质上凭空多出一条覆盖。 */
 let ovSelName = ''
-function findOverride(name){ return (cfg.materials?.overrides || []).find(x => x.namePattern === name) }
+function findOverride(name){ return findOverrideEntry(cfg.materials?.overrides, name) }
 /** 除自己以外、还会按子串命中该材质的覆盖条目（与 applyMaterial 的匹配规则一致） */
 function matchingPatterns(name){
   const pat = matchingOverridePattern(name, cfg.materials?.overrides)
@@ -1895,8 +1903,7 @@ function upsertOverride(field){
   const sel=document.getElementById('ed-matsel'), on=document.getElementById('ed-ov-on')
   if(!sel||!sel.value||!on||!on.checked) return
   cfg.materials = cfg.materials || {}; cfg.materials.overrides = cfg.materials.overrides || []
-  let o=findOverride(sel.value)
-  if(!o){ o={namePattern:sel.value}; cfg.materials.overrides.push(o) }
+  const o = ensureOverrideEntry(cfg.materials.overrides, sel.value)
   const k = Object.keys(OV_FIELDS).find(x => OV_FIELDS[x] === field)
   const el = k && document.querySelector(`[data-k="${k}"]`)
   if (el) o[field] = parseFloat(el.value)
@@ -1912,9 +1919,12 @@ function toggleOverride(){
       const cur = materialCurrent(sel.value)
       cfg.materials.overrides.push({ namePattern: sel.value, metalness: cur.metalness, roughness: cur.roughness })
       setOvUI('ov.metal', cur.metalness); setOvUI('ov.rough', cur.roughness)
+    } else {
+      const o = findOverride(sel.value)
+      if (o.namePattern !== sel.value) o.namePattern = sel.value
     }
   } else {
-    cfg.materials.overrides = cfg.materials.overrides.filter(x => x.namePattern !== sel.value)
+    cfg.materials.overrides = removeOverrideEntries(cfg.materials.overrides, sel.value)
   }
   // 只把「已有 N 个材质被覆盖」这句就地更新掉；整段重绘会顶掉滚动位置与焦点，不值当
   const cnt = document.getElementById('ed-ov-count'); if (cnt) cnt.innerHTML = overrideCountHTML()

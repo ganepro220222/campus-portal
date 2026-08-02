@@ -411,6 +411,31 @@ test.describe('环境 IBL', () => {
     })
     expect((await lightState()).backgroundIsTexture).toBe(false)
   })
+
+  test('勾选可见环境背景后立即显示预设背景（无需保存刷新）', async () => {
+    await reloadPlayer(page, {
+      environment: { mode: 'preset', preset: 'overcast', visibleBackground: false },
+      assets: { panorama: '' },
+    })
+    expect((await lightState()).backgroundIsTexture).toBe(false)
+    await page.evaluate(() => {
+      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+        if ((d.querySelector('summary')?.textContent || '').includes('环境 IBL')) d.open = true
+      }
+    })
+    await page.evaluate(() => {
+      const cb = document.querySelector('#editor input[data-k="e.bg"]')
+      cb.checked = true
+      cb.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect((await lightState()).backgroundIsTexture).toBe(true)
+    await page.evaluate(() => {
+      const cb = document.querySelector('#editor input[data-k="e.bg"]')
+      cb.checked = false
+      cb.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect((await lightState()).backgroundIsTexture).toBe(false)
+  })
 })
 
 test.describe('预设（灯光方案）', () => {
@@ -627,6 +652,25 @@ test.describe('材质覆盖', () => {
       expect(st.on).toBe(false)                    // 没有自己的条目
       expect(st.note).toContain('按名称分组命中')   // 但不能说「跟随上方全局设置」
       expect(st.note).toContain('Bod')
+    })
+
+    test('config 里 namePattern 大小写与模型材质名不同时编辑器状态一致', async () => {
+      await page.evaluate(() => {
+        window.__SY_TEST__.setOverridesForTest([{ namePattern: 'body', metalness: 0.8, roughness: 0.4 }])
+      })
+      await page.evaluate(() => window.__edRefresh())
+      await openMat()
+      await pickMat('Body')
+      const st = await ovState()
+      expect(st.on).toBe(true)
+      expect(st.metal).toBeCloseTo(0.8, 5)
+      await setRange('ov.metal', 0.55)
+      const ov = (await mats()).overrides
+      expect(ov.length).toBe(1)
+      expect(ov[0].namePattern).toBe('Body')
+      expect(ov[0].metalness).toBeCloseTo(0.55, 5)
+      await toggleOv()
+      expect((await mats()).overrides || []).toEqual([])
     })
   })
 })

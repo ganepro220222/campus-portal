@@ -172,41 +172,106 @@ function studio_asset_fingerprint(string $root, string $exhibit, ?string $asset)
   return substr(hash_final($ctx), 0, STUDIO_FINGERPRINT_LENGTH);
 }
 
-// ---------- 全景图候选清单（与 pano-check.mjs / pano_check.py 一致；PHP 直接用 getimagesize） ----------
+// ---------- 全景图候选清单（与 pano-check.mjs / pano_check.py 一致） ----------
 const STUDIO_PANO_EXT = ['jpg', 'jpeg', 'png', 'webp'];
 const STUDIO_PANO_SKIP_DIRS = ['node_modules', 'vendor', '_runtime', '_dev', 'e2e', 'test-results', 'playwright-report'];
-// 等距柱状投影固有 2:1；放宽到 1.7 会把 16:9（1.778）的截图也收进来
+const STUDIO_PANO_PUBLIC_DIRS = ['共享背景', '_panoramas', 'shared/panoramas'];
 const STUDIO_PANO_RATIO_MIN = 1.9;
 const STUDIO_PANO_RATIO_MAX = 2.1;
 const STUDIO_PANO_MAX_SCAN = 400;
 
-function studio_list_panorama_candidates(string $root): array {
+function studio_panorama_to_root_rel(string $root, string $exhibit, ?string $panorama): ?string {
+  $p = trim((string)$panorama);
+  if ($p === '' || studio_is_remote_panorama($p)) return null;
+  $local = studio_resolve_asset_path($root, $exhibit, $p);
+  if ($local === null) return null;
+  $rootNorm = str_replace('\\', '/', realpath($root) ?: $root);
+  $localNorm = str_replace('\\', '/', realpath($local) ?: $local);
+  $prefix = rtrim($rootNorm, '/') . '/';
+  if (strncmp($localNorm, $prefix, strlen($prefix)) !== 0) return null;
+  return ltrim(substr($localNorm, strlen(rtrim($rootNorm, '/')) + 1), '/');
+}
+
+function studio_read_local_image_meta(string $root, string $rootRel): ?array {
+  $full = "$root/" . str_replace('\\', '/', $rootRel);
+  $ext = strtolower(pathinfo($full, PATHINFO_EXTENSION));
+  if (!in_array($ext, STUDIO_PANO_EXT, true) || !is_file($full)) return null;
+  $size = @getimagesize($full);
+  if (!$size || empty($size[0]) || empty($size[1])) return null;
+  $ratio = $size[0] / $size[1];
+  if ($ratio < STUDIO_PANO_RATIO_MIN || $ratio > STUDIO_PANO_RATIO_MAX) return null;
+  return ['width' => $size[0], 'height' => $size[1]];
+}
+
+function studio_list_exhibit_dirs(string $root): array {
   $out = [];
-  $walk = function (string $dir, string $rel) use (&$walk, &$out, $root) {
-    if (count($out) >= STUDIO_PANO_MAX_SCAN) return;
+  $items = @scandir($root);
+  if ($items === false) return $out;
+  sort($items);
+  foreach ($items as $name) {
+    if ($name === '.' || $name === '..' || $name[0] === '_' || $name[0] === '.') continue;
+    if (is_dir("$root/$name") && is_file("$root/$name/config.json")) $out[] = $name;
+  }
+  return $out;
+}
+
+function studio_list_panorama_candidates(string $root): array {
+  $merged = [];
+
+  $add = function (array $entry) use (&$merged) {
+    if (count($merged) >= STUDIO_PANO_MAX_SCAN) return;
+    $path = $entry['path'];
+    if (!isset($merged[$path]) || (($merged[$path]['source'] ?? '') === 'shared' && ($entry['source'] ?? '') === 'configured')) {
+      $merged[$path] = $entry;
+    }
+  };
+
+  foreach (studio_list_exhibit_dirs($root) as $ex) {
+    if (count($merged) >= STUDIO_PANO_MAX_SCAN) break;
+    $cp = "$root/$ex/config.json";
+    if (!is_file($cp)) continue;
+    $c = json_decode(file_get_contents($cp), true) ?: [];
+    $pano = $c['assets']['panorama'] ?? '';
+    if ($pano === '' || studio_is_remote_panorama($pano)) continue;
+    $rootRel = studio_panorama_to_root_rel($root, $ex, $pano);
+    if ($rootRel === null) continue;
+    $meta = studio_read_local_image_meta($root, $rootRel);
+    if ($meta !== null) $add(['path' => $rootRel, 'width' => $meta['width'], 'height' => $meta['height'], 'source' => 'configured']);
+  }
+
+  $walkShared = function (string $dir, string $rel) use (&$walkShared, &$merged, $root, $add) {
+    if (count($merged) >= STUDIO_PANO_MAX_SCAN) return;
     $items = @scandir($dir);
     if ($items === false) return;
     sort($items);
     foreach ($items as $name) {
-      if (count($out) >= STUDIO_PANO_MAX_SCAN) return;
+      if (count($merged) >= STUDIO_PANO_MAX_SCAN) return;
       if ($name === '.' || $name === '..' || $name[0] === '.') continue;
       $full = "$dir/$name";
       $r = $rel === '' ? $name : "$rel/$name";
       if (is_dir($full)) {
-        if (!in_array($name, STUDIO_PANO_SKIP_DIRS, true)) $walk($full, $r);
+        if (!in_array($name, STUDIO_PANO_SKIP_DIRS, true)) $walkShared($full, $r);
         continue;
       }
-      $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-      if (!in_array($ext, STUDIO_PANO_EXT, true)) continue;
-      $size = @getimagesize($full);
-      if (!$size || empty($size[0]) || empty($size[1])) continue;
-      $ratio = $size[0] / $size[1];
-      if ($ratio < STUDIO_PANO_RATIO_MIN || $ratio > STUDIO_PANO_RATIO_MAX) continue;
-      $out[] = ['path' => $r, 'width' => $size[0], 'height' => $size[1]];
+      $meta = studio_read_local_image_meta($root, $r);
+      if ($meta !== null) $add(['path' => $r, 'width' => $meta['width'], 'height' => $meta['height'], 'source' => 'shared']);
     }
   };
-  $walk($root, '');
-  usort($out, fn($a, $b) => strcmp($a['path'], $b['path']));
+
+  foreach (STUDIO_PANO_PUBLIC_DIRS as $pub) {
+    if (count($merged) >= STUDIO_PANO_MAX_SCAN) break;
+    $pubDir = "$root/" . str_replace('\\', '/', $pub);
+    if (is_dir($pubDir)) $walkShared($pubDir, str_replace('\\', '/', $pub));
+  }
+
+  $out = array_values($merged);
+  usort($out, function ($a, $b) {
+    $order = ['configured' => 0, 'shared' => 1];
+    $sa = $order[$a['source'] ?? ''] ?? 9;
+    $sb = $order[$b['source'] ?? ''] ?? 9;
+    if ($sa !== $sb) return $sa <=> $sb;
+    return strcmp($a['path'], $b['path']);
+  });
   return $out;
 }
 

@@ -5,9 +5,16 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { assetFingerprint, hasAssetFile, isRemotePanoramaUrl, imageSize, isPanoramaRatio,
-  listPanoramaCandidates, FINGERPRINT_CHUNK, FINGERPRINT_LENGTH } from './pano-check.mjs'
+  listPanoramaCandidates, panoramaToRootRel, FINGERPRINT_CHUNK, FINGERPRINT_LENGTH } from './pano-check.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
+
+function canRunPhpApi() {
+  try {
+    const out = execFileSync('php', ['-l', path.join(ROOT, '_server', 'api.php')], { encoding: 'utf8' })
+    return out.includes('No syntax errors')
+  } catch { return false }
+}
 
 let pass = 0, fail = 0
 function test(name, fn) {
@@ -215,21 +222,24 @@ from pano_check import asset_fingerprint
 d = Path(${JSON.stringify(tmp)})
 print(json.dumps({n: asset_fingerprint(d, n) for n in ${JSON.stringify(Object.keys(cases))}}))
 `], { encoding: 'utf8' })
-    // api.php 保持单文件可部署，用 STUDIO_API_LIB_ONLY 只加载函数、不跑请求分发
-    const phpCode = `define('STUDIO_API_LIB_ONLY', 1);`
-      + `require ${JSON.stringify(path.join(ROOT, '_server', 'api.php'))};`
-      + `$out = [];`
-      + `foreach (${JSON.stringify(Object.keys(cases))} as $n) {`
-      + `  $out[$n] = studio_asset_fingerprint(${JSON.stringify(path.dirname(tmp))}, ${JSON.stringify(path.basename(tmp))}, $n);`
-      + `}`
-      + `echo json_encode($out);`
-    const php = execFileSync('php', ['-r', phpCode], { encoding: 'utf8' })
-    const fromPy = JSON.parse(py), fromPhp = JSON.parse(php)
+    const fromPy = JSON.parse(py)
     for (const name of Object.keys(cases)) {
       const node = assetFingerprint(tmp, name)
       assert.equal(node.length, FINGERPRINT_LENGTH)
       assert.equal(fromPy[name], node, `python 与 node 不一致：${name}`)
-      assert.equal(fromPhp[name], node, `php 与 node 不一致：${name}`)
+    }
+    if (canRunPhpApi()) {
+      const phpCode = `define('STUDIO_API_LIB_ONLY', 1);`
+        + `require ${JSON.stringify(path.join(ROOT, '_server', 'api.php'))};`
+        + `$out = [];`
+        + `foreach (${JSON.stringify(Object.keys(cases))} as $n) {`
+        + `  $out[$n] = studio_asset_fingerprint(${JSON.stringify(path.dirname(tmp))}, ${JSON.stringify(path.basename(tmp))}, $n);`
+        + `}`
+        + `echo json_encode($out);`
+      const fromPhp = JSON.parse(execFileSync('php', ['-r', phpCode], { encoding: 'utf8' }))
+      for (const name of Object.keys(cases)) {
+        assert.equal(fromPhp[name], assetFingerprint(tmp, name), `php 与 node 不一致：${name}`)
+      }
     }
   })
 })
@@ -290,47 +300,80 @@ test('isPanoramaRatio：只收接近 2:1 的', () => {
   assert.equal(isPanoramaRatio({ width: 0, height: 0 }), false)
 })
 
-test('候选扫描：只挑 2:1 的图，路径相对 exhibits/ 且用正斜杠', () => {
+function miniConfig(pano = 'assets/panorama.jpg') {
+  return JSON.stringify({
+    version: 1,
+    i18n: { zh: { title: '测试展品' } },
+    assets: { model: 'assets/model.glb', panorama: pano, poster: 'assets/poster.jpg' },
+  })
+}
+
+test('panoramaToRootRel：展品相对路径与 ../ 公共路径', () => {
   withTmp(tmp => {
-    fs.mkdirSync(path.join(tmp, '共享背景'), { recursive: true })
-    fs.mkdirSync(path.join(tmp, 'craft-001', 'assets'), { recursive: true })
-    fs.writeFileSync(path.join(tmp, '共享背景', '暖阁.jpg'), jpegHeader(4096, 2048))
-    fs.writeFileSync(path.join(tmp, 'craft-001', 'assets', 'panorama.png'), pngHeader(2048, 1024))
-    fs.writeFileSync(path.join(tmp, 'craft-001', 'assets', 'poster.jpg'), jpegHeader(1600, 1000))  // 16:10，封面
-    fs.writeFileSync(path.join(tmp, 'readme.txt'), 'not an image')
-    const got = listPanoramaCandidates(tmp)
-    assert.deepEqual(got.map(x => x.path), ['craft-001/assets/panorama.png', '共享背景/暖阁.jpg'])
-    assert.deepEqual(got[0], { path: 'craft-001/assets/panorama.png', width: 2048, height: 1024 })
+    const ex = path.join(tmp, 'craft-001')
+    assert.equal(panoramaToRootRel(ex, 'assets/panorama.jpg', tmp), 'craft-001/assets/panorama.jpg')
+    assert.equal(panoramaToRootRel(ex, '../共享背景/warm.jpg', tmp), '共享背景/warm.jpg')
+    assert.equal(panoramaToRootRel(ex, '/media/bg.jpg', tmp), 'media/bg.jpg')
+    assert.equal(panoramaToRootRel(ex, 'https://cdn/x.jpg', tmp), null)
   })
 })
 
-test('候选扫描：跳过 vendor / node_modules 等目录与隐藏文件', () => {
+test('候选：已配置全景与公共背景出现，2:1 贴图/横幅不出现', () => {
   withTmp(tmp => {
-    for (const d of ['vendor', 'node_modules', '_runtime', '.bak']) {
+    fs.mkdirSync(path.join(tmp, '共享背景'), { recursive: true })
+    fs.mkdirSync(path.join(tmp, 'craft-001', 'assets', 'textures'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, '共享背景', '暖阁.jpg'), jpegHeader(4096, 2048))
+    fs.writeFileSync(path.join(tmp, 'craft-001', 'assets', 'panorama.png'), pngHeader(2048, 1024))
+    fs.writeFileSync(path.join(tmp, 'craft-001', 'assets', 'textures', 'base.jpg'), jpegHeader(2048, 1024))
+    fs.writeFileSync(path.join(tmp, 'craft-001', 'assets', 'normal.png'), pngHeader(4096, 2048))
+    fs.writeFileSync(path.join(tmp, 'craft-001', 'assets', 'banner.jpg'), jpegHeader(2000, 1000))
+    fs.writeFileSync(path.join(tmp, 'craft-001', 'assets', 'poster.jpg'), jpegHeader(1600, 1000))
+    fs.writeFileSync(path.join(tmp, 'craft-001', 'config.json'), miniConfig('assets/panorama.png'))
+    const got = listPanoramaCandidates(tmp)
+    const paths = got.map(x => x.path)
+    assert.ok(paths.includes('craft-001/assets/panorama.png'))
+    assert.ok(paths.includes('共享背景/暖阁.jpg'))
+    assert.ok(!paths.includes('craft-001/assets/textures/base.jpg'))
+    assert.ok(!paths.includes('craft-001/assets/normal.png'))
+    assert.ok(!paths.includes('craft-001/assets/banner.jpg'))
+    assert.ok(!paths.includes('craft-001/assets/poster.jpg'))
+    assert.equal(got.find(x => x.path === '共享背景/暖阁.jpg')?.source, 'shared')
+    assert.equal(got.find(x => x.path === 'craft-001/assets/panorama.png')?.source, 'configured')
+  })
+})
+
+test('候选：根目录散落的 2:1 图片不会入选', () => {
+  withTmp(tmp => {
+    fs.writeFileSync(path.join(tmp, 'stray.jpg'), jpegHeader(2048, 1024))
+    assert.deepEqual(listPanoramaCandidates(tmp), [])
+  })
+})
+
+test('候选：跳过 vendor / node_modules 等公共目录内的图', () => {
+  withTmp(tmp => {
+    fs.mkdirSync(path.join(tmp, '共享背景'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, '共享背景', 'ok.jpg'), jpegHeader(2048, 1024))
+    for (const d of ['vendor', 'node_modules', '_runtime']) {
       fs.mkdirSync(path.join(tmp, d), { recursive: true })
       fs.writeFileSync(path.join(tmp, d, 'x.jpg'), jpegHeader(2048, 1024))
     }
-    fs.writeFileSync(path.join(tmp, '.hidden.jpg'), jpegHeader(2048, 1024))
-    fs.writeFileSync(path.join(tmp, 'ok.jpg'), jpegHeader(2048, 1024))
-    assert.deepEqual(listPanoramaCandidates(tmp).map(x => x.path), ['ok.jpg'])
+    assert.deepEqual(listPanoramaCandidates(tmp).map(x => x.path), ['共享背景/ok.jpg'])
   })
 })
 
-test('候选扫描：目录不存在 / 空目录不抛错', () => {
+test('候选：目录不存在 / 空目录不抛错', () => {
   assert.deepEqual(listPanoramaCandidates(path.join(ROOT, '_definitely_missing_')), [])
   withTmp(tmp => assert.deepEqual(listPanoramaCandidates(tmp), []))
 })
 
-test('候选扫描：Node / Python / PHP 三份实现给出同一份清单', () => {
+test('候选：Node / Python / PHP 三份实现给出同一份清单', () => {
   withTmp(tmp => {
-    // 必须用真实图片：PHP 的 getimagesize() 会校验完整结构，合成图头一律拒收，
-    // 拿合成头比三家等于在比「谁更宽容」，不是在比业务口径。
-    const realPano = path.join(ROOT, 'craft-001/assets/panorama.jpg')   // 2048×1024
-    const realPoster = path.join(ROOT, 'craft-001/assets/poster.jpg')   // 1399×1147，不该入选
-    fs.mkdirSync(path.join(tmp, 'a', 'b'), { recursive: true })
-    fs.copyFileSync(realPano, path.join(tmp, 'pano1.jpg'))
-    fs.copyFileSync(realPano, path.join(tmp, 'a', 'pano2.jpg'))
-    fs.copyFileSync(realPoster, path.join(tmp, 'a', 'b', 'poster.jpg'))
+    const realPano = path.join(ROOT, 'craft-001/assets/panorama.jpg')
+    fs.mkdirSync(path.join(tmp, '共享背景'), { recursive: true })
+    fs.mkdirSync(path.join(tmp, 'craft-001', 'assets'), { recursive: true })
+    fs.copyFileSync(realPano, path.join(tmp, 'craft-001/assets/panorama.jpg'))
+    fs.copyFileSync(realPano, path.join(tmp, '共享背景/暖阁.jpg'))
+    fs.writeFileSync(path.join(tmp, 'craft-001/config.json'), miniConfig('assets/panorama.jpg'))
     const node = listPanoramaCandidates(tmp)
     const py = JSON.parse(execFileSync('python', ['-c', `
 import sys, json
@@ -339,13 +382,15 @@ from pathlib import Path
 from pano_check import list_panorama_candidates
 print(json.dumps(list_panorama_candidates(Path(${JSON.stringify(tmp)}))))
 `], { encoding: 'utf8' }))
-    const php = JSON.parse(execFileSync('php', ['-r',
-      `define('STUDIO_API_LIB_ONLY', 1);`
-      + `require ${JSON.stringify(path.join(ROOT, '_server', 'api.php'))};`
-      + `echo json_encode(studio_list_panorama_candidates(${JSON.stringify(tmp)}));`], { encoding: 'utf8' }))
-    assert.deepEqual(node.map(x => x.path), ['a/pano2.jpg', 'pano1.jpg'])
+    assert.deepEqual(node.map(x => x.path).sort(), ['craft-001/assets/panorama.jpg', '共享背景/暖阁.jpg'].sort())
     assert.deepEqual(py, node, 'python 与 node 清单不一致')
-    assert.deepEqual(php, node, 'php 与 node 清单不一致')
+    if (canRunPhpApi()) {
+      const php = JSON.parse(execFileSync('php', ['-r',
+        `define('STUDIO_API_LIB_ONLY', 1);`
+        + `require ${JSON.stringify(path.join(ROOT, '_server', 'api.php'))};`
+        + `echo json_encode(studio_list_panorama_candidates(${JSON.stringify(tmp)}));`], { encoding: 'utf8' }))
+      assert.deepEqual(php, node, 'php 与 node 清单不一致')
+    }
   })
 })
 

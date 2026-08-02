@@ -55,6 +55,23 @@ def _make_gui() -> obj2glb_gui.ConverterGUI:
     return gui
 
 
+@test("只读下拉框的选中色与常态一致（否则聚焦时空白 / 选完留钢蓝底）")
+def _():
+    m = obj2glb_gui.combobox_readonly_colors()
+    states = {st for st, _ in m["selectbackground"]}
+    ok({"readonly", "focus", "!focus"} <= states, f"缺少状态：{states}")
+    ok(all(c == obj2glb_gui.CARD for _, c in m["selectbackground"]), "选中底色必须等于字段底色")
+    ok(all(c == obj2glb_gui.TEXT for _, c in m["selectforeground"]), "选中字色必须等于正文色")
+
+
+@test("下拉框统一经 _combo 构造，选完会清掉文本高亮")
+def _():
+    gui = _make_gui()
+    cb = gui._combo(MagicMock(), MagicMock(), ["a", "b"], 10)
+    bound = [c.args[0] for c in cb.bind.call_args_list if c.args]
+    ok("<<ComboboxSelected>>" in bound, f"没绑定 ComboboxSelected：{bound}")
+
+
 @test("日志与文件列表用界面字体族，避免中英文两种字形")
 def _():
     gui = _make_gui()

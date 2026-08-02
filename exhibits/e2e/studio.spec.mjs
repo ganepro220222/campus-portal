@@ -376,6 +376,106 @@ test.describe('studio.html', () => {
     await expect(page.locator('#hint-bgvis')).toContainText('只会对其余 1 件生效')
   })
 
+  test('手工输入全景路径：bgvis 警告随输入实时更新', async ({ page }) => {
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-221', title: '房间', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
+    ])
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-221'])
+    await page.locator('#en-bgvis').check()
+    await page.locator('#v-bgvis').check()
+    await expect(page.locator('#hint-bgvis')).toHaveClass(/warn/)
+    await page.locator('#en-pano').check()
+    await page.locator('#v-pano').fill('../共享背景/展厅.jpg')
+    await expect(page.locator('#hint-bgvis')).not.toHaveClass(/warn/)
+    await page.locator('#v-pano').fill('')
+    await expect(page.locator('#hint-bgvis')).toHaveClass(/warn/)
+  })
+
+  test('连续批量：room→gallery 保存后第二次 bgvis 不误报', async ({ page }) => {
+    let exhibit = {
+      dir: 'craft-301', title: '测试器', hotspots: 0, hasPano: false, usesPanorama: false,
+      envMode: 'preset', envPreset: 'room', hasModel: true, mtime: 100,
+    }
+    let cfg = {
+      i18n: { zh: { title: '测试器' } },
+      environment: { mode: 'preset', preset: 'room' },
+      assets: {},
+    }
+    await page.route('**/studio-api/list*', route => route.fulfill({
+      json: { exhibits: [{ ...exhibit }], capabilities: { create: true, save: true, batch: true }, panoramas: [] },
+    }))
+    await page.route('**/craft-301/config.json*', route => route.fulfill({ json: structuredClone(cfg) }))
+    await page.route('**/studio-api/save', async route => {
+      const body = route.request().postDataJSON()
+      cfg = body.config
+      exhibit = {
+        ...exhibit,
+        envPreset: cfg.environment?.preset || 'room',
+        envMode: cfg.environment?.mode || 'preset',
+        usesPanorama: cfg.environment?.mode === 'panorama' && !!String(cfg.assets?.panorama ?? '').trim(),
+        hasPano: !!String(cfg.assets?.panorama ?? '').trim(),
+      }
+      await route.fulfill({ json: { ok: true } })
+    })
+    await page.goto('/studio.html')
+    await page.waitForSelector('#grid .card', { timeout: 30_000 })
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-301'])
+    await page.locator('#en-epreset').check()
+    await page.selectOption('#v-epreset', 'gallery')
+    await page.locator('#bapply').click()
+    await page.waitForFunction(() => document.querySelector('#blog')?.textContent?.includes('完成'), null, { timeout: 20_000 })
+    await expect(page.locator('.card[data-dir="craft-301"] .badge.env')).toContainText('博物馆暖阁')
+    await page.locator('#en-epreset').uncheck()
+    await page.locator('#en-bgvis').check()
+    await page.locator('#v-bgvis').check()
+    await expect(page.locator('#hint-bgvis')).not.toHaveClass(/warn/)
+  })
+
+  test('连续批量：清除全景后第二次 bgvis 基于 room 状态警告', async ({ page }) => {
+    let exhibit = {
+      dir: 'craft-302', title: '全景件', hotspots: 0, hasPano: true, usesPanorama: true,
+      envMode: 'panorama', envPreset: 'room', panorama: 'assets/p.jpg', hasModel: true, mtime: 100,
+    }
+    let cfg = {
+      i18n: { zh: { title: '全景件' } },
+      environment: { mode: 'panorama', preset: 'room' },
+      assets: { panorama: 'assets/p.jpg' },
+    }
+    await page.route('**/studio-api/list*', route => route.fulfill({
+      json: { exhibits: [{ ...exhibit }], capabilities: { create: true, save: true, batch: true }, panoramas: [] },
+    }))
+    await page.route('**/craft-302/config.json*', route => route.fulfill({ json: structuredClone(cfg) }))
+    await page.route('**/studio-api/save', async route => {
+      const body = route.request().postDataJSON()
+      cfg = body.config
+      const pano = String(cfg.assets?.panorama ?? '').trim()
+      exhibit = {
+        ...exhibit,
+        envPreset: cfg.environment?.preset || 'room',
+        envMode: cfg.environment?.mode || 'preset',
+        panorama: pano,
+        usesPanorama: cfg.environment?.mode === 'panorama' && !!pano,
+        hasPano: !!pano,
+      }
+      await route.fulfill({ json: { ok: true } })
+    })
+    await page.goto('/studio.html')
+    await page.waitForSelector('#grid .card', { timeout: 30_000 })
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-302'])
+    await page.locator('#en-panoClear').check()
+    await page.locator('#bapply').click()
+    await page.waitForFunction(() => document.querySelector('#blog')?.textContent?.includes('完成'), null, { timeout: 20_000 })
+    await expect(page.locator('.card[data-dir="craft-302"] .badge.env')).toContainText('内置房间')
+    await page.locator('#en-panoClear').uncheck()
+    await page.locator('#en-bgvis').check()
+    await page.locator('#v-bgvis').check()
+    await expect(page.locator('#hint-bgvis')).toHaveClass(/warn/)
+    await expect(page.locator('#hint-bgvis')).toContainText('不支持可见环境背景')
+  })
+
   test('批量五光源：写入 lights.*，方位角/仰角合成 position，未勾选的灯一律不碰', async ({ page }) => {
     const cfg = loadCfg('craft-001')
     await page.route('**/craft-001/config.json*', r => r.fulfill({ json: structuredClone(cfg) }))

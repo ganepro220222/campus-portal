@@ -436,7 +436,10 @@ function buildBatchUI() {
   }
   $('en-pano')?.addEventListener('change', () => { syncPanoMutualExclusion('pano'); syncBatchEnvHints() })
   $('en-panoClear')?.addEventListener('change', () => { syncPanoMutualExclusion('clear'); syncBatchEnvHints() })
-  $('v-pano')?.addEventListener('input', () => { if ($('en-pano')?.checked) syncPanoMutualExclusion('pano') })
+  $('v-pano')?.addEventListener('input', () => {
+    if ($('en-pano')?.checked) syncPanoMutualExclusion('pano')
+    syncBatchEnvHints()
+  })
   $('v-epreset')?.addEventListener('change', () => { syncPresetHint(); syncBatchEnvHints() })
   $('en-bgvis')?.addEventListener('change', syncBatchEnvHints)
   $('v-bgvis')?.addEventListener('change', syncBatchEnvHints)
@@ -529,43 +532,89 @@ async function applyBatch() {
     } catch (e) { fail++; line('er', `✗ ${dir}：${e.message}`) }
   }
   line('hd', `完成：成功 ${ok} · 失败 ${fail}。缩略图未改动；如需刷新封面请进单个编辑器保存。`)
+  if (ok > 0) {
+    try {
+      if (!await refreshExhibitList()) line('er', '保存成功，但列表未刷新；请手动刷新页面后再批量编辑。')
+    } catch (e) { line('er', '保存成功，但列表刷新失败：' + e.message) }
+  }
   $('bapply').disabled = false
+}
+
+/** 拉取展品列表（API 优先，否则 manifest）；供初次 load 与批量保存后刷新共用 */
+async function fetchExhibitList() {
+  try {
+    const r = await fetch('studio-api/list', { cache: 'no-cache' })
+    if (r.ok) {
+      const d = await r.json()
+      return {
+        list: (d.exhibits || []).map(normApi),
+        panoCandidates: Array.isArray(d.panoramas) ? d.panoramas : [],
+        source: 'api',
+        canCreate: d.capabilities?.create === true,
+      }
+    }
+  } catch (e) {}
+  let mani
+  try { mani = await (await fetch('manifest.json', { cache: 'no-cache' })).json() }
+  catch (e) { return { error: '读取展品清单失败：' + e.message } }
+  $('s-title').textContent = mani.title || $('s-title').textContent
+  $('s-sub').textContent = mani.subtitle || $('s-sub').textContent
+  const entries = (mani.exhibits || []).map(e => typeof e === 'string' ? { dir: e } : e)
+  if (!entries.length) return { error: '清单里还没有展品。复制一个 craft-XXX/ 目录并加进 manifest.json 的 exhibits。' }
+  const list = await Promise.all(entries.map(async e => {
+    const dir = e.dir.replace(/\/$/, '')
+    try {
+      const cfg = await (await fetch(`${dir}/config.json`, { cache: 'no-cache' })).json()
+      const item = normCfg(dir, cfg, e)
+      const [pano, model] = await Promise.all([
+        assetExists(dir, cfg.assets?.panorama),
+        assetExists(dir, cfg.assets?.model),
+      ])
+      item.hasPano = pano
+      item.hasModel = model
+      item.usesPanorama = (cfg.environment?.mode === 'panorama') && pano
+      return item
+    }
+    catch (err) { return { dir, title: (e && e.title) || dir, error: err.message } }
+  }))
+  return { list, panoCandidates: [], source: 'manifest' }
+}
+
+/** 批量保存后刷新内存卡片（保留选择/筛选/排序）；仅 API 列表模式 */
+async function refreshExhibitList() {
+  if (!hasApi) return false
+  const data = await fetchExhibitList()
+  if (!data?.list || data.source !== 'api') return false
+  items = data.list
+  panoCandidates = data.panoCandidates
+  const byDir = new Map(cards.map(c => [c.dir, c]))
+  const prevSel = new Set(selected)
+  for (const r of items) {
+    const card = byDir.get(r.dir)
+    if (!card) continue
+    const fresh = render(r)
+    card.el.replaceWith(fresh.el)
+    card.el = fresh.el
+    card.item = fresh.item
+    card.hasPano = fresh.hasPano
+    card.usesPanorama = fresh.usesPanorama
+    if (prevSel.has(r.dir)) { selected.add(r.dir); card.el.classList.add('sel') }
+    else { selected.delete(r.dir); card.el.classList.remove('sel') }
+  }
+  fillPanoPicker()
+  applyView()
+  refreshSel()
+  return true
 }
 
 /* ---------- 加载展品列表 ---------- */
 async function load() {
-  let list = null, source = ''
-  try {
-    const r = await fetch('studio-api/list', { cache: 'no-cache' })
-    if (r.ok) { const d = await r.json(); list = (d.exhibits || []).map(normApi); panoCandidates = Array.isArray(d.panoramas) ? d.panoramas : []
-      source = 'api'; hasApi = true; canCreate = d.capabilities?.create === true }
-  } catch (e) {}
-  if (!list) {
-    let mani
-    try { mani = await (await fetch('manifest.json', { cache: 'no-cache' })).json() }
-    catch (e) { return showEmpty('读取展品清单失败：' + e.message) }
-    $('s-title').textContent = mani.title || $('s-title').textContent
-    $('s-sub').textContent = mani.subtitle || $('s-sub').textContent
-    const entries = (mani.exhibits || []).map(e => typeof e === 'string' ? { dir: e } : e)
-    if (!entries.length) return showEmpty('清单里还没有展品。复制一个 craft-XXX/ 目录并加进 manifest.json 的 exhibits。')
-    list = await Promise.all(entries.map(async e => {
-      const dir = e.dir.replace(/\/$/, '')
-      try {
-        const cfg = await (await fetch(`${dir}/config.json`, { cache: 'no-cache' })).json()
-        const item = normCfg(dir, cfg, e)
-        const [pano, model] = await Promise.all([
-          assetExists(dir, cfg.assets?.panorama),
-          assetExists(dir, cfg.assets?.model),
-        ])
-        item.hasPano = pano
-        item.hasModel = model
-        item.usesPanorama = (cfg.environment?.mode === 'panorama') && pano
-        return item
-      }
-      catch (err) { return { dir, title: (e && e.title) || dir, error: err.message } }
-    }))
-    source = 'manifest'
-  }
+  const data = await fetchExhibitList()
+  if (data?.error) return showEmpty(data.error)
+  const list = data.list
+  let source = data.source
+  panoCandidates = data.panoCandidates || []
+  if (source === 'api') { hasApi = true; canCreate = !!data.canCreate }
   items = list
   document.title = $('s-title').textContent
   cards = items.map(render)

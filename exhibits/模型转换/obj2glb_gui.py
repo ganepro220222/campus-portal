@@ -476,6 +476,7 @@ class ConverterGUI:
             fh_t, fh_s, height = 22, 16, 74
         cv = tk.Canvas(self.root, height=height, highlightthickness=0, bd=0, bg=INK)
         cv.pack(fill="x")
+        self._head_size = None
         cv.bind("<Configure>", lambda e: self._paint_header(cv, e.width, e.height,
                                                             title, sub, pad_x, pad_y, fh_t, gap))
         self.canvas_head = cv
@@ -487,7 +488,10 @@ class ConverterGUI:
         return "#%02x%02x%02x" % tuple(round(x + (y - x) * t) for x, y in zip(a, b))
 
     def _paint_header(self, cv, w, h, title, sub, pad_x, pad_y, fh_t, gap):
-        """竖向渐变 + 右下角一抹暖光；每次尺寸变化重画。"""
+        """竖向渐变；仅在尺寸真的变了时重画——拖动窗口边缘时 <Configure> 会连发，
+        每次都 delete+重建上百个矩形会闪。"""
+        if getattr(self, "_head_size", None) == (w, h):
+            return
         try:
             cv.delete("all")
             steps = max(1, min(int(h), 120))
@@ -499,6 +503,7 @@ class ConverterGUI:
             cv.create_text(pad_x, pad_y, anchor="nw", text=title, fill="#f2e6ca", font=self.f_title)
             cv.create_text(pad_x, pad_y + fh_t + gap, anchor="nw", text=sub,
                            fill=INK_SUB, font=self.f_small)
+            self._head_size = (w, h)
         except Exception:  # noqa: BLE001
             pass
 

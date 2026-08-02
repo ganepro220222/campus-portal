@@ -336,7 +336,7 @@ test.describe('studio.html', () => {
     await expect(page.locator('#en-panoClear')).toBeChecked()
   })
 
-  test('只勾显示环境背景：room 展品给出批量提示', async ({ page }) => {
+  test('批量显示环境背景：room 展品且目标为 true 时给出提示', async ({ page }) => {
     await gotoStudioWithExhibits(page, [
       { dir: 'craft-201', title: '房间A', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
       { dir: 'craft-202', title: '房间B', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 200 },
@@ -344,12 +344,25 @@ test.describe('studio.html', () => {
     await openBatchPanel(page)
     await selectExhibits(page, ['craft-201', 'craft-202'])
     await page.locator('#en-bgvis').check()
+    await page.locator('#v-bgvis').check()
     await expect(page.locator('#hint-bgvis')).toHaveClass(/warn/)
     await expect(page.locator('#hint-bgvis')).toContainText('2 件')
     await expect(page.locator('#hint-bgvis')).toContainText('不支持可见环境背景')
   })
 
-  test('只勾显示环境背景：room 与 gallery 混合时部分提示', async ({ page }) => {
+  test('批量隐藏环境背景：room 展品目标为 false 时不警告', async ({ page }) => {
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-201', title: '房间A', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
+    ])
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-201'])
+    await page.locator('#en-bgvis').check()
+    await expect(page.locator('#v-bgvis')).not.toBeChecked()
+    await expect(page.locator('#hint-bgvis')).not.toHaveClass(/warn/)
+    await expect(page.locator('#hint-bgvis')).toHaveText('')
+  })
+
+  test('批量显示环境背景：room 与 gallery 混合且目标为 true 时部分提示', async ({ page }) => {
     await gotoStudioWithExhibits(page, [
       { dir: 'craft-211', title: '房间', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
       { dir: 'craft-212', title: '博物馆', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'gallery', envMode: 'preset', mtime: 200 },
@@ -357,6 +370,7 @@ test.describe('studio.html', () => {
     await openBatchPanel(page)
     await selectExhibits(page, ['craft-211', 'craft-212'])
     await page.locator('#en-bgvis').check()
+    await page.locator('#v-bgvis').check()
     await expect(page.locator('#hint-bgvis')).toHaveClass(/warn/)
     await expect(page.locator('#hint-bgvis')).toContainText('2 件中有 1 件不支持')
     await expect(page.locator('#hint-bgvis')).toContainText('只会对其余 1 件生效')

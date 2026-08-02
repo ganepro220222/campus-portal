@@ -3,6 +3,7 @@ import {
   inferBatchEnvEffect,
   batchBgvisWarn,
   batchBgvisWarnFromCards,
+  batchVisibleBgTarget,
   cardSupportsVisibleBg,
 } from './studio-batch-env.mjs'
 
@@ -16,6 +17,8 @@ const room = { usesPanorama: false, envMode: 'preset', envPreset: 'room' }
 const gallery = { usesPanorama: false, envMode: 'preset', envPreset: 'gallery' }
 const pano = { usesPanorama: true, envMode: 'panorama', panorama: 'assets/p.jpg' }
 const brokenPano = { usesPanorama: false, envMode: 'panorama', panorama: '' }
+const bgOn = { path: 'environment.visibleBackground', value: true }
+const bgOff = { path: 'environment.visibleBackground', value: false }
 
 console.log('studio-batch-env tests')
 
@@ -37,6 +40,13 @@ test('inferBatchEnvEffect：清除全景以 preset 为准', () => {
   assert.deepEqual(inferBatchEnvEffect(ops), { kind: 'preset', preset: 'room', cleared: true })
 })
 
+test('batchVisibleBgTarget：读最终布尔目标', () => {
+  assert.equal(batchVisibleBgTarget([]), null)
+  assert.equal(batchVisibleBgTarget([bgOff]), false)
+  assert.equal(batchVisibleBgTarget([bgOn, bgOff]), false)
+  assert.equal(batchVisibleBgTarget([bgOff, bgOn]), true)
+})
+
 test('cardSupportsVisibleBg：room / gallery / panorama', () => {
   assert.equal(cardSupportsVisibleBg(room), false)
   assert.equal(cardSupportsVisibleBg(gallery), true)
@@ -48,51 +58,78 @@ test('batchBgvisWarn：批量设全景时不误报 room', () => {
   const ops = [
     { path: 'assets.panorama', value: '../a.jpg' },
     { path: 'environment.mode', value: 'panorama' },
+    bgOn,
   ]
   assert.equal(batchBgvisWarn({ ops, enBgvis: true, enPano: true, enPanoClear: false, enEpreset: false, epreset: 'room' }), '')
 })
 
-test('batchBgvisWarn：只勾 bgvis 且 epreset=room 时警告', () => {
+test('batchBgvisWarn：bgvis=true 且 epreset=room 时警告', () => {
   assert.equal(
-    batchBgvisWarn({ ops: [], enBgvis: true, enEpreset: true, epreset: 'room' }),
+    batchBgvisWarn({ ops: [bgOn], enBgvis: true, enEpreset: true, epreset: 'room' }),
     '内置房间没有可显示的背景图；请改用影棚/博物馆等预设，或先批量设全景。',
   )
 })
 
-test('batchBgvisWarn：只勾 bgvis + 选中 room 时警告', () => {
-  const msg = batchBgvisWarn({ ops: [], picked: [room, room], enBgvis: true, enEpreset: false })
+test('batchBgvisWarn：bgvis=true + 选中 room 时警告', () => {
+  const msg = batchBgvisWarn({ ops: [bgOn], picked: [room, room], enBgvis: true, enEpreset: false })
   assert.match(msg, /2 件都不支持可见环境背景/)
 })
 
-test('batchBgvisWarn：只勾 bgvis + 选中 gallery 时不警告', () => {
-  assert.equal(batchBgvisWarn({ ops: [], picked: [gallery], enBgvis: true, enEpreset: false }), '')
+test('batchBgvisWarn：bgvis=false + 选中 room 时不警告', () => {
+  assert.equal(batchBgvisWarn({ ops: [bgOff], picked: [room, room], enBgvis: true, enEpreset: false }), '')
 })
 
-test('batchBgvisWarn：只勾 bgvis + 选中 panorama 时不警告', () => {
-  assert.equal(batchBgvisWarn({ ops: [], picked: [pano], enBgvis: true, enEpreset: false }), '')
+test('batchBgvisWarn：仅启用批量字段、目标 false（无 ops 内 true）时不警告', () => {
+  assert.equal(batchBgvisWarn({ ops: [bgOff], picked: [room, room], enBgvis: true, enEpreset: false }), '')
 })
 
-test('batchBgvisWarn：只勾 bgvis + room/gallery 混合时部分警告', () => {
-  const msg = batchBgvisWarn({ ops: [], picked: [room, room, gallery], enBgvis: true, enEpreset: false })
+test('batchBgvisWarn：bgvis=true + 选中 gallery 时不警告', () => {
+  assert.equal(batchBgvisWarn({ ops: [bgOn], picked: [gallery], enBgvis: true, enEpreset: false }), '')
+})
+
+test('batchBgvisWarn：bgvis=false + 选中 gallery 时不警告', () => {
+  assert.equal(batchBgvisWarn({ ops: [bgOff], picked: [gallery], enBgvis: true, enEpreset: false }), '')
+})
+
+test('batchBgvisWarn：bgvis=true + 选中 panorama 时不警告', () => {
+  assert.equal(batchBgvisWarn({ ops: [bgOn], picked: [pano], enBgvis: true, enEpreset: false }), '')
+})
+
+test('batchBgvisWarn：bgvis=true + room/gallery 混合时部分警告', () => {
+  const msg = batchBgvisWarn({ ops: [bgOn], picked: [room, room, gallery], enBgvis: true, enEpreset: false })
   assert.match(msg, /3 件中有 2 件不支持/)
   assert.match(msg, /只会对其余 1 件生效/)
 })
 
+test('batchBgvisWarn：bgvis=false + room/gallery 混合时不警告', () => {
+  assert.equal(batchBgvisWarn({ ops: [bgOff], picked: [room, room, gallery], enBgvis: true, enEpreset: false }), '')
+})
+
 test('batchBgvisWarn：批量 preset=gallery 支持可见背景', () => {
-  const ops = [{ path: 'environment.preset', value: 'gallery' }]
+  const ops = [{ path: 'environment.preset', value: 'gallery' }, bgOn]
   assert.equal(batchBgvisWarn({ ops, enBgvis: true, enEpreset: true, epreset: 'gallery' }), '')
 })
 
-test('batchBgvisWarn：bgvis + 清除全景且 preset=room 时警告', () => {
+test('batchBgvisWarn：bgvis=true + 清除全景且 preset=room 时警告', () => {
   const ops = [
     { path: 'assets.panorama', value: '' },
     { path: 'environment.mode', value: 'preset' },
     { path: 'environment.preset', value: 'room' },
+    bgOn,
   ]
   assert.equal(
     batchBgvisWarn({ ops, picked: [pano], enBgvis: true, enPanoClear: true, enEpreset: false }),
     '内置房间没有可显示的背景图；请改用影棚/博物馆等预设，或先批量设全景。',
   )
+})
+
+test('batchBgvisWarn：bgvis=false + 清除全景回 room 时不警告', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '' },
+    { path: 'environment.mode', value: 'preset' },
+    bgOff,
+  ]
+  assert.equal(batchBgvisWarn({ ops, picked: [pano], enBgvis: true, enPanoClear: true, enEpreset: false }), '')
 })
 
 test('batchBgvisWarnFromCards：无选中时不警告', () => {

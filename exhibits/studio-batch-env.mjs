@@ -19,6 +19,12 @@ export function inferBatchEnvEffect(ops = []) {
 
 const ROOM_BG_WARN = '内置房间没有可显示的背景图；请改用影棚/博物馆等预设，或先批量设全景。'
 
+/** 从批量 ops 读取最终 visibleBackground 目标（后者覆盖前者） */
+export function batchVisibleBgTarget(ops = []) {
+  const bgOp = [...ops].reverse().find(o => o.path === 'environment.visibleBackground')
+  return bgOp ? !!bgOp.value : null
+}
+
 /** 单件展品 card（或 list item）是否支持可见环境背景 */
 export function cardSupportsVisibleBg(card = {}) {
   const c = card.item ?? card
@@ -53,6 +59,7 @@ export function batchBgvisWarnFromCards(picked = []) {
 /** 「显示环境背景」批量项的警告文案；无警告时返回空串 */
 export function batchBgvisWarn({ ops = [], picked = [], enBgvis, enPano, enPanoClear, enEpreset, epreset = 'room' } = {}) {
   if (!enBgvis) return ''
+  if (batchVisibleBgTarget(ops) !== true) return ''
   const effect = inferBatchEnvEffect(ops)
   if (effect.kind === 'panorama') return ''
   if (effect.kind === 'preset') {

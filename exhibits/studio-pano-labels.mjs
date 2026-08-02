@@ -5,7 +5,7 @@ export function panoValueFor(rootRelPath) {
 }
 
 export function panoOptgroupLabel(source) {
-  return source === 'configured' ? '正在使用的全景' : '公共背景'
+  return source === 'configured' ? '展品中已配置的全景' : '公共背景'
 }
 
 export function panoOptionLabel(c) {

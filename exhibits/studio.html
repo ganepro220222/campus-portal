@@ -439,6 +439,7 @@ function buildBatchUI() {
   $('v-pano')?.addEventListener('input', () => { if ($('en-pano')?.checked) syncPanoMutualExclusion('pano') })
   $('v-epreset')?.addEventListener('change', () => { syncPresetHint(); syncBatchEnvHints() })
   $('en-bgvis')?.addEventListener('change', syncBatchEnvHints)
+  $('v-bgvis')?.addEventListener('change', syncBatchEnvHints)
   $('en-epreset')?.addEventListener('change', syncBatchEnvHints)
   $('v-lmode')?.addEventListener('change', syncBatchFieldModes)
   $('v-leader')?.addEventListener('change', syncBatchFieldModes)

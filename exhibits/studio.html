@@ -699,12 +699,15 @@ function refreshSel() {
   $('bapply').textContent = `应用到 ${n} 件展品`
   $('bapply').disabled = n === 0 || !hasApi
   syncPresetHint()
+  syncBatchEnvHints()
 }
 /* 内置 room 无可显示背景图——批量勾选「显示环境背景」且预设为 room 时提示 */
 function syncBatchEnvHints() {
   const el = $('hint-bgvis'); if (!el) return
+  const picked = cards.filter(c => selected.has(c.dir))
   const warn = batchBgvisWarn({
     ops: enabledOps(),
+    picked,
     enBgvis: $('en-bgvis')?.checked,
     enPano: $('en-pano')?.checked,
     enPanoClear: $('en-panoClear')?.checked,

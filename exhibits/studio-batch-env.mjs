@@ -19,8 +19,39 @@ export function inferBatchEnvEffect(ops = []) {
 
 const ROOM_BG_WARN = '内置房间没有可显示的背景图；请改用影棚/博物馆等预设，或先批量设全景。'
 
+/** 单件展品 card（或 list item）是否支持可见环境背景 */
+export function cardSupportsVisibleBg(card = {}) {
+  const c = card.item ?? card
+  if (card.usesPanorama ?? c.usesPanorama) {
+    return supportsVisibleBackground({
+      environment: { mode: 'panorama' },
+      assets: { panorama: c.panorama || 'x' },
+    })
+  }
+  if ((c.envMode || card.envMode) === 'panorama') return false
+  return supportsVisibleBackground({
+    environment: { mode: 'preset', preset: c.envPreset || 'room' },
+  })
+}
+
+/** 本批不改环境来源时，按选中展品当前环境统计 bgvis 警告 */
+export function batchBgvisWarnFromCards(picked = []) {
+  if (!picked.length) return ''
+  let supported = 0
+  for (const c of picked) {
+    if (cardSupportsVisibleBg(c)) supported++
+  }
+  const total = picked.length
+  const unsupported = total - supported
+  if (unsupported === 0) return ''
+  if (supported === 0) {
+    return `选中的 ${total} 件都不支持可见环境背景（如内置房间或缺少全景图）；请同时选择影棚/博物馆等环境预设，或批量设置全景。`
+  }
+  return `选中的 ${total} 件中有 ${unsupported} 件不支持可见环境背景；「显示环境背景」只会对其余 ${supported} 件生效。`
+}
+
 /** 「显示环境背景」批量项的警告文案；无警告时返回空串 */
-export function batchBgvisWarn({ ops = [], enBgvis, enPano, enPanoClear, enEpreset, epreset = 'room' } = {}) {
+export function batchBgvisWarn({ ops = [], picked = [], enBgvis, enPano, enPanoClear, enEpreset, epreset = 'room' } = {}) {
   if (!enBgvis) return ''
   const effect = inferBatchEnvEffect(ops)
   if (effect.kind === 'panorama') return ''
@@ -34,5 +65,5 @@ export function batchBgvisWarn({ ops = [], enBgvis, enPano, enPanoClear, enEpres
     const p = epreset || 'room'
     return supportsVisibleBackground({ environment: { mode: 'preset', preset: p } }) ? '' : ROOM_BG_WARN
   }
-  return ''
+  return batchBgvisWarnFromCards(picked)
 }

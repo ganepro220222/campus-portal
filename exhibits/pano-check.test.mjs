@@ -4,7 +4,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
-import { assetFingerprint, hasAssetFile, isRemotePanoramaUrl, FINGERPRINT_CHUNK, FINGERPRINT_LENGTH } from './pano-check.mjs'
+import { assetFingerprint, hasAssetFile, isRemotePanoramaUrl, imageSize, isPanoramaRatio,
+  listPanoramaCandidates, FINGERPRINT_CHUNK, FINGERPRINT_LENGTH } from './pano-check.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -230,6 +231,121 @@ print(json.dumps({n: asset_fingerprint(d, n) for n in ${JSON.stringify(Object.ke
       assert.equal(fromPy[name], node, `python 与 node 不一致：${name}`)
       assert.equal(fromPhp[name], node, `php 与 node 不一致：${name}`)
     }
+  })
+})
+
+
+/* ---------- 全景图候选（批量编辑的下拉选择） ---------- */
+
+/** 造最小可用的图头；只写解析器真正会读的那几个字段 */
+function pngHeader(w, h) {
+  const b = Buffer.alloc(24)
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b, 0)
+  b.writeUInt32BE(13, 8); b.write('IHDR', 12); b.writeUInt32BE(w, 16); b.writeUInt32BE(h, 20)
+  return b
+}
+function jpegHeader(w, h) {
+  const b = Buffer.alloc(20)
+  b.writeUInt16BE(0xffd8, 0)
+  b.writeUInt16BE(0xffe0, 2); b.writeUInt16BE(4, 4)        // 一个空 APP0，逼解析器走跳段逻辑
+  b.writeUInt16BE(0xffc0, 8); b.writeUInt16BE(17, 10); b[12] = 8
+  b.writeUInt16BE(h, 13); b.writeUInt16BE(w, 15)
+  return b
+}
+function webpVP8X(w, h) {
+  const b = Buffer.alloc(30)
+  b.write('RIFF', 0); b.writeUInt32LE(22, 4); b.write('WEBP', 8); b.write('VP8X', 12)
+  b.writeUInt32LE(10, 16)
+  b.writeUIntLE(w - 1, 24, 3); b.writeUIntLE(h - 1, 27, 3)
+  return b
+}
+
+test('imageSize：PNG / JPEG / WebP 三种图头都能读出尺寸', () => {
+  assert.deepEqual(imageSize(pngHeader(2048, 1024)), { width: 2048, height: 1024 })
+  assert.deepEqual(imageSize(jpegHeader(4096, 2048)), { width: 4096, height: 2048 })
+  assert.deepEqual(imageSize(webpVP8X(3000, 1500)), { width: 3000, height: 1500 })
+})
+
+test('imageSize：认不出的字节一律返回 null（宁可漏，不可错）', () => {
+  assert.equal(imageSize(null), null)
+  assert.equal(imageSize(Buffer.alloc(4)), null)
+  assert.equal(imageSize(Buffer.from('not an image at all, definitely')), null)
+})
+
+test('imageSize：真实 JPEG（craft-001 的全景图）读出 2048×1024', () => {
+  const fd = fs.openSync(path.join(ROOT, 'craft-001/assets/panorama.jpg'), 'r')
+  try {
+    const buf = Buffer.alloc(65536)
+    const n = fs.readSync(fd, buf, 0, buf.length, 0)
+    assert.deepEqual(imageSize(buf.subarray(0, n)), { width: 2048, height: 1024 })
+  } finally { fs.closeSync(fd) }
+})
+
+test('isPanoramaRatio：只收接近 2:1 的', () => {
+  assert.equal(isPanoramaRatio({ width: 2048, height: 1024 }), true)
+  assert.equal(isPanoramaRatio({ width: 4096, height: 2048 }), true)
+  assert.equal(isPanoramaRatio({ width: 1920, height: 1080 }), false)   // 16:9 不是等距柱状
+  assert.equal(isPanoramaRatio({ width: 1024, height: 1024 }), false)
+  assert.equal(isPanoramaRatio(null), false)
+  assert.equal(isPanoramaRatio({ width: 0, height: 0 }), false)
+})
+
+test('候选扫描：只挑 2:1 的图，路径相对 exhibits/ 且用正斜杠', () => {
+  withTmp(tmp => {
+    fs.mkdirSync(path.join(tmp, '共享背景'), { recursive: true })
+    fs.mkdirSync(path.join(tmp, 'craft-001', 'assets'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, '共享背景', '暖阁.jpg'), jpegHeader(4096, 2048))
+    fs.writeFileSync(path.join(tmp, 'craft-001', 'assets', 'panorama.png'), pngHeader(2048, 1024))
+    fs.writeFileSync(path.join(tmp, 'craft-001', 'assets', 'poster.jpg'), jpegHeader(1600, 1000))  // 16:10，封面
+    fs.writeFileSync(path.join(tmp, 'readme.txt'), 'not an image')
+    const got = listPanoramaCandidates(tmp)
+    assert.deepEqual(got.map(x => x.path), ['craft-001/assets/panorama.png', '共享背景/暖阁.jpg'])
+    assert.deepEqual(got[0], { path: 'craft-001/assets/panorama.png', width: 2048, height: 1024 })
+  })
+})
+
+test('候选扫描：跳过 vendor / node_modules 等目录与隐藏文件', () => {
+  withTmp(tmp => {
+    for (const d of ['vendor', 'node_modules', '_runtime', '.bak']) {
+      fs.mkdirSync(path.join(tmp, d), { recursive: true })
+      fs.writeFileSync(path.join(tmp, d, 'x.jpg'), jpegHeader(2048, 1024))
+    }
+    fs.writeFileSync(path.join(tmp, '.hidden.jpg'), jpegHeader(2048, 1024))
+    fs.writeFileSync(path.join(tmp, 'ok.jpg'), jpegHeader(2048, 1024))
+    assert.deepEqual(listPanoramaCandidates(tmp).map(x => x.path), ['ok.jpg'])
+  })
+})
+
+test('候选扫描：目录不存在 / 空目录不抛错', () => {
+  assert.deepEqual(listPanoramaCandidates(path.join(ROOT, '_definitely_missing_')), [])
+  withTmp(tmp => assert.deepEqual(listPanoramaCandidates(tmp), []))
+})
+
+test('候选扫描：Node / Python / PHP 三份实现给出同一份清单', () => {
+  withTmp(tmp => {
+    // 必须用真实图片：PHP 的 getimagesize() 会校验完整结构，合成图头一律拒收，
+    // 拿合成头比三家等于在比「谁更宽容」，不是在比业务口径。
+    const realPano = path.join(ROOT, 'craft-001/assets/panorama.jpg')   // 2048×1024
+    const realPoster = path.join(ROOT, 'craft-001/assets/poster.jpg')   // 1399×1147，不该入选
+    fs.mkdirSync(path.join(tmp, 'a', 'b'), { recursive: true })
+    fs.copyFileSync(realPano, path.join(tmp, 'pano1.jpg'))
+    fs.copyFileSync(realPano, path.join(tmp, 'a', 'pano2.jpg'))
+    fs.copyFileSync(realPoster, path.join(tmp, 'a', 'b', 'poster.jpg'))
+    const node = listPanoramaCandidates(tmp)
+    const py = JSON.parse(execFileSync('python', ['-c', `
+import sys, json
+sys.path.insert(0, ${JSON.stringify(ROOT)})
+from pathlib import Path
+from pano_check import list_panorama_candidates
+print(json.dumps(list_panorama_candidates(Path(${JSON.stringify(tmp)}))))
+`], { encoding: 'utf8' }))
+    const php = JSON.parse(execFileSync('php', ['-r',
+      `define('STUDIO_API_LIB_ONLY', 1);`
+      + `require ${JSON.stringify(path.join(ROOT, '_server', 'api.php'))};`
+      + `echo json_encode(studio_list_panorama_candidates(${JSON.stringify(tmp)}));`], { encoding: 'utf8' }))
+    assert.deepEqual(node.map(x => x.path), ['a/pano2.jpg', 'pano1.jpg'])
+    assert.deepEqual(py, node, 'python 与 node 清单不一致')
+    assert.deepEqual(php, node, 'php 与 node 清单不一致')
   })
 })
 

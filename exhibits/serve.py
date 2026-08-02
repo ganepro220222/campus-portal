@@ -50,7 +50,7 @@ def identity_payload(root: Path) -> dict:
     return {'rootHash': h, 'instanceId': h}
 
 
-from pano_check import asset_fingerprint, has_asset_file
+from pano_check import asset_fingerprint, has_asset_file, list_panorama_candidates
 
 ROOT_HASH = compute_root_hash(ROOT)
 
@@ -196,6 +196,7 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 return self._json(200, {
                     'exhibits': list_exhibits(),
+                    'panoramas': list_panorama_candidates(ROOT),
                     'capabilities': {'save': True, 'create': True, 'batch': True},
                 })
             except Exception as e:

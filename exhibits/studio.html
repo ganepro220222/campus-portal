@@ -115,7 +115,8 @@
   .bf { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:7px 0; font-size:12.5px; color:rgba(230,234,245,.85); }
   .bf > .bf-en { flex:0 0 auto; width:15px; height:15px; accent-color:var(--gold); cursor:pointer; }
   .bf .lb { flex:0 0 92px; color:rgba(230,234,245,.7); }
-  .bf .ctl { flex:1; min-width:0; display:flex; align-items:center; gap:6px; }
+  .bf .ctl { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  .bpick { flex:1 1 100%; margin-bottom:4px; }
   .bf .ctl select, .bf .ctl input[type=text] { flex:1; min-width:0; padding:5px 8px; border-radius:7px; font-size:12px;
     border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#eef0f5; font-family:inherit; }
   .bf .ctl input[type=range] { flex:1; min-width:0; accent-color:var(--gold); }
@@ -230,7 +231,7 @@ import {
   sortItems, filterItems, filterCounts, defaultDesc, normalizeView,
 } from './studio-sort.mjs'
 const $ = id => document.getElementById(id)
-let cards = [], items = [], hasApi = false, canCreate = false
+let cards = [], items = [], panoCandidates = [], hasApi = false, canCreate = false
 let countSuffix = ''
 const VIEW_KEY = 'studio.view.v1'
 let view = normalizeView(readView())
@@ -256,7 +257,7 @@ const LIGHT_SCHEMES = {
 }
 const GROUPS = [
   { title:'环境 IBL / 背景', fields:[
-    { id:'pano', path:'assets.panorama', label:'全景贴图', type:'text', ph:'assets/panorama.jpg 或 https://…', def:'' },
+    { id:'pano', path:'assets.panorama', label:'全景贴图', type:'text', picker:'pano', ph:'assets/panorama.jpg 或 https://…', def:'' },
     { id:'epreset', path:'environment.preset', label:'环境预设', type:'select', opts:ENV_PRESET_OPTS, def:'room', hint:'pano' },
     { id:'ibl',  path:'environment.intensity', label:'环境光照', type:'range', min:0, max:3, step:0.05, def:1.15 },
     { id:'erot', path:'environment.rotationDeg', label:'环境旋转°', type:'range', min:-180, max:180, step:1, def:0 },
@@ -354,13 +355,35 @@ function buildBatchUI() {
   }
   $('v-lmode')?.addEventListener('change', syncBatchFieldModes)
   $('v-leader')?.addEventListener('change', syncBatchFieldModes)
+  fillPanoPicker()
   syncBatchFieldModes()
+}
+
+/* 全景图候选下拉：服务端扫出来的 2:1 图片。
+   写进 config 的值统一加 ../ 前缀 —— 相对路径以展品目录为基准，../ 退到 exhibits/ 根，
+   部署到任何子路径下都成立；用 / 开头的站点根绝对路径换个部署前缀就 404 了。 */
+function panoValueFor(rootRelPath) { return '../' + rootRelPath }
+function fillPanoPicker() {
+  const sel = $('pick-pano'); if (!sel) return
+  if (!panoCandidates.length) { sel.hidden = true; return }
+  sel.hidden = false
+  sel.innerHTML = '<option value="">（手动输入）</option>' +
+    panoCandidates.map(c => `<option value="${esc(panoValueFor(c.path))}">${esc(c.path)}（${c.width}×${c.height}）</option>`).join('')
+  sel.addEventListener('change', () => {
+    if (!sel.value) return
+    const input = $('v-pano')
+    input.value = sel.value
+    $('en-pano').checked = true          // 选了图就等于要改这一项，省一次勾选
+    syncBatchFieldModes()
+  })
 }
 function fieldRow(f) {
   let ctl = ''
   if (f.type === 'bool') ctl = `<label class="swi"><input type="checkbox" id="v-${f.id}" ${f.def ? 'checked' : ''}> 显示 / 开启</label>`
   else if (f.type === 'switch') ctl = `<label class="swi"><input type="checkbox" id="v-${f.id}" ${f.def ? 'checked' : ''}> 勾选${f.on || '显示'} · 取消${f.off || '隐藏'}</label>`
-  else if (f.type === 'text') ctl = `<input type="text" id="v-${f.id}" placeholder="${f.ph || ''}" value="${f.def || ''}">`
+  else if (f.type === 'text') ctl = (f.picker === 'pano'
+      ? `<select id="pick-${f.id}" class="bpick" title="从 exhibits/ 下扫出来的 2:1 全景图里选"><option value="">（手动输入）</option></select>`
+      : '') + `<input type="text" id="v-${f.id}" placeholder="${f.ph || ''}" value="${f.def || ''}">`
   else if (f.type === 'color') ctl = `<input type="color" id="v-${f.id}" value="${f.def}">`
   else if (f.type === 'range') ctl = `<input type="range" id="v-${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}"><span class="val" id="o-${f.id}">${f.def}</span>`
   else if (f.type === 'select') ctl = `<select id="v-${f.id}">${f.opts.map(([v, l]) => `<option value="${v}" ${v === f.def ? 'selected' : ''}>${l}</option>`).join('')}</select>`
@@ -400,7 +423,8 @@ async function load() {
   let list = null, source = ''
   try {
     const r = await fetch('studio-api/list', { cache: 'no-cache' })
-    if (r.ok) { const d = await r.json(); list = (d.exhibits || []).map(normApi); source = 'api'; hasApi = true; canCreate = d.capabilities?.create === true }
+    if (r.ok) { const d = await r.json(); list = (d.exhibits || []).map(normApi); panoCandidates = Array.isArray(d.panoramas) ? d.panoramas : []
+      source = 'api'; hasApi = true; canCreate = d.capabilities?.create === true }
   } catch (e) {}
   if (!list) {
     let mani

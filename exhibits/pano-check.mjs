@@ -92,3 +92,90 @@ export function assetFingerprint(exhibitDir, assetPath, exhibitsRoot = null) {
     }
   }
 }
+
+/*
+ * 全景图候选清单
+ * --------------
+ * 批量编辑里「全景贴图」原本只能手打路径，100+ 件展品共用几张背景时又最需要它。
+ * 服务端扫一遍 exhibits/，把「看起来像等距柱状全景图」的挑出来给前端做下拉。
+ *
+ * 判据只有一条：宽高比接近 2:1（等距柱状投影的固有比例）。只读图头拿尺寸，
+ * 不解码像素，几十张图也就几毫秒。识别不了尺寸的一律不收——宁可漏，不可错。
+ */
+const PANO_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp'])
+const PANO_SKIP_DIRS = new Set(['node_modules', 'vendor', '_runtime', '_dev', 'e2e', 'test-results', 'playwright-report'])
+// 等距柱状投影固有 2:1。放到 1.7 会把 16:9 的截图（1.778）也当成全景图 —— 宁可漏，不可错。
+export const PANO_RATIO_MIN = 1.9
+export const PANO_RATIO_MAX = 2.1
+const PANO_MAX_SCAN = 400
+
+/** 从图头读宽高；只支持 JPEG / PNG / WebP(VP8X|VP8|VP8L)，读不出返回 null */
+export function imageSize(buf) {
+  if (!buf || buf.length < 16) return null
+  // PNG: 8 字节签名 + IHDR
+  if (buf.readUInt32BE(0) === 0x89504e47 && buf.readUInt32BE(4) === 0x0d0a1a0a) {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) }
+  }
+  // WebP: RIFF....WEBP
+  if (buf.length >= 30 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+    const fmt = buf.toString('ascii', 12, 16)
+    if (fmt === 'VP8X') return { width: (buf.readUIntLE(24, 3) & 0xffffff) + 1, height: (buf.readUIntLE(27, 3) & 0xffffff) + 1 }
+    if (fmt === 'VP8 ') return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff }
+    if (fmt === 'VP8L' && buf[20] === 0x2f) {
+      const b = buf.readUInt32LE(21)
+      return { width: (b & 0x3fff) + 1, height: ((b >> 14) & 0x3fff) + 1 }
+    }
+    return null
+  }
+  // JPEG: 逐段找 SOFn
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2
+    while (i + 9 < buf.length) {
+      if (buf[i] !== 0xff) { i++; continue }
+      const marker = buf[i + 1]
+      if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { i += 2; continue }
+      const len = buf.readUInt16BE(i + 2)
+      // SOF0..SOF15，跳过 DHT(c4)/JPGA(c8)/DAC(cc)
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) }
+      }
+      if (len < 2) return null
+      i += 2 + len
+    }
+  }
+  return null
+}
+
+export function isPanoramaRatio(size) {
+  if (!size || !size.width || !size.height) return false
+  const r = size.width / size.height
+  return r >= PANO_RATIO_MIN && r <= PANO_RATIO_MAX
+}
+
+/** 扫描 exhibitsRoot 下所有 2:1 图片，返回 [{ path, width, height }]（path 相对 exhibits/，正斜杠） */
+export function listPanoramaCandidates(exhibitsRoot) {
+  const out = []
+  const head = Buffer.alloc(65536)
+  const walk = (dir, rel) => {
+    if (out.length >= PANO_MAX_SCAN) return
+    let items
+    try { items = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
+    for (const it of items) {
+      if (out.length >= PANO_MAX_SCAN) return
+      if (it.name.startsWith('.')) continue
+      const full = path.join(dir, it.name)
+      const r = rel ? rel + '/' + it.name : it.name
+      if (it.isDirectory()) { if (!PANO_SKIP_DIRS.has(it.name)) walk(full, r); continue }
+      if (!it.isFile() || !PANO_EXT.has(path.extname(it.name).toLowerCase())) continue
+      let fd = null
+      try {
+        fd = fs.openSync(full, 'r')
+        const n = fs.readSync(fd, head, 0, head.length, 0)
+        const size = imageSize(head.subarray(0, n))
+        if (isPanoramaRatio(size)) out.push({ path: r, width: size.width, height: size.height })
+      } catch { /* 读不出就跳过 */ } finally { if (fd !== null) { try { fs.closeSync(fd) } catch {} } }
+    }
+  }
+  walk(exhibitsRoot, '')
+  return out.sort((a, b) => a.path.localeCompare(b.path))
+}

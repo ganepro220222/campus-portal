@@ -83,6 +83,22 @@ def main() -> int:
             smoke2 = next(x for x in json.loads(r.read().decode())['exhibits'] if x['dir'] == EX)
         if smoke2.get('hasPano') is not True:
             raise RuntimeError(f'expected hasPano true after adding file, got {smoke2!r}')
+        # 背景分组靠内容指纹：没有全景时为空，加上全景后必须给出指纹
+        if smoke.get('panoramaHash'):
+            raise RuntimeError(f'expected empty panoramaHash without panorama, got {smoke!r}')
+        fp = smoke2.get('panoramaHash')
+        if not fp or len(fp) != 16:
+            raise RuntimeError(f'expected 16-hex panoramaHash after adding file, got {smoke2!r}')
+        # 与 pano_check 直接算出来的值必须一致（服务端没有另起一套算法）
+        from pano_check import asset_fingerprint
+        if fp != asset_fingerprint(ex_dir, 'assets/panorama.jpg', ROOT):
+            raise RuntimeError('list 接口的 panoramaHash 与 pano_check 不一致')
+        # 换成不同内容 → 指纹必须变
+        (assets / 'panorama.jpg').write_bytes(b'different-bytes')
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/studio-api/list') as r:
+            smoke3 = next(x for x in json.loads(r.read().decode())['exhibits'] if x['dir'] == EX)
+        if smoke3.get('panoramaHash') == fp:
+            raise RuntimeError('换了全景图内容，panoramaHash 却没变')
     finally:
         proc.kill()
         proc.wait(timeout=5)

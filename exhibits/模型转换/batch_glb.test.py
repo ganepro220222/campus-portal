@@ -176,6 +176,89 @@ def _():
         ok(rows[1]["状态"].startswith("成功"))
 
 
+@test("GLB + --double-sided 写入输出 GLB 的 doubleSided")
+def _():
+    with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:
+        src = os.path.join(inp, "m.glb")
+        _make_box_glb(src, metallic=0.0)
+        r = process_one(
+            src, inp, out, None, 85, "auto", True, False, True,
+            normals="auto", metallic=0.0, keep_normal_map=True, fix_glb=True, double_sided=True,
+        )
+        ok(r["状态"].startswith("成功"), r.get("备注"))
+        final = os.path.join(out, r["GLB文件"])
+        gltf, _ = read_glb(final)
+        ok(all(m.get("doubleSided") is True for m in gltf.get("materials", [])))
+
+
+@test("GLB 未传 double_sided 时保留已有 doubleSided")
+def _():
+    with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:
+        src = os.path.join(inp, "m.glb")
+        _make_box_glb(src, metallic=0.0)
+        parsed = read_glb(src)
+        gltf, binary = parsed
+        for m in gltf.get("materials", []):
+            m["doubleSided"] = False
+        write_glb(src, gltf, binary)
+        r = process_one(
+            src, inp, out, None, 85, "auto", True, False, True,
+            normals="auto", metallic=0.0, keep_normal_map=True, fix_glb=True, double_sided=None,
+        )
+        ok(r["状态"].startswith("成功"))
+        final = os.path.join(out, r["GLB文件"])
+        gltf2, _ = read_glb(final)
+        ok(all(m.get("doubleSided") is False for m in gltf2.get("materials", [])))
+
+
+@test("GLB + --no-fix + double_sided 仍写入 doubleSided")
+def _():
+    with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:
+        src = os.path.join(inp, "m.glb")
+        _make_box_glb(src, metallic=1.0)
+        r = process_one(
+            src, inp, out, None, 85, "auto", True, False, True,
+            normals="auto", metallic=0.0, keep_normal_map=True, fix_glb=False, double_sided=True,
+        )
+        ok(r["状态"].startswith("成功"), r.get("备注"))
+        final = os.path.join(out, r["GLB文件"])
+        gltf, _ = read_glb(final)
+        ok(all(m.get("doubleSided") is True for m in gltf.get("materials", [])))
+        mf = gltf["materials"][0]["pbrMetallicRoughness"].get("metallicFactor")
+        eq(mf, 1.0, "no-fix 时不应改 metallicFactor")
+
+
+@test("ZIP 内 GLB + double_sided 写入输出")
+def _():
+    import zipfile
+    with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:
+        inner = os.path.join(inp, "inner.glb")
+        _make_box_glb(inner, metallic=0.0)
+        zpath = os.path.join(inp, "pkg.zip")
+        with zipfile.ZipFile(zpath, "w") as zf:
+            zf.write(inner, "inner.glb")
+        r = process_one(
+            zpath, inp, out, None, 85, "auto", True, False, True,
+            normals="auto", metallic=0.0, keep_normal_map=True, fix_glb=True, double_sided=True,
+        )
+        ok(r["状态"].startswith("成功"), r.get("备注"))
+        final = os.path.join(out, r["GLB文件"])
+        gltf, _ = read_glb(final)
+        ok(all(m.get("doubleSided") is True for m in gltf.get("materials", [])))
+
+
+@test("malformed GLB + double_sided 安全失败")
+def _():
+    with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:
+        bad = os.path.join(inp, "bad.glb")
+        _make_malformed_json_glb(bad)
+        r = process_one(
+            bad, inp, out, None, 85, "auto", True, False, True,
+            normals="auto", metallic=0.0, keep_normal_map=True, fix_glb=True, double_sided=True,
+        )
+        eq(r["状态"], "失败")
+
+
 @test("main() --double-sided 传给 process_one")
 def _():
     import contextlib, io as _io

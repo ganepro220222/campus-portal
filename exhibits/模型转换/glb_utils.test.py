@@ -327,6 +327,36 @@ def _():
     eq(notes, [])
 
 
+@test("double_sided=True 写入全部材质的 doubleSided")
+def _():
+    src = {"materials": [
+        {"name": "a", "pbrMetallicRoughness": {"metallicFactor": 0.0, "roughnessFactor": 0.5}},
+        {"name": "b", "doubleSided": False, "pbrMetallicRoughness": {"metallicFactor": 0.0, "roughnessFactor": 0.5}},
+    ]}
+    g, notes = patch_gltf_materials(src, double_sided=True, fix_metallic=False)
+    eq(g["materials"][0]["doubleSided"], True)
+    eq(g["materials"][1]["doubleSided"], True)
+    eq(len(notes), 2)
+
+
+@test("double_sided=None 不改动已有 doubleSided")
+def _():
+    src = {"materials": [{"doubleSided": False, "pbrMetallicRoughness": {"metallicFactor": 0.0, "roughnessFactor": 0.5}}]}
+    g, notes = patch_gltf_materials(src, fix_metallic=False)
+    eq(g["materials"][0]["doubleSided"], False)
+    eq(notes, [])
+
+
+@test("有 metallicRoughnessTexture 时仍可单独应用 double_sided")
+def _():
+    src = {"materials": [{"pbrMetallicRoughness": {
+        "metallicFactor": 1.0, "metallicRoughnessTexture": {"index": 0}}}]}
+    g, notes = patch_gltf_materials(src, double_sided=True, fix_metallic=True)
+    eq(g["materials"][0]["doubleSided"], True)
+    eq(g["materials"][0]["pbrMetallicRoughness"]["metallicFactor"], 1.0)
+    ok(notes and any("doubleSided" in n for n in notes))
+
+
 # ── GLB 读写 ────────────────────────────────────────────────────
 
 def _make_glb(path, gltf, binary=b"\x01\x02\x03"):
@@ -413,7 +443,7 @@ def _():
         eq(notes2, ["无需修复"])
 
 
-@test("fix_glb_file：坏文件安全失败，另存不动原文件")
+@test("fix_glb_file：另存不动原文件")
 def _():
     with tempfile.TemporaryDirectory() as tmp:
         p = os.path.join(tmp, "x.glb")
@@ -429,6 +459,18 @@ def _():
         fix_glb_file(src, dst)
         eq(open(src, "rb").read(), before, "另存模式不应改动原文件")
         ok(os.path.isfile(dst))
+
+
+@test("fix_glb_file：--no-fix 语义下仅应用 double_sided")
+def _():
+    with tempfile.TemporaryDirectory() as tmp:
+        p = os.path.join(tmp, "a.glb")
+        _make_glb(p, {"materials": [{"pbrMetallicRoughness": {"metallicFactor": 1.0, "roughnessFactor": 0.5}}]})
+        changed, notes = fix_glb_file(p, fix_metallic=False, double_sided=True)
+        ok(changed and notes)
+        gltf, _ = read_glb(p)
+        eq(gltf["materials"][0]["doubleSided"], True)
+        eq(gltf["materials"][0]["pbrMetallicRoughness"]["metallicFactor"], 1.0)
 
 
 # ── 端到端（需要 trimesh） ────────────────────────────────────────

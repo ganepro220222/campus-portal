@@ -252,14 +252,21 @@ def process_one(
             return result
 
         # 直接给进来的 GLB（含离线包里的）也做一次无损修复：只改 JSON，不动几何
-        if fix_glb and ext in (".zip", ".glb"):
-            changed, fix_notes = fix_glb_file(temp_path, metallic=metallic)
+        # double_sided 独立于 --no-fix：用户显式勾选时应生效，不因跳过金属度修复而静默忽略
+        if ext in (".zip", ".glb") and (fix_glb or double_sided is not None):
+            changed, fix_notes = fix_glb_file(
+                temp_path,
+                metallic=metallic,
+                double_sided=double_sided,
+                fix_metallic=fix_glb,
+            )
             if fix_notes and fix_notes != ["无需修复"]:
                 prefix = "材质修复：" if changed else "材质检查："
                 result["备注"] = (result["备注"] + " | " if result["备注"] else "") \
                     + prefix + "; ".join(fix_notes)
             if changed:
-                result["处理方式"] += " + 材质修复"
+                suffix = "材质修复" if fix_glb else "双面渲染"
+                result["处理方式"] += f" + {suffix}"
 
         stats = glb_stats(temp_path)
         if not stats:

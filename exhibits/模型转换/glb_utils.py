@@ -642,25 +642,37 @@ def format_audit(report: dict) -> str:
     return "\n".join(lines)
 
 
-def patch_gltf_materials(gltf: dict, metallic: float = OBJ_DEFAULT_METALLIC) -> tuple[dict, list[str]]:
+def patch_gltf_materials(
+    gltf: dict,
+    metallic: float = OBJ_DEFAULT_METALLIC,
+    double_sided: bool | None = None,
+    fix_metallic: bool = True,
+) -> tuple[dict, list[str]]:
     """
     只改 JSON、不动二进制的无损修复：给缺失/过高的 metallicFactor 写上正确值，
-    顺带补 roughnessFactor。用于抢救已经转好的 GLB（无需回头找原始 OBJ）。
+    顺带补 roughnessFactor；可选强制 doubleSided。用于抢救已经转好的 GLB。
     法线缺失无法在此修复——那需要重新转换，体检报告会说明。
     """
     notes: list[str] = []
     for i, m in enumerate(gltf.get("materials", []) or []):
         label = m.get("name") or f"#{i}"
         pbr = m.setdefault("pbrMetallicRoughness", {})
-        if "metallicRoughnessTexture" in pbr:
-            continue                                   # 有金属度贴图，说明是正经 PBR 资产，别动
-        old = pbr.get("metallicFactor")
-        if old is None or old > 0.6:
-            pbr["metallicFactor"] = float(metallic)
-            notes.append(f"{label}:metallicFactor {'缺省(1.0)' if old is None else old}→{metallic}")
-        if pbr.get("roughnessFactor") is None:
-            pbr["roughnessFactor"] = OBJ_FALLBACK_ROUGHNESS
-            notes.append(f"{label}:补写 roughnessFactor={OBJ_FALLBACK_ROUGHNESS}")
+        if fix_metallic and "metallicRoughnessTexture" not in pbr:
+            old = pbr.get("metallicFactor")
+            if old is None or old > 0.6:
+                pbr["metallicFactor"] = float(metallic)
+                notes.append(f"{label}:metallicFactor {'缺省(1.0)' if old is None else old}→{metallic}")
+            if pbr.get("roughnessFactor") is None:
+                pbr["roughnessFactor"] = OBJ_FALLBACK_ROUGHNESS
+                notes.append(f"{label}:补写 roughnessFactor={OBJ_FALLBACK_ROUGHNESS}")
+        if double_sided is not None:
+            want = bool(double_sided)
+            old = m.get("doubleSided")
+            if old is not want:
+                m["doubleSided"] = want
+                notes.append(
+                    f"{label}:doubleSided {old}→{want}" if old is not None else f"{label}:doubleSided→{want}"
+                )
     return gltf, notes
 
 
@@ -707,13 +719,21 @@ def write_glb(path: str, gltf: dict, binary: bytes) -> None:
         f.write(bytes(out))
 
 
-def fix_glb_file(src: str, dst: str | None = None, metallic: float = OBJ_DEFAULT_METALLIC) -> tuple[bool, list[str]]:
+def fix_glb_file(
+    src: str,
+    dst: str | None = None,
+    metallic: float = OBJ_DEFAULT_METALLIC,
+    double_sided: bool | None = None,
+    fix_metallic: bool = True,
+) -> tuple[bool, list[str]]:
     """就地（或另存）修复一个已有的 GLB。返回 (是否有改动, 说明)。"""
     parsed = read_glb(src)
     if parsed is None:
         return False, ["不是有效的 GLB 2.0 文件"]
     gltf, binary = parsed
-    gltf, notes = patch_gltf_materials(gltf, metallic=metallic)
+    gltf, notes = patch_gltf_materials(
+        gltf, metallic=metallic, double_sided=double_sided, fix_metallic=fix_metallic,
+    )
     if not notes:
         return False, ["无需修复"]
     write_glb(dst or src, gltf, binary)

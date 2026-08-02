@@ -16,9 +16,15 @@ export const ENV_PRESET_LABELS = {
   night: '夜展暗场',
 }
 
-/** 自然序切分：craft-2 要排在 craft-10 前面，纯字典序会反过来 */
+/** 数字片段的可排序键：先比有效位数，再比数值（支持最长 32 位编号）。 */
+function numericPartKey(part) {
+  const digits = part.replace(/^0+/, '') || '0'
+  return `${String(digits.length).padStart(2, '0')}${digits}`
+}
+
+/** 自然序切分：craft-2 要排在 craft-10 前面；超长数字按数值而非字典序。 */
 export function naturalKey(text) {
-  return String(text ?? '').match(/\d+|\D+/g)?.map(part => (/^\d/.test(part) ? part.padStart(12, '0') : part)).join('') ?? ''
+  return String(text ?? '').match(/\d+|\D+/g)?.map(part => (/^\d/.test(part) ? numericPartKey(part) : part)).join('') ?? ''
 }
 
 export function compareNatural(a, b) {

@@ -65,20 +65,44 @@ const baseName = p => String(p ?? '').trim().split(/[\\/]/).pop() || ''
 /** 徽标/搜索用的全景展示名上限（分组 identity 不受此限制）。 */
 export const PANORAMA_LABEL_NAME_MAX = 120
 
-/** 全景展示名：data/blob 用短标签，避免 Base64 进入 DOM 与搜索。 */
+function truncateDisplayName(name) {
+  if (!name) return ''
+  return name.length > PANORAMA_LABEL_NAME_MAX
+    ? name.slice(0, PANORAMA_LABEL_NAME_MAX) + '…'
+    : name
+}
+
+function pathnameBaseName(raw, protocolRelative = false) {
+  try {
+    const u = new URL(protocolRelative ? 'https:' + raw : raw)
+    let path = u.pathname
+    try {
+      path = decodeURIComponent(path)
+    } catch {
+      /* 保留编码路径 */
+    }
+    return baseName(path)
+  } catch {
+    return ''
+  }
+}
+
+/** 全景展示名：data/blob 用短标签；HTTP URL 只取 pathname basename，不含 query。 */
 function panoramaDisplayName(p) {
   const s = String(p ?? '').trim()
   if (/^data:/i.test(s)) return '内嵌图片'
   if (/^blob:/i.test(s)) return '临时图片'
-  const name = baseName(normSlashes(s))
-  if (name) {
-    return name.length > PANORAMA_LABEL_NAME_MAX
-      ? name.slice(0, PANORAMA_LABEL_NAME_MAX) + '…'
-      : name
-  }
   const norm = normSlashes(s)
-  if (/^https?:\/\//i.test(norm) || norm.startsWith('//')) return '远程图片'
-  return '远程图片'
+  if (/^https?:\/\//i.test(norm)) {
+    const name = pathnameBaseName(norm)
+    return name ? truncateDisplayName(name) : '远程图片'
+  }
+  if (norm.startsWith('//')) {
+    const name = pathnameBaseName(norm, true)
+    return name ? truncateDisplayName(name) : '远程图片'
+  }
+  const name = baseName(norm)
+  return name ? truncateDisplayName(name) : '远程图片'
 }
 
 function normSlashes(p) {
@@ -116,16 +140,66 @@ export function panoramaUrlKey(raw) {
   return s
 }
 
-/** 背景分组身份：hash > 远程 URL > 根相对路径 > 展品目录+相对路径；展示仍只用 basename。 */
+/** FNV-1a 32 位 hex；用于 data/blob 紧凑分组 identity（非密码用途）。 */
+export function fnv1aHex(text) {
+  let h = 2166136261
+  const s = String(text)
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return (h >>> 0).toString(16).padStart(8, '0')
+}
+
+/** data URI 分组 key：不含 Base64 主体，避免排序时比较 MB 级字符串。 */
+export function dataUriEnvKey(raw) {
+  const s = normSlashes(raw)
+  const comma = s.indexOf(',')
+  const header = comma >= 0 ? s.slice(0, comma) : s
+  const mime = /^data:([^;,]+)/i.exec(header)?.[1]?.toLowerCase() || 'unknown'
+  return `pano-data:${mime}:${s.length}:${fnv1aHex(s)}`
+}
+
+function blobEnvKey(raw) {
+  const s = normSlashes(raw)
+  return `pano-blob:${s.length}:${fnv1aHex(s)}`
+}
+
+const _envKeyCache = new Map()
+
+/** 测试或热重载时可清空全景 envKey 缓存。 */
+export function clearEnvKeyCache() {
+  _envKeyCache.clear()
+}
+
+function panoEnvCacheKey(item, raw) {
+  const hash = String(item.panoramaHash ?? '').trim().toLowerCase()
+  if (hash) return 'hash:' + hash
+  if (/^data:/i.test(raw) || /^blob:/i.test(raw) || isRemotePanorama(raw)) return 'remote:' + raw
+  return 'local:' + normSlashes(item.dir) + '\0' + raw
+}
+
+function computePanoEnvKey(item, raw) {
+  if (/^data:/i.test(raw)) return dataUriEnvKey(raw)
+  if (/^blob:/i.test(raw)) return blobEnvKey(raw)
+  if (isRemotePanorama(raw)) return 'pano-url:' + panoramaUrlKey(raw)
+  if (raw.startsWith('/')) return 'pano-root:' + raw
+  const dir = normSlashes(item.dir).replace(/\/+$/, '')
+  return 'pano:' + (dir ? dir + '/' : '') + raw
+}
+
+/** 背景分组 identity：hash > 远程 URL > 根相对路径 > 展品目录+相对路径。 */
 export function envKey(item = {}) {
   if (item.hasPano && item.panorama) {
     const hash = String(item.panoramaHash ?? '').trim().toLowerCase()
     if (hash) return 'pano-hash:' + hash
     const raw = normSlashes(item.panorama)
-    if (isRemotePanorama(raw)) return 'pano-url:' + panoramaUrlKey(raw)
-    if (raw.startsWith('/')) return 'pano-root:' + raw
-    const dir = normSlashes(item.dir).replace(/\/+$/, '')
-    return 'pano:' + (dir ? dir + '/' : '') + raw
+    const ck = panoEnvCacheKey(item, raw)
+    const hit = _envKeyCache.get(ck)
+    if (hit !== undefined) return hit
+    const key = computePanoEnvKey(item, raw)
+    _envKeyCache.set(ck, key)
+    return key
   }
   if (item.error) return 'zz:error'
   return 'preset:' + (ENV_PRESET_LABELS[item.envPreset] ? item.envPreset : 'room')

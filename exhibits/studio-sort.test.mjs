@@ -83,12 +83,35 @@ test('环境预设标签与 light-rig 的预设键完全一致', () => {
   assert.deepEqual(Object.keys(ENV_PRESET_LABELS).sort(), [...ENV_PRESET_KEYS].sort())
 })
 
-test('envKey：同一张全景图（路径不同）归为一组', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/sunset.jpg' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/SUNSET.JPG' }
-  const c = { dir: 'craft-003', hasPano: true, panorama: 'assets/dawn.jpg' }
+test('envKey：相同远程 URL 归为一组', () => {
+  const url = 'https://cdn.example.com/bg/sunset.jpg'
+  const a = { dir: 'craft-001', hasPano: true, panorama: url }
+  const b = { dir: 'craft-002', hasPano: true, panorama: url }
   assert.equal(envKey(a), envKey(b))
-  assert.notEqual(envKey(a), envKey(c))
+})
+
+test('envKey：不同展品同 basename 的相对路径不应合并', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/panorama.jpg' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/panorama.jpg' }
+  assert.notEqual(envKey(a), envKey(b))
+})
+
+test('envKey：panoramaHash 优先于路径', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/a.jpg', panoramaHash: 'abc123' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/b.jpg', panoramaHash: 'abc123' }
+  assert.equal(envKey(a), envKey(b))
+})
+
+test('envKey：大小写路径在 URL 语义下规范化', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'https://cdn/x/SUNSET.JPG' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'https://cdn/x/sunset.jpg' }
+  assert.equal(envKey(a), envKey(b))
+})
+
+test('envKey：不同文件名不归为一组', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'assets/sunset.jpg' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'assets/dawn.jpg' }
+  assert.notEqual(envKey(a), envKey(b))
 })
 
 test('envKey：配了 panorama 但文件不存在时不算全景，退回预设', () => {
@@ -113,10 +136,11 @@ test('envLabel：读不出配置的展品不编造环境', () => {
 })
 
 test('按背景环境排序时，同背景的展品一定相邻', () => {
+  const shared = 'https://cdn.example.com/shared/sunset.jpg'
   const items = [
-    { dir: 'craft-001', hasPano: true, panorama: 'assets/sunset.jpg' },
+    { dir: 'craft-001', hasPano: true, panorama: shared },
     { dir: 'craft-002', envPreset: 'gallery' },
-    { dir: 'craft-003', hasPano: true, panorama: 'assets/sunset.jpg' },
+    { dir: 'craft-003', hasPano: true, panorama: shared },
     { dir: 'craft-004', envPreset: 'gallery' },
   ]
   const keys = sortItems(items, 'env').map(envKey)

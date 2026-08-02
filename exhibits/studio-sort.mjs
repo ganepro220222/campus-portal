@@ -62,12 +62,26 @@ export function completeness(item = {}) {
 
 const baseName = p => String(p ?? '').trim().split(/[\\/]/).pop() || ''
 
-/**
- * 背景环境标识：全景图优先（同一张图 = 同一组），否则按环境预设。
- * 只取文件名不取路径 —— 各展品都放在自己的 assets/ 下，路径必然不同、文件名才是共性。
- */
+function normSlashes(p) {
+  return String(p ?? '').trim().replace(/\\/g, '/')
+}
+
+function isRemotePanorama(p) {
+  const s = normSlashes(p)
+  return /^(https?:|data:|blob:)/i.test(s) || s.startsWith('//')
+}
+
+/** 背景分组身份：hash > 远程 URL > 根相对路径 > 展品目录+相对路径；展示仍只用 basename。 */
 export function envKey(item = {}) {
-  if (item.hasPano && item.panorama) return 'pano:' + baseName(item.panorama).toLowerCase()
+  if (item.hasPano && item.panorama) {
+    const hash = String(item.panoramaHash ?? '').trim().toLowerCase()
+    if (hash) return 'pano-hash:' + hash
+    const raw = normSlashes(item.panorama)
+    if (isRemotePanorama(raw)) return 'pano-url:' + raw.toLowerCase()
+    if (raw.startsWith('/')) return 'pano-root:' + raw.toLowerCase()
+    const dir = normSlashes(item.dir).replace(/\/+$/, '')
+    return 'pano:' + (dir ? dir + '/' : '') + raw.toLowerCase()
+  }
   if (item.error) return 'zz:error'
   return 'preset:' + (ENV_PRESET_LABELS[item.envPreset] ? item.envPreset : 'room')
 }
@@ -85,7 +99,7 @@ export const SORTS = [
   { id: 'mtime', label: '最后编辑', cmp: (a, b) => (a.mtime || 0) - (b.mtime || 0), defaultDesc: true },
   { id: 'title', label: '展品名称', cmp: (a, b) => compareText(a.title, b.title) },
   { id: 'todo', label: '待完善优先', cmp: (a, b) => completeness(a).score - completeness(b).score },
-  { id: 'env', label: '背景环境', cmp: (a, b) => compareText(envLabel(a), envLabel(b)) },
+  { id: 'env', label: '背景环境', cmp: (a, b) => compareText(envKey(a), envKey(b)) },
   { id: 'hotspots', label: '热点数量', cmp: (a, b) => (a.hotspots || 0) - (b.hotspots || 0), defaultDesc: true },
 ]
 

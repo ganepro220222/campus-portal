@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import {
   pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern,
+  findOverrideEntry, removeOverrideEntries, ensureOverrideEntry,
 } from './material-override.mjs'
 
 let pass = 0, fail = 0
@@ -55,6 +56,32 @@ test('matchingOverridePattern 返回实际生效的非自身条目', () => {
   const ov = [{ namePattern: 'Bod', metalness: 0.9 }]
   assert.equal(matchingOverridePattern('Body', ov), 'Bod')
   assert.equal(matchingOverridePattern('Body', [{ namePattern: 'Body', metalness: 0.3 }]), '')
+})
+
+test('findOverrideEntry 大小写不敏感', () => {
+  const ov = [{ namePattern: 'body', metalness: 0.8 }]
+  assert.equal(findOverrideEntry(ov, 'Body')?.metalness, 0.8)
+  assert.equal(findOverrideEntry(ov, 'BODY')?.metalness, 0.8)
+})
+
+test('removeOverrideEntries 按规范化名称删除', () => {
+  const ov = [{ namePattern: 'body', metalness: 0.8 }, { namePattern: 'Trim', metalness: 0.2 }]
+  assert.deepEqual(removeOverrideEntries(ov, 'Body'), [{ namePattern: 'Trim', metalness: 0.2 }])
+})
+
+test('ensureOverrideEntry 复用已有条目并同步 namePattern', () => {
+  const ov = [{ namePattern: 'body', metalness: 0.8 }]
+  const o = ensureOverrideEntry(ov, 'Body')
+  assert.equal(o.metalness, 0.8)
+  assert.equal(o.namePattern, 'Body')
+  assert.equal(ov.length, 1)
+})
+
+test('ensureOverrideEntry 无条目时新建', () => {
+  const ov = []
+  const o = ensureOverrideEntry(ov, 'Body')
+  assert.equal(o.namePattern, 'Body')
+  assert.equal(ov.length, 1)
 })
 
 console.log('')

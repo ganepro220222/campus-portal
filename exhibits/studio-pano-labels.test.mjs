@@ -14,7 +14,7 @@ test('panoValueFor 加 ../ 前缀', () => {
 })
 
 test('panoOptgroupLabel 区分 configured 与 shared', () => {
-  assert.equal(panoOptgroupLabel('configured'), '正在使用的全景')
+  assert.equal(panoOptgroupLabel('configured'), '展品中已配置的全景')
   assert.equal(panoOptgroupLabel('shared'), '公共背景')
 })
 

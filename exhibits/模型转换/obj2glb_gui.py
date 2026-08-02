@@ -91,6 +91,21 @@ def pick_font(available, candidates: tuple[str, ...], fallback: str) -> str:
     return fallback
 
 
+def combobox_readonly_colors(field: str = CARD, text: str = TEXT) -> dict:
+    """
+    只读下拉框的「选中色」必须配成和常态一样。
+
+    ttk 的 readonly combobox 一旦拿到焦点，就改用 -selectforeground /
+    -selectbackground 画文字。clam 默认是「白字 + 钢蓝底」，于是：
+      · 弹出后不选、直接点别处 → 白字落在白底上，整格看着是空白；
+      · 选了一项           → 钢蓝底一直留着，点别处也不消失。
+    """
+    return {
+        "selectbackground": [("readonly", field), ("focus", field), ("!focus", field)],
+        "selectforeground": [("readonly", text), ("focus", text), ("!focus", text)],
+    }
+
+
 def golden_geometry(req_w, req_h, screen_w, screen_h,
                     min_w: int = MIN_W, min_h: int = MIN_H) -> tuple[int, int, int, int]:
     """
@@ -243,12 +258,24 @@ class ConverterGUI:
                      indicatorbackground=CARD, indicatorforeground=GOLD_DK, padding=(0, 3))
         st.map("Sunken.TCheckbutton", background=[("active", "#f8fafd")],
                indicatorbackground=[("selected", CARD), ("active", "#fbf6ea")])
+        # 只读下拉框有个陷阱：它一旦拿到焦点，文字就改用 -selectforeground /
+        # -selectbackground 来画。clam 的默认值是「白字 + 钢蓝底」，于是
+        #   · 弹出后不选直接点别处 → 白字画在白底上，整格变空白；
+        #   · 选了一项 → 钢蓝底一直留着，点别处也不消失。
+        # 把这两个「选中色」配成和常态一样，两个现象就同时没了。
         st.configure("TCombobox", fieldbackground=CARD, background=CARD, foreground=TEXT,
+                     selectbackground=CARD, selectforeground=TEXT,
                      arrowcolor=MUTED, bordercolor=LINE, lightcolor=CARD, darkcolor=CARD, padding=4)
-        st.map("TCombobox", fieldbackground=[("readonly", CARD)],
-               bordercolor=[("focus", GOLD)], arrowcolor=[("active", GOLD_DK)])
+        st.map("TCombobox",
+               fieldbackground=[("readonly", CARD), ("disabled", "#f1f3f7")],
+               **combobox_readonly_colors(),
+               foreground=[("disabled", "#a9afbd"), ("readonly", TEXT)],
+               background=[("readonly", CARD), ("active", CARD)],
+               bordercolor=[("focus", GOLD), ("!disabled", LINE)],
+               arrowcolor=[("disabled", "#c3c9d5"), ("active", GOLD_DK)])
         st.configure("TEntry", fieldbackground=WELL_BG, bordercolor=WELL_EDGE,
-                     lightcolor=WELL_BG, darkcolor=WELL_BG, padding=5)
+                     lightcolor=WELL_BG, darkcolor=WELL_BG, padding=5,
+                     selectbackground="#f0e2c2", selectforeground=TEXT)   # 只读框里选中路径要看得见
         st.configure("Horizontal.TScale", background=CARD, troughcolor="#e4e8f0",
                      bordercolor=LINE, lightcolor=CARD, darkcolor="#dfe4ee")
         st.configure("TProgressbar", background=GOLD, troughcolor="#e4e8f0",
@@ -265,6 +292,13 @@ class ConverterGUI:
                 self.root.option_add(f"*TCombobox*Listbox.{opt}", val)
             except Exception:  # noqa: BLE001
                 pass
+
+    def _combo(self, parent, textvariable, values, width):
+        """统一构造只读下拉框；选完清掉文本选中态，别在框里留一条高亮。"""
+        cb = ttk.Combobox(parent, textvariable=textvariable, values=values,
+                          state="readonly", width=width)
+        cb.bind("<<ComboboxSelected>>", lambda e: e.widget.selection_clear())
+        return cb
 
     def _card(self, parent, step: str, title: str, expand: bool = False, well: bool = False):
         """一张带标题的白卡片；返回内容容器。"""
@@ -361,13 +395,13 @@ class ConverterGUI:
 
         ttk.Label(g, text="贴图最大边长").grid(row=0, column=0, sticky="w")
         self.var_size = tk.StringVar(value=TEX_SIZES[0][0])
-        ttk.Combobox(g, textvariable=self.var_size, values=[s[0] for s in TEX_SIZES],
-                     state="readonly", width=13).grid(row=0, column=1, sticky="w", padx=(10, 24))
+        self._combo(g, self.var_size, [s[0] for s in TEX_SIZES], 13
+                    ).grid(row=0, column=1, sticky="w", padx=(10, 24))
 
         ttk.Label(g, text="贴图格式").grid(row=0, column=2, sticky="w")
         self.var_fmt = tk.StringVar(value=TEX_FORMATS[0][0])
-        ttk.Combobox(g, textvariable=self.var_fmt, values=[s[0] for s in TEX_FORMATS],
-                     state="readonly", width=9).grid(row=0, column=3, sticky="w", padx=(10, 0))
+        self._combo(g, self.var_fmt, [s[0] for s in TEX_FORMATS], 9
+                    ).grid(row=0, column=3, sticky="w", padx=(10, 0))
 
         ttk.Label(g, text="JPEG 质量").grid(row=1, column=0, sticky="w", pady=(10, 0))
         self.var_q = tk.IntVar(value=85)
@@ -379,8 +413,8 @@ class ConverterGUI:
 
         ttk.Label(g, text="法线处理").grid(row=2, column=0, sticky="w", pady=(10, 0))
         self.var_normals = tk.StringVar(value=NORMAL_MODES[0][0])
-        ttk.Combobox(g, textvariable=self.var_normals, values=[s[0] for s in NORMAL_MODES],
-                     state="readonly", width=13).grid(row=2, column=1, sticky="w", padx=(10, 24), pady=(10, 0))
+        self._combo(g, self.var_normals, [s[0] for s in NORMAL_MODES], 13
+                    ).grid(row=2, column=1, sticky="w", padx=(10, 24), pady=(10, 0))
         self.var_double = tk.BooleanVar(value=False)
         ttk.Checkbutton(g, text="双面渲染（有破洞时勾）", variable=self.var_double
                         ).grid(row=2, column=2, columnspan=2, sticky="w", pady=(10, 0))

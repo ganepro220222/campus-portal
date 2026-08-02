@@ -71,16 +71,42 @@ function isRemotePanorama(p) {
   return /^(https?:|data:|blob:)/i.test(s) || s.startsWith('//')
 }
 
+/** 远程全景分组身份：仅 scheme/hostname 大小写不敏感，path/query/fragment 保持原样。 */
+export function panoramaUrlKey(raw) {
+  const s = normSlashes(raw)
+  if (/^https?:\/\//i.test(s)) {
+    try {
+      const u = new URL(s)
+      u.protocol = u.protocol.toLowerCase()
+      u.hostname = u.hostname.toLowerCase()
+      return u.href
+    } catch {
+      return s
+    }
+  }
+  if (s.startsWith('//')) {
+    try {
+      const u = new URL('https:' + s)
+      u.hostname = u.hostname.toLowerCase()
+      return '//' + u.host + u.pathname + u.search + u.hash
+    } catch {
+      return s
+    }
+  }
+  // data:/blob: 等内容敏感，不做整条小写化
+  return s
+}
+
 /** 背景分组身份：hash > 远程 URL > 根相对路径 > 展品目录+相对路径；展示仍只用 basename。 */
 export function envKey(item = {}) {
   if (item.hasPano && item.panorama) {
     const hash = String(item.panoramaHash ?? '').trim().toLowerCase()
     if (hash) return 'pano-hash:' + hash
     const raw = normSlashes(item.panorama)
-    if (isRemotePanorama(raw)) return 'pano-url:' + raw.toLowerCase()
-    if (raw.startsWith('/')) return 'pano-root:' + raw.toLowerCase()
+    if (isRemotePanorama(raw)) return 'pano-url:' + panoramaUrlKey(raw)
+    if (raw.startsWith('/')) return 'pano-root:' + raw
     const dir = normSlashes(item.dir).replace(/\/+$/, '')
-    return 'pano:' + (dir ? dir + '/' : '') + raw.toLowerCase()
+    return 'pano:' + (dir ? dir + '/' : '') + raw
   }
   if (item.error) return 'zz:error'
   return 'preset:' + (ENV_PRESET_LABELS[item.envPreset] ? item.envPreset : 'room')

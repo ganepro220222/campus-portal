@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {
-  naturalKey, compareNatural, completeness, envKey, envLabel, ENV_PRESET_LABELS,
+  naturalKey, compareNatural, completeness, envKey, envLabel, panoramaUrlKey, ENV_PRESET_LABELS,
   SORTS, SORT_IDS, DEFAULT_SORT, sortSpec, defaultDesc, sortItems,
   FILTERS, FILTER_IDS, filterSpec, searchKey, filterItems, filterCounts,
   viewItems, normalizeView,
@@ -102,10 +102,41 @@ test('envKey：panoramaHash 优先于路径', () => {
   assert.equal(envKey(a), envKey(b))
 })
 
-test('envKey：大小写路径在 URL 语义下规范化', () => {
-  const a = { dir: 'craft-001', hasPano: true, panorama: 'https://cdn/x/SUNSET.JPG' }
-  const b = { dir: 'craft-002', hasPano: true, panorama: 'https://cdn/x/sunset.jpg' }
+test('envKey：scheme 与 hostname 大小写不同视为同一远程 URL', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'HTTPS://CDN.EXAMPLE.COM/bg/sunset.jpg' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'https://cdn.example.com/bg/sunset.jpg' }
   assert.equal(envKey(a), envKey(b))
+})
+
+test('envKey：path 大小写不同不得合并', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'https://cdn.example.com/A.jpg' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'https://cdn.example.com/a.jpg' }
+  assert.notEqual(envKey(a), envKey(b))
+})
+
+test('envKey：query 大小写不同不得合并', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: 'https://cdn.example.com/x.jpg?token=ABC' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: 'https://cdn.example.com/x.jpg?token=abc' }
+  assert.notEqual(envKey(a), envKey(b))
+})
+
+test('envKey：protocol-relative URL 仅规范化 hostname', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: '//CDN.EXAMPLE.COM/x.jpg' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: '//cdn.example.com/x.jpg' }
+  assert.equal(envKey(a), envKey(b))
+  const c = { dir: 'craft-003', hasPano: true, panorama: '//cdn.example.com/X.jpg' }
+  assert.notEqual(envKey(a), envKey(c))
+})
+
+test('panoramaUrlKey：data/blob 不做整条小写化', () => {
+  const data = 'data:image/png;base64,AbC'
+  assert.equal(panoramaUrlKey(data), data)
+})
+
+test('envKey：根相对 path 大小写不同不得合并', () => {
+  const a = { dir: 'craft-001', hasPano: true, panorama: '/shared/A.jpg' }
+  const b = { dir: 'craft-002', hasPano: true, panorama: '/shared/a.jpg' }
+  assert.notEqual(envKey(a), envKey(b))
 })
 
 test('envKey：不同文件名不归为一组', () => {

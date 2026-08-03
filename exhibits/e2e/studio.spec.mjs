@@ -44,10 +44,11 @@ async function gotoStudioWithListStub(page, capabilities) {
 }
 
 /** 用构造的展品列表打开工作台（真实 craft-00x 四件都很齐全，测不出筛选） */
-async function gotoStudioWithExhibits(page, exhibits, { checkPano = null, panoramas = [] } = {}) {
+async function gotoStudioWithExhibits(page, exhibits, { checkPano = null, panoramas = [], panoVerifyTimeoutMs = null } = {}) {
   const bodyJson = JSON.stringify({ exhibits, capabilities: { create: true, save: true, batch: true }, panoramas })
   const checkPanoJson = JSON.stringify(checkPano)
-  await page.addInitScript(({ json, checkPanoRules }) => {
+  await page.addInitScript(({ json, checkPanoRules, panoVerifyTimeoutMs: tmo }) => {
+    if (typeof tmo === 'number') window.__batchPanoVerifyTimeoutMs = tmo
     const stub = JSON.parse(json)
     const rules = checkPanoRules ? JSON.parse(checkPanoRules) : null
     window.__panoCheckWaiters = window.__panoCheckWaiters || {}
@@ -85,7 +86,7 @@ async function gotoStudioWithExhibits(page, exhibits, { checkPano = null, panora
       }
       return origFetch(input, init)
     }
-  }, { json: bodyJson, checkPanoRules: checkPanoJson })
+  }, { json: bodyJson, checkPanoRules: checkPanoJson, panoVerifyTimeoutMs })
   await page.goto('/studio.html')
   await page.waitForSelector('#grid .card', { timeout: 30_000 })
   await expect(page.locator('#grid .card')).toHaveCount(exhibits.length)
@@ -529,6 +530,34 @@ test.describe('studio.html', () => {
     await page.evaluate(p => window.releasePanoCheck(p, false), pathA)
     await clickPromise
     await expect(page.locator('#blog')).toContainText('验证期间发生变化')
+    await expect.poll(() => saveCount, { timeout: 3000 }).toBe(0)
+  })
+
+  test('check-panorama 永久 pending 时验证超时、按钮恢复、取消 confirm 不保存', async ({ page }) => {
+    const hangPath = '../共享背景/挂起.jpg'
+    let saveCount = 0
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-227', title: '房间', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
+    ], { panoVerifyTimeoutMs: 400 })
+    await page.route('**/studio-api/save', async route => {
+      saveCount++
+      await route.fulfill({ json: { ok: true } })
+    })
+    await page.route(`**/craft-227/config.json*`, route => route.fulfill({
+      json: { i18n: { zh: { title: '房间' } }, environment: { mode: 'preset', preset: 'room' }, assets: {} },
+    }))
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-227'])
+    await page.evaluate(p => { window.deferPanoCheck(p) }, hangPath)
+    await page.locator('#en-pano').check()
+    await page.locator('#v-pano').fill(hangPath)
+    const dialogSeen = page.waitForEvent('dialog', { timeout: 5000 })
+    const clickPromise = page.locator('#bapply').click()
+    const dialog = await dialogSeen
+    expect(dialog.message()).toMatch(/无法完全验证/)
+    await dialog.dismiss()
+    await clickPromise
+    await expect(page.locator('#bapply')).toBeEnabled()
     await expect.poll(() => saveCount, { timeout: 3000 }).toBe(0)
   })
 

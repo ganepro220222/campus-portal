@@ -585,8 +585,10 @@ test.describe('studio.html', () => {
     await selectExhibits(page, ['craft-225'])
     await page.locator('#en-pano').check()
     await page.locator('#v-pano').fill(rootPath)
-    await expect.poll(async () => page.locator('#hint-pano').textContent()).toMatch(/子路径部署/)
-    await expect(page.locator('#hint-pano').textContent()).toMatch(/404/)
+    // locator.textContent() 返回的是 Promise，直接塞给 expect 会拿到对象而不是字符串
+    // （报错原文：received value must be a string）。用自动重试的 toHaveText 一步到位。
+    await expect(page.locator('#hint-pano')).toHaveText(/子路径部署/)
+    await expect(page.locator('#hint-pano')).toHaveText(/404/)
   })
 
   test('仅改环境预设：全景展品提示 preset 当前不生效', async ({ page }) => {

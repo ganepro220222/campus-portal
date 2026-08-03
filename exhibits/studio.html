@@ -263,7 +263,7 @@
 
 <script type="module">
 import { batchFieldApplies } from './studio-batch.mjs'
-import { batchBgvisWarn, batchPresetHint } from './studio-batch-env.mjs'
+import { batchBgvisWarn, batchPresetHint, batchPanoPathHint, PANO_UNKNOWN } from './studio-batch-env.mjs'
 import { panoValueFor, panoOptionLabel, panoOptionTitle, PANO_MANUAL } from './studio-pano-labels.mjs'
 import {
   SORTS, FILTERS, ENV_PRESET_LABELS, envLabel,
@@ -275,6 +275,10 @@ import {
 } from './light-rig.mjs'
 const $ = id => document.getElementById(id)
 let cards = [], items = [], panoCandidates = [], hasApi = false, canCreate = false
+/** 本批手工全景路径的验证态：true / false / PANO_UNKNOWN / null（未启用全景批量） */
+let batchPanoAvailability = null
+let batchPanoVerifyToken = 0
+let batchPanoVerifyTimer = 0
 let countSuffix = ''
 const VIEW_KEY = 'studio.view.v1'
 let view = normalizeView(readView())
@@ -321,7 +325,7 @@ const lightSub = k => {
 
 const GROUPS = [
   { title:'环境 IBL / 背景', fields:[
-    { id:'pano', path:'assets.panorama', label:'全景贴图', type:'text', picker:'pano', ph:'assets/panorama.jpg 或 https://…', def:'',
+    { id:'pano', path:'assets.panorama', label:'全景贴图', type:'text', picker:'pano', ph:'assets/panorama.jpg 或 https://…', def:'', hint:'pano',
       expandOps(v) {
         const s = String(v ?? '').trim()
         if (!s) return []
@@ -455,12 +459,24 @@ function buildBatchUI() {
     // 勾了某盏灯的任一字段，就把它所在的小节展开，免得勾了却看不见
     en.addEventListener('change', () => { if (en.checked) en.closest('details.bsub')?.setAttribute('open', '') })
   }
-  $('en-pano')?.addEventListener('change', () => { syncPanoMutualExclusion('pano'); syncBatchEnvHintsAll() })
-  $('en-panoClear')?.addEventListener('change', () => { syncPanoMutualExclusion('clear'); syncBatchEnvHintsAll() })
+  $('en-pano')?.addEventListener('change', () => {
+    syncPanoMutualExclusion('pano')
+    if (!$('en-pano')?.checked) batchPanoAvailability = null
+    else scheduleBatchPanoVerify()
+    syncBatchEnvHintsAll()
+  })
+  $('en-panoClear')?.addEventListener('change', () => {
+    syncPanoMutualExclusion('clear')
+    if ($('en-panoClear')?.checked) batchPanoAvailability = null
+    syncBatchEnvHintsAll()
+  })
   $('v-pano')?.addEventListener('input', e => {
     e.target.title = e.target.value      // 手打的路径同样长，气泡要跟着走
     if ($('en-pano')?.checked) syncPanoMutualExclusion('pano')
+    clearTimeout(batchPanoVerifyTimer)
+    batchPanoAvailability = PANO_UNKNOWN
     syncBatchEnvHintsAll()
+    batchPanoVerifyTimer = setTimeout(scheduleBatchPanoVerify, 200)
   })
   $('v-epreset')?.addEventListener('change', syncBatchEnvHintsAll)
   $('en-bgvis')?.addEventListener('change', syncBatchEnvHintsAll)
@@ -501,14 +517,65 @@ function fillPanoPicker() {
   syncPanoPickTitle()
   sel.onchange = () => {
     syncPanoPickTitle()
-    if (!sel.value) return
+    if (!sel.value) {
+      batchPanoAvailability = null
+      syncBatchEnvHintsAll()
+      return
+    }
     const input = $('v-pano')
     input.value = sel.value
     input.title = input.value
+    batchPanoAvailability = true
     $('en-pano').checked = true          // 选了图就等于要改这一项，省一次勾选
     syncPanoMutualExclusion('pano')
     syncBatchFieldModes()
     syncBatchEnvHintsAll()
+  }
+}
+function currentBatchPanoPath() {
+  if (!$('en-pano')?.checked) return ''
+  return String($('v-pano')?.value ?? '').trim()
+}
+function resolveBatchPanoAvailability() {
+  if (!$('en-pano')?.checked) return null
+  const path = currentBatchPanoPath()
+  if (!path) return null
+  return batchPanoAvailability
+}
+async function scheduleBatchPanoVerify() {
+  const path = currentBatchPanoPath()
+  if (!path) {
+    batchPanoAvailability = null
+    syncBatchEnvHintsAll()
+    return
+  }
+  if (panoCandidates.some(c => panoValueFor(c.path) === path)) {
+    batchPanoAvailability = true
+    syncBatchEnvHintsAll()
+    return
+  }
+  if (!hasApi) {
+    batchPanoAvailability = PANO_UNKNOWN
+    syncBatchEnvHintsAll()
+    return
+  }
+  const token = ++batchPanoVerifyToken
+  try {
+    const r = await fetch(`studio-api/check-panorama?path=${encodeURIComponent(path)}`, { cache: 'no-cache' })
+    if (token !== batchPanoVerifyToken) return
+    const d = await r.json()
+    batchPanoAvailability = d.availability ?? PANO_UNKNOWN
+  } catch {
+    if (token !== batchPanoVerifyToken) return
+    batchPanoAvailability = PANO_UNKNOWN
+  }
+  syncBatchEnvHintsAll()
+}
+function batchEnvHintBase() {
+  return {
+    ops: enabledOps(),
+    picked: cards.filter(c => selected.has(c.dir)),
+    batchPanoAvailability: resolveBatchPanoAvailability(),
   }
 }
 /* 框窄放不下整条路径，超出的部分省略；完整路径靠原生 title 气泡看 */
@@ -548,6 +615,10 @@ async function applyBatch() {
   const line = (cls, txt) => { const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = txt; log.appendChild(d); log.scrollTop = log.scrollHeight }
   if (!dirs.length) return line('er', '未选择展品。')
   if (!ops.length) return line('er', '未勾选任何要修改的字段。')
+  const panoAvail = resolveBatchPanoAvailability()
+  if ($('en-pano')?.checked && panoAvail === false) {
+    if (!confirm('全景路径在本地未找到，保存后各展品将回落到环境预设。仍要继续批量保存？')) return
+  }
   line('hd', `开始批量：${dirs.length} 件展品 · ${ops.length} 个字段 → ${ops.map(o => o.path).join(', ')}`)
   if (!hasApi) return line('er', '未检测到工作台服务（studio-api），无法直接写回。请用 node _server/studio-server.mjs 启动后再批量保存。')
   $('bapply').disabled = true
@@ -784,15 +855,10 @@ function refreshSel() {
 /* 内置 room 无可显示背景图——批量勾选「显示环境背景」且预设为 room 时提示 */
 function syncBatchEnvHints() {
   const el = $('hint-bgvis'); if (!el) return
-  const picked = cards.filter(c => selected.has(c.dir))
+  const base = batchEnvHintBase()
   const warn = batchBgvisWarn({
-    ops: enabledOps(),
-    picked,
+    ...base,
     enBgvis: $('en-bgvis')?.checked,
-    enPano: $('en-pano')?.checked,
-    enPanoClear: $('en-panoClear')?.checked,
-    enEpreset: $('en-epreset')?.checked,
-    epreset: $('v-epreset')?.value || 'room',
   })
   if (warn) { el.classList.add('warn'); el.textContent = warn }
   else { el.textContent = ''; el.classList.remove('warn') }
@@ -800,12 +866,18 @@ function syncBatchEnvHints() {
 /* 环境预设对「正在用全景」的展品不生效——按本批 ops 模拟后仍接管的才提示 */
 function syncBatchEnvHintsAll() {
   syncPresetHint()
+  syncPanoPathHint()
   syncBatchEnvHints()
 }
 function syncPresetHint() {
   const el = $('hint-epreset'); if (!el) return
-  const picked = cards.filter(c => selected.has(c.dir))
-  const warn = batchPresetHint({ picked, ops: enabledOps() })
+  const warn = batchPresetHint(batchEnvHintBase())
+  if (warn) { el.classList.add('warn'); el.textContent = warn }
+  else { el.textContent = ''; el.classList.remove('warn') }
+}
+function syncPanoPathHint() {
+  const el = $('hint-pano'); if (!el) return
+  const warn = batchPanoPathHint({ ...batchEnvHintBase(), enPano: $('en-pano')?.checked })
   if (warn) { el.classList.add('warn'); el.textContent = warn }
   else { el.textContent = ''; el.classList.remove('warn') }
 }

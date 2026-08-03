@@ -50,7 +50,7 @@ def identity_payload(root: Path) -> dict:
     return {'rootHash': h, 'instanceId': h}
 
 
-from pano_check import asset_fingerprint, has_asset_file, list_panorama_candidates
+from pano_check import asset_fingerprint, has_asset_file, list_panorama_candidates, check_panorama_path_availability
 
 ROOT_HASH = compute_root_hash(ROOT)
 
@@ -201,6 +201,15 @@ class Handler(SimpleHTTPRequestHandler):
                     'panoramas': list_panorama_candidates(ROOT),
                     'capabilities': {'save': True, 'create': True, 'batch': True},
                 })
+            except Exception as e:
+                return self._json(500, {'error': str(e)})
+        if p.startswith('/studio-api/check-panorama'):
+            try:
+                q = urlparse(self.path).query
+                from urllib.parse import parse_qs
+                path = (parse_qs(q).get('path') or [''])[0]
+                availability = check_panorama_path_availability(path, ROOT)
+                return self._json(200, {'availability': availability, 'exists': availability is True})
             except Exception as e:
                 return self._json(500, {'error': str(e)})
         rel = p.lstrip('/') or 'studio.html'

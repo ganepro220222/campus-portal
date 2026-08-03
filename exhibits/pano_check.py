@@ -51,6 +51,19 @@ def has_asset_file(
     return local.is_file()
 
 
+def check_panorama_path_availability(panorama_path: str | None, exhibits_root: Path) -> bool | str:
+    """批量面板校验：True / False / 'unknown'"""
+    p = str(panorama_path or '').strip()
+    if not p:
+        return False
+    if is_remote_panorama_url(p):
+        return 'unknown'
+    if p.startswith('../') or p.startswith('/'):
+        ref = exhibits_root / '_template'
+        return has_asset_file(ref, p, exhibits_root)
+    return 'unknown'
+
+
 def asset_fingerprint(
     exhibit_dir: Path,
     asset_path: str | None,

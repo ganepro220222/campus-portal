@@ -18,6 +18,13 @@
      与 player.html 的同名修复保持一致。 */
   select { color-scheme:dark; }
   select option { background:#14161f; color:#eef0f5; }
+  /* 滚动条与编辑器（player.html .editor）统一成描金细条，不再是系统灰 */
+  html { scrollbar-width:thin; scrollbar-color:rgba(200,168,106,.4) transparent; }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(200,168,106,.32); border-radius:4px; border:2px solid transparent; background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(200,168,106,.55); background-clip:padding-box; }
+  ::-webkit-scrollbar-corner { background:transparent; }
 
   .head { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 24px; margin-bottom:6px; }
   .head h1 { font-size:22px; font-weight:700; letter-spacing:.5px; }
@@ -109,7 +116,11 @@
   .bwrap { display:flex; gap:22px; overflow:auto; padding:16px clamp(16px,4vw,48px) 4px; }
   .bf-hint { flex-basis:100%; font-size:11.5px; line-height:1.5; color:#8a90a6; margin:2px 0 0 26px; }
   .bf-hint.warn { color:#e0b070; }
-  .bgroup { flex:0 0 260px; border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px 14px;
+  /* min-width:0 是关键：flex item 的自动最小尺寸是 min-content，不归零的话卡片里只要有
+     一个「不好断行」的东西（全景下拉的长选项文本就是），整张卡片会被撑到 411px，
+     六张卡加起来越过视口宽度，抽屉底下就凭空多出一条横向滚动条。
+     所有卡片一律 260px，长内容自己省略号，不许反过来顶宽容器。 */
+  .bgroup { flex:0 0 260px; min-width:0; border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px 14px;
     background:rgba(255,255,255,.03); }
   .bgroup h4 { font-size:13px; color:#f4e6c8; margin-bottom:10px; letter-spacing:.3px; }
   .bf { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:7px 0; font-size:12.5px; color:rgba(230,234,245,.85); }
@@ -119,13 +130,17 @@
   .bf .ctl { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
   .bf .ctl select, .bf .ctl input[type=text] { flex:1; min-width:0; padding:5px 8px; border-radius:7px; font-size:12px;
     border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#eef0f5; font-family:inherit; }
-  /* 全景候选下拉必须独占一行：跟输入框并排时两边各剩 126px，选项名和路径都只露得出半截。
-     选择器写得比 `.bf .ctl select` 更具体，否则那条的 flex:1 会把 100% 基准盖掉。 */
+  /* 全景候选下拉独占一行：跟输入框并排时两边各剩 63px，连「（手动输入）」都显示不全。
+     选择器写得比 `.bf .ctl select` 更具体，否则那条的 flex:1 会把 100% 基准盖掉。
+     路径本来就不可能在这么窄的框里显示完整，超出部分省略；完整路径挂 title 气泡。 */
   .bf .ctl select.bpick { flex:1 1 100%; margin-bottom:4px; }
-  /* 控件占两行时标签要顶着第一行，居中会让它悬在两个控件中间 */
-  .bf.twoline > .bf-en, .bf.twoline > .lb { align-self:flex-start; margin-top:6px; }
-  /* 动作行（勾了就执行，没有取值控件）：标签不占固定列宽，说明跟在后面像一句话 */
-  .bf.act > .lb { flex:0 0 auto; }
+  .bf .ctl select.bpick, .bf .ctl input[type=text] { text-overflow:ellipsis; }
+  /* 下拉 + 输入两行的行：控件让出标签列、各自占满整张卡片。
+     挤在 92px 标签列右边只剩 107px，「（手动输入）」六个字要 72px，加上原生下拉箭头
+     基本是贴着边——换台机器换套字体就会被切掉。标签单独一行当小标题反而更清楚。 */
+  .bf.twoline > .lb { flex:1 1 auto; }
+  .bf.twoline > .ctl { flex:1 1 100%; min-width:0; margin-left:23px; }   /* 23px＝复选框列宽，与上面各行左对齐 */
+  /* 动作行（勾了就执行，没有取值控件）：说明要从别的行的控件列起头，才不显得错位 */
   .act-note { color:#8a90a6; font-size:11.5px; line-height:1.5; }
   .bf .ctl input[type=range] { flex:1; min-width:0; accent-color:var(--gold); }
   .bf .ctl input[type=color] { width:34px; height:24px; padding:0; border:1px solid rgba(255,255,255,.2); border-radius:6px; background:none; }
@@ -250,7 +265,7 @@
 <script type="module">
 import { batchFieldApplies } from './studio-batch.mjs'
 import { batchBgvisWarn, batchPresetHint } from './studio-batch-env.mjs'
-import { panoValueFor, panoOptgroupLabel, panoOptionLabel } from './studio-pano-labels.mjs'
+import { panoValueFor, panoOptionLabel } from './studio-pano-labels.mjs'
 import {
   SORTS, FILTERS, ENV_PRESET_LABELS, envLabel,
   sortItems, filterItems, filterCounts, defaultDesc, normalizeView,
@@ -313,7 +328,7 @@ const GROUPS = [
         if (!s) return []
         return [{ path: 'assets.panorama', value: v }, { path: 'environment.mode', value: 'panorama' }]
       } },
-    { id:'panoClear', label:'清除全景', type:'action', note:'勾选后本批改用环境预设',
+    { id:'panoClear', label:'清除全景', type:'action', note:'改用环境预设',
       expandOps() {
         return [{ path: 'assets.panorama', value: '' }, { path: 'environment.mode', value: 'preset' }]
       } },
@@ -443,7 +458,8 @@ function buildBatchUI() {
   }
   $('en-pano')?.addEventListener('change', () => { syncPanoMutualExclusion('pano'); syncBatchEnvHintsAll() })
   $('en-panoClear')?.addEventListener('change', () => { syncPanoMutualExclusion('clear'); syncBatchEnvHintsAll() })
-  $('v-pano')?.addEventListener('input', () => {
+  $('v-pano')?.addEventListener('input', e => {
+    e.target.title = e.target.value      // 手打的路径同样长，气泡要跟着走
     if ($('en-pano')?.checked) syncPanoMutualExclusion('pano')
     syncBatchEnvHintsAll()
   })
@@ -464,7 +480,7 @@ function syncPanoMutualExclusion(from) {
   if (from === 'pano' && enP.checked) enC.checked = false
   if (from === 'clear' && enC.checked) {
     enP.checked = false
-    const pick = $('pick-pano'); if (pick) pick.value = ''
+    const pick = $('pick-pano'); if (pick) { pick.value = ''; syncPanoPickTitle() }
   }
   syncBatchFieldModes()
 }
@@ -475,27 +491,31 @@ function fillPanoPicker() {
   const sel = $('pick-pano'); if (!sel) return
   if (!panoCandidates.length) { sel.hidden = true; return }
   sel.hidden = false
-  const configured = panoCandidates.filter(c => c.source === 'configured')
-  const shared = panoCandidates.filter(c => c.source === 'shared')
-  let html = '<option value="">（手动输入）</option>'
-  if (configured.length) {
-    html += `<optgroup label="${esc(panoOptgroupLabel('configured'))}">${configured.map(c =>
-      `<option value="${esc(panoValueFor(c.path))}">${esc(panoOptionLabel(c))}</option>`).join('')}</optgroup>`
-  }
-  if (shared.length) {
-    html += `<optgroup label="${esc(panoOptgroupLabel('shared'))}">${shared.map(c =>
-      `<option value="${esc(panoValueFor(c.path))}">${esc(panoOptionLabel(c))}</option>`).join('')}</optgroup>`
-  }
-  sel.innerHTML = html
+  /* 不用 <optgroup> 分组：原生弹窗里 optgroup 的标签底色跟不上 color-scheme，
+     实测是浅底浅字、根本看不清。每个选项本来就以「已配置 ·」「公共背景 ·」开头，
+     来源信息一点没丢，分组标题纯属多余——去掉它比赌各平台的弹窗配色可靠。 */
+  const ordered = [...panoCandidates.filter(c => c.source === 'configured'),
+                   ...panoCandidates.filter(c => c.source !== 'configured')]
+  sel.innerHTML = '<option value="">（手动输入）</option>' + ordered.map(c =>
+    `<option value="${esc(panoValueFor(c.path))}">${esc(panoOptionLabel(c))}</option>`).join('')
+  syncPanoPickTitle()
   sel.onchange = () => {
+    syncPanoPickTitle()
     if (!sel.value) return
     const input = $('v-pano')
     input.value = sel.value
+    input.title = input.value
     $('en-pano').checked = true          // 选了图就等于要改这一项，省一次勾选
     syncPanoMutualExclusion('pano')
     syncBatchFieldModes()
     syncBatchEnvHintsAll()
   }
+}
+/* 框窄放不下整条路径，超出的部分省略；完整路径靠原生 title 气泡看 */
+function syncPanoPickTitle() {
+  const sel = $('pick-pano'); if (!sel) return
+  const opt = sel.selectedOptions[0]
+  sel.title = sel.value ? opt.textContent : '从展品中已配置的全景与公共背景目录里选，或在下面手动输入路径'
 }
 function fieldRow(f) {
   let ctl = ''

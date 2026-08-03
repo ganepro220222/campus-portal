@@ -4,10 +4,6 @@ export function panoValueFor(rootRelPath) {
   return '../' + rootRelPath
 }
 
-export function panoOptgroupLabel(source) {
-  return source === 'configured' ? '展品中已配置的全景' : '公共背景'
-}
-
 export function panoOptionLabel(c) {
   const tag = c.source === 'configured' ? '已配置' : '公共背景'
   return `${tag} · ${c.path}（${c.width}×${c.height}）`

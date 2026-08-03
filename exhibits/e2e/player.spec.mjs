@@ -648,3 +648,67 @@ test.describe('HUD 图标对齐', () => {
     expect(txt).toBe('')
   })
 })
+
+/* 全屏按钮：① 进了全屏按钮一直不高亮（syncBtns 压根没管它，Esc 退出后也没人回收状态）；
+   ② iPhone 的 Safari / 微信内置浏览器没有元素级全屏 API，老写法 `req && req()` 让
+   按钮静静地点不动——合伙人手机上「点全屏没反应」就是这个。 */
+test.describe('全屏按钮', () => {
+  const fsBtn = '#actions .btn[data-k=full]'
+  const st = () => page.evaluate(sel => {
+    const f = document.querySelector(sel)
+    return { exists: !!f, on: !!f?.classList.contains('on'), aria: f?.getAttribute('aria-pressed'),
+      real: !!document.fullscreenElement }
+  }, fsBtn)
+
+  test('进出全屏时按钮的选中态跟着走（含从外部退出）', async () => {
+    await reloadPlayer(page, { viewport: { width: 1100, height: 800 } })
+    await expect(page.locator(fsBtn)).toHaveCount(1)
+    expect(await st()).toMatchObject({ on: false, aria: 'false', real: false })
+
+    await page.locator(fsBtn).click()
+    await expect.poll(async () => (await st()).real).toBe(true)
+    expect(await st()).toMatchObject({ on: true, aria: 'true' })
+
+    // 不点按钮、从外部退出（等价于按 Esc / 系统手势）：状态也必须回收
+    await page.evaluate(() => document.exitFullscreen())
+    await expect.poll(async () => (await st()).real).toBe(false)
+    expect(await st()).toMatchObject({ on: false, aria: 'false' })
+
+    // 再点一次按钮退出，同样要复位
+    await page.locator(fsBtn).click()
+    await expect.poll(async () => (await st()).real).toBe(true)
+    await page.locator(fsBtn).click()
+    await expect.poll(async () => (await st()).real).toBe(false)
+    expect(await st()).toMatchObject({ on: false, aria: 'false' })
+  })
+
+  test('浏览器没有全屏 API（iPhone Safari）时不放这颗按钮，其余按钮照常', async ({ browser }) => {
+    const pg = await browser.newPage()
+    const errs = []
+    pg.on('pageerror', e => errs.push(e.message))
+    await pg.addInitScript(() => {
+      delete Element.prototype.requestFullscreen
+      delete Element.prototype.webkitRequestFullscreen
+      delete Document.prototype.exitFullscreen
+      delete Document.prototype.webkitExitFullscreen
+      Object.defineProperty(document, 'fullscreenEnabled', { get: () => undefined, configurable: true })
+    })
+    await gotoPlayer(pg, { viewport: { width: 390, height: 800 } })
+    await expect(pg.locator(fsBtn)).toHaveCount(0)
+    expect(await pg.$$eval('#actions .btn', els => els.map(e => e.dataset.k))).toEqual(['rotate', 'hot', 'reset'])
+    expect(errs).toEqual([])
+    await releaseWebGL(pg)
+    await pg.close()
+  })
+
+  test('iframe 里 fullscreenEnabled=false（宿主没给权限）时同样不放按钮', async ({ browser }) => {
+    const pg = await browser.newPage()
+    await pg.addInitScript(() => {
+      Object.defineProperty(document, 'fullscreenEnabled', { get: () => false, configurable: true })
+    })
+    await gotoPlayer(pg, { viewport: { width: 900, height: 700 } })
+    await expect(pg.locator(fsBtn)).toHaveCount(0)
+    await releaseWebGL(pg)
+    await pg.close()
+  })
+})

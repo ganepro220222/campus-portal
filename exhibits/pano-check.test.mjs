@@ -156,6 +156,42 @@ test('hasAssetFile：symlink 指向 exhibits 内正常文件应通过（Node/Pyt
   }
 })
 
+/* 只把文件 realpath、根却不 realpath，就是拿苹果比橘子：current -> releases/xxx
+   这种最常见的发布布局下，每个资源的 realpath 都落在 releases/… 而根写着 current/…，
+   于是全被判成「不在根内」，工作台里所有展品一律显示缺全景 / 缺模型。 */
+test('hasAssetFile：exhibits 根本身是软链时不得误判（Node/Python/PHP 一致）', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
+  try {
+    const real = path.join(tmp, 'releases', 'r1')
+    const link = path.join(tmp, 'current')
+    fs.mkdirSync(path.join(real, '_template'), { recursive: true })
+    fs.mkdirSync(path.join(real, 'shared'), { recursive: true })
+    fs.writeFileSync(path.join(real, 'shared', 'ok.jpg'), 'x')
+    if (!trySymlink(real, link)) {
+      console.log('  skip symlinked-root test (no privilege)')
+      return
+    }
+    // 用软链根访问：三端都必须认它在根内
+    assertHasAssetFileParity(link, '_template', '../shared/ok.jpg', true, 'symlinked-root')
+    assert.equal(checkPanoramaPathAvailability('../shared/ok.jpg', link), true)
+    // 同一棵树用真实路径访问，结论必须一样
+    assertHasAssetFileParity(real, '_template', '../shared/ok.jpg', true, 'real-root')
+    // 软链根下的逃逸仍要挡住
+    const parent = path.dirname(tmp)
+    const outside = path.join(parent, 'sym-root-escape.jpg')
+    fs.writeFileSync(outside, 'x')
+    try {
+      if (trySymlink(outside, path.join(real, 'shared', 'trap.jpg'))) {
+        assertHasAssetFileParity(link, '_template', '../shared/trap.jpg', false, 'symlinked-root-escape')
+      }
+    } finally {
+      try { fs.unlinkSync(outside) } catch {}
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 test('hasAssetFile：symlink 指向 exhibits 外必须拒绝（Node/Python/PHP 一致）', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
   let outside = null

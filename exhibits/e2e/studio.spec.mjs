@@ -55,7 +55,6 @@ async function gotoStudioWithExhibits(page, exhibits, { checkPano = null, panora
       if (!window.__panoCheckWaiters[path]) {
         window.__panoCheckWaiters[path] = new Promise(resolve => { window.__panoCheckWaiters[path + ':resolve'] = resolve })
       }
-      return window.__panoCheckWaiters[path]
     }
     window.releasePanoCheck = (path, availability) => {
       const resolve = window.__panoCheckWaiters[path + ':resolve']
@@ -440,7 +439,7 @@ test.describe('studio.html', () => {
     })
     await openBatchPanel(page)
     await selectExhibits(page, ['craft-222'])
-    await page.evaluate(p => window.deferPanoCheck(p), missingPath)
+    await page.evaluate(p => { window.deferPanoCheck(p) }, missingPath)
     await page.locator('#en-pano').check()
     await page.locator('#v-pano').fill(missingPath)
     await page.waitForTimeout(250)

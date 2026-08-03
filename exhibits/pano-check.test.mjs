@@ -5,7 +5,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { assetFingerprint, hasAssetFile, isRemotePanoramaUrl, imageSize, isPanoramaRatio,
-  listPanoramaCandidates, panoramaToRootRel, FINGERPRINT_CHUNK, FINGERPRINT_LENGTH } from './pano-check.mjs'
+  listPanoramaCandidates, panoramaToRootRel, checkPanoramaPathAvailability,
+  FINGERPRINT_CHUNK, FINGERPRINT_LENGTH } from './pano-check.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -45,6 +46,21 @@ test('existing local file returns true', () => {
     fs.mkdirSync(assets)
     fs.writeFileSync(path.join(assets, 'panorama.jpg'), 'x')
     assert.equal(hasAssetFile(tmp, 'assets/panorama.jpg'), true)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('checkPanoramaPathAvailability：根相对路径可批量校验', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
+  try {
+    fs.mkdirSync(path.join(tmp, '_template'), { recursive: true })
+    fs.mkdirSync(path.join(tmp, 'shared'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, 'shared', 'ok.jpg'), 'x')
+    assert.equal(checkPanoramaPathAvailability('../shared/ok.jpg', tmp), true)
+    assert.equal(checkPanoramaPathAvailability('../shared/missing.jpg', tmp), false)
+    assert.equal(checkPanoramaPathAvailability('https://cdn/x.jpg', tmp), 'unknown')
+    assert.equal(checkPanoramaPathAvailability('assets/local.jpg', tmp), 'unknown')
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }

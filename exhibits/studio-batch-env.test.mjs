@@ -3,6 +3,7 @@ import {
   inferBatchEnvEffect,
   batchBgvisWarn,
   batchPresetHint,
+  batchPanoPathHint,
   batchBgvisWarnFromCards,
   batchBgvisWarnFromCardsAfterOps,
   batchVisibleBgTarget,
@@ -12,6 +13,7 @@ import {
   cardSupportsVisibleBgAfterOps,
   cardUsesPanoramaAfterOps,
   envSupportsVisibleBg,
+  PANO_UNKNOWN,
 } from './studio-batch-env.mjs'
 
 let pass = 0, fail = 0
@@ -115,14 +117,47 @@ test('batchBgvisWarn：缺失全景 + 清除 + gallery fallback 时支持', () =
   assert.equal(batchBgvisWarn({ ops: [...clearOps, bgOn], picked: [missingPanoGallery], enBgvis: true }), '')
 })
 
-test('cardSupportsVisibleBgAfterOps：批量设置新全景路径时乐观视为可用', () => {
+test('cardSupportsVisibleBgAfterOps：批量设置已验证存在的全景路径时视为可用', () => {
   const ops = [
     { path: 'assets.panorama', value: '../shared/new.jpg' },
     { path: 'environment.mode', value: 'panorama' },
     bgOn,
   ]
-  assert.equal(cardSupportsVisibleBgAfterOps(missingPanoRoom, ops), true)
-  assert.equal(batchBgvisWarn({ ops, picked: [missingPanoRoom], enBgvis: true }), '')
+  assert.equal(cardSupportsVisibleBgAfterOps(missingPanoRoom, ops, { batchPanoAvailability: true }), true)
+  assert.equal(batchBgvisWarn({ ops, picked: [missingPanoRoom], enBgvis: true, batchPanoAvailability: true }), '')
+})
+
+test('cardSupportsVisibleBgAfterOps：未验证的新路径按 fallback preset 判断', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '../shared/new.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    bgOn,
+  ]
+  assert.equal(cardSupportsVisibleBgAfterOps(missingPanoRoom, ops), false)
+  assert.match(batchBgvisWarn({ ops, picked: [missingPanoRoom], enBgvis: true }), /都不支持可见环境背景/)
+})
+
+test('cardSupportsVisibleBgAfterOps：已验证不存在的路径按 fallback preset 判断', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '../shared/missing.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    bgOn,
+  ]
+  assert.equal(cardSupportsVisibleBgAfterOps(missingPanoRoom, ops, { batchPanoAvailability: false }), false)
+  assert.match(batchBgvisWarn({ ops, picked: [missingPanoRoom], enBgvis: true, batchPanoAvailability: false }), /都不支持可见环境背景/)
+})
+
+test('batchPanoPathHint：未验证路径给出中性提示', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '../shared/new.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+  ]
+  assert.match(batchPanoPathHint({ ops, enPano: true, batchPanoAvailability: PANO_UNKNOWN }), /尚未验证/)
+})
+
+test('batchPanoPathHint：已验证不存在路径给出明确提示', () => {
+  const ops = [{ path: 'assets.panorama', value: '../shared/missing.jpg' }]
+  assert.match(batchPanoPathHint({ ops, enPano: true, batchPanoAvailability: false }), /未找到/)
 })
 
 test('cardUsesPanoramaAfterOps：缺失全景文件不算仍在用全景', () => {
@@ -130,25 +165,42 @@ test('cardUsesPanoramaAfterOps：缺失全景文件不算仍在用全景', () =>
   assert.equal(cardUsesPanoramaAfterOps(missingPanoRoom, [{ path: 'environment.preset', value: 'gallery' }]), false)
 })
 
-test('cardUsesPanoramaAfterOps：批量写入新全景路径后算接管', () => {
+test('cardUsesPanoramaAfterOps：未验证的新路径不算接管', () => {
   const ops = [
     { path: 'assets.panorama', value: '../shared/new.jpg' },
     { path: 'environment.mode', value: 'panorama' },
   ]
-  assert.equal(cardUsesPanoramaAfterOps(missingPanoRoom, ops), true)
+  assert.equal(cardUsesPanoramaAfterOps(missingPanoRoom, ops), false)
+})
+
+test('cardUsesPanoramaAfterOps：已验证存在的路径算接管', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '../shared/new.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+  ]
+  assert.equal(cardUsesPanoramaAfterOps(missingPanoRoom, ops, { batchPanoAvailability: true }), true)
 })
 
 test('batchPresetHint：缺失全景文件时不误报 preset 不生效', () => {
   assert.equal(batchPresetHint({ picked: [missingPanoRoom], ops: [{ path: 'environment.preset', value: 'gallery' }] }), '')
 })
 
-test('batchPresetHint：批量写入新全景后 preset 仍不生效', () => {
+test('batchPresetHint：未验证新路径时不误报 preset 不生效', () => {
   const ops = [
     { path: 'assets.panorama', value: '../shared/new.jpg' },
     { path: 'environment.mode', value: 'panorama' },
     { path: 'environment.preset', value: 'gallery' },
   ]
-  assert.match(batchPresetHint({ picked: [missingPanoRoom], ops }), /不会生效/)
+  assert.equal(batchPresetHint({ picked: [missingPanoRoom], ops }), '')
+})
+
+test('batchPresetHint：已验证存在的全景后 preset 仍不生效', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '../shared/new.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    { path: 'environment.preset', value: 'gallery' },
+  ]
+  assert.match(batchPresetHint({ picked: [missingPanoRoom], ops, batchPanoAvailability: true }), /不会生效/)
 })
 
 test('cardSupportsVisibleBg：preset 模式但有可用全景文件，批量切 panorama 后支持', () => {
@@ -158,7 +210,8 @@ test('cardSupportsVisibleBg：preset 模式但有可用全景文件，批量切 
     bgOn,
   ]
   assert.equal(cardSupportsVisibleBg(stalePanoPath), true)
-  assert.equal(cardSupportsVisibleBgAfterOps(stalePanoPath, ops), true)
+  assert.equal(cardSupportsVisibleBgAfterOps(stalePanoPath, ops, { batchPanoAvailability: PANO_UNKNOWN }), true)
+  assert.equal(cardSupportsVisibleBgAfterOps(stalePanoPath, ops, { batchPanoAvailability: true }), true)
 })
 
 test('applyEnvOps：清除全景保留 card 自己的 preset', () => {
@@ -180,7 +233,7 @@ test('batchBgvisWarn：批量设全景时不误报 room', () => {
     { path: 'environment.mode', value: 'panorama' },
     bgOn,
   ]
-  assert.equal(batchBgvisWarn({ ops, picked: [room], enBgvis: true }), '')
+  assert.equal(batchBgvisWarn({ ops, picked: [room], enBgvis: true, batchPanoAvailability: true }), '')
 })
 
 test('batchBgvisWarn：preset room + bgvis=true + 选中 room 预设展品时警告', () => {
@@ -294,7 +347,7 @@ test('batchPresetHint：全景 + 设新全景 + preset 时警告', () => {
     { path: 'environment.mode', value: 'panorama' },
     { path: 'environment.preset', value: 'gallery' },
   ]
-  assert.match(batchPresetHint({ picked: [pano], ops }), /不会生效/)
+  assert.match(batchPresetHint({ picked: [pano], ops, batchPanoAvailability: true }), /不会生效/)
 })
 
 test('batchPresetHint：room 展品改 preset 不警告', () => {

@@ -19,6 +19,7 @@ $isIdentity = $action === 'identity' || strpos($uri, 'identity') !== false;
 $isCreate = $action === 'create' || strpos($uri, 'create') !== false;
 $isSave = $action === 'save' || strpos($uri, 'save') !== false;
 $isList = $action === 'list' || strpos($uri, 'list') !== false;
+$isCheckPano = $action === 'check-panorama' || strpos($uri, 'check-panorama') !== false;
 $isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
 
 function studio_escape_html(string $s): string {
@@ -144,6 +145,17 @@ function studio_has_asset_file(string $root, string $exhibit, ?string $asset): b
   if (studio_is_remote_panorama($p)) return true;
   $local = studio_resolve_asset_path($root, $exhibit, $p);
   return $local !== null && is_file($local);
+}
+
+/** 批量面板校验全景路径：true / false / unknown */
+function studio_check_panorama_availability(string $root, ?string $path): string {
+  $p = trim((string)$path);
+  if ($p === '') return 'false';
+  if (studio_is_remote_panorama($p)) return 'unknown';
+  if (str_starts_with($p, '../') || str_starts_with($p, '/')) {
+    return studio_has_asset_file($root, '_template', $p) ? 'true' : 'false';
+  }
+  return 'unknown';
 }
 
 // 与 pano-check.mjs / pano_check.py 保持一致；改算法请同步改版本号（说明见 pano-check.mjs）
@@ -322,6 +334,13 @@ if ($isList) {
     'panoramas' => studio_list_panorama_candidates($ROOT),
     'capabilities' => ['save' => true, 'create' => true, 'batch' => true],
   ], JSON_UNESCAPED_UNICODE); exit;
+}
+
+if ($isCheckPano) {
+  $path = $_GET['path'] ?? '';
+  $availability = studio_check_panorama_availability($ROOT, $path);
+  $bool = $availability === 'true' ? true : ($availability === 'false' ? false : 'unknown');
+  echo json_encode(['availability' => $bool, 'exists' => $availability === 'true'], JSON_UNESCAPED_UNICODE); exit;
 }
 
 if ($isCreate && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {

@@ -44,12 +44,23 @@ async function gotoStudioWithListStub(page, capabilities) {
 }
 
 /** 用构造的展品列表打开工作台（真实 craft-00x 四件都很齐全，测不出筛选） */
-async function gotoStudioWithExhibits(page, exhibits, { checkPano = null } = {}) {
-  const bodyJson = JSON.stringify({ exhibits, capabilities: { create: true, save: true, batch: true } })
+async function gotoStudioWithExhibits(page, exhibits, { checkPano = null, panoramas = [] } = {}) {
+  const bodyJson = JSON.stringify({ exhibits, capabilities: { create: true, save: true, batch: true }, panoramas })
   const checkPanoJson = JSON.stringify(checkPano)
   await page.addInitScript(({ json, checkPanoRules }) => {
     const stub = JSON.parse(json)
     const rules = checkPanoRules ? JSON.parse(checkPanoRules) : null
+    window.__panoCheckWaiters = window.__panoCheckWaiters || {}
+    window.deferPanoCheck = path => {
+      if (!window.__panoCheckWaiters[path]) {
+        window.__panoCheckWaiters[path] = new Promise(resolve => { window.__panoCheckWaiters[path + ':resolve'] = resolve })
+      }
+      return window.__panoCheckWaiters[path]
+    }
+    window.releasePanoCheck = (path, availability) => {
+      const resolve = window.__panoCheckWaiters[path + ':resolve']
+      if (resolve) resolve(availability)
+    }
     const origFetch = window.fetch.bind(window)
     window.fetch = (input, init) => {
       const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : String(input))
@@ -59,14 +70,18 @@ async function gotoStudioWithExhibits(page, exhibits, { checkPano = null } = {})
       if (url.includes('studio-api/check-panorama')) {
         const u = new URL(url, location.origin)
         const p = u.searchParams.get('path') || ''
+        const respond = availability => Promise.resolve(new Response(JSON.stringify({ availability, exists: availability === true }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        }))
+        if (window.__panoCheckWaiters[p]) {
+          return window.__panoCheckWaiters[p].then(v => respond(v ?? false))
+        }
         let availability = 'unknown'
         if (rules && Object.prototype.hasOwnProperty.call(rules, p)) availability = rules[p]
         else if (/missing|不存在/i.test(p)) availability = false
         else if (/^https?:\/\//i.test(p)) availability = 'unknown'
         else if (p.startsWith('../') || p.startsWith('/')) availability = true
-        return Promise.resolve(new Response(JSON.stringify({ availability, exists: availability === true }), {
-          status: 200, headers: { 'Content-Type': 'application/json' },
-        }))
+        return respond(availability)
       }
       return origFetch(input, init)
     }
@@ -390,7 +405,7 @@ test.describe('studio.html', () => {
     await expect(page.locator('#hint-bgvis')).toContainText('只会对其余 1 件生效')
   })
 
-  test('手工输入全景路径：验证前保留 bgvis 警告，验证存在后消失', async ({ page }) => {
+  test('手工输入全景路径：未验证时不误报 bgvis，验证后按结果提示', async ({ page }) => {
     await gotoStudioWithExhibits(page, [
       { dir: 'craft-221', title: '房间', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
     ], { checkPano: { '../共享背景/展厅.jpg': true, '../共享背景/缺失.jpg': false } })
@@ -400,6 +415,9 @@ test.describe('studio.html', () => {
     await page.locator('#v-bgvis').check()
     await expect(page.locator('#hint-bgvis')).toHaveClass(/warn/)
     await page.locator('#en-pano').check()
+    await page.locator('#v-pano').fill('https://cdn.example.com/hall.jpg')
+    await expect.poll(async () => page.locator('#hint-pano').textContent()).toMatch(/尚未验证/)
+    await expect(page.locator('#hint-bgvis')).not.toHaveClass(/warn/)
     await page.locator('#v-pano').fill('../共享背景/缺失.jpg')
     await expect.poll(async () => page.locator('#hint-pano').textContent()).toMatch(/未找到/)
     await expect(page.locator('#hint-bgvis')).toHaveClass(/warn/)
@@ -409,6 +427,30 @@ test.describe('studio.html', () => {
     await expect.poll(async () => (await page.locator('#hint-bgvis').getAttribute('class') || '').includes('warn')).toBe(false)
     await page.locator('#v-pano').fill('')
     await expect(page.locator('#hint-bgvis')).toHaveClass(/warn/)
+  })
+
+  test('慢速路径验证不会覆盖候选选择结果', async ({ page }) => {
+    const missingPath = '../共享背景/缺失.jpg'
+    const goodPath = '../共享背景/展厅.jpg'
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-222', title: '房间', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
+    ], {
+      checkPano: { [missingPath]: false, [goodPath]: true },
+      panoramas: [{ path: '共享背景/展厅.jpg', source: 'public', width: 4096, height: 2048 }],
+    })
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-222'])
+    await page.evaluate(p => window.deferPanoCheck(p), missingPath)
+    await page.locator('#en-pano').check()
+    await page.locator('#v-pano').fill(missingPath)
+    await page.waitForTimeout(250)
+    await page.locator('#pick-pano').selectOption({ value: goodPath })
+    await expect(page.locator('#hint-pano')).toHaveText('')
+    await expect(page.locator('#v-pano')).toHaveValue(goodPath)
+    await page.evaluate(p => window.releasePanoCheck(p, false), missingPath)
+    await page.waitForTimeout(100)
+    await expect(page.locator('#hint-pano')).toHaveText('')
+    await expect(page.locator('#v-pano')).toHaveValue(goodPath)
   })
 
   test('仅改环境预设：全景展品提示 preset 当前不生效', async ({ page }) => {

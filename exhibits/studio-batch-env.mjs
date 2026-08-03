@@ -23,6 +23,12 @@ export function batchVisibleBgTarget(ops = []) {
   return bgOp ? !!bgOp.value : null
 }
 
+/** 列表项上的全景资源是否实际可用（与 API hasPano / usesPanorama 一致） */
+function cardPanoramaAvailable(card = {}, c = {}) {
+  if (card.usesPanorama ?? c.usesPanorama) return true
+  return !!(card.hasPano ?? c.hasPano)
+}
+
 /** 从 card 读取批量模拟起点（与 studio 列表项字段一致） */
 export function cardEnvState(card = {}) {
   const c = card.item ?? card
@@ -31,22 +37,28 @@ export function cardEnvState(card = {}) {
       mode: 'panorama',
       preset: c.envPreset || 'room',
       panorama: c.panorama || '',
+      panoramaAvailable: true,
     }
   }
   return {
     mode: c.envMode || card.envMode || 'preset',
     preset: c.envPreset || 'room',
     panorama: c.panorama || '',
+    panoramaAvailable: cardPanoramaAvailable(card, c),
   }
 }
 
 /** 将环境相关 ops 依次套用到单件展品状态（与批量写 config 顺序一致） */
 export function applyEnvOps(state, ops = []) {
-  const s = { ...state }
+  const s = { ...state, panoramaAvailable: !!state.panoramaAvailable }
   for (const op of ops) {
     if (op.path === 'environment.mode') s.mode = op.value
     if (op.path === 'environment.preset') s.preset = op.value
-    if (op.path === 'assets.panorama') s.panorama = op.value
+    if (op.path === 'assets.panorama') {
+      s.panorama = op.value
+      const path = String(op.value ?? '').trim()
+      s.panoramaAvailable = !!path
+    }
   }
   return s
 }
@@ -58,20 +70,33 @@ export function cfgFromEnvState(state) {
   }
 }
 
-/** 批量 ops 应用后，该 card 是否仍由全景接管（与 resolveEnvSource 语义一致） */
-export function cardUsesPanoramaAfterOps(card, ops = []) {
-  const after = applyEnvOps(cardEnvState(card), ops)
-  return after.mode === 'panorama' && !!String(after.panorama ?? '').trim()
+/** 可见背景判断：全景文件缺失时模拟 player 回落到 fallback preset */
+export function envSupportsVisibleBg(state = {}) {
+  const path = String(state.panorama ?? '').trim()
+  if (state.mode === 'panorama' && path && !state.panoramaAvailable) {
+    return supportsVisibleBackground({
+      environment: { mode: 'preset', preset: state.preset },
+      assets: { panorama: '' },
+    })
+  }
+  return supportsVisibleBackground(cfgFromEnvState(state))
 }
 
-/** 批量 ops 应用后，该 card 是否支持可见环境背景（与 resolveEnvSource 语义一致） */
+/** 批量 ops 应用后，该 card 是否仍由可用全景接管（配置写 panorama 但文件缺失时不算） */
+export function cardUsesPanoramaAfterOps(card, ops = []) {
+  const after = applyEnvOps(cardEnvState(card), ops)
+  const path = String(after.panorama ?? '').trim()
+  return after.mode === 'panorama' && !!path && !!after.panoramaAvailable
+}
+
+/** 批量 ops 应用后，该 card 是否支持可见环境背景 */
 export function cardSupportsVisibleBgAfterOps(card, ops = []) {
-  return supportsVisibleBackground(cfgFromEnvState(applyEnvOps(cardEnvState(card), ops)))
+  return envSupportsVisibleBg(applyEnvOps(cardEnvState(card), ops))
 }
 
 /** 单件展品 card 当前环境是否支持可见背景（未应用 batch ops） */
 export function cardSupportsVisibleBg(card = {}) {
-  return supportsVisibleBackground(cfgFromEnvState(cardEnvState(card)))
+  return envSupportsVisibleBg(cardEnvState(card))
 }
 
 function formatBgvisWarn(total, supported) {

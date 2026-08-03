@@ -606,20 +606,28 @@ test.describe('studio.html', () => {
 
   /* 全景候选下拉与手输框并排时各剩 126px，选项名和路径都只露半截。
      `.bpick` 那条被后面更具体的 `.bf .ctl select` 用 flex:1 盖掉了，所以选择器要写得更具体。 */
-  test('全景贴图：候选下拉独占一行，与输入框上下排列且各自够宽', async ({ page }) => {
+  /* 下拉留在控件列（跟别的行左右对齐），手输框另起一行占满卡片。
+     踩过的坑：`.bf input[type=text]` 里的属性选择器算一级特异性，
+     `.bwide` 光一个类名压不住它的 flex:1，输入框会缩回控件列跟下拉挤成一排。 */
+  test('全景贴图：下拉在控件列、手输框独占一整行', async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 900 })
     await waitForStudioReady(page)
     await openBatchPanel(page)
     const g = await page.evaluate(() => {
-      const r = el => { const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width) } }
+      const r = el => { const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), bottom: b.bottom } }
+      const card = document.getElementById('row-pano').closest('.bgroup')
+      const cr = card.getBoundingClientRect(), cs = getComputedStyle(card)
       return { pick: r(document.getElementById('pick-pano')), input: r(document.getElementById('v-pano')),
-        card: r(document.getElementById('row-pano').closest('.bgroup')) }
+        otherSel: r(document.getElementById('v-epreset')),          // 同卡片里别的行的下拉
+        cardLeft: cr.left + parseFloat(cs.paddingLeft), cardRight: cr.right - parseFloat(cs.paddingRight),
+        inputFlexBasis: getComputedStyle(document.getElementById('v-pano')).flexBasis }
     })
-    expect(g.pick.x).toBe(g.input.x)                 // 左对齐＝各占一整行
-    expect(g.input.y).toBeGreaterThan(g.pick.y)      // 下拉在上、输入在下
-    expect(g.pick.w).toBeGreaterThan(200)            // 并排时只有 126
-    expect(g.input.w).toBeGreaterThan(200)
-    expect(g.pick.x + g.pick.w).toBeLessThanOrEqual(g.card.x + g.card.w + 1)
+    expect(g.pick.x).toBe(g.otherSel.x)                     // 下拉与其他行的下拉左对齐
+    expect(g.input.y).toBeGreaterThan(g.pick.y + 10)        // 输入框在下一行，不是并排
+    expect(g.inputFlexBasis).toBe('100%')                   // 属性选择器没把它压回控件列
+    expect(g.input.x).toBeLessThanOrEqual(Math.round(g.cardLeft) + 1)     // 从卡片内缘起
+    expect(g.input.x + g.input.w).toBeGreaterThanOrEqual(Math.round(g.cardRight) - 1)   // 一直铺到内缘
+    expect(g.input.w).toBeGreaterThan(g.pick.w * 1.8)       // 路径框明显比下拉宽
   })
 
   /* 抽屉底下凭空多出横向滚动条：卡片 flex-basis 是 260px，但 min-width 默认 auto，
@@ -645,25 +653,32 @@ test.describe('studio.html', () => {
     })
   }
 
-  test('全景候选下拉：「（手动输入）」显示得下，完整路径挂 title 气泡，不用 optgroup', async ({ page }) => {
+  test('全景候选下拉：占位文字显示得下，选项收短，完整路径全靠 title 气泡', async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 900 })
     await waitForStudioReady(page)
     await openBatchPanel(page)
     // optgroup 的标签底色跟不上 color-scheme，会浅底浅字看不清；来源改用选项文本前缀表达
     await expect(page.locator('#pick-pano optgroup')).toHaveCount(0)
-    const opts = await page.$$eval('#pick-pano option', os => os.map(o => o.textContent))
-    expect(opts[0]).toBe('（手动输入）')
-    expect(opts.slice(1).every(t => /^(已配置|公共背景) · /.test(t))).toBe(true)
+    const opts = await page.$$eval('#pick-pano option', os => os.map(o => ({ t: o.textContent, title: o.title, v: o.value })))
+    expect(opts[0].t).toBe('手动输入')
+    for (const o of opts.slice(1)) {
+      expect(o.t).toMatch(/^(已配置|公共背景) · /)
+      expect(o.t).not.toMatch(/（\d+×\d+）/)              // 尺寸不进列表，弹窗不该为它撑宽
+      expect(o.title).toMatch(/（\d+×\d+）$/)             // 尺寸进气泡
+      expect(o.title).toContain(o.v.replace('../', ''))    // 气泡是完整路径
+      expect(o.title.length).toBeGreaterThan(o.t.length)   // 列表文案确实比气泡短
+    }
+    // 占位文字要在控件列里放得下（含原生下拉箭头），换套字体也不能被切
     const fit = await page.evaluate(() => {
       const sel = document.getElementById('pick-pano'), cs = getComputedStyle(sel)
       const g = document.createElement('canvas').getContext('2d')
       g.font = `${cs.fontSize} ${cs.fontFamily}`
       const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
-      return { need: g.measureText('（手动输入）').width, room: sel.clientWidth - pad - 20 }   // 20＝原生下拉箭头
+      return { need: g.measureText(sel.options[0].textContent).width, room: sel.clientWidth - pad - 20 }
     })
-    expect(fit.room).toBeGreaterThan(fit.need + 20)    // 留足余量，换字体也不会被切
-    // 选一张图：完整路径进 title，输入框同步
-    const values = await page.$$eval('#pick-pano option', os => os.map(o => o.value).filter(Boolean))
+    expect(fit.room).toBeGreaterThan(fit.need + 20)
+    // 选一张图：完整路径进两个 title，输入框同步
+    const values = opts.map(o => o.v).filter(Boolean)
     await page.selectOption('#pick-pano', values[0])
     expect(await page.getAttribute('#pick-pano', 'title')).toContain(values[0].replace('../', ''))
     expect(await page.getAttribute('#v-pano', 'title')).toBe(values[0])

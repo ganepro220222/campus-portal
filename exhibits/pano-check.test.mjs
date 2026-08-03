@@ -81,6 +81,41 @@ test('checkPanoramaPathAvailability：/ 开头路径返回 unknown（与播放�
   }
 })
 
+function hasAssetFileFromPy(tmp, exhibitRel, assetPath) {
+  const py = execFileSync('python', ['-c', `
+import sys
+sys.path.insert(0, ${JSON.stringify(ROOT)})
+from pathlib import Path
+from pano_check import has_asset_file
+print('true' if has_asset_file(Path(${JSON.stringify(tmp)}) / ${JSON.stringify(exhibitRel)}, ${JSON.stringify(assetPath)}, Path(${JSON.stringify(tmp)})) else 'false')
+`], { encoding: 'utf8' }).trim()
+  return py === 'true'
+}
+
+function hasAssetFileFromPhp(tmp, exhibitRel, assetPath) {
+  const phpCode = `define('STUDIO_API_LIB_ONLY', 1);`
+    + `require ${JSON.stringify(path.join(ROOT, '_server', 'api.php'))};`
+    + `echo studio_has_asset_file(${JSON.stringify(tmp)}, ${JSON.stringify(exhibitRel)}, ${JSON.stringify(assetPath)}) ? 'true' : 'false';`
+  return execFileSync('php', ['-r', phpCode], { encoding: 'utf8' }).trim() === 'true'
+}
+
+function assertHasAssetFileParity(tmp, exhibitRel, assetPath, expected, label) {
+  assert.equal(hasAssetFile(path.join(tmp, exhibitRel), assetPath, tmp), expected, `node ${label}`)
+  assert.equal(hasAssetFileFromPy(tmp, exhibitRel, assetPath), expected, `python ${label}`)
+  if (canRunPhpApi()) {
+    assert.equal(hasAssetFileFromPhp(tmp, exhibitRel, assetPath), expected, `php ${label}`)
+  }
+}
+
+function trySymlink(target, linkPath) {
+  try {
+    fs.symlinkSync(target, linkPath, process.platform === 'win32' ? 'file' : undefined)
+    return true
+  } catch {
+    return false
+  }
+}
+
 test('hasAssetFile / checkPanoramaPathAvailability：../ 不得越出 exhibits 根目录', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
   try {
@@ -99,6 +134,49 @@ test('hasAssetFile / checkPanoramaPathAvailability：../ 不得越出 exhibits �
     assert.equal(isPathInsideExhibitsRoot(tmp, path.join(parent, 'escaped.jpg')), false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('hasAssetFile：symlink 指向 exhibits 内正常文件应通过（Node/Python/PHP 一致）', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
+  try {
+    fs.mkdirSync(path.join(tmp, '_template'), { recursive: true })
+    fs.mkdirSync(path.join(tmp, 'shared'), { recursive: true })
+    const real = path.join(tmp, 'shared', 'real.jpg')
+    const link = path.join(tmp, 'shared', 'link.jpg')
+    fs.writeFileSync(real, 'x')
+    if (!trySymlink(real, link)) {
+      console.log('  skip symlink-in test (no privilege)')
+      return
+    }
+    assertHasAssetFileParity(tmp, '_template', '../shared/link.jpg', true, 'symlink-in')
+    assert.equal(checkPanoramaPathAvailability('../shared/link.jpg', tmp), true)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('hasAssetFile：symlink 指向 exhibits 外必须拒绝（Node/Python/PHP 一致）', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
+  let outside = null
+  try {
+    fs.mkdirSync(path.join(tmp, '_template'), { recursive: true })
+    fs.mkdirSync(path.join(tmp, 'shared'), { recursive: true })
+    const parent = path.dirname(tmp)
+    outside = path.join(parent, 'outside-pano.jpg')
+    const link = path.join(tmp, 'shared', 'trap.jpg')
+    fs.writeFileSync(outside, 'x')
+    if (!trySymlink(outside, link)) {
+      console.log('  skip symlink-out test (no privilege)')
+      return
+    }
+    assertHasAssetFileParity(tmp, '_template', '../shared/trap.jpg', false, 'symlink-out')
+    assert.equal(checkPanoramaPathAvailability('../shared/trap.jpg', tmp), false)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+    if (outside) {
+      try { fs.unlinkSync(outside) } catch {}
+    }
   }
 })
 

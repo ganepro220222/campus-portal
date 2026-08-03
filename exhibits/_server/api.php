@@ -138,16 +138,16 @@ function studio_resolve_asset_path(string $root, string $exhibit, ?string $asset
   return "$root/$exhibit/$p";
 }
 
-/** 解析后的本地路径是否仍在 exhibits 根目录内（防 ../ 越界探测） */
+/** 解析后的本地路径是否仍在 exhibits 根目录内（防 ../ 越界与 symlink 逃逸） */
 function studio_path_inside_root(string $root, string $local): bool {
   $rootReal = realpath($root);
   if ($rootReal === false) return false;
+  $targetReal = realpath($local);
+  if ($targetReal === false) return false;
   $rootNorm = rtrim(str_replace('\\', '/', $rootReal), '/');
-  $parent = realpath(dirname($local));
-  if ($parent === false) return false;
-  $parentNorm = rtrim(str_replace('\\', '/', $parent), '/');
-  if ($parentNorm === $rootNorm) return true;
-  return str_starts_with($parentNorm . '/', $rootNorm . '/');
+  $targetNorm = rtrim(str_replace('\\', '/', $targetReal), '/');
+  if ($targetNorm === $rootNorm) return true;
+  return str_starts_with($targetNorm . '/', $rootNorm . '/');
 }
 
 /** 通用资源存在性判断（模型 / 全景共用同一套路径解析规则） */

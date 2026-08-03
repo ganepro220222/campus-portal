@@ -11,6 +11,7 @@ import {
   cardSupportsVisibleBg,
   cardSupportsVisibleBgAfterOps,
   cardUsesPanoramaAfterOps,
+  envSupportsVisibleBg,
 } from './studio-batch-env.mjs'
 
 let pass = 0, fail = 0
@@ -25,6 +26,18 @@ const pano = { usesPanorama: true, envMode: 'panorama', envPreset: 'gallery', pa
 const panoRoom = { usesPanorama: true, envMode: 'panorama', envPreset: 'room', panorama: 'assets/p.jpg' }
 const panoGallery = { usesPanorama: true, envMode: 'panorama', envPreset: 'gallery', panorama: 'assets/p.jpg' }
 const brokenPano = { usesPanorama: false, envMode: 'panorama', panorama: '' }
+const missingPanoRoom = {
+  usesPanorama: false, hasPano: false, envMode: 'panorama', envPreset: 'room',
+  panorama: 'assets/missing.jpg',
+}
+const missingPanoGallery = {
+  usesPanorama: false, hasPano: false, envMode: 'panorama', envPreset: 'gallery',
+  panorama: 'assets/missing.jpg',
+}
+const stalePanoPath = {
+  usesPanorama: false, hasPano: true, envMode: 'preset', envPreset: 'gallery',
+  panorama: 'assets/exists.jpg',
+}
 const bgOn = { path: 'environment.visibleBackground', value: true }
 const bgOff = { path: 'environment.visibleBackground', value: false }
 const clearOps = [
@@ -64,6 +77,88 @@ test('cardSupportsVisibleBg：room / gallery / panorama', () => {
   assert.equal(cardSupportsVisibleBg(gallery), true)
   assert.equal(cardSupportsVisibleBg(pano), true)
   assert.equal(cardSupportsVisibleBg(brokenPano), false)
+})
+
+test('cardEnvState：路径非空但文件缺失时保留 panoramaAvailable=false', () => {
+  const st = cardEnvState(missingPanoRoom)
+  assert.equal(st.mode, 'panorama')
+  assert.equal(st.panorama, 'assets/missing.jpg')
+  assert.equal(st.panoramaAvailable, false)
+})
+
+test('envSupportsVisibleBg：缺失全景 + room fallback 不支持可见背景', () => {
+  assert.equal(envSupportsVisibleBg(cardEnvState(missingPanoRoom)), false)
+  assert.equal(cardSupportsVisibleBg(missingPanoRoom), false)
+})
+
+test('envSupportsVisibleBg：缺失全景 + gallery fallback 支持可见背景', () => {
+  assert.equal(envSupportsVisibleBg(cardEnvState(missingPanoGallery)), true)
+  assert.equal(cardSupportsVisibleBg(missingPanoGallery), true)
+})
+
+test('batchBgvisWarn：缺失全景 + room fallback + bgvis=true 时警告', () => {
+  const msg = batchBgvisWarn({ ops: [bgOn], picked: [missingPanoRoom], enBgvis: true })
+  assert.match(msg, /都不支持可见环境背景/)
+})
+
+test('batchBgvisWarn：缺失全景 + gallery fallback + bgvis=true 时不警告', () => {
+  assert.equal(batchBgvisWarn({ ops: [bgOn], picked: [missingPanoGallery], enBgvis: true }), '')
+})
+
+test('batchBgvisWarn：缺失全景 + 仅改 preset 仍按 fallback 判断', () => {
+  const ops = [{ path: 'environment.preset', value: 'room' }, bgOn]
+  const msg = batchBgvisWarn({ ops, picked: [missingPanoGallery], enBgvis: true })
+  assert.match(msg, /都不支持可见环境背景/)
+})
+
+test('batchBgvisWarn：缺失全景 + 清除 + gallery fallback 时支持', () => {
+  assert.equal(batchBgvisWarn({ ops: [...clearOps, bgOn], picked: [missingPanoGallery], enBgvis: true }), '')
+})
+
+test('cardSupportsVisibleBgAfterOps：批量设置新全景路径时乐观视为可用', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '../shared/new.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    bgOn,
+  ]
+  assert.equal(cardSupportsVisibleBgAfterOps(missingPanoRoom, ops), true)
+  assert.equal(batchBgvisWarn({ ops, picked: [missingPanoRoom], enBgvis: true }), '')
+})
+
+test('cardUsesPanoramaAfterOps：缺失全景文件不算仍在用全景', () => {
+  assert.equal(cardUsesPanoramaAfterOps(missingPanoRoom, []), false)
+  assert.equal(cardUsesPanoramaAfterOps(missingPanoRoom, [{ path: 'environment.preset', value: 'gallery' }]), false)
+})
+
+test('cardUsesPanoramaAfterOps：批量写入新全景路径后算接管', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '../shared/new.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+  ]
+  assert.equal(cardUsesPanoramaAfterOps(missingPanoRoom, ops), true)
+})
+
+test('batchPresetHint：缺失全景文件时不误报 preset 不生效', () => {
+  assert.equal(batchPresetHint({ picked: [missingPanoRoom], ops: [{ path: 'environment.preset', value: 'gallery' }] }), '')
+})
+
+test('batchPresetHint：批量写入新全景后 preset 仍不生效', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '../shared/new.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    { path: 'environment.preset', value: 'gallery' },
+  ]
+  assert.match(batchPresetHint({ picked: [missingPanoRoom], ops }), /不会生效/)
+})
+
+test('cardSupportsVisibleBg：preset 模式但有可用全景文件，批量切 panorama 后支持', () => {
+  const ops = [
+    { path: 'assets.panorama', value: 'assets/exists.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    bgOn,
+  ]
+  assert.equal(cardSupportsVisibleBg(stalePanoPath), true)
+  assert.equal(cardSupportsVisibleBgAfterOps(stalePanoPath, ops), true)
 })
 
 test('applyEnvOps：清除全景保留 card 自己的 preset', () => {

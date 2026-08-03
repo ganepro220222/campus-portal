@@ -74,7 +74,19 @@ async function gotoStudioWithExhibits(page, exhibits, { checkPano = null, panora
           status: 200, headers: { 'Content-Type': 'application/json' },
         }))
         if (window.__panoCheckWaiters[p]) {
-          return window.__panoCheckWaiters[p].then(v => respond(v ?? false))
+          return new Promise((resolve, reject) => {
+            const onAbort = () => reject(new DOMException('The operation was aborted.', 'AbortError'))
+            const signal = init?.signal
+            if (signal?.aborted) { onAbort(); return }
+            signal?.addEventListener('abort', onAbort, { once: true })
+            window.__panoCheckWaiters[p].then(value => {
+              signal?.removeEventListener('abort', onAbort)
+              resolve(respond(value ?? false))
+            }, err => {
+              signal?.removeEventListener('abort', onAbort)
+              reject(err)
+            })
+          })
         }
         let availability = 'unknown'
         if (rules && Object.prototype.hasOwnProperty.call(rules, p)) availability = rules[p]
@@ -553,11 +565,14 @@ test.describe('studio.html', () => {
     await page.locator('#v-pano').fill(hangPath)
     const dialogSeen = page.waitForEvent('dialog', { timeout: 5000 })
     const clickPromise = page.locator('#bapply').click()
+    await expect(page.locator('#blog')).toContainText('正在验证全景路径', { timeout: 1000 })
+    await expect(page.locator('#bapply')).toHaveText('正在验证…')
     const dialog = await dialogSeen
     expect(dialog.message()).toMatch(/无法完全验证/)
     await dialog.dismiss()
     await clickPromise
     await expect(page.locator('#bapply')).toBeEnabled()
+    await expect(page.locator('#bapply')).toContainText('应用到')
     await expect.poll(() => saveCount, { timeout: 3000 }).toBe(0)
   })
 

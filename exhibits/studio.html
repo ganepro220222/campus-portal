@@ -713,11 +713,16 @@ async function applyBatch() {
   const verifiedPath = needPanoVerify ? currentBatchPanoPath() : ''
   let panoAvail = null
   if (needPanoVerify) {
-    $('bapply').disabled = true
+    line('hd', '正在验证全景路径…')
+    const applyBtn = $('bapply')
+    applyBtn.disabled = true
+    applyBtn.textContent = '正在验证…'
+    $('bwrap')?.setAttribute('aria-busy', 'true')
     try {
       panoAvail = await ensureBatchPanoVerified()
     } finally {
-      $('bapply').disabled = selected.size === 0 || !hasApi
+      $('bwrap')?.removeAttribute('aria-busy')
+      refreshSel()
     }
     if (batchRevision !== submitRevision) {
       return line('er', '批量设置在验证期间发生变化，请重新点击应用。')

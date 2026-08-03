@@ -1578,7 +1578,8 @@ function renderEditor() {
     ${rng('sh.opacity','浓度',0,1,0.01, sh.opacity)}
     ${rng('sh.soft','柔化',0,10,0.5, sh.softness)}
     ${rng('sh.offset','承影面高低',-groundRange,groundRange,0.002, sh.groundOffset)}
-    <div class="ed-note">承影面＝展台与影子所在的那层平面，只动它、不动器物。默认贴着模型底面；模型底部有圈足或包围盒略大时，往上推一点能消掉器物与影子之间的缝。<b style="color:#8a90a6">要抬高或压低器物本身，请用「模型摆放 → 位移 Y」。</b></div>
+    <div class="ed-note">承影面＝展台与影子所在的那层平面。<b style="color:#8a90a6">0 ＝ 正好贴着器物底面（默认、也是绝大多数情况该用的值）</b>；调成负数会把承影面往下挪，器物与展台之间就出现肉眼可见的缝、看着像悬空；正数则把它往上顶进器物底部，用来消掉圈足带来的空隙。
+      器物本身的高低请用「模型摆放 → 位移 Y」，不过那是连同展台一起升降的（承影面始终跟着器物底面走，器物不会脱离展台）。</div>
     <div class="ed-row"><span class="ed-label">展台</span><span class="ed-row-actions"><label style="font-size:11px;color:#8a90a6"><input type="checkbox" id="ed-shadow-plate" ${sh.plate?'checked':''}> 显示</label> <input type="color" data-k="sh.plateColor" value="${esc(sh.plateColor)}"></span></div>
     <div class="ed-note">两层叠加：正下方的接触阴影让器物「贴在台面上」（与灯位无关），加上随主光角度移动的真实投影。深色背景下必须开展台，否则影子没有落处、等于没开。<span id="ed-shadow-warn"></span></div>
   </details>

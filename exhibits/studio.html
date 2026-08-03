@@ -128,18 +128,17 @@
   .bf > .bf-en { flex:0 0 auto; width:15px; height:15px; cursor:pointer; }
   .bf .lb { flex:0 0 92px; color:rgba(230,234,245,.7); }
   .bf .ctl { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
-  .bf .ctl select, .bf .ctl input[type=text] { flex:1; min-width:0; padding:5px 8px; border-radius:7px; font-size:12px;
+  /* 选择器落在 .bf 而不是 .bf .ctl 上：带候选下拉的行里，输入框要跳出控件列独占一行，
+     跳出去之后仍然得是同一副长相。 */
+  .bf select, .bf input[type=text] { flex:1; min-width:0; padding:5px 8px; border-radius:7px; font-size:12px;
     border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#eef0f5; font-family:inherit; }
-  /* 全景候选下拉独占一行：跟输入框并排时两边各剩 63px，连「（手动输入）」都显示不全。
-     选择器写得比 `.bf .ctl select` 更具体，否则那条的 flex:1 会把 100% 基准盖掉。
-     路径本来就不可能在这么窄的框里显示完整，超出部分省略；完整路径挂 title 气泡。 */
-  .bf .ctl select.bpick { flex:1 1 100%; margin-bottom:4px; }
-  .bf .ctl select.bpick, .bf .ctl input[type=text] { text-overflow:ellipsis; }
-  /* 下拉 + 输入两行的行：控件让出标签列、各自占满整张卡片。
-     挤在 92px 标签列右边只剩 107px，「（手动输入）」六个字要 72px，加上原生下拉箭头
-     基本是贴着边——换台机器换套字体就会被切掉。标签单独一行当小标题反而更清楚。 */
-  .bf.twoline > .lb { flex:1 1 auto; }
-  .bf.twoline > .ctl { flex:1 1 100%; min-width:0; margin-left:23px; }   /* 23px＝复选框列宽，与上面各行左对齐 */
+  /* 候选下拉留在控件列（跟其他行的下拉左右对齐），手输框另起一行占满卡片：
+     路径动辄三四十个字符，塞进 107px 的控件列只能看到开头几个字母，不如给它整行。
+     两者都省略号收尾，完整内容挂 title 气泡。
+     选择器必须比 `.bf input[type=text]` 更重：属性选择器算一级特异性，光靠一个类名
+     压不住上面那条的 flex:1，输入框会缩回控件列里跟下拉挤成一排（踩过一次）。 */
+  .bf input[type=text].bwide { flex:1 1 100%; margin-top:4px; }
+  .bf select.bpick, .bf input[type=text].bwide { text-overflow:ellipsis; }
   /* 动作行（勾了就执行，没有取值控件）：说明要从别的行的控件列起头，才不显得错位 */
   .act-note { color:#8a90a6; font-size:11.5px; line-height:1.5; }
   .bf .ctl input[type=range] { flex:1; min-width:0; accent-color:var(--gold); }
@@ -265,7 +264,7 @@
 <script type="module">
 import { batchFieldApplies } from './studio-batch.mjs'
 import { batchBgvisWarn, batchPresetHint } from './studio-batch-env.mjs'
-import { panoValueFor, panoOptionLabel } from './studio-pano-labels.mjs'
+import { panoValueFor, panoOptionLabel, panoOptionTitle, PANO_MANUAL } from './studio-pano-labels.mjs'
 import {
   SORTS, FILTERS, ENV_PRESET_LABELS, envLabel,
   sortItems, filterItems, filterCounts, defaultDesc, normalizeView,
@@ -496,8 +495,9 @@ function fillPanoPicker() {
      来源信息一点没丢，分组标题纯属多余——去掉它比赌各平台的弹窗配色可靠。 */
   const ordered = [...panoCandidates.filter(c => c.source === 'configured'),
                    ...panoCandidates.filter(c => c.source !== 'configured')]
-  sel.innerHTML = '<option value="">（手动输入）</option>' + ordered.map(c =>
-    `<option value="${esc(panoValueFor(c.path))}">${esc(panoOptionLabel(c))}</option>`).join('')
+  // 每条选项自带 title：弹窗里悬停就能看到完整路径与尺寸，弹窗本身不必为长文案撑宽
+  sel.innerHTML = `<option value="">${esc(PANO_MANUAL)}</option>` + ordered.map(c =>
+    `<option value="${esc(panoValueFor(c.path))}" title="${esc(panoOptionTitle(c))}">${esc(panoOptionLabel(c))}</option>`).join('')
   syncPanoPickTitle()
   sel.onchange = () => {
     syncPanoPickTitle()
@@ -515,15 +515,15 @@ function fillPanoPicker() {
 function syncPanoPickTitle() {
   const sel = $('pick-pano'); if (!sel) return
   const opt = sel.selectedOptions[0]
-  sel.title = sel.value ? opt.textContent : '从展品中已配置的全景与公共背景目录里选，或在下面手动输入路径'
+  sel.title = sel.value ? (opt.title || opt.textContent) : '从展品中已配置的全景与公共背景目录里选，或在下面手动输入路径'
 }
 function fieldRow(f) {
   let ctl = ''
   if (f.type === 'bool') ctl = `<label class="swi"><input type="checkbox" id="v-${f.id}" ${f.def ? 'checked' : ''}> 显示 / 开启</label>`
   else if (f.type === 'switch') ctl = `<label class="swi"><input type="checkbox" id="v-${f.id}" ${f.def ? 'checked' : ''}> 勾选${f.on || '显示'} · 取消${f.off || '隐藏'}</label>`
-  else if (f.type === 'text') ctl = (f.picker === 'pano'
-      ? `<select id="pick-${f.id}" class="bpick" title="从已配置全景与公共背景目录里选"><option value="">（手动输入）</option></select>`
-      : '') + `<input type="text" id="v-${f.id}" placeholder="${f.ph || ''}" value="${f.def || ''}">`
+  else if (f.type === 'text') ctl = f.picker === 'pano'
+      ? `<select id="pick-${f.id}" class="bpick"><option value="">${PANO_MANUAL}</option></select>`
+      : `<input type="text" id="v-${f.id}" placeholder="${f.ph || ''}" value="${f.def || ''}">`
   else if (f.type === 'color') ctl = `<input type="color" id="v-${f.id}" value="${f.def}">`
   else if (f.type === 'range') ctl = `<input type="range" id="v-${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}"><span class="val" id="o-${f.id}">${f.def}</span>`
   else if (f.type === 'select') ctl = `<select id="v-${f.id}">${f.opts.map(([v, l]) => `<option value="${v}" ${v === f.def ? 'selected' : ''}>${l}</option>`).join('')}</select>`
@@ -532,9 +532,12 @@ function fieldRow(f) {
   else if (f.type === 'angle') ctl = `
     <span class="bang"><i>方位角</i><input type="range" id="v-${f.id}-az" min="-180" max="180" step="1" value="${f.az}"><span class="val" id="o-${f.id}-az">${f.az}</span></span>
     <span class="bang"><i>仰角</i><input type="range" id="v-${f.id}-el" min="-90" max="90" step="1" value="${f.el}"><span class="val" id="o-${f.id}-el">${f.el}</span></span>`
+  // 带候选下拉时手输框跳出控件列，作为 .bf 的直接子元素独占一行
+  const wide = f.picker === 'pano'
+    ? `<input type="text" class="bwide" id="v-${f.id}" placeholder="${f.ph || ''}" value="${f.def || ''}">` : ''
   const hint = f.hint ? `<span class="bf-hint" id="hint-${f.id}"></span>` : ''
-  const mod = f.type === 'angle' ? ' ang' : f.type === 'action' ? ' act' : f.picker ? ' twoline' : ''
-  return `<label class="bf dis${mod}" id="row-${f.id}"><input type="checkbox" class="bf-en" id="en-${f.id}"><span class="lb">${f.label}</span><span class="ctl">${ctl}</span>${hint}</label>`
+  const mod = f.type === 'angle' ? ' ang' : f.type === 'action' ? ' act' : ''
+  return `<label class="bf dis${mod}" id="row-${f.id}"><input type="checkbox" class="bf-en" id="en-${f.id}"><span class="lb">${f.label}</span><span class="ctl">${ctl}</span>${wide}${hint}</label>`
 }
 
 /* ---------- 应用（逐个展品独立写回，绝不相互覆盖） ---------- */

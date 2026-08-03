@@ -227,6 +227,30 @@ test.describe('落地阴影', () => {
 
   /* 这根滑条只挪承影面。量程收窄前是 ±0.3，能把承影面推到离器物底面 0.3 远，
      器物看着就像浮在空中——被当成 bug 报过。要挪器物请用 模型摆放 → 位移。 */
+  /* 「位移 Y 把展台一起抬走了，是 bug 吗」——不是。承影面永远钉在模型底面 + 承影面高低上，
+     所以挪器物时展台跟着走、器物绝不会脱离展台；唯一能拉开缝的是承影面高低本身。
+     这条把两者的分工钉死：位移 Y 不改变间距，间距完全等于承影面高低。 */
+  test('位移 Y 只整体升降：承影面跟着器物走，间距始终等于承影面高低', async () => {
+    await reloadPlayer(page, { shadow: { enabled: true } })
+    await openShadowSection()
+    for (const off of [0, -0.08, 0.05]) {
+      await setRange('sh.offset', off)
+      const heights = []
+      for (const y of [0, 0.3, -0.3]) {
+        await setRange('m.py', y)
+        const st = (await lightState()).shadow
+        expect(st.modelMinY - st.groundY).toBeCloseTo(-off, 3)   // 间距只由承影面高低决定
+        heights.push(st.modelMinY)
+      }
+      expect(heights[1]).toBeGreaterThan(heights[0])             // 位移 Y 确实抬高了器物
+      expect(heights[2]).toBeLessThan(heights[0])
+    }
+    await setRange('m.py', 0)
+    await setRange('sh.offset', 0)
+    const st = (await lightState()).shadow
+    expect(st.groundY).toBeCloseTo(st.modelMinY, 3)              // 归零＝严丝合缝
+  })
+
   test('承影面高低：量程收在 ±0.08，接触斑始终贴着承影面', async () => {
     const slider = page.locator('#editor input[type=range][data-k="sh.offset"]')
     await expect(slider).toHaveAttribute('min', '-0.08')

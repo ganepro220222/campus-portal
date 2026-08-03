@@ -28,6 +28,25 @@ export function isPathInsideExhibitsRoot(exhibitsRoot, localPath) {
   return candidate === root || candidate.startsWith(root + path.sep)
 }
 
+/**
+ * 展开 symlink 之后再判 containment。
+ *
+ * 只把文件 realpath、却拿没 realpath 的根去比，是在拿苹果比橘子：
+ * 部署成 current -> releases/2026-08-03 这种软链目录（最常见的发布布局）时，
+ * 文件的 realpath 落在 releases/… 下、根还写着 current/…，于是每个资源都被判成
+ * 「不在根内」——工作台里所有展品一律显示缺全景 / 缺模型。
+ * 两边都 realpath 才既挡得住逃逸、又不误伤软链部署。Python 的 Path.resolve()
+ * 与 PHP 的 realpath() 本来就是两边都展开，这里对齐它们。
+ */
+export function isRealPathInsideExhibitsRoot(exhibitsRoot, localPath) {
+  if (!exhibitsRoot || !localPath) return false
+  let root, candidate
+  try { root = fs.realpathSync.native(exhibitsRoot) } catch { root = path.resolve(exhibitsRoot) }
+  try { candidate = fs.realpathSync.native(localPath) } catch { return false }
+  root = path.resolve(root); candidate = path.resolve(candidate)
+  return candidate === root || candidate.startsWith(root + path.sep)
+}
+
 /** 通用资源存在性判断（模型 / 全景 / 封面共用同一套路径解析规则） */
 export function hasAssetFile(exhibitDir, assetPath, exhibitsRoot = null) {
   const p = String(assetPath ?? '').trim()
@@ -39,10 +58,7 @@ export function hasAssetFile(exhibitDir, assetPath, exhibitsRoot = null) {
   try {
     const st = fs.statSync(local)
     if (!st.isFile()) return false
-    if (exhibitsRoot) {
-      const real = fs.realpathSync.native(local)
-      if (!isPathInsideExhibitsRoot(exhibitsRoot, real)) return false
-    }
+    if (exhibitsRoot && !isRealPathInsideExhibitsRoot(exhibitsRoot, local)) return false
     return true
   } catch {
     return false

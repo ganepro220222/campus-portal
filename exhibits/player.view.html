@@ -1158,9 +1158,31 @@ const ICONS = (() => {
   }
 })()
 function labelBtns(){ document.querySelectorAll('#actions .btn').forEach(b=>{ const k=b.dataset.k; if(BTN[k]) b.querySelector('.tx').textContent = BTN[k][lang] }) }
+/* 全屏：各家前缀不一，iPhone 上的 Safari / WKWebView 更是压根没有元素级全屏 API
+   （只有 <video> 的 webkitEnterFullscreen）。以前是 `req && req()` 这么写的，
+   于是在 iPhone 上点了完全没反应、也不报错——按钮在那儿但永远不工作。
+   现在按能力决定要不要造这个按钮：造出来的就一定能用。 */
+const FS = (() => {
+  const el = document.documentElement
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen
+  const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen
+  // fullscreenEnabled 为 false ＝ 被 iframe 的 allow 策略挡住，这时也别放按钮
+  const allowed = document.fullscreenEnabled ?? document.webkitFullscreenEnabled ?? true
+  const active = () => !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement)
+  return {
+    supported: !!(req && exit) && allowed !== false,
+    active,
+    toggle() {
+      const p = active() ? exit.call(document) : req.call(el)
+      if (p && typeof p.catch === 'function') p.catch(() => {})   // 用户手势之外调用会 reject，不该炸
+    },
+  }
+})()
 function syncBtns(){
   const r=document.querySelector('[data-k=rotate]'); if(r){ r.classList.toggle('on', controls.autoRotate); r.setAttribute('aria-pressed', controls.autoRotate) }
   const h=document.querySelector('[data-k=hot]'); if(h){ h.classList.toggle('on', hotspotsVisible); h.setAttribute('aria-pressed', hotspotsVisible) }
+  // 全屏也是开关型按钮，之前一直没同步：进了全屏按钮不高亮，按 Esc 退出后也没人管
+  const f=document.querySelector('[data-k=full]'); if(f){ const on=FS.active(); f.classList.toggle('on', on); f.setAttribute('aria-pressed', on) }
 }
 function buildHUD() {
   const ui = cfg.ui||{}
@@ -1185,7 +1207,7 @@ function buildHUD() {
   })
   if (ui.showHotspotButton!==false && (cfg.hotspots||[]).length) mk('hot', true, ()=>{ hotspotsVisible=!hotspotsVisible; if(!hotspotsVisible) closeHotspot(); syncBtns() })
   if (ui.showResetButton!==false) mk('reset', false, ()=>{ closeHotspot() })
-  if (ui.showFullscreenButton!==false) mk('full', false, ()=>{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen() })
+  if (ui.showFullscreenButton!==false && FS.supported) mk('full', FS.active(), () => FS.toggle())
   labelBtns(); syncBtns()   // 初始化 aria-pressed 等状态
   // 高亮与当前状态匹配的预设（让默认预设显示为选中）
   if (renderer) { const cur=renderer.toneMappingExposure
@@ -1268,6 +1290,10 @@ function start() {
   }, () => showError('模型加载失败，请检查网络后重试', true))
 
   addEventListener('resize', onResize)
+  // 退出全屏的路子不止按钮一条（Esc、系统手势、浏览器 UI），一律回来重画按钮状态
+  for (const ev of ['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange']) {
+    document.addEventListener(ev, syncBtns)
+  }
   $('card-close').onclick = closeHotspot
   $('card-close').addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); closeHotspot() } })
   $('scene').addEventListener('pointerdown', ()=>{ if($('card').classList.contains('show')) return })

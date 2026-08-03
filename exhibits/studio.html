@@ -277,15 +277,22 @@ const $ = id => document.getElementById(id)
 let cards = [], items = [], panoCandidates = [], hasApi = false, canCreate = false
 /** 本批手工全景路径的验证态：true / false / PANO_UNKNOWN / null（未启用全景批量） */
 let batchPanoAvailability = null
+/** check-panorama 请求超时（ms）；E2E 可通过 window.__batchPanoVerifyTimeoutMs 缩短 */
+const BATCH_PANO_VERIFY_TIMEOUT_MS = typeof window.__batchPanoVerifyTimeoutMs === 'number'
+  ? window.__batchPanoVerifyTimeoutMs
+  : 8000
 let batchPanoVerifyToken = 0
 let batchPanoVerifyTimer = 0
 let batchPanoVerifyPromise = null
 let batchPanoVerifyForPath = ''
+let batchPanoVerifyAbort = null
 /** 批量面板用户改动版本号；apply 校验期间若递增则中止保存 */
 let batchRevision = 0
 function bumpBatchRevision() { batchRevision++ }
 function invalidateBatchPanoVerify() {
   batchPanoVerifyToken++
+  batchPanoVerifyAbort?.abort()
+  batchPanoVerifyAbort = null
   clearTimeout(batchPanoVerifyTimer)
   batchPanoVerifyTimer = 0
   batchPanoVerifyPromise = null
@@ -599,8 +606,15 @@ async function runBatchPanoVerify(forPath = null) {
   const requestedPath = path
   batchPanoVerifyForPath = path
   batchPanoVerifyPromise = (async () => {
+    const controller = new AbortController()
+    batchPanoVerifyAbort?.abort()
+    batchPanoVerifyAbort = controller
+    const timer = setTimeout(() => controller.abort(), BATCH_PANO_VERIFY_TIMEOUT_MS)
     try {
-      const r = await fetch(`studio-api/check-panorama?path=${encodeURIComponent(path)}`, { cache: 'no-cache' })
+      const r = await fetch(`studio-api/check-panorama?path=${encodeURIComponent(path)}`, {
+        cache: 'no-cache',
+        signal: controller.signal,
+      })
       if (token !== batchPanoVerifyToken) return batchPanoAvailability
       if (requestedPath !== currentBatchPanoPath()) return batchPanoAvailability
       if (!$('en-pano')?.checked) return batchPanoAvailability
@@ -619,6 +633,8 @@ async function runBatchPanoVerify(forPath = null) {
       syncBatchEnvHintsAll()
       return batchPanoAvailability
     } finally {
+      clearTimeout(timer)
+      if (batchPanoVerifyAbort === controller) batchPanoVerifyAbort = null
       if (batchPanoVerifyForPath === requestedPath) {
         batchPanoVerifyPromise = null
       }

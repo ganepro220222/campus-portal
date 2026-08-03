@@ -83,16 +83,24 @@ export function cfgFromEnvState(state) {
   }
 }
 
-/** 可见背景判断：全景不可用/未验证时模拟 player 回落到 fallback preset */
-export function envSupportsVisibleBg(state = {}) {
+/** 可见背景三态：supported / unsupported / conditional（全景路径尚未验证） */
+export function envVisibleBgSupport(state = {}) {
   const path = String(state.panorama ?? '').trim()
-  if (state.mode === 'panorama' && path && state.panoramaAvailable !== true) {
+  if (state.mode === 'panorama' && path && state.panoramaAvailable === PANO_UNKNOWN) {
+    return 'conditional'
+  }
+  if (state.mode === 'panorama' && path && state.panoramaAvailable === false) {
     return supportsVisibleBackground({
       environment: { mode: 'preset', preset: state.preset },
       assets: { panorama: '' },
-    })
+    }) ? 'supported' : 'unsupported'
   }
-  return supportsVisibleBackground(cfgFromEnvState(state))
+  return supportsVisibleBackground(cfgFromEnvState(state)) ? 'supported' : 'unsupported'
+}
+
+/** 可见背景判断：仅对已确认状态返回布尔；conditional 视为 false（勿用于批量警告计数） */
+export function envSupportsVisibleBg(state = {}) {
+  return envVisibleBgSupport(state) === 'supported'
 }
 
 function envOpts(opts = {}) {
@@ -116,33 +124,45 @@ export function cardSupportsVisibleBg(card = {}) {
   return envSupportsVisibleBg(cardEnvState(card))
 }
 
-function formatBgvisWarn(total, supported) {
-  const unsupported = total - supported
+function formatBgvisWarn(total, supported, unsupported, conditional = 0) {
   if (unsupported === 0) return ''
-  if (supported === 0) {
-    return `选中的 ${total} 件都不支持可见环境背景（如内置房间或缺少全景图）；请同时选择影棚/博物馆等环境预设，或批量设置全景。`
+  let msg
+  if (supported === 0 && conditional === 0) {
+    msg = `选中的 ${total} 件都不支持可见环境背景（如内置房间或缺少全景图）；请同时选择影棚/博物馆等环境预设，或批量设置全景。`
+  } else if (supported === 0) {
+    msg = `选中的 ${total} 件中有 ${unsupported} 件不支持可见环境背景（如内置房间或缺少全景图）；请同时选择影棚/博物馆等环境预设，或批量设置全景。`
+  } else {
+    msg = `选中的 ${total} 件中有 ${unsupported} 件不支持可见环境背景；「显示环境背景」只会对其余 ${supported} 件生效。`
   }
-  return `选中的 ${total} 件中有 ${unsupported} 件不支持可见环境背景；「显示环境背景」只会对其余 ${supported} 件生效。`
+  if (conditional > 0) {
+    msg = `${msg.replace(/。$/, '')}；另有 ${conditional} 件全景路径尚未验证，能否显示背景取决于全景是否加载成功。`
+  }
+  return msg
+}
+
+function countVisibleBgSupport(picked = [], ops = [], opts = {}) {
+  let supported = 0, unsupported = 0, conditional = 0
+  for (const c of picked) {
+    const support = envVisibleBgSupport(applyEnvOps(cardEnvState(c), ops, envOpts(opts)))
+    if (support === 'supported') supported++
+    else if (support === 'unsupported') unsupported++
+    else conditional++
+  }
+  return { supported, unsupported, conditional }
 }
 
 /** 按选中展品当前环境统计 bgvis 警告（本批不改环境来源） */
 export function batchBgvisWarnFromCards(picked = []) {
   if (!picked.length) return ''
-  let supported = 0
-  for (const c of picked) {
-    if (cardSupportsVisibleBg(c)) supported++
-  }
-  return formatBgvisWarn(picked.length, supported)
+  const { supported, unsupported, conditional } = countVisibleBgSupport(picked, [], {})
+  return formatBgvisWarn(picked.length, supported, unsupported, conditional)
 }
 
 /** 逐件模拟 batch ops 后的环境，统计 bgvis 警告 */
 export function batchBgvisWarnFromCardsAfterOps(picked = [], ops = [], opts = {}) {
   if (!picked.length) return ''
-  let supported = 0
-  for (const c of picked) {
-    if (cardSupportsVisibleBgAfterOps(c, ops, opts)) supported++
-  }
-  return formatBgvisWarn(picked.length, supported)
+  const { supported, unsupported, conditional } = countVisibleBgSupport(picked, ops, opts)
+  return formatBgvisWarn(picked.length, supported, unsupported, conditional)
 }
 
 /** 「显示环境背景」批量项的警告文案；无警告时返回空串 */
@@ -163,22 +183,32 @@ export function batchPanoPathHint({ ops = [], enPano, batchPanoAvailability = nu
     return '该全景路径在本地未找到；保存后将回落到环境预设，可见背景取决于预设类型'
   }
   if (batchPanoAvailability === PANO_UNKNOWN) {
-    return '手工全景路径尚未验证；若加载失败将回落到当前环境预设'
+    return '手工全景路径尚未验证；若加载成功将显示全景背景，若加载失败将回落到当前环境预设'
   }
   return ''
 }
 
-/** 「环境预设」批量项的警告文案；本批完成后仍用全景的展品才提示 */
+/** 「环境预设」批量项的警告文案；已确认全景接管 vs 尚未验证全景分别提示 */
 export function batchPresetHint({ picked = [], ops = [], batchPanoAvailability = null } = {}) {
   if (!picked.length) return ''
-  let ruled = 0
+  const hasPresetOp = ops.some(o => o.path === 'environment.preset')
+  let ruled = 0, conditional = 0
   for (const c of picked) {
-    if (cardUsesPanoramaAfterOps(c, ops, { batchPanoAvailability })) ruled++
+    const after = applyEnvOps(cardEnvState(c), ops, envOpts({ batchPanoAvailability }))
+    const path = String(after.panorama ?? '').trim()
+    if (after.mode === 'panorama' && path && after.panoramaAvailable === true) ruled++
+    else if (hasPresetOp && after.mode === 'panorama' && path && after.panoramaAvailable === PANO_UNKNOWN) conditional++
   }
-  if (!ruled) return ''
   const total = picked.length
-  if (ruled === total) {
-    return `选中的 ${total} 件都在用全景，环境预设对它们不会生效`
+  if (ruled) {
+    if (ruled === total) {
+      return `选中的 ${total} 件都在用全景，环境预设对它们不会生效`
+    }
+    return `选中的 ${total} 件中有 ${ruled} 件在用全景，此项对这 ${ruled} 件不会生效`
   }
-  return `选中的 ${total} 件中有 ${ruled} 件在用全景，此项对这 ${ruled} 件不会生效`
+  if (!conditional) return ''
+  if (conditional === total) {
+    return '全景路径尚未验证：若加载成功，环境预设仅作备用；若加载失败，将自动使用所选预设'
+  }
+  return `选中的 ${total} 件中有 ${conditional} 件将设置尚未验证的全景；若加载成功，环境预设仅作备用，若加载失败将自动使用所选预设`
 }

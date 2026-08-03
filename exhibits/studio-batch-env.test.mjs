@@ -13,6 +13,7 @@ import {
   cardSupportsVisibleBgAfterOps,
   cardUsesPanoramaAfterOps,
   envSupportsVisibleBg,
+  envVisibleBgSupport,
   PANO_UNKNOWN,
 } from './studio-batch-env.mjs'
 
@@ -127,14 +128,15 @@ test('cardSupportsVisibleBgAfterOps：批量设置已验证存在的全景路径
   assert.equal(batchBgvisWarn({ ops, picked: [missingPanoRoom], enBgvis: true, batchPanoAvailability: true }), '')
 })
 
-test('cardSupportsVisibleBgAfterOps：未验证的新路径按 fallback preset 判断', () => {
+test('cardSupportsVisibleBgAfterOps：未验证的新路径不计入 bgvis 确定性不支持', () => {
   const ops = [
     { path: 'assets.panorama', value: '../shared/new.jpg' },
     { path: 'environment.mode', value: 'panorama' },
     bgOn,
   ]
+  assert.equal(envVisibleBgSupport(applyEnvOps(cardEnvState(missingPanoRoom), ops)), 'conditional')
   assert.equal(cardSupportsVisibleBgAfterOps(missingPanoRoom, ops), false)
-  assert.match(batchBgvisWarn({ ops, picked: [missingPanoRoom], enBgvis: true }), /都不支持可见环境背景/)
+  assert.equal(batchBgvisWarn({ ops, picked: [missingPanoRoom], enBgvis: true }), '')
 })
 
 test('cardSupportsVisibleBgAfterOps：已验证不存在的路径按 fallback preset 判断', () => {
@@ -185,13 +187,14 @@ test('batchPresetHint：缺失全景文件时不误报 preset 不生效', () => 
   assert.equal(batchPresetHint({ picked: [missingPanoRoom], ops: [{ path: 'environment.preset', value: 'gallery' }] }), '')
 })
 
-test('batchPresetHint：未验证新路径时不误报 preset 不生效', () => {
+test('batchPresetHint：未验证新路径时提示 preset 条件关系', () => {
   const ops = [
     { path: 'assets.panorama', value: '../shared/new.jpg' },
     { path: 'environment.mode', value: 'panorama' },
     { path: 'environment.preset', value: 'gallery' },
   ]
-  assert.equal(batchPresetHint({ picked: [missingPanoRoom], ops }), '')
+  assert.match(batchPresetHint({ picked: [missingPanoRoom], ops }), /尚未验证/)
+  assert.match(batchPresetHint({ picked: [missingPanoRoom], ops }), /仅作备用/)
 })
 
 test('batchPresetHint：已验证存在的全景后 preset 仍不生效', () => {
@@ -203,14 +206,15 @@ test('batchPresetHint：已验证存在的全景后 preset 仍不生效', () => 
   assert.match(batchPresetHint({ picked: [missingPanoRoom], ops, batchPanoAvailability: true }), /不会生效/)
 })
 
-test('cardSupportsVisibleBg：preset 模式但有可用全景文件，批量切 panorama 后支持', () => {
+test('cardSupportsVisibleBg：preset 模式但有可用全景文件，批量切 panorama 后未验证为 conditional', () => {
   const ops = [
     { path: 'assets.panorama', value: 'assets/exists.jpg' },
     { path: 'environment.mode', value: 'panorama' },
     bgOn,
   ]
   assert.equal(cardSupportsVisibleBg(stalePanoPath), true)
-  assert.equal(cardSupportsVisibleBgAfterOps(stalePanoPath, ops, { batchPanoAvailability: PANO_UNKNOWN }), true)
+  assert.equal(envVisibleBgSupport(applyEnvOps(cardEnvState(stalePanoPath), ops, { batchPanoAvailability: PANO_UNKNOWN })), 'conditional')
+  assert.equal(cardSupportsVisibleBgAfterOps(stalePanoPath, ops, { batchPanoAvailability: PANO_UNKNOWN }), false)
   assert.equal(cardSupportsVisibleBgAfterOps(stalePanoPath, ops, { batchPanoAvailability: true }), true)
 })
 
@@ -356,6 +360,66 @@ test('batchPresetHint：room 展品改 preset 不警告', () => {
 
 test('batchPresetHint：混合全景/room + 清除后全部用 preset 不警告', () => {
   assert.equal(batchPresetHint({ picked: [pano, room], ops: [...clearOps, { path: 'environment.preset', value: 'gallery' }] }), '')
+})
+
+test('batchBgvisWarn：远程 URL + room fallback + bgvis 时不给出确定性不支持', () => {
+  const ops = [
+    { path: 'assets.panorama', value: 'https://cdn.example.com/hall.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    bgOn,
+  ]
+  assert.equal(batchBgvisWarn({ ops, picked: [room], enBgvis: true, batchPanoAvailability: PANO_UNKNOWN }), '')
+})
+
+test('batchBgvisWarn：远程 URL + gallery fallback + bgvis 时不警告', () => {
+  const ops = [
+    { path: 'assets.panorama', value: 'https://cdn.example.com/hall.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    bgOn,
+  ]
+  assert.equal(batchBgvisWarn({ ops, picked: [gallery], enBgvis: true, batchPanoAvailability: PANO_UNKNOWN }), '')
+})
+
+test('batchBgvisWarn：混合 room 与 gallery 且批量设未验证全景时不报不支持', () => {
+  const ops = [
+    { path: 'assets.panorama', value: 'https://cdn.example.com/hall.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    bgOn,
+  ]
+  const msg = batchBgvisWarn({
+    ops,
+    picked: [room, gallery],
+    enBgvis: true,
+    batchPanoAvailability: PANO_UNKNOWN,
+  })
+  assert.equal(msg, '')
+})
+
+test('batchBgvisWarn：未改全景时缺失文件仍给出确定性不支持', () => {
+  const msg = batchBgvisWarn({ ops: [bgOn], picked: [missingPanoRoom, room], enBgvis: true })
+  assert.match(msg, /2 件都不支持/)
+})
+
+test('batchPanoPathHint 与 batchBgvisWarn：未验证时不应同时出现尚未验证与全部不支持', () => {
+  const ops = [
+    { path: 'assets.panorama', value: 'https://cdn.example.com/hall.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    bgOn,
+  ]
+  const panoHint = batchPanoPathHint({ ops, enPano: true, batchPanoAvailability: PANO_UNKNOWN })
+  const bgvis = batchBgvisWarn({ ops, picked: [room], enBgvis: true, batchPanoAvailability: PANO_UNKNOWN })
+  assert.match(panoHint, /尚未验证/)
+  assert.equal(bgvis, '')
+})
+
+test('batchPresetHint：远程 URL + preset 批量项提示条件关系', () => {
+  const ops = [
+    { path: 'assets.panorama', value: 'https://cdn.example.com/hall.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+    { path: 'environment.preset', value: 'gallery' },
+  ]
+  assert.match(batchPresetHint({ picked: [room], ops, batchPanoAvailability: PANO_UNKNOWN }), /尚未验证/)
+  assert.match(batchPresetHint({ picked: [room], ops, batchPanoAvailability: PANO_UNKNOWN }), /仅作备用/)
 })
 
 console.log('')

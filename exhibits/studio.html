@@ -263,7 +263,7 @@
 
 <script type="module">
 import { batchFieldApplies } from './studio-batch.mjs'
-import { batchBgvisWarn, batchPresetHint, batchPanoPathHint, PANO_UNKNOWN } from './studio-batch-env.mjs'
+import { batchBgvisWarn, batchPresetHint, batchPanoPathHint, batchPanoApplyConfirmKind, PANO_UNKNOWN } from './studio-batch-env.mjs'
 import { panoValueFor, panoOptionLabel, panoOptionTitle, PANO_MANUAL } from './studio-pano-labels.mjs'
 import {
   SORTS, FILTERS, ENV_PRESET_LABELS, envLabel,
@@ -279,10 +279,14 @@ let cards = [], items = [], panoCandidates = [], hasApi = false, canCreate = fal
 let batchPanoAvailability = null
 let batchPanoVerifyToken = 0
 let batchPanoVerifyTimer = 0
+let batchPanoVerifyPromise = null
+let batchPanoVerifyForPath = ''
 function invalidateBatchPanoVerify() {
   batchPanoVerifyToken++
   clearTimeout(batchPanoVerifyTimer)
   batchPanoVerifyTimer = 0
+  batchPanoVerifyPromise = null
+  batchPanoVerifyForPath = ''
 }
 let countSuffix = ''
 const VIEW_KEY = 'studio.view.v1'
@@ -552,42 +556,84 @@ function resolveBatchPanoAvailability() {
   if (!path) return null
   return batchPanoAvailability
 }
-async function scheduleBatchPanoVerify() {
-  const path = currentBatchPanoPath()
-  if (!path) {
+async function runBatchPanoVerify(forPath = null) {
+  const path = forPath ?? currentBatchPanoPath()
+  if (!$('en-pano')?.checked || !path) {
     batchPanoAvailability = null
     syncBatchEnvHintsAll()
-    return
+    batchPanoVerifyPromise = null
+    batchPanoVerifyForPath = ''
+    return null
   }
   if (panoCandidates.some(c => panoValueFor(c.path) === path)) {
     batchPanoAvailability = true
     syncBatchEnvHintsAll()
-    return
+    batchPanoVerifyPromise = null
+    batchPanoVerifyForPath = ''
+    return true
   }
   if (!hasApi) {
     batchPanoAvailability = PANO_UNKNOWN
     syncBatchEnvHintsAll()
-    return
+    return PANO_UNKNOWN
+  }
+  if (batchPanoVerifyPromise && batchPanoVerifyForPath === path) {
+    return batchPanoVerifyPromise
   }
   const token = batchPanoVerifyToken
   const requestedPath = path
-  try {
-    const r = await fetch(`studio-api/check-panorama?path=${encodeURIComponent(path)}`, { cache: 'no-cache' })
-    if (token !== batchPanoVerifyToken) return
-    if (requestedPath !== currentBatchPanoPath()) return
-    if (!$('en-pano')?.checked) return
-    const d = await r.json()
-    if (token !== batchPanoVerifyToken) return
-    if (requestedPath !== currentBatchPanoPath()) return
-    if (!$('en-pano')?.checked) return
-    batchPanoAvailability = d.availability ?? PANO_UNKNOWN
-  } catch {
-    if (token !== batchPanoVerifyToken) return
-    if (requestedPath !== currentBatchPanoPath()) return
-    if (!$('en-pano')?.checked) return
-    batchPanoAvailability = PANO_UNKNOWN
+  batchPanoVerifyForPath = path
+  batchPanoVerifyPromise = (async () => {
+    try {
+      const r = await fetch(`studio-api/check-panorama?path=${encodeURIComponent(path)}`, { cache: 'no-cache' })
+      if (token !== batchPanoVerifyToken) return batchPanoAvailability
+      if (requestedPath !== currentBatchPanoPath()) return batchPanoAvailability
+      if (!$('en-pano')?.checked) return batchPanoAvailability
+      const d = await r.json()
+      if (token !== batchPanoVerifyToken) return batchPanoAvailability
+      if (requestedPath !== currentBatchPanoPath()) return batchPanoAvailability
+      if (!$('en-pano')?.checked) return batchPanoAvailability
+      batchPanoAvailability = d.availability ?? PANO_UNKNOWN
+      syncBatchEnvHintsAll()
+      return batchPanoAvailability
+    } catch {
+      if (token !== batchPanoVerifyToken) return batchPanoAvailability
+      if (requestedPath !== currentBatchPanoPath()) return batchPanoAvailability
+      if (!$('en-pano')?.checked) return batchPanoAvailability
+      batchPanoAvailability = PANO_UNKNOWN
+      syncBatchEnvHintsAll()
+      return batchPanoAvailability
+    } finally {
+      if (batchPanoVerifyForPath === requestedPath) {
+        batchPanoVerifyPromise = null
+      }
+    }
+  })()
+  return batchPanoVerifyPromise
+}
+function scheduleBatchPanoVerify() {
+  void runBatchPanoVerify()
+}
+async function ensureBatchPanoVerified() {
+  if (!$('en-pano')?.checked) return null
+  const path = currentBatchPanoPath()
+  if (!path) return null
+  clearTimeout(batchPanoVerifyTimer)
+  batchPanoVerifyTimer = 0
+  return runBatchPanoVerify(path)
+}
+function batchPanoApplyConfirmMessage(availability, path) {
+  const kind = batchPanoApplyConfirmKind(availability, path)
+  if (kind === 'missing') {
+    return '全景路径在本地未找到，保存后各展品将回落到环境预设。仍要继续批量保存？'
   }
-  syncBatchEnvHintsAll()
+  if (kind === 'site-root') {
+    return '该路径以 / 开头（站点根绝对路径），部署在 /exhibits/ 等子路径时浏览器可能 404；保存后若加载失败将回落到环境预设。仍要继续批量保存？'
+  }
+  if (kind === 'unverified') {
+    return '该全景路径无法完全验证，保存后若加载失败将回落到环境预设。仍要继续批量保存？'
+  }
+  return null
 }
 function batchEnvHintBase() {
   return {
@@ -633,10 +679,20 @@ async function applyBatch() {
   const line = (cls, txt) => { const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = txt; log.appendChild(d); log.scrollTop = log.scrollHeight }
   if (!dirs.length) return line('er', '未选择展品。')
   if (!ops.length) return line('er', '未勾选任何要修改的字段。')
-  const panoAvail = resolveBatchPanoAvailability()
-  if ($('en-pano')?.checked && panoAvail === false) {
-    if (!confirm('全景路径在本地未找到，保存后各展品将回落到环境预设。仍要继续批量保存？')) return
+  let panoAvail = null
+  if ($('en-pano')?.checked && currentBatchPanoPath()) {
+    $('bapply').disabled = true
+    try {
+      panoAvail = await ensureBatchPanoVerified()
+    } finally {
+      $('bapply').disabled = dirs.length === 0 || !hasApi
+    }
+  } else {
+    panoAvail = resolveBatchPanoAvailability()
   }
+  const panoPath = currentBatchPanoPath()
+  const confirmMsg = batchPanoApplyConfirmMessage(panoAvail, panoPath)
+  if ($('en-pano')?.checked && confirmMsg && !confirm(confirmMsg)) return
   line('hd', `开始批量：${dirs.length} 件展品 · ${ops.length} 个字段 → ${ops.map(o => o.path).join(', ')}`)
   if (!hasApi) return line('er', '未检测到工作台服务（studio-api），无法直接写回。请用 node _server/studio-server.mjs 启动后再批量保存。')
   $('bapply').disabled = true

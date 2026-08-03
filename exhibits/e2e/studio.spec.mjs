@@ -79,7 +79,8 @@ async function gotoStudioWithExhibits(page, exhibits, { checkPano = null, panora
         if (rules && Object.prototype.hasOwnProperty.call(rules, p)) availability = rules[p]
         else if (/missing|不存在/i.test(p)) availability = false
         else if (/^https?:\/\//i.test(p)) availability = 'unknown'
-        else if (p.startsWith('../') || p.startsWith('/')) availability = true
+        else if (p.startsWith('/')) availability = 'unknown'
+        else if (p.startsWith('../')) availability = true
         return respond(availability)
       }
       return origFetch(input, init)
@@ -450,6 +451,73 @@ test.describe('studio.html', () => {
     await page.waitForTimeout(100)
     await expect(page.locator('#hint-pano')).toHaveText('')
     await expect(page.locator('#v-pano')).toHaveValue(goodPath)
+  })
+
+  test('缺失路径：立即应用会等待验证，取消 confirm 时不保存', async ({ page }) => {
+    const missingPath = '../共享背景/缺失.jpg'
+    let saveCount = 0
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-223', title: '房间', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
+    ], { checkPano: { [missingPath]: false } })
+    await page.route('**/studio-api/save', async route => {
+      saveCount++
+      await route.fulfill({ json: { ok: true } })
+    })
+    await page.route(`**/craft-223/config.json*`, route => route.fulfill({
+      json: { i18n: { zh: { title: '房间' } }, environment: { mode: 'preset', preset: 'room' }, assets: {} },
+    }))
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-223'])
+    await page.locator('#en-pano').check()
+    await page.locator('#v-pano').fill(missingPath)
+    const dialogSeen = page.waitForEvent('dialog')
+    await page.locator('#bapply').click()
+    const dialog = await dialogSeen
+    expect(dialog.message()).toMatch(/未找到/)
+    await dialog.dismiss()
+    await expect.poll(() => saveCount, { timeout: 3000 }).toBe(0)
+  })
+
+  test('验证 pending 时应用会等待，取消 confirm 时不保存', async ({ page }) => {
+    const missingPath = '../共享背景/缺失.jpg'
+    let saveCount = 0
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-224', title: '房间', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
+    ], { checkPano: { [missingPath]: false } })
+    await page.route('**/studio-api/save', async route => {
+      saveCount++
+      await route.fulfill({ json: { ok: true } })
+    })
+    await page.route(`**/craft-224/config.json*`, route => route.fulfill({
+      json: { i18n: { zh: { title: '房间' } }, environment: { mode: 'preset', preset: 'room' }, assets: {} },
+    }))
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-224'])
+    await page.evaluate(p => { window.deferPanoCheck(p) }, missingPath)
+    await page.locator('#en-pano').check()
+    await page.locator('#v-pano').fill(missingPath)
+    const dialogSeen = page.waitForEvent('dialog')
+    const clickPromise = page.locator('#bapply').click()
+    await page.waitForTimeout(100)
+    await page.evaluate(p => window.releasePanoCheck(p, false), missingPath)
+    const dialog = await dialogSeen
+    expect(dialog.message()).toMatch(/未找到/)
+    await dialog.dismiss()
+    await clickPromise
+    await expect.poll(() => saveCount, { timeout: 3000 }).toBe(0)
+  })
+
+  test('/ 开头路径：验证为 unknown 并提示子路径部署风险', async ({ page }) => {
+    const rootPath = '/共享背景/展厅.jpg'
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-225', title: '房间', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
+    ])
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-225'])
+    await page.locator('#en-pano').check()
+    await page.locator('#v-pano').fill(rootPath)
+    await expect.poll(async () => page.locator('#hint-pano').textContent()).toMatch(/子路径部署/)
+    await expect(page.locator('#hint-pano').textContent()).toMatch(/404/)
   })
 
   test('仅改环境预设：全景展品提示 preset 当前不生效', async ({ page }) => {

@@ -5,7 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { assetFingerprint, hasAssetFile, isRemotePanoramaUrl, imageSize, isPanoramaRatio,
-  listPanoramaCandidates, panoramaToRootRel, checkPanoramaPathAvailability,
+  listPanoramaCandidates, panoramaToRootRel, checkPanoramaPathAvailability, isSiteRootPanoPath,
   FINGERPRINT_CHUNK, FINGERPRINT_LENGTH } from './pano-check.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -61,6 +61,20 @@ test('checkPanoramaPathAvailability：根相对路径可批量校验', () => {
     assert.equal(checkPanoramaPathAvailability('../shared/missing.jpg', tmp), false)
     assert.equal(checkPanoramaPathAvailability('https://cdn/x.jpg', tmp), 'unknown')
     assert.equal(checkPanoramaPathAvailability('assets/local.jpg', tmp), 'unknown')
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('checkPanoramaPathAvailability：/ 开头路径返回 unknown（与播放器 URL 语义不一致）', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
+  try {
+    fs.mkdirSync(path.join(tmp, '_template'), { recursive: true })
+    fs.mkdirSync(path.join(tmp, '共享背景'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, '共享背景', 'hall.jpg'), 'x')
+    assert.equal(isSiteRootPanoPath('/共享背景/hall.jpg'), true)
+    assert.equal(checkPanoramaPathAvailability('/共享背景/hall.jpg', tmp), 'unknown')
+    assert.equal(hasAssetFile(path.join(tmp, '_template'), '/共享背景/hall.jpg', tmp), true)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }

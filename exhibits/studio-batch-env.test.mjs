@@ -4,6 +4,8 @@ import {
   batchBgvisWarn,
   batchPresetHint,
   batchPanoPathHint,
+  batchPanoApplyConfirmKind,
+  isSiteRootPanoPath,
   batchBgvisWarnFromCards,
   batchBgvisWarnFromCardsAfterOps,
   batchVisibleBgTarget,
@@ -420,6 +422,23 @@ test('batchPresetHint：远程 URL + preset 批量项提示条件关系', () => 
   ]
   assert.match(batchPresetHint({ picked: [room], ops, batchPanoAvailability: PANO_UNKNOWN }), /尚未验证/)
   assert.match(batchPresetHint({ picked: [room], ops, batchPanoAvailability: PANO_UNKNOWN }), /仅作备用/)
+})
+
+test('batchPanoPathHint：/ 开头路径提示子路径部署风险', () => {
+  const ops = [
+    { path: 'assets.panorama', value: '/共享背景/hall.jpg' },
+    { path: 'environment.mode', value: 'panorama' },
+  ]
+  assert.ok(isSiteRootPanoPath('/共享背景/hall.jpg'))
+  assert.match(batchPanoPathHint({ ops, enPano: true, batchPanoAvailability: PANO_UNKNOWN }), /子路径部署/)
+  assert.match(batchPanoPathHint({ ops, enPano: true, batchPanoAvailability: PANO_UNKNOWN }), /404/)
+})
+
+test('batchPanoApplyConfirmKind：区分缺失、站点根与未验证', () => {
+  assert.equal(batchPanoApplyConfirmKind(false, '../x.jpg'), 'missing')
+  assert.equal(batchPanoApplyConfirmKind(PANO_UNKNOWN, '/共享背景/x.jpg'), 'site-root')
+  assert.equal(batchPanoApplyConfirmKind(PANO_UNKNOWN, 'https://cdn/x.jpg'), 'unverified')
+  assert.equal(batchPanoApplyConfirmKind(true, '../x.jpg'), null)
 })
 
 console.log('')

@@ -34,12 +34,18 @@ export function hasAssetFile(exhibitDir, assetPath, exhibitsRoot = null) {
   }
 }
 
-/** 批量面板校验全景路径：true / false / 'unknown'（远程或展品内相对路径） */
+/** / 开头路径：播放器按站点根 URL 加载，与 exhibits 文件系统语义不一致，批量校验不给 true */
+export function isSiteRootPanoPath(p) {
+  return String(p ?? '').trim().startsWith('/')
+}
+
+/** 批量面板校验全景路径：true / false / 'unknown'（远程、展品内相对、站点根 / 路径） */
 export function checkPanoramaPathAvailability(panoramaPath, exhibitsRoot) {
   const p = String(panoramaPath ?? '').trim()
   if (!p) return false
   if (isRemotePanoramaUrl(p)) return 'unknown'
-  if (p.startsWith('../') || p.startsWith('/')) {
+  if (isSiteRootPanoPath(p)) return 'unknown'
+  if (p.startsWith('../')) {
     const refDir = path.join(exhibitsRoot, '_template')
     return hasAssetFile(refDir, p, exhibitsRoot) ? true : false
   }

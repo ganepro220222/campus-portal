@@ -147,12 +147,13 @@ function studio_has_asset_file(string $root, string $exhibit, ?string $asset): b
   return $local !== null && is_file($local);
 }
 
-/** 批量面板校验全景路径：true / false / unknown */
+/** 批量面板校验全景路径：true / false / unknown（/ 开头与浏览器 URL 语义不一致，不给 true） */
 function studio_check_panorama_availability(string $root, ?string $path): string {
   $p = trim((string)$path);
   if ($p === '') return 'false';
   if (studio_is_remote_panorama($p)) return 'unknown';
-  if (str_starts_with($p, '../') || str_starts_with($p, '/')) {
+  if (str_starts_with($p, '/')) return 'unknown';
+  if (str_starts_with($p, '../')) {
     return studio_has_asset_file($root, '_template', $p) ? 'true' : 'false';
   }
   return 'unknown';

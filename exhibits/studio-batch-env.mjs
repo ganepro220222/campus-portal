@@ -173,6 +173,20 @@ export function batchBgvisWarn({ ops = [], picked = [], enBgvis, batchPanoAvaila
   return batchBgvisWarnFromCardsAfterOps(picked, ops, { batchPanoAvailability })
 }
 
+/** / 开头路径：播放器按站点根 URL 请求，子路径部署可能 404 */
+export function isSiteRootPanoPath(path) {
+  return String(path ?? '').trim().startsWith('/')
+}
+
+/** 批量保存前需确认的 panorama 验证态；无确认时返回 null */
+export function batchPanoApplyConfirmKind(availability, path = '') {
+  if (availability === false) return 'missing'
+  if (availability === PANO_UNKNOWN) {
+    return isSiteRootPanoPath(path) ? 'site-root' : 'unverified'
+  }
+  return null
+}
+
 /** 手工/未验证全景路径的中性提示（不替代 bgvis 计数，只补充说明） */
 export function batchPanoPathHint({ ops = [], enPano, batchPanoAvailability = null } = {}) {
   if (!enPano) return ''
@@ -181,6 +195,9 @@ export function batchPanoPathHint({ ops = [], enPano, batchPanoAvailability = nu
   if (!path) return ''
   if (batchPanoAvailability === false) {
     return '该全景路径在本地未找到；保存后将回落到环境预设，可见背景取决于预设类型'
+  }
+  if (batchPanoAvailability === PANO_UNKNOWN && isSiteRootPanoPath(path)) {
+    return '以 / 开头的站点根路径在子路径部署时可能 404，建议改用 ../共享背景/...；本地无法确认浏览器能否加载'
   }
   if (batchPanoAvailability === PANO_UNKNOWN) {
     return '手工全景路径尚未验证；若加载成功将显示全景背景，若加载失败将回落到当前环境预设'

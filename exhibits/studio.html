@@ -281,6 +281,9 @@ let batchPanoVerifyToken = 0
 let batchPanoVerifyTimer = 0
 let batchPanoVerifyPromise = null
 let batchPanoVerifyForPath = ''
+/** 批量面板用户改动版本号；apply 校验期间若递增则中止保存 */
+let batchRevision = 0
+function bumpBatchRevision() { batchRevision++ }
 function invalidateBatchPanoVerify() {
   batchPanoVerifyToken++
   clearTimeout(batchPanoVerifyTimer)
@@ -461,16 +464,25 @@ function buildBatchUI() {
   // 交互：启用开关切换灰显；范围值实时显示
   for (const f of Object.values(FIELDS)) {
     const en = $('en-' + f.id), row = $('row-' + f.id)
-    en.addEventListener('change', () => { syncBatchFieldModes(); row.classList.toggle('dis', !en.checked || row.dataset.modeOff === '1') })
-    if (f.type === 'range') { const v = $('v-' + f.id), out = $('o-' + f.id); v.addEventListener('input', () => out.textContent = v.value) }
+    en.addEventListener('change', () => { bumpBatchRevision(); syncBatchFieldModes(); row.classList.toggle('dis', !en.checked || row.dataset.modeOff === '1') })
+    if (f.type === 'range') {
+      const v = $('v-' + f.id), out = $('o-' + f.id)
+      v.addEventListener('input', () => { bumpBatchRevision(); out.textContent = v.value })
+    }
     if (f.type === 'angle') for (const ax of ['az', 'el']) {
       const v = $('v-' + f.id + '-' + ax), out = $('o-' + f.id + '-' + ax)
-      v.addEventListener('input', () => out.textContent = v.value)
+      v.addEventListener('input', () => { bumpBatchRevision(); out.textContent = v.value })
+    }
+    const valCtl = $('v-' + f.id)
+    if (valCtl && f.type !== 'range' && f.type !== 'angle') {
+      valCtl.addEventListener('change', () => bumpBatchRevision())
+      if (f.type === 'text') valCtl.addEventListener('input', () => bumpBatchRevision())
     }
     // 勾了某盏灯的任一字段，就把它所在的小节展开，免得勾了却看不见
     en.addEventListener('change', () => { if (en.checked) en.closest('details.bsub')?.setAttribute('open', '') })
   }
   $('en-pano')?.addEventListener('change', () => {
+    bumpBatchRevision()
     syncPanoMutualExclusion('pano')
     invalidateBatchPanoVerify()
     if (!$('en-pano')?.checked) batchPanoAvailability = null
@@ -478,12 +490,14 @@ function buildBatchUI() {
     syncBatchEnvHintsAll()
   })
   $('en-panoClear')?.addEventListener('change', () => {
+    bumpBatchRevision()
     syncPanoMutualExclusion('clear')
     invalidateBatchPanoVerify()
     if ($('en-panoClear')?.checked) batchPanoAvailability = null
     syncBatchEnvHintsAll()
   })
   $('v-pano')?.addEventListener('input', e => {
+    bumpBatchRevision()
     e.target.title = e.target.value      // 手打的路径同样长，气泡要跟着走
     if ($('en-pano')?.checked) syncPanoMutualExclusion('pano')
     invalidateBatchPanoVerify()
@@ -529,6 +543,7 @@ function fillPanoPicker() {
     `<option value="${esc(panoValueFor(c.path))}" title="${esc(panoOptionTitle(c))}">${esc(panoOptionLabel(c))}</option>`).join('')
   syncPanoPickTitle()
   sel.onchange = () => {
+    bumpBatchRevision()
     syncPanoPickTitle()
     invalidateBatchPanoVerify()
     if (!sel.value) {
@@ -673,23 +688,34 @@ function fieldRow(f) {
 
 /* ---------- 应用（逐个展品独立写回，绝不相互覆盖） ---------- */
 async function applyBatch() {
-  const ops = enabledOps()
-  const dirs = [...selected]
   const log = $('blog'); log.hidden = false; log.innerHTML = ''
   const line = (cls, txt) => { const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = txt; log.appendChild(d); log.scrollTop = log.scrollHeight }
-  if (!dirs.length) return line('er', '未选择展品。')
-  if (!ops.length) return line('er', '未勾选任何要修改的字段。')
+  if (!selected.size) return line('er', '未选择展品。')
+  if (!enabledOps().length) return line('er', '未勾选任何要修改的字段。')
+  const submitRevision = batchRevision
+  const needPanoVerify = $('en-pano')?.checked && currentBatchPanoPath()
+  const verifiedPath = needPanoVerify ? currentBatchPanoPath() : ''
   let panoAvail = null
-  if ($('en-pano')?.checked && currentBatchPanoPath()) {
+  if (needPanoVerify) {
     $('bapply').disabled = true
     try {
       panoAvail = await ensureBatchPanoVerified()
     } finally {
-      $('bapply').disabled = dirs.length === 0 || !hasApi
+      $('bapply').disabled = selected.size === 0 || !hasApi
+    }
+    if (batchRevision !== submitRevision) {
+      return line('er', '批量设置在验证期间发生变化，请重新点击应用。')
+    }
+    if (!$('en-pano')?.checked || currentBatchPanoPath() !== verifiedPath) {
+      return line('er', '批量设置在验证期间发生变化，请重新点击应用。')
     }
   } else {
     panoAvail = resolveBatchPanoAvailability()
   }
+  const ops = enabledOps()
+  const dirs = [...selected]
+  if (!dirs.length) return line('er', '未选择展品。')
+  if (!ops.length) return line('er', '未勾选任何要修改的字段。')
   const panoPath = currentBatchPanoPath()
   const confirmMsg = batchPanoApplyConfirmMessage(panoAvail, panoPath)
   if ($('en-pano')?.checked && confirmMsg && !confirm(confirmMsg)) return
@@ -915,6 +941,7 @@ function applyView() {
 
 /* ---------- 选择 / 批量模式 ---------- */
 function toggleSel(dir, el) {
+  bumpBatchRevision()
   if (selected.has(dir)) { selected.delete(dir); el.classList.remove('sel') }
   else { selected.add(dir); el.classList.add('sel') }
   refreshSel()
@@ -1028,8 +1055,8 @@ $('newSubmit').addEventListener('click', submitNewExhibit)
 $('newModal').addEventListener('click', e => { if (e.target === $('newModal')) closeNewModal() })
 $('batchExit').addEventListener('click', () => setBatch(false))
 // 只全选「当前可见且能读出配置」的：配置坏掉的展品批量写回必然失败
-$('selAll').addEventListener('click', () => { cards.forEach(c => { if (!c.el.hidden && !c.item.error) { selected.add(c.dir); c.el.classList.add('sel') } }); refreshSel() })
-$('selNone').addEventListener('click', () => { selected.clear(); cards.forEach(c => c.el.classList.remove('sel')); refreshSel() })
+$('selAll').addEventListener('click', () => { bumpBatchRevision(); cards.forEach(c => { if (!c.el.hidden && !c.item.error) { selected.add(c.dir); c.el.classList.add('sel') } }); refreshSel() })
+$('selNone').addEventListener('click', () => { bumpBatchRevision(); selected.clear(); cards.forEach(c => c.el.classList.remove('sel')); refreshSel() })
 $('bapply').addEventListener('click', applyBatch)
 
 load()

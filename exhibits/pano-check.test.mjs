@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { assetFingerprint, hasAssetFile, isRemotePanoramaUrl, imageSize, isPanoramaRatio,
   listPanoramaCandidates, panoramaToRootRel, checkPanoramaPathAvailability, isSiteRootPanoPath,
+  isPathInsideExhibitsRoot,
   FINGERPRINT_CHUNK, FINGERPRINT_LENGTH } from './pano-check.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -75,6 +76,27 @@ test('checkPanoramaPathAvailability：/ 开头路径返回 unknown（与播放�
     assert.equal(isSiteRootPanoPath('/共享背景/hall.jpg'), true)
     assert.equal(checkPanoramaPathAvailability('/共享背景/hall.jpg', tmp), 'unknown')
     assert.equal(hasAssetFile(path.join(tmp, '_template'), '/共享背景/hall.jpg', tmp), true)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('hasAssetFile / checkPanoramaPathAvailability：../ 不得越出 exhibits 根目录', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-pano-'))
+  try {
+    fs.mkdirSync(path.join(tmp, '_template'), { recursive: true })
+    fs.mkdirSync(path.join(tmp, 'shared'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, 'shared', 'ok.jpg'), 'x')
+    const parent = path.dirname(tmp)
+    fs.writeFileSync(path.join(parent, 'escaped.jpg'), 'x')
+    const ref = path.join(tmp, '_template')
+    assert.equal(checkPanoramaPathAvailability('../shared/ok.jpg', tmp), true)
+    assert.equal(checkPanoramaPathAvailability('../shared/missing.jpg', tmp), false)
+    assert.equal(checkPanoramaPathAvailability('../../escaped.jpg', tmp), false)
+    assert.equal(hasAssetFile(ref, '../../escaped.jpg', tmp), false)
+    const inside = path.join(tmp, 'shared', 'ok.jpg')
+    assert.equal(isPathInsideExhibitsRoot(tmp, inside), true)
+    assert.equal(isPathInsideExhibitsRoot(tmp, path.join(parent, 'escaped.jpg')), false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }

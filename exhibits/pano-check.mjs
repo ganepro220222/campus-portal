@@ -37,7 +37,13 @@ export function hasAssetFile(exhibitDir, assetPath, exhibitsRoot = null) {
   if (!local) return false
   if (exhibitsRoot && !isPathInsideExhibitsRoot(exhibitsRoot, local)) return false
   try {
-    return fs.statSync(local).isFile()
+    const st = fs.statSync(local)
+    if (!st.isFile()) return false
+    if (exhibitsRoot) {
+      const real = fs.realpathSync.native(local)
+      if (!isPathInsideExhibitsRoot(exhibitsRoot, real)) return false
+    }
+    return true
   } catch {
     return false
   }

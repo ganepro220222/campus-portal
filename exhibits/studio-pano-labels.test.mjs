@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { panoValueFor, panoOptgroupLabel, panoOptionLabel } from './studio-pano-labels.mjs'
+import { panoValueFor, panoOptionLabel } from './studio-pano-labels.mjs'
 
 let pass = 0, fail = 0
 function test(name, fn) {
@@ -11,11 +11,6 @@ console.log('studio-pano-labels tests')
 
 test('panoValueFor 加 ../ 前缀', () => {
   assert.equal(panoValueFor('共享背景/museum.jpg'), '../共享背景/museum.jpg')
-})
-
-test('panoOptgroupLabel 区分 configured 与 shared', () => {
-  assert.equal(panoOptgroupLabel('configured'), '展品中已配置的全景')
-  assert.equal(panoOptgroupLabel('shared'), '公共背景')
 })
 
 test('panoOptionLabel 带来源标签与尺寸', () => {

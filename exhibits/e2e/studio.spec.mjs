@@ -622,6 +622,53 @@ test.describe('studio.html', () => {
     expect(g.pick.x + g.pick.w).toBeLessThanOrEqual(g.card.x + g.card.w + 1)
   })
 
+  /* 抽屉底下凭空多出横向滚动条：卡片 flex-basis 是 260px，但 min-width 默认 auto，
+     全景下拉的长选项文本把「环境 IBL」那张卡顶到 411px，六张一加就越过视口宽度。
+     1903 = 1920 屏减掉页面竖条后的实际视口，正是用户碰到的那一档。 */
+  for (const width of [1400, 1903, 2200]) {
+    test(`${width}px：批量卡片一律等宽，抽屉不额外长出横向滚动条`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await waitForStudioReady(page)
+      await openBatchPanel(page)
+      await page.locator('#selAll').click()
+      await page.locator('#en-panoClear').click()      // 勾一项，提示文案会出现
+      await page.waitForTimeout(150)
+      const g = await page.evaluate(() => {
+        const w = document.getElementById('bwrap')
+        return { sw: w.scrollWidth, cw: w.clientWidth,
+          cards: [...w.querySelectorAll('.bgroup')].map(c => Math.round(c.getBoundingClientRect().width)) }
+      })
+      expect(new Set(g.cards).size).toBe(1)            // 所有卡片同宽
+      expect(g.cards[0]).toBe(260)
+      // 内容宽度不许超过容器：视口够宽时就不该出现横条
+      if (width >= 1903) expect(g.sw).toBeLessThanOrEqual(g.cw)
+    })
+  }
+
+  test('全景候选下拉：「（手动输入）」显示得下，完整路径挂 title 气泡，不用 optgroup', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 900 })
+    await waitForStudioReady(page)
+    await openBatchPanel(page)
+    // optgroup 的标签底色跟不上 color-scheme，会浅底浅字看不清；来源改用选项文本前缀表达
+    await expect(page.locator('#pick-pano optgroup')).toHaveCount(0)
+    const opts = await page.$$eval('#pick-pano option', os => os.map(o => o.textContent))
+    expect(opts[0]).toBe('（手动输入）')
+    expect(opts.slice(1).every(t => /^(已配置|公共背景) · /.test(t))).toBe(true)
+    const fit = await page.evaluate(() => {
+      const sel = document.getElementById('pick-pano'), cs = getComputedStyle(sel)
+      const g = document.createElement('canvas').getContext('2d')
+      g.font = `${cs.fontSize} ${cs.fontFamily}`
+      const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+      return { need: g.measureText('（手动输入）').width, room: sel.clientWidth - pad - 20 }   // 20＝原生下拉箭头
+    })
+    expect(fit.room).toBeGreaterThan(fit.need + 20)    // 留足余量，换字体也不会被切
+    // 选一张图：完整路径进 title，输入框同步
+    const values = await page.$$eval('#pick-pano option', os => os.map(o => o.value).filter(Boolean))
+    await page.selectOption('#pick-pano', values[0])
+    expect(await page.getAttribute('#pick-pano', 'title')).toContain(values[0].replace('../', ''))
+    expect(await page.getAttribute('#v-pano', 'title')).toBe(values[0])
+  })
+
   test('清除全景：标签与说明同一行，不被 92px 标签列压成两行', async ({ page }) => {
     await page.setViewportSize({ width: 900, height: 900 })
     await waitForStudioReady(page)
@@ -634,12 +681,15 @@ test.describe('studio.html', () => {
       return { lbLines: lines(lb), noteLines: lines(note),
         sameRow: Math.abs(lb.getBoundingClientRect().top - note.getBoundingClientRect().top) < 6,
         rowH: Math.round(rr.height),
+        noteX: Math.round(note.getBoundingClientRect().x),
+        otherCtlX: Math.round(document.getElementById('v-epreset').getBoundingClientRect().x),
         right: note.getBoundingClientRect().right, cardRight: row.closest('.bgroup').getBoundingClientRect().right }
     })
     expect(g.lbLines).toBe(1)
     expect(g.noteLines).toBe(1)
     expect(g.sameRow).toBe(true)
     expect(g.right).toBeLessThanOrEqual(g.cardRight + 1)
+    expect(g.noteX).toBe(g.otherCtlX)   // 说明要从别的行的控件列起头，否则看着错位
   })
 
   test('batch updates only selected paths per exhibit', async ({ page }) => {

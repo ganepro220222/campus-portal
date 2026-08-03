@@ -20,6 +20,14 @@ export function resolvePanoramaLocalPath(exhibitDir, panoramaPath, exhibitsRoot 
   return path.join(exhibitDir, p)
 }
 
+/** 解析后的本地路径是否仍在 exhibits 根目录内（防 ../ 越界探测） */
+export function isPathInsideExhibitsRoot(exhibitsRoot, localPath) {
+  if (!exhibitsRoot || !localPath) return false
+  const root = path.resolve(exhibitsRoot)
+  const candidate = path.resolve(localPath)
+  return candidate === root || candidate.startsWith(root + path.sep)
+}
+
 /** 通用资源存在性判断（模型 / 全景 / 封面共用同一套路径解析规则） */
 export function hasAssetFile(exhibitDir, assetPath, exhibitsRoot = null) {
   const p = String(assetPath ?? '').trim()
@@ -27,6 +35,7 @@ export function hasAssetFile(exhibitDir, assetPath, exhibitsRoot = null) {
   if (isRemotePanoramaUrl(p)) return true
   const local = resolvePanoramaLocalPath(exhibitDir, p, exhibitsRoot)
   if (!local) return false
+  if (exhibitsRoot && !isPathInsideExhibitsRoot(exhibitsRoot, local)) return false
   try {
     return fs.statSync(local).isFile()
   } catch {

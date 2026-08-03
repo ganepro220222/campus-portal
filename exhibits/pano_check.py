@@ -34,6 +34,18 @@ def resolve_asset_local_path(
     return local if local.is_absolute() else exhibit_dir / p
 
 
+def _is_inside_exhibits_root(exhibits_root: Path, local: Path) -> bool:
+    root = exhibits_root.resolve()
+    candidate = local.resolve()
+    if candidate == root:
+        return True
+    try:
+        candidate.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
 def has_asset_file(
     exhibit_dir: Path,
     asset_path: str | None,
@@ -47,6 +59,8 @@ def has_asset_file(
         return True
     local = resolve_asset_local_path(exhibit_dir, p, exhibits_root)
     if local is None:
+        return False
+    if exhibits_root is not None and not _is_inside_exhibits_root(exhibits_root, local):
         return False
     return local.is_file()
 

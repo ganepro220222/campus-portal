@@ -138,13 +138,26 @@ function studio_resolve_asset_path(string $root, string $exhibit, ?string $asset
   return "$root/$exhibit/$p";
 }
 
+/** 解析后的本地路径是否仍在 exhibits 根目录内（防 ../ 越界探测） */
+function studio_path_inside_root(string $root, string $local): bool {
+  $rootReal = realpath($root);
+  if ($rootReal === false) return false;
+  $rootNorm = rtrim(str_replace('\\', '/', $rootReal), '/');
+  $parent = realpath(dirname($local));
+  if ($parent === false) return false;
+  $parentNorm = rtrim(str_replace('\\', '/', $parent), '/');
+  if ($parentNorm === $rootNorm) return true;
+  return str_starts_with($parentNorm . '/', $rootNorm . '/');
+}
+
 /** 通用资源存在性判断（模型 / 全景共用同一套路径解析规则） */
 function studio_has_asset_file(string $root, string $exhibit, ?string $asset): bool {
   $p = trim((string)$asset);
   if ($p === '') return false;
   if (studio_is_remote_panorama($p)) return true;
   $local = studio_resolve_asset_path($root, $exhibit, $p);
-  return $local !== null && is_file($local);
+  if ($local === null || !is_file($local)) return false;
+  return studio_path_inside_root($root, $local);
 }
 
 /** 批量面板校验全景路径：true / false / unknown（/ 开头与浏览器 URL 语义不一致，不给 true） */

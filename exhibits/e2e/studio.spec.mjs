@@ -507,6 +507,31 @@ test.describe('studio.html', () => {
     await expect.poll(() => saveCount, { timeout: 3000 }).toBe(0)
   })
 
+  test('验证期间修改全景路径时不保存并提示重新应用', async ({ page }) => {
+    const pathA = '../共享背景/缺失.jpg'
+    const pathB = '../共享背景/展厅.jpg'
+    let saveCount = 0
+    await gotoStudioWithExhibits(page, [
+      { dir: 'craft-226', title: '房间', hotspots: 0, hasPano: false, hasModel: true, envPreset: 'room', envMode: 'preset', mtime: 100 },
+    ], { checkPano: { [pathA]: false, [pathB]: true } })
+    await page.route('**/studio-api/save', async route => {
+      saveCount++
+      await route.fulfill({ json: { ok: true } })
+    })
+    await openBatchPanel(page)
+    await selectExhibits(page, ['craft-226'])
+    await page.evaluate(p => { window.deferPanoCheck(p) }, pathA)
+    await page.locator('#en-pano').check()
+    await page.locator('#v-pano').fill(pathA)
+    const clickPromise = page.locator('#bapply').click()
+    await page.waitForTimeout(50)
+    await page.locator('#v-pano').fill(pathB)
+    await page.evaluate(p => window.releasePanoCheck(p, false), pathA)
+    await clickPromise
+    await expect(page.locator('#blog')).toContainText('验证期间发生变化')
+    await expect.poll(() => saveCount, { timeout: 3000 }).toBe(0)
+  })
+
   test('/ 开头路径：验证为 unknown 并提示子路径部署风险', async ({ page }) => {
     const rootPath = '/共享背景/展厅.jpg'
     await gotoStudioWithExhibits(page, [

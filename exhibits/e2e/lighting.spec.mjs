@@ -405,7 +405,7 @@ test.describe('环境 IBL', () => {
   test('全景加载失败后重试成功时，编辑器同步清除失败提示', async () => {
     const panoUrl = 'assets/retry-pano.jpg'
     let serveOk = false
-    const panoBytes = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../craft-001/assets/panorama.jpg'))
+    const panoBytes = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../共享背景/8.jpg'))
     await page.route(`**/${panoUrl}`, route => {
       if (serveOk) route.fulfill({ status: 200, contentType: 'image/jpeg', body: panoBytes })
       else route.fulfill({ status: 404, body: 'not found' })

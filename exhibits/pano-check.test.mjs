@@ -10,6 +10,8 @@ import { assetFingerprint, hasAssetFile, isRemotePanoramaUrl, imageSize, isPanor
   FINGERPRINT_CHUNK, FINGERPRINT_LENGTH } from './pano-check.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
+/** craft-001 现引用 ../共享背景/8.jpg，单测读真实共享全景而非各展品 assets/ 内副本 */
+const SHARED_PANO = path.join(ROOT, '共享背景/8.jpg')
 
 function canRunPhpApi() {
   try {
@@ -448,12 +450,15 @@ test('imageSize：认不出的字节一律返回 null（宁可漏，不可错）
   assert.equal(imageSize(Buffer.from('not an image at all, definitely')), null)
 })
 
-test('imageSize：真实 JPEG（craft-001 的全景图）读出 2048×1024', () => {
-  const fd = fs.openSync(path.join(ROOT, 'craft-001/assets/panorama.jpg'), 'r')
+test('imageSize：真实 JPEG（共享背景 8.jpg）读出 2:1 全景尺寸', () => {
+  const fd = fs.openSync(SHARED_PANO, 'r')
   try {
     const buf = Buffer.alloc(65536)
     const n = fs.readSync(fd, buf, 0, buf.length, 0)
-    assert.deepEqual(imageSize(buf.subarray(0, n)), { width: 2048, height: 1024 })
+    const size = imageSize(buf.subarray(0, n))
+    assert.ok(size && isPanoramaRatio(size))
+    assert.equal(size.width, 8042)
+    assert.equal(size.height, 4021)
   } finally { fs.closeSync(fd) }
 })
 
@@ -534,12 +539,11 @@ test('候选：目录不存在 / 空目录不抛错', () => {
 
 test('候选：Node / Python / PHP 三份实现给出同一份清单', () => {
   withTmp(tmp => {
-    const realPano = path.join(ROOT, 'craft-001/assets/panorama.jpg')
     fs.mkdirSync(path.join(tmp, '共享背景'), { recursive: true })
-    fs.mkdirSync(path.join(tmp, 'craft-001', 'assets'), { recursive: true })
-    fs.copyFileSync(realPano, path.join(tmp, 'craft-001/assets/panorama.jpg'))
-    fs.copyFileSync(realPano, path.join(tmp, '共享背景/暖阁.jpg'))
-    fs.writeFileSync(path.join(tmp, 'craft-001/config.json'), miniConfig('assets/panorama.jpg'))
+    fs.mkdirSync(path.join(tmp, 'craft-001'), { recursive: true })
+    fs.copyFileSync(SHARED_PANO, path.join(tmp, '共享背景/8.jpg'))
+    fs.copyFileSync(SHARED_PANO, path.join(tmp, '共享背景/暖阁.jpg'))
+    fs.writeFileSync(path.join(tmp, 'craft-001/config.json'), miniConfig('../共享背景/8.jpg'))
     const node = listPanoramaCandidates(tmp)
     const py = JSON.parse(execFileSync('python', ['-c', `
 import sys, json
@@ -548,7 +552,7 @@ from pathlib import Path
 from pano_check import list_panorama_candidates
 print(json.dumps(list_panorama_candidates(Path(${JSON.stringify(tmp)}))))
 `], { encoding: 'utf8' }))
-    assert.deepEqual(node.map(x => x.path).sort(), ['craft-001/assets/panorama.jpg', '共享背景/暖阁.jpg'].sort())
+    assert.deepEqual(node.map(x => x.path).sort(), ['共享背景/8.jpg', '共享背景/暖阁.jpg'].sort())
     assert.deepEqual(py, node, 'python 与 node 清单不一致')
     if (canRunPhpApi()) {
       const php = JSON.parse(execFileSync('php', ['-r',

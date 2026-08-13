@@ -18,7 +18,8 @@ import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, syncUploadAssets,
   initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
-  collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+  collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack,
+  prepareUploadStaging, promoteUploadStaging, uploadSiblingStagingPath, uploadSiblingBackupPath, UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { configTimeoutMs, modelIdleTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
@@ -710,6 +711,110 @@ test('deployUploadPack failure leaves live module bytes unchanged', () => {
     assert.equal(dep.stage, 'assets')
     assert.equal(fs.readFileSync(modPath, 'utf8'), sentinel)
     assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), false)
+    assert.equal(fs.existsSync(uploadSiblingStagingPath(uploadDir)), false)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('prepareUploadStaging uses sibling dir outside live upload', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    fs.mkdirSync(uploadDir, { recursive: true })
+    fs.writeFileSync(path.join(uploadDir, 'marker.txt'), 'live', 'utf8')
+    const staging = prepareUploadStaging(uploadDir)
+    assert.equal(staging, uploadSiblingStagingPath(uploadDir))
+    assert.ok(!staging.startsWith(uploadDir + path.sep), 'staging must not be nested inside live upload')
+    assert.equal(fs.readFileSync(path.join(staging, 'marker.txt'), 'utf8'), 'live')
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('promoteUploadStaging swaps staging into live atomically', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    fs.mkdirSync(uploadDir, { recursive: true })
+    fs.writeFileSync(path.join(uploadDir, 'hotspot-id.js'), '/* LIVE-OLD */', 'utf8')
+    const staging = prepareUploadStaging(uploadDir)
+    fs.writeFileSync(path.join(staging, 'hotspot-id.js'), '/* STAGING-NEW */', 'utf8')
+    fs.writeFileSync(path.join(staging, 'player.view.html'), '<!-- new viewer -->', 'utf8')
+    promoteUploadStaging(staging, uploadDir)
+    assert.equal(fs.readFileSync(path.join(uploadDir, 'hotspot-id.js'), 'utf8'), '/* STAGING-NEW */')
+    assert.equal(fs.readFileSync(path.join(uploadDir, 'player.view.html'), 'utf8'), '<!-- new viewer -->')
+    assert.equal(fs.existsSync(staging), false)
+    assert.equal(fs.existsSync(uploadSiblingBackupPath(uploadDir)), false)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('promoteUploadStaging failure rolls back live and preserves staging', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    fs.mkdirSync(uploadDir, { recursive: true })
+    fs.writeFileSync(path.join(uploadDir, 'hotspot-id.js'), '/* LIVE-OLD */', 'utf8')
+    const staging = prepareUploadStaging(uploadDir)
+    fs.writeFileSync(path.join(staging, 'hotspot-id.js'), '/* STAGING-NEW */', 'utf8')
+    let renames = 0
+    let thrown
+    try {
+      promoteUploadStaging(staging, uploadDir, {
+        renameSync(from, to) {
+          renames++
+          if (renames === 2) throw new Error('injected rename failure')
+          fs.renameSync(from, to)
+        },
+      })
+    } catch (e) {
+      thrown = e
+    }
+    assert.ok(thrown, 'expected promotion error')
+    assert.match(thrown.message, /promotion failed/)
+    assert.equal(thrown.recovery?.rolledBack, true)
+    assert.equal(fs.readFileSync(path.join(uploadDir, 'hotspot-id.js'), 'utf8'), '/* LIVE-OLD */')
+    assert.equal(fs.readFileSync(path.join(thrown.recovery.stagingDir, 'hotspot-id.js'), 'utf8'), '/* STAGING-NEW */')
+    assert.equal(fs.existsSync(uploadSiblingBackupPath(uploadDir)), false)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('deployUploadPack promotion failure preserves verified staging for retry', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    initUploadVendor(uploadDir)
+    syncUploadAssets(uploadDir)
+    syncUploadModules(uploadDir)
+    const modPath = path.join(uploadDir, 'hotspot-id.js')
+    fs.writeFileSync(modPath, '/* LIVE-OLD */', 'utf8')
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    let renames = 0
+    let thrown
+    try {
+      deployUploadPack(uploadDir, uploadHtml, {
+        uploadAssets: false,
+        hooks: {
+          renameSync(from, to) {
+            renames++
+            if (renames === 2) throw new Error('injected deploy rename failure')
+            fs.renameSync(from, to)
+          },
+        },
+      })
+    } catch (e) {
+      thrown = e
+    }
+    assert.ok(thrown, 'expected deploy promotion error')
+    assert.equal(fs.readFileSync(modPath, 'utf8'), '/* LIVE-OLD */')
+    assert.ok(thrown.recovery?.stagingDir)
+    assert.ok(fs.existsSync(path.join(thrown.recovery.stagingDir, 'player.view.html')))
+    assert.match(fs.readFileSync(path.join(thrown.recovery.stagingDir, 'player.view.html'), 'utf8'), /viewer-only/)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }

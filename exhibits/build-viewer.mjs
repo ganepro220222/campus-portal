@@ -264,16 +264,38 @@ export function uploadStagingDirName() {
   return `.staging-${process.pid}`
 }
 
-export function isUploadStagingName(name) {
-  return /^\.staging-\d+$/.test(name)
+/** Scratch dir basename suffix: `<uploadBase>.staging-<pid>` / `.backup-<pid>`. */
+export function uploadScratchSuffix(kind) {
+  return `.${kind}-${process.pid}`
 }
 
-/** Copy upload tree, skipping in-progress staging dirs. */
+export function isUploadStagingName(name) {
+  return /\.staging-\d+$/.test(name)
+}
+
+export function isUploadBackupName(name) {
+  return /\.backup-\d+$/.test(name)
+}
+
+export function isUploadScratchName(name) {
+  return isUploadStagingName(name) || isUploadBackupName(name)
+}
+
+/** Verified tree lives beside uploadDir (same parent), not inside it. */
+export function uploadSiblingStagingPath(uploadDir) {
+  return `${uploadDir}${uploadScratchSuffix('staging')}`
+}
+
+export function uploadSiblingBackupPath(uploadDir) {
+  return `${uploadDir}${uploadScratchSuffix('backup')}`
+}
+
+/** Copy upload tree, skipping nested scratch dirs from older workflows. */
 export function copyUploadTree(srcDir, dstDir) {
   fs.mkdirSync(dstDir, { recursive: true })
   if (!fs.existsSync(srcDir)) return
   for (const ent of fs.readdirSync(srcDir, { withFileTypes: true })) {
-    if (isUploadStagingName(ent.name)) continue
+    if (isUploadScratchName(ent.name)) continue
     const s = path.join(srcDir, ent.name)
     const d = path.join(dstDir, ent.name)
     if (ent.isDirectory()) {
@@ -289,33 +311,61 @@ export function discardUploadStaging(stagingDir) {
   try { fs.rmSync(stagingDir, { recursive: true, force: true }) } catch { /* ignore */ }
 }
 
-/** Replace live upload dir from a verified staging tree, then remove staging. */
-export function promoteUploadStaging(stagingDir, uploadDir) {
-  fs.mkdirSync(uploadDir, { recursive: true })
-  for (const ent of fs.readdirSync(stagingDir, { withFileTypes: true })) {
-    const s = path.join(stagingDir, ent.name)
-    const d = path.join(uploadDir, ent.name)
-    if (ent.isDirectory()) {
-      fs.rmSync(d, { recursive: true, force: true })
-      fs.cpSync(s, d, { recursive: true })
-    } else {
-      fs.copyFileSync(s, d)
+/**
+ * Atomically publish staging → live via rename swap:
+ * live → backup, staging → live, then delete backup.
+ * On failure after live→backup, restore backup → live and preserve staging for retry.
+ */
+export function promoteUploadStaging(stagingDir, uploadDir, hooks = {}) {
+  const rename = hooks.renameSync || ((from, to) => fs.renameSync(from, to))
+  const rm = hooks.rmSync || ((target, opts) => fs.rmSync(target, opts))
+  const backupDir = uploadSiblingBackupPath(uploadDir)
+  discardUploadStaging(backupDir)
+
+  let movedLiveToBackup = false
+  try {
+    if (hooks.beforePromote) hooks.beforePromote({ stagingDir, uploadDir, backupDir })
+    if (fs.existsSync(uploadDir)) {
+      rename(uploadDir, backupDir)
+      movedLiveToBackup = true
     }
+    rename(stagingDir, uploadDir)
+    movedLiveToBackup = false
+    if (fs.existsSync(backupDir)) rm(backupDir, { recursive: true, force: true })
+    return { ok: true }
+  } catch (cause) {
+    let rolledBack = false
+    if (movedLiveToBackup && fs.existsSync(backupDir) && !fs.existsSync(uploadDir)) {
+      try {
+        rename(backupDir, uploadDir)
+        rolledBack = true
+      } catch { /* manual recovery */ }
+    }
+    const err = new Error(`upload promotion failed: ${cause.message}`)
+    err.cause = cause
+    err.recovery = {
+      rolledBack,
+      liveDir: uploadDir,
+      stagingDir: fs.existsSync(stagingDir) ? stagingDir : null,
+      backupDir: fs.existsSync(backupDir) ? backupDir : null,
+    }
+    throw err
   }
-  discardUploadStaging(stagingDir)
 }
 
-/** Snapshot live upload dir into a pid-scoped staging dir for preflight. */
+/** Snapshot live upload beside uploadDir for preflight (sibling staging). */
 export function prepareUploadStaging(uploadDir) {
-  const staging = path.join(uploadDir, uploadStagingDirName())
+  const staging = uploadSiblingStagingPath(uploadDir)
   discardUploadStaging(staging)
+  fs.mkdirSync(path.dirname(staging), { recursive: true })
   fs.mkdirSync(staging, { recursive: true })
   copyUploadTree(uploadDir, staging)
   return staging
 }
 
-/** Full staged deploy: preflight in staging, promote only on success. */
-export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false } = {}) {
+/** Full staged deploy: preflight in sibling staging, atomic swap only on success. */
+export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false, hooks = {} } = {}) {
+  fs.mkdirSync(path.dirname(uploadDir), { recursive: true })
   const staging = prepareUploadStaging(uploadDir)
   try {
     if (uploadInit) initUploadVendor(staging)
@@ -328,9 +378,13 @@ export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, up
     fs.writeFileSync(path.join(staging, 'player.view.html'), uploadHtml, 'utf8')
     syncUploadModules(staging)
     const exhibitFiles = syncUploadExhibits(staging)
-    promoteUploadStaging(staging, uploadDir)
+    promoteUploadStaging(staging, uploadDir, hooks)
     return { ok: true, assets: pre.assets, exhibitFiles }
   } catch (e) {
+    if (e.recovery?.stagingDir) {
+      // verified tree kept for retry; do not delete staging on promotion failure
+      throw e
+    }
     discardUploadStaging(staging)
     throw e
   }
@@ -551,29 +605,41 @@ if (upload) {
     console.error('upload viewer semantics:', uploadSem.reason)
     process.exit(1)
   }
-  const dep = deployUploadPack(UPLOAD_DIR, uploadHtml, { uploadInit, uploadAssets })
-  if (!dep.ok) {
-    if (dep.stage === 'assets') {
-      console.error('exhibits-upload asset errors (upload directory unchanged):')
-      for (const e of dep.assets.errors) console.error('  -', e)
-      console.error('Run: node build-viewer.mjs --upload-assets --upload')
-    } else if (dep.stage === 'imports') {
-      console.error('exhibits-upload missing imports (upload directory unchanged):', dep.missing.join(', '))
-    } else {
-      console.error('exhibits-upload missing runtime deps (upload directory unchanged):', dep.missing.join(', '))
-      console.error('First deploy: node build-viewer.mjs --upload-init --upload-assets --upload')
+  try {
+    const dep = deployUploadPack(UPLOAD_DIR, uploadHtml, { uploadInit, uploadAssets })
+    if (!dep.ok) {
+      if (dep.stage === 'assets') {
+        console.error('exhibits-upload asset errors (upload directory unchanged):')
+        for (const e of dep.assets.errors) console.error('  -', e)
+        console.error('Run: node build-viewer.mjs --upload-assets --upload')
+      } else if (dep.stage === 'imports') {
+        console.error('exhibits-upload missing imports (upload directory unchanged):', dep.missing.join(', '))
+      } else {
+        console.error('exhibits-upload missing runtime deps (upload directory unchanged):', dep.missing.join(', '))
+        console.error('First deploy: node build-viewer.mjs --upload-init --upload-assets --upload')
+      }
+      process.exit(1)
+    }
+    console.log('exhibits-upload/player.view.html written (.js imports)')
+    console.log('exhibits-upload/*.js module copies synced')
+    if (dep.exhibitFiles?.length) console.log('exhibits-upload exhibit files synced:', dep.exhibitFiles.join(', '))
+    else console.log('exhibits-upload: no craft-XXX/config.json to sync')
+    if (dep.assets.present.length) console.log('exhibits-upload asset refs OK:', dep.assets.present.length)
+    if (dep.assets.warnings.length) {
+      console.warn('exhibits-upload asset warnings:')
+      for (const w of dep.assets.warnings) console.warn('  -', w)
+    }
+    console.log('exhibits-upload verify OK')
+  } catch (e) {
+    console.error('exhibits-upload promotion failed:', e.message)
+    const r = e.recovery
+    if (r) {
+      if (r.rolledBack) console.error('  live directory restored from backup')
+      else console.error('  WARNING: live directory may be inconsistent; manual recovery required')
+      if (r.stagingDir) console.error('  verified staging preserved at:', r.stagingDir)
+      if (r.backupDir) console.error('  backup preserved at:', r.backupDir)
     }
     process.exit(1)
   }
-  console.log('exhibits-upload/player.view.html written (.js imports)')
-  console.log('exhibits-upload/*.js module copies synced')
-  if (dep.exhibitFiles?.length) console.log('exhibits-upload exhibit files synced:', dep.exhibitFiles.join(', '))
-  else console.log('exhibits-upload: no craft-XXX/config.json to sync')
-  if (dep.assets.present.length) console.log('exhibits-upload asset refs OK:', dep.assets.present.length)
-  if (dep.assets.warnings.length) {
-    console.warn('exhibits-upload asset warnings:')
-    for (const w of dep.assets.warnings) console.warn('  -', w)
-  }
-  console.log('exhibits-upload verify OK')
 }
 }

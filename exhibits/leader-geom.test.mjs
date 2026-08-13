@@ -621,6 +621,41 @@ test('--upload detects stale model vs source', () => {
   }
 })
 
+test('verifyUploadAssets detects same-length model changed in middle', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    syncUploadAssets(uploadDir)
+    const src = path.join(ROOT, 'craft-001/assets/model.glb')
+    const dst = path.join(uploadDir, 'craft-001/assets/model.glb')
+    const buf = fs.readFileSync(src)
+    const mid = Math.floor(buf.length / 2)
+    buf[mid] ^= 0xff
+    fs.writeFileSync(dst, buf)
+    const assets = verifyUploadAssets(uploadDir)
+    assert.equal(assets.ok, false)
+    assert.ok(assets.errors.some(e => e.includes('stale model')))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('first deploy preflight passes when modules synced inside preflight', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    initUploadVendor(uploadDir)
+    syncUploadAssets(uploadDir)
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const pre = runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: false, syncModules: true })
+    assert.equal(pre.ok, true, pre.stage || JSON.stringify(pre.missing))
+    assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), false)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 test('runUploadPreflight failure does not require prior viewer write', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
   try {
@@ -633,11 +668,8 @@ test('runUploadPreflight failure does not require prior viewer write', () => {
     const modelPath = path.join(uploadDir, 'craft-001/assets/model.glb')
     assert.ok(fs.existsSync(modelPath), 'fixture model must exist before delete')
     fs.unlinkSync(modelPath)
-    for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
-      fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
-    }
     const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
-    const pre = runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: false })
+    const pre = runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: false, syncModules: true })
     assert.equal(pre.ok, false)
     assert.equal(pre.stage, 'assets')
     assert.equal(fs.readFileSync(cfgPath, 'utf8'), oldCfg)

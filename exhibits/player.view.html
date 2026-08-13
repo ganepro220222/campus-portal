@@ -257,7 +257,10 @@ setTimeout(function () {
   if (loading) loading.setAttribute('hidden', '')
   if (err) err.removeAttribute('hidden')
   if (errText) errText.textContent = msg
-  if (errBtn) errBtn.removeAttribute('hidden')
+  if (errBtn) {
+    errBtn.removeAttribute('hidden')
+    errBtn.onclick = function () { location.reload() }
+  }
 }, window.__SY_PLAYER.bootTimeoutMs || 12000)
 </script>
 

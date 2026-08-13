@@ -729,6 +729,23 @@ test.describe('boot timeout', () => {
     await releaseWebGL(page)
     await page.close()
   })
+
+  test('module load failure reload button works before ES module runs', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { bootTimeoutMs: 800, module: false, bootStarted: false, ready: false, failed: false }
+    })
+    await page.route('**/leader-geom.js', route => route.abort('failed'))
+    await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('#error:not([hidden])', { timeout: 5000 })
+    await expect(page.locator('#err-text')).toContainText('模块加载失败')
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      page.locator('#err-btn').click(),
+    ])
+    await releaseWebGL(page)
+    await page.close()
+  })
 })
 
 test.describe('model load failure retry', () => {

@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { assetFingerprint } from './pano-check.mjs'
+import { assetFingerprint, deploymentFileHash } from './pano-check.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.join(ROOT, 'player.view.html')
@@ -228,8 +228,9 @@ export function verifyUploadAssets(uploadDir = UPLOAD_DIR) {
         continue
       }
       present.push(label)
-      const srcFp = assetFingerprint(srcExhibitDir, ref, ROOT)
-      const dstFp = assetFingerprint(uploadExhibitDir, ref, uploadDir)
+      const fp = (key === 'model') ? deploymentFileHash : assetFingerprint
+      const srcFp = fp(srcExhibitDir, ref, ROOT)
+      const dstFp = fp(uploadExhibitDir, ref, uploadDir)
       if (srcFp && dstFp && srcFp !== dstFp) {
         const msg = `stale ${key} (source changed): ${label}`
         if (key === 'model') errors.push(msg)
@@ -240,9 +241,10 @@ export function verifyUploadAssets(uploadDir = UPLOAD_DIR) {
   return { ok: errors.length === 0, present, errors, warnings }
 }
 
-/** 写入 upload 前的预检：可选先同步资产，再校验资源与运行时依赖（不写 viewer/config） */
-export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAssets = false } = {}) {
+/** 写入 upload 前的预检：可选先同步资产/模块，再校验资源与运行时依赖（不写 viewer/config） */
+export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAssets = false, syncModules: doModules = true } = {}) {
   if (doAssets) syncUploadAssets(uploadDir)
+  if (doModules) syncUploadModules(uploadDir)
   const assets = verifyUploadAssets(uploadDir)
   if (!assets.ok) return { ok: false, stage: 'assets', assets }
   const tmpHtml = path.join(uploadDir, '.preflight-player.view.html.tmp')

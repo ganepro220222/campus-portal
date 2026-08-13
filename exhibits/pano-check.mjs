@@ -142,6 +142,20 @@ export function assetFingerprint(exhibitDir, assetPath, exhibitsRoot = null) {
   }
 }
 
+/** 发布校验用：整文件 SHA-256（model 等同路径替换必须检出中段变化） */
+export function deploymentFileHash(exhibitDir, assetPath, exhibitsRoot = null) {
+  const p = String(assetPath ?? '').trim()
+  if (!p || isRemotePanoramaUrl(p)) return ''
+  const local = resolvePanoramaLocalPath(exhibitDir, p, exhibitsRoot)
+  if (!local) return ''
+  try {
+    if (!fs.statSync(local).isFile()) return ''
+    return crypto.createHash('sha256').update(fs.readFileSync(local)).digest('hex')
+  } catch {
+    return ''
+  }
+}
+
 /*
  * 全景图候选清单
  * --------------

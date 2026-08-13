@@ -1527,7 +1527,7 @@ async function boot() {
   finally { _bootInflight = false }
 }
 
-$('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); _bootInflight = false; boot() }
+$('err-btn').onclick = () => { location.reload() }
 
 boot()
 </script>

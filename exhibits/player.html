@@ -1599,7 +1599,7 @@ async function boot() {
   finally { _bootInflight = false }
 }
 
-$('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); _bootInflight = false; boot() }
+$('err-btn').onclick = () => { location.reload() }
 
 /* EDITOR-JS-START （导出仅观看版时整段剔除） */
 /* ── 编辑模式：纯前端调参；可导出 config，或通过保存服务写回 ──

@@ -636,6 +636,30 @@ test.describe('strict WebKit startup', () => {
   })
 })
 
+test.describe('model load failure retry', () => {
+  test('reload button refreshes page and second load succeeds', async ({ browser }) => {
+    let attempts = 0
+    const vpage = await browser.newPage()
+    await vpage.route('**/craft-001/assets/model.glb', route => {
+      attempts++
+      if (attempts === 1) route.abort('failed')
+      else route.continue()
+    })
+    await injectCfg(vpage)
+    await vpage.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await vpage.waitForSelector('#error:not([hidden])', { timeout: 90_000 })
+    await expect(vpage.locator('#err-text')).toContainText('模型加载失败')
+    await Promise.all([
+      vpage.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+      vpage.locator('#err-btn').click(),
+    ])
+    await waitForPlayerReady(vpage)
+    expect(attempts).toBeGreaterThanOrEqual(2)
+    await releaseWebGL(vpage)
+    await vpage.close()
+  })
+})
+
 test.describe('viewer rotate button', () => {
   test('closes open hotspot without edit drag hooks', async ({ browser }) => {
     const vpage = await browser.newPage()

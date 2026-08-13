@@ -15,9 +15,9 @@ import {
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
 import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, initUploadVendor,
-  validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, patchExhibitIndexTitle, exhibitTitleFromCfg,
-  UPLOAD_JS_COPIES } from './build-viewer.mjs'
+import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, syncUploadAssets,
+  initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
+  collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -570,19 +570,70 @@ test('upload pack includes leader-geom.js and resolves player imports', () => {
       fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
     }
     const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
-    fs.writeFileSync(path.join(uploadDir, 'player.view.html'), uploadHtml, 'utf8')
-    const missing = checkHtmlImports(path.join(uploadDir, 'player.view.html'))
+    const uploadHtmlPath = path.join(uploadDir, 'player.view.html')
+    fs.writeFileSync(uploadHtmlPath, uploadHtml, 'utf8')
+    const missing = checkHtmlImports(uploadHtmlPath)
     assert.deepEqual(missing, [], `missing upload imports: ${missing.join(', ')}`)
     assert.ok(fs.existsSync(path.join(uploadDir, 'leader-geom.js')), 'leader-geom.js must be in upload pack')
-    const runtimeMissing = checkUploadRuntimeDeps(uploadDir, path.join(uploadDir, 'player.view.html'))
+    const runtimeMissing = checkUploadRuntimeDeps(uploadDir, uploadHtmlPath)
     assert.deepEqual(runtimeMissing, [], `missing runtime deps: ${runtimeMissing.join(', ')}`)
     const synced = syncUploadExhibits(uploadDir)
     assert.ok(synced.includes('craft-001/config.json'), 'craft-001/config.json must sync on --upload')
+    syncUploadAssets(uploadDir)
+    const assets = verifyUploadAssets(uploadDir)
+    assert.equal(assets.ok, true, assets.errors.join('; '))
     const cfg = JSON.parse(fs.readFileSync(path.join(uploadDir, 'craft-001/config.json'), 'utf8'))
     assert.equal(cfg.i18n.en.title, JSON.parse(fs.readFileSync(path.join(ROOT, 'craft-001/config.json'), 'utf8')).i18n.en.title)
     const idx = fs.readFileSync(path.join(uploadDir, 'craft-001/index.html'), 'utf8')
     assert.match(idx, new RegExp(escapeRegex(cfg.i18n.zh.title)))
     assert.match(idx, /player\.view\.html\?ex=craft-001/)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('--upload fails asset verify when model missing', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    const assets = verifyUploadAssets(uploadDir)
+    assert.equal(assets.ok, false)
+    assert.ok(assets.errors.some(e => e.includes('missing model')))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('--upload detects stale model vs source', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    const dst = path.join(uploadDir, 'craft-001/assets/model.glb')
+    fs.mkdirSync(path.dirname(dst), { recursive: true })
+    fs.writeFileSync(dst, 'stale-model-bytes')
+    const assets = verifyUploadAssets(uploadDir)
+    assert.equal(assets.ok, false)
+    assert.ok(assets.errors.some(e => e.includes('stale model')))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('collectModuleGraph fails when OrbitControls.js missing', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-orbit-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    initUploadVendor(uploadDir)
+    fs.unlinkSync(path.join(uploadDir, 'vendor/addons/controls/OrbitControls.js'))
+    const uploadHtmlPath = path.join(uploadDir, 'player.view.html')
+    fs.writeFileSync(uploadHtmlPath, buildUploadViewerSrc(buildViewerSrc()), 'utf8')
+    for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
+      fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
+    }
+    const missing = collectModuleGraph(uploadHtmlPath, uploadDir)
+    assert.ok(missing.some(m => /OrbitControls/.test(m)), `expected OrbitControls missing, got ${missing.join(', ')}`)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }

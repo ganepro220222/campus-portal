@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assetFingerprint } from './pano-check.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.join(ROOT, 'player.view.html')
@@ -58,10 +59,15 @@ const VIEWER_FORBIDDEN = [
   'nextHotspotId',
 ]
 
-export function importsFromHtml(html) {
+export function importsFromSource(text) {
   const out = []
-  for (const m of html.matchAll(/import\s+(?:[\w*{}\s,]+\s+from\s+)?['"]([^'"]+)['"]/g)) out.push(m[1])
+  for (const m of text.matchAll(/import\s+(?:[\w*{}\s,]+\s+from\s+)?['"]([^'"]+)['"]/g)) out.push(m[1])
+  for (const m of text.matchAll(/import\s*\(\s*['"]([^'"]+)['"]\s*\)/g)) out.push(m[1])
   return out
+}
+
+export function importsFromHtml(html) {
+  return importsFromSource(html)
 }
 
 export function resolveHtmlImport(fromDir, spec) {
@@ -89,38 +95,91 @@ export function checkHtmlImports(htmlPath) {
 
 /** 从 import map 提取相对路径（three 等 bare spec 不在此列） */
 export function importMapRelativeSpecs(html) {
-  const m = html.match(/<script type="importmap">\s*(\{[\s\S]*?\})\s*<\/script>/)
-  if (!m) return []
-  try {
-    const j = JSON.parse(m[1])
-    return Object.values(j.imports || {}).filter(s => typeof s === 'string' && (s.startsWith('./') || s.startsWith('../')))
-  } catch { return [] }
+  return Object.values(parseImportMap(html).imports || {})
+    .filter(s => typeof s === 'string' && (s.startsWith('./') || s.startsWith('../')))
 }
 
-/** 校验 upload 目录具备 viewer 运行时依赖（vendor + import map 目标） */
+export function parseImportMap(html) {
+  const m = html.match(/<script type="importmap">\s*(\{[\s\S]*?\})\s*<\/script>/)
+  if (!m) return { imports: {} }
+  try { return JSON.parse(m[1]) } catch { return { imports: {} } }
+}
+
+export function resolveBareImport(spec, htmlDir, importMap) {
+  const imports = importMap.imports || {}
+  if (imports[spec]) return path.resolve(htmlDir, imports[spec])
+  const keys = Object.keys(imports).filter(k => k.endsWith('/')).sort((a, b) => b.length - a.length)
+  for (const key of keys) {
+    if (spec.startsWith(key)) return path.resolve(htmlDir, imports[key] + spec.slice(key.length))
+  }
+  return null
+}
+
+export function resolveModuleSpec(spec, fromFile, htmlDir, importMap) {
+  if (spec.startsWith('./') || spec.startsWith('../')) {
+    return resolveHtmlImport(path.dirname(fromFile), spec)
+  }
+  const bare = resolveBareImport(spec, htmlDir, importMap)
+  if (!bare) return null
+  if (fs.existsSync(bare)) return bare
+  for (const ext of ['.mjs', '.js']) {
+    if (fs.existsSync(bare + ext)) return bare + ext
+  }
+  return bare
+}
+
+/** 从 player HTML 内联 module + 递归 JS import 收集缺失模块 */
+export function collectModuleGraph(htmlPath, uploadDir) {
+  const html = fs.readFileSync(htmlPath, 'utf8')
+  const htmlDir = path.dirname(htmlPath)
+  const importMap = parseImportMap(html)
+  const missing = []
+  const seen = new Set()
+  const queue = []
+
+  for (const spec of importsFromSource(html)) {
+    const resolved = resolveModuleSpec(spec, htmlPath, htmlDir, importMap)
+    if (resolved) queue.push(resolved)
+    else if (!spec.startsWith('.')) missing.push(spec)
+  }
+
+  while (queue.length) {
+    const file = queue.shift()
+    if (seen.has(file)) continue
+    seen.add(file)
+    if (!fs.existsSync(file)) {
+      missing.push(path.relative(uploadDir, file).replace(/\\/g, '/'))
+      continue
+    }
+    if (!/\.(m?js)$/.test(file)) continue
+    for (const spec of importsFromSource(fs.readFileSync(file, 'utf8'))) {
+      const resolved = resolveModuleSpec(spec, file, htmlDir, importMap)
+      if (resolved) queue.push(resolved)
+      else if (spec.startsWith('.')) missing.push(`${spec} (from ${path.basename(file)})`)
+    }
+  }
+  return [...new Set(missing)]
+}
+
+/** 校验 upload 目录具备 viewer 运行时依赖（vendor + 模块依赖图） */
 export function checkUploadRuntimeDeps(uploadDir, htmlPath) {
   const missing = []
   for (const rel of UPLOAD_VENDOR_REQUIRED) {
     if (!fs.existsSync(path.join(uploadDir, rel))) missing.push(rel)
   }
   if (htmlPath && fs.existsSync(htmlPath)) {
-    const html = fs.readFileSync(htmlPath, 'utf8')
-    const fromDir = path.dirname(htmlPath)
-    for (const spec of importMapRelativeSpecs(html)) {
-      const target = resolveHtmlImport(fromDir, spec)
-      if (!target || !fs.existsSync(target)) missing.push(`importmap:${spec}`)
-    }
+    missing.push(...collectModuleGraph(htmlPath, uploadDir))
   }
-  return missing
+  return [...new Set(missing)]
 }
 
 function isRemoteAssetRef(p) {
   return !p || /^https?:\/\//i.test(p) || p.startsWith('//') || p.startsWith('data:') || p.startsWith('blob:')
 }
 
-function resolveUploadAssetPath(uploadDir, exhibitDir, assetPath) {
+function resolveAssetPath(rootDir, exhibitDir, assetPath) {
   if (isRemoteAssetRef(assetPath)) return null
-  const root = path.resolve(uploadDir)
+  const root = path.resolve(rootDir)
   let abs
   if (assetPath.startsWith('/')) abs = path.resolve(root, assetPath.slice(1).replace(/^\/+/, ''))
   else abs = path.resolve(exhibitDir, assetPath)
@@ -128,31 +187,63 @@ function resolveUploadAssetPath(uploadDir, exhibitDir, assetPath) {
   return abs
 }
 
-/** 汇总 upload 中 config 引用的本地 model/poster/panorama 是否存在（仅提示，不阻断） */
-export function auditUploadAssetRefs(uploadDir = UPLOAD_DIR) {
-  const present = []
-  const missing = []
-  for (const name of fs.readdirSync(uploadDir)) {
+function listSourceExhibits() {
+  const out = []
+  for (const name of fs.readdirSync(ROOT)) {
     if (!name.startsWith('craft-') || name.startsWith('_')) continue
-    const exhibitDir = path.join(uploadDir, name)
-    let st
-    try { st = fs.statSync(exhibitDir) } catch { continue }
-    if (!st.isDirectory()) continue
-    const cfgPath = path.join(exhibitDir, 'config.json')
-    if (!fs.existsSync(cfgPath)) continue
+    const srcDir = path.join(ROOT, name)
+    try {
+      if (!fs.statSync(srcDir).isDirectory()) continue
+    } catch { continue }
+    if (fs.existsSync(path.join(srcDir, 'config.json'))) out.push(name)
+  }
+  return out.sort()
+}
+
+/** 校验 upload 中 config 引用的本地资源：model 缺失/过期阻断，poster/panorama 仅 warning */
+export function verifyUploadAssets(uploadDir = UPLOAD_DIR) {
+  const present = []
+  const errors = []
+  const warnings = []
+  for (const name of listSourceExhibits()) {
+    const srcExhibitDir = path.join(ROOT, name)
+    const uploadExhibitDir = path.join(uploadDir, name)
     let cfg
-    try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')) } catch { continue }
+    try { cfg = JSON.parse(fs.readFileSync(path.join(srcExhibitDir, 'config.json'), 'utf8')) } catch { continue }
     for (const key of ['model', 'poster', 'panorama']) {
       const ref = cfg?.assets?.[key]
       if (!ref || isRemoteAssetRef(ref)) continue
-      const abs = resolveUploadAssetPath(uploadDir, exhibitDir, ref)
-      if (!abs) continue
-      const label = `${name}/assets.${key}`
-      if (fs.existsSync(abs)) present.push(label)
-      else missing.push(label + ` (${ref})`)
+      const srcAbs = resolveAssetPath(ROOT, srcExhibitDir, ref)
+      const dstAbs = resolveAssetPath(uploadDir, uploadExhibitDir, ref)
+      const label = `${name}/assets.${key} (${ref})`
+      if (!srcAbs || !fs.existsSync(srcAbs)) {
+        if (key === 'model') errors.push(`source missing model: ${label}`)
+        else warnings.push(`source missing ${key}: ${label}`)
+        continue
+      }
+      if (!dstAbs) continue
+      if (!fs.existsSync(dstAbs)) {
+        if (key === 'model') errors.push(`missing model: ${label}`)
+        else warnings.push(`missing ${key}: ${label}`)
+        continue
+      }
+      present.push(label)
+      const srcFp = assetFingerprint(srcExhibitDir, ref, ROOT)
+      const dstFp = assetFingerprint(uploadExhibitDir, ref, uploadDir)
+      if (srcFp && dstFp && srcFp !== dstFp) {
+        const msg = `stale ${key} (source changed): ${label}`
+        if (key === 'model') errors.push(msg)
+        else warnings.push(msg)
+      }
     }
   }
-  return { present, missing }
+  return { ok: errors.length === 0, present, errors, warnings }
+}
+
+/** @deprecated use verifyUploadAssets */
+export function auditUploadAssetRefs(uploadDir = UPLOAD_DIR) {
+  const v = verifyUploadAssets(uploadDir)
+  return { present: v.present, missing: [...v.errors, ...v.warnings] }
 }
 
 function escapeHtml(s) {
@@ -263,6 +354,28 @@ export function syncUploadExhibits(uploadDir = UPLOAD_DIR) {
   return copied
 }
 
+/** 复制 config 引用的本地 model/poster/panorama（含 ../共享背景/）到 upload */
+export function syncUploadAssets(uploadDir = UPLOAD_DIR) {
+  const copied = []
+  for (const name of listSourceExhibits()) {
+    const srcExhibitDir = path.join(ROOT, name)
+    const uploadExhibitDir = path.join(uploadDir, name)
+    let cfg
+    try { cfg = JSON.parse(fs.readFileSync(path.join(srcExhibitDir, 'config.json'), 'utf8')) } catch { continue }
+    for (const key of ['model', 'poster', 'panorama']) {
+      const ref = cfg?.assets?.[key]
+      if (!ref || isRemoteAssetRef(ref)) continue
+      const srcAbs = resolveAssetPath(ROOT, srcExhibitDir, ref)
+      const dstAbs = resolveAssetPath(uploadDir, uploadExhibitDir, ref)
+      if (!srcAbs || !dstAbs || !fs.existsSync(srcAbs)) continue
+      fs.mkdirSync(path.dirname(dstAbs), { recursive: true })
+      fs.copyFileSync(srcAbs, dstAbs)
+      copied.push(`${name}/${ref}`)
+    }
+  }
+  return copied
+}
+
 export function assertViewerBuild(viewHtml = buildViewerSrc()) {
   const sem = validateViewerSemantics(viewHtml)
   if (!sem.ok) throw new Error(sem.reason)
@@ -270,32 +383,46 @@ export function assertViewerBuild(viewHtml = buildViewerSrc()) {
 }
 
 function usage() {
-  console.log(`Usage: node build-viewer.mjs [--check] [--upload] [--upload-init]
+  console.log(`Usage: node build-viewer.mjs [--check] [--upload] [--upload-init] [--upload-assets]
 
-  (default)     Write player.view.html from player.html (+ semantic validation)
-  --check       Exit 1 if player.view.html differs or fails semantic validation
-  --upload-init Copy vendor/ into exhibits-upload/ (first-time deploy prerequisite)
-  --upload      Update an existing prepared upload directory:
-                player.view.html (.js imports), module .js copies,
-                craft-XXX/config.json (+ index.html title from config),
-                then verify imports + vendor/runtime deps (exit 1 if vendor missing)
+  (default)       Write player.view.html from player.html (+ semantic validation)
+  --check         Exit 1 if player.view.html differs or fails semantic validation
+  --upload-init   Copy vendor/ into exhibits-upload/ (first-time prerequisite)
+  --upload-assets Copy craft assets + shared panoramas referenced in config
+  --upload        Incremental update of a prepared upload directory:
+                  player.view.html, module .js copies, craft config/index,
+                  then verify module graph + vendor + asset consistency
 
-  First deploy:  node build-viewer.mjs --upload-init --upload
-  Code update:   node build-viewer.mjs --upload`)
+  First full deploy:
+    node build-viewer.mjs --upload-init --upload-assets --upload
+
+  Code/config only (assets already on server):
+    node build-viewer.mjs --upload
+
+  New/changed models or panoramas:
+    node build-viewer.mjs --upload-assets --upload`)
 }
 
 const check = process.argv.includes('--check')
 const upload = process.argv.includes('--upload')
 const uploadInit = process.argv.includes('--upload-init')
+const uploadAssets = process.argv.includes('--upload-assets')
 if (isMain) {
 if (process.argv.includes('-h') || process.argv.includes('--help')) {
   usage()
   process.exit(0)
 }
 
-if (uploadInit && !upload && !check) {
+if (uploadInit && !upload && !uploadAssets && !check) {
   initUploadVendor()
   console.log('exhibits-upload/vendor/ copied from exhibits/vendor/')
+  process.exit(0)
+}
+
+if (uploadAssets && !upload && !check) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true })
+  const copied = syncUploadAssets()
+  console.log('exhibits-upload assets synced:', copied.length ? copied.join(', ') : '(none)')
   process.exit(0)
 }
 
@@ -335,6 +462,10 @@ if (upload) {
   fs.writeFileSync(UPLOAD_OUT, uploadHtml, 'utf8')
   syncUploadModules()
   const exhibitFiles = syncUploadExhibits()
+  if (uploadAssets) {
+    const assetFiles = syncUploadAssets()
+    if (assetFiles.length) console.log('exhibits-upload assets synced:', assetFiles.join(', '))
+  }
   const missingImports = checkHtmlImports(UPLOAD_OUT)
   if (missingImports.length) {
     console.error('exhibits-upload missing imports:', missingImports.join(', '))
@@ -343,20 +474,25 @@ if (upload) {
   const missingRuntime = checkUploadRuntimeDeps(UPLOAD_DIR, UPLOAD_OUT)
   if (missingRuntime.length) {
     console.error('exhibits-upload missing runtime deps:', missingRuntime.join(', '))
-    console.error('First deploy: node build-viewer.mjs --upload-init --upload')
-    console.error('Or copy vendor/ into exhibits-upload/ before --upload')
+    console.error('First deploy: node build-viewer.mjs --upload-init --upload-assets --upload')
     process.exit(1)
   }
-  const assets = auditUploadAssetRefs()
+  const assets = verifyUploadAssets()
   console.log('exhibits-upload/player.view.html written (.js imports)')
   console.log('exhibits-upload/*.js module copies synced')
   if (exhibitFiles.length) console.log('exhibits-upload exhibit files synced:', exhibitFiles.join(', '))
   else console.log('exhibits-upload: no craft-XXX/config.json to sync')
-  if (assets.present.length) console.log('exhibits-upload asset refs present:', assets.present.length)
-  if (assets.missing.length) {
-    console.warn('exhibits-upload asset refs missing (upload separately):')
-    for (const m of assets.missing) console.warn('  -', m)
+  if (assets.present.length) console.log('exhibits-upload asset refs OK:', assets.present.length)
+  if (assets.warnings.length) {
+    console.warn('exhibits-upload asset warnings:')
+    for (const w of assets.warnings) console.warn('  -', w)
   }
-  console.log('exhibits-upload runtime deps OK')
+  if (!assets.ok) {
+    console.error('exhibits-upload asset errors (model must match source):')
+    for (const e of assets.errors) console.error('  -', e)
+    console.error('Run: node build-viewer.mjs --upload-assets --upload')
+    process.exit(1)
+  }
+  console.log('exhibits-upload verify OK')
 }
 }

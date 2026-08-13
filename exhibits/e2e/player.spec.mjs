@@ -663,14 +663,34 @@ test.describe('boot timeout', () => {
   test('model load pending shows timeout error and retry button', async ({ browser }) => {
     const page = await browser.newPage()
     await page.addInitScript(() => {
-      window.__SY_PLAYER = { bootTimeoutMs: 800, module: false, bootStarted: false, ready: false }
+      window.__SY_PLAYER = { configTimeoutMs: 800, modelIdleTimeoutMs: 800, modelTotalTimeoutMs: 30000, module: false, bootStarted: false, ready: false }
     })
     await injectCfg(page)
     await page.route('**/craft-001/assets/model.glb', () => {})
     await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('#error:not([hidden])', { timeout: 10000 })
-    await expect(page.locator('#err-text')).toContainText(/模型加载超时|配置或模型加载超时/)
+    await expect(page.locator('#err-text')).toContainText(/模型加载超时/)
     await expect(page.locator('#err-btn')).not.toHaveAttribute('hidden', '')
+    expect(await page.evaluate(() => window.__SY_PLAYER?.ready)).toBe(false)
+    await releaseWebGL(page)
+    await page.close()
+  })
+
+  test('model progress resets idle timeout beyond config window', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { configTimeoutMs: 800, modelIdleTimeoutMs: 800, modelTotalTimeoutMs: 30000, module: false, bootStarted: false, ready: false }
+    })
+    await injectCfg(page)
+    await page.route('**/craft-001/assets/model.glb', () => {})
+    await page.goto('/player.html?ex=craft-001&mode=edit', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => typeof window.__SY_TEST__?.simulateModelLoadProgress === 'function', { timeout: 15000 })
+    for (let i = 0; i < 4; i++) {
+      await page.evaluate(n => window.__SY_TEST__.simulateModelLoadProgress(n * 1000), i + 1)
+      await page.waitForTimeout(400)
+    }
+    await page.waitForTimeout(600)
+    await expect(page.locator('#error')).toHaveAttribute('hidden', '')
     expect(await page.evaluate(() => window.__SY_PLAYER?.ready)).toBe(false)
     await releaseWebGL(page)
     await page.close()
@@ -681,7 +701,7 @@ test.describe('boot timeout', () => {
     const gate = new Promise(r => { release = r })
     const page = await browser.newPage()
     await page.addInitScript(() => {
-      window.__SY_PLAYER = { bootTimeoutMs: 800, module: false, bootStarted: false, ready: false }
+      window.__SY_PLAYER = { configTimeoutMs: 800, modelIdleTimeoutMs: 800, modelTotalTimeoutMs: 30000, module: false, bootStarted: false, ready: false }
     })
     await injectCfg(page)
     await page.route('**/craft-001/assets/model.glb', async route => {

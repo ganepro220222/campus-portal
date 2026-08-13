@@ -41,3 +41,86 @@ export function configExportFilename(exhibitDir) {
   const ex = String(exhibitDir || '').replace(/^\/+|\/+$/g, '')
   return ex ? `${ex}.config.json` : 'config.json'
 }
+
+function positiveMs(v) {
+  return (typeof v === 'number' && isFinite(v) && v > 0) ? v : null
+}
+
+/** First positive ms from sources, else fallback. */
+export function timeoutFromSources(sources, fallback) {
+  for (const s of sources) {
+    const t = positiveMs(s)
+    if (t != null) return t
+  }
+  return fallback
+}
+
+/** Config fetch absolute timeout (falls back to bootTimeoutMs). */
+export function configTimeoutMs(cfg, player, testHook) {
+  return timeoutFromSources([
+    testHook?.configTimeoutMs?.(),
+    testHook?.configTimeout?.(),
+    player?.configTimeoutMs,
+    player?.configTimeout,
+    cfg?.performance?.configTimeoutMs,
+    cfg?.performance?.configTimeout,
+    player?.bootTimeoutMs,
+    player?.bootTimeout,
+    cfg?.performance?.bootTimeoutMs,
+    cfg?.performance?.bootTimeout,
+    testHook?.bootTimeoutMs?.(),
+  ], 12000)
+}
+
+/** Model download idle timeout — reset when loaded bytes increase. */
+export function modelIdleTimeoutMs(cfg, player, testHook) {
+  return timeoutFromSources([
+    testHook?.modelIdleTimeoutMs?.(),
+    testHook?.modelIdleTimeout?.(),
+    player?.modelIdleTimeoutMs,
+    player?.modelIdleTimeout,
+    cfg?.performance?.modelIdleTimeoutMs,
+    cfg?.performance?.modelIdleTimeout,
+  ], 20000)
+}
+
+/** Model download absolute cap regardless of progress. */
+export function modelTotalTimeoutMs(cfg, player, testHook) {
+  return timeoutFromSources([
+    testHook?.modelTotalTimeoutMs?.(),
+    testHook?.modelTotalTimeout?.(),
+    player?.modelTotalTimeoutMs,
+    player?.modelTotalTimeout,
+    cfg?.performance?.modelTotalTimeoutMs,
+    cfg?.performance?.modelTotalTimeout,
+  ], 120000)
+}
+
+/** Idle timer resets on progress; total timer is a hard cap. */
+export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal }) {
+  let idleTimer = 0
+  let totalTimer = 0
+  let lastLoaded = -1
+  const clear = () => {
+    if (idleTimer) clearTimeout(idleTimer)
+    if (totalTimer) clearTimeout(totalTimer)
+    idleTimer = totalTimer = 0
+  }
+  const bumpIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer)
+    idleTimer = setTimeout(() => { onIdle?.() }, idleMs)
+  }
+  const start = () => {
+    clear()
+    lastLoaded = -1
+    bumpIdle()
+    totalTimer = setTimeout(() => { onTotal?.() }, totalMs)
+  }
+  const progress = (loaded) => {
+    if (typeof loaded === 'number' && loaded > lastLoaded) {
+      lastLoaded = loaded
+      bumpIdle()
+    }
+  }
+  return { start, progress, clear }
+}

@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { setTimeout as sleep } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 import {
   resolveOrthogonal, leg1LockedKnee, leg2LockedKnee, interiorAngle,
@@ -17,7 +18,8 @@ import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, syncUploadAssets,
   initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
-  collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+  collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+import { configTimeoutMs, modelIdleTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -27,15 +29,26 @@ function escapeRegex(s) {
 }
 
 let pass = 0, fail = 0
-function test(name, fn) {
-  try { fn(); pass++; console.log('  ok', name) }
-  catch (e) { fail++; console.error(' FAIL', name, e.message) }
+const _tests = []
+function test(name, fn) { _tests.push({ name, fn }) }
+async function runTests() {
+  console.log('leader-geom tests')
+  for (const { name, fn } of _tests) {
+    try {
+      await fn()
+      pass++
+      console.log('  ok', name)
+    } catch (e) {
+      fail++
+      console.error(' FAIL', name, e.message)
+    }
+  }
+  console.log(`\n${pass} passed, ${fail} failed`)
+  process.exit(fail ? 1 : 0)
 }
 function near(a, b, eps = 0.01) { assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`) }
 
 const VP = (maxX, maxY, cw = 280, ch = 150) => ({ minX: 8, minY: 66, maxX, maxY: maxY - ch - 24 })
-
-console.log('leader-geom tests')
 
 test('orthogonal: audit case is 90°', () => {
   const r = resolveOrthogonal(100, 100, 500, 300, 300, 150, { elbowMode: 'orthogonal' })
@@ -679,6 +692,67 @@ test('runUploadPreflight failure does not require prior viewer write', () => {
   }
 })
 
+test('deployUploadPack failure leaves live module bytes unchanged', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    initUploadVendor(uploadDir)
+    syncUploadAssets(uploadDir)
+    syncUploadModules(uploadDir)
+    const modPath = path.join(uploadDir, 'hotspot-id.js')
+    const sentinel = '/* LIVE-SENTINEL-KEEP */'
+    fs.writeFileSync(modPath, sentinel, 'utf8')
+    fs.unlinkSync(path.join(uploadDir, 'craft-001/assets/model.glb'))
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false })
+    assert.equal(dep.ok, false)
+    assert.equal(dep.stage, 'assets')
+    assert.equal(fs.readFileSync(modPath, 'utf8'), sentinel)
+    assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), false)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('createModelLoadTimers idle resets on progress', async () => {
+  let idleFires = 0
+  const timers = createModelLoadTimers({
+    idleMs: 80,
+    totalMs: 5000,
+    onIdle: () => { idleFires++ },
+  })
+  timers.start()
+  for (let i = 1; i <= 5; i++) {
+    timers.progress(i * 100)
+    await sleep(50)
+  }
+  timers.clear()
+  assert.equal(idleFires, 0, 'progress bumps should prevent idle timeout')
+})
+
+test('createModelLoadTimers fires idle when stalled', async () => {
+  let idleFires = 0
+  const timers = createModelLoadTimers({
+    idleMs: 40,
+    totalMs: 5000,
+    onIdle: () => { idleFires++ },
+  })
+  timers.start()
+  await sleep(100)
+  timers.clear()
+  assert.equal(idleFires, 1)
+})
+
+test('configTimeoutMs falls back to bootTimeoutMs', () => {
+  assert.equal(configTimeoutMs(null, { bootTimeoutMs: 9000 }, null), 9000)
+  assert.equal(configTimeoutMs({ performance: { configTimeoutMs: 3000 } }, { bootTimeoutMs: 9000 }, null), 3000)
+})
+
+test('modelIdleTimeoutMs defaults to 20s', () => {
+  assert.equal(modelIdleTimeoutMs(null, null, null), 20000)
+})
+
 test('collectModuleGraph fails when OrbitControls.js missing', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-orbit-'))
   try {
@@ -721,9 +795,9 @@ test('patchExhibitIndexTitle uses config zh title', () => {
   assert.match(out, new RegExp(`<title>${escapeRegex(cfg.i18n.zh.title)} · 立体鉴赏</title>`))
 })
 
-test('viewer output imports only configFetchUrl from player-persist', () => {
+test('viewer output imports boot timeouts from player-persist', () => {
   const view = buildViewerSrc()
-  assert.match(view, /import \{ configFetchUrl \} from '\.\/player-persist\.mjs'/)
+  assert.match(view, /import \{ configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers \} from '\.\/player-persist\.mjs'/)
   assert.doesNotMatch(view, /applyExposureToCfg/)
   assert.doesNotMatch(view, /configExportFilename/)
 })
@@ -752,5 +826,4 @@ test('editor preset row uses dedicated label/actions classes', () => {
   assert.doesNotMatch(html, /\.ed-row > span \{ white-space:nowrap/)
 })
 
-console.log(`\n${pass} passed, ${fail} failed`)
-process.exit(fail ? 1 : 0)
+runTests()

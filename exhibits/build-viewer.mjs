@@ -260,6 +260,82 @@ export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAsse
   return { ok: true, assets }
 }
 
+export function uploadStagingDirName() {
+  return `.staging-${process.pid}`
+}
+
+export function isUploadStagingName(name) {
+  return /^\.staging-\d+$/.test(name)
+}
+
+/** Copy upload tree, skipping in-progress staging dirs. */
+export function copyUploadTree(srcDir, dstDir) {
+  fs.mkdirSync(dstDir, { recursive: true })
+  if (!fs.existsSync(srcDir)) return
+  for (const ent of fs.readdirSync(srcDir, { withFileTypes: true })) {
+    if (isUploadStagingName(ent.name)) continue
+    const s = path.join(srcDir, ent.name)
+    const d = path.join(dstDir, ent.name)
+    if (ent.isDirectory()) {
+      fs.cpSync(s, d, { recursive: true })
+    } else {
+      fs.mkdirSync(path.dirname(d), { recursive: true })
+      fs.copyFileSync(s, d)
+    }
+  }
+}
+
+export function discardUploadStaging(stagingDir) {
+  try { fs.rmSync(stagingDir, { recursive: true, force: true }) } catch { /* ignore */ }
+}
+
+/** Replace live upload dir from a verified staging tree, then remove staging. */
+export function promoteUploadStaging(stagingDir, uploadDir) {
+  fs.mkdirSync(uploadDir, { recursive: true })
+  for (const ent of fs.readdirSync(stagingDir, { withFileTypes: true })) {
+    const s = path.join(stagingDir, ent.name)
+    const d = path.join(uploadDir, ent.name)
+    if (ent.isDirectory()) {
+      fs.rmSync(d, { recursive: true, force: true })
+      fs.cpSync(s, d, { recursive: true })
+    } else {
+      fs.copyFileSync(s, d)
+    }
+  }
+  discardUploadStaging(stagingDir)
+}
+
+/** Snapshot live upload dir into a pid-scoped staging dir for preflight. */
+export function prepareUploadStaging(uploadDir) {
+  const staging = path.join(uploadDir, uploadStagingDirName())
+  discardUploadStaging(staging)
+  fs.mkdirSync(staging, { recursive: true })
+  copyUploadTree(uploadDir, staging)
+  return staging
+}
+
+/** Full staged deploy: preflight in staging, promote only on success. */
+export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false } = {}) {
+  const staging = prepareUploadStaging(uploadDir)
+  try {
+    if (uploadInit) initUploadVendor(staging)
+    if (uploadAssets) syncUploadAssets(staging)
+    const pre = runUploadPreflight(staging, uploadHtml, { uploadAssets: false, syncModules: true })
+    if (!pre.ok) {
+      discardUploadStaging(staging)
+      return { ok: false, ...pre }
+    }
+    fs.writeFileSync(path.join(staging, 'player.view.html'), uploadHtml, 'utf8')
+    syncUploadModules(staging)
+    const exhibitFiles = syncUploadExhibits(staging)
+    promoteUploadStaging(staging, uploadDir)
+    return { ok: true, assets: pre.assets, exhibitFiles }
+  } catch (e) {
+    discardUploadStaging(staging)
+    throw e
+  }
+}
+
 /** @deprecated use verifyUploadAssets */
 export function auditUploadAssetRefs(uploadDir = UPLOAD_DIR) {
   const v = verifyUploadAssets(uploadDir)
@@ -316,7 +392,7 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
     .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/if \(editMode\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/import \{[^}]+\} from '\.\/hotspot-id\.mjs'/, "import { ensureHotspotIds } from './hotspot-id.mjs'")
-    .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, "import { configFetchUrl } from './player-persist.mjs'")
+    .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, "import { configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers } from './player-persist.mjs'")
     .replace(/import \{[^}]+\} from '\.\/light-rig\.mjs'/, `import { ${VIEWER_LIGHT_RIG_IMPORTS.join(', ')} } from './light-rig.mjs'`)
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
@@ -469,45 +545,34 @@ console.log('player.view.html written')
 
 if (upload) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true })
-  if (uploadInit) {
-    initUploadVendor()
-    console.log('exhibits-upload/vendor/ copied from exhibits/vendor/')
-  }
   const uploadHtml = buildUploadViewerSrc(next)
   const uploadSem = validateViewerSemantics(uploadHtml)
   if (!uploadSem.ok) {
     console.error('upload viewer semantics:', uploadSem.reason)
     process.exit(1)
   }
-  if (uploadAssets) {
-    const assetFiles = syncUploadAssets(UPLOAD_DIR)
-    if (assetFiles.length) console.log('exhibits-upload assets synced:', assetFiles.join(', '))
-  }
-  const pre = runUploadPreflight(UPLOAD_DIR, uploadHtml, { uploadAssets: false })
-  if (!pre.ok) {
-    if (pre.stage === 'assets') {
-      console.error('exhibits-upload asset errors (model must match source; no files written):')
-      for (const e of pre.assets.errors) console.error('  -', e)
+  const dep = deployUploadPack(UPLOAD_DIR, uploadHtml, { uploadInit, uploadAssets })
+  if (!dep.ok) {
+    if (dep.stage === 'assets') {
+      console.error('exhibits-upload asset errors (upload directory unchanged):')
+      for (const e of dep.assets.errors) console.error('  -', e)
       console.error('Run: node build-viewer.mjs --upload-assets --upload')
-    } else if (pre.stage === 'imports') {
-      console.error('exhibits-upload missing imports (no files written):', pre.missing.join(', '))
+    } else if (dep.stage === 'imports') {
+      console.error('exhibits-upload missing imports (upload directory unchanged):', dep.missing.join(', '))
     } else {
-      console.error('exhibits-upload missing runtime deps (no files written):', pre.missing.join(', '))
+      console.error('exhibits-upload missing runtime deps (upload directory unchanged):', dep.missing.join(', '))
       console.error('First deploy: node build-viewer.mjs --upload-init --upload-assets --upload')
     }
     process.exit(1)
   }
-  fs.writeFileSync(UPLOAD_OUT, uploadHtml, 'utf8')
-  syncUploadModules()
-  const exhibitFiles = syncUploadExhibits()
   console.log('exhibits-upload/player.view.html written (.js imports)')
   console.log('exhibits-upload/*.js module copies synced')
-  if (exhibitFiles.length) console.log('exhibits-upload exhibit files synced:', exhibitFiles.join(', '))
+  if (dep.exhibitFiles?.length) console.log('exhibits-upload exhibit files synced:', dep.exhibitFiles.join(', '))
   else console.log('exhibits-upload: no craft-XXX/config.json to sync')
-  if (pre.assets.present.length) console.log('exhibits-upload asset refs OK:', pre.assets.present.length)
-  if (pre.assets.warnings.length) {
+  if (dep.assets.present.length) console.log('exhibits-upload asset refs OK:', dep.assets.present.length)
+  if (dep.assets.warnings.length) {
     console.warn('exhibits-upload asset warnings:')
-    for (const w of pre.assets.warnings) console.warn('  -', w)
+    for (const w of dep.assets.warnings) console.warn('  -', w)
   }
   console.log('exhibits-upload verify OK')
 }

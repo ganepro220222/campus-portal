@@ -273,7 +273,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { ensureHotspotIds } from './hotspot-id.mjs'
-import { configFetchUrl } from './player-persist.mjs'
+import { configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, defaultPosition, effectiveIntensity, resolveShadow, shadowWillLand, resolveEnvSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 
@@ -354,8 +354,8 @@ function scheduleBootWatchdog(gen) {
   _bootWatchdog = setTimeout(() => {
     if (window.__SY_PLAYER.ready || window.__SY_PLAYER.failed) return
     if (gen !== _bootGeneration) return
-    abortPendingBoot('配置或模型加载超时，请检查网络与展品 config.json、assets/model.glb')
-  }, bootTimeoutMs())
+    abortPendingBoot('配置加载超时，请检查网络后重试')
+  }, configTimeoutMs(null, window.__SY_PLAYER, window.__SY_TEST__))
 }
 
 async function fetchWithTimeout(url, ms) {
@@ -1504,7 +1504,10 @@ function clearModelLoadMock() {
   modelLoadMockPending.length = 0
 }
 
+let _bootModelTimers = null
+
 function start() {
+  clearTimeout(_bootWatchdog)
   const gen = ++_startGeneration
   scene = new THREE.Scene()
   scene.background = new THREE.Color(cfg.renderer?.background || '#0f1118')
@@ -1520,13 +1523,24 @@ function start() {
   const modelUrl = asset(cfg.assets.model)
   if (!modelUrl) return failPlayer('模型地址无效', true)
 
-  const modelTimer = setTimeout(() => {
-    if (window.__SY_PLAYER.ready || gen !== _startGeneration) return
-    abortPendingBoot('模型加载超时，请检查网络后重试')
-  }, bootTimeoutMs())
+  const modelTimers = createModelLoadTimers({
+    idleMs: modelIdleTimeoutMs(cfg, window.__SY_PLAYER, window.__SY_TEST__),
+    totalMs: modelTotalTimeoutMs(cfg, window.__SY_PLAYER, window.__SY_TEST__),
+    onIdle: () => {
+      if (window.__SY_PLAYER.ready || gen !== _startGeneration) return
+      abortPendingBoot('模型加载超时，请检查网络后重试')
+    },
+    onTotal: () => {
+      if (window.__SY_PLAYER.ready || gen !== _startGeneration) return
+      abortPendingBoot('模型加载超时，请检查网络后重试')
+    },
+  })
+  _bootModelTimers = modelTimers
+  modelTimers.start()
 
   makeLoader().load(modelUrl, gltf => {
-    clearTimeout(modelTimer)
+    modelTimers.clear()
+    _bootModelTimers = null
     if (gen !== _startGeneration || window.__SY_PLAYER.ready) return
     model = gltf.scene
     normalize(model); applyMaterial(); scene.add(model); applyShadow()
@@ -1540,9 +1554,11 @@ function start() {
     animate()
   }, evt => {
     if (gen !== _startGeneration) return
+    modelTimers.progress(evt.loaded)
     if (evt.total) { const p=Math.min(100,Math.round(evt.loaded/evt.total*100)); $('bar').style.width=p+'%'; $('load-text').textContent=`正在加载模型… ${p}%` }
   }, () => {
-    clearTimeout(modelTimer)
+    modelTimers.clear()
+    _bootModelTimers = null
     if (gen !== _startGeneration) return
     failPlayer('模型加载失败，请检查网络后重试', true)
   })
@@ -1580,7 +1596,7 @@ async function boot() {
     if (window.__CFG__) cfg = window.__CFG__            // 便携单文件：内联配置，免 fetch（可双击 file:// 打开）
     else {
       const url = configFetchUrl(BASE)
-      const res = await fetchWithTimeout(url, bootTimeoutMs())
+      const res = await fetchWithTimeout(url, configTimeoutMs(null, window.__SY_PLAYER, window.__SY_TEST__))
       if (!res.ok) throw new Error(`HTTP ${res.status} · ${url}`)
       cfg = await res.json()
     }

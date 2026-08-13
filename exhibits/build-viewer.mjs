@@ -187,7 +187,8 @@ function resolveAssetPath(rootDir, exhibitDir, assetPath) {
   return abs
 }
 
-export function listSourceExhibits(root = ROOT) {
+/** All craft-* exhibit directories under root (config.json not required). */
+export function listSourceCraftDirs(root = ROOT) {
   const out = []
   for (const name of fs.readdirSync(root)) {
     if (!name.startsWith('craft-') || name.startsWith('_')) continue
@@ -195,9 +196,14 @@ export function listSourceExhibits(root = ROOT) {
     try {
       if (!fs.statSync(srcDir).isDirectory()) continue
     } catch { continue }
-    if (fs.existsSync(path.join(srcDir, 'config.json'))) out.push(name)
+    out.push(name)
   }
   return out.sort()
+}
+
+/** Source crafts that already have a config.json file (not audited for validity). */
+export function listSourceExhibits(root = ROOT) {
+  return listSourceCraftDirs(root).filter(name => fs.existsSync(path.join(root, name, 'config.json')))
 }
 
 /** Minimum schema for deployable exhibit config. */
@@ -216,10 +222,26 @@ export function validateSourceExhibitConfig(name, cfg) {
 
 /** Parse and validate all source craft configs once before upload. */
 export function auditSourceExhibits(root = ROOT) {
+  const craftDirs = listSourceCraftDirs(root)
   const exhibits = []
   const errors = []
-  for (const name of listSourceExhibits(root)) {
+  for (const name of craftDirs) {
     const cfgPath = path.join(root, name, 'config.json')
+    if (!fs.existsSync(cfgPath)) {
+      errors.push(`${name}/config.json: missing`)
+      continue
+    }
+    let st
+    try {
+      st = fs.statSync(cfgPath)
+    } catch (e) {
+      errors.push(`${name}/config.json: ${e.message}`)
+      continue
+    }
+    if (!st.isFile()) {
+      errors.push(`${name}/config.json: must be a regular file`)
+      continue
+    }
     try {
       const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'))
       const schemaErrs = validateSourceExhibitConfig(name, cfg)
@@ -229,7 +251,7 @@ export function auditSourceExhibits(root = ROOT) {
       errors.push(`${name}/config.json: ${e.message}`)
     }
   }
-  return { ok: errors.length === 0, exhibits, errors }
+  return { ok: errors.length === 0, exhibits, errors, craftDirs }
 }
 
 /** craft-* dirs present in an upload tree (have config.json). */
@@ -247,16 +269,16 @@ export function listUploadExhibits(uploadDir) {
   return out.sort()
 }
 
-/** Upload crafts with no matching source exhibit directory. */
-export function orphanUploadExhibits(uploadDir, sourceNames = listSourceExhibits()) {
-  const sourceSet = new Set(sourceNames)
+/** Upload crafts whose source craft directory no longer exists (retired exhibits). */
+export function orphanUploadExhibits(uploadDir, sourceCraftDirs = listSourceCraftDirs()) {
+  const sourceSet = new Set(sourceCraftDirs)
   return listUploadExhibits(uploadDir).filter(name => !sourceSet.has(name))
 }
 
 /** Remove upload crafts absent from source (use with --upload-prune). */
-export function pruneUploadExhibits(uploadDir, sourceNames = listSourceExhibits()) {
+export function pruneUploadExhibits(uploadDir, sourceCraftDirs = listSourceCraftDirs()) {
   const removed = []
-  for (const name of orphanUploadExhibits(uploadDir, sourceNames)) {
+  for (const name of orphanUploadExhibits(uploadDir, sourceCraftDirs)) {
     fs.rmSync(path.join(uploadDir, name), { recursive: true, force: true })
     removed.push(name)
   }
@@ -448,8 +470,8 @@ export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, up
   try {
     if (uploadInit) initUploadVendor(staging)
     if (uploadAssets) syncUploadAssets(staging, source.exhibits)
-    const orphansBefore = orphanUploadExhibits(staging)
-    const pruned = uploadPrune && orphansBefore.length ? pruneUploadExhibits(staging) : []
+    const orphansBefore = orphanUploadExhibits(staging, source.craftDirs)
+    const pruned = uploadPrune && orphansBefore.length ? pruneUploadExhibits(staging, source.craftDirs) : []
     const pre = runUploadPreflight(staging, uploadHtml, { uploadAssets: false, syncModules: true, sourceExhibits: source.exhibits })
     if (!pre.ok) {
       discardUploadStaging(staging)

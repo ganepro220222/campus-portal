@@ -20,7 +20,7 @@ import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhi
   initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
   collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack,
   prepareUploadStaging, promoteUploadStaging, uploadSiblingStagingPath, uploadSiblingBackupPath,
-  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, auditSourceExhibits, validateSourceExhibitConfig, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, listSourceCraftDirs, auditSourceExhibits, validateSourceExhibitConfig, UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { configTimeoutMs, modelIdleTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
@@ -821,6 +821,34 @@ test('deployUploadPack promotion failure preserves verified staging for retry', 
   }
 })
 
+test('auditSourceExhibits rejects missing config.json', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const root = path.join(tmp, 'exhibits')
+    fs.mkdirSync(path.join(root, 'craft-nocfg'), { recursive: true })
+    const audit = auditSourceExhibits(root)
+    assert.equal(audit.ok, false)
+    assert.ok(audit.errors.some(e => e === 'craft-nocfg/config.json: missing'))
+    assert.deepEqual(audit.craftDirs, ['craft-nocfg'])
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('orphanUploadExhibits keeps upload when source craft dir still exists', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const root = path.join(tmp, 'exhibits')
+    const uploadDir = path.join(tmp, 'upload')
+    fs.mkdirSync(path.join(root, 'craft-005'), { recursive: true })
+    fs.mkdirSync(path.join(uploadDir, 'craft-005'), { recursive: true })
+    fs.writeFileSync(path.join(uploadDir, 'craft-005/config.json'), '{"assets":{"model":"assets/model.glb"}}', 'utf8')
+    assert.deepEqual(orphanUploadExhibits(uploadDir, listSourceCraftDirs(root)), [])
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 test('auditSourceExhibits rejects invalid JSON', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
   try {
@@ -875,6 +903,39 @@ test('deployUploadPack rejects corrupt source config without changing live', () 
     assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), false)
   } finally {
     fs.writeFileSync(cfgPath, backup)
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('deployUploadPack rejects missing source config with prune without changing live', () => {
+  const craftDir = path.join(ROOT, 'craft-005')
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    fs.mkdirSync(craftDir, { recursive: true })
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    initUploadVendor(uploadDir)
+    syncUploadAssets(uploadDir)
+    syncUploadModules(uploadDir)
+    fs.mkdirSync(path.join(uploadDir, 'craft-005'), { recursive: true })
+    fs.copyFileSync(path.join(ROOT, 'craft-001/config.json'), path.join(uploadDir, 'craft-005/config.json'))
+    fs.copyFileSync(path.join(ROOT, 'craft-001/index.html'), path.join(uploadDir, 'craft-005/index.html'))
+    const modPath = path.join(uploadDir, 'hotspot-id.js')
+    const sentinel = '/* LIVE-SENTINEL-MISSING-CFG */'
+    fs.writeFileSync(modPath, sentinel, 'utf8')
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false, uploadPrune: true })
+    assert.equal(dep.ok, false)
+    assert.equal(dep.stage, 'source')
+    assert.ok(dep.errors.some(e => e.includes('craft-005/config.json: missing')))
+    assert.equal(fs.readFileSync(modPath, 'utf8'), sentinel)
+    assert.ok(fs.existsSync(path.join(uploadDir, 'craft-005/config.json')))
+    assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), false)
+    const stagingParent = path.dirname(uploadDir)
+    const stagingDirs = fs.readdirSync(stagingParent).filter(n => /\.staging-\d+$/.test(n))
+    assert.equal(stagingDirs.length, 0, 'staging must not remain after source audit failure')
+  } finally {
+    fs.rmSync(craftDir, { recursive: true, force: true })
     fs.rmSync(tmp, { recursive: true, force: true })
   }
 })

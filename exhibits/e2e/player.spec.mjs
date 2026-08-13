@@ -668,7 +668,9 @@ test.describe('boot timeout', () => {
     await injectCfg(page)
     await page.route('**/craft-001/assets/model.glb', () => {})
     await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
-    await page.waitForSelector('#error:not([hidden])', { timeout: 10000 })
+    await page.waitForFunction(() => window.__SY_TEST__?.modelLoadPhaseActive?.() === true, { timeout: 15000 })
+    await page.evaluate(() => window.__SY_TEST__.simulateModelLoadProgress(100, 4000))
+    await page.waitForSelector('#error:not([hidden])', { timeout: 5000 })
     await expect(page.locator('#err-text')).toContainText(/模型加载超时/)
     await expect(page.locator('#err-btn')).not.toHaveAttribute('hidden', '')
     expect(await page.evaluate(() => window.__SY_PLAYER?.ready)).toBe(false)
@@ -697,6 +699,27 @@ test.describe('boot timeout', () => {
     await page.close()
   })
 
+  test('unknown model length survives idle window during decode', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { configTimeoutMs: 800, modelIdleTimeoutMs: 800, modelTotalTimeoutMs: 30000, module: false, bootStarted: false, ready: false }
+    })
+    await injectCfg(page)
+    await page.route('**/craft-001/assets/model.glb', () => {})
+    await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__SY_TEST__?.modelLoadPhaseActive?.() === true, { timeout: 15000 })
+    await page.evaluate(() => window.__SY_TEST__.simulateModelLoadProgress(1, 0))
+    expect(await page.evaluate(() => window.__SY_TEST__.modelLengthUnknown())).toBe(true)
+    for (let i = 1; i <= 4; i++) {
+      await page.waitForTimeout(400)
+      await page.evaluate(n => window.__SY_TEST__.simulateModelLoadProgress(n * 1000, 0), i)
+    }
+    await page.waitForTimeout(1200)
+    await expect(page.locator('#error')).toHaveAttribute('hidden', '')
+    await releaseWebGL(page)
+    await page.close()
+  })
+
   test('model completing after timeout does not become ready', async ({ browser }) => {
     let release
     const gate = new Promise(r => { release = r })
@@ -710,7 +733,9 @@ test.describe('boot timeout', () => {
       route.continue()
     })
     await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
-    await page.waitForSelector('#error:not([hidden])', { timeout: 10000 })
+    await page.waitForFunction(() => window.__SY_TEST__?.modelLoadPhaseActive?.() === true, { timeout: 15000 })
+    await page.evaluate(() => window.__SY_TEST__.simulateModelLoadProgress(100, 4000))
+    await page.waitForSelector('#error:not([hidden])', { timeout: 5000 })
     release()
     await page.waitForTimeout(1500)
     expect(await page.evaluate(() => window.__SY_PLAYER?.ready)).toBe(false)

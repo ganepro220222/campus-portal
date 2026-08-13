@@ -1626,6 +1626,7 @@ function start() {
     modelTimers.progress(evt.loaded, evt.total)
     if (modelTimers.isDownloadComplete()) return
     if (evt.total) { const p=Math.min(100,Math.round(evt.loaded/evt.total*100)); $('bar').style.width=p+'%'; $('load-text').textContent=`正在加载模型… ${p}%` }
+    else if (typeof evt.loaded === 'number' && evt.loaded > 0) { $('load-text').textContent=`正在加载模型… ${evt.loaded} B` }
   }, () => {
     modelTimers.clear()
     _bootModelTimers = null
@@ -2498,6 +2499,7 @@ window.__SY_TEST__ = {
   modelTotalTimeoutMs: () => modelTotalTimeoutMs(cfg, window.__SY_PLAYER, null),
   simulateModelLoadProgress: (loaded, total) => _bootModelTimers?.progress(loaded, total),
   modelDownloadComplete: () => _bootModelTimers?.isDownloadComplete?.() === true,
+  modelLengthUnknown: () => _bootModelTimers?.isLengthUnknown?.() === true,
   modelLoadPhaseActive: () => _bootModelTimers != null,
   playerReady: () => window.__SY_PLAYER.ready === true,
   bootGeneration: () => _bootGeneration,

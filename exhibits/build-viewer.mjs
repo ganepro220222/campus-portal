@@ -187,17 +187,49 @@ function resolveAssetPath(rootDir, exhibitDir, assetPath) {
   return abs
 }
 
-function listSourceExhibits() {
+export function listSourceExhibits(root = ROOT) {
   const out = []
-  for (const name of fs.readdirSync(ROOT)) {
+  for (const name of fs.readdirSync(root)) {
     if (!name.startsWith('craft-') || name.startsWith('_')) continue
-    const srcDir = path.join(ROOT, name)
+    const srcDir = path.join(root, name)
     try {
       if (!fs.statSync(srcDir).isDirectory()) continue
     } catch { continue }
     if (fs.existsSync(path.join(srcDir, 'config.json'))) out.push(name)
   }
   return out.sort()
+}
+
+/** Minimum schema for deployable exhibit config. */
+export function validateSourceExhibitConfig(name, cfg) {
+  const errors = []
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) {
+    errors.push(`${name}/config.json: must be a JSON object`)
+    return errors
+  }
+  const model = cfg.assets?.model
+  if (typeof model !== 'string' || !String(model).trim()) {
+    errors.push(`${name}/config.json: missing assets.model`)
+  }
+  return errors
+}
+
+/** Parse and validate all source craft configs once before upload. */
+export function auditSourceExhibits(root = ROOT) {
+  const exhibits = []
+  const errors = []
+  for (const name of listSourceExhibits(root)) {
+    const cfgPath = path.join(root, name, 'config.json')
+    try {
+      const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'))
+      const schemaErrs = validateSourceExhibitConfig(name, cfg)
+      if (schemaErrs.length) errors.push(...schemaErrs)
+      else exhibits.push({ name, cfg })
+    } catch (e) {
+      errors.push(`${name}/config.json: ${e.message}`)
+    }
+  }
+  return { ok: errors.length === 0, exhibits, errors }
 }
 
 /** craft-* dirs present in an upload tree (have config.json). */
@@ -232,15 +264,19 @@ export function pruneUploadExhibits(uploadDir, sourceNames = listSourceExhibits(
 }
 
 /** 校验 upload 中 config 引用的本地资源：model 缺失/过期阻断，poster/panorama 仅 warning */
-export function verifyUploadAssets(uploadDir = UPLOAD_DIR) {
+export function verifyUploadAssets(uploadDir = UPLOAD_DIR, sourceExhibits = null) {
   const present = []
   const errors = []
   const warnings = []
-  for (const name of listSourceExhibits()) {
+  let exhibits = sourceExhibits
+  if (!exhibits) {
+    const audit = auditSourceExhibits()
+    if (!audit.ok) return { ok: false, present, errors: audit.errors, warnings }
+    exhibits = audit.exhibits
+  }
+  for (const { name, cfg } of exhibits) {
     const srcExhibitDir = path.join(ROOT, name)
     const uploadExhibitDir = path.join(uploadDir, name)
-    let cfg
-    try { cfg = JSON.parse(fs.readFileSync(path.join(srcExhibitDir, 'config.json'), 'utf8')) } catch { continue }
     for (const key of ['model', 'poster', 'panorama']) {
       const ref = cfg?.assets?.[key]
       if (!ref || isRemoteAssetRef(ref)) continue
@@ -273,10 +309,10 @@ export function verifyUploadAssets(uploadDir = UPLOAD_DIR) {
 }
 
 /** 写入 upload 前的预检：可选先同步资产/模块，再校验资源与运行时依赖（不写 viewer/config） */
-export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAssets = false, syncModules: doModules = true } = {}) {
-  if (doAssets) syncUploadAssets(uploadDir)
+export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAssets = false, syncModules: doModules = true, sourceExhibits = null } = {}) {
+  if (doAssets) syncUploadAssets(uploadDir, sourceExhibits)
   if (doModules) syncUploadModules(uploadDir)
-  const assets = verifyUploadAssets(uploadDir)
+  const assets = verifyUploadAssets(uploadDir, sourceExhibits)
   if (!assets.ok) return { ok: false, stage: 'assets', assets }
   const tmpHtml = path.join(uploadDir, '.preflight-player.view.html.tmp')
   fs.writeFileSync(tmpHtml, uploadHtml, 'utf8')
@@ -406,20 +442,22 @@ export function prepareUploadStaging(uploadDir) {
 /** Full staged deploy: preflight in sibling staging, atomic swap only on success. */
 export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false, uploadPrune = false, hooks = {} } = {}) {
   fs.mkdirSync(path.dirname(uploadDir), { recursive: true })
+  const source = auditSourceExhibits()
+  if (!source.ok) return { ok: false, stage: 'source', errors: source.errors }
   const staging = prepareUploadStaging(uploadDir)
   try {
     if (uploadInit) initUploadVendor(staging)
-    if (uploadAssets) syncUploadAssets(staging)
+    if (uploadAssets) syncUploadAssets(staging, source.exhibits)
     const orphansBefore = orphanUploadExhibits(staging)
     const pruned = uploadPrune && orphansBefore.length ? pruneUploadExhibits(staging) : []
-    const pre = runUploadPreflight(staging, uploadHtml, { uploadAssets: false, syncModules: true })
+    const pre = runUploadPreflight(staging, uploadHtml, { uploadAssets: false, syncModules: true, sourceExhibits: source.exhibits })
     if (!pre.ok) {
       discardUploadStaging(staging)
       return { ok: false, ...pre }
     }
     fs.writeFileSync(path.join(staging, 'player.view.html'), uploadHtml, 'utf8')
     syncUploadModules(staging)
-    const exhibitFiles = syncUploadExhibits(staging)
+    const exhibitFiles = syncUploadExhibits(staging, source.exhibits)
     const promoted = promoteUploadStaging(staging, uploadDir, hooks)
     return {
       ok: true,
@@ -528,18 +566,12 @@ export function initUploadVendor(uploadDir = UPLOAD_DIR) {
 }
 
 /** 同步 craft-XXX/config.json（及 index.html 壳页），不复制 assets/ */
-export function syncUploadExhibits(uploadDir = UPLOAD_DIR) {
+export function syncUploadExhibits(uploadDir = UPLOAD_DIR, sourceExhibits = null) {
   const copied = []
-  for (const name of fs.readdirSync(ROOT)) {
-    if (!name.startsWith('craft-') || name.startsWith('_')) continue
+  const exhibits = sourceExhibits ?? auditSourceExhibits().exhibits
+  for (const { name, cfg } of exhibits) {
     const srcDir = path.join(ROOT, name)
-    let st
-    try { st = fs.statSync(srcDir) } catch { continue }
-    if (!st.isDirectory()) continue
     const cfgPath = path.join(srcDir, 'config.json')
-    if (!fs.existsSync(cfgPath)) continue
-    let cfg
-    try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')) } catch { continue }
     const dstDir = path.join(uploadDir, name)
     fs.mkdirSync(dstDir, { recursive: true })
     fs.copyFileSync(cfgPath, path.join(dstDir, 'config.json'))
@@ -555,13 +587,12 @@ export function syncUploadExhibits(uploadDir = UPLOAD_DIR) {
 }
 
 /** 复制 config 引用的本地 model/poster/panorama（含 ../共享背景/）到 upload */
-export function syncUploadAssets(uploadDir = UPLOAD_DIR) {
+export function syncUploadAssets(uploadDir = UPLOAD_DIR, sourceExhibits = null) {
   const copied = []
-  for (const name of listSourceExhibits()) {
+  const exhibits = sourceExhibits ?? auditSourceExhibits().exhibits
+  for (const { name, cfg } of exhibits) {
     const srcExhibitDir = path.join(ROOT, name)
     const uploadExhibitDir = path.join(uploadDir, name)
-    let cfg
-    try { cfg = JSON.parse(fs.readFileSync(path.join(srcExhibitDir, 'config.json'), 'utf8')) } catch { continue }
     for (const key of ['model', 'poster', 'panorama']) {
       const ref = cfg?.assets?.[key]
       if (!ref || isRemoteAssetRef(ref)) continue
@@ -625,8 +656,14 @@ if (uploadInit && !upload && !uploadAssets && !check) {
 }
 
 if (uploadAssets && !upload && !check) {
+  const source = auditSourceExhibits()
+  if (!source.ok) {
+    console.error('exhibits source config errors:')
+    for (const e of source.errors) console.error('  -', e)
+    process.exit(1)
+  }
   fs.mkdirSync(UPLOAD_DIR, { recursive: true })
-  const copied = syncUploadAssets()
+  const copied = syncUploadAssets(UPLOAD_DIR, source.exhibits)
   console.log('exhibits-upload assets synced:', copied.length ? copied.join(', ') : '(none)')
   process.exit(0)
 }
@@ -663,7 +700,10 @@ if (upload) {
   try {
     const dep = deployUploadPack(UPLOAD_DIR, uploadHtml, { uploadInit, uploadAssets, uploadPrune })
     if (!dep.ok) {
-      if (dep.stage === 'assets') {
+      if (dep.stage === 'source') {
+        console.error('exhibits source config errors (upload directory unchanged):')
+        for (const e of dep.errors) console.error('  -', e)
+      } else if (dep.stage === 'assets') {
         console.error('exhibits-upload asset errors (upload directory unchanged):')
         for (const e of dep.assets.errors) console.error('  -', e)
         console.error('Run: node build-viewer.mjs --upload-assets --upload')

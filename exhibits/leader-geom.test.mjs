@@ -20,7 +20,7 @@ import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhi
   initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
   collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack,
   prepareUploadStaging, promoteUploadStaging, uploadSiblingStagingPath, uploadSiblingBackupPath,
-  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, auditSourceExhibits, validateSourceExhibitConfig, UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { configTimeoutMs, modelIdleTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
@@ -821,6 +821,64 @@ test('deployUploadPack promotion failure preserves verified staging for retry', 
   }
 })
 
+test('auditSourceExhibits rejects invalid JSON', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const root = path.join(tmp, 'exhibits')
+    fs.mkdirSync(path.join(root, 'craft-bad'), { recursive: true })
+    fs.writeFileSync(path.join(root, 'craft-bad/config.json'), '{ bad json')
+    const audit = auditSourceExhibits(root)
+    assert.equal(audit.ok, false)
+    assert.ok(audit.errors.some(e => e.includes('craft-bad/config.json')))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('auditSourceExhibits rejects JSON array and missing assets.model', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const root = path.join(tmp, 'exhibits')
+    fs.mkdirSync(path.join(root, 'craft-arr'), { recursive: true })
+    fs.mkdirSync(path.join(root, 'craft-nomodel'), { recursive: true })
+    fs.writeFileSync(path.join(root, 'craft-arr/config.json'), '[]')
+    fs.writeFileSync(path.join(root, 'craft-nomodel/config.json'), '{"assets":{}}')
+    const audit = auditSourceExhibits(root)
+    assert.equal(audit.ok, false)
+    assert.ok(audit.errors.some(e => e.includes('craft-arr/config.json') && e.includes('JSON object')))
+    assert.ok(audit.errors.some(e => e.includes('craft-nomodel/config.json') && e.includes('assets.model')))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('deployUploadPack rejects corrupt source config without changing live', () => {
+  const cfgPath = path.join(ROOT, 'craft-001/config.json')
+  const backup = fs.readFileSync(cfgPath, 'utf8')
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    initUploadVendor(uploadDir)
+    syncUploadAssets(uploadDir)
+    syncUploadModules(uploadDir)
+    const modPath = path.join(uploadDir, 'hotspot-id.js')
+    const sentinel = '/* LIVE-SENTINEL-CFG */'
+    fs.writeFileSync(modPath, sentinel, 'utf8')
+    fs.writeFileSync(cfgPath, '{ broken json')
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false })
+    assert.equal(dep.ok, false)
+    assert.equal(dep.stage, 'source')
+    assert.ok(dep.errors.some(e => e.includes('craft-001/config.json')))
+    assert.equal(fs.readFileSync(modPath, 'utf8'), sentinel)
+    assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), false)
+  } finally {
+    fs.writeFileSync(cfgPath, backup)
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 test('deployUploadPack without prune keeps orphaned craft dirs', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
   try {
@@ -893,7 +951,7 @@ test('createModelLoadTimers idle resets on progress', async () => {
   })
   timers.start()
   for (let i = 1; i <= 5; i++) {
-    timers.progress(i * 100)
+    timers.progress(i * 100, 500)
     await sleep(50)
   }
   timers.clear()
@@ -908,9 +966,23 @@ test('createModelLoadTimers fires idle when stalled', async () => {
     onIdle: () => { idleFires++ },
   })
   timers.start()
+  timers.progress(100, 1000)
   await sleep(100)
   timers.clear()
   assert.equal(idleFires, 1)
+})
+
+test('createModelLoadTimers does not idle before first progress', async () => {
+  let idleFires = 0
+  const timers = createModelLoadTimers({
+    idleMs: 40,
+    totalMs: 5000,
+    onIdle: () => { idleFires++ },
+  })
+  timers.start()
+  await sleep(100)
+  timers.clear()
+  assert.equal(idleFires, 0)
 })
 
 test('createModelLoadTimers clears idle after download complete', async () => {
@@ -928,6 +1000,22 @@ test('createModelLoadTimers clears idle after download complete', async () => {
   await sleep(100)
   timers.clear()
   assert.equal(idleFires, 0, 'idle must not fire during decode after download complete')
+})
+
+test('createModelLoadTimers skips idle when Content-Length unknown', async () => {
+  let idleFires = 0
+  const timers = createModelLoadTimers({
+    idleMs: 40,
+    totalMs: 5000,
+    onIdle: () => { idleFires++ },
+  })
+  timers.start()
+  timers.progress(1000, 0)
+  timers.progress(5000, 0)
+  assert.equal(timers.isLengthUnknown(), true)
+  await sleep(100)
+  timers.clear()
+  assert.equal(idleFires, 0, 'unknown total must not use download idle timer')
 })
 
 test('createModelLoadTimers total still fires after download complete', async () => {

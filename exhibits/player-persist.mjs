@@ -102,6 +102,7 @@ export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal, onDown
   let totalTimer = 0
   let lastLoaded = -1
   let downloadComplete = false
+  let lengthUnknown = false
   const clearIdle = () => {
     if (idleTimer) clearTimeout(idleTimer)
     idleTimer = 0
@@ -112,7 +113,7 @@ export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal, onDown
     totalTimer = 0
   }
   const bumpIdle = () => {
-    if (downloadComplete) return
+    if (downloadComplete || lengthUnknown) return
     clearIdle()
     idleTimer = setTimeout(() => { onIdle?.() }, idleMs)
   }
@@ -126,12 +127,20 @@ export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal, onDown
     clear()
     lastLoaded = -1
     downloadComplete = false
-    bumpIdle()
+    lengthUnknown = false
+    // Idle arms only after known Content-Length progress; unknown total uses totalMs cap only.
     totalTimer = setTimeout(() => { onTotal?.() }, totalMs)
   }
   const progress = (loaded, total) => {
     if (typeof loaded !== 'number') return
     const hasTotal = typeof total === 'number' && total > 0
+    if (!hasTotal) {
+      lengthUnknown = true
+      clearIdle()
+      if (loaded > lastLoaded) lastLoaded = loaded
+      return
+    }
+    lengthUnknown = false
     if (hasTotal && loaded >= total) {
       if (loaded > lastLoaded) lastLoaded = loaded
       markDownloadComplete()
@@ -142,5 +151,11 @@ export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal, onDown
       bumpIdle()
     }
   }
-  return { start, progress, clear, isDownloadComplete: () => downloadComplete }
+  return {
+    start,
+    progress,
+    clear,
+    isDownloadComplete: () => downloadComplete,
+    isLengthUnknown: () => lengthUnknown,
+  }
 }

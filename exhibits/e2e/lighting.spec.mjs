@@ -239,7 +239,7 @@ test.describe('落地阴影', () => {
      所以挪器物时展台跟着走、器物绝不会脱离展台；唯一能拉开缝的是承影面高低本身。
      这条把两者的分工钉死：位移 Y 不改变间距，间距完全等于承影面高低。 */
   test('位移 Y 只整体升降：承影面跟着器物走，间距始终等于承影面高低', async () => {
-    await reloadPlayer(page, { shadow: { enabled: true } })
+    await reloadPlayer(page, { shadow: { enabled: true, groundOffset: 0 } })
     await openShadowSection()
     for (const off of [0, -0.08, 0.05]) {
       await setRange('sh.offset', off)
@@ -260,6 +260,8 @@ test.describe('落地阴影', () => {
   })
 
   test('承影面高低：量程收在 ±0.08，接触斑始终贴着承影面', async () => {
+    await reloadPlayer(page, { shadow: { enabled: true, groundOffset: 0, plate: true } })
+    await openShadowSection()
     const slider = page.locator('#editor input[type=range][data-k="sh.offset"]')
     await expect(slider).toHaveAttribute('min', '-0.08')
     await expect(slider).toHaveAttribute('max', '0.08')

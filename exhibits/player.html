@@ -417,7 +417,7 @@ function scheduleBootWatchdog(gen) {
     if (window.__SY_PLAYER.ready || window.__SY_PLAYER.failed) return
     if (gen !== _bootGeneration) return
     abortPendingBoot('配置加载超时，请检查网络后重试')
-  }, configTimeoutMs(null, window.__SY_PLAYER, window.__SY_TEST__))
+  }, configTimeoutMs(null, window.__SY_PLAYER, null))
 }
 
 async function fetchWithTimeout(url, ms) {
@@ -1586,15 +1586,22 @@ function start() {
   if (!modelUrl) return failPlayer('模型地址无效', true)
 
   const modelTimers = createModelLoadTimers({
-    idleMs: modelIdleTimeoutMs(cfg, window.__SY_PLAYER, window.__SY_TEST__),
-    totalMs: modelTotalTimeoutMs(cfg, window.__SY_PLAYER, window.__SY_TEST__),
+    idleMs: modelIdleTimeoutMs(cfg, window.__SY_PLAYER, null),
+    totalMs: modelTotalTimeoutMs(cfg, window.__SY_PLAYER, null),
     onIdle: () => {
       if (window.__SY_PLAYER.ready || gen !== _startGeneration) return
       abortPendingBoot('模型加载超时，请检查网络后重试')
     },
     onTotal: () => {
       if (window.__SY_PLAYER.ready || gen !== _startGeneration) return
-      abortPendingBoot('模型加载超时，请检查网络后重试')
+      abortPendingBoot(modelTimers.isDownloadComplete()
+        ? '模型解析超时，请稍后重试或更换设备'
+        : '模型加载超时，请检查网络后重试')
+    },
+    onDownloadComplete: () => {
+      if (gen !== _startGeneration) return
+      $('bar').style.width = '100%'
+      $('load-text').textContent = '正在解析模型…'
     },
   })
   _bootModelTimers = modelTimers
@@ -1616,7 +1623,8 @@ function start() {
     animate()
   }, evt => {
     if (gen !== _startGeneration) return
-    modelTimers.progress(evt.loaded)
+    modelTimers.progress(evt.loaded, evt.total)
+    if (modelTimers.isDownloadComplete()) return
     if (evt.total) { const p=Math.min(100,Math.round(evt.loaded/evt.total*100)); $('bar').style.width=p+'%'; $('load-text').textContent=`正在加载模型… ${p}%` }
   }, () => {
     modelTimers.clear()
@@ -1658,7 +1666,7 @@ async function boot() {
     if (window.__CFG__) cfg = window.__CFG__            // 便携单文件：内联配置，免 fetch（可双击 file:// 打开）
     else {
       const url = configFetchUrl(BASE)
-      const res = await fetchWithTimeout(url, configTimeoutMs(null, window.__SY_PLAYER, window.__SY_TEST__))
+      const res = await fetchWithTimeout(url, configTimeoutMs(null, window.__SY_PLAYER, null))
       if (!res.ok) throw new Error(`HTTP ${res.status} · ${url}`)
       cfg = await res.json()
     }
@@ -2478,9 +2486,25 @@ async function exportViewerOnly(){
 }
 /* EDITOR-JS-END */
 
-/* TEST-HOOKS-START — build-viewer 剔除，仅 edit 模式 E2E */
+/* TEST-HOOKS-START — build-viewer 剔除；boot hooks 供 player E2E，edit hooks 仅编辑模式 */
+window.__SY_TEST__ = {
+  setBootTimeoutMs: (ms) => { window.__SY_PLAYER.bootTimeoutMs = ms },
+  setConfigTimeoutMs: (ms) => { window.__SY_PLAYER.configTimeoutMs = ms },
+  setModelIdleTimeoutMs: (ms) => { window.__SY_PLAYER.modelIdleTimeoutMs = ms },
+  setModelTotalTimeoutMs: (ms) => { window.__SY_PLAYER.modelTotalTimeoutMs = ms },
+  bootTimeoutMs: () => bootTimeoutMs(),
+  configTimeoutMs: () => configTimeoutMs(cfg, window.__SY_PLAYER, null),
+  modelIdleTimeoutMs: () => modelIdleTimeoutMs(cfg, window.__SY_PLAYER, null),
+  modelTotalTimeoutMs: () => modelTotalTimeoutMs(cfg, window.__SY_PLAYER, null),
+  simulateModelLoadProgress: (loaded, total) => _bootModelTimers?.progress(loaded, total),
+  modelDownloadComplete: () => _bootModelTimers?.isDownloadComplete?.() === true,
+  modelLoadPhaseActive: () => _bootModelTimers != null,
+  playerReady: () => window.__SY_PLAYER.ready === true,
+  bootGeneration: () => _bootGeneration,
+  startGeneration: () => _startGeneration,
+}
 if (editMode) {
-  window.__SY_TEST__ = {
+  Object.assign(window.__SY_TEST__, {
     // 材质覆盖用例要断言「只写动过的那一项」，必须能读到 config 原样
     materialsConfig: () => JSON.parse(JSON.stringify(cfg.materials || {})),
     materialLive: () => { const out = []
@@ -2781,19 +2805,7 @@ if (editMode) {
     resolvePanoramaLoadMock: () => resolvePanoramaLoadMock(),
     rejectPanoramaLoadMock: () => rejectPanoramaLoadMock(),
     panoramaInflightUrl: () => envPanoInflight?.url ?? '',
-    setBootTimeoutMs: (ms) => { window.__SY_PLAYER.bootTimeoutMs = ms },
-    setConfigTimeoutMs: (ms) => { window.__SY_PLAYER.configTimeoutMs = ms },
-    setModelIdleTimeoutMs: (ms) => { window.__SY_PLAYER.modelIdleTimeoutMs = ms },
-    setModelTotalTimeoutMs: (ms) => { window.__SY_PLAYER.modelTotalTimeoutMs = ms },
-    bootTimeoutMs: () => bootTimeoutMs(),
-    configTimeoutMs: () => configTimeoutMs(cfg, window.__SY_PLAYER, window.__SY_TEST__),
-    modelIdleTimeoutMs: () => modelIdleTimeoutMs(cfg, window.__SY_PLAYER, window.__SY_TEST__),
-    modelTotalTimeoutMs: () => modelTotalTimeoutMs(cfg, window.__SY_PLAYER, window.__SY_TEST__),
-    simulateModelLoadProgress: (loaded) => _bootModelTimers?.progress(loaded),
-    playerReady: () => window.__SY_PLAYER.ready === true,
-    bootGeneration: () => _bootGeneration,
-    startGeneration: () => _startGeneration,
-  }
+  })
 }
 /* TEST-HOOKS-END */
 

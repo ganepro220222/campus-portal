@@ -96,31 +96,51 @@ export function modelTotalTimeoutMs(cfg, player, testHook) {
   ], 120000)
 }
 
-/** Idle timer resets on progress; total timer is a hard cap. */
-export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal }) {
+/** Idle timer resets on download progress; cleared once loaded >= total. Total caps entire load. */
+export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal, onDownloadComplete }) {
   let idleTimer = 0
   let totalTimer = 0
   let lastLoaded = -1
-  const clear = () => {
+  let downloadComplete = false
+  const clearIdle = () => {
     if (idleTimer) clearTimeout(idleTimer)
+    idleTimer = 0
+  }
+  const clear = () => {
+    clearIdle()
     if (totalTimer) clearTimeout(totalTimer)
-    idleTimer = totalTimer = 0
+    totalTimer = 0
   }
   const bumpIdle = () => {
-    if (idleTimer) clearTimeout(idleTimer)
+    if (downloadComplete) return
+    clearIdle()
     idleTimer = setTimeout(() => { onIdle?.() }, idleMs)
+  }
+  const markDownloadComplete = () => {
+    if (downloadComplete) return
+    downloadComplete = true
+    clearIdle()
+    onDownloadComplete?.()
   }
   const start = () => {
     clear()
     lastLoaded = -1
+    downloadComplete = false
     bumpIdle()
     totalTimer = setTimeout(() => { onTotal?.() }, totalMs)
   }
-  const progress = (loaded) => {
-    if (typeof loaded === 'number' && loaded > lastLoaded) {
+  const progress = (loaded, total) => {
+    if (typeof loaded !== 'number') return
+    const hasTotal = typeof total === 'number' && total > 0
+    if (hasTotal && loaded >= total) {
+      if (loaded > lastLoaded) lastLoaded = loaded
+      markDownloadComplete()
+      return
+    }
+    if (loaded > lastLoaded) {
       lastLoaded = loaded
       bumpIdle()
     }
   }
-  return { start, progress, clear }
+  return { start, progress, clear, isDownloadComplete: () => downloadComplete }
 }

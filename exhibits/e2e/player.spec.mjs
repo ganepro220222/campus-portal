@@ -679,17 +679,18 @@ test.describe('boot timeout', () => {
   test('model progress resets idle timeout beyond config window', async ({ browser }) => {
     const page = await browser.newPage()
     await page.addInitScript(() => {
-      window.__SY_PLAYER = { configTimeoutMs: 800, modelIdleTimeoutMs: 800, modelTotalTimeoutMs: 30000, module: false, bootStarted: false, ready: false }
+      window.__SY_PLAYER = { configTimeoutMs: 800, modelIdleTimeoutMs: 5000, modelTotalTimeoutMs: 30000, module: false, bootStarted: false, ready: false }
     })
     await injectCfg(page)
     await page.route('**/craft-001/assets/model.glb', () => {})
-    await page.goto('/player.html?ex=craft-001&mode=edit', { waitUntil: 'domcontentloaded' })
-    await page.waitForFunction(() => typeof window.__SY_TEST__?.simulateModelLoadProgress === 'function', { timeout: 15000 })
+    await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__SY_TEST__?.modelLoadPhaseActive?.() === true, { timeout: 15000 })
     for (let i = 0; i < 4; i++) {
-      await page.evaluate(n => window.__SY_TEST__.simulateModelLoadProgress(n * 1000), i + 1)
+      await page.evaluate(n => window.__SY_TEST__.simulateModelLoadProgress(n * 1000, 4000), i + 1)
       await page.waitForTimeout(400)
     }
-    await page.waitForTimeout(600)
+    expect(await page.evaluate(() => window.__SY_TEST__.modelDownloadComplete())).toBe(true)
+    await page.waitForTimeout(1200)
     await expect(page.locator('#error')).toHaveAttribute('hidden', '')
     expect(await page.evaluate(() => window.__SY_PLAYER?.ready)).toBe(false)
     await releaseWebGL(page)

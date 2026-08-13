@@ -19,7 +19,8 @@ import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, 
 import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, syncUploadAssets,
   initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
   collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack,
-  prepareUploadStaging, promoteUploadStaging, uploadSiblingStagingPath, uploadSiblingBackupPath, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+  prepareUploadStaging, promoteUploadStaging, uploadSiblingStagingPath, uploadSiblingBackupPath,
+  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { configTimeoutMs, modelIdleTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
@@ -820,6 +821,69 @@ test('deployUploadPack promotion failure preserves verified staging for retry', 
   }
 })
 
+test('deployUploadPack without prune keeps orphaned craft dirs', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    initUploadVendor(uploadDir)
+    syncUploadAssets(uploadDir)
+    syncUploadModules(uploadDir)
+    const ghostDir = path.join(uploadDir, 'craft-999')
+    fs.mkdirSync(ghostDir, { recursive: true })
+    fs.writeFileSync(path.join(ghostDir, 'config.json'), '{"assets":{}}', 'utf8')
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false, uploadPrune: false })
+    assert.equal(dep.ok, true)
+    assert.ok(fs.existsSync(path.join(uploadDir, 'craft-999/config.json')))
+    assert.deepEqual(dep.orphanExhibits, ['craft-999'])
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('deployUploadPack with uploadPrune removes orphaned craft dirs', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    initUploadVendor(uploadDir)
+    syncUploadAssets(uploadDir)
+    syncUploadModules(uploadDir)
+    const ghostDir = path.join(uploadDir, 'craft-999')
+    fs.mkdirSync(ghostDir, { recursive: true })
+    fs.writeFileSync(path.join(ghostDir, 'config.json'), '{"assets":{}}', 'utf8')
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false, uploadPrune: true })
+    assert.equal(dep.ok, true)
+    assert.equal(fs.existsSync(path.join(uploadDir, 'craft-999')), false)
+    assert.deepEqual(dep.pruned, ['craft-999'])
+    assert.deepEqual(orphanUploadExhibits(uploadDir), [])
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('promoteUploadStaging backup cleanup failure still succeeds', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    fs.mkdirSync(uploadDir, { recursive: true })
+    fs.writeFileSync(path.join(uploadDir, 'marker.txt'), 'live', 'utf8')
+    const staging = prepareUploadStaging(uploadDir)
+    fs.writeFileSync(path.join(staging, 'marker.txt'), 'new', 'utf8')
+    const out = promoteUploadStaging(staging, uploadDir, {
+      rmSync() { throw new Error('injected backup rm failure') },
+    })
+    assert.equal(out.ok, true)
+    assert.equal(fs.readFileSync(path.join(uploadDir, 'marker.txt'), 'utf8'), 'new')
+    assert.ok(out.cleanupWarning)
+    assert.ok(fs.existsSync(out.backupPreserved))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 test('createModelLoadTimers idle resets on progress', async () => {
   let idleFires = 0
   const timers = createModelLoadTimers({
@@ -847,6 +911,37 @@ test('createModelLoadTimers fires idle when stalled', async () => {
   await sleep(100)
   timers.clear()
   assert.equal(idleFires, 1)
+})
+
+test('createModelLoadTimers clears idle after download complete', async () => {
+  let idleFires = 0
+  const timers = createModelLoadTimers({
+    idleMs: 40,
+    totalMs: 5000,
+    onIdle: () => { idleFires++ },
+    onDownloadComplete: () => {},
+  })
+  timers.start()
+  timers.progress(500, 1000)
+  timers.progress(1000, 1000)
+  assert.equal(timers.isDownloadComplete(), true)
+  await sleep(100)
+  timers.clear()
+  assert.equal(idleFires, 0, 'idle must not fire during decode after download complete')
+})
+
+test('createModelLoadTimers total still fires after download complete', async () => {
+  let totalFires = 0
+  const timers = createModelLoadTimers({
+    idleMs: 5000,
+    totalMs: 60,
+    onTotal: () => { totalFires++ },
+  })
+  timers.start()
+  timers.progress(100, 100)
+  await sleep(100)
+  timers.clear()
+  assert.equal(totalFires, 1)
 })
 
 test('configTimeoutMs falls back to bootTimeoutMs', () => {

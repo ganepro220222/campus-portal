@@ -200,6 +200,37 @@ function listSourceExhibits() {
   return out.sort()
 }
 
+/** craft-* dirs present in an upload tree (have config.json). */
+export function listUploadExhibits(uploadDir) {
+  const out = []
+  if (!fs.existsSync(uploadDir)) return out
+  for (const name of fs.readdirSync(uploadDir)) {
+    if (!name.startsWith('craft-') || name.startsWith('_')) continue
+    const dir = path.join(uploadDir, name)
+    try {
+      if (!fs.statSync(dir).isDirectory()) continue
+    } catch { continue }
+    if (fs.existsSync(path.join(dir, 'config.json'))) out.push(name)
+  }
+  return out.sort()
+}
+
+/** Upload crafts with no matching source exhibit directory. */
+export function orphanUploadExhibits(uploadDir, sourceNames = listSourceExhibits()) {
+  const sourceSet = new Set(sourceNames)
+  return listUploadExhibits(uploadDir).filter(name => !sourceSet.has(name))
+}
+
+/** Remove upload crafts absent from source (use with --upload-prune). */
+export function pruneUploadExhibits(uploadDir, sourceNames = listSourceExhibits()) {
+  const removed = []
+  for (const name of orphanUploadExhibits(uploadDir, sourceNames)) {
+    fs.rmSync(path.join(uploadDir, name), { recursive: true, force: true })
+    removed.push(name)
+  }
+  return removed
+}
+
 /** 校验 upload 中 config 引用的本地资源：model 缺失/过期阻断，poster/panorama 仅 warning */
 export function verifyUploadAssets(uploadDir = UPLOAD_DIR) {
   const present = []
@@ -331,8 +362,17 @@ export function promoteUploadStaging(stagingDir, uploadDir, hooks = {}) {
     }
     rename(stagingDir, uploadDir)
     movedLiveToBackup = false
-    if (fs.existsSync(backupDir)) rm(backupDir, { recursive: true, force: true })
-    return { ok: true }
+    let cleanupWarning = null
+    let backupPreserved = null
+    if (fs.existsSync(backupDir)) {
+      try {
+        rm(backupDir, { recursive: true, force: true })
+      } catch (cause) {
+        cleanupWarning = cause
+        backupPreserved = backupDir
+      }
+    }
+    return { ok: true, cleanupWarning, backupPreserved }
   } catch (cause) {
     let rolledBack = false
     if (movedLiveToBackup && fs.existsSync(backupDir) && !fs.existsSync(uploadDir)) {
@@ -364,12 +404,14 @@ export function prepareUploadStaging(uploadDir) {
 }
 
 /** Full staged deploy: preflight in sibling staging, atomic swap only on success. */
-export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false, hooks = {} } = {}) {
+export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false, uploadPrune = false, hooks = {} } = {}) {
   fs.mkdirSync(path.dirname(uploadDir), { recursive: true })
   const staging = prepareUploadStaging(uploadDir)
   try {
     if (uploadInit) initUploadVendor(staging)
     if (uploadAssets) syncUploadAssets(staging)
+    const orphansBefore = orphanUploadExhibits(staging)
+    const pruned = uploadPrune && orphansBefore.length ? pruneUploadExhibits(staging) : []
     const pre = runUploadPreflight(staging, uploadHtml, { uploadAssets: false, syncModules: true })
     if (!pre.ok) {
       discardUploadStaging(staging)
@@ -378,8 +420,16 @@ export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, up
     fs.writeFileSync(path.join(staging, 'player.view.html'), uploadHtml, 'utf8')
     syncUploadModules(staging)
     const exhibitFiles = syncUploadExhibits(staging)
-    promoteUploadStaging(staging, uploadDir, hooks)
-    return { ok: true, assets: pre.assets, exhibitFiles }
+    const promoted = promoteUploadStaging(staging, uploadDir, hooks)
+    return {
+      ok: true,
+      assets: pre.assets,
+      exhibitFiles,
+      pruned,
+      orphanExhibits: uploadPrune ? [] : orphansBefore,
+      cleanupWarning: promoted.cleanupWarning || null,
+      backupPreserved: promoted.backupPreserved || null,
+    }
   } catch (e) {
     if (e.recovery?.stagingDir) {
       // verified tree kept for retry; do not delete staging on promotion failure
@@ -533,12 +583,13 @@ export function assertViewerBuild(viewHtml = buildViewerSrc()) {
 }
 
 function usage() {
-  console.log(`Usage: node build-viewer.mjs [--check] [--upload] [--upload-init] [--upload-assets]
+  console.log(`Usage: node build-viewer.mjs [--check] [--upload] [--upload-init] [--upload-assets] [--upload-prune]
 
   (default)       Write player.view.html from player.html (+ semantic validation)
   --check         Exit 1 if player.view.html differs or fails semantic validation
   --upload-init   Copy vendor/ into exhibits-upload/ (first-time prerequisite)
   --upload-assets Copy craft assets + shared panoramas referenced in config
+  --upload-prune  Remove craft-* dirs from upload that no longer exist in source
   --upload        Incremental update of a prepared upload directory:
                   player.view.html, module .js copies, craft config/index,
                   then verify module graph + vendor + asset consistency
@@ -549,6 +600,9 @@ function usage() {
   Code/config only (assets already on server):
     node build-viewer.mjs --upload
 
+  Retire deleted exhibits from upload pack:
+    node build-viewer.mjs --upload --upload-prune
+
   New/changed models or panoramas:
     node build-viewer.mjs --upload-assets --upload`)
 }
@@ -557,6 +611,7 @@ const check = process.argv.includes('--check')
 const upload = process.argv.includes('--upload')
 const uploadInit = process.argv.includes('--upload-init')
 const uploadAssets = process.argv.includes('--upload-assets')
+const uploadPrune = process.argv.includes('--upload-prune')
 if (isMain) {
 if (process.argv.includes('-h') || process.argv.includes('--help')) {
   usage()
@@ -606,7 +661,7 @@ if (upload) {
     process.exit(1)
   }
   try {
-    const dep = deployUploadPack(UPLOAD_DIR, uploadHtml, { uploadInit, uploadAssets })
+    const dep = deployUploadPack(UPLOAD_DIR, uploadHtml, { uploadInit, uploadAssets, uploadPrune })
     if (!dep.ok) {
       if (dep.stage === 'assets') {
         console.error('exhibits-upload asset errors (upload directory unchanged):')
@@ -624,10 +679,19 @@ if (upload) {
     console.log('exhibits-upload/*.js module copies synced')
     if (dep.exhibitFiles?.length) console.log('exhibits-upload exhibit files synced:', dep.exhibitFiles.join(', '))
     else console.log('exhibits-upload: no craft-XXX/config.json to sync')
+    if (dep.pruned?.length) console.log('exhibits-upload pruned retired crafts:', dep.pruned.join(', '))
+    else if (dep.orphanExhibits?.length) {
+      console.warn('exhibits-upload: orphaned craft dirs kept (not in source):', dep.orphanExhibits.join(', '))
+      console.warn('  Run with --upload-prune to remove them from the upload pack')
+    }
     if (dep.assets.present.length) console.log('exhibits-upload asset refs OK:', dep.assets.present.length)
     if (dep.assets.warnings.length) {
       console.warn('exhibits-upload asset warnings:')
       for (const w of dep.assets.warnings) console.warn('  -', w)
+    }
+    if (dep.cleanupWarning) {
+      console.warn('exhibits-upload: live updated but backup cleanup failed:', dep.cleanupWarning.message)
+      if (dep.backupPreserved) console.warn('  backup preserved at:', dep.backupPreserved)
     }
     console.log('exhibits-upload verify OK')
   } catch (e) {

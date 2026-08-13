@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -14,7 +15,7 @@ import {
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
 import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { buildViewerSrc } from './build-viewer.mjs'
+import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, validateViewerSemantics, checkHtmlImports, UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -546,15 +547,28 @@ test('export viewer strips editMode and buildEditor', () => {
 
 test('viewer output omits editor hotspot boot diagnostics', () => {
   const view = buildViewerSrc()
+  const sem = validateViewerSemantics(view)
+  assert.equal(sem.ok, true, sem.reason || 'viewer semantics failed')
   assert.match(view, /import \{ ensureHotspotIds \} from '\.\/hotspot-id\.mjs'/)
-  assert.doesNotMatch(view, /bootstrapHotspotIds/)
-  assert.doesNotMatch(view, /hotspotIdBootAudit/)
-  assert.doesNotMatch(view, /hotspotIdBootChanges/)
-  assert.doesNotMatch(view, /formatHotspotIdChanges/)
-  assert.doesNotMatch(view, /mergeHotspotIdChanges/)
-  assert.doesNotMatch(view, /hotspotBootAuditHadIssues/)
-  assert.doesNotMatch(view, /nextHotspotId/)
   assert.match(view, /ensureHotspotIds\(cfg\.hotspots \|\| \[\]\)/)
+})
+
+test('upload pack includes leader-geom.js and resolves player imports', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    fs.mkdirSync(uploadDir, { recursive: true })
+    for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
+      fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
+    }
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    fs.writeFileSync(path.join(uploadDir, 'player.view.html'), uploadHtml, 'utf8')
+    const missing = checkHtmlImports(path.join(uploadDir, 'player.view.html'))
+    assert.deepEqual(missing, [], `missing upload imports: ${missing.join(', ')}`)
+    assert.ok(fs.existsSync(path.join(uploadDir, 'leader-geom.js')), 'leader-geom.js must be in upload pack')
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
 })
 
 test('viewer output imports only configFetchUrl from player-persist', () => {

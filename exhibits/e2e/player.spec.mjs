@@ -506,13 +506,46 @@ test.describe('editor model URL load', () => {
   })
 
   test('failed panorama URL does not mutate cfg.assets.panorama', async () => {
-    await openEditorSection(page, '环境')
+    await openEditorSection(page, '环境 IBL')
     const saved = await page.evaluate(() => window.__SY_TEST__.panoramaConfig())
     expect(saved).toBeTruthy()
     await page.fill('#ed-pano', 'assets/__missing_pano_test__.jpg')
     await page.click('#ed-pano-load')
     await page.waitForFunction(() => !document.getElementById('ed-pano-load')?.disabled, null, { timeout: 30_000 })
     expect(await page.evaluate(() => window.__SY_TEST__.panoramaConfig())).toBe(saved)
+  })
+
+  test('failed local preview keeps modelPreviewOnly false', async () => {
+    await openEditorSection(page, '资产')
+    expect(await page.evaluate(() => window.__SY_TEST__.modelPreviewOnly())).toBe(false)
+    await page.evaluate(() => {
+      window.__SY_TEST__.enableModelLoadMock()
+      window.__SY_TEST__.queueModelLoadFromEditor('blob:local-fail', null, 'LOCAL_FAIL')
+    })
+    await page.evaluate(() => window.__SY_TEST__.rejectModelLoadMock('LOCAL_FAIL'))
+    await page.waitForTimeout(50)
+    expect(await page.evaluate(() => window.__SY_TEST__.modelPreviewOnly())).toBe(false)
+    await page.evaluate(() => window.__SY_TEST__.disableModelLoadMock())
+  })
+
+  test('duplicate panorama URL shares inflight promise until settle', async () => {
+    await openEditorSection(page, '环境 IBL')
+    const saved = await page.evaluate(() => window.__SY_TEST__.panoramaConfig())
+    const probe = await page.evaluate(async () => {
+      window.__SY_TEST__.enablePanoramaLoadMock()
+      const p1 = window.__SY_TEST__.panoramaLoadForTest('assets/poster.jpg', { commitUrl: 'assets/poster.jpg' })
+      const p2 = window.__SY_TEST__.panoramaLoadForTest('assets/poster.jpg', { commitUrl: 'assets/poster.jpg' })
+      return { same: p1 === p2, inflight: window.__SY_TEST__.panoramaInflightUrl() }
+    })
+    expect(probe.same).toBe(true)
+    expect(probe.inflight).toBeTruthy()
+    const rejected = await page.evaluate(async () => {
+      window.__SY_TEST__.rejectPanoramaLoadMock()
+      await new Promise(r => setTimeout(r, 30))
+      return window.__SY_TEST__.panoramaConfig()
+    })
+    expect(rejected).toBe(saved)
+    await page.evaluate(() => window.__SY_TEST__.disablePanoramaLoadMock())
   })
 })
 

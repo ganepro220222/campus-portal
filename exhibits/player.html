@@ -356,7 +356,9 @@ const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
 const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
 let auTracks = [], auIndex = -1, auPlaying = false   // 语音讲解播放器状态
+/* VIEWER-HOTSPOT-DIAG-START — build-viewer 剔除 */
 let hotspotIdBootAudit = null, hotspotIdBootChanges = []   // editor：加载时 ID 诊断（boot 前 audit）
+/* VIEWER-HOTSPOT-DIAG-END */
 
 const t = o => (o && (o[lang] || o.zh || o.en)) || {}
 function hexToRgba(hex, a){
@@ -621,9 +623,13 @@ function applyEnvironment() {
 let _pmrem = null, envRT = null, envBg = null
 const envLoadGuard = createEnvLoadGuard()
 let envPanoFailed = ''   // 记下加载失败的全景地址，供编辑器如实显示当前环境
-let envPanoInflightUrl = ''  // 同一全景 URL 只发起一次加载，避免并行 + 模型回调重复请求
+/** 同一全景 URL 在途加载：共享 Promise，避免重复请求与假成功 */
+let envPanoInflight = null
+let panoramaLoadMockEnabled = false
+let panoramaLoadMockEntry = null
+function invalidatePanoInflight() { envPanoInflight = null }
 function releasePanoInflight(url) {
-  if (envPanoInflightUrl === url) envPanoInflightUrl = ''
+  if (envPanoInflight?.url === url) envPanoInflight = null
 }
 function pmremGen() { if (!_pmrem) _pmrem = new THREE.PMREMGenerator(renderer); return _pmrem }
 function setEnvFromRT(rt, bg) {
@@ -638,7 +644,7 @@ function setEnvFromRT(rt, bg) {
 }
 function roomIBL() {
   envLoadGuard.invalidate()
-  envPanoInflightUrl = ''
+  invalidatePanoInflight()
   const room = new RoomEnvironment()
   setEnvFromRT(pmremGen().fromScene(room, 0.04), null)
   room.dispose()
@@ -674,7 +680,7 @@ function presetEquirect(p) {
 }
 function presetIBL(name) {
   envLoadGuard.invalidate()
-  envPanoInflightUrl = ''
+  invalidatePanoInflight()
   const p = ENV_PRESETS[name]
   if (!p || p.builtin) return roomIBL()
   const tex = presetEquirect(p)
@@ -696,7 +702,7 @@ function effectiveEnvSource() {
 /** 全景不可用时的兜底：按 config 里的 environment.preset 渲染，而非 roomIBL */
 function applyEnvFallback() {
   envLoadGuard.invalidate()
-  envPanoInflightUrl = ''
+  invalidatePanoInflight()
   const preset = effectiveEnvPreset()
   if (preset === 'room') roomIBL()
   else presetIBL(preset)
@@ -709,15 +715,18 @@ function commitPanoramaAssets(url) {
 }
 function panoramaIBL(url, opts = {}) {
   if (!url) return Promise.reject(new Error('empty panorama url'))
-  if (url === envPanoInflightUrl) return Promise.resolve()
-  envPanoInflightUrl = url
+  const { commitUrl = null } = opts
+  if (envPanoInflight?.url === url) {
+    if (commitUrl != null) envPanoInflight.commitUrl = commitUrl
+    return envPanoInflight.promise
+  }
   const token = envLoadGuard.next()
   const expectedUrl = url
-  const { commitUrl = null } = opts
-  return new Promise((resolve, reject) => {
-    new THREE.TextureLoader().load(url, tex => {
+  const entry = { url, commitUrl, promise: null }
+  entry.promise = new Promise((resolve, reject) => {
+    const finishOk = tex => {
       if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
-      if (commitUrl != null) commitPanoramaAssets(commitUrl)
+      if (entry.commitUrl != null) commitPanoramaAssets(entry.commitUrl)
       const src = resolveEnvSource(cfg)
       if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
       tex.mapping = THREE.EquirectangularReflectionMapping
@@ -728,17 +737,41 @@ function panoramaIBL(url, opts = {}) {
       setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
       if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
       resolve()
-    }, undefined, () => {
-      // 全景文件缺失/加载失败：真正生效的是预设兜底，编辑器不能还显示「全景图」
+    }
+    const finishErr = () => {
       if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); resolve(); return }
       releasePanoInflight(expectedUrl)
       envPanoFailed = expectedUrl
       applyEnvFallback()
       if (typeof window.__edRefresh === 'function') window.__edRefresh()
-      if (commitUrl != null) reject(new Error('panorama load failed'))
+      if (entry.commitUrl != null) reject(new Error('panorama load failed'))
       else resolve()
-    })
+    }
+    if (editMode && panoramaLoadMockEnabled) {
+      panoramaLoadMockEntry = { entry, token, expectedUrl, finishOk, finishErr, resolve, reject }
+      return
+    }
+    new THREE.TextureLoader().load(url, finishOk, undefined, finishErr)
   })
+  envPanoInflight = entry
+  return entry.promise
+}
+
+function resolvePanoramaLoadMock() {
+  if (!panoramaLoadMockEntry) return false
+  const { finishOk } = panoramaLoadMockEntry
+  panoramaLoadMockEntry = null
+  const cv = document.createElement('canvas'); cv.width = 4; cv.height = 2
+  finishOk(new THREE.CanvasTexture(cv))
+  return true
+}
+
+function rejectPanoramaLoadMock() {
+  if (!panoramaLoadMockEntry) return false
+  const { finishErr } = panoramaLoadMockEntry
+  panoramaLoadMockEntry = null
+  finishErr()
+  return true
 }
 /* 开场同步给出环境（预设是画布生成的，无需等待）；全景走异步，可与模型并行加载 */
 function bootEnvironment() {
@@ -1399,7 +1432,7 @@ function applyLoadedModel(gltfScene, { loadTag = null } = {}) {
 function reloadModel(url, opts = {}) {
   const { revoke = false, commitModelPath = null, loadTag = null } = opts
   const generation = ++modelLoadGeneration
-  modelPreviewOnly = commitModelPath == null
+  const previousPreviewOnly = modelPreviewOnly
 
   const settleSuccess = gltfScene => {
     if (generation !== modelLoadGeneration) {
@@ -1413,6 +1446,8 @@ function reloadModel(url, opts = {}) {
       cfg.assets = cfg.assets || {}
       cfg.assets.model = commitModelPath
       modelPreviewOnly = false
+    } else {
+      modelPreviewOnly = true
     }
     if (window.__edRefresh) window.__edRefresh()
     return { ok: true, stale: false, committed: commitModelPath }
@@ -1422,6 +1457,7 @@ function reloadModel(url, opts = {}) {
       if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
       return { ok: false, stale: true }
     }
+    modelPreviewOnly = previousPreviewOnly
     if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
     throw err || new Error('model load failed')
   }
@@ -1541,6 +1577,7 @@ async function boot() {
       if (!res.ok) throw new Error(`HTTP ${res.status} · ${url}`)
       cfg = await res.json()
     }
+    /* VIEWER-BOOT-HOTSPOT-START — build-viewer 替换为 ensureHotspotIds */
     if (editMode) {
       hotspotIdBootAudit = null
       hotspotIdBootChanges = []
@@ -1550,6 +1587,7 @@ async function boot() {
     } else {
       ensureHotspotIds(cfg.hotspots || [])
     }
+    /* VIEWER-BOOT-HOTSPOT-END */
     if (!cfg?.assets?.model) { showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true); return }
     if (!initRenderer()) { showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信'); return }
     document.title = t(cfg.i18n).title || '立体鉴赏'
@@ -2638,6 +2676,12 @@ if (editMode) {
     },
     resolveModelLoadMock: (tag) => resolveModelLoadMock(tag),
     rejectModelLoadMock: (tag, msg) => rejectModelLoadMock(tag, msg),
+    enablePanoramaLoadMock: () => { panoramaLoadMockEnabled = true; panoramaLoadMockEntry = null },
+    disablePanoramaLoadMock: () => { panoramaLoadMockEnabled = false; panoramaLoadMockEntry = null },
+    panoramaLoadForTest: (relUrl, opts) => panoramaIBL(asset(relUrl), opts),
+    resolvePanoramaLoadMock: () => resolvePanoramaLoadMock(),
+    rejectPanoramaLoadMock: () => rejectPanoramaLoadMock(),
+    panoramaInflightUrl: () => envPanoInflight?.url ?? '',
   }
 }
 /* TEST-HOOKS-END */

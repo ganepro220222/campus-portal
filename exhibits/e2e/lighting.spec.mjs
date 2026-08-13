@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { gotoPlayer, reloadPlayer, releaseWebGL } from './helpers.mjs'
+import { gotoPlayer, reloadPlayer, releaseWebGL, baseCfg } from './helpers.mjs'
 
 /** 3D 用例串行 + 复用同一 page，避免重复冷启动 WebGL */
 test.describe.configure({ mode: 'serial', timeout: 180_000 })
@@ -148,7 +148,9 @@ test.describe('灯光面板', () => {
 
 test.describe('地面反射光（第五盏）', () => {
   test('旧配置里没有 bounce 键 → 面板显示未勾选，场景里也不亮', async () => {
-    await reloadPlayer(page, {})
+    const lights = { ...baseCfg().lights }
+    delete lights.bounce
+    await reloadPlayer(page, { lights, lightsReplace: true })
     await openLightSection()
     await expect(page.locator('#editor [data-lon="bounce"]')).not.toBeChecked()
     const st = await lightState()

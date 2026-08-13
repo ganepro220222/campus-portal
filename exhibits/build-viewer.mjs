@@ -32,6 +32,9 @@ export const UPLOAD_JS_COPIES = [
   ['leader-geom.js', 'leader-geom.js'],
 ]
 
+/** 各展品目录内随 --upload 同步的轻量文件（不含 assets/ 大资源） */
+export const UPLOAD_EXHIBIT_FILES = ['config.json', 'index.html']
+
 const VIEWER_FORBIDDEN = [
   'bootstrapHotspotIds',
   'hotspotIdBootAudit',
@@ -126,6 +129,28 @@ export function syncUploadModules() {
   }
 }
 
+/** 同步 craft-XXX/config.json（及 index.html 壳页），不复制 assets/ */
+export function syncUploadExhibits(uploadDir = UPLOAD_DIR) {
+  const copied = []
+  for (const name of fs.readdirSync(ROOT)) {
+    if (!name.startsWith('craft-') || name.startsWith('_')) continue
+    const srcDir = path.join(ROOT, name)
+    let st
+    try { st = fs.statSync(srcDir) } catch { continue }
+    if (!st.isDirectory()) continue
+    if (!fs.existsSync(path.join(srcDir, 'config.json'))) continue
+    const dstDir = path.join(uploadDir, name)
+    fs.mkdirSync(dstDir, { recursive: true })
+    for (const file of UPLOAD_EXHIBIT_FILES) {
+      const src = path.join(srcDir, file)
+      if (!fs.existsSync(src)) continue
+      fs.copyFileSync(src, path.join(dstDir, file))
+      copied.push(`${name}/${file}`)
+    }
+  }
+  return copied
+}
+
 export function assertViewerBuild(viewHtml = buildViewerSrc()) {
   const sem = validateViewerSemantics(viewHtml)
   if (!sem.ok) throw new Error(sem.reason)
@@ -137,7 +162,8 @@ function usage() {
 
   (default)  Write player.view.html from player.html (+ semantic validation)
   --check    Exit 1 if player.view.html differs or fails semantic validation
-  --upload   Also write exhibits-upload/player.view.html (.js imports), sync module .js copies, verify imports`)
+  --upload   Also write exhibits-upload/player.view.html (.js imports), sync module .js copies,
+             craft-XXX/config.json (+ index.html), verify imports`)
 }
 
 const check = process.argv.includes('--check')
@@ -179,14 +205,17 @@ if (upload) {
   }
   fs.writeFileSync(UPLOAD_OUT, uploadHtml, 'utf8')
   syncUploadModules()
+  const exhibitFiles = syncUploadExhibits()
   const missing = checkHtmlImports(UPLOAD_OUT)
   if (missing.length) {
     console.error('exhibits-upload missing imports:', missing.join(', '))
-    console.error('Note: vendor/ and exhibit folders must already exist in the upload directory.')
+    console.error('Note: vendor/ and exhibit assets must already exist in the upload directory.')
     process.exit(1)
   }
   console.log('exhibits-upload/player.view.html written (.js imports)')
   console.log('exhibits-upload/*.js module copies synced')
+  if (exhibitFiles.length) console.log('exhibits-upload exhibit files synced:', exhibitFiles.join(', '))
+  else console.log('exhibits-upload: no craft-XXX/config.json to sync')
   console.log('exhibits-upload relative imports OK')
 }
 }

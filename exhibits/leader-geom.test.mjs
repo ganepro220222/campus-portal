@@ -15,7 +15,7 @@ import {
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
 import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, validateViewerSemantics, checkHtmlImports, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, validateViewerSemantics, checkHtmlImports, UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -568,6 +568,10 @@ test('upload pack includes leader-geom.js and resolves player imports', () => {
     const missing = checkHtmlImports(path.join(uploadDir, 'player.view.html'))
     assert.deepEqual(missing, [], `missing upload imports: ${missing.join(', ')}`)
     assert.ok(fs.existsSync(path.join(uploadDir, 'leader-geom.js')), 'leader-geom.js must be in upload pack')
+    const synced = syncUploadExhibits(uploadDir)
+    assert.ok(synced.includes('craft-001/config.json'), 'craft-001/config.json must sync on --upload')
+    const cfg = JSON.parse(fs.readFileSync(path.join(uploadDir, 'craft-001/config.json'), 'utf8'))
+    assert.equal(cfg.i18n.en.title, JSON.parse(fs.readFileSync(path.join(ROOT, 'craft-001/config.json'), 'utf8')).i18n.en.title)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }

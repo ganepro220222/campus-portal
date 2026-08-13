@@ -240,6 +240,24 @@ export function verifyUploadAssets(uploadDir = UPLOAD_DIR) {
   return { ok: errors.length === 0, present, errors, warnings }
 }
 
+/** 写入 upload 前的预检：可选先同步资产，再校验资源与运行时依赖（不写 viewer/config） */
+export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAssets = false } = {}) {
+  if (doAssets) syncUploadAssets(uploadDir)
+  const assets = verifyUploadAssets(uploadDir)
+  if (!assets.ok) return { ok: false, stage: 'assets', assets }
+  const tmpHtml = path.join(uploadDir, '.preflight-player.view.html.tmp')
+  fs.writeFileSync(tmpHtml, uploadHtml, 'utf8')
+  try {
+    const missingImports = checkHtmlImports(tmpHtml)
+    if (missingImports.length) return { ok: false, stage: 'imports', missing: missingImports, assets }
+    const missingRuntime = checkUploadRuntimeDeps(uploadDir, tmpHtml)
+    if (missingRuntime.length) return { ok: false, stage: 'runtime', missing: missingRuntime, assets }
+  } finally {
+    try { fs.unlinkSync(tmpHtml) } catch { /* ignore */ }
+  }
+  return { ok: true, assets }
+}
+
 /** @deprecated use verifyUploadAssets */
 export function auditUploadAssetRefs(uploadDir = UPLOAD_DIR) {
   const v = verifyUploadAssets(uploadDir)
@@ -459,39 +477,35 @@ if (upload) {
     console.error('upload viewer semantics:', uploadSem.reason)
     process.exit(1)
   }
+  if (uploadAssets) {
+    const assetFiles = syncUploadAssets(UPLOAD_DIR)
+    if (assetFiles.length) console.log('exhibits-upload assets synced:', assetFiles.join(', '))
+  }
+  const pre = runUploadPreflight(UPLOAD_DIR, uploadHtml, { uploadAssets: false })
+  if (!pre.ok) {
+    if (pre.stage === 'assets') {
+      console.error('exhibits-upload asset errors (model must match source; no files written):')
+      for (const e of pre.assets.errors) console.error('  -', e)
+      console.error('Run: node build-viewer.mjs --upload-assets --upload')
+    } else if (pre.stage === 'imports') {
+      console.error('exhibits-upload missing imports (no files written):', pre.missing.join(', '))
+    } else {
+      console.error('exhibits-upload missing runtime deps (no files written):', pre.missing.join(', '))
+      console.error('First deploy: node build-viewer.mjs --upload-init --upload-assets --upload')
+    }
+    process.exit(1)
+  }
   fs.writeFileSync(UPLOAD_OUT, uploadHtml, 'utf8')
   syncUploadModules()
   const exhibitFiles = syncUploadExhibits()
-  if (uploadAssets) {
-    const assetFiles = syncUploadAssets()
-    if (assetFiles.length) console.log('exhibits-upload assets synced:', assetFiles.join(', '))
-  }
-  const missingImports = checkHtmlImports(UPLOAD_OUT)
-  if (missingImports.length) {
-    console.error('exhibits-upload missing imports:', missingImports.join(', '))
-    process.exit(1)
-  }
-  const missingRuntime = checkUploadRuntimeDeps(UPLOAD_DIR, UPLOAD_OUT)
-  if (missingRuntime.length) {
-    console.error('exhibits-upload missing runtime deps:', missingRuntime.join(', '))
-    console.error('First deploy: node build-viewer.mjs --upload-init --upload-assets --upload')
-    process.exit(1)
-  }
-  const assets = verifyUploadAssets()
   console.log('exhibits-upload/player.view.html written (.js imports)')
   console.log('exhibits-upload/*.js module copies synced')
   if (exhibitFiles.length) console.log('exhibits-upload exhibit files synced:', exhibitFiles.join(', '))
   else console.log('exhibits-upload: no craft-XXX/config.json to sync')
-  if (assets.present.length) console.log('exhibits-upload asset refs OK:', assets.present.length)
-  if (assets.warnings.length) {
+  if (pre.assets.present.length) console.log('exhibits-upload asset refs OK:', pre.assets.present.length)
+  if (pre.assets.warnings.length) {
     console.warn('exhibits-upload asset warnings:')
-    for (const w of assets.warnings) console.warn('  -', w)
-  }
-  if (!assets.ok) {
-    console.error('exhibits-upload asset errors (model must match source):')
-    for (const e of assets.errors) console.error('  -', e)
-    console.error('Run: node build-viewer.mjs --upload-assets --upload')
-    process.exit(1)
+    for (const w of pre.assets.warnings) console.warn('  -', w)
   }
   console.log('exhibits-upload verify OK')
 }

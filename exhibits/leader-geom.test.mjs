@@ -17,7 +17,7 @@ import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, syncUploadAssets,
   initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
-  collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+  collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -616,6 +616,32 @@ test('--upload detects stale model vs source', () => {
     const assets = verifyUploadAssets(uploadDir)
     assert.equal(assets.ok, false)
     assert.ok(assets.errors.some(e => e.includes('stale model')))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('runUploadPreflight failure does not require prior viewer write', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    initUploadVendor(uploadDir)
+    syncUploadAssets(uploadDir)
+    const cfgPath = path.join(uploadDir, 'craft-001/config.json')
+    const oldCfg = fs.readFileSync(cfgPath, 'utf8')
+    const modelPath = path.join(uploadDir, 'craft-001/assets/model.glb')
+    assert.ok(fs.existsSync(modelPath), 'fixture model must exist before delete')
+    fs.unlinkSync(modelPath)
+    for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
+      fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
+    }
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const pre = runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: false })
+    assert.equal(pre.ok, false)
+    assert.equal(pre.stage, 'assets')
+    assert.equal(fs.readFileSync(cfgPath, 'utf8'), oldCfg)
+    assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), false)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }

@@ -243,12 +243,12 @@
 </script>
 <script>
 window.__SY_PLAYER = Object.assign(
-  { module: false, bootStarted: false, ready: false, bootTimeoutMs: 12000 },
+  { module: false, bootStarted: false, ready: false, failed: false, bootTimeoutMs: 12000 },
   window.__SY_PLAYER || {}
 )
 setTimeout(function () {
   var p = window.__SY_PLAYER
-  if (p.ready || p.bootStarted) return
+  if (p.ready || p.bootStarted || p.failed) return
   var msg = '播放器模块加载失败。请在 exhibits 目录运行：python serve.py 8199  或  node _server/studio-server.mjs（不要用 python -m http.server）'
   var loading = document.getElementById('loading')
   var err = document.getElementById('error')
@@ -317,6 +317,15 @@ function showError(msg, retry) {
   $('err-btn').toggleAttribute('hidden', !retry)
   $('error').removeAttribute('hidden')
 }
+
+/** 确定性失败：终止 watchdog，避免超时文案覆盖真实错误 */
+function failPlayer(msg, retry = true) {
+  window.__SY_PLAYER.failed = true
+  ++_bootGeneration
+  ++_startGeneration
+  clearTimeout(_bootWatchdog)
+  showError(msg, retry)
+}
 const num = (v,d) => (typeof v === 'number' && isFinite(v)) ? v : d
 
 let _bootWatchdog = 0
@@ -334,16 +343,13 @@ function markPlayerReady() {
 }
 
 function abortPendingBoot(msg) {
-  ++_bootGeneration
-  ++_startGeneration
-  clearTimeout(_bootWatchdog)
-  showError(msg, true)
+  failPlayer(msg, true)
 }
 
 function scheduleBootWatchdog(gen) {
   clearTimeout(_bootWatchdog)
   _bootWatchdog = setTimeout(() => {
-    if (window.__SY_PLAYER.ready) return
+    if (window.__SY_PLAYER.ready || window.__SY_PLAYER.failed) return
     if (gen !== _bootGeneration) return
     abortPendingBoot('配置或模型加载超时，请检查网络与展品 config.json、assets/model.glb')
   }, bootTimeoutMs())
@@ -1509,7 +1515,7 @@ function start() {
   buildLights() // 五光源灯组（叠加在 IBL 上，可编辑）
 
   const modelUrl = asset(cfg.assets.model)
-  if (!modelUrl) return showError('模型地址无效', true)
+  if (!modelUrl) return failPlayer('模型地址无效', true)
 
   const modelTimer = setTimeout(() => {
     if (window.__SY_PLAYER.ready || gen !== _startGeneration) return
@@ -1535,7 +1541,7 @@ function start() {
   }, () => {
     clearTimeout(modelTimer)
     if (gen !== _startGeneration) return
-    showError('模型加载失败，请检查网络后重试', true)
+    failPlayer('模型加载失败，请检查网络后重试', true)
   })
 
   addEventListener('resize', onResize)
@@ -1564,6 +1570,7 @@ async function boot() {
   const gen = ++_bootGeneration
   window.__SY_PLAYER.bootStarted = true
   window.__SY_PLAYER.ready = false
+  window.__SY_PLAYER.failed = false
   scheduleBootWatchdog(gen)
   $('error').setAttribute('hidden',''); $('loading').removeAttribute('hidden'); $('loading').classList.remove('fade')
   try {
@@ -1576,8 +1583,8 @@ async function boot() {
     }
     if (gen !== _bootGeneration) return
     ensureHotspotIds(cfg.hotspots || [])
-    if (!cfg?.assets?.model) { showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true); return }
-    if (!initRenderer()) { showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信'); return }
+    if (!cfg?.assets?.model) { failPlayer('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true); return }
+    if (!initRenderer()) { failPlayer('当前浏览器不支持 3D 展示，请更换浏览器或升级微信', false); return }
     document.title = t(cfg.i18n).title || '立体鉴赏'
     if (cfg.assets.poster) { $('poster').style.backgroundImage=`url("${asset(cfg.assets.poster)}")`; $('poster').classList.add('on') }
     if (editMode) $('ed-badge').removeAttribute('hidden')
@@ -1588,7 +1595,7 @@ async function boot() {
     const msg = (e?.name === 'AbortError')
       ? '配置加载超时，请检查网络后重试'
       : '配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）'
-    showError(msg, true)
+    failPlayer(msg, true)
   }
   finally { _bootInflight = false }
 }

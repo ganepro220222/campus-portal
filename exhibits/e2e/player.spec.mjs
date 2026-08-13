@@ -696,6 +696,39 @@ test.describe('boot timeout', () => {
     await releaseWebGL(page)
     await page.close()
   })
+
+  test('config HTTP error is not overwritten by boot watchdog', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { bootTimeoutMs: 800, module: false, bootStarted: false, ready: false, failed: false }
+    })
+    await page.route('**/craft-001/config.json*', route => route.fulfill({ status: 404, body: 'missing' }))
+    await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('#error:not([hidden])', { timeout: 5000 })
+    await expect(page.locator('#err-text')).toContainText(/HTTP 404/)
+    await page.waitForTimeout(1200)
+    await expect(page.locator('#err-text')).toContainText(/HTTP 404/)
+    await expect(page.locator('#err-text')).not.toContainText(/加载超时/)
+    await releaseWebGL(page)
+    await page.close()
+  })
+
+  test('model load error is not overwritten by boot watchdog', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { bootTimeoutMs: 800, module: false, bootStarted: false, ready: false, failed: false }
+    })
+    await injectCfg(page)
+    await page.route('**/craft-001/assets/model.glb', route => route.abort('failed'))
+    await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('#error:not([hidden])', { timeout: 15000 })
+    await expect(page.locator('#err-text')).toContainText('模型加载失败')
+    await page.waitForTimeout(1200)
+    await expect(page.locator('#err-text')).toContainText('模型加载失败')
+    await expect(page.locator('#err-text')).not.toContainText(/配置或模型加载超时/)
+    await releaseWebGL(page)
+    await page.close()
+  })
 })
 
 test.describe('model load failure retry', () => {

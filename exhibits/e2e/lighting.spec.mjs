@@ -203,6 +203,7 @@ test.describe('落地阴影', () => {
   })
 
   test('展台默认随阴影开启，可单独关掉换回纯接影面', async () => {
+    await reloadPlayer(page, { shadow: { enabled: true, plate: true, groundOffset: 0 } })
     let st = await lightState()
     expect(st.shadow.plate).toBe(true)
     expect(st.shadow.plateColor).toBe('#2b2f3a')

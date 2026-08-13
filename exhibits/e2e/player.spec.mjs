@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import {
   gotoPlayer, reloadPlayer, openFirstHotspot, openFirstHotspotNoWait, closeHotspotIfOpen,
   calloutSnapshot, dragState, editCalloutUiState, parseLeaderPoints, segmentCount,
-  gotoViewerReady, releaseWebGL,
+  gotoViewerReady, releaseWebGL, injectCfg, waitForPlayerReady,
   viewerPendingEscapeSync,
 } from './helpers.mjs'
 
@@ -440,6 +440,32 @@ test.describe('editor preset row layout', () => {
     await expect(checkbox).not.toBeChecked()
     await checkbox.click()
     await expect(checkbox).toBeChecked()
+  })
+})
+
+test.describe('strict WebKit startup', () => {
+  test('WeChat UA defers panorama until model ready', async ({ browser }) => {
+    const p = await browser.newPage()
+    await p.addInitScript(() => {
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.42',
+      })
+    })
+    await injectCfg(p)
+    await p.setViewportSize({ width: 390, height: 844 })
+    await p.goto('/player.html?ex=craft-001&mode=edit', { waitUntil: 'domcontentloaded' })
+    await waitForPlayerReady(p)
+    const flags = await p.evaluate(() => ({
+      strict: window.__SY_TEST__.strictWebKitHost(),
+      defer: window.__SY_TEST__.deferPanoramaIBL(),
+    }))
+    expect(flags.strict).toBe(true)
+    expect(flags.defer).toBe(true)
+    const st = await p.evaluate(() => window.__SY_TEST__.lightState())
+    expect(st.hasEnvMap).toBe(true)
+    await releaseWebGL(p)
+    await p.close()
   })
 })
 

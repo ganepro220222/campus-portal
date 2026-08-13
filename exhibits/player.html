@@ -339,6 +339,15 @@ const EX = (params.get('ex') || '').replace(/^\/+|\/+$/g, '')
 const BASE = EX ? EX + '/' : ''
 const asset = p => (!p || /^(https?:|data:|blob:|\/\/|\/)/.test(p)) ? p : BASE + p   // 相对路径补展品目录前缀
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
+/** Safari / 微信内置浏览器内存配额更严，并行 WebGL+GLB+全景 PMREM 易触发整页重载 */
+function isStrictWebKitHost() {
+  const ua = navigator.userAgent || ''
+  if (/MicroMessenger/i.test(ua)) return true
+  if (/Safari/i.test(ua) && !/Chrome|CriOS|Chromium|Edg|OPR|FxiOS|UCBrowser|Quark|360/i.test(ua)) return true
+  return false
+}
+const strictWebKit = isStrictWebKitHost()
+const deferPanoramaIBL = strictWebKit
 let lang = 'zh'
 let cfg, renderer, scene, camera, controls, model
 let hotspots = [], activePreset = null, raf = 0
@@ -367,13 +376,19 @@ function showError(msg, retry) {
 const num = (v,d) => (typeof v === 'number' && isFinite(v)) ? v : d
 
 function initRenderer() {
+  const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 768
   try {
-    renderer = new THREE.WebGLRenderer({ canvas:$('scene'), antialias:true, powerPreference:'high-performance', preserveDrawingBuffer:editMode })
+    renderer = new THREE.WebGLRenderer({
+      canvas: $('scene'),
+      antialias: !(strictWebKit && isMobile),
+      powerPreference: strictWebKit ? 'default' : 'high-performance',
+      preserveDrawingBuffer: editMode,
+    })
   } catch(e){ return false }
   // 移动端像素比自适应：手机限流以省 GPU/发热，桌面放开到高清
-  const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 768
-  const cap = isMobile ? num(cfg.performance?.mobilePixelRatio, 1.5)
-                       : num(cfg.performance?.desktopPixelRatio, cfg.renderer?.maxPixelRatio || 2)
+  let cap = isMobile ? num(cfg.performance?.mobilePixelRatio, 1.5)
+                     : num(cfg.performance?.desktopPixelRatio, cfg.renderer?.maxPixelRatio || 2)
+  if (strictWebKit) cap = Math.min(cap, num(cfg.performance?.strictWebKitPixelRatio, isMobile ? 1 : 1.5))
   const dpr = Math.min(window.devicePixelRatio||1, cap)
   renderer.setPixelRatio(dpr)
   renderer.setSize(innerWidth, innerHeight)
@@ -606,8 +621,13 @@ function applyEnvironment() {
 let _pmrem = null, envRT = null, envBg = null
 const envLoadGuard = createEnvLoadGuard()
 let envPanoFailed = ''   // 记下加载失败的全景地址，供编辑器如实显示当前环境
+let envPanoInflightUrl = ''  // 同一全景 URL 只发起一次加载，避免并行 + 模型回调重复请求
+function releasePanoInflight(url) {
+  if (envPanoInflightUrl === url) envPanoInflightUrl = ''
+}
 function pmremGen() { if (!_pmrem) _pmrem = new THREE.PMREMGenerator(renderer); return _pmrem }
 function setEnvFromRT(rt, bg) {
+  if (!scene) return
   if (envRT && envRT !== rt) envRT.dispose()
   envRT = rt
   scene.environment = rt ? rt.texture : null
@@ -618,6 +638,7 @@ function setEnvFromRT(rt, bg) {
 }
 function roomIBL() {
   envLoadGuard.invalidate()
+  envPanoInflightUrl = ''
   const room = new RoomEnvironment()
   setEnvFromRT(pmremGen().fromScene(room, 0.04), null)
   room.dispose()
@@ -653,6 +674,7 @@ function presetEquirect(p) {
 }
 function presetIBL(name) {
   envLoadGuard.invalidate()
+  envPanoInflightUrl = ''
   const p = ENV_PRESETS[name]
   if (!p || p.builtin) return roomIBL()
   const tex = presetEquirect(p)
@@ -674,45 +696,62 @@ function effectiveEnvSource() {
 /** 全景不可用时的兜底：按 config 里的 environment.preset 渲染，而非 roomIBL */
 function applyEnvFallback() {
   envLoadGuard.invalidate()
+  envPanoInflightUrl = ''
   const preset = effectiveEnvPreset()
   if (preset === 'room') roomIBL()
   else presetIBL(preset)
 }
 function panoramaIBL(url) {
+  if (!url) return
+  if (url === envPanoInflightUrl) return
+  envPanoInflightUrl = url
   const token = envLoadGuard.next()
   const expectedUrl = url
   new THREE.TextureLoader().load(url, tex => {
-    if (!envLoadGuard.isCurrent(token)) { tex.dispose(); return }
+    if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); return }
     const src = resolveEnvSource(cfg)
-    if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); return }
+    if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); return }
     tex.mapping = THREE.EquirectangularReflectionMapping
     tex.colorSpace = THREE.SRGBColorSpace
     const recovered = envPanoFailed === expectedUrl
     envPanoFailed = ''
+    releasePanoInflight(expectedUrl)
     setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
     if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
   }, undefined, () => {
     // 全景文件缺失/加载失败：真正生效的是预设兜底，编辑器不能还显示「全景图」
-    if (!envLoadGuard.isCurrent(token)) return
+    if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); return }
+    releasePanoInflight(expectedUrl)
     envPanoFailed = expectedUrl
     applyEnvFallback()
     if (typeof window.__edRefresh === 'function') window.__edRefresh()
   })
 }
-/* 开场同步给出环境（预设是画布生成的，无需等待）；全景走异步，先用兜底顶着 */
+/* 开场同步给出环境（预设是画布生成的，无需等待）；全景走异步，可与模型并行加载 */
 function bootEnvironment() {
   const src = resolveEnvSource(cfg)
   if (src.kind === 'preset') presetIBL(src.preset); else roomIBL()
 }
+/** 全景模式：异步拉取全景 IBL（preset/room 已在 bootEnvironment 同步就位） */
+function kickPanoramaIBLIfNeeded() {
+  const src = resolveEnvSource(cfg)
+  if (src.kind !== 'panorama') return
+  if (envPanoFailed && asset(src.url) === envPanoFailed) {
+    applyEnvFallback()
+    return
+  }
+  panoramaIBL(asset(src.url))
+}
+/** 严格 WebKit：模型首帧后再拉全景 PMREM，降低峰值内存 */
+function scheduleDeferredPanoramaIBL() {
+  const run = () => kickPanoramaIBLIfNeeded()
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2500 })
+  else setTimeout(run, 400)
+}
 function applyEnvironmentIBL() {
   const src = resolveEnvSource(cfg)
-  if (src.kind === 'panorama') {
-    if (envPanoFailed && asset(src.url) === envPanoFailed) {
-      applyEnvFallback()
-      return
-    }
-    panoramaIBL(asset(src.url))
-  } else if (src.kind === 'preset') presetIBL(src.preset)
+  if (src.kind === 'panorama') kickPanoramaIBLIfNeeded()
+  else if (src.kind === 'preset') presetIBL(src.preset)
   else roomIBL()
 }
 
@@ -1329,6 +1368,7 @@ function start() {
   controls.addEventListener('start', ()=>{ controls.autoRotate=false; syncBtns() })
   bootEnvironment() // 先给内置环境/程序化预设，秒出反射
   applyEnvironment() // 环境光照强度 / 全景旋转
+  if (!deferPanoramaIBL) kickPanoramaIBLIfNeeded() // 桌面/Chrome：全景与模型并行，缩短 Room 兜底窗口
   buildLights() // 五光源灯组（叠加在 IBL 上，可编辑）
 
   const modelUrl = asset(cfg.assets.model)
@@ -1338,11 +1378,10 @@ function start() {
     model = gltf.scene
     normalize(model); applyMaterial(); scene.add(model); applyShadow()
     placeCamera(); buildHotspots(); buildHUD(); renderText(); buildAudio(); wireAudio()
-    // 全景 IBL 后台加载，平滑接管（预设环境已在 bootEnvironment 同步就位）
-    applyEnvironmentIBL()
     $('topbar').removeAttribute('hidden'); $('hud').removeAttribute('hidden')
     $('loading').classList.add('fade'); setTimeout(()=>$('loading').setAttribute('hidden',''), 460)
     $('hint').classList.add('show'); setTimeout(()=>$('hint').classList.remove('show'), 2600)
+    if (deferPanoramaIBL) scheduleDeferredPanoramaIBL()
     if (editMode && typeof buildEditor === 'function') buildEditor()
     animate()
   }, evt => {
@@ -1368,7 +1407,10 @@ function start() {
   })
 }
 
+let _bootInflight = false
 async function boot() {
+  if (_bootInflight) return
+  _bootInflight = true
   window.__SY_PLAYER.booted = true
   $('error').setAttribute('hidden',''); $('loading').removeAttribute('hidden'); $('loading').classList.remove('fade')
   try {
@@ -1379,26 +1421,27 @@ async function boot() {
       if (!res.ok) throw new Error(`HTTP ${res.status} · ${url}`)
       cfg = await res.json()
     }
+    if (editMode) {
+      hotspotIdBootAudit = null
+      hotspotIdBootChanges = []
+      const boot = bootstrapHotspotIds(cfg.hotspots || [])
+      hotspotIdBootAudit = boot.audit
+      hotspotIdBootChanges = boot.changes
+    } else {
+      ensureHotspotIds(cfg.hotspots || [])
+    }
+    if (!cfg?.assets?.model) { showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true); return }
+    if (!initRenderer()) { showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信'); return }
+    document.title = t(cfg.i18n).title || '立体鉴赏'
+    if (cfg.assets.poster) { $('poster').style.backgroundImage=`url("${asset(cfg.assets.poster)}")`; $('poster').classList.add('on') }
+    if (editMode) $('ed-badge').removeAttribute('hidden')
+    start()
   }
-  catch(e){ return showError('配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）', true) }
-  if (editMode) {
-    hotspotIdBootAudit = null
-    hotspotIdBootChanges = []
-    const boot = bootstrapHotspotIds(cfg.hotspots || [])
-    hotspotIdBootAudit = boot.audit
-    hotspotIdBootChanges = boot.changes
-  } else {
-    ensureHotspotIds(cfg.hotspots || [])
-  }
-  if (!cfg?.assets?.model) return showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true)
-  if (!initRenderer()) return showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信')
-  document.title = t(cfg.i18n).title || '立体鉴赏'
-  if (cfg.assets.poster) { $('poster').style.backgroundImage=`url("${asset(cfg.assets.poster)}")`; $('poster').classList.add('on') }
-  if (editMode) $('ed-badge').removeAttribute('hidden')
-  start()
+  catch(e){ showError('配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）', true) }
+  finally { _bootInflight = false }
 }
 
-$('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); boot() }
+$('err-btn').onclick = ()=>{ cancelAnimationFrame(raf); _bootInflight = false; boot() }
 
 /* EDITOR-JS-START （导出仅观看版时整段剔除） */
 /* ── 编辑模式：纯前端调参；可导出 config，或通过保存服务写回 ──
@@ -2408,6 +2451,8 @@ if (editMode) {
       try { renderer?.dispose?.() } catch (_) {}
       return true
     },
+    strictWebKitHost: () => strictWebKit,
+    deferPanoramaIBL: () => deferPanoramaIBL,
   }
 }
 /* TEST-HOOKS-END */

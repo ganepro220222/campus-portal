@@ -20,6 +20,10 @@ export const VIEWER_LIGHT_RIG_IMPORTS = [
   'createEnvLoadGuard',
 ]
 
+const UPLOAD_DIR = path.join(ROOT, '..', 'exhibits-upload')
+const UPLOAD_OUT = path.join(UPLOAD_DIR, 'player.view.html')
+const UPLOAD_MODULES = ['hotspot-id', 'player-persist', 'light-rig', 'material-override']
+
 export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
   return playerHtml
     .replace(/\r\n/g, '\n')
@@ -43,14 +47,31 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
     .replace(/\n+$/, '\n')
 }
 
+/** Nginx 未配置 .mjs MIME 时，部署包须 import .js 副本 */
+export function buildUploadViewerSrc(viewerSrc = buildViewerSrc()) {
+  let out = viewerSrc
+  for (const name of UPLOAD_MODULES) {
+    out = out.replace(new RegExp(`from '\\./${name}\\.mjs'`, 'g'), `from './${name}.js'`)
+  }
+  return out
+}
+
+export function syncUploadModules() {
+  for (const name of UPLOAD_MODULES) {
+    fs.copyFileSync(path.join(ROOT, `${name}.mjs`), path.join(UPLOAD_DIR, `${name}.js`))
+  }
+}
+
 function usage() {
-  console.log(`Usage: node build-viewer.mjs [--check]
+  console.log(`Usage: node build-viewer.mjs [--check] [--upload]
 
   (default)  Write player.view.html from player.html
-  --check    Exit 1 if player.view.html differs from generated output (byte-identical)`)
+  --check    Exit 1 if player.view.html differs from generated output (byte-identical)
+  --upload   Also write exhibits-upload/player.view.html (.js imports) and sync module .js copies`)
 }
 
 const check = process.argv.includes('--check')
+const upload = process.argv.includes('--upload')
 if (isMain) {
 if (process.argv.includes('-h') || process.argv.includes('--help')) {
   usage()
@@ -77,4 +98,12 @@ if (check) {
 
 fs.writeFileSync(OUT, next, 'utf8')
 console.log('player.view.html written')
+
+if (upload) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true })
+  fs.writeFileSync(UPLOAD_OUT, buildUploadViewerSrc(next), 'utf8')
+  syncUploadModules()
+  console.log('exhibits-upload/player.view.html written (.js imports)')
+  console.log('exhibits-upload/*.js module copies synced')
+}
 }

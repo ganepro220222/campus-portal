@@ -641,30 +641,43 @@ function applyEnvFallback() {
   if (preset === 'room') roomIBL()
   else presetIBL(preset)
 }
-function panoramaIBL(url) {
-  if (!url) return
-  if (url === envPanoInflightUrl) return
+function commitPanoramaAssets(url) {
+  cfg.assets = cfg.assets || {}
+  cfg.assets.panorama = url
+  cfg.environment = cfg.environment || {}
+  cfg.environment.mode = 'panorama'
+}
+function panoramaIBL(url, opts = {}) {
+  if (!url) return Promise.reject(new Error('empty panorama url'))
+  if (url === envPanoInflightUrl) return Promise.resolve()
   envPanoInflightUrl = url
   const token = envLoadGuard.next()
   const expectedUrl = url
-  new THREE.TextureLoader().load(url, tex => {
-    if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); return }
-    const src = resolveEnvSource(cfg)
-    if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); return }
-    tex.mapping = THREE.EquirectangularReflectionMapping
-    tex.colorSpace = THREE.SRGBColorSpace
-    const recovered = envPanoFailed === expectedUrl
-    envPanoFailed = ''
-    releasePanoInflight(expectedUrl)
-    setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
-    if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
-  }, undefined, () => {
-    // 全景文件缺失/加载失败：真正生效的是预设兜底，编辑器不能还显示「全景图」
-    if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); return }
-    releasePanoInflight(expectedUrl)
-    envPanoFailed = expectedUrl
-    applyEnvFallback()
-    if (typeof window.__edRefresh === 'function') window.__edRefresh()
+  const { commitUrl = null } = opts
+  return new Promise((resolve, reject) => {
+    new THREE.TextureLoader().load(url, tex => {
+      if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
+      if (commitUrl != null) commitPanoramaAssets(commitUrl)
+      const src = resolveEnvSource(cfg)
+      if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
+      tex.mapping = THREE.EquirectangularReflectionMapping
+      tex.colorSpace = THREE.SRGBColorSpace
+      const recovered = envPanoFailed === expectedUrl
+      envPanoFailed = ''
+      releasePanoInflight(expectedUrl)
+      setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
+      if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
+      resolve()
+    }, undefined, () => {
+      // 全景文件缺失/加载失败：真正生效的是预设兜底，编辑器不能还显示「全景图」
+      if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); resolve(); return }
+      releasePanoInflight(expectedUrl)
+      envPanoFailed = expectedUrl
+      applyEnvFallback()
+      if (typeof window.__edRefresh === 'function') window.__edRefresh()
+      if (commitUrl != null) reject(new Error('panorama load failed'))
+      else resolve()
+    })
   })
 }
 /* 开场同步给出环境（预设是画布生成的，无需等待）；全景走异步，可与模型并行加载 */
@@ -1288,15 +1301,122 @@ function makeLoader() {
   } catch(e) { /* KTX2 不支持时忽略，普通贴图不受影响 */ }
   return loader
 }
-/* 换模型（支持任意 URL / 拖拽本地文件；跨域需 CORS） */
-function reloadModel(url, revoke) {
-  makeLoader().load(url, gltf => {
-    if (model) scene.remove(model)
-    model = gltf.scene
-    normalize(model); applyMaterial(); scene.add(model); applyShadow(); buildHotspots()
-    if (revoke) URL.revokeObjectURL(url)
+let modelLoadGeneration = 0
+let modelPreviewOnly = false   // 本地 blob 预览：scene 已换但 cfg.assets.model 未改
+let modelLoadMockEnabled = false
+let modelLoadMockPending = []  // E2E：人工 resolve/reject 的待处理加载
+
+function disposeObject3D(obj) {
+  if (!obj) return
+  obj.traverse(o => {
+    if (o.geometry) o.geometry.dispose()
+    if (!o.material) return
+    ;[].concat(o.material).forEach(m => {
+      if (!m) return
+      for (const k of Object.keys(m)) {
+        const v = m[k]
+        if (v && v.isTexture) v.dispose()
+      }
+      m.dispose()
+    })
+  })
+}
+
+function applyLoadedModel(gltfScene, { loadTag = null } = {}) {
+  if (loadTag != null) gltfScene.__loadTag = loadTag
+  const prev = model
+  if (prev && scene) scene.remove(prev)
+  model = gltfScene
+  normalize(model)
+  applyMaterial()
+  if (scene) scene.add(model)
+  applyShadow()
+  buildHotspots()
+  if (prev && prev !== model) disposeObject3D(prev)
+}
+
+/** 换模型（支持任意 URL / 拖拽本地文件；跨域需 CORS）。仅 load 成功后 optional commitModelPath 才写入 config。 */
+function reloadModel(url, opts = {}) {
+  const { revoke = false, commitModelPath = null, loadTag = null } = opts
+  const generation = ++modelLoadGeneration
+  modelPreviewOnly = commitModelPath == null
+
+  const settleSuccess = gltfScene => {
+    if (generation !== modelLoadGeneration) {
+      disposeObject3D(gltfScene)
+      if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
+      return { ok: true, stale: true }
+    }
+    applyLoadedModel(gltfScene, { loadTag })
+    if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
+    if (commitModelPath != null) {
+      cfg.assets = cfg.assets || {}
+      cfg.assets.model = commitModelPath
+      modelPreviewOnly = false
+    }
     if (window.__edRefresh) window.__edRefresh()
-  }, undefined, () => alert('模型加载失败：请检查地址，跨域资源需服务器配置 CORS'))
+    return { ok: true, stale: false, committed: commitModelPath }
+  }
+  const settleError = err => {
+    if (generation !== modelLoadGeneration) {
+      if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
+      return { ok: false, stale: true }
+    }
+    if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
+    throw err || new Error('model load failed')
+  }
+
+  if (editMode && modelLoadMockEnabled) {
+    return new Promise((resolve, reject) => {
+      modelLoadMockPending.push({
+        url, generation, loadTag, commitModelPath, revoke,
+        resolve: gltfScene => {
+          try { resolve(settleSuccess(gltfScene)) } catch (e) { reject(e) }
+        },
+        reject: err => {
+          try {
+            const r = settleError(err)
+            if (r?.stale) resolve(r)
+            else reject(err || new Error('model load failed'))
+          } catch (e) { reject(e) }
+        },
+      })
+    })
+  }
+
+  return new Promise((resolve, reject) => {
+    makeLoader().load(url, gltf => {
+      try { resolve(settleSuccess(gltf.scene)) } catch (e) { reject(e) }
+    }, undefined, err => {
+      try {
+        const r = settleError(err)
+        if (r?.stale) resolve(r)
+        else reject(err || new Error('model load failed'))
+      } catch (e) { reject(e) }
+    })
+  })
+}
+
+function resolveModelLoadMock(tag) {
+  const i = modelLoadMockPending.findIndex(x => x.loadTag === tag)
+  if (i < 0) return false
+  const entry = modelLoadMockPending.splice(i, 1)[0]
+  const g = new THREE.Group()
+  g.__loadTag = tag
+  entry.resolve(g)
+  return true
+}
+
+function rejectModelLoadMock(tag, message = 'mock load failed') {
+  const i = modelLoadMockPending.findIndex(x => x.loadTag === tag)
+  if (i < 0) return false
+  const entry = modelLoadMockPending.splice(i, 1)[0]
+  entry.reject(new Error(message))
+  return true
+}
+
+function clearModelLoadMock() {
+  modelLoadMockPending.length = 0
 }
 
 function start() {

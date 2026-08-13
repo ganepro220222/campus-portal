@@ -443,6 +443,79 @@ test.describe('editor preset row layout', () => {
   })
 })
 
+test.describe('editor model URL load', () => {
+  async function openEditorSection(page, title) {
+    await page.evaluate(t => {
+      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+        const s = d.querySelector('summary')?.textContent || ''
+        if (s.includes(t)) { d.open = true; break }
+      }
+    }, title)
+  }
+
+  test('failed URL load does not mutate cfg.assets.model', async () => {
+    await closeHotspotIfOpen(page)
+    await openEditorSection(page, '资产')
+    const saved = await page.evaluate(() => window.__SY_TEST__.modelConfig())
+    expect(saved).toBeTruthy()
+    page.once('dialog', d => d.accept())
+    await page.fill('#ed-url', 'assets/__missing_model_test__.glb')
+    await page.click('#ed-url-load')
+    await page.waitForFunction(() => !document.getElementById('ed-url-load')?.disabled, null, { timeout: 30_000 })
+    expect(await page.evaluate(() => window.__SY_TEST__.modelConfig())).toBe(saved)
+  })
+
+  test('out-of-order model loads keep latest config and scene', async () => {
+    await page.evaluate(() => window.__SY_TEST__.enableModelLoadMock())
+    await page.evaluate(() => {
+      window.__SY_TEST__.queueModelLoadFromEditor('mock://b', 'assets/model-b.glb', 'B')
+      window.__SY_TEST__.queueModelLoadFromEditor('mock://c', 'assets/model-c.glb', 'C')
+    })
+    expect(await page.evaluate(() => window.__SY_TEST__.resolveModelLoadMock('C'))).toBe(true)
+    await page.waitForTimeout(50)
+    expect(await page.evaluate(() => window.__SY_TEST__.resolveModelLoadMock('B'))).toBe(true)
+    await page.waitForTimeout(50)
+    const st = await page.evaluate(() => ({
+      cfg: window.__SY_TEST__.modelConfig(),
+      tag: window.__SY_TEST__.modelSceneTag(),
+    }))
+    expect(st.cfg).toBe('assets/model-c.glb')
+    expect(st.tag).toBe('C')
+    await page.evaluate(() => window.__SY_TEST__.disableModelLoadMock())
+    await reloadPlayer(page, { mode: 'edit' })
+  })
+
+  test('stale failed load does not overwrite newer successful model', async () => {
+    await page.evaluate(() => window.__SY_TEST__.enableModelLoadMock())
+    await page.evaluate(() => {
+      window.__SY_TEST__.queueModelLoadFromEditor('mock://slow', 'assets/model-slow.glb', 'SLOW')
+      window.__SY_TEST__.queueModelLoadFromEditor('mock://fast', 'assets/model-fast.glb', 'FAST')
+    })
+    expect(await page.evaluate(() => window.__SY_TEST__.resolveModelLoadMock('FAST'))).toBe(true)
+    await page.waitForTimeout(50)
+    expect(await page.evaluate(() => window.__SY_TEST__.rejectModelLoadMock('SLOW'))).toBe(true)
+    await page.waitForTimeout(50)
+    const st = await page.evaluate(() => ({
+      cfg: window.__SY_TEST__.modelConfig(),
+      tag: window.__SY_TEST__.modelSceneTag(),
+    }))
+    expect(st.cfg).toBe('assets/model-fast.glb')
+    expect(st.tag).toBe('FAST')
+    await page.evaluate(() => window.__SY_TEST__.disableModelLoadMock())
+    await reloadPlayer(page, { mode: 'edit' })
+  })
+
+  test('failed panorama URL does not mutate cfg.assets.panorama', async () => {
+    await openEditorSection(page, '环境')
+    const saved = await page.evaluate(() => window.__SY_TEST__.panoramaConfig())
+    expect(saved).toBeTruthy()
+    await page.fill('#ed-pano', 'assets/__missing_pano_test__.jpg')
+    await page.click('#ed-pano-load')
+    await page.waitForFunction(() => !document.getElementById('ed-pano-load')?.disabled, null, { timeout: 30_000 })
+    expect(await page.evaluate(() => window.__SY_TEST__.panoramaConfig())).toBe(saved)
+  })
+})
+
 test.describe('strict WebKit startup', () => {
   test('WeChat UA defers panorama until model ready', async ({ browser }) => {
     const p = await browser.newPage()

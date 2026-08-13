@@ -701,30 +701,43 @@ function applyEnvFallback() {
   if (preset === 'room') roomIBL()
   else presetIBL(preset)
 }
-function panoramaIBL(url) {
-  if (!url) return
-  if (url === envPanoInflightUrl) return
+function commitPanoramaAssets(url) {
+  cfg.assets = cfg.assets || {}
+  cfg.assets.panorama = url
+  cfg.environment = cfg.environment || {}
+  cfg.environment.mode = 'panorama'
+}
+function panoramaIBL(url, opts = {}) {
+  if (!url) return Promise.reject(new Error('empty panorama url'))
+  if (url === envPanoInflightUrl) return Promise.resolve()
   envPanoInflightUrl = url
   const token = envLoadGuard.next()
   const expectedUrl = url
-  new THREE.TextureLoader().load(url, tex => {
-    if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); return }
-    const src = resolveEnvSource(cfg)
-    if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); return }
-    tex.mapping = THREE.EquirectangularReflectionMapping
-    tex.colorSpace = THREE.SRGBColorSpace
-    const recovered = envPanoFailed === expectedUrl
-    envPanoFailed = ''
-    releasePanoInflight(expectedUrl)
-    setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
-    if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
-  }, undefined, () => {
-    // 全景文件缺失/加载失败：真正生效的是预设兜底，编辑器不能还显示「全景图」
-    if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); return }
-    releasePanoInflight(expectedUrl)
-    envPanoFailed = expectedUrl
-    applyEnvFallback()
-    if (typeof window.__edRefresh === 'function') window.__edRefresh()
+  const { commitUrl = null } = opts
+  return new Promise((resolve, reject) => {
+    new THREE.TextureLoader().load(url, tex => {
+      if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
+      if (commitUrl != null) commitPanoramaAssets(commitUrl)
+      const src = resolveEnvSource(cfg)
+      if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
+      tex.mapping = THREE.EquirectangularReflectionMapping
+      tex.colorSpace = THREE.SRGBColorSpace
+      const recovered = envPanoFailed === expectedUrl
+      envPanoFailed = ''
+      releasePanoInflight(expectedUrl)
+      setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
+      if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
+      resolve()
+    }, undefined, () => {
+      // 全景文件缺失/加载失败：真正生效的是预设兜底，编辑器不能还显示「全景图」
+      if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); resolve(); return }
+      releasePanoInflight(expectedUrl)
+      envPanoFailed = expectedUrl
+      applyEnvFallback()
+      if (typeof window.__edRefresh === 'function') window.__edRefresh()
+      if (commitUrl != null) reject(new Error('panorama load failed'))
+      else resolve()
+    })
   })
 }
 /* 开场同步给出环境（预设是画布生成的，无需等待）；全景走异步，可与模型并行加载 */
@@ -1348,15 +1361,122 @@ function makeLoader() {
   } catch(e) { /* KTX2 不支持时忽略，普通贴图不受影响 */ }
   return loader
 }
-/* 换模型（支持任意 URL / 拖拽本地文件；跨域需 CORS） */
-function reloadModel(url, revoke) {
-  makeLoader().load(url, gltf => {
-    if (model) scene.remove(model)
-    model = gltf.scene
-    normalize(model); applyMaterial(); scene.add(model); applyShadow(); buildHotspots()
-    if (revoke) URL.revokeObjectURL(url)
+let modelLoadGeneration = 0
+let modelPreviewOnly = false   // 本地 blob 预览：scene 已换但 cfg.assets.model 未改
+let modelLoadMockEnabled = false
+let modelLoadMockPending = []  // E2E：人工 resolve/reject 的待处理加载
+
+function disposeObject3D(obj) {
+  if (!obj) return
+  obj.traverse(o => {
+    if (o.geometry) o.geometry.dispose()
+    if (!o.material) return
+    ;[].concat(o.material).forEach(m => {
+      if (!m) return
+      for (const k of Object.keys(m)) {
+        const v = m[k]
+        if (v && v.isTexture) v.dispose()
+      }
+      m.dispose()
+    })
+  })
+}
+
+function applyLoadedModel(gltfScene, { loadTag = null } = {}) {
+  if (loadTag != null) gltfScene.__loadTag = loadTag
+  const prev = model
+  if (prev && scene) scene.remove(prev)
+  model = gltfScene
+  normalize(model)
+  applyMaterial()
+  if (scene) scene.add(model)
+  applyShadow()
+  buildHotspots()
+  if (prev && prev !== model) disposeObject3D(prev)
+}
+
+/** 换模型（支持任意 URL / 拖拽本地文件；跨域需 CORS）。仅 load 成功后 optional commitModelPath 才写入 config。 */
+function reloadModel(url, opts = {}) {
+  const { revoke = false, commitModelPath = null, loadTag = null } = opts
+  const generation = ++modelLoadGeneration
+  modelPreviewOnly = commitModelPath == null
+
+  const settleSuccess = gltfScene => {
+    if (generation !== modelLoadGeneration) {
+      disposeObject3D(gltfScene)
+      if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
+      return { ok: true, stale: true }
+    }
+    applyLoadedModel(gltfScene, { loadTag })
+    if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
+    if (commitModelPath != null) {
+      cfg.assets = cfg.assets || {}
+      cfg.assets.model = commitModelPath
+      modelPreviewOnly = false
+    }
     if (window.__edRefresh) window.__edRefresh()
-  }, undefined, () => alert('模型加载失败：请检查地址，跨域资源需服务器配置 CORS'))
+    return { ok: true, stale: false, committed: commitModelPath }
+  }
+  const settleError = err => {
+    if (generation !== modelLoadGeneration) {
+      if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
+      return { ok: false, stale: true }
+    }
+    if (revoke) { try { URL.revokeObjectURL(url) } catch (_) {} }
+    throw err || new Error('model load failed')
+  }
+
+  if (editMode && modelLoadMockEnabled) {
+    return new Promise((resolve, reject) => {
+      modelLoadMockPending.push({
+        url, generation, loadTag, commitModelPath, revoke,
+        resolve: gltfScene => {
+          try { resolve(settleSuccess(gltfScene)) } catch (e) { reject(e) }
+        },
+        reject: err => {
+          try {
+            const r = settleError(err)
+            if (r?.stale) resolve(r)
+            else reject(err || new Error('model load failed'))
+          } catch (e) { reject(e) }
+        },
+      })
+    })
+  }
+
+  return new Promise((resolve, reject) => {
+    makeLoader().load(url, gltf => {
+      try { resolve(settleSuccess(gltf.scene)) } catch (e) { reject(e) }
+    }, undefined, err => {
+      try {
+        const r = settleError(err)
+        if (r?.stale) resolve(r)
+        else reject(err || new Error('model load failed'))
+      } catch (e) { reject(e) }
+    })
+  })
+}
+
+function resolveModelLoadMock(tag) {
+  const i = modelLoadMockPending.findIndex(x => x.loadTag === tag)
+  if (i < 0) return false
+  const entry = modelLoadMockPending.splice(i, 1)[0]
+  const g = new THREE.Group()
+  g.__loadTag = tag
+  entry.resolve(g)
+  return true
+}
+
+function rejectModelLoadMock(tag, message = 'mock load failed') {
+  const i = modelLoadMockPending.findIndex(x => x.loadTag === tag)
+  if (i < 0) return false
+  const entry = modelLoadMockPending.splice(i, 1)[0]
+  entry.reject(new Error(message))
+  return true
+}
+
+function clearModelLoadMock() {
+  modelLoadMockPending.length = 0
 }
 
 function start() {
@@ -1495,6 +1615,14 @@ function restoreEditorUIState(st){
   box.scrollTop = st.scrollTop
 }
 
+function assetModelStatusHTML() {
+  const saved = cfg.assets?.model || '-'
+  if (modelPreviewOnly) {
+    return `模型（已保存）：${saved}<br><span style="color:#e0b070">当前预览：本地文件（未写入 config）</span>`
+  }
+  return `模型：${saved}`
+}
+
 function renderEditor() {
   ensureCfg()
   const uiState = captureEditorUIState()
@@ -1573,7 +1701,7 @@ function renderEditor() {
     <input class="ed-in" id="ed-url" placeholder="https://…/model.glb">
     <button class="ed-btn" id="ed-url-load">从 URL 加载</button>
     <label class="ed-file">拖拽或选择本地 .glb 预览<input type="file" id="ed-file" accept=".glb,.gltf" hidden></label>
-    <div class="ed-note" id="ed-assets">模型：${cfg.assets?.model||'-'}</div>
+    <div class="ed-note" id="ed-assets">${assetModelStatusHTML()}</div>
   </details>
 
   <details class="ed-sec"><summary>模型摆放（缩放 / 位移 / 旋转）</summary>
@@ -1881,13 +2009,59 @@ function wireEditor() {
   const pr=el('ed-panel-reset'); if(pr) pr.onclick=()=>{ if(activeHS?.data){ delete activeHS.data.calloutPos; delete activeHS.data.calloutPosManual; bumpLeader(); syncLeaderEditorUI(); flash('已恢复自动面板位置') } else flash('请先打开一个热点') }
   syncLeaderEditorUI()
   wireCalloutDrag()
-  el('ed-url-load').onclick=()=>{ const u=el('ed-url').value.trim(); if(u){ cfg.assets=cfg.assets||{}; cfg.assets.model=u; reloadModel(u) } }
-  el('ed-file').onchange=e=>{ const f=e.target.files[0]; if(f) reloadModel(URL.createObjectURL(f), true) }
+  el('ed-url-load').onclick = async () => {
+    const u = el('ed-url').value.trim()
+    if (!u) return
+    const btn = el('ed-url-load')
+    const prev = btn.textContent
+    btn.disabled = true
+    btn.textContent = '加载中…'
+    try {
+      await reloadModel(u, { commitModelPath: u })
+      flash('模型已加载，记得点保存')
+    } catch {
+      alert('模型加载失败：请检查地址，跨域资源需服务器配置 CORS')
+      flash('加载失败，配置未修改')
+    } finally {
+      btn.disabled = false
+      btn.textContent = prev
+    }
+  }
+  el('ed-file').onchange = async e => {
+    const f = e.target.files[0]
+    if (!f) return
+    const blobUrl = URL.createObjectURL(f)
+    try {
+      await reloadModel(blobUrl, { revoke: true })
+      flash('本地预览已加载（未写入 config）')
+    } catch {
+      alert('模型加载失败：请检查文件格式')
+    } finally {
+      e.target.value = ''
+    }
+  }
   const dz=el('editor'); ;['dragover','drop'].forEach(ev=>dz.addEventListener(ev,e=>e.preventDefault()))
   el('ed-m-reset').onclick=()=>{ m.scale=1; m.position=[0,0,0]; m.rotationDeg=[0,0,0]; normalize(model); renderEditor() }
   el('ed-cam-save').onclick=()=>{ const s=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target))
     c.distance=+s.radius.toFixed(3); c.phi=+s.phi.toFixed(3); c.theta=+s.theta.toFixed(3); initialCam.copy(camera.position); flash('已保存当前视角') }
-  el('ed-pano-load').onclick=()=>{ const u=el('ed-pano').value.trim(); if(!u) return; cfg.assets=cfg.assets||{}; cfg.assets.panorama=u; cfg.environment=cfg.environment||{}; cfg.environment.mode='panorama'; panoramaIBL(asset(u)); renderEditor(); flash('已加载全景，记得点保存') }
+  el('ed-pano-load').onclick = async () => {
+    const u = el('ed-pano').value.trim()
+    if (!u) return
+    const btn = el('ed-pano-load')
+    const prev = btn.textContent
+    btn.disabled = true
+    btn.textContent = '加载中…'
+    try {
+      await panoramaIBL(asset(u), { commitUrl: u })
+      renderEditor()
+      flash('全景已加载，记得点保存')
+    } catch {
+      flash('全景加载失败，配置未修改')
+    } finally {
+      btn.disabled = false
+      btn.textContent = prev
+    }
+  }
   el('ed-au-collapsed')?.addEventListener('change', e => {
     const v = e.target.value
     cfg.ui = cfg.ui || {}
@@ -2453,6 +2627,17 @@ if (editMode) {
     },
     strictWebKitHost: () => strictWebKit,
     deferPanoramaIBL: () => deferPanoramaIBL,
+    modelConfig: () => cfg.assets?.model ?? '',
+    panoramaConfig: () => cfg.assets?.panorama ?? '',
+    modelSceneTag: () => model?.__loadTag ?? null,
+    modelPreviewOnly: () => modelPreviewOnly,
+    enableModelLoadMock: () => { modelLoadMockEnabled = true; clearModelLoadMock() },
+    disableModelLoadMock: () => { modelLoadMockEnabled = false; clearModelLoadMock() },
+    queueModelLoadFromEditor: (url, commitModelPath, loadTag) => {
+      reloadModel(url, { commitModelPath, loadTag }).catch(() => {})
+    },
+    resolveModelLoadMock: (tag) => resolveModelLoadMock(tag),
+    rejectModelLoadMock: (tag, msg) => rejectModelLoadMock(tag, msg),
   }
 }
 /* TEST-HOOKS-END */

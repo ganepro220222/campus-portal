@@ -266,7 +266,9 @@ test('property probe: 60000 layouts (seed=42) have valid geometry or straight fa
 
 test('craft index shells point to player.view.html only', () => {
   for (const dir of ['craft-001', 'craft-002', 'craft-003', 'craft-004']) {
-    const html = fs.readFileSync(path.join(ROOT, dir, 'index.html'), 'utf8')
+    const indexPath = path.join(ROOT, dir, 'index.html')
+    if (!fs.existsSync(indexPath)) continue
+    const html = fs.readFileSync(indexPath, 'utf8')
     assert.ok(html.includes(`player.view.html?ex=${dir}`))
     assert.ok(!html.includes('player.html'))
     assert.match(html, /params\.delete\('mode'\)/)

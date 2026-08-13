@@ -725,10 +725,10 @@ function panoramaIBL(url, opts = {}) {
   const entry = { url, commitUrl, promise: null }
   entry.promise = new Promise((resolve, reject) => {
     const finishOk = tex => {
-      if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
+      if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); resolve({ stale: true }); return }
       if (entry.commitUrl != null) commitPanoramaAssets(entry.commitUrl)
       const src = resolveEnvSource(cfg)
-      if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
+      if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); resolve({ stale: true }); return }
       tex.mapping = THREE.EquirectangularReflectionMapping
       tex.colorSpace = THREE.SRGBColorSpace
       const recovered = envPanoFailed === expectedUrl
@@ -736,16 +736,16 @@ function panoramaIBL(url, opts = {}) {
       releasePanoInflight(expectedUrl)
       setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
       if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
-      resolve()
+      resolve({ stale: false })
     }
     const finishErr = () => {
-      if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); resolve(); return }
+      if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); resolve({ stale: true }); return }
       releasePanoInflight(expectedUrl)
       envPanoFailed = expectedUrl
       applyEnvFallback()
       if (typeof window.__edRefresh === 'function') window.__edRefresh()
       if (entry.commitUrl != null) reject(new Error('panorama load failed'))
-      else resolve()
+      else resolve({ stale: true })
     }
     if (editMode && panoramaLoadMockEnabled) {
       panoramaLoadMockEntry = { entry, token, expectedUrl, finishOk, finishErr, resolve, reject }
@@ -2055,8 +2055,8 @@ function wireEditor() {
     btn.disabled = true
     btn.textContent = '加载中…'
     try {
-      await reloadModel(u, { commitModelPath: u })
-      flash('模型已加载，记得点保存')
+      const result = await reloadModel(asset(u), { commitModelPath: u })
+      if (!result?.stale) flash('模型已加载，记得点保存')
     } catch {
       alert('模型加载失败：请检查地址，跨域资源需服务器配置 CORS')
       flash('加载失败，配置未修改')
@@ -2070,8 +2070,8 @@ function wireEditor() {
     if (!f) return
     const blobUrl = URL.createObjectURL(f)
     try {
-      await reloadModel(blobUrl, { revoke: true })
-      flash('本地预览已加载（未写入 config）')
+      const result = await reloadModel(blobUrl, { revoke: true })
+      if (!result?.stale) flash('本地预览已加载（未写入 config）')
     } catch {
       alert('模型加载失败：请检查文件格式')
     } finally {
@@ -2090,9 +2090,11 @@ function wireEditor() {
     btn.disabled = true
     btn.textContent = '加载中…'
     try {
-      await panoramaIBL(asset(u), { commitUrl: u })
-      renderEditor()
-      flash('全景已加载，记得点保存')
+      const result = await panoramaIBL(asset(u), { commitUrl: u })
+      if (!result?.stale) {
+        renderEditor()
+        flash('全景已加载，记得点保存')
+      }
     } catch {
       flash('全景加载失败，配置未修改')
     } finally {
@@ -2270,6 +2272,7 @@ function capturePoster(){
 function preSaveIssues(){
   const errs=[], warns=[]
   if(!cfg.assets?.model) errs.push('缺少模型文件')
+  if (modelPreviewOnly) errs.push('当前是本地模型预览，模型文件尚未上传，不能直接保存')
   if(!((cfg.i18n?.zh?.title)||'').trim()) warns.push('未填标题')
   ;(cfg.hotspots||[]).forEach((h,i)=>{ const x=h.i18n?.zh||{}; if(!((x.title||'').trim())&&!((x.content||'').trim())) warns.push('热点 #'+(i+1)+' 无标题/文案') })
   ;(cfg.audio||[]).forEach(a=>{ if(!a||!a.src) warns.push('语音「'+((a&&a.label)||(a&&a.id)||'?')+'」缺文件') })
@@ -2674,8 +2677,12 @@ if (editMode) {
     queueModelLoadFromEditor: (url, commitModelPath, loadTag) => {
       reloadModel(url, { commitModelPath, loadTag }).catch(() => {})
     },
+    reloadModelForTest: (url, opts) => reloadModel(url, opts),
     resolveModelLoadMock: (tag) => resolveModelLoadMock(tag),
     rejectModelLoadMock: (tag, msg) => rejectModelLoadMock(tag, msg),
+    preSaveIssues: () => preSaveIssues(),
+    setLangForTest: (l) => { lang = l; renderText() },
+    displayTitle: () => document.getElementById('c-name')?.textContent ?? '',
     enablePanoramaLoadMock: () => { panoramaLoadMockEnabled = true; panoramaLoadMockEntry = null },
     disablePanoramaLoadMock: () => { panoramaLoadMockEnabled = false; panoramaLoadMockEntry = null },
     panoramaLoadForTest: (relUrl, opts) => panoramaIBL(asset(relUrl), opts),

@@ -547,6 +547,67 @@ test.describe('editor model URL load', () => {
     expect(rejected).toBe(saved)
     await page.evaluate(() => window.__SY_TEST__.disablePanoramaLoadMock())
   })
+
+  test('relative model URL loads via exhibit asset() prefix', async () => {
+    await openEditorSection(page, '资产')
+    const seen = []
+    await page.route('**/craft-001/assets/model.glb', route => {
+      seen.push(route.request().url())
+      route.continue()
+    })
+    await page.fill('#ed-url', 'assets/model.glb')
+    await page.click('#ed-url-load')
+    await page.waitForFunction(() => !document.getElementById('ed-url-load')?.disabled, null, { timeout: 30_000 })
+    expect(seen.some(u => /craft-001\/assets\/model\.glb/.test(u))).toBe(true)
+    expect(await page.evaluate(() => window.__SY_TEST__.modelConfig())).toBe('assets/model.glb')
+    await page.unroute('**/craft-001/assets/model.glb')
+  })
+
+  test('save blocked while local model preview is active', async () => {
+    await openEditorSection(page, '资产')
+    await page.evaluate(() => {
+      window.__SY_TEST__.enableModelLoadMock()
+      window.__SY_TEST__.queueModelLoadFromEditor('blob:local-ok', null, 'LOCAL_OK')
+    })
+    await page.evaluate(() => window.__SY_TEST__.resolveModelLoadMock('LOCAL_OK'))
+    await page.waitForTimeout(50)
+    expect(await page.evaluate(() => window.__SY_TEST__.modelPreviewOnly())).toBe(true)
+    const issues = await page.evaluate(() => window.__SY_TEST__.preSaveIssues())
+    expect(issues.errs.some(e => e.includes('本地模型预览'))).toBe(true)
+    await page.evaluate(() => window.__SY_TEST__.disableModelLoadMock())
+  })
+
+  test('stale model load resolves without applying config', async () => {
+    const result = await page.evaluate(async () => {
+      window.__SY_TEST__.enableModelLoadMock()
+      const pB = window.__SY_TEST__.reloadModelForTest('mock://b', { commitModelPath: 'assets/model-b.glb', loadTag: 'B' })
+      const pC = window.__SY_TEST__.reloadModelForTest('mock://c', { commitModelPath: 'assets/model-c.glb', loadTag: 'C' })
+      window.__SY_TEST__.resolveModelLoadMock('C')
+      await new Promise(r => setTimeout(r, 30))
+      window.__SY_TEST__.resolveModelLoadMock('B')
+      const [rB, rC] = await Promise.all([pB, pC])
+      return { b: rB, c: rC, cfg: window.__SY_TEST__.modelConfig() }
+    })
+    expect(result.b?.stale).toBe(true)
+    expect(result.c?.stale).toBe(false)
+    expect(result.cfg).toBe('assets/model-c.glb')
+    await page.evaluate(() => window.__SY_TEST__.disableModelLoadMock())
+    await reloadPlayer(page, { mode: 'edit' })
+  })
+
+  test('craft-001 English copy is not legacy placeholder content', async () => {
+    await page.evaluate(() => window.__SY_TEST__.setLangForTest('en'))
+    const title = await page.evaluate(() => window.__SY_TEST__.displayTitle())
+    expect(title).not.toMatch(/Peony|Enamel Porcelain/i)
+    expect(title.length).toBeGreaterThan(3)
+    const hs = await page.evaluate(() => {
+      const h = (window.__CFG__ || {}).hotspots?.[0]?.i18n?.en
+      return { title: h?.title || '', content: h?.content || '' }
+    })
+    expect(hs.title).not.toMatch(/^New$/i)
+    expect(hs.content).not.toMatch(/\(todo\)/i)
+    await page.evaluate(() => window.__SY_TEST__.setLangForTest('zh'))
+  })
 })
 
 test.describe('strict WebKit startup', () => {
@@ -603,6 +664,9 @@ test.describe('viewer rotate button', () => {
 })
 
 test.describe('语音播放器 折叠', () => {
+  const audioFixture = [{ id: 'a1', src: 'assets/audio.mp3', label: '讲解 1' }]
+  const withAudio = (opts = {}) => ({ ...opts, audio: opts.audio ?? audioFixture })
+
   const st = () => page.evaluate(() => {
     const a = document.getElementById('audio'), r = a.getBoundingClientRect()
     return {
@@ -616,11 +680,11 @@ test.describe('语音播放器 折叠', () => {
   })
 
   test('桌面默认展开，手机默认收起（auto）', async () => {
-    await reloadPlayer(page, { viewport: { width: 1100, height: 800 } })
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 } }))
     await page.waitForSelector('#audio:not([hidden])')
     expect((await st()).mini).toBe(false)
 
-    await reloadPlayer(page, { viewport: { width: 390, height: 800 } })
+    await reloadPlayer(page, withAudio({ viewport: { width: 390, height: 800 } }))
     await page.waitForSelector('#audio:not([hidden])')
     const m = await st()
     expect(m.mini).toBe(true)
@@ -629,17 +693,17 @@ test.describe('语音播放器 折叠', () => {
   })
 
   test('ui.audioCollapsed 显式取值覆盖 auto', async () => {
-    await reloadPlayer(page, { viewport: { width: 390, height: 800 }, ui: { audioCollapsed: false } })
+    await reloadPlayer(page, withAudio({ viewport: { width: 390, height: 800 }, ui: { audioCollapsed: false } }))
     await page.waitForSelector('#audio:not([hidden])')
     expect((await st()).mini).toBe(false)          // 手机上也强制展开
 
-    await reloadPlayer(page, { viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: true } })
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: true } }))
     await page.waitForSelector('#audio:not([hidden])')
     expect((await st()).mini).toBe(true)           // 桌面上也强制收起
   })
 
   test('折叠态点圆钮＝展开，不直接播放（图标也不能是 ▶）', async () => {
-    await reloadPlayer(page, { viewport: { width: 390, height: 800 } })
+    await reloadPlayer(page, withAudio({ viewport: { width: 390, height: 800 } }))
     await page.waitForSelector('#audio:not([hidden])')
     const before = await st()
     expect(before.mini).toBe(true)
@@ -652,7 +716,7 @@ test.describe('语音播放器 折叠', () => {
   })
 
   test('展开态可收起；播放中收起仍能看出「正在播放」', async () => {
-    await reloadPlayer(page, { viewport: { width: 1100, height: 800 } })
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 } }))
     await page.waitForSelector('#audio:not([hidden])')
     await page.evaluate(() => { const el = document.getElementById('au-el'); el.dispatchEvent(new Event('play')) })
     expect((await st()).icon).toBe('❚❚')
@@ -665,7 +729,7 @@ test.describe('语音播放器 折叠', () => {
 
   test('热点绑定的语音自动播放时，播放器自动展开', async () => {
     const hs = [{ id: 'h1', position: [0, 0.2, 0.6], audio: 'a1', i18n: { zh: { title: '甲', body: '乙' } } }]
-    await reloadPlayer(page, { viewport: { width: 390, height: 800 }, hotspots: hs })
+    await reloadPlayer(page, withAudio({ viewport: { width: 390, height: 800 }, hotspots: hs }))
     await page.waitForSelector('#audio:not([hidden])')
     expect((await st()).mini).toBe(true)
     await openFirstHotspot(page)
@@ -793,7 +857,7 @@ test.describe('全屏按钮', () => {
   }, fsBtn)
 
   test('进出全屏时按钮的选中态跟着走（含从外部退出）', async () => {
-    await reloadPlayer(page, { viewport: { width: 1100, height: 800 } })
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 } }))
     await expect(page.locator(fsBtn)).toHaveCount(1)
     expect(await st()).toMatchObject({ on: false, aria: 'false', real: false })
 

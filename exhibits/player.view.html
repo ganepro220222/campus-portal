@@ -663,10 +663,10 @@ function panoramaIBL(url, opts = {}) {
   const entry = { url, commitUrl, promise: null }
   entry.promise = new Promise((resolve, reject) => {
     const finishOk = tex => {
-      if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
+      if (!envLoadGuard.isCurrent(token)) { tex.dispose(); releasePanoInflight(expectedUrl); resolve({ stale: true }); return }
       if (entry.commitUrl != null) commitPanoramaAssets(entry.commitUrl)
       const src = resolveEnvSource(cfg)
-      if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); resolve(); return }
+      if (src.kind !== 'panorama' || asset(src.url) !== expectedUrl) { tex.dispose(); releasePanoInflight(expectedUrl); resolve({ stale: true }); return }
       tex.mapping = THREE.EquirectangularReflectionMapping
       tex.colorSpace = THREE.SRGBColorSpace
       const recovered = envPanoFailed === expectedUrl
@@ -674,16 +674,16 @@ function panoramaIBL(url, opts = {}) {
       releasePanoInflight(expectedUrl)
       setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
       if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
-      resolve()
+      resolve({ stale: false })
     }
     const finishErr = () => {
-      if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); resolve(); return }
+      if (!envLoadGuard.isCurrent(token)) { releasePanoInflight(expectedUrl); resolve({ stale: true }); return }
       releasePanoInflight(expectedUrl)
       envPanoFailed = expectedUrl
       applyEnvFallback()
       if (typeof window.__edRefresh === 'function') window.__edRefresh()
       if (entry.commitUrl != null) reject(new Error('panorama load failed'))
-      else resolve()
+      else resolve({ stale: true })
     }
     if (editMode && panoramaLoadMockEnabled) {
       panoramaLoadMockEntry = { entry, token, expectedUrl, finishOk, finishErr, resolve, reject }

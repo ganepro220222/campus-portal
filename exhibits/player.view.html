@@ -242,19 +242,23 @@
 { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
 </script>
 <script>
-window.__SY_PLAYER = { module: false, booted: false }
+window.__SY_PLAYER = Object.assign(
+  { module: false, bootStarted: false, ready: false, bootTimeoutMs: 12000 },
+  window.__SY_PLAYER || {}
+)
 setTimeout(function () {
-  if (window.__SY_PLAYER.booted) return
-  var msg = window.__SY_PLAYER.module
-    ? '配置或模型加载超时，请检查 craft-XXX/config.json 与 assets/model.glb 是否存在'
-    : '播放器模块加载失败。请在 exhibits 目录运行：python serve.py 8199  或  node _server/studio-server.mjs（不要用 python -m http.server）'
+  var p = window.__SY_PLAYER
+  if (p.ready || p.bootStarted) return
+  var msg = '播放器模块加载失败。请在 exhibits 目录运行：python serve.py 8199  或  node _server/studio-server.mjs（不要用 python -m http.server）'
   var loading = document.getElementById('loading')
   var err = document.getElementById('error')
   var errText = document.getElementById('err-text')
+  var errBtn = document.getElementById('err-btn')
   if (loading) loading.setAttribute('hidden', '')
   if (err) err.removeAttribute('hidden')
   if (errText) errText.textContent = msg
-}, 12000)
+  if (errBtn) errBtn.removeAttribute('hidden')
+}, window.__SY_PLAYER.bootTimeoutMs || 12000)
 </script>
 
 <script type="module">
@@ -314,6 +318,44 @@ function showError(msg, retry) {
   $('error').removeAttribute('hidden')
 }
 const num = (v,d) => (typeof v === 'number' && isFinite(v)) ? v : d
+
+let _bootWatchdog = 0
+let _bootGeneration = 0
+let _startGeneration = 0
+
+function bootTimeoutMs() {
+  const t = window.__SY_PLAYER?.bootTimeoutMs
+  return (typeof t === 'number' && t > 0) ? t : 12000
+}
+
+function markPlayerReady() {
+  window.__SY_PLAYER.ready = true
+  clearTimeout(_bootWatchdog)
+}
+
+function abortPendingBoot(msg) {
+  ++_bootGeneration
+  ++_startGeneration
+  clearTimeout(_bootWatchdog)
+  showError(msg, true)
+}
+
+function scheduleBootWatchdog(gen) {
+  clearTimeout(_bootWatchdog)
+  _bootWatchdog = setTimeout(() => {
+    if (window.__SY_PLAYER.ready) return
+    if (gen !== _bootGeneration) return
+    abortPendingBoot('配置或模型加载超时，请检查网络与展品 config.json、assets/model.glb')
+  }, bootTimeoutMs())
+}
+
+async function fetchWithTimeout(url, ms) {
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), ms)
+  try {
+    return await fetch(url, { cache: 'no-cache', signal: ac.signal })
+  } finally { clearTimeout(timer) }
+}
 
 function initRenderer() {
   const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 768
@@ -1454,6 +1496,7 @@ function clearModelLoadMock() {
 }
 
 function start() {
+  const gen = ++_startGeneration
   scene = new THREE.Scene()
   scene.background = new THREE.Color(cfg.renderer?.background || '#0f1118')
   camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.1, 1000)
@@ -1468,7 +1511,14 @@ function start() {
   const modelUrl = asset(cfg.assets.model)
   if (!modelUrl) return showError('模型地址无效', true)
 
+  const modelTimer = setTimeout(() => {
+    if (window.__SY_PLAYER.ready || gen !== _startGeneration) return
+    abortPendingBoot('模型加载超时，请检查网络后重试')
+  }, bootTimeoutMs())
+
   makeLoader().load(modelUrl, gltf => {
+    clearTimeout(modelTimer)
+    if (gen !== _startGeneration || window.__SY_PLAYER.ready) return
     model = gltf.scene
     normalize(model); applyMaterial(); scene.add(model); applyShadow()
     placeCamera(); buildHotspots(); buildHUD(); renderText(); buildAudio(); wireAudio()
@@ -1477,10 +1527,16 @@ function start() {
     $('hint').classList.add('show'); setTimeout(()=>$('hint').classList.remove('show'), 2600)
     if (deferPanoramaIBL) scheduleDeferredPanoramaIBL()
     /* viewer-only: no editor */
+    markPlayerReady()
     animate()
   }, evt => {
+    if (gen !== _startGeneration) return
     if (evt.total) { const p=Math.min(100,Math.round(evt.loaded/evt.total*100)); $('bar').style.width=p+'%'; $('load-text').textContent=`正在加载模型… ${p}%` }
-  }, () => showError('模型加载失败，请检查网络后重试', true))
+  }, () => {
+    clearTimeout(modelTimer)
+    if (gen !== _startGeneration) return
+    showError('模型加载失败，请检查网络后重试', true)
+  })
 
   addEventListener('resize', onResize)
   // 退出全屏的路子不止按钮一条（Esc、系统手势、浏览器 UI），一律回来重画按钮状态
@@ -1505,16 +1561,20 @@ let _bootInflight = false
 async function boot() {
   if (_bootInflight) return
   _bootInflight = true
-  window.__SY_PLAYER.booted = true
+  const gen = ++_bootGeneration
+  window.__SY_PLAYER.bootStarted = true
+  window.__SY_PLAYER.ready = false
+  scheduleBootWatchdog(gen)
   $('error').setAttribute('hidden',''); $('loading').removeAttribute('hidden'); $('loading').classList.remove('fade')
   try {
     if (window.__CFG__) cfg = window.__CFG__            // 便携单文件：内联配置，免 fetch（可双击 file:// 打开）
     else {
       const url = configFetchUrl(BASE)
-      const res = await fetch(url, { cache: 'no-cache' })
+      const res = await fetchWithTimeout(url, bootTimeoutMs())
       if (!res.ok) throw new Error(`HTTP ${res.status} · ${url}`)
       cfg = await res.json()
     }
+    if (gen !== _bootGeneration) return
     ensureHotspotIds(cfg.hotspots || [])
     if (!cfg?.assets?.model) { showError('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true); return }
     if (!initRenderer()) { showError('当前浏览器不支持 3D 展示，请更换浏览器或升级微信'); return }
@@ -1523,7 +1583,13 @@ async function boot() {
     if (editMode) $('ed-badge').removeAttribute('hidden')
     start()
   }
-  catch(e){ showError('配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）', true) }
+  catch(e){
+    if (gen !== _bootGeneration) return
+    const msg = (e?.name === 'AbortError')
+      ? '配置加载超时，请检查网络后重试'
+      : '配置加载失败：'+e.message+'（请从 exhibits 目录启动 HTTP 服务，并确认 ?ex= 参数正确）'
+    showError(msg, true)
+  }
   finally { _bootInflight = false }
 }
 

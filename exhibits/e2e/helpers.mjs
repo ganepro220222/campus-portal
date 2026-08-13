@@ -46,6 +46,7 @@ export async function injectCfg(page, { panel = {}, camera = {}, hotspots, prese
 /** 等待模型加载完成 */
 export async function waitForPlayerReady(page) {
   await page.waitForFunction(() => {
+    if (window.__SY_PLAYER?.ready) return true
     const loading = document.getElementById('loading')
     const topbar = document.getElementById('topbar')
     return loading?.hasAttribute('hidden') && topbar && !topbar.hasAttribute('hidden')

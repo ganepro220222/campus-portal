@@ -7,7 +7,19 @@ import {
 } from './helpers.mjs'
 
 const PANEL_STYLES = ['solid', 'glass', 'transparent', 'outline', 'ribbon', 'minimal']
+const AUDIO_FIXTURE = [{ id: 'a1', src: 'assets/audio.mp3', label: '讲解 1' }]
+const withAudio = (opts = {}) => ({ ...opts, audio: opts.audio ?? AUDIO_FIXTURE })
 
+async function openEditorSection(page, title) {
+  await page.evaluate(t => {
+    for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+      const s = d.querySelector('summary')?.textContent || ''
+      if (s.includes(t)) { d.open = true; break }
+    }
+  }, title)
+}
+
+test.describe('player editor serial', () => {
 /** 3D 相关用例串行 + 复用同一 page，避免重复冷启动 */
 test.describe.configure({ mode: 'serial', timeout: 180_000 })
 
@@ -406,9 +418,8 @@ test.describe('editor preset row layout', () => {
         showAsButton: true,
       }],
     })
-    const presetSec = page.locator('#editor details').filter({ has: page.locator('summary', { hasText: '预设' }) })
-    await presetSec.locator('summary').click()
-    const actions = presetSec.locator('.ed-preset-actions').first()
+    await openEditorSection(page, '预设')
+    const actions = page.locator('.ed-preset-actions').first()
     const checkbox = actions.locator('input[type=checkbox]')
     await expect(actions).toBeVisible()
     await expect(checkbox).toBeVisible()
@@ -444,15 +455,6 @@ test.describe('editor preset row layout', () => {
 })
 
 test.describe('editor model URL load', () => {
-  async function openEditorSection(page, title) {
-    await page.evaluate(t => {
-      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
-        const s = d.querySelector('summary')?.textContent || ''
-        if (s.includes(t)) { d.open = true; break }
-      }
-    }, title)
-  }
-
   test('failed URL load does not mutate cfg.assets.model', async () => {
     await closeHotspotIfOpen(page)
     await openEditorSection(page, '资产')
@@ -600,15 +602,21 @@ test.describe('editor model URL load', () => {
     const title = await page.evaluate(() => window.__SY_TEST__.displayTitle())
     expect(title).not.toMatch(/Peony|Enamel Porcelain/i)
     expect(title.length).toBeGreaterThan(3)
-    const hs = await page.evaluate(() => {
-      const h = (window.__CFG__ || {}).hotspots?.[0]?.i18n?.en
-      return { title: h?.title || '', content: h?.content || '' }
-    })
+    await openFirstHotspot(page)
+    const hs = await page.evaluate(() => ({
+      title: document.getElementById('card-title')?.textContent?.trim() || '',
+      content: document.getElementById('card-body')?.textContent?.trim() || '',
+    }))
+    expect(hs.title.length).toBeGreaterThan(3)
+    expect(hs.content.length).toBeGreaterThan(20)
     expect(hs.title).not.toMatch(/^New$/i)
     expect(hs.content).not.toMatch(/\(todo\)/i)
+    await closeHotspotIfOpen(page)
     await page.evaluate(() => window.__SY_TEST__.setLangForTest('zh'))
   })
 })
+
+}) // player editor serial
 
 test.describe('strict WebKit startup', () => {
   test('WeChat UA defers panorama until model ready', async ({ browser }) => {
@@ -633,6 +641,60 @@ test.describe('strict WebKit startup', () => {
     expect(st.hasEnvMap).toBe(true)
     await releaseWebGL(p)
     await p.close()
+  })
+})
+
+test.describe('boot timeout', () => {
+  test('config fetch pending shows timeout error and retry button', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { bootTimeoutMs: 800, module: false, bootStarted: false, ready: false }
+    })
+    await page.route('**/craft-001/config.json*', () => {})
+    await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('#error:not([hidden])', { timeout: 5000 })
+    await expect(page.locator('#err-text')).toContainText(/配置加载超时|配置或模型加载超时/)
+    await expect(page.locator('#err-btn')).not.toHaveAttribute('hidden', '')
+    expect(await page.evaluate(() => window.__SY_PLAYER?.ready)).toBe(false)
+    await releaseWebGL(page)
+    await page.close()
+  })
+
+  test('model load pending shows timeout error and retry button', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { bootTimeoutMs: 800, module: false, bootStarted: false, ready: false }
+    })
+    await injectCfg(page)
+    await page.route('**/craft-001/assets/model.glb', () => {})
+    await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('#error:not([hidden])', { timeout: 10000 })
+    await expect(page.locator('#err-text')).toContainText(/模型加载超时|配置或模型加载超时/)
+    await expect(page.locator('#err-btn')).not.toHaveAttribute('hidden', '')
+    expect(await page.evaluate(() => window.__SY_PLAYER?.ready)).toBe(false)
+    await releaseWebGL(page)
+    await page.close()
+  })
+
+  test('model completing after timeout does not become ready', async ({ browser }) => {
+    let release
+    const gate = new Promise(r => { release = r })
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { bootTimeoutMs: 800, module: false, bootStarted: false, ready: false }
+    })
+    await injectCfg(page)
+    await page.route('**/craft-001/assets/model.glb', async route => {
+      await gate
+      route.continue()
+    })
+    await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('#error:not([hidden])', { timeout: 10000 })
+    release()
+    await page.waitForTimeout(1500)
+    expect(await page.evaluate(() => window.__SY_PLAYER?.ready)).toBe(false)
+    await releaseWebGL(page)
+    await page.close()
   })
 })
 
@@ -687,10 +749,22 @@ test.describe('viewer rotate button', () => {
   })
 })
 
-test.describe('语音播放器 折叠', () => {
-  const audioFixture = [{ id: 'a1', src: 'assets/audio.mp3', label: '讲解 1' }]
-  const withAudio = (opts = {}) => ({ ...opts, audio: opts.audio ?? audioFixture })
+test.describe('player UI serial', () => {
+test.describe.configure({ mode: 'serial', timeout: 180_000 })
 
+let page
+
+test.beforeAll(async ({ browser }) => {
+  page = await browser.newPage()
+  await gotoPlayer(page, { mode: 'edit' })
+})
+
+test.afterAll(async () => {
+  await releaseWebGL(page)
+  await page?.close()
+})
+
+test.describe('语音播放器 折叠', () => {
   const st = () => page.evaluate(() => {
     const a = document.getElementById('audio'), r = a.getBoundingClientRect()
     return {
@@ -932,3 +1006,5 @@ test.describe('全屏按钮', () => {
     await pg.close()
   })
 })
+
+}) // player UI serial

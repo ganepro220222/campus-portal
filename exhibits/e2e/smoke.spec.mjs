@@ -35,11 +35,11 @@ test.describe('public entry (fast)', () => {
       const flags = await page.evaluate(() => ({
         editMode: /const editMode = false \/\* viewer-only \*\//.test(document.documentElement.innerHTML),
         testHook: window.__SY_TEST__ == null,
-        booted: window.__SY_PLAYER?.booted === true,
+        ready: window.__SY_PLAYER?.ready === true,
       }))
       expect(flags.editMode).toBe(true)
       expect(flags.testHook).toBe(true)
-      expect(flags.booted).toBe(true)
+      expect(flags.ready).toBe(true)
 
       await openFirstHotspot(page)
       const snap = await calloutSnapshot(page)

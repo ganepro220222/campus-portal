@@ -98,6 +98,11 @@ test.describe('灯光面板', () => {
 
   test('灯光跟随相机：三盏方向光挂在灯组上并随视角旋转', async () => {
     await openLightSection()
+    // craft-001 默认 followCamera=true；先关再测，避免 rigRotY 初始值等于 camAzimuth
+    if (await page.locator('#ed-light-follow').isChecked()) {
+      await page.uncheck('#ed-light-follow')
+      await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
+    }
     let st = await lightState()
     for (const k of ['key', 'fill', 'rim']) expect(st.lights[k].inRig).toBe(true)
     expect(st.lights.ambient.inRig).toBe(false)

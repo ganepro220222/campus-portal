@@ -702,6 +702,10 @@ test.describe('studio.html', () => {
 
   test('批量五光源：写入 lights.*，方位角/仰角合成 position，未勾选的灯一律不碰', async ({ page }) => {
     const cfg = loadCfg('craft-001')
+    // 出厂 config 可能已有 enabled；本测只验证「未勾启用时不新写 enabled」
+    for (const k of ['key', 'fill', 'rim', 'ambient', 'bounce']) {
+      if (cfg.lights?.[k]) delete cfg.lights[k].enabled
+    }
     await page.route('**/craft-001/config.json*', r => r.fulfill({ json: structuredClone(cfg) }))
     const saves = []
     await page.route('**/studio-api/save', async route => {

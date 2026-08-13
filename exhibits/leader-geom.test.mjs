@@ -15,10 +15,16 @@ import {
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
 import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, validateViewerSemantics, checkHtmlImports, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, initUploadVendor,
+  validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, patchExhibitIndexTitle, exhibitTitleFromCfg,
+  UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
+
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 let pass = 0, fail = 0
 function test(name, fn) {
@@ -559,7 +565,7 @@ test('upload pack includes leader-geom.js and resolves player imports', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
   try {
     const uploadDir = path.join(tmp, 'exhibits-upload')
-    fs.mkdirSync(uploadDir, { recursive: true })
+    initUploadVendor(uploadDir)
     for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
       fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
     }
@@ -568,13 +574,42 @@ test('upload pack includes leader-geom.js and resolves player imports', () => {
     const missing = checkHtmlImports(path.join(uploadDir, 'player.view.html'))
     assert.deepEqual(missing, [], `missing upload imports: ${missing.join(', ')}`)
     assert.ok(fs.existsSync(path.join(uploadDir, 'leader-geom.js')), 'leader-geom.js must be in upload pack')
+    const runtimeMissing = checkUploadRuntimeDeps(uploadDir, path.join(uploadDir, 'player.view.html'))
+    assert.deepEqual(runtimeMissing, [], `missing runtime deps: ${runtimeMissing.join(', ')}`)
     const synced = syncUploadExhibits(uploadDir)
     assert.ok(synced.includes('craft-001/config.json'), 'craft-001/config.json must sync on --upload')
     const cfg = JSON.parse(fs.readFileSync(path.join(uploadDir, 'craft-001/config.json'), 'utf8'))
     assert.equal(cfg.i18n.en.title, JSON.parse(fs.readFileSync(path.join(ROOT, 'craft-001/config.json'), 'utf8')).i18n.en.title)
+    const idx = fs.readFileSync(path.join(uploadDir, 'craft-001/index.html'), 'utf8')
+    assert.match(idx, new RegExp(escapeRegex(cfg.i18n.zh.title)))
+    assert.match(idx, /player\.view\.html\?ex=craft-001/)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
+})
+
+test('--upload runtime deps fail without vendor', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    fs.mkdirSync(uploadDir, { recursive: true })
+    for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
+      fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
+    }
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    fs.writeFileSync(path.join(uploadDir, 'player.view.html'), uploadHtml, 'utf8')
+    const runtimeMissing = checkUploadRuntimeDeps(uploadDir, path.join(uploadDir, 'player.view.html'))
+    assert.ok(runtimeMissing.some(m => m.includes('vendor/three.module.js')))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('patchExhibitIndexTitle uses config zh title', () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'craft-001/config.json'), 'utf8'))
+  const srcIdx = fs.readFileSync(path.join(ROOT, 'craft-001/index.html'), 'utf8')
+  const out = patchExhibitIndexTitle(srcIdx, exhibitTitleFromCfg(cfg))
+  assert.match(out, new RegExp(`<title>${escapeRegex(cfg.i18n.zh.title)} · 立体鉴赏</title>`))
 })
 
 test('viewer output imports only configFetchUrl from player-persist', () => {

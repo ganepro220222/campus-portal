@@ -35,6 +35,19 @@ export const UPLOAD_JS_COPIES = [
 /** 各展品目录内随 --upload 同步的轻量文件（不含 assets/ 大资源） */
 export const UPLOAD_EXHIBIT_FILES = ['config.json', 'index.html']
 
+/** viewer 启动必需的 vendor 文件（import map + Draco/Basis 解码器） */
+export const UPLOAD_VENDOR_REQUIRED = [
+  'vendor/three.module.js',
+  'vendor/addons/loaders/GLTFLoader.js',
+  'vendor/addons/loaders/DRACOLoader.js',
+  'vendor/addons/loaders/KTX2Loader.js',
+  'vendor/draco/draco_decoder.js',
+  'vendor/draco/draco_wasm_wrapper.js',
+  'vendor/draco/draco_decoder.wasm',
+  'vendor/basis/basis_transcoder.js',
+  'vendor/basis/basis_transcoder.wasm',
+]
+
 const VIEWER_FORBIDDEN = [
   'bootstrapHotspotIds',
   'hotspotIdBootAudit',
@@ -72,6 +85,92 @@ export function checkHtmlImports(htmlPath) {
     if (!target || !fs.existsSync(target)) missing.push(spec)
   }
   return missing
+}
+
+/** 从 import map 提取相对路径（three 等 bare spec 不在此列） */
+export function importMapRelativeSpecs(html) {
+  const m = html.match(/<script type="importmap">\s*(\{[\s\S]*?\})\s*<\/script>/)
+  if (!m) return []
+  try {
+    const j = JSON.parse(m[1])
+    return Object.values(j.imports || {}).filter(s => typeof s === 'string' && (s.startsWith('./') || s.startsWith('../')))
+  } catch { return [] }
+}
+
+/** 校验 upload 目录具备 viewer 运行时依赖（vendor + import map 目标） */
+export function checkUploadRuntimeDeps(uploadDir, htmlPath) {
+  const missing = []
+  for (const rel of UPLOAD_VENDOR_REQUIRED) {
+    if (!fs.existsSync(path.join(uploadDir, rel))) missing.push(rel)
+  }
+  if (htmlPath && fs.existsSync(htmlPath)) {
+    const html = fs.readFileSync(htmlPath, 'utf8')
+    const fromDir = path.dirname(htmlPath)
+    for (const spec of importMapRelativeSpecs(html)) {
+      const target = resolveHtmlImport(fromDir, spec)
+      if (!target || !fs.existsSync(target)) missing.push(`importmap:${spec}`)
+    }
+  }
+  return missing
+}
+
+function isRemoteAssetRef(p) {
+  return !p || /^https?:\/\//i.test(p) || p.startsWith('//') || p.startsWith('data:') || p.startsWith('blob:')
+}
+
+function resolveUploadAssetPath(uploadDir, exhibitDir, assetPath) {
+  if (isRemoteAssetRef(assetPath)) return null
+  const root = path.resolve(uploadDir)
+  let abs
+  if (assetPath.startsWith('/')) abs = path.resolve(root, assetPath.slice(1).replace(/^\/+/, ''))
+  else abs = path.resolve(exhibitDir, assetPath)
+  if (abs !== root && !abs.startsWith(root + path.sep)) return null
+  return abs
+}
+
+/** 汇总 upload 中 config 引用的本地 model/poster/panorama 是否存在（仅提示，不阻断） */
+export function auditUploadAssetRefs(uploadDir = UPLOAD_DIR) {
+  const present = []
+  const missing = []
+  for (const name of fs.readdirSync(uploadDir)) {
+    if (!name.startsWith('craft-') || name.startsWith('_')) continue
+    const exhibitDir = path.join(uploadDir, name)
+    let st
+    try { st = fs.statSync(exhibitDir) } catch { continue }
+    if (!st.isDirectory()) continue
+    const cfgPath = path.join(exhibitDir, 'config.json')
+    if (!fs.existsSync(cfgPath)) continue
+    let cfg
+    try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')) } catch { continue }
+    for (const key of ['model', 'poster', 'panorama']) {
+      const ref = cfg?.assets?.[key]
+      if (!ref || isRemoteAssetRef(ref)) continue
+      const abs = resolveUploadAssetPath(uploadDir, exhibitDir, ref)
+      if (!abs) continue
+      const label = `${name}/assets.${key}`
+      if (fs.existsSync(abs)) present.push(label)
+      else missing.push(label + ` (${ref})`)
+    }
+  }
+  return { present, missing }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+export function exhibitTitleFromCfg(cfg) {
+  return String(cfg?.i18n?.zh?.title || cfg?.i18n?.en?.title || '').trim()
+}
+
+/** 按 config 刷新展品壳页 <title>，保留 redirect 脚本不变 */
+export function patchExhibitIndexTitle(indexHtml, title) {
+  const safe = escapeHtml(title)
+  const label = safe ? `${safe} · 立体鉴赏` : '立体鉴赏'
+  if (/<title>[^<]*<\/title>/i.test(indexHtml)) {
+    return indexHtml.replace(/<title>[^<]*<\/title>/i, `<title>${label}</title>`)
+  }
+  return indexHtml
 }
 
 export function validateViewerSemantics(viewHtml) {
@@ -123,10 +222,18 @@ export function buildUploadViewerSrc(viewerSrc = buildViewerSrc()) {
   return out
 }
 
-export function syncUploadModules() {
+export function syncUploadModules(uploadDir = UPLOAD_DIR) {
   for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
-    fs.copyFileSync(path.join(ROOT, srcName), path.join(UPLOAD_DIR, dstName))
+    fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
   }
+}
+
+/** 首次部署：复制 exhibits/vendor → upload/vendor */
+export function initUploadVendor(uploadDir = UPLOAD_DIR) {
+  const src = path.join(ROOT, 'vendor')
+  if (!fs.existsSync(src)) throw new Error('exhibits/vendor missing; cannot init upload directory')
+  fs.mkdirSync(uploadDir, { recursive: true })
+  fs.cpSync(src, path.join(uploadDir, 'vendor'), { recursive: true })
 }
 
 /** 同步 craft-XXX/config.json（及 index.html 壳页），不复制 assets/ */
@@ -138,14 +245,19 @@ export function syncUploadExhibits(uploadDir = UPLOAD_DIR) {
     let st
     try { st = fs.statSync(srcDir) } catch { continue }
     if (!st.isDirectory()) continue
-    if (!fs.existsSync(path.join(srcDir, 'config.json'))) continue
+    const cfgPath = path.join(srcDir, 'config.json')
+    if (!fs.existsSync(cfgPath)) continue
+    let cfg
+    try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')) } catch { continue }
     const dstDir = path.join(uploadDir, name)
     fs.mkdirSync(dstDir, { recursive: true })
-    for (const file of UPLOAD_EXHIBIT_FILES) {
-      const src = path.join(srcDir, file)
-      if (!fs.existsSync(src)) continue
-      fs.copyFileSync(src, path.join(dstDir, file))
-      copied.push(`${name}/${file}`)
+    fs.copyFileSync(cfgPath, path.join(dstDir, 'config.json'))
+    copied.push(`${name}/config.json`)
+    const idxSrc = path.join(srcDir, 'index.html')
+    if (fs.existsSync(idxSrc)) {
+      const html = patchExhibitIndexTitle(fs.readFileSync(idxSrc, 'utf8'), exhibitTitleFromCfg(cfg))
+      fs.writeFileSync(path.join(dstDir, 'index.html'), html, 'utf8')
+      copied.push(`${name}/index.html`)
     }
   }
   return copied
@@ -158,19 +270,32 @@ export function assertViewerBuild(viewHtml = buildViewerSrc()) {
 }
 
 function usage() {
-  console.log(`Usage: node build-viewer.mjs [--check] [--upload]
+  console.log(`Usage: node build-viewer.mjs [--check] [--upload] [--upload-init]
 
-  (default)  Write player.view.html from player.html (+ semantic validation)
-  --check    Exit 1 if player.view.html differs or fails semantic validation
-  --upload   Also write exhibits-upload/player.view.html (.js imports), sync module .js copies,
-             craft-XXX/config.json (+ index.html), verify imports`)
+  (default)     Write player.view.html from player.html (+ semantic validation)
+  --check       Exit 1 if player.view.html differs or fails semantic validation
+  --upload-init Copy vendor/ into exhibits-upload/ (first-time deploy prerequisite)
+  --upload      Update an existing prepared upload directory:
+                player.view.html (.js imports), module .js copies,
+                craft-XXX/config.json (+ index.html title from config),
+                then verify imports + vendor/runtime deps (exit 1 if vendor missing)
+
+  First deploy:  node build-viewer.mjs --upload-init --upload
+  Code update:   node build-viewer.mjs --upload`)
 }
 
 const check = process.argv.includes('--check')
 const upload = process.argv.includes('--upload')
+const uploadInit = process.argv.includes('--upload-init')
 if (isMain) {
 if (process.argv.includes('-h') || process.argv.includes('--help')) {
   usage()
+  process.exit(0)
+}
+
+if (uploadInit && !upload && !check) {
+  initUploadVendor()
+  console.log('exhibits-upload/vendor/ copied from exhibits/vendor/')
   process.exit(0)
 }
 
@@ -197,6 +322,10 @@ console.log('player.view.html written')
 
 if (upload) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true })
+  if (uploadInit) {
+    initUploadVendor()
+    console.log('exhibits-upload/vendor/ copied from exhibits/vendor/')
+  }
   const uploadHtml = buildUploadViewerSrc(next)
   const uploadSem = validateViewerSemantics(uploadHtml)
   if (!uploadSem.ok) {
@@ -206,16 +335,28 @@ if (upload) {
   fs.writeFileSync(UPLOAD_OUT, uploadHtml, 'utf8')
   syncUploadModules()
   const exhibitFiles = syncUploadExhibits()
-  const missing = checkHtmlImports(UPLOAD_OUT)
-  if (missing.length) {
-    console.error('exhibits-upload missing imports:', missing.join(', '))
-    console.error('Note: vendor/ and exhibit assets must already exist in the upload directory.')
+  const missingImports = checkHtmlImports(UPLOAD_OUT)
+  if (missingImports.length) {
+    console.error('exhibits-upload missing imports:', missingImports.join(', '))
     process.exit(1)
   }
+  const missingRuntime = checkUploadRuntimeDeps(UPLOAD_DIR, UPLOAD_OUT)
+  if (missingRuntime.length) {
+    console.error('exhibits-upload missing runtime deps:', missingRuntime.join(', '))
+    console.error('First deploy: node build-viewer.mjs --upload-init --upload')
+    console.error('Or copy vendor/ into exhibits-upload/ before --upload')
+    process.exit(1)
+  }
+  const assets = auditUploadAssetRefs()
   console.log('exhibits-upload/player.view.html written (.js imports)')
   console.log('exhibits-upload/*.js module copies synced')
   if (exhibitFiles.length) console.log('exhibits-upload exhibit files synced:', exhibitFiles.join(', '))
   else console.log('exhibits-upload: no craft-XXX/config.json to sync')
-  console.log('exhibits-upload relative imports OK')
+  if (assets.present.length) console.log('exhibits-upload asset refs present:', assets.present.length)
+  if (assets.missing.length) {
+    console.warn('exhibits-upload asset refs missing (upload separately):')
+    for (const m of assets.missing) console.warn('  -', m)
+  }
+  console.log('exhibits-upload runtime deps OK')
 }
 }

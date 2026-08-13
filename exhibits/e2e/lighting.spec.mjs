@@ -189,7 +189,7 @@ test.describe('落地阴影', () => {
   })
 
   test('开启后：只有主光投影，接触阴影与地面贴着模型底面，模型全部投影', async () => {
-    await reloadPlayer(page, { shadow: { enabled: true } })
+    await reloadPlayer(page, { shadow: { enabled: true, groundOffset: 0 } })
     const st = await lightState()
     expect(st.shadow.rendererEnabled).toBe(true)
     expect(st.shadow.autoUpdate).toBe(false)          // 静态场景不逐帧重算阴影

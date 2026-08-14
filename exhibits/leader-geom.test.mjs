@@ -20,7 +20,7 @@ import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhi
   initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
   collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack,
   prepareUploadStaging, promoteUploadStaging, uploadSiblingStagingPath, uploadSiblingBackupPath,
-  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, listSourceCraftDirs, auditSourceExhibits, validateSourceExhibitConfig, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, listSourceCraftDirs, auditSourceExhibits, validateSourceExhibitConfig, buildExhibitIndexHtml, UPLOAD_JS_COPIES } from './build-viewer.mjs'
 import { configTimeoutMs, modelIdleTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
@@ -849,6 +849,52 @@ test('orphanUploadExhibits keeps upload when source craft dir still exists', () 
   }
 })
 
+test('auditSourceExhibits rejects missing index.html', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const root = path.join(tmp, 'exhibits')
+    fs.mkdirSync(path.join(root, 'craft-noidx'), { recursive: true })
+    fs.writeFileSync(path.join(root, 'craft-noidx/config.json'), '{"assets":{"model":"assets/model.glb"}}', 'utf8')
+    const audit = auditSourceExhibits(root)
+    assert.equal(audit.ok, false)
+    assert.ok(audit.errors.some(e => e === 'craft-noidx/index.html: missing'))
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('--upload-assets alone exits with usage error', () => {
+  const r = spawnSync(process.execPath, ['build-viewer.mjs', '--upload-assets'], { cwd: ROOT, encoding: 'utf8' })
+  assert.notEqual(r.status, 0)
+  assert.match(`${r.stderr}\n${r.stdout}`, /--upload-assets requires --upload/)
+})
+
+test('buildExhibitIndexHtml uses config title and exhibit id', () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'craft-001/config.json'), 'utf8'))
+  const html = buildExhibitIndexHtml('craft-001', cfg)
+  assert.match(html, /player\.view\.html\?ex=craft-001/)
+  assert.match(html, new RegExp(`<title>${escapeRegex(cfg.i18n.zh.title)} · 立体鉴赏</title>`))
+  assert.match(html, /params\.delete\('mode'\)/)
+})
+
+test('syncUploadExhibits replaces stale upload index from template', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'upload')
+    const audit = auditSourceExhibits(ROOT)
+    const exhibit = audit.exhibits.find(e => e.name === 'craft-001')
+    assert.ok(exhibit)
+    fs.mkdirSync(path.join(uploadDir, 'craft-001'), { recursive: true })
+    fs.writeFileSync(path.join(uploadDir, 'craft-001/index.html'), '<script>location.replace("../player.view.html?ex=craft-WRONG")</script>', 'utf8')
+    syncUploadExhibits(uploadDir, [exhibit])
+    const idx = fs.readFileSync(path.join(uploadDir, 'craft-001/index.html'), 'utf8')
+    assert.match(idx, /player\.view\.html\?ex=craft-001/)
+    assert.doesNotMatch(idx, /craft-WRONG/)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 test('auditSourceExhibits rejects invalid JSON', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
   try {
@@ -903,6 +949,33 @@ test('deployUploadPack rejects corrupt source config without changing live', () 
     assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), false)
   } finally {
     fs.writeFileSync(cfgPath, backup)
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('deployUploadPack rejects missing source index without changing live', () => {
+  const craftDir = path.join(ROOT, 'craft-005')
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    fs.mkdirSync(craftDir, { recursive: true })
+    fs.copyFileSync(path.join(ROOT, 'craft-001/config.json'), path.join(craftDir, 'config.json'))
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    syncUploadExhibits(uploadDir)
+    initUploadVendor(uploadDir)
+    syncUploadAssets(uploadDir)
+    syncUploadModules(uploadDir)
+    const modPath = path.join(uploadDir, 'hotspot-id.js')
+    const sentinel = '/* LIVE-SENTINEL-MISSING-IDX */'
+    fs.writeFileSync(modPath, sentinel, 'utf8')
+    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false })
+    assert.equal(dep.ok, false)
+    assert.equal(dep.stage, 'source')
+    assert.ok(dep.errors.some(e => e.includes('craft-005/index.html: missing')))
+    assert.equal(fs.readFileSync(modPath, 'utf8'), sentinel)
+    assert.ok(fs.existsSync(path.join(uploadDir, 'craft-001/index.html')))
+  } finally {
+    fs.rmSync(craftDir, { recursive: true, force: true })
     fs.rmSync(tmp, { recursive: true, force: true })
   }
 })

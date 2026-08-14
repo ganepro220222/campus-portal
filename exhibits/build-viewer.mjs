@@ -23,6 +23,7 @@ export const VIEWER_LIGHT_RIG_IMPORTS = [
 
 const UPLOAD_DIR = path.join(ROOT, '..', 'exhibits-upload')
 const UPLOAD_OUT = path.join(UPLOAD_DIR, 'player.view.html')
+const EXHIBIT_INDEX_TEMPLATE = path.join(ROOT, '_template/index.html')
 
 /** 部署包须同步的 JS 模块（.mjs 源 → .js 副本；leader-geom 仅 .js） */
 export const UPLOAD_JS_COPIES = [
@@ -227,29 +228,47 @@ export function auditSourceExhibits(root = ROOT) {
   const errors = []
   for (const name of craftDirs) {
     const cfgPath = path.join(root, name, 'config.json')
+    const idxPath = path.join(root, name, 'index.html')
+    let cfg = null
+    let configOk = false
+    let indexOk = false
+
     if (!fs.existsSync(cfgPath)) {
       errors.push(`${name}/config.json: missing`)
-      continue
+    } else {
+      let st
+      try {
+        st = fs.statSync(cfgPath)
+      } catch (e) {
+        errors.push(`${name}/config.json: ${e.message}`)
+      }
+      if (st && !st.isFile()) {
+        errors.push(`${name}/config.json: must be a regular file`)
+      } else if (st?.isFile()) {
+        try {
+          cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'))
+          const schemaErrs = validateSourceExhibitConfig(name, cfg)
+          if (schemaErrs.length) errors.push(...schemaErrs)
+          else configOk = true
+        } catch (e) {
+          errors.push(`${name}/config.json: ${e.message}`)
+        }
+      }
     }
-    let st
-    try {
-      st = fs.statSync(cfgPath)
-    } catch (e) {
-      errors.push(`${name}/config.json: ${e.message}`)
-      continue
+
+    if (!fs.existsSync(idxPath)) {
+      errors.push(`${name}/index.html: missing`)
+    } else {
+      try {
+        const st = fs.statSync(idxPath)
+        if (!st.isFile()) errors.push(`${name}/index.html: must be a regular file`)
+        else indexOk = true
+      } catch (e) {
+        errors.push(`${name}/index.html: ${e.message}`)
+      }
     }
-    if (!st.isFile()) {
-      errors.push(`${name}/config.json: must be a regular file`)
-      continue
-    }
-    try {
-      const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'))
-      const schemaErrs = validateSourceExhibitConfig(name, cfg)
-      if (schemaErrs.length) errors.push(...schemaErrs)
-      else exhibits.push({ name, cfg })
-    } catch (e) {
-      errors.push(`${name}/config.json: ${e.message}`)
-    }
+
+    if (configOk && indexOk && cfg) exhibits.push({ name, cfg })
   }
   return { ok: errors.length === 0, exhibits, errors, craftDirs }
 }
@@ -524,6 +543,12 @@ export function patchExhibitIndexTitle(indexHtml, title) {
   return indexHtml
 }
 
+/** Unified redirect shell for upload craft-XXX/index.html (from _template/index.html). */
+export function buildExhibitIndexHtml(exhibitName, cfg, templateHtml = fs.readFileSync(EXHIBIT_INDEX_TEMPLATE, 'utf8')) {
+  const title = exhibitTitleFromCfg(cfg)
+  return templateHtml.replaceAll('__EX__', exhibitName).replaceAll('__TITLE__', escapeHtml(title))
+}
+
 export function validateViewerSemantics(viewHtml) {
   for (const sym of VIEWER_FORBIDDEN) {
     if (viewHtml.includes(sym)) return { ok: false, reason: `viewer must not contain ${sym}` }
@@ -598,12 +623,8 @@ export function syncUploadExhibits(uploadDir = UPLOAD_DIR, sourceExhibits = null
     fs.mkdirSync(dstDir, { recursive: true })
     fs.copyFileSync(cfgPath, path.join(dstDir, 'config.json'))
     copied.push(`${name}/config.json`)
-    const idxSrc = path.join(srcDir, 'index.html')
-    if (fs.existsSync(idxSrc)) {
-      const html = patchExhibitIndexTitle(fs.readFileSync(idxSrc, 'utf8'), exhibitTitleFromCfg(cfg))
-      fs.writeFileSync(path.join(dstDir, 'index.html'), html, 'utf8')
-      copied.push(`${name}/index.html`)
-    }
+    fs.writeFileSync(path.join(dstDir, 'index.html'), buildExhibitIndexHtml(name, cfg), 'utf8')
+    copied.push(`${name}/index.html`)
   }
   return copied
 }
@@ -641,7 +662,7 @@ function usage() {
   (default)       Write player.view.html from player.html (+ semantic validation)
   --check         Exit 1 if player.view.html differs or fails semantic validation
   --upload-init   Copy vendor/ into exhibits-upload/ (first-time prerequisite)
-  --upload-assets Copy craft assets + shared panoramas referenced in config
+  --upload-assets Copy craft assets + shared panoramas (requires --upload; staged atomically)
   --upload-prune  Remove craft-* dirs from upload that no longer exist in source
   --upload        Incremental update of a prepared upload directory:
                   player.view.html, module .js copies, craft config/index,
@@ -677,17 +698,10 @@ if (uploadInit && !upload && !uploadAssets && !check) {
   process.exit(0)
 }
 
-if (uploadAssets && !upload && !check) {
-  const source = auditSourceExhibits()
-  if (!source.ok) {
-    console.error('exhibits source config errors:')
-    for (const e of source.errors) console.error('  -', e)
-    process.exit(1)
-  }
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true })
-  const copied = syncUploadAssets(UPLOAD_DIR, source.exhibits)
-  console.log('exhibits-upload assets synced:', copied.length ? copied.join(', ') : '(none)')
-  process.exit(0)
+if (uploadAssets && !upload) {
+  console.error('--upload-assets requires --upload (assets copy runs inside staged deploy)')
+  console.error('Run: node build-viewer.mjs --upload-assets --upload')
+  process.exit(1)
 }
 
 const next = assertViewerBuild(buildViewerSrc())

@@ -11,6 +11,10 @@ import {
   strictWebKitPanoramaMaxWidth,
   DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH,
   panoramaRevealTimeoutMs,
+  fitCameraDistance,
+  portraitFillTarget,
+  shouldAutoFitCamera,
+  DEFAULT_PORTRAIT_FILL,
 } from './player-persist.mjs'
 import { computeRootHash, normalizeRootPath, getIdentityPayload } from './_server/studio-identity.mjs'
 
@@ -146,6 +150,55 @@ test('panoramaRevealTimeoutMs：缺省 8s，按 测试钩子 > player > config �
     { panoramaRevealTimeoutMs: () => 200 }), 200)
   // 非正数一律忽略，落回缺省
   assert.equal(panoramaRevealTimeoutMs({ performance: { panoramaRevealTimeoutMs: 0 } }, { panoramaRevealTimeoutMs: -1 }, null), 8000)
+})
+
+test('fitCameraDistance：竖屏由宽度绑定，横屏由高度绑定', () => {
+  const box = { width: 1.5, height: 2.4, fovDeg: 40, fill: 0.78 }
+  const tanV = Math.tan(40 * Math.PI / 360)
+  // 竖屏 390×800：水平视锥只有垂直的 0.4875 倍，宽度先顶满
+  const port = fitCameraDistance({ ...box, aspect: 390 / 800 })
+  assert.ok(Math.abs(port - (0.75 / (tanV * 390 / 800) / 0.78)) < 1e-9, '竖屏应由宽度决定')
+  // 横屏 1600×900：高度先顶满
+  const land = fitCameraDistance({ ...box, aspect: 1600 / 900 })
+  assert.ok(Math.abs(land - (1.2 / tanV / 0.78)) < 1e-9, '横屏应由高度决定')
+  assert.ok(port > land, '同一件器物竖屏要退得更远')
+})
+
+test('fitCameraDistance：fill 越小退得越远，成反比', () => {
+  const b = { width: 1.5, height: 2.4, fovDeg: 40, aspect: 390 / 800 }
+  const d78 = fitCameraDistance({ ...b, fill: 0.78 })
+  const d39 = fitCameraDistance({ ...b, fill: 0.39 })
+  assert.ok(Math.abs(d39 - d78 * 2) < 1e-9)
+})
+
+test('fitCameraDistance：坏输入不产出坏距离', () => {
+  // 没有尺寸就没法反解 → null（调用方会退回 config 里的 distance）
+  assert.equal(fitCameraDistance({ width: 0, height: 0, fovDeg: 40, aspect: 0.5, fill: 0.78 }), null)
+  // fov 非正/非数 → 按 40 兜底，绝不返回负数或 0
+  for (const bad of [0, -10, NaN, undefined, null]) {
+    const d = fitCameraDistance({ width: 1, height: 2, fovDeg: bad, aspect: 0.5, fill: 0.78 })
+    assert.ok(d === null || d > 0, `fovDeg=${bad} 得到 ${d}`)
+  }
+  // fill 非正 → 当作 1（贴边取景），而不是除以 0 变成 Infinity
+  const d1 = fitCameraDistance({ width: 1, height: 2, fovDeg: 40, aspect: 0.5, fill: 0 })
+  assert.ok(Number.isFinite(d1) && d1 > 0)
+})
+
+test('portraitFillTarget：缺省 0.78，可配置，0/false 表示关闭', () => {
+  assert.equal(portraitFillTarget(null), DEFAULT_PORTRAIT_FILL)
+  assert.equal(portraitFillTarget({ camera: {} }), DEFAULT_PORTRAIT_FILL)
+  assert.equal(portraitFillTarget({ camera: { portraitFill: 0.6 } }), 0.6)
+  assert.equal(portraitFillTarget({ camera: { portraitFill: 0 } }), 0)
+  assert.equal(portraitFillTarget({ camera: { portraitFill: false } }), 0)
+  assert.equal(portraitFillTarget({ camera: { portraitFill: 5 } }), 0.98)   // 夹住，别让器物冲出画面
+})
+
+test('shouldAutoFitCamera：只在竖屏生效，横屏与关闭时都不接管', () => {
+  assert.equal(shouldAutoFitCamera(390 / 800, 0.78), true)
+  assert.equal(shouldAutoFitCamera(768 / 1024, 0.78), true)
+  assert.equal(shouldAutoFitCamera(1600 / 900, 0.78), false)   // 桌面
+  assert.equal(shouldAutoFitCamera(800 / 390, 0.78), false)    // 手机横屏
+  assert.equal(shouldAutoFitCamera(390 / 800, 0), false)       // 显式关闭
 })
 
 console.log('')

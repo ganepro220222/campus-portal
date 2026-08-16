@@ -191,3 +191,46 @@ export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal, onDown
     isLengthUnknown: () => lengthUnknown,
   }
 }
+
+/*
+ * 竖屏取景（auto-fit）
+ * -------------------
+ * 手机上「模型偏大」的成因不是模型本身大，而是竖屏的**水平**视锥太窄：
+ * three.js 的 fov 是垂直视角，水平视角 = atan(tan(fov/2)·aspect)。
+ * 390×800 的 aspect 只有 0.49，水平可见宽度只有垂直的一半——实测一件普通瓶形
+ * 在默认取景下占屏高 77.8%，占屏**宽却到 99.0%**，几乎左右顶满，于是显得又大又挤。
+ *
+ * 业界（model-viewer / Sketchfab 一类）的通行解法都不是改镜头，而是按包围盒
+ * 反解距离：取「垂直方向装得下」与「水平方向装得下」两者所需距离的较大值。
+ * 这样做的好处对 100 件展品尤其明显——每件的宽高比都不一样，一个统一的 fov 或
+ * 统一的 distance 必然是「照顾了瘦高瓶就切了宽口碗」，而按包围盒反解对每件都成立，
+ * 且完全不需要逐件调参。
+ *
+ * fill = 器物在「绑定的那条轴」上占画面的比例（谁先顶满就以谁为准）。
+ */
+export function fitCameraDistance({ width, height, fovDeg, aspect, fill }) {
+  const f = (typeof fill === 'number' && fill > 0) ? fill : 1
+  const a = (typeof aspect === 'number' && aspect > 0) ? aspect : 1
+  const tanV = Math.tan((fovDeg || 40) * Math.PI / 360)
+  if (!(tanV > 0)) return null
+  const tanH = tanV * a
+  const dV = (Math.max(height, 0) / 2) / tanV / f
+  const dH = (Math.max(width, 0) / 2) / tanH / f
+  const d = Math.max(dV, dH)
+  return d > 0 ? d : null
+}
+
+/** 竖屏目标占屏比；0 / false / 负数 = 关闭 auto-fit，沿用 config 里的 distance */
+export const DEFAULT_PORTRAIT_FILL = 0.78
+
+export function portraitFillTarget(cfg) {
+  const v = cfg?.camera?.portraitFill
+  if (v === false || v === 0) return 0
+  if (typeof v === 'number' && v > 0) return Math.min(v, 0.98)
+  return DEFAULT_PORTRAIT_FILL
+}
+
+/** 只有竖屏（水平视锥比垂直窄）才需要 auto-fit；横屏与桌面保持既有 distance 不变 */
+export function shouldAutoFitCamera(aspect, fill) {
+  return typeof aspect === 'number' && aspect > 0 && aspect < 1 && fill > 0
+}

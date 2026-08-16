@@ -1250,3 +1250,64 @@ test.describe('全屏按钮', () => {
 })
 
 }) // player UI serial
+
+/* 竖屏自动取景：手机上「模型偏大」的成因是竖屏水平视锥窄（aspect 0.49），
+   实测默认取景下器物占屏高 77.8% 但占屏**宽 99.0%**，左右几乎顶满。
+   按包围盒反解距离（model-viewer / Sketchfab 的通行做法）能对任意宽高比的展品都成立，
+   100 件展品不需要逐件调参；横屏与桌面不接管，零回归。 */
+test.describe('竖屏自动取景', () => {
+  // 量器物在画布里的真实像素轮廓（编辑模式才有 preserveDrawingBuffer）
+  const silhouette = pg => pg.evaluate(() => {
+    const c = document.getElementById('scene')
+    const g = c.getContext('webgl2') || c.getContext('webgl')
+    const W = c.width, H = c.height
+    const px = new Uint8Array(W * H * 4)
+    g.readPixels(0, 0, W, H, g.RGBA, g.UNSIGNED_BYTE, px)
+    let minY = H, maxY = -1, minX = W, maxX = -1
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4
+      if ((px[i] + px[i + 1] + px[i + 2]) / 3 > 45) {
+        if (y < minY) minY = y; if (y > maxY) maxY = y
+        if (x < minX) minX = x; if (x > maxX) maxX = x
+      }
+    }
+    return { h: (maxY - minY) / H, w: (maxX - minX) / W }
+  })
+  /** 每例独立开页，避免与串行链共享 page */
+  const measure = async (browser, viewport, camera) => {
+    const pg = await browser.newPage()
+    await gotoPlayer(pg, { mode: 'edit', viewport, camera, environment: { visibleBackground: false } })
+    await pg.waitForTimeout(1200)
+    const s = await silhouette(pg)
+    await releaseWebGL(pg)
+    await pg.close()
+    return s
+  }
+
+  test('竖屏：占屏比落到目标附近，且不再左右顶满', async ({ browser }) => {
+    const s = await measure(browser, { width: 390, height: 800 }, {})
+    // 绑定轴（竖屏是宽度）应贴近 0.78 目标；轮廓非矩形，留一档余量
+    expect(Math.max(s.w, s.h)).toBeGreaterThan(0.68)
+    expect(Math.max(s.w, s.h)).toBeLessThan(0.88)
+    expect(s.w).toBeLessThan(0.9)        // 修复前是 0.99，几乎贴边
+  })
+
+  test('竖屏：config 里的 distance 不再决定取景（100 件展品无需逐件调）', async ({ browser }) => {
+    const a = await measure(browser, { width: 390, height: 800 }, { distance: 4.4 })
+    const b = await measure(browser, { width: 390, height: 800 }, { distance: 6.5 })
+    expect(Math.abs(a.h - b.h)).toBeLessThan(0.02)
+    expect(Math.abs(a.w - b.w)).toBeLessThan(0.02)
+  })
+
+  test('横屏与桌面完全不接管：仍由 config 的 distance 决定', async ({ browser }) => {
+    const near = await measure(browser, { width: 1280, height: 800 }, { distance: 4.4 })
+    const far = await measure(browser, { width: 1280, height: 800 }, { distance: 6.5 })
+    expect(near.h).toBeGreaterThan(far.h + 0.15)   // 距离仍然说了算
+  })
+
+  test('portraitFill=0 可关掉自动取景，回到老行为', async ({ browser }) => {
+    const auto = await measure(browser, { width: 390, height: 800 }, { distance: 6.5 })
+    const off = await measure(browser, { width: 390, height: 800 }, { distance: 6.5, portraitFill: 0 })
+    expect(off.h).toBeLessThan(auto.h - 0.05)      // 关掉后 6.5 的远距离重新生效
+  })
+})

@@ -344,7 +344,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'
+import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 
@@ -801,11 +801,31 @@ function materialNames() {
   const s=new Set(); model.traverse(o=>{ if(o.isMesh) [].concat(o.material).forEach(m=>{ if(m&&m.name) s.add(m.name) }) }); return [...s]
 }
 
+/* 竖屏取景：按包围盒反解距离，让器物占屏比落到目标值。
+   只在竖屏生效——桌面与横屏沿用 config 里调好的 distance，零回归。
+   拿 modelBox 而不是 targetSize：targetSize 只约束最长边，而竖屏先顶满的常常是**宽度**，
+   必须知道真实的宽高才能算对（100 件展品宽高比各不相同，这也是统一 fov / 统一 distance
+   都做不到的原因）。 */
+function autoFitDistance() {
+  const c = cfg.camera || {}
+  const fill = portraitFillTarget(cfg)
+  const aspect = innerHeight > 0 ? innerWidth / innerHeight : 1
+  if (!shouldAutoFitCamera(aspect, fill) || !model) return null
+  const size = modelBox.getSize(new THREE.Vector3())
+  if (!(size.y > 0)) return null
+  const d = fitCameraDistance({
+    width: Math.max(size.x, size.z), height: size.y,
+    fovDeg: num(c.fov, 40), aspect, fill,
+  })
+  if (!d) return null
+  // 反解值必须落在用户能自己缩放到的范围内，否则「重置」会跳到一个手动够不着的位置
+  return Math.min(Math.max(d, num(c.minDistance, 1.4)), num(c.maxDistance, 7))
+}
 function placeCamera() {
   const c = cfg.camera || {}
   camera.fov = num(c.fov, 40); camera.updateProjectionMatrix()
   const pv = c.pivot || [0,0,0]; pivot.set(pv[0]||0, pv[1]||0, pv[2]||0)
-  camera.position.setFromSpherical(new THREE.Spherical(num(c.distance,3.4), num(c.phi,1.2), num(c.theta,0.7)))
+  camera.position.setFromSpherical(new THREE.Spherical(autoFitDistance() ?? num(c.distance,3.4), num(c.phi,1.2), num(c.theta,0.7)))
   camera.position.add(pivot)
   initialCam.copy(camera.position)
   controls.target.copy(pivot)
@@ -2152,6 +2172,8 @@ function renderEditor() {
     ${rng('c.max','最远距离',3,15,0.1, num(c.maxDistance,8))}
     ${rng('c.pivy','旋转轴 Y 偏移',-1,1,0.01,(c.pivot||[0,0,0])[1])}
     <div class="ed-note">自动/手动旋转均绕此轴。默认 0 = 模型中轴；仅需偏移旋转中心时再调。</div>
+    ${rng('c.pfill','手机竖屏占屏',0.5,0.95,0.01, portraitFillTarget(cfg) || DEFAULT_PORTRAIT_FILL)}
+    <div class="ed-note" id="ed-fit-note"></div>
     <button class="ed-btn" id="ed-cam-save">保存当前视角为默认</button>
   </details>
 
@@ -2321,7 +2343,25 @@ function wireEditor() {
   }
   function setShadow(key, v){ cfg.shadow = cfg.shadow || {}; cfg.shadow[key] = v; applyShadow() }
   // 主光被关掉 / 转到水平面以下时，地面接不到影子——就地提示，不整段重绘
-  function syncShadowHint(){
+  /* 编辑器是横屏，看不到手机效果——把反解出来的数值如实写出来，让操作者能核对。
+   同时说明它在当前（横屏）视口不生效，免得以为滑条坏了。 */
+function syncFitNote() {
+  const el = document.getElementById('ed-fit-note'); if (!el) return
+  const c = cfg.camera || {}
+  const fill = portraitFillTarget(cfg)
+  if (!fill) { el.textContent = '已关闭竖屏自动取景，手机上沿用上面的默认距离。'; return }
+  const size = model ? modelBox.getSize(new THREE.Vector3()) : null
+  const parts = [`竖屏（宽高比 < 1）时自动按包围盒反解相机距离，让器物占屏 ${Math.round(fill * 100)}%；横屏与桌面不受影响，仍用保存的默认视角。`]
+  if (size && size.y > 0) {
+    for (const [label, w, h] of [['手机 390×800', 390, 800], ['平板 768×1024', 768, 1024]]) {
+      const d = fitCameraDistance({ width: Math.max(size.x, size.z), height: size.y, fovDeg: num(c.fov, 40), aspect: w / h, fill })
+      const clamped = Math.min(Math.max(d, num(c.minDistance, 1.4)), num(c.maxDistance, 7))
+      parts.push(`${label} → 距离 ${clamped.toFixed(2)}${clamped !== d ? '（已被最近/最远距离夹住）' : ''}`)
+    }
+  }
+  el.innerHTML = parts.join('<br>')
+}
+function syncShadowHint(){
     const el = document.getElementById('ed-shadow-warn'); if (!el) return
     el.innerHTML = (resolveShadow(cfg).enabled && !shadowWillLand(cfg))
       ? '<b style="color:#e0b070">当前主光已关闭或在水平面以下，只剩接触阴影，没有方向性投影。</b>' : ''
@@ -2348,6 +2388,7 @@ function wireEditor() {
       case 'c.rspeed': c.autoRotateSpeed=v; controls.autoRotateSpeed=v; break
       case 'c.min': c.minDistance=v; controls.minDistance=v; break
       case 'c.max': c.maxDistance=v; controls.maxDistance=v; break
+      case 'c.pfill': c.portraitFill=v; placeCamera(); syncFitNote(); break
       case 'c.pivy': c.pivot=[(c.pivot||[0,0,0])[0], v, (c.pivot||[0,0,0])[2]]; pivot.set(c.pivot[0],c.pivot[1],c.pivot[2]); if(!activeHS){ controls.target.copy(pivot); controls.update() } break
       case 'hs.size': cfg.hotspotStyle=cfg.hotspotStyle||{}; cfg.hotspotStyle.size=v; buildHotspots(); break
       case 'leader.gap': cfg.panel=cfg.panel||{}; cfg.panel.leaderGap=v; clearLeaderParams(); break
@@ -2390,6 +2431,7 @@ function wireEditor() {
   { const c3=document.getElementById('ed-shadow-plate')
     if(c3) c3.onchange=e=>{ cfg.shadow=cfg.shadow||{}; cfg.shadow.plate=e.target.checked; applyShadow() } }
   syncShadowHint()
+  syncFitNote()
   { const s2=document.getElementById('ed-env-preset')
     if(s2) s2.onchange=e=>{ cfg.environment.preset=e.target.value
       if (!supportsVisibleBackgroundForSource({ kind: e.target.value === 'room' ? 'room' : 'preset', preset: e.target.value }))

@@ -26996,6 +26996,28 @@ function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal, onDownloadCom
     isLengthUnknown: () => lengthUnknown
   };
 }
+function fitCameraDistance({ width, height, fovDeg, aspect: aspect2, fill }) {
+  const f = typeof fill === "number" && fill > 0 ? fill : 1;
+  const a = typeof aspect2 === "number" && aspect2 > 0 ? aspect2 : 1;
+  const tanV = Math.tan((fovDeg || 40) * Math.PI / 360);
+  if (!(tanV > 0)) return null;
+  const tanH = tanV * a;
+  const dV = Math.max(height, 0) / 2 / tanV / f;
+  const dH = Math.max(width, 0) / 2 / tanH / f;
+  const d = Math.max(dV, dH);
+  return d > 0 ? d : null;
+}
+var DEFAULT_PORTRAIT_FILL = 0.78;
+function portraitFillTarget(cfg2) {
+  var _a;
+  const v = (_a = cfg2 == null ? void 0 : cfg2.camera) == null ? void 0 : _a.portraitFill;
+  if (v === false || v === 0) return 0;
+  if (typeof v === "number" && v > 0) return Math.min(v, 0.98);
+  return DEFAULT_PORTRAIT_FILL;
+}
+function shouldAutoFitCamera(aspect2, fill) {
+  return typeof aspect2 === "number" && aspect2 > 0 && aspect2 < 1 && fill > 0;
+}
 
 // light-rig.mjs
 var LIGHT_KEYS = ["key", "fill", "rim", "bounce"];
@@ -27615,13 +27637,30 @@ function fitShadowToModel(s) {
   cam.far = key.position.length() + r * 2;
   cam.updateProjectionMatrix();
 }
+function autoFitDistance() {
+  const c = cfg.camera || {};
+  const fill = portraitFillTarget(cfg);
+  const aspect2 = innerHeight > 0 ? innerWidth / innerHeight : 1;
+  if (!shouldAutoFitCamera(aspect2, fill) || !model) return null;
+  const size = modelBox.getSize(new Vector3());
+  if (!(size.y > 0)) return null;
+  const d = fitCameraDistance({
+    width: Math.max(size.x, size.z),
+    height: size.y,
+    fovDeg: num2(c.fov, 40),
+    aspect: aspect2,
+    fill
+  });
+  if (!d) return null;
+  return Math.min(Math.max(d, num2(c.minDistance, 1.4)), num2(c.maxDistance, 7));
+}
 function placeCamera() {
   const c = cfg.camera || {};
   camera.fov = num2(c.fov, 40);
   camera.updateProjectionMatrix();
   const pv = c.pivot || [0, 0, 0];
   pivot.set(pv[0] || 0, pv[1] || 0, pv[2] || 0);
-  camera.position.setFromSpherical(new Spherical(num2(c.distance, 3.4), num2(c.phi, 1.2), num2(c.theta, 0.7)));
+  camera.position.setFromSpherical(new Spherical(autoFitDistance() ?? num2(c.distance, 3.4), num2(c.phi, 1.2), num2(c.theta, 0.7)));
   camera.position.add(pivot);
   initialCam.copy(camera.position);
   controls.target.copy(pivot);

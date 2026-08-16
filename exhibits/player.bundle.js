@@ -27671,6 +27671,20 @@ function placeCamera() {
   controls.autoRotateSpeed = num2(c.autoRotateSpeed, 0.9);
   controls.update();
 }
+function updateInitialCameraDistance(desired) {
+  const baseOffset = initialCam.clone().sub(pivot);
+  if (baseOffset.lengthSq() === 0) {
+    const c = cfg.camera || {};
+    baseOffset.setFromSpherical(new Spherical(
+      desired,
+      num2(c.phi, 1.2),
+      num2(c.theta, 0.7)
+    ));
+  } else {
+    baseOffset.setLength(desired);
+  }
+  initialCam.copy(pivot).add(baseOffset);
+}
 function refitCameraDistanceForOrientation() {
   var _a;
   if (!camera || !controls || !model) return;
@@ -27679,6 +27693,7 @@ function refitCameraDistanceForOrientation() {
   if (offset.lengthSq() === 0) offset.set(0, 0, 1);
   offset.setLength(desired);
   camera.position.copy(controls.target).add(offset);
+  updateInitialCameraDistance(desired);
   controls.update();
 }
 var ED_PANEL_NARROW_MAX = 720;

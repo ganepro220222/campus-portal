@@ -779,25 +779,33 @@ test.describe('全景就绪超时', () => {
 
   test('超时先露出模型，迟到的全景仍最终生效', async ({ browser }) => {
     const page = await browser.newPage()
+    let panoRequests = 0
     await page.addInitScript(() => {
-      window.__SY_PLAYER = { panoramaRevealTimeoutMs: 1200, module: false, bootStarted: false, ready: false }
+      window.__SY_PLAYER = { panoramaRevealTimeoutMs: 400, module: false, bootStarted: false, ready: false }
     })
-    const panoRe = /\.(jpg|jpeg|png|webp)$/i
+    await injectCfg(page, {
+      assets: { model: '../e2e/fixtures/two-material.gltf', panorama: '../e2e/fixtures/tiny-pano.jpg' },
+      environment: { mode: 'panorama' },
+    })
     await page.route(
-      u => panoRe.test(decodeURIComponent(u.pathname)) && !/poster/i.test(decodeURIComponent(u.pathname)),
-      () => { /* 挂死到 reveal 超时后再放行 */ },
+      u => /tiny-pano\.jpg/i.test(decodeURIComponent(u.pathname)),
+      async route => {
+        panoRequests++
+        await new Promise(r => setTimeout(r, 1200))
+        return route.continue()
+      },
     )
     await page.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
     await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 60_000 })
     const tagsAfterReady = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
     expect(tagsAfterReady).toContain('pano:await-timeout')
-    await page.unroute(u => panoRe.test(decodeURIComponent(u.pathname)) && !/poster/i.test(decodeURIComponent(u.pathname)))
-    await page.evaluate(() => window.__SY_TEST__.reapplyEnvironmentIBL())
+    expect(panoRequests).toBe(1)
     await page.waitForFunction(
       () => (window.__SY_PANO_DIAG__ || []).some(x => x.tag === 'pano:texture-loaded'),
       null,
-      { timeout: 30_000 },
+      { timeout: 15_000 },
     )
+    expect(panoRequests).toBe(1)
     expect((await page.evaluate(() => window.__SY_TEST__.lightState())).envSource.kind).toBe('panorama')
     await releaseWebGL(page)
     await page.close()
@@ -1374,6 +1382,31 @@ test.describe('竖屏自动取景', () => {
     const back = await pg.evaluate(() => window.__SY_TEST__.cameraState())
     expect(back.autoRotate).toBe(false)
     expect(back.theta).toBeCloseTo(theta0, 1)
+    await releaseWebGL(pg)
+    await pg.close()
+  })
+
+  test('旋转后关热点/重置仍保持当前方向适配的距离', async ({ browser }) => {
+    const pg = await browser.newPage()
+    await gotoPlayer(pg, { mode: 'edit', viewport: { width: 390, height: 800 }, environment: { visibleBackground: false } })
+    await pg.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 90_000 })
+    await pg.setViewportSize({ width: 800, height: 390 })
+    await pg.waitForTimeout(150)
+    const land = await pg.evaluate(() => window.__SY_TEST__.cameraState())
+    await openFirstHotspot(pg)
+    await pg.evaluate(() => window.__SY_TEST__.closeHotspot())
+    await pg.waitForTimeout(800)
+    const afterClose = await pg.evaluate(() => window.__SY_TEST__.cameraState())
+    expect(afterClose.radius).toBeCloseTo(land.radius, 1)
+    expect(afterClose.initialCamRadius).toBeCloseTo(land.initialCamRadius, 1)
+    await pg.setViewportSize({ width: 390, height: 800 })
+    await pg.waitForTimeout(150)
+    const portrait = await pg.evaluate(() => window.__SY_TEST__.cameraState())
+    await pg.locator('[data-k="reset"]').click()
+    await pg.waitForTimeout(800)
+    const afterReset = await pg.evaluate(() => window.__SY_TEST__.cameraState())
+    expect(afterReset.radius).toBeCloseTo(portrait.radius, 1)
+    expect(afterReset.initialCamRadius).toBeCloseTo(portrait.initialCamRadius, 1)
     await releaseWebGL(pg)
     await pg.close()
   })

@@ -851,6 +851,20 @@ function placeCamera() {
   controls.update()
 }
 /** 横竖屏跨越时只重算距离，保留用户当前的方位角、target 与 autoRotate */
+function updateInitialCameraDistance(desired) {
+  const baseOffset = initialCam.clone().sub(pivot)
+  if (baseOffset.lengthSq() === 0) {
+    const c = cfg.camera || {}
+    baseOffset.setFromSpherical(new THREE.Spherical(
+      desired,
+      num(c.phi, 1.2),
+      num(c.theta, 0.7),
+    ))
+  } else {
+    baseOffset.setLength(desired)
+  }
+  initialCam.copy(pivot).add(baseOffset)
+}
 function refitCameraDistanceForOrientation() {
   if (!camera || !controls || !model) return
   const desired = autoFitDistance() ?? num(cfg.camera?.distance, 3.4)
@@ -858,6 +872,7 @@ function refitCameraDistanceForOrientation() {
   if (offset.lengthSq() === 0) offset.set(0, 0, 1)
   offset.setLength(desired)
   camera.position.copy(controls.target).add(offset)
+  updateInitialCameraDistance(desired)
   controls.update()
 }
 const ED_PANEL_NARROW_MAX = 720
@@ -2924,12 +2939,14 @@ window.__SY_TEST__ = {
     if (!camera || !controls) return null
     const offset = camera.position.clone().sub(controls.target)
     const sp = new THREE.Spherical().setFromVector3(offset.lengthSq() ? offset : new THREE.Vector3(0, 0, 1))
+    const ic = initialCam.clone().sub(pivot)
     return {
       theta: sp.theta,
       phi: sp.phi,
       radius: sp.radius,
       target: controls.target.toArray(),
       autoRotate: !!controls.autoRotate,
+      initialCamRadius: ic.length(),
     }
   },
   envPanoPrefetchCleared: () => envPanoPrefetch == null,

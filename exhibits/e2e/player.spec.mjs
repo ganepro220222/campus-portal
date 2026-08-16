@@ -803,6 +803,17 @@ test.describe('全景就绪超时', () => {
     await page.close()
   })
 
+  test('消费预取全景后 envPanoPrefetch 已清空', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.goto('/player.html?ex=craft-001&syDiag=1&panoDefer=1', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 90_000 })
+    const tags = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
+    expect(tags).toContain('pano:prefetch-start')
+    expect(await page.evaluate(() => window.__SY_TEST__.envPanoPrefetchCleared())).toBe(true)
+    await releaseWebGL(page)
+    await page.close()
+  })
+
   test('全景正常时不触发超时分支（不能为了保命牺牲正常路径）', async ({ browser }) => {
     const page = await browser.newPage()
     await page.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
@@ -1335,5 +1346,35 @@ test.describe('竖屏自动取景', () => {
     const auto = await measure(browser, { width: 390, height: 800 }, { distance: 6.5 })
     const off = await measure(browser, { width: 390, height: 800 }, { distance: 6.5, portraitFill: 0 })
     expect(off.h).toBeLessThan(auto.h - 0.05)      // 关掉后 6.5 的远距离重新生效
+  })
+
+  test('横竖屏切换保留用户方位角与 autoRotate，只调整距离', async ({ browser }) => {
+    const pg = await browser.newPage()
+    await gotoPlayer(pg, { mode: 'edit', viewport: { width: 390, height: 800 }, environment: { visibleBackground: false } })
+    await pg.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 90_000 })
+    const canvas = pg.locator('#scene')
+    const box = await canvas.boundingBox()
+    expect(box).toBeTruthy()
+    await pg.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5)
+    await pg.mouse.down()
+    await pg.mouse.move(box.x + box.width * 0.5 + 90, box.y + box.height * 0.5, { steps: 12 })
+    await pg.mouse.up()
+    const before = await pg.evaluate(() => window.__SY_TEST__.cameraState())
+    expect(before.autoRotate).toBe(false)
+    const theta0 = before.theta
+    const radiusPortrait = before.radius
+    await pg.setViewportSize({ width: 800, height: 390 })
+    await pg.waitForTimeout(150)
+    const land = await pg.evaluate(() => window.__SY_TEST__.cameraState())
+    expect(land.autoRotate).toBe(false)
+    expect(land.theta).toBeCloseTo(theta0, 1)
+    expect(land.radius).not.toBeCloseTo(radiusPortrait, 1)
+    await pg.setViewportSize({ width: 390, height: 800 })
+    await pg.waitForTimeout(150)
+    const back = await pg.evaluate(() => window.__SY_TEST__.cameraState())
+    expect(back.autoRotate).toBe(false)
+    expect(back.theta).toBeCloseTo(theta0, 1)
+    await releaseWebGL(pg)
+    await pg.close()
   })
 })

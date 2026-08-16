@@ -27671,6 +27671,40 @@ function placeCamera() {
   controls.autoRotateSpeed = num2(c.autoRotateSpeed, 0.9);
   controls.update();
 }
+function refitCameraDistanceForOrientation() {
+  var _a;
+  if (!camera || !controls || !model) return;
+  const desired = autoFitDistance() ?? num2((_a = cfg.camera) == null ? void 0 : _a.distance, 3.4);
+  const offset = camera.position.clone().sub(controls.target);
+  if (offset.lengthSq() === 0) offset.set(0, 0, 1);
+  offset.setLength(desired);
+  camera.position.copy(controls.target).add(offset);
+  controls.update();
+}
+var ED_PANEL_NARROW_MAX = 720;
+function editorPanelNarrow() {
+  return editMode && innerWidth <= ED_PANEL_NARROW_MAX;
+}
+function setEditorPanelCollapsed(collapsed) {
+  if (!editMode) return;
+  document.body.classList.toggle("ed-panel-collapsed", collapsed);
+  const toggle = $("ed-panel-toggle");
+  if (toggle) toggle.textContent = collapsed ? "\u7F16\u8F91\u9762\u677F \u25B4" : "\u6536\u8D77\u7F16\u8F91 \u25BE";
+}
+function syncEditorPanelLayout() {
+  if (!editMode) return;
+  const narrow = editorPanelNarrow();
+  document.body.classList.toggle("ed-narrow", narrow);
+  const toggle = $("ed-panel-toggle");
+  if (toggle) {
+    if (narrow) toggle.removeAttribute("hidden");
+    else {
+      toggle.setAttribute("hidden", "");
+      document.body.classList.remove("ed-panel-collapsed");
+    }
+  }
+  if (narrow && !window.__edPanelUserToggled) setEditorPanelCollapsed(true);
+}
 function applyEnvironment() {
   var _a, _b;
   if (!scene) return;
@@ -28597,8 +28631,9 @@ function onResize() {
   renderer.setSize(innerWidth, innerHeight);
   if (portrait !== lastAutoFitPortrait) {
     lastAutoFitPortrait = portrait;
-    if (model) placeCamera();
+    if (model) refitCameraDistanceForOrientation();
   }
+  syncEditorPanelLayout();
 }
 var fps = 0;
 var _ft = performance.now();

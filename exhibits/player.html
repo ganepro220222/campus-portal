@@ -234,6 +234,19 @@
   .ed-btn.ed-save:disabled { opacity:.6; cursor:default; }
   .ed-badge { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:21; background:rgba(200,168,106,.92); color:#0b0d14;
     font-size:11px; font-weight:700; padding:3px 12px; border-radius:999px; }
+  /* 窄屏编辑：底部 sheet + 可收起，避免 300px 右栏盖住 HUD/预设 */
+  .ed-panel-toggle { display:none; position:fixed; z-index:22; right:12px;
+    bottom:calc(env(safe-area-inset-bottom) + 12px); padding:8px 14px; border-radius:999px;
+    border:1px solid var(--gold); background:rgba(14,16,24,.92); color:#f4e6c8; font-size:12px;
+    cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.35); }
+  @media (max-width: 720px) {
+    .editor { top:auto; left:0; right:0; bottom:0; width:100%; max-height:min(55vh, 520px);
+      border-left:none; border-top:1px solid rgba(255,255,255,.1); border-radius:16px 16px 0 0;
+      box-shadow:0 -8px 32px rgba(0,0,0,.45); padding-bottom:calc(env(safe-area-inset-bottom) + 8px); }
+    body.ed-narrow .ed-panel-toggle { display:block; }
+    body.ed-narrow.ed-panel-collapsed .editor { display:none !important; }
+    body.ed-narrow:not(.ed-panel-collapsed) .ed-panel-toggle { bottom:calc(min(55vh, 520px) + 8px); }
+  }
   /* EDITOR-CSS-END */
 </style>
 </head>
@@ -294,6 +307,7 @@
   <!-- EDITOR-HTML-START （导出仅观看版时整段剔除） -->
   <div class="editor" hidden id="editor"></div>
   <div class="ed-badge" hidden id="ed-badge">编辑模式</div>
+  <button type="button" class="ed-panel-toggle" hidden id="ed-panel-toggle">编辑面板</button>
   <!-- EDITOR-HTML-END -->
 </div>
 
@@ -835,6 +849,44 @@ function placeCamera() {
   controls.autoRotate = !reduceMotion && c.autoRotate !== false
   controls.autoRotateSpeed = num(c.autoRotateSpeed, 0.9)
   controls.update()
+}
+/** 横竖屏跨越时只重算距离，保留用户当前的方位角、target 与 autoRotate */
+function refitCameraDistanceForOrientation() {
+  if (!camera || !controls || !model) return
+  const desired = autoFitDistance() ?? num(cfg.camera?.distance, 3.4)
+  const offset = camera.position.clone().sub(controls.target)
+  if (offset.lengthSq() === 0) offset.set(0, 0, 1)
+  offset.setLength(desired)
+  camera.position.copy(controls.target).add(offset)
+  controls.update()
+}
+const ED_PANEL_NARROW_MAX = 720
+function editorPanelNarrow() { return editMode && innerWidth <= ED_PANEL_NARROW_MAX }
+function setEditorPanelCollapsed(collapsed) {
+  if (!editMode) return
+  document.body.classList.toggle('ed-panel-collapsed', collapsed)
+  const toggle = $('ed-panel-toggle')
+  if (toggle) toggle.textContent = collapsed ? '编辑面板 ▴' : '收起编辑 ▾'
+}
+function syncEditorPanelLayout() {
+  if (!editMode) return
+  const narrow = editorPanelNarrow()
+  document.body.classList.toggle('ed-narrow', narrow)
+  const toggle = $('ed-panel-toggle')
+  if (toggle) {
+    if (narrow) toggle.removeAttribute('hidden')
+    else { toggle.setAttribute('hidden', ''); document.body.classList.remove('ed-panel-collapsed') }
+  }
+  if (narrow && !window.__edPanelUserToggled) setEditorPanelCollapsed(true)
+}
+function wireEditorPanelToggle() {
+  const toggle = $('ed-panel-toggle')
+  if (!toggle || toggle.dataset.wired) return
+  toggle.dataset.wired = '1'
+  toggle.onclick = () => {
+    window.__edPanelUserToggled = true
+    setEditorPanelCollapsed(!document.body.classList.contains('ed-panel-collapsed'))
+  }
 }
 
 /* ── 环境 / IBL ── */
@@ -1731,8 +1783,9 @@ function onResize() {
   renderer.setSize(innerWidth, innerHeight)
   if (portrait !== lastAutoFitPortrait) {
     lastAutoFitPortrait = portrait
-    if (model) placeCamera()
+    if (model) refitCameraDistanceForOrientation()
   }
+  syncEditorPanelLayout()
 }
 let fps=0, _ft=performance.now(), _fc=0
 function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateLightRig(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
@@ -2041,6 +2094,8 @@ function hotspotIdChangeWarn(changes) {
 function buildEditor() {
   const ed = $('editor'); ed.removeAttribute('hidden')
   window.__edRefresh = renderEditor
+  syncEditorPanelLayout()
+  wireEditorPanelToggle()
   renderEditor()
   wireCanvasAdd()
   clearInterval(_perfTimer)
@@ -2865,6 +2920,19 @@ window.__SY_TEST__ = {
   startGeneration: () => _startGeneration,
   rendererExposure: () => renderer?.toneMappingExposure ?? null,
   activePresetId: () => activePreset,
+  cameraState: () => {
+    if (!camera || !controls) return null
+    const offset = camera.position.clone().sub(controls.target)
+    const sp = new THREE.Spherical().setFromVector3(offset.lengthSq() ? offset : new THREE.Vector3(0, 0, 1))
+    return {
+      theta: sp.theta,
+      phi: sp.phi,
+      radius: sp.radius,
+      target: controls.target.toArray(),
+      autoRotate: !!controls.autoRotate,
+    }
+  },
+  envPanoPrefetchCleared: () => envPanoPrefetch == null,
   applyPresetById: (id) => {
     const p = (cfg.presets || []).find(x => x.id === id)
     if (!p) return false
@@ -2883,6 +2951,16 @@ if (editMode) {
     // 「按子串分组命中」的提示用例：手工构造一条 namePattern 短于材质名的覆盖
     setOverridesForTest: list => { cfg.materials = cfg.materials || {}; cfg.materials.overrides = list; applyMaterial() },
     dragState: () => ({ kneeDrag: kneeDrag != null, panelDrag: panelDrag != null }),
+    setEditorPanelCollapsed: (collapsed) => { window.__edPanelUserToggled = true; setEditorPanelCollapsed(!!collapsed) },
+    isEditorPanelCollapsed: () => document.body.classList.contains('ed-panel-collapsed'),
+    presetHitTest: (id) => {
+      const btn = document.querySelector(`#presets .preset[data-id="${id}"]`)
+      if (!btn) return { ok: false, reason: 'missing' }
+      const r = btn.getBoundingClientRect()
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      const hit = el?.closest?.('.preset')?.dataset?.id || el?.id || null
+      return { ok: hit === id, hit, rect: { x: r.x, y: r.y, w: r.width, h: r.height } }
+    },
     openHotspotByIndex: (i = 0) => {
       const item = hotspots[i]
       if (!item) return false

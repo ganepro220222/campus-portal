@@ -2146,19 +2146,30 @@ function ensureCfg() {
 }
 
 /* 重绘编辑器会丢掉 <details> 的展开状态与滚动位置：先记下、绘完还原 */
+function editorScrollBox() {
+  if (editorPanelNarrow()) {
+    const sc = document.querySelector('.ed-sheet-scroll')
+    if (sc) return sc
+  }
+  return $('editor')
+}
 function captureEditorUIState(){
   const box = $('editor'); if (!box) return null
   const secs = box.querySelectorAll('details.ed-sec')
   if (!secs.length) return null   // 首次渲染：让 HTML 里的默认展开生效
   const open = []
   secs.forEach(d => { if (d.open) open.push(d.querySelector('summary')?.textContent || '') })
-  return { open, scrollTop: box.scrollTop }
+  const scrollBox = editorScrollBox()
+  return { open, scrollTop: scrollBox?.scrollTop || 0 }
 }
 function restoreEditorUIState(st){
   const box = $('editor'); if (!box || !st) return
   box.querySelectorAll('details.ed-sec').forEach(d => {
     d.open = st.open.includes(d.querySelector('summary')?.textContent || '') })
-  box.scrollTop = st.scrollTop
+  requestAnimationFrame(() => {
+    const scrollBox = editorScrollBox()
+    if (scrollBox) scrollBox.scrollTop = st.scrollTop
+  })
 }
 
 function assetModelStatusHTML() {
@@ -3027,10 +3038,37 @@ if (editMode) {
       return { ok: hit === id, hit, rect: { x: r.x, y: r.y, w: r.width, h: r.height } }
     },
     editorScrollToBottom: () => {
-      const sc = document.querySelector('.ed-sheet-scroll') || document.getElementById('editor')
+      const sc = editorScrollBox()
       if (!sc) return false
       sc.scrollTop = sc.scrollHeight
       return true
+    },
+    editorScrollTop: () => editorScrollBox()?.scrollTop ?? 0,
+    setEditorScrollTop: (v) => {
+      const sc = editorScrollBox()
+      if (!sc) return 0
+      sc.scrollTop = v
+      return sc.scrollTop
+    },
+    isEditorPanelNarrow: () => editorPanelNarrow(),
+    openEditorSection: (title) => {
+      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+        const t = (d.querySelector('summary')?.textContent || '').trim()
+        if (t === title || t.includes(title)) {
+          d.open = true
+          return true
+        }
+      }
+      return false
+    },
+    isEditorSectionOpen: (title) => {
+      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+        const t = (d.querySelector('summary')?.textContent || '').trim()
+        if (t === title || t.includes(title)) {
+          return d.open
+        }
+      }
+      return false
     },
     isEditPanelHudVisible: () => {
       const b = document.querySelector('[data-k=editPanel]')

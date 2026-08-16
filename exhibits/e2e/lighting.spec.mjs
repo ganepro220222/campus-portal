@@ -615,6 +615,42 @@ test.describe('预设（灯光方案）', () => {
     }
     await page.setViewportSize({ width: 1280, height: 720 })
   })
+
+  test('窄屏编辑：重绘后面板滚动位置不跳顶', async () => {
+    await reloadPlayer(page, {
+      viewport: { width: 390, height: 844 },
+      environment: { visibleBackground: false },
+    })
+    await page.waitForFunction(() => window.__SY_TEST__.isEditorPanelCollapsed() === true, null, { timeout: 30_000 })
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+      await page.waitForTimeout(100)
+      await page.evaluate(() => window.__SY_TEST__.setEditorPanelCollapsed(false))
+      await expect(page.locator('#editor')).toBeVisible()
+      expect(await page.evaluate(() => window.__SY_TEST__.openEditorSection('灯光'))).toBe(true)
+      const before = await page.evaluate(() => {
+        const top = window.__SY_TEST__.setEditorScrollTop(280)
+        return { scrollTop: top, open: window.__SY_TEST__.isEditorSectionOpen('灯光') }
+      })
+      expect(before.scrollTop).toBeGreaterThan(200)
+      expect(before.open).toBe(true)
+      await page.evaluate(() => document.getElementById('ed-light-reset').click())
+      await page.waitForFunction(
+        (want) => Math.abs(window.__SY_TEST__.editorScrollTop() - want) < 20,
+        before.scrollTop,
+        { timeout: 3000 },
+      )
+      const after = await page.evaluate(() => ({
+        scrollTop: window.__SY_TEST__.editorScrollTop(),
+        open: window.__SY_TEST__.isEditorSectionOpen('灯光'),
+      }))
+      expect(after.open, `${width}px 灯光 section 被收起`).toBe(true)
+      expect(after.scrollTop, `${width}px 重绘后 scrollTop 跳顶`).toBeGreaterThan(200)
+      expect(Math.abs(after.scrollTop - before.scrollTop), `${width}px scrollTop 偏差过大`).toBeLessThan(20)
+      await page.evaluate(() => window.__SY_TEST__.setEditorPanelCollapsed(true))
+    }
+    await page.setViewportSize({ width: 1280, height: 720 })
+  })
 })
 
 test.describe('材质覆盖', () => {

@@ -780,6 +780,7 @@ test.describe('全景就绪超时', () => {
   test('超时先露出模型，迟到的全景仍最终生效', async ({ browser }) => {
     const page = await browser.newPage()
     let panoRequests = 0
+    let holdModel = true
     const panoCb = Date.now()
     await page.addInitScript(() => {
       window.__SY_PLAYER = { panoramaRevealTimeoutMs: 400, module: false, bootStarted: false, ready: false }
@@ -791,6 +792,12 @@ test.describe('全景就绪超时', () => {
       },
       environment: { mode: 'panorama' },
     })
+    // 先挂住模型：panoDefer=1 会在 boot 时并行 prefetch 全景。若模型加载慢于全景 delay，
+    // prefetch 会在 waitForPanoramaBootBeforeReveal 之前完成，只剩 PMREM（<400ms）→ 测不到超时。
+    await page.route(/two-material\.gltf/i, async route => {
+      while (holdModel) await new Promise(r => setTimeout(r, 25))
+      return route.continue()
+    })
     await page.route(
       u => /tiny-pano\.jpg/i.test(decodeURIComponent(u.pathname)),
       async route => {
@@ -801,6 +808,12 @@ test.describe('全景就绪超时', () => {
     )
     // panoDefer=1：与 iOS/微信同路径，在模型就绪后再等全景；避免桌面端 boot 即 kick + 磁盘缓存导致全景先于 await 完成、测不到超时
     await page.goto('/player.html?ex=craft-001&syDiag=1&panoDefer=1', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(
+      () => (window.__SY_PANO_DIAG__ || []).some(x => x.tag === 'pano:prefetch-start'),
+      null,
+      { timeout: 15_000 },
+    )
+    holdModel = false
     await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 60_000 })
     const tagsAfterReady = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
     expect(tagsAfterReady).toContain('pano:await-timeout')

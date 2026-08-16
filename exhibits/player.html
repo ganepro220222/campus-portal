@@ -446,7 +446,19 @@ function applyPanoramaFromTexture(tex) {
     return
   }
   panoDiagEvent('pano:pmrem-start', { w: tex.image?.width, h: tex.image?.height })
-  const rt = pmremGen().fromEquirectangular(tex)
+  let rt
+  try {
+    rt = pmremGen().fromEquirectangular(tex)
+  } catch (e) {
+    panoDiagEvent('pano:pmrem-fail', { message: e?.message || String(e) })
+    if (!panoDiag.skipVisibleBg && cfg.environment?.visibleBackground) {
+      if (envBg && envBg !== tex) envBg.dispose()
+      envBg = tex
+      scene.background = tex
+    } else tex.dispose()
+    applyEnvFallback()
+    return
+  }
   panoDiagEvent('pano:pmrem-done', { w: tex.image?.width, h: tex.image?.height })
   const keepBg = !panoDiag.skipVisibleBg && cfg.environment?.visibleBackground
   setEnvFromRT(rt, keepBg ? tex : null)
@@ -569,6 +581,11 @@ function initRenderer() {
     }, false)
     renderer.domElement.addEventListener('webglcontextrestored', () => {
       panoDiagEvent('webgl:context-restored', {})
+      if (scene && cfg) {
+        applyEnvironmentIBL()
+        applyEnvironment()
+        if (model) applyMaterial()
+      }
     }, false)
   }
   renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -612,6 +629,18 @@ function applyMaterial() {
       if (typeof g.metalness === 'number') m.metalness = g.metalness
       if (typeof g.envMapIntensity === 'number') m.envMapIntensity = g.envMapIntensity
       applyOverrideFields(m, pickOverrideForMaterial(ov, m.name))
+      m.needsUpdate = true
+    })
+  })
+}
+/** 环境 IBL 切换后刷新材质绑定（部分 iOS WebKit 驱动不会自动拾取 scene.environment 变更） */
+function syncMaterialsAfterEnvironmentChange() {
+  if (!model) return
+  model.traverse(o => {
+    if (!o.isMesh) return
+    ;[].concat(o.material).forEach(m => {
+      if (!m || !('roughness' in m)) return
+      if ('envMap' in m) m.envMap = null
       m.needsUpdate = true
     })
   })
@@ -813,13 +842,15 @@ function releasePanoInflight(url) {
 function pmremGen() { if (!_pmrem) _pmrem = new THREE.PMREMGenerator(renderer); return _pmrem }
 function setEnvFromRT(rt, bg) {
   if (!scene) return
-  if (envRT && envRT !== rt) envRT.dispose()
+  const prev = envRT
   envRT = rt
   scene.environment = rt ? rt.texture : null
   if (envBg && envBg !== bg) envBg.dispose()
   envBg = bg || null
   scene.background = (cfg.environment?.visibleBackground && envBg)
     ? envBg : new THREE.Color(cfg.renderer?.background || '#0f1118')
+  syncMaterialsAfterEnvironmentChange()
+  if (prev && prev !== rt) prev.dispose()
 }
 function roomIBL() {
   envLoadGuard.invalidate()
@@ -1011,7 +1042,10 @@ async function waitForPanoramaBootBeforeReveal(gen) {
     new Promise(resolve => { capTimer = setTimeout(() => resolve('timeout'), capMs) }),
   ])
   clearTimeout(capTimer)
-  if (capped === 'timeout') panoDiagEvent('pano:await-timeout', { capMs })
+  if (capped === 'timeout') {
+    panoDiagEvent('pano:await-timeout', { capMs })
+    envLoadGuard.invalidate()
+  }
   if (gen !== _startGeneration || window.__SY_PLAYER.ready) return
 }
 function applyEnvironmentIBL() {
@@ -1866,6 +1900,8 @@ function start() {
       try {
         await waitForPanoramaBootBeforeReveal(gen)
       } catch { /* panoramaIBL resolves fallback; unexpected throw still reveal */ }
+      if (gen !== _startGeneration || window.__SY_PLAYER.ready) return
+      if (model) applyMaterial()
       finishPlayerReveal(gen)
     })()
   }, evt => {

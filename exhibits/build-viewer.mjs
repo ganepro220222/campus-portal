@@ -604,7 +604,7 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
     .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/if \(editMode\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/import \{[^}]+\} from '\.\/hotspot-id\.mjs'/, "import { ensureHotspotIds } from './hotspot-id.mjs'")
-    .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, "import { configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'")
+    .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, "import { configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'")
     .replace(/import \{[^}]+\} from '\.\/light-rig\.mjs'/, `import { ${VIEWER_LIGHT_RIG_IMPORTS.join(', ')} } from './light-rig.mjs'`)
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')

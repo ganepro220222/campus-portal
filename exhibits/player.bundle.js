@@ -26911,6 +26911,17 @@ function modelTotalTimeoutMs(cfg2, player, testHook) {
     (_d = cfg2 == null ? void 0 : cfg2.performance) == null ? void 0 : _d.modelTotalTimeout
   ], 12e4);
 }
+function panoramaRevealTimeoutMs(cfg2, player, testHook) {
+  var _a, _b, _c, _d;
+  return timeoutFromSources([
+    (_a = testHook == null ? void 0 : testHook.panoramaRevealTimeoutMs) == null ? void 0 : _a.call(testHook),
+    (_b = testHook == null ? void 0 : testHook.panoramaRevealTimeout) == null ? void 0 : _b.call(testHook),
+    player == null ? void 0 : player.panoramaRevealTimeoutMs,
+    player == null ? void 0 : player.panoramaRevealTimeout,
+    (_c = cfg2 == null ? void 0 : cfg2.performance) == null ? void 0 : _c.panoramaRevealTimeoutMs,
+    (_d = cfg2 == null ? void 0 : cfg2.performance) == null ? void 0 : _d.panoramaRevealTimeout
+  ], 8e3);
+}
 var DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH = 2048;
 function strictWebKitPanoramaMaxWidth(cfg2, strictWebKit2, urlOverride = 0) {
   var _a;
@@ -27225,7 +27236,7 @@ function downscalePanoramaTexture(tex, maxWidth) {
   return out;
 }
 function applyPanoramaFromTexture(tex) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
   const orig = { w: (_a = tex.image) == null ? void 0 : _a.width, h: (_b = tex.image) == null ? void 0 : _b.height };
   panoDiagEvent("pano:texture-loaded", orig);
   const maxW = panoramaPmremMaxWidth();
@@ -27251,9 +27262,21 @@ function applyPanoramaFromTexture(tex) {
     return;
   }
   panoDiagEvent("pano:pmrem-start", { w: (_f = tex.image) == null ? void 0 : _f.width, h: (_g = tex.image) == null ? void 0 : _g.height });
-  const rt = pmremGen().fromEquirectangular(tex);
-  panoDiagEvent("pano:pmrem-done", { w: (_h = tex.image) == null ? void 0 : _h.width, h: (_i = tex.image) == null ? void 0 : _i.height });
-  const keepBg = !panoDiag.skipVisibleBg && ((_j = cfg.environment) == null ? void 0 : _j.visibleBackground);
+  let rt;
+  try {
+    rt = pmremGen().fromEquirectangular(tex);
+  } catch (e) {
+    panoDiagEvent("pano:pmrem-fail", { message: (e == null ? void 0 : e.message) || String(e) });
+    if (!panoDiag.skipVisibleBg && ((_h = cfg.environment) == null ? void 0 : _h.visibleBackground)) {
+      if (envBg && envBg !== tex) envBg.dispose();
+      envBg = tex;
+      scene.background = tex;
+    } else tex.dispose();
+    applyEnvFallback();
+    return;
+  }
+  panoDiagEvent("pano:pmrem-done", { w: (_i = tex.image) == null ? void 0 : _i.width, h: (_j = tex.image) == null ? void 0 : _j.height });
+  const keepBg = !panoDiag.skipVisibleBg && ((_k = cfg.environment) == null ? void 0 : _k.visibleBackground);
   setEnvFromRT(rt, keepBg ? tex : null);
   if (!keepBg) tex.dispose();
 }
@@ -27368,6 +27391,11 @@ function initRenderer() {
     }, false);
     renderer.domElement.addEventListener("webglcontextrestored", () => {
       panoDiagEvent("webgl:context-restored", {});
+      if (scene && cfg) {
+        applyEnvironmentIBL();
+        applyEnvironment();
+        if (model) applyMaterial();
+      }
     }, false);
   }
   renderer.toneMapping = ACESFilmicToneMapping;
@@ -27413,6 +27441,17 @@ function applyMaterial() {
       if (typeof g3.metalness === "number") m.metalness = g3.metalness;
       if (typeof g3.envMapIntensity === "number") m.envMapIntensity = g3.envMapIntensity;
       applyOverrideFields(m, pickOverrideForMaterial(ov, m.name));
+      m.needsUpdate = true;
+    });
+  });
+}
+function syncMaterialsAfterEnvironmentChange() {
+  if (!model) return;
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    [].concat(o.material).forEach((m) => {
+      if (!m || !("roughness" in m)) return;
+      if ("envMap" in m) m.envMap = null;
       m.needsUpdate = true;
     });
   });
@@ -27621,12 +27660,14 @@ function pmremGen() {
 function setEnvFromRT(rt, bg) {
   var _a, _b;
   if (!scene) return;
-  if (envRT && envRT !== rt) envRT.dispose();
+  const prev = envRT;
   envRT = rt;
   scene.environment = rt ? rt.texture : null;
   if (envBg && envBg !== bg) envBg.dispose();
   envBg = bg || null;
   scene.background = ((_a = cfg.environment) == null ? void 0 : _a.visibleBackground) && envBg ? envBg : new Color(((_b = cfg.renderer) == null ? void 0 : _b.background) || "#0f1118");
+  syncMaterialsAfterEnvironmentChange();
+  if (prev && prev !== rt) prev.dispose();
 }
 function roomIBL() {
   envLoadGuard.invalidate();
@@ -27816,7 +27857,10 @@ async function waitForPanoramaBootBeforeReveal(gen) {
     })
   ]);
   clearTimeout(capTimer);
-  if (capped === "timeout") panoDiagEvent("pano:await-timeout", { capMs });
+  if (capped === "timeout") {
+    panoDiagEvent("pano:await-timeout", { capMs });
+    envLoadGuard.invalidate();
+  }
   if (gen !== _startGeneration || window.__SY_PLAYER.ready) return;
 }
 function applyEnvironmentIBL() {
@@ -28618,6 +28662,8 @@ function start() {
         await waitForPanoramaBootBeforeReveal(gen);
       } catch {
       }
+      if (gen !== _startGeneration || window.__SY_PLAYER.ready) return;
+      if (model) applyMaterial();
       finishPlayerReveal(gen);
     })();
   }, (evt) => {

@@ -606,8 +606,12 @@ test.describe('材质覆盖', () => {
   const live = () => page.evaluate(() => window.__SY_TEST__.materialLive())
 
   test.beforeEach(async () => {
-    await reloadPlayer(page, { mode: 'edit' })
+    await reloadPlayer(page, { mode: 'edit', viewport: { width: 1280, height: 720 } })
     await openMat()
+    await page.waitForFunction(() => {
+      const sel = document.getElementById('ed-matsel')
+      return sel && sel.value
+    }, null, { timeout: 15_000 })
   })
 
   test('失效的 envMapIntensity 滑条已从界面移除（全局与覆盖各一处）', async () => {

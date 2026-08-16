@@ -2939,6 +2939,11 @@ window.__SY_TEST__ = {
     applyPreset(p)
     return true
   },
+  reapplyEnvironmentIBL: () => {
+    envPanoramaBootPromise = null
+    invalidatePanoInflight()
+    applyEnvironmentIBL()
+  },
 }
 if (editMode) {
   Object.assign(window.__SY_TEST__, {

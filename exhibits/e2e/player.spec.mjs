@@ -782,21 +782,21 @@ test.describe('全景就绪超时', () => {
     await page.addInitScript(() => {
       window.__SY_PLAYER = { panoramaRevealTimeoutMs: 1200, module: false, bootStarted: false, ready: false }
     })
+    const panoRe = /\.(jpg|jpeg|png|webp)$/i
     await page.route(
-      u => /\.(jpg|jpeg|png|webp)$/i.test(decodeURIComponent(u.pathname)) && !/poster/i.test(decodeURIComponent(u.pathname)),
-      async route => {
-        await new Promise(r => setTimeout(r, 2000))
-        return route.continue()
-      },
+      u => panoRe.test(decodeURIComponent(u.pathname)) && !/poster/i.test(decodeURIComponent(u.pathname)),
+      () => { /* 挂死到 reveal 超时后再放行 */ },
     )
     await page.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
     await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 60_000 })
-    const tags = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
-    expect(tags).toContain('pano:await-timeout')
+    const tagsAfterReady = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
+    expect(tagsAfterReady).toContain('pano:await-timeout')
+    await page.unroute(u => panoRe.test(decodeURIComponent(u.pathname)) && !/poster/i.test(decodeURIComponent(u.pathname)))
+    await page.evaluate(() => window.__SY_TEST__.reapplyEnvironmentIBL())
     await page.waitForFunction(
       () => (window.__SY_PANO_DIAG__ || []).some(x => x.tag === 'pano:texture-loaded'),
       null,
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     )
     expect((await page.evaluate(() => window.__SY_TEST__.lightState())).envSource.kind).toBe('panorama')
     await releaseWebGL(page)

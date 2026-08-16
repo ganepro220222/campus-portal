@@ -344,7 +344,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'
+import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 
@@ -1002,8 +1002,16 @@ async function waitForPanoramaBootBeforeReveal(gen) {
   if (!envPanoramaBootPromise) return
   $('load-text').textContent = '正在准备环境光照…'
   $('bar').style.width = '100%'
-  panoDiagEvent('pano:await-before-reveal', { deferPanoramaIBL })
-  await envPanoramaBootPromise
+  const capMs = panoramaRevealTimeoutMs(cfg, window.__SY_PLAYER, null)
+  panoDiagEvent('pano:await-before-reveal', { deferPanoramaIBL, capMs })
+  // 到点就放行：全景只影响环境光，兜底环境已经在场景里，不该让它卡住整个露出
+  let capTimer = 0
+  const capped = await Promise.race([
+    envPanoramaBootPromise.then(() => 'env'),
+    new Promise(resolve => { capTimer = setTimeout(() => resolve('timeout'), capMs) }),
+  ])
+  clearTimeout(capTimer)
+  if (capped === 'timeout') panoDiagEvent('pano:await-timeout', { capMs })
   if (gen !== _startGeneration || window.__SY_PLAYER.ready) return
 }
 function applyEnvironmentIBL() {

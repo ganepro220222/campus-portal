@@ -719,6 +719,49 @@ test.describe('strict WebKit startup', () => {
   }
 })
 
+/* 露出前等全景就绪这一腿，原来是唯一没有显式超时的启动腿：靠浏览器自己放弃请求。
+   把全景请求挂起（服务端收下连接就是不回，弱网 / 门户认证下很常见）实测能卡满 120 秒
+   仍停在「正在准备环境光照…」，既不报错也没有重试按钮。全景只影响环境光，到点该直接
+   用兜底环境露出模型。iOS / 微信默认 deferPanoramaIBL，这条腿正是它们的必经之路。 */
+test.describe('全景就绪超时', () => {
+  const stallPanorama = page => page.route(
+    u => /\.(jpg|jpeg|png|webp)$/i.test(decodeURIComponent(u.pathname)) && !/poster/i.test(decodeURIComponent(u.pathname)),
+    () => { /* 永不 fulfill：模拟连接被握住不放 */ },
+  )
+
+  test('全景请求挂死时到点用兜底环境露出，不会永远停在加载页', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { panoramaRevealTimeoutMs: 1200, module: false, bootStarted: false, ready: false }
+    })
+    await stallPanorama(page)
+    await page.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
+    // 到点放行：模型露出、没有错误页
+    await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 60_000 })
+    await expect(page.locator('#error')).toHaveAttribute('hidden', '')
+    await expect(page.locator('#loading')).toHaveAttribute('hidden', '')
+    await expect(page.locator('#hud')).not.toHaveAttribute('hidden', '')
+    // 确实是走的超时分支，而不是全景意外加载成功了
+    const tags = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
+    expect(tags).toContain('pano:await-before-reveal')
+    expect(tags).toContain('pano:await-timeout')
+    expect(tags).not.toContain('pano:texture-loaded')
+    await releaseWebGL(page)
+    await page.close()
+  })
+
+  test('全景正常时不触发超时分支（不能为了保命牺牲正常路径）', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 90_000 })
+    const tags = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
+    expect(tags).toContain('pano:texture-loaded')
+    expect(tags).not.toContain('pano:await-timeout')
+    await releaseWebGL(page)
+    await page.close()
+  })
+})
+
 test.describe('boot timeout', () => {
   test('config fetch pending shows timeout error and retry button', async ({ browser }) => {
     const page = await browser.newPage()

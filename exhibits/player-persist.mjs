@@ -96,6 +96,26 @@ export function modelTotalTimeoutMs(cfg, player, testHook) {
   ], 120000)
 }
 
+/**
+ * 露出模型前等待全景 IBL 的上限。
+ *
+ * 其余每条启动腿都有显式超时（配置 12s、模型空闲 20s / 总量 120s、模块 watchdog 12s），
+ * 唯独「等全景就绪再露出」这一腿没有——它靠浏览器自己放弃那个请求。实测把全景请求
+ * 挂起（服务端收下连接就是不回，弱网 / 门户认证下很常见）时，Chromium 拖了 21 秒才
+ * 落到兜底；换个把连接握得更久的浏览器或运营商网络，用户会一直盯着「正在准备环境光照…」。
+ * 超时不算失败：全景本来就只影响环境光，到点直接用兜底环境露出模型即可。
+ */
+export function panoramaRevealTimeoutMs(cfg, player, testHook) {
+  return timeoutFromSources([
+    testHook?.panoramaRevealTimeoutMs?.(),
+    testHook?.panoramaRevealTimeout?.(),
+    player?.panoramaRevealTimeoutMs,
+    player?.panoramaRevealTimeout,
+    cfg?.performance?.panoramaRevealTimeoutMs,
+    cfg?.performance?.panoramaRevealTimeout,
+  ], 8000)
+}
+
 /** Safari/微信：8042 全景客户端 PMREM 易触发 WebContent 被杀；A/B 验证 2048 稳定。 */
 export const DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH = 2048
 

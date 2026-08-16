@@ -10,6 +10,7 @@ import {
   configExportFilename,
   strictWebKitPanoramaMaxWidth,
   DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH,
+  panoramaRevealTimeoutMs,
 } from './player-persist.mjs'
 import { computeRootHash, normalizeRootPath, getIdentityPayload } from './_server/studio-identity.mjs'
 
@@ -133,6 +134,18 @@ test('normalizeRootPath strips trailing separators consistently', () => {
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
+})
+
+test('panoramaRevealTimeoutMs：缺省 8s，按 测试钩子 > player > config 逐级覆盖', () => {
+  assert.equal(panoramaRevealTimeoutMs(null, null, null), 8000)
+  assert.equal(panoramaRevealTimeoutMs({ performance: { panoramaRevealTimeoutMs: 3000 } }, null, null), 3000)
+  // player 上的值压过 config
+  assert.equal(panoramaRevealTimeoutMs({ performance: { panoramaRevealTimeoutMs: 3000 } }, { panoramaRevealTimeoutMs: 1500 }, null), 1500)
+  // 测试钩子最优先
+  assert.equal(panoramaRevealTimeoutMs({ performance: { panoramaRevealTimeoutMs: 3000 } }, { panoramaRevealTimeoutMs: 1500 },
+    { panoramaRevealTimeoutMs: () => 200 }), 200)
+  // 非正数一律忽略，落回缺省
+  assert.equal(panoramaRevealTimeoutMs({ performance: { panoramaRevealTimeoutMs: 0 } }, { panoramaRevealTimeoutMs: -1 }, null), 8000)
 })
 
 console.log('')

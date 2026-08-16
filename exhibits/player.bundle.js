@@ -27806,8 +27806,17 @@ async function waitForPanoramaBootBeforeReveal(gen) {
   if (!envPanoramaBootPromise) return;
   $("load-text").textContent = "\u6B63\u5728\u51C6\u5907\u73AF\u5883\u5149\u7167\u2026";
   $("bar").style.width = "100%";
-  panoDiagEvent("pano:await-before-reveal", { deferPanoramaIBL });
-  await envPanoramaBootPromise;
+  const capMs = panoramaRevealTimeoutMs(cfg, window.__SY_PLAYER, null);
+  panoDiagEvent("pano:await-before-reveal", { deferPanoramaIBL, capMs });
+  let capTimer = 0;
+  const capped = await Promise.race([
+    envPanoramaBootPromise.then(() => "env"),
+    new Promise((resolve) => {
+      capTimer = setTimeout(() => resolve("timeout"), capMs);
+    })
+  ]);
+  clearTimeout(capTimer);
+  if (capped === "timeout") panoDiagEvent("pano:await-timeout", { capMs });
   if (gen !== _startGeneration || window.__SY_PLAYER.ready) return;
 }
 function applyEnvironmentIBL() {

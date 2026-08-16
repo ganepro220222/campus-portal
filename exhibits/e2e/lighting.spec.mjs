@@ -606,7 +606,12 @@ test.describe('材质覆盖', () => {
   const live = () => page.evaluate(() => window.__SY_TEST__.materialLive())
 
   test.beforeEach(async () => {
-    await reloadPlayer(page, { mode: 'edit', viewport: { width: 1280, height: 720 } })
+    // craft-001 唯一材质无 name → 下拉只有空项，覆盖 UI 测不了；用具名双材质 fixture
+    await reloadPlayer(page, {
+      mode: 'edit',
+      viewport: { width: 1280, height: 720 },
+      assets: { model: '../e2e/fixtures/two-material.gltf' },
+    })
     await openMat()
     await page.waitForFunction(() => {
       const sel = document.getElementById('ed-matsel')

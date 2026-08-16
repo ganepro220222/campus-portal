@@ -234,13 +234,24 @@
   .ed-btn.ed-save:disabled { opacity:.6; cursor:default; }
   .ed-badge { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:21; background:rgba(200,168,106,.92); color:#0b0d14;
     font-size:11px; font-weight:700; padding:3px 12px; border-radius:999px; }
-  /* 窄屏编辑：底部 sheet + 可收起，避免 300px 右栏盖住 HUD/预设；展开时 HUD 置于 sheet 之上以便「收起」可点 */
+  /* 窄屏 sheet 顶栏：收起入口在 editor 内，勿抬升 HUD 以免挡住保存区 */
+  .ed-sheet-head { display:none; }
+  .ed-sheet-title { font-size:13px; font-weight:600; color:#f4e6c8; letter-spacing:.3px; }
+  .ed-sheet-close { appearance:none; border:1px solid rgba(255,255,255,.18); border-radius:999px;
+    background:rgba(255,255,255,.08); color:#eef0f5; font-size:12px; padding:5px 14px; cursor:pointer; }
+  .ed-sheet-close:active { transform:scale(.96); }
+  /* 窄屏编辑：底部 sheet + 可收起，避免 300px 右栏盖住 HUD/预设 */
   @media (max-width: 720px) {
     .editor { top:auto; left:0; right:0; bottom:0; width:100%; max-height:min(55vh, 520px);
       border-left:none; border-top:1px solid rgba(255,255,255,.1); border-radius:16px 16px 0 0;
-      box-shadow:0 -8px 32px rgba(0,0,0,.45); padding-bottom:calc(env(safe-area-inset-bottom) + 8px); }
+      box-shadow:0 -8px 32px rgba(0,0,0,.45); }
     body.ed-narrow.ed-panel-collapsed .editor { display:none !important; }
-    body.ed-narrow:not(.ed-panel-collapsed) .hud { z-index:21; }
+    body.ed-narrow:not(.ed-panel-collapsed) .editor { display:flex !important; flex-direction:column; overflow:hidden; padding:0; }
+    body.ed-narrow:not(.ed-panel-collapsed) .ed-sheet-head {
+      display:flex; align-items:center; justify-content:space-between; flex:0 0 auto;
+      padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.1); background:rgba(14,16,24,.98); }
+    body.ed-narrow:not(.ed-panel-collapsed) .ed-sheet-scroll {
+      flex:1; min-height:0; overflow-y:auto; padding:12px 16px calc(env(safe-area-inset-bottom) + 12px); }
   }
   /* EDITOR-CSS-END */
 </style>
@@ -879,14 +890,15 @@ function syncEditorPanelBtn() {
   const b = document.querySelector('[data-k=editPanel]')
   if (!b) return
   const narrow = editorPanelNarrow()
-  b.hidden = !narrow
-  if (!narrow) return
   const collapsed = document.body.classList.contains('ed-panel-collapsed')
-  b.classList.toggle('on', !collapsed)
+  /* 窄屏展开时由 sheet 顶栏「收起」；HUD 只保留收起态的「编辑」入口 */
+  b.hidden = !narrow || !collapsed
+  if (!narrow) return
+  b.classList.toggle('on', false)
   b.setAttribute('aria-pressed', collapsed ? 'false' : 'true')
   b.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
   const tx = b.querySelector('.tx')
-  if (tx) tx.textContent = collapsed ? BTN.editPanel[lang] : BTN.editPanelClose[lang]
+  if (tx) tx.textContent = BTN.editPanel[lang]
 }
 function setEditorPanelCollapsed(collapsed) {
   if (!editMode) return
@@ -2212,7 +2224,7 @@ function renderEditor() {
   const panoRules = envSrc.kind === 'panorama' && !panoBroken
   const effSrc = effectiveEnvSource()
   const bgSupported = supportsVisibleBackgroundForSource(effSrc)
-  $('editor').innerHTML = `
+  $('editor').innerHTML = `<div class="ed-sheet-head" id="ed-sheet-head"><span class="ed-sheet-title">编辑参数</span><button type="button" class="ed-sheet-close" id="ed-sheet-close" aria-label="收起编辑面板">收起</button></div><div class="ed-sheet-scroll">
   <details class="ed-sec" open><summary>基本信息</summary>
     <input class="ed-in" id="ed-title" value="${(info.title||'').replace(/"/g,'&quot;')}" placeholder="工艺品名称（左上角标题）">
     <input class="ed-in" id="ed-subtitle" value="${(info.subtitle||'').replace(/"/g,'&quot;')}" placeholder="副标题（标题下方小字）">
@@ -2399,7 +2411,7 @@ function renderEditor() {
     <button class="ed-btn" id="ed-check">配置校验 ▾</button>
     <div class="ed-note" id="ed-checkout"></div>
     <div class="ed-note">未配置保存服务时：导出 config.json 后覆盖到对应展品目录并上传。</div>
-  </details>`
+  </details></div>`
 
   restoreEditorUIState(uiState)
   wireEditor()
@@ -2408,6 +2420,8 @@ function renderEditor() {
 function wireEditor() {
   const g=cfg.materials.global, m=cfg.model, c=cfg.camera, L=cfg.lights
   const ed = $('editor')
+  const sheetClose = el('ed-sheet-close')
+  if (sheetClose) sheetClose.onclick = () => { window.__edPanelUserToggled = true; setEditorPanelCollapsed(true) }
   // 灯光：l.<灯名>.<i|az|el>（强度 / 方位角 / 仰角），关闭的灯写配置但送 0 给渲染
   function syncLightIntensity(k){ if (lightRefs[k]) lightRefs[k].intensity = effectiveIntensity(k, L[k]) }
   function syncLightAndShadow(k) {
@@ -3003,6 +3017,24 @@ if (editMode) {
         out[k] = { ok: hit === k, hit }
       })
       return out
+    },
+    editorControlHitTest: (id) => {
+      const btn = document.getElementById(id)
+      if (!btn || btn.offsetParent === null) return { ok: false, reason: 'missing' }
+      const r = btn.getBoundingClientRect()
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      const hit = el?.id || el?.closest?.(`#${id}`)?.id || el?.closest?.('.ed-sheet-close')?.id || null
+      return { ok: hit === id, hit, rect: { x: r.x, y: r.y, w: r.width, h: r.height } }
+    },
+    editorScrollToBottom: () => {
+      const sc = document.querySelector('.ed-sheet-scroll') || document.getElementById('editor')
+      if (!sc) return false
+      sc.scrollTop = sc.scrollHeight
+      return true
+    },
+    isEditPanelHudVisible: () => {
+      const b = document.querySelector('[data-k=editPanel]')
+      return !!(b && !b.hidden)
     },
     openHotspotByIndex: (i = 0) => {
       const item = hotspots[i]

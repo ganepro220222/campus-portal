@@ -598,6 +598,7 @@ test.describe('预设（灯光方案）', () => {
       await page.setViewportSize({ width, height: 844 })
       await page.waitForTimeout(100)
       expect(await page.evaluate(() => window.__SY_TEST__.isEditorPanelCollapsed())).toBe(true)
+      expect(await page.evaluate(() => window.__SY_TEST__.isEditPanelHudVisible())).toBe(true)
       const collapsed = await page.evaluate(() => window.__SY_TEST__.actionHitTestAll())
       for (const [k, v] of Object.entries(collapsed)) {
         expect(v.ok, `${width}px 收起态「${k}」被遮挡 (${v.hit})`).toBe(true)
@@ -605,10 +606,11 @@ test.describe('预设（灯光方案）', () => {
       expect(await page.evaluate(() => window.__SY_TEST__.presetHitTest('detail'))).toMatchObject({ ok: true })
       await page.evaluate(() => window.__SY_TEST__.setEditorPanelCollapsed(false))
       await expect(page.locator('#editor')).toBeVisible()
-      const expanded = await page.evaluate(() => window.__SY_TEST__.actionHitTestAll())
-      for (const [k, v] of Object.entries(expanded)) {
-        expect(v.ok, `${width}px 展开态「${k}」被遮挡 (${v.hit})`).toBe(true)
-      }
+      expect(await page.evaluate(() => window.__SY_TEST__.isEditPanelHudVisible())).toBe(false)
+      expect(await page.evaluate(() => window.__SY_TEST__.editorControlHitTest('ed-sheet-close'))).toMatchObject({ ok: true })
+      await page.evaluate(() => window.__SY_TEST__.editorScrollToBottom())
+      await page.waitForTimeout(50)
+      expect(await page.evaluate(() => window.__SY_TEST__.editorControlHitTest('ed-save'))).toMatchObject({ ok: true })
       await page.evaluate(() => window.__SY_TEST__.setEditorPanelCollapsed(true))
     }
     await page.setViewportSize({ width: 1280, height: 720 })

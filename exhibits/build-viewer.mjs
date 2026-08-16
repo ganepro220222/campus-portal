@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { assetFingerprint, deploymentFileHash } from './pano-check.mjs'
@@ -679,8 +680,38 @@ export function assertViewerBuild(viewHtml = buildViewerSrc()) {
   return viewHtml
 }
 
-export function buildProductionViewer(viewerSrc = assertViewerBuild(buildViewerSrc())) {
-  return buildBundledViewer(viewerSrc, { outDir: ROOT, bundleName: VIEWER_BUNDLE_FILE })
+export function buildProductionViewer(viewerSrc = assertViewerBuild(buildViewerSrc()), { outDir = ROOT } = {}) {
+  return buildBundledViewer(viewerSrc, { outDir, bundleName: VIEWER_BUNDLE_FILE })
+}
+
+/** Read-only: build expected viewer artifacts in a temp dir and compare to committed files. */
+export function compareViewerArtifacts(viewerSrc = assertViewerBuild(buildViewerSrc()), root = ROOT) {
+  const outHtml = path.join(root, 'player.view.html')
+  const outBundle = path.join(root, VIEWER_BUNDLE_FILE)
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-viewer-check-'))
+  try {
+    const { html, bundlePath } = buildBundledViewer(viewerSrc, { outDir: tmp, bundleName: VIEWER_BUNDLE_FILE })
+    const errors = []
+    if (!fs.existsSync(outHtml)) errors.push('player.view.html missing; run without --check to generate')
+    else {
+      const cur = fs.readFileSync(outHtml)
+      const exp = Buffer.from(html, 'utf8')
+      if (cur.length !== exp.length || !cur.equals(exp)) {
+        errors.push(`player.view.html out of sync (${cur.length} bytes vs ${exp.length} expected)`)
+      }
+    }
+    if (!fs.existsSync(outBundle)) errors.push(`${VIEWER_BUNDLE_FILE} missing; run without --check to generate`)
+    else {
+      const cur = fs.readFileSync(outBundle)
+      const exp = fs.readFileSync(bundlePath)
+      if (cur.length !== exp.length || !cur.equals(exp)) {
+        errors.push(`${VIEWER_BUNDLE_FILE} out of sync (${cur.length} bytes vs ${exp.length} expected)`)
+      }
+    }
+    return { ok: errors.length === 0, errors }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
 }
 
 function usage() {
@@ -732,29 +763,11 @@ if (uploadAssets && !upload) {
 }
 
 const viewerSrc = assertViewerBuild(buildViewerSrc())
-const { html: bundledHtml, bundlePath } = buildProductionViewer(viewerSrc)
 
 if (check) {
-  if (!fs.existsSync(OUT)) {
-    console.error('player.view.html missing; run without --check to generate')
-    process.exit(1)
-  }
-  const curHtml = fs.readFileSync(OUT)
-  const expHtml = Buffer.from(bundledHtml, 'utf8')
-  if (curHtml.length !== expHtml.length || !curHtml.equals(expHtml)) {
-    console.error(`player.view.html out of sync (${curHtml.length} bytes vs ${expHtml.length} expected)`)
-    console.error('Run: node build-viewer.mjs')
-    process.exit(1)
-  }
-  const bundleOut = path.join(ROOT, VIEWER_BUNDLE_FILE)
-  if (!fs.existsSync(bundleOut)) {
-    console.error(`${VIEWER_BUNDLE_FILE} missing; run without --check to generate`)
-    process.exit(1)
-  }
-  const curBundle = fs.readFileSync(bundleOut)
-  const expBundle = fs.readFileSync(bundlePath)
-  if (curBundle.length !== expBundle.length || !curBundle.equals(expBundle)) {
-    console.error(`${VIEWER_BUNDLE_FILE} out of sync (${curBundle.length} bytes vs ${expBundle.length} expected)`)
+  const cmp = compareViewerArtifacts(viewerSrc, ROOT)
+  if (!cmp.ok) {
+    for (const e of cmp.errors) console.error(e)
     console.error('Run: node build-viewer.mjs')
     process.exit(1)
   }
@@ -762,6 +775,7 @@ if (check) {
   process.exit(0)
 }
 
+const { html: bundledHtml, bundlePath } = buildProductionViewer(viewerSrc)
 fs.writeFileSync(OUT, bundledHtml, 'utf8')
 fs.copyFileSync(bundlePath, path.join(ROOT, VIEWER_BUNDLE_FILE))
 console.log('player.view.html written')

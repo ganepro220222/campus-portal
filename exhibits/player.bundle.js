@@ -27708,14 +27708,14 @@ function syncEditorPanelBtn() {
   const b = document.querySelector("[data-k=editPanel]");
   if (!b) return;
   const narrow = editorPanelNarrow();
-  b.hidden = !narrow;
-  if (!narrow) return;
   const collapsed = document.body.classList.contains("ed-panel-collapsed");
-  b.classList.toggle("on", !collapsed);
+  b.hidden = !narrow || !collapsed;
+  if (!narrow) return;
+  b.classList.toggle("on", false);
   b.setAttribute("aria-pressed", collapsed ? "false" : "true");
   b.setAttribute("aria-expanded", collapsed ? "false" : "true");
   const tx = b.querySelector(".tx");
-  if (tx) tx.textContent = collapsed ? BTN.editPanel[lang] : BTN.editPanelClose[lang];
+  if (tx) tx.textContent = BTN.editPanel[lang];
 }
 function setEditorPanelCollapsed(collapsed) {
   if (!editMode) return;

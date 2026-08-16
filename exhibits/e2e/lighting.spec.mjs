@@ -28,6 +28,9 @@ const openLightSection = async () => {
   })
 }
 /** 拖滑条：设值并派发 input，与真实操作同一条代码路径 */
+const clickPreset = id => page.evaluate(presetId => {
+  document.querySelector(`#presets .preset[data-id="${presetId}"]`)?.click()
+}, id)
 const setRange = async (k, v) => {
   await page.evaluate(([key, val]) => {
     const el = document.querySelector(`#editor input[type=range][data-k="${key}"]`)
@@ -572,9 +575,10 @@ test.describe('预设（灯光方案）', () => {
     expect(await page.evaluate(() => window.__SY_TEST__.activePresetId())).toBeNull()
     await expect(page.locator('#presets .preset.on')).toHaveCount(0)
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.click('#presets .preset[data-id="detail"]')
+    // 390px 编辑模式下 #editor（300px）会盖住预设按钮，测 toggle 逻辑用 programmatic click
+    await clickPreset('detail')
     expect(await page.evaluate(() => window.__SY_TEST__.rendererExposure())).toBeCloseTo(1.32, 2)
-    await page.click('#presets .preset[data-id="detail"]')
+    await clickPreset('detail')
     expect(await page.evaluate(() => window.__SY_TEST__.rendererExposure())).toBeCloseTo(2, 2)
     await page.setViewportSize({ width: 1280, height: 720 })
   })

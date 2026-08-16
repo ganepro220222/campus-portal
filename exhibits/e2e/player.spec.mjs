@@ -777,6 +777,32 @@ test.describe('全景就绪超时', () => {
     await page.close()
   })
 
+  test('超时先露出模型，迟到的全景仍最终生效', async ({ browser }) => {
+    const page = await browser.newPage()
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { panoramaRevealTimeoutMs: 1200, module: false, bootStarted: false, ready: false }
+    })
+    await page.route(
+      u => /\.(jpg|jpeg|png|webp)$/i.test(decodeURIComponent(u.pathname)) && !/poster/i.test(decodeURIComponent(u.pathname)),
+      async route => {
+        await new Promise(r => setTimeout(r, 2000))
+        return route.continue()
+      },
+    )
+    await page.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 60_000 })
+    const tags = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
+    expect(tags).toContain('pano:await-timeout')
+    await page.waitForFunction(
+      () => (window.__SY_PANO_DIAG__ || []).some(x => x.tag === 'pano:texture-loaded'),
+      null,
+      { timeout: 15_000 },
+    )
+    expect((await page.evaluate(() => window.__SY_TEST__.lightState())).envSource.kind).toBe('panorama')
+    await releaseWebGL(page)
+    await page.close()
+  })
+
   test('全景正常时不触发超时分支（不能为了保命牺牲正常路径）', async ({ browser }) => {
     const page = await browser.newPage()
     await page.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })

@@ -417,6 +417,7 @@ function downscalePanoramaTexture(tex, maxWidth) {
   const out = new THREE.CanvasTexture(cv)
   out.mapping = tex.mapping
   out.colorSpace = tex.colorSpace
+  tex.image = null
   tex.dispose()
   return out
 }
@@ -999,6 +1000,7 @@ function panoramaIBL(url, opts = {}) {
     }
     const prefetched = envPanoPrefetch?.url === expectedUrl ? envPanoPrefetch : null
     if (prefetched) {
+      envPanoPrefetch = null
       prefetched.promise.then(tex => finishOk(tex)).catch(finishErr)
       return
     }
@@ -1064,7 +1066,7 @@ async function waitForPanoramaBootBeforeReveal(gen) {
   clearTimeout(capTimer)
   if (capped === 'timeout') {
     panoDiagEvent('pano:await-timeout', { capMs })
-    envLoadGuard.invalidate()
+    // 只解除「阻止模型露出」的等待；迟到的全景仍应完成并切换，勿 invalidate token
   }
   if (gen !== _startGeneration || window.__SY_PLAYER.ready) return
 }
@@ -1721,7 +1723,17 @@ function applyPreset(p) {
   syncPresetButtons()
 }
 
-function onResize() { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight) }
+let lastAutoFitPortrait = innerWidth < innerHeight
+function onResize() {
+  const portrait = innerWidth < innerHeight
+  camera.aspect = innerWidth / innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(innerWidth, innerHeight)
+  if (portrait !== lastAutoFitPortrait) {
+    lastAutoFitPortrait = portrait
+    if (model) placeCamera()
+  }
+}
 let fps=0, _ft=performance.now(), _fc=0
 function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateLightRig(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
   _fc++; const n=performance.now(); if(n-_ft>=500){ fps=Math.round(_fc*1000/(n-_ft)); _fc=0; _ft=n } }

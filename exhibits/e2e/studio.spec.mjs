@@ -48,6 +48,7 @@ async function gotoStudioWithExhibits(page, exhibits, { checkPano = null, panora
   const bodyJson = JSON.stringify({ exhibits, capabilities: { create: true, save: true, batch: true }, panoramas })
   const checkPanoJson = JSON.stringify(checkPano)
   await page.addInitScript(({ json, checkPanoRules, panoVerifyTimeoutMs: tmo }) => {
+    try { localStorage.removeItem('studio.view.v1') } catch {}
     if (typeof tmo === 'number') window.__batchPanoVerifyTimeoutMs = tmo
     const stub = JSON.parse(json)
     const rules = checkPanoRules ? JSON.parse(checkPanoRules) : null
@@ -116,9 +117,13 @@ async function openBatchPanel(page) {
 
 async function selectExhibits(page, dirs) {
   for (const dir of dirs) {
-    const pick = page.locator(`.card[data-dir="${dir}"] .pick`)
+    const card = page.locator(`.card[data-dir="${dir}"]`)
+    await expect(card).toHaveCount(1)
+    await expect(card).not.toHaveAttribute('hidden', '')
+    const pick = card.locator('.pick')
+    await expect(pick).toBeVisible()
     await pick.click()
-    await expect(page.locator(`.card[data-dir="${dir}"].sel`)).toHaveCount(1)
+    await expect(card).toHaveClass(/sel/)
   }
 }
 

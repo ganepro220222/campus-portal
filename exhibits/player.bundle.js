@@ -27254,6 +27254,7 @@ function downscalePanoramaTexture(tex, maxWidth) {
   const out = new CanvasTexture(cv);
   out.mapping = tex.mapping;
   out.colorSpace = tex.colorSpace;
+  tex.image = null;
   tex.dispose();
   return out;
 }
@@ -27851,6 +27852,7 @@ function panoramaIBL(url, opts = {}) {
     }
     const prefetched = (envPanoPrefetch == null ? void 0 : envPanoPrefetch.url) === expectedUrl ? envPanoPrefetch : null;
     if (prefetched) {
+      envPanoPrefetch = null;
       prefetched.promise.then((tex) => finishOk(tex)).catch(finishErr);
       return;
     }
@@ -27898,7 +27900,6 @@ async function waitForPanoramaBootBeforeReveal(gen) {
   clearTimeout(capTimer);
   if (capped === "timeout") {
     panoDiagEvent("pano:await-timeout", { capMs });
-    envLoadGuard.invalidate();
   }
   if (gen !== _startGeneration || window.__SY_PLAYER.ready) return;
 }
@@ -28588,10 +28589,16 @@ function applyPreset(p) {
   }
   syncPresetButtons();
 }
+var lastAutoFitPortrait = innerWidth < innerHeight;
 function onResize() {
+  const portrait = innerWidth < innerHeight;
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  if (portrait !== lastAutoFitPortrait) {
+    lastAutoFitPortrait = portrait;
+    if (model) placeCamera();
+  }
 }
 var fps = 0;
 var _ft = performance.now();

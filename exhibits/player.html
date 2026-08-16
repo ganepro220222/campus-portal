@@ -234,18 +234,13 @@
   .ed-btn.ed-save:disabled { opacity:.6; cursor:default; }
   .ed-badge { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:21; background:rgba(200,168,106,.92); color:#0b0d14;
     font-size:11px; font-weight:700; padding:3px 12px; border-radius:999px; }
-  /* 窄屏编辑：底部 sheet + 可收起，避免 300px 右栏盖住 HUD/预设 */
-  .ed-panel-toggle { display:none; position:fixed; z-index:22; right:12px;
-    bottom:calc(env(safe-area-inset-bottom) + 12px); padding:8px 14px; border-radius:999px;
-    border:1px solid var(--gold); background:rgba(14,16,24,.92); color:#f4e6c8; font-size:12px;
-    cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.35); }
+  /* 窄屏编辑：底部 sheet + 可收起，避免 300px 右栏盖住 HUD/预设；展开时 HUD 置于 sheet 之上以便「收起」可点 */
   @media (max-width: 720px) {
     .editor { top:auto; left:0; right:0; bottom:0; width:100%; max-height:min(55vh, 520px);
       border-left:none; border-top:1px solid rgba(255,255,255,.1); border-radius:16px 16px 0 0;
       box-shadow:0 -8px 32px rgba(0,0,0,.45); padding-bottom:calc(env(safe-area-inset-bottom) + 8px); }
-    body.ed-narrow .ed-panel-toggle { display:block; }
     body.ed-narrow.ed-panel-collapsed .editor { display:none !important; }
-    body.ed-narrow:not(.ed-panel-collapsed) .ed-panel-toggle { bottom:calc(min(55vh, 520px) + 8px); }
+    body.ed-narrow:not(.ed-panel-collapsed) .hud { z-index:21; }
   }
   /* EDITOR-CSS-END */
 </style>
@@ -307,7 +302,6 @@
   <!-- EDITOR-HTML-START （导出仅观看版时整段剔除） -->
   <div class="editor" hidden id="editor"></div>
   <div class="ed-badge" hidden id="ed-badge">编辑模式</div>
-  <button type="button" class="ed-panel-toggle" hidden id="ed-panel-toggle">编辑面板</button>
   <!-- EDITOR-HTML-END -->
 </div>
 
@@ -877,31 +871,35 @@ function refitCameraDistanceForOrientation() {
 }
 const ED_PANEL_NARROW_MAX = 720
 function editorPanelNarrow() { return editMode && innerWidth <= ED_PANEL_NARROW_MAX }
+function toggleEditorPanel() {
+  window.__edPanelUserToggled = true
+  setEditorPanelCollapsed(!document.body.classList.contains('ed-panel-collapsed'))
+}
+function syncEditorPanelBtn() {
+  const b = document.querySelector('[data-k=editPanel]')
+  if (!b) return
+  const narrow = editorPanelNarrow()
+  b.hidden = !narrow
+  if (!narrow) return
+  const collapsed = document.body.classList.contains('ed-panel-collapsed')
+  b.classList.toggle('on', !collapsed)
+  b.setAttribute('aria-pressed', collapsed ? 'false' : 'true')
+  b.setAttribute('aria-expanded', collapsed ? 'false' : 'true')
+  const tx = b.querySelector('.tx')
+  if (tx) tx.textContent = collapsed ? BTN.editPanel[lang] : BTN.editPanelClose[lang]
+}
 function setEditorPanelCollapsed(collapsed) {
   if (!editMode) return
   document.body.classList.toggle('ed-panel-collapsed', collapsed)
-  const toggle = $('ed-panel-toggle')
-  if (toggle) toggle.textContent = collapsed ? '编辑面板 ▴' : '收起编辑 ▾'
+  syncEditorPanelBtn()
 }
 function syncEditorPanelLayout() {
   if (!editMode) return
   const narrow = editorPanelNarrow()
   document.body.classList.toggle('ed-narrow', narrow)
-  const toggle = $('ed-panel-toggle')
-  if (toggle) {
-    if (narrow) toggle.removeAttribute('hidden')
-    else { toggle.setAttribute('hidden', ''); document.body.classList.remove('ed-panel-collapsed') }
-  }
+  if (!narrow) document.body.classList.remove('ed-panel-collapsed')
   if (narrow && !window.__edPanelUserToggled) setEditorPanelCollapsed(true)
-}
-function wireEditorPanelToggle() {
-  const toggle = $('ed-panel-toggle')
-  if (!toggle || toggle.dataset.wired) return
-  toggle.dataset.wired = '1'
-  toggle.onclick = () => {
-    window.__edPanelUserToggled = true
-    setEditorPanelCollapsed(!document.body.classList.contains('ed-panel-collapsed'))
-  }
+  else syncEditorPanelBtn()
 }
 
 /* ── 环境 / IBL ── */
@@ -1626,7 +1624,8 @@ function renderText() {
   })
   labelBtns()
 }
-const BTN = { rotate:{zh:'自动旋转',en:'Auto'}, hot:{zh:'热点',en:'Hotspots'}, reset:{zh:'重置',en:'Reset'}, full:{zh:'全屏',en:'Full'} }
+const BTN = { rotate:{zh:'自动旋转',en:'Auto'}, hot:{zh:'热点',en:'Hotspots'}, reset:{zh:'重置',en:'Reset'}, full:{zh:'全屏',en:'Full'},
+  editPanel:{zh:'编辑',en:'Edit'}, editPanelClose:{zh:'收起',en:'Close'} }
 /* HUD 图标用内联 SVG 而不是 ↻ ◈ ⤢ ⛶ 这类字符。
    这些码位多半落在回退字体上，各家的字面大小与基线都不一样：实测同为 17px 行高时，
    ◈ 的墨迹比 ↻ 低 2.5px、⤢ 低 1px，四个图标横看一排是歪的；缺字的机器还会显示豆腐块。
@@ -1643,6 +1642,8 @@ const ICONS = (() => {
     reset: svg('<path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/>'),
     // 四角向外展：全屏
     full: svg('<path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/>'),
+    // 三列滑条：编辑面板
+    editPanel: svg('<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>'),
   }
 })()
 function labelBtns(){ document.querySelectorAll('#actions .btn').forEach(b=>{ const k=b.dataset.k; if(BTN[k]) b.querySelector('.tx').textContent = BTN[k][lang] }) }
@@ -1745,8 +1746,9 @@ function buildHUD() {
   })
   if (ui.showHotspotButton!==false && (cfg.hotspots||[]).length) mk('hot', true, ()=>{ hotspotsVisible=!hotspotsVisible; if(!hotspotsVisible) closeHotspot(); syncBtns() })
   if (ui.showResetButton!==false) mk('reset', false, ()=>{ closeHotspot() })
+  if (editMode) mk('editPanel', false, toggleEditorPanel)
   if (ui.showFullscreenButton!==false && FS.supported) mk('full', FS.active(), () => FS.toggle())
-  labelBtns(); syncBtns()   // 初始化 aria-pressed 等状态
+  labelBtns(); syncBtns(); syncEditorPanelBtn()   // 初始化 aria-pressed 等状态
   // 高亮与当前状态匹配的预设（让默认预设显示为选中）
   if (renderer) {
     const cur = renderer.toneMappingExposure
@@ -2110,7 +2112,6 @@ function buildEditor() {
   const ed = $('editor'); ed.removeAttribute('hidden')
   window.__edRefresh = renderEditor
   syncEditorPanelLayout()
-  wireEditorPanelToggle()
   renderEditor()
   wireCanvasAdd()
   clearInterval(_perfTimer)
@@ -2950,6 +2951,7 @@ window.__SY_TEST__ = {
     }
   },
   envPanoPrefetchCleared: () => envPanoPrefetch == null,
+  envSourceKind: () => effectiveEnvSource().kind,
   applyPresetById: (id) => {
     const p = (cfg.presets || []).find(x => x.id === id)
     if (!p) return false
@@ -2982,6 +2984,25 @@ if (editMode) {
       const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
       const hit = el?.closest?.('.preset')?.dataset?.id || el?.id || null
       return { ok: hit === id, hit, rect: { x: r.x, y: r.y, w: r.width, h: r.height } }
+    },
+    actionHitTest: (k) => {
+      const btn = document.querySelector(`#actions .btn[data-k="${k}"]`)
+      if (!btn || btn.hidden) return { ok: false, reason: btn ? 'hidden' : 'missing' }
+      const r = btn.getBoundingClientRect()
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      const hit = el?.closest?.('.btn')?.dataset?.k || el?.id || null
+      return { ok: hit === k, hit, rect: { x: r.x, y: r.y, w: r.width, h: r.height } }
+    },
+    actionHitTestAll: () => {
+      const out = {}
+      document.querySelectorAll('#actions .btn:not([hidden])').forEach(b => {
+        const k = b.dataset.k
+        const r = b.getBoundingClientRect()
+        const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+        const hit = el?.closest?.('.btn')?.dataset?.k || el?.id || null
+        out[k] = { ok: hit === k, hit }
+      })
+      return out
     },
     openHotspotByIndex: (i = 0) => {
       const item = hotspots[i]

@@ -780,11 +780,15 @@ test.describe('全景就绪超时', () => {
   test('超时先露出模型，迟到的全景仍最终生效', async ({ browser }) => {
     const page = await browser.newPage()
     let panoRequests = 0
+    const panoCb = Date.now()
     await page.addInitScript(() => {
       window.__SY_PLAYER = { panoramaRevealTimeoutMs: 400, module: false, bootStarted: false, ready: false }
     })
     await injectCfg(page, {
-      assets: { model: '../e2e/fixtures/two-material.gltf', panorama: '../e2e/fixtures/tiny-pano.jpg' },
+      assets: {
+        model: '../e2e/fixtures/two-material.gltf',
+        panorama: `../e2e/fixtures/tiny-pano.jpg?cb=${panoCb}`,
+      },
       environment: { mode: 'panorama' },
     })
     await page.route(
@@ -795,7 +799,8 @@ test.describe('全景就绪超时', () => {
         return route.continue()
       },
     )
-    await page.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
+    // panoDefer=1：与 iOS/微信同路径，在模型就绪后再等全景；避免桌面端 boot 即 kick + 磁盘缓存导致全景先于 await 完成、测不到超时
+    await page.goto('/player.html?ex=craft-001&syDiag=1&panoDefer=1', { waitUntil: 'domcontentloaded' })
     await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 60_000 })
     const tagsAfterReady = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
     expect(tagsAfterReady).toContain('pano:await-timeout')
@@ -806,7 +811,7 @@ test.describe('全景就绪超时', () => {
       { timeout: 15_000 },
     )
     expect(panoRequests).toBe(1)
-    expect((await page.evaluate(() => window.__SY_TEST__.lightState())).envSource.kind).toBe('panorama')
+    expect(await page.evaluate(() => window.__SY_TEST__.envSourceKind())).toBe('panorama')
     await releaseWebGL(page)
     await page.close()
   })

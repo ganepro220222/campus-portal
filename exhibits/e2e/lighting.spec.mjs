@@ -583,6 +583,36 @@ test.describe('预设（灯光方案）', () => {
     expect(await page.evaluate(() => window.__SY_TEST__.rendererExposure())).toBeCloseTo(2, 2)
     await page.setViewportSize({ width: 1280, height: 720 })
   })
+
+  test('窄屏编辑：HUD 按钮不被编辑面板遮挡（收起/展开）', async () => {
+    await reloadPlayer(page, {
+      viewport: { width: 390, height: 844 },
+      renderer: { exposure: 2 },
+      presets: [
+        { id: 'hall', label: { zh: '展厅光' }, exposure: 1.05, showAsButton: true },
+        { id: 'detail', label: { zh: '细节光' }, exposure: 1.32, showAsButton: true },
+      ],
+    })
+    await page.waitForFunction(() => window.__SY_TEST__.isEditorPanelCollapsed() === true, null, { timeout: 30_000 })
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+      await page.waitForTimeout(100)
+      expect(await page.evaluate(() => window.__SY_TEST__.isEditorPanelCollapsed())).toBe(true)
+      const collapsed = await page.evaluate(() => window.__SY_TEST__.actionHitTestAll())
+      for (const [k, v] of Object.entries(collapsed)) {
+        expect(v.ok, `${width}px 收起态「${k}」被遮挡 (${v.hit})`).toBe(true)
+      }
+      expect(await page.evaluate(() => window.__SY_TEST__.presetHitTest('detail'))).toMatchObject({ ok: true })
+      await page.evaluate(() => window.__SY_TEST__.setEditorPanelCollapsed(false))
+      await expect(page.locator('#editor')).toBeVisible()
+      const expanded = await page.evaluate(() => window.__SY_TEST__.actionHitTestAll())
+      for (const [k, v] of Object.entries(expanded)) {
+        expect(v.ok, `${width}px 展开态「${k}」被遮挡 (${v.hit})`).toBe(true)
+      }
+      await page.evaluate(() => window.__SY_TEST__.setEditorPanelCollapsed(true))
+    }
+    await page.setViewportSize({ width: 1280, height: 720 })
+  })
 })
 
 test.describe('材质覆盖', () => {

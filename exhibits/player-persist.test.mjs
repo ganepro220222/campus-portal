@@ -8,6 +8,8 @@ import {
   cameraPositionFromSpherical,
   configFetchUrl,
   configExportFilename,
+  strictWebKitPanoramaMaxWidth,
+  DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH,
 } from './player-persist.mjs'
 import { computeRootHash, normalizeRootPath, getIdentityPayload } from './_server/studio-identity.mjs'
 
@@ -40,6 +42,14 @@ test('configFetchUrl adds cache buster', () => {
 test('configExportFilename includes exhibit dir', () => {
   assert.equal(configExportFilename('craft-002'), 'craft-002.config.json')
   assert.equal(configExportFilename(''), 'config.json')
+})
+
+test('strictWebKitPanoramaMaxWidth defaults to 2048 on strict hosts only', () => {
+  assert.equal(DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, 2048)
+  assert.equal(strictWebKitPanoramaMaxWidth(null, true, 0), 2048)
+  assert.equal(strictWebKitPanoramaMaxWidth(null, false, 0), 0)
+  assert.equal(strictWebKitPanoramaMaxWidth({ performance: { strictWebKitPanoramaMaxWidth: 1024 } }, true, 0), 1024)
+  assert.equal(strictWebKitPanoramaMaxWidth(null, true, 4096), 4096)
 })
 
 test('camera round-trip with zero pivot', () => {

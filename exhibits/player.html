@@ -305,10 +305,22 @@ window.__SY_PLAYER = Object.assign(
   { module: false, bootStarted: false, ready: false, failed: false, bootTimeoutMs: 12000 },
   window.__SY_PLAYER || {}
 )
+function syPlayerBootFailureMessage() {
+  if (location.protocol === 'file:') {
+    return '播放器模块加载失败。请在 exhibits 目录运行：python serve.py 8199  或  node _server/studio-server.mjs（不要用 python -m http.server）'
+  }
+  if (document.querySelector('script[type="importmap"]')) {
+    var supportsImportMap = typeof HTMLScriptElement !== 'undefined' && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap')
+    if (!supportsImportMap) {
+      return '当前浏览器版本过低，无法加载立体鉴赏播放器。请升级 iOS 至 16.4 或更高版本，或使用最新版 Safari/Chrome 重试。'
+    }
+  }
+  return '播放器脚本加载失败，请刷新页面；若仍失败请联系管理员检查部署包是否完整（player.bundle.js）。'
+}
 setTimeout(function () {
   var p = window.__SY_PLAYER
   if (p.ready || p.bootStarted || p.failed) return
-  var msg = '播放器模块加载失败。请在 exhibits 目录运行：python serve.py 8199  或  node _server/studio-server.mjs（不要用 python -m http.server）'
+  var msg = syPlayerBootFailureMessage()
   var loading = document.getElementById('loading')
   var err = document.getElementById('error')
   var errText = document.getElementById('err-text')
@@ -332,7 +344,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
+import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 
@@ -346,18 +358,116 @@ const EX = (params.get('ex') || '').replace(/^\/+|\/+$/g, '')
 const BASE = EX ? EX + '/' : ''
 const asset = p => (!p || /^(https?:|data:|blob:|\/\/|\/)/.test(p)) ? p : BASE + p   // 相对路径补展品目录前缀
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
-/** Safari / 微信内置浏览器内存配额更严，并行 WebGL+GLB+全景 PMREM 易触发整页重载 */
+/** Safari / 微信 / iOS 全系 WebKit（含 Edge·Chrome·Telegram 内置）：延迟全景 PMREM，8042→2048。 */
 function isStrictWebKitHost() {
   const ua = navigator.userAgent || ''
   if (/MicroMessenger/i.test(ua)) return true
+  if (/iPhone|iPad|iPod/i.test(ua)) return true
   if (/Safari/i.test(ua) && !/Chrome|CriOS|Chromium|Edg|OPR|FxiOS|UCBrowser|Quark|360/i.test(ua)) return true
   return false
 }
 const strictWebKit = isStrictWebKitHost()
-const deferPanoramaIBL = strictWebKit
+function parseBoolQuery(key) {
+  const v = params.get(key)
+  if (v === '1' || v === 'true') return true
+  if (v === '0' || v === 'false') return false
+  return null
+}
+/** Safari/微信全景诊断：?syDiag=1 &panoDefer=0|1 &panoMax=N &panoPmrem=0 &panoBg=0 &panoLoadOnly=1 */
+const panoDeferOverride = parseBoolQuery('panoDefer')
+const deferPanoramaIBL = panoDeferOverride !== null ? panoDeferOverride : strictWebKit
+const panoDiag = {
+  enabled: params.get('syDiag') === '1',
+  urlMaxWidth: Math.max(0, parseInt(params.get('panoMax') || '0', 10) || 0),
+  skipPmrem: params.get('panoPmrem') === '0',
+  skipVisibleBg: params.get('panoBg') === '0',
+  loadOnly: params.get('panoLoadOnly') === '1',
+}
+function panoramaPmremMaxWidth() {
+  if (panoDiag.skipPmrem || panoDiag.loadOnly) return 0
+  return strictWebKitPanoramaMaxWidth(cfg, strictWebKit, panoDiag.urlMaxWidth)
+}
+window.__SY_PANO_DIAG__ = window.__SY_PANO_DIAG__ || []
+function panoDiagEvent(tag, detail) {
+  if (!panoDiag.enabled) return
+  const entry = { t: Date.now(), tag, detail: detail ?? null }
+  window.__SY_PANO_DIAG__.push(entry)
+  console.log('[pano-diag]', tag, detail ?? '')
+  let panel = document.getElementById('sy-pano-diag')
+  if (!panel) {
+    panel = document.createElement('pre')
+    panel.id = 'sy-pano-diag'
+    panel.style.cssText = 'position:fixed;left:0;bottom:0;right:0;max-height:32vh;overflow:auto;font:10px/1.35 ui-monospace,monospace;background:rgba(0,0,0,.78);color:#9f9;z-index:99999;margin:0;padding:6px 8px;pointer-events:none;white-space:pre-wrap;'
+    document.body.appendChild(panel)
+  }
+  panel.textContent = window.__SY_PANO_DIAG__.slice(-28).map(e => {
+    const d = e.detail != null ? ' ' + JSON.stringify(e.detail) : ''
+    return e.tag + d
+  }).join('\n')
+}
+function downscalePanoramaTexture(tex, maxWidth) {
+  const img = tex.image
+  if (!maxWidth || !img?.width || img.width <= maxWidth) return tex
+  const w = maxWidth
+  const h = Math.max(1, Math.round(img.height * (w / img.width)))
+  const cv = document.createElement('canvas')
+  cv.width = w
+  cv.height = h
+  cv.getContext('2d').drawImage(img, 0, 0, w, h)
+  const out = new THREE.CanvasTexture(cv)
+  out.mapping = tex.mapping
+  out.colorSpace = tex.colorSpace
+  tex.dispose()
+  return out
+}
+function applyPanoramaFromTexture(tex) {
+  const orig = { w: tex.image?.width, h: tex.image?.height }
+  panoDiagEvent('pano:texture-loaded', orig)
+  const maxW = panoramaPmremMaxWidth()
+  if (maxW > 0) {
+    const before = orig
+    tex = downscalePanoramaTexture(tex, maxW)
+    if (tex.image?.width !== before.w) {
+      panoDiagEvent('pano:downscaled', { w: tex.image.width, h: tex.image.height, maxWidth: maxW })
+    }
+  }
+  if (panoDiag.loadOnly) {
+    panoDiagEvent('pano:load-only-done', orig)
+    tex.dispose()
+    return
+  }
+  if (panoDiag.skipPmrem) {
+    panoDiagEvent('pano:skip-pmrem', { keepVisibleBg: !panoDiag.skipVisibleBg && !!cfg.environment?.visibleBackground })
+    if (!panoDiag.skipVisibleBg && cfg.environment?.visibleBackground) {
+      if (envBg && envBg !== tex) envBg.dispose()
+      envBg = tex
+      scene.background = tex
+    } else tex.dispose()
+    return
+  }
+  panoDiagEvent('pano:pmrem-start', { w: tex.image?.width, h: tex.image?.height })
+  const rt = pmremGen().fromEquirectangular(tex)
+  panoDiagEvent('pano:pmrem-done', { w: tex.image?.width, h: tex.image?.height })
+  const keepBg = !panoDiag.skipVisibleBg && cfg.environment?.visibleBackground
+  setEnvFromRT(rt, keepBg ? tex : null)
+  if (!keepBg) tex.dispose()
+}
+if (panoDiag.enabled) {
+  panoDiagEvent('pano:boot', {
+    strictWebKit,
+    deferPanoramaIBL,
+    panoDeferOverride,
+    urlMaxWidth: panoDiag.urlMaxWidth,
+    strictWebKitPanoMaxDefault: strictWebKit ? DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH : 0,
+    skipPmrem: panoDiag.skipPmrem,
+    skipVisibleBg: panoDiag.skipVisibleBg,
+    loadOnly: panoDiag.loadOnly,
+  })
+}
 let lang = 'zh'
 let cfg, renderer, scene, camera, controls, model
 let hotspots = [], activePreset = null, raf = 0
+let bootLightingSnapshot = null
 const initialCam = new THREE.Vector3()
 const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
@@ -445,6 +555,22 @@ function initRenderer() {
   const dpr = Math.min(window.devicePixelRatio||1, cap)
   renderer.setPixelRatio(dpr)
   renderer.setSize(innerWidth, innerHeight)
+  if (panoDiag.enabled) {
+    const cap = renderer.capabilities
+    panoDiagEvent('webgl:capabilities', {
+      maxTextureSize: cap.maxTextureSize,
+      maxCubemapSize: cap.maxCubemapSize,
+      dpr,
+      isMobile,
+      antialias: !(strictWebKit && isMobile),
+    })
+    renderer.domElement.addEventListener('webglcontextlost', ev => {
+      panoDiagEvent('webgl:context-lost', { type: ev.type })
+    }, false)
+    renderer.domElement.addEventListener('webglcontextrestored', () => {
+      panoDiagEvent('webgl:context-restored', {})
+    }, false)
+  }
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = num(cfg.renderer?.exposure, 1.05)
   renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -676,6 +802,8 @@ const envLoadGuard = createEnvLoadGuard()
 let envPanoFailed = ''   // 记下加载失败的全景地址，供编辑器如实显示当前环境
 /** 同一全景 URL 在途加载：共享 Promise，避免重复请求与假成功 */
 let envPanoInflight = null
+let envPanoramaBootPromise = null
+let envPanoPrefetch = null
 let panoramaLoadMockEnabled = false
 let panoramaLoadMockEntry = null
 function invalidatePanoInflight() { envPanoInflight = null }
@@ -764,6 +892,22 @@ function commitPanoramaAssets(url) {
   cfg.environment = cfg.environment || {}
   cfg.environment.mode = 'panorama'
 }
+/** Safari/微信 defer 路径：模型加载期间并行拉全景图，PMREM 仍延后到露出前 */
+function prefetchPanoramaTexture(url) {
+  if (!url) return Promise.resolve(null)
+  if (envPanoPrefetch?.url === url) return envPanoPrefetch.promise
+  panoDiagEvent('pano:prefetch-start', { url })
+  const promise = new Promise((resolve, reject) => {
+    new THREE.TextureLoader().load(url, tex => {
+      tex.mapping = THREE.EquirectangularReflectionMapping
+      tex.colorSpace = THREE.SRGBColorSpace
+      panoDiagEvent('pano:prefetch-done', { w: tex.image?.width, h: tex.image?.height })
+      resolve(tex)
+    }, undefined, reject)
+  })
+  envPanoPrefetch = { url, promise }
+  return promise
+}
 function panoramaIBL(url, opts = {}) {
   if (!url) return Promise.reject(new Error('empty panorama url'))
   const { commitUrl = null } = opts
@@ -785,7 +929,7 @@ function panoramaIBL(url, opts = {}) {
       const recovered = envPanoFailed === expectedUrl
       envPanoFailed = ''
       releasePanoInflight(expectedUrl)
-      setEnvFromRT(pmremGen().fromEquirectangular(tex), tex)
+      applyPanoramaFromTexture(tex)
       if (recovered && typeof window.__edRefresh === 'function') window.__edRefresh()
       resolve({ stale: false })
     }
@@ -800,6 +944,11 @@ function panoramaIBL(url, opts = {}) {
     }
     if (editMode && panoramaLoadMockEnabled) {
       panoramaLoadMockEntry = { entry, token, expectedUrl, finishOk, finishErr, resolve, reject }
+      return
+    }
+    const prefetched = envPanoPrefetch?.url === expectedUrl ? envPanoPrefetch : null
+    if (prefetched) {
+      prefetched.promise.then(tex => finishOk(tex)).catch(finishErr)
       return
     }
     new THREE.TextureLoader().load(url, finishOk, undefined, finishErr)
@@ -832,18 +981,30 @@ function bootEnvironment() {
 /** 全景模式：异步拉取全景 IBL（preset/room 已在 bootEnvironment 同步就位） */
 function kickPanoramaIBLIfNeeded() {
   const src = resolveEnvSource(cfg)
-  if (src.kind !== 'panorama') return
-  if (envPanoFailed && asset(src.url) === envPanoFailed) {
+  if (src.kind !== 'panorama') return Promise.resolve({ kind: 'skip' })
+  const url = asset(src.url)
+  if (envPanoFailed && url === envPanoFailed) {
     applyEnvFallback()
-    return
+    return Promise.resolve({ kind: 'fallback' })
   }
-  panoramaIBL(asset(src.url))
+  panoDiagEvent('pano:kick', { url, deferPanoramaIBL })
+  if (!envPanoramaBootPromise || envPanoInflight?.url !== url) {
+    envPanoramaBootPromise = panoramaIBL(url).then(r => ({ kind: 'panorama', ...r }))
+  }
+  return envPanoramaBootPromise
 }
-/** 严格 WebKit：模型首帧后再拉全景 PMREM，降低峰值内存 */
-function scheduleDeferredPanoramaIBL() {
-  const run = () => kickPanoramaIBLIfNeeded()
-  if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2500 })
-  else setTimeout(run, 400)
+/** 模型露出前等待全景 IBL 就绪，避免 room 兜底 → 全景 PMREM 切换时的移动端闪白 */
+async function waitForPanoramaBootBeforeReveal(gen) {
+  const src = resolveEnvSource(cfg)
+  if (src.kind !== 'panorama') return
+  if (deferPanoramaIBL) kickPanoramaIBLIfNeeded()
+  else if (!envPanoramaBootPromise) kickPanoramaIBLIfNeeded()
+  if (!envPanoramaBootPromise) return
+  $('load-text').textContent = '正在准备环境光照…'
+  $('bar').style.width = '100%'
+  panoDiagEvent('pano:await-before-reveal', { deferPanoramaIBL })
+  await envPanoramaBootPromise
+  if (gen !== _startGeneration || window.__SY_PLAYER.ready) return
 }
 function applyEnvironmentIBL() {
   const src = resolveEnvSource(cfg)
@@ -1380,6 +1541,55 @@ function syncBtns(){
   // 全屏也是开关型按钮，之前一直没同步：进了全屏按钮不高亮，按 Esc 退出后也没人管
   const f=document.querySelector('[data-k=full]'); if(f){ const on=FS.active(); f.classList.toggle('on', on); f.setAttribute('aria-pressed', on) }
 }
+function cloneCfgSlice(obj) {
+  return obj ? JSON.parse(JSON.stringify(obj)) : {}
+}
+/** 记录首屏光照（config 默认态），供预设按钮 toggle 还原 */
+function captureBootLightingSnapshot() {
+  bootLightingSnapshot = {
+    exposure: num(cfg.renderer?.exposure, 1.05),
+    environment: cloneCfgSlice(cfg.environment),
+    lights: cloneCfgSlice(cfg.lights),
+    shadow: cloneCfgSlice(cfg.shadow),
+  }
+}
+function restoreBootLighting() {
+  activePreset = null
+  document.querySelectorAll('#presets .preset').forEach(b => {
+    b.classList.remove('on')
+    b.setAttribute('aria-pressed', 'false')
+  })
+  if (!renderer) return
+  const s = bootLightingSnapshot
+  if (!s) {
+    renderer.toneMappingExposure = num(cfg.renderer?.exposure, 1.05)
+    applyEnvironment()
+    buildLights()
+    applyShadow()
+    return
+  }
+  renderer.toneMappingExposure = s.exposure
+  cfg.environment = cloneCfgSlice(s.environment)
+  cfg.lights = cloneCfgSlice(s.lights)
+  cfg.shadow = cloneCfgSlice(s.shadow)
+  // 首屏已是全景 IBL 时勿重跑 PMREM（取消预设时的 Android 卡顿根因）
+  if (s.environment?.mode === 'panorama' && envRT) {
+    applyEnvironment()
+    applyVisibleBackgroundPreview()
+  } else {
+    applyEnvironmentIBL()
+    applyEnvironment()
+  }
+  buildLights()
+  applyShadow()
+}
+function syncPresetButtons() {
+  document.querySelectorAll('#presets .preset').forEach(b => {
+    const on = b.dataset.id === activePreset
+    b.classList.toggle('on', on)
+    b.setAttribute('aria-pressed', on ? 'true' : 'false')
+  })
+}
 function buildHUD() {
   const ui = cfg.ui||{}
   const pr = $('presets')
@@ -1388,7 +1598,8 @@ function buildHUD() {
     if (!ui.showPresets || p.showAsButton===false || shownPresets>=4) return   // 前台最多 4 个光源按钮
     shownPresets++
     const b=document.createElement('button'); b.className='preset'; b.dataset.id=p.id; b.textContent=t(p.label)||p.id
-    b.onclick=()=>applyPreset(p); pr.appendChild(b)
+    b.setAttribute('aria-pressed', 'false')
+    b.onclick=()=>togglePreset(p); pr.appendChild(b)
   })
   const act = $('actions')
   const mk = (k, on, fn) => { const b=document.createElement('button'); b.className='btn'+(on?' on':''); b.dataset.k=k
@@ -1406,9 +1617,19 @@ function buildHUD() {
   if (ui.showFullscreenButton!==false && FS.supported) mk('full', FS.active(), () => FS.toggle())
   labelBtns(); syncBtns()   // 初始化 aria-pressed 等状态
   // 高亮与当前状态匹配的预设（让默认预设显示为选中）
-  if (renderer) { const cur=renderer.toneMappingExposure
-    const m=(cfg.presets||[]).find(p=>Math.abs(num(p.exposure,-99)-cur)<0.02)
-    if(m){ activePreset=m.id; const btn=document.querySelector(`#presets .preset[data-id="${m.id}"]`); if(btn) btn.classList.add('on') } }
+  if (renderer) {
+    const cur = renderer.toneMappingExposure
+    const m = (cfg.presets||[]).find(p => Math.abs(num(p.exposure,-99)-cur)<0.02)
+    if (m) activePreset = m.id
+    syncPresetButtons()
+  }
+}
+function togglePreset(p) {
+  if (activePreset === p.id) {
+    restoreBootLighting()
+    return
+  }
+  applyPreset(p)
 }
 function applyPreset(p) {
   activePreset = p.id
@@ -1426,7 +1647,7 @@ function applyPreset(p) {
     buildLights()
   }
   if (p.shadow) { cfg.shadow = Object.assign(cfg.shadow || {}, p.shadow); applyShadow() }
-  document.querySelectorAll('#presets .preset').forEach(b=>b.classList.toggle('on', b.dataset.id===p.id))
+  syncPresetButtons()
 }
 
 function onResize() { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight) }
@@ -1568,9 +1789,23 @@ function clearModelLoadMock() {
 
 let _bootModelTimers = null
 
+function finishPlayerReveal(gen) {
+  if (gen !== _startGeneration || window.__SY_PLAYER.ready) return
+  captureBootLightingSnapshot()
+  $('topbar').removeAttribute('hidden'); $('hud').removeAttribute('hidden')
+  $('loading').classList.add('fade'); setTimeout(()=>$('loading').setAttribute('hidden',''), 460)
+  $('hint').classList.add('show'); setTimeout(()=>$('hint').classList.remove('show'), 2600)
+  if (editMode && typeof buildEditor === 'function') buildEditor()
+  markPlayerReady()
+  animate()
+}
+
 function start() {
   clearTimeout(_bootWatchdog)
   const gen = ++_startGeneration
+  envPanoramaBootPromise = null
+  envPanoPrefetch = null
+  bootLightingSnapshot = null
   scene = new THREE.Scene()
   scene.background = new THREE.Color(cfg.renderer?.background || '#0f1118')
   camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.1, 1000)
@@ -1579,7 +1814,12 @@ function start() {
   controls.addEventListener('start', ()=>{ controls.autoRotate=false; syncBtns() })
   bootEnvironment() // 先给内置环境/程序化预设，秒出反射
   applyEnvironment() // 环境光照强度 / 全景旋转
-  if (!deferPanoramaIBL) kickPanoramaIBLIfNeeded() // 桌面/Chrome：全景与模型并行，缩短 Room 兜底窗口
+  const bootEnvSrc = resolveEnvSource(cfg)
+  if (bootEnvSrc.kind === 'panorama') {
+    const panoUrl = asset(bootEnvSrc.url)
+    if (deferPanoramaIBL) prefetchPanoramaTexture(panoUrl)
+    else kickPanoramaIBLIfNeeded()
+  }
   buildLights() // 五光源灯组（叠加在 IBL 上，可编辑）
 
   const modelUrl = asset(cfg.assets.model)
@@ -1614,13 +1854,12 @@ function start() {
     model = gltf.scene
     normalize(model); applyMaterial(); scene.add(model); applyShadow()
     placeCamera(); buildHotspots(); buildHUD(); renderText(); buildAudio(); wireAudio()
-    $('topbar').removeAttribute('hidden'); $('hud').removeAttribute('hidden')
-    $('loading').classList.add('fade'); setTimeout(()=>$('loading').setAttribute('hidden',''), 460)
-    $('hint').classList.add('show'); setTimeout(()=>$('hint').classList.remove('show'), 2600)
-    if (deferPanoramaIBL) scheduleDeferredPanoramaIBL()
-    if (editMode && typeof buildEditor === 'function') buildEditor()
-    markPlayerReady()
-    animate()
+    void (async () => {
+      try {
+        await waitForPanoramaBootBeforeReveal(gen)
+      } catch { /* panoramaIBL resolves fallback; unexpected throw still reveal */ }
+      finishPlayerReveal(gen)
+    })()
   }, evt => {
     if (gen !== _startGeneration) return
     modelTimers.progress(evt.loaded, evt.total)
@@ -2502,8 +2741,29 @@ window.__SY_TEST__ = {
   modelLengthUnknown: () => _bootModelTimers?.isLengthUnknown?.() === true,
   modelLoadPhaseActive: () => _bootModelTimers != null,
   playerReady: () => window.__SY_PLAYER.ready === true,
+  deferPanoramaIBL: () => deferPanoramaIBL,
+  strictWebKitHost: () => strictWebKit,
+  panoramaPmremMaxWidth: () => panoramaPmremMaxWidth(),
+  panoDiagSnapshot: () => ({
+    flags: {
+      ...panoDiag,
+      deferPanoramaIBL,
+      strictWebKit,
+      panoDeferOverride,
+      panoramaPmremMaxWidth: panoramaPmremMaxWidth(),
+    },
+    log: (window.__SY_PANO_DIAG__ || []).slice(),
+  }),
   bootGeneration: () => _bootGeneration,
   startGeneration: () => _startGeneration,
+  rendererExposure: () => renderer?.toneMappingExposure ?? null,
+  activePresetId: () => activePreset,
+  applyPresetById: (id) => {
+    const p = (cfg.presets || []).find(x => x.id === id)
+    if (!p) return false
+    applyPreset(p)
+    return true
+  },
 }
 if (editMode) {
   Object.assign(window.__SY_TEST__, {

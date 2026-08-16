@@ -642,6 +642,81 @@ test.describe('strict WebKit startup', () => {
     await releaseWebGL(p)
     await p.close()
   })
+
+  test('panoDefer=0 overrides WeChat defer for A/B test A', async ({ browser }) => {
+    const p = await browser.newPage()
+    await p.addInitScript(() => {
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.42',
+      })
+    })
+    await injectCfg(p)
+    await p.setViewportSize({ width: 390, height: 844 })
+    await p.goto('/player.html?ex=craft-001&panoDefer=0&syDiag=1', { waitUntil: 'domcontentloaded' })
+    await waitForPlayerReady(p)
+    const snap = await p.evaluate(() => window.__SY_TEST__.panoDiagSnapshot())
+    expect(snap.flags.strictWebKit).toBe(true)
+    expect(snap.flags.deferPanoramaIBL).toBe(false)
+    expect(snap.log.some(e => e.tag === 'pano:kick')).toBe(true)
+    expect(snap.log.some(e => e.tag === 'pano:defer-scheduled')).toBe(false)
+    await releaseWebGL(p)
+    await p.close()
+  })
+
+  test('WeChat UA downscales panorama to 2048 before PMREM by default', async ({ browser }) => {
+    const p = await browser.newPage()
+    await p.addInitScript(() => {
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.42',
+      })
+    })
+    await injectCfg(p)
+    await p.setViewportSize({ width: 390, height: 844 })
+    await p.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
+    await waitForPlayerReady(p)
+    await p.waitForFunction(() => {
+      const log = window.__SY_PANO_DIAG__ || []
+      return log.some(e => e.tag === 'pano:pmrem-done')
+    }, { timeout: 60_000 })
+    const snap = await p.evaluate(() => window.__SY_TEST__.panoDiagSnapshot())
+    expect(snap.flags.strictWebKit).toBe(true)
+    expect(snap.flags.panoramaPmremMaxWidth).toBe(2048)
+    const down = snap.log.find(e => e.tag === 'pano:downscaled')
+    expect(down?.detail?.maxWidth).toBe(2048)
+    expect(down?.detail?.w).toBe(2048)
+    const done = snap.log.find(e => e.tag === 'pano:pmrem-done')
+    expect(done?.detail?.w).toBe(2048)
+    await releaseWebGL(p)
+    await p.close()
+  })
+
+  for (const [name, ua] of [
+    ['iOS Edge', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 EdgiOS/121.0.2277.99 Mobile/15E148 Safari/604.1'],
+    ['iOS Chrome', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/121.0.6167.66 Mobile/15E148 Safari/604.1'],
+  ]) {
+    test(`${name} UA uses strict WebKit mobile path`, async ({ browser }) => {
+      const p = await browser.newPage()
+      await p.addInitScript(u => {
+        Object.defineProperty(navigator, 'userAgent', { configurable: true, get: () => u })
+      }, ua)
+      await injectCfg(p)
+      await p.setViewportSize({ width: 390, height: 844 })
+      await p.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
+      await waitForPlayerReady(p)
+      const flags = await p.evaluate(() => ({
+        strict: window.__SY_TEST__.strictWebKitHost(),
+        defer: window.__SY_TEST__.deferPanoramaIBL(),
+        maxW: window.__SY_TEST__.panoramaPmremMaxWidth(),
+      }))
+      expect(flags.strict).toBe(true)
+      expect(flags.defer).toBe(true)
+      expect(flags.maxW).toBe(2048)
+      await releaseWebGL(p)
+      await p.close()
+    })
+  }
 })
 
 test.describe('boot timeout', () => {

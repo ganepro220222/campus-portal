@@ -33,11 +33,13 @@ test.describe('public entry (fast)', () => {
       await expect(page.locator('#ed-badge')).toHaveCount(0)
 
       const flags = await page.evaluate(() => ({
-        editMode: /const editMode = false \/\* viewer-only \*\//.test(document.documentElement.innerHTML),
+        bundled: !!document.querySelector('script[type="module"][src*="player.bundle.js"]'),
+        importMap: !!document.querySelector('script[type="importmap"]'),
         testHook: window.__SY_TEST__ == null,
         ready: window.__SY_PLAYER?.ready === true,
       }))
-      expect(flags.editMode).toBe(true)
+      expect(flags.bundled).toBe(true)
+      expect(flags.importMap).toBe(false)
       expect(flags.testHook).toBe(true)
       expect(flags.ready).toBe(true)
 

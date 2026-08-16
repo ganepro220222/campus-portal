@@ -96,6 +96,18 @@ export function modelTotalTimeoutMs(cfg, player, testHook) {
   ], 120000)
 }
 
+/** Safari/微信：8042 全景客户端 PMREM 易触发 WebContent 被杀；A/B 验证 2048 稳定。 */
+export const DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH = 2048
+
+/** Max equirect width before PMREM; 0 = no downscale. URL override wins, then config, then strict default. */
+export function strictWebKitPanoramaMaxWidth(cfg, strictWebKit, urlOverride = 0) {
+  if (typeof urlOverride === 'number' && urlOverride > 0) return urlOverride
+  if (!strictWebKit) return 0
+  const cfgVal = cfg?.performance?.strictWebKitPanoramaMaxWidth
+  if (typeof cfgVal === 'number' && cfgVal > 0) return cfgVal
+  return DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH
+}
+
 /** Idle timer resets on download progress; cleared once loaded >= total. Total caps entire load. */
 export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal, onDownloadComplete }) {
   let idleTimer = 0

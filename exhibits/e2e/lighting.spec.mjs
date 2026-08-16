@@ -550,6 +550,32 @@ test.describe('预设（灯光方案）', () => {
     expect(st.shadow.rendererEnabled).toBe(false)
     expect(st.envIntensity).toBeCloseTo(1.15, 3)
   })
+
+  test('再次点击已选预设还原首屏光照（桌面与手机同路径）', async () => {
+    await reloadPlayer(page, {
+      renderer: { exposure: 2 },
+      presets: [
+        { id: 'hall', label: { zh: '展厅光' }, exposure: 1.05, showAsButton: true },
+        { id: 'detail', label: { zh: '细节光' }, exposure: 1.32, showAsButton: true },
+      ],
+    })
+    const bootExp = await page.evaluate(() => window.__SY_TEST__.rendererExposure())
+    expect(bootExp).toBeCloseTo(2, 2)
+    await expect(page.locator('#presets .preset.on')).toHaveCount(0)
+    await page.click('#presets .preset[data-id="hall"]')
+    expect(await page.evaluate(() => window.__SY_TEST__.rendererExposure())).toBeCloseTo(1.05, 2)
+    await expect(page.locator('#presets .preset[data-id="hall"]')).toHaveClass(/on/)
+    await page.click('#presets .preset[data-id="hall"]')
+    expect(await page.evaluate(() => window.__SY_TEST__.rendererExposure())).toBeCloseTo(2, 2)
+    expect(await page.evaluate(() => window.__SY_TEST__.activePresetId())).toBeNull()
+    await expect(page.locator('#presets .preset.on')).toHaveCount(0)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.click('#presets .preset[data-id="detail"]')
+    expect(await page.evaluate(() => window.__SY_TEST__.rendererExposure())).toBeCloseTo(1.32, 2)
+    await page.click('#presets .preset[data-id="detail"]')
+    expect(await page.evaluate(() => window.__SY_TEST__.rendererExposure())).toBeCloseTo(2, 2)
+    await page.setViewportSize({ width: 1280, height: 720 })
+  })
 })
 
 test.describe('材质覆盖', () => {

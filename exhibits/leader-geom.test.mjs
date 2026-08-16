@@ -16,15 +16,22 @@ import {
 import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
 import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { buildViewerSrc, buildUploadViewerSrc, syncUploadModules, syncUploadExhibits, syncUploadAssets,
+import { buildViewerSrc, buildProductionViewer, syncUploadModules, syncUploadExhibits, syncUploadAssets,
   initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
   collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack,
   prepareUploadStaging, promoteUploadStaging, uploadSiblingStagingPath, uploadSiblingBackupPath,
-  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, listSourceCraftDirs, auditSourceExhibits, validateSourceExhibitConfig, buildExhibitIndexHtml, UPLOAD_JS_COPIES } from './build-viewer.mjs'
+  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, listSourceCraftDirs, auditSourceExhibits, validateSourceExhibitConfig, buildExhibitIndexHtml, UPLOAD_JS_COPIES, VIEWER_BUNDLE_FILE } from './build-viewer.mjs'
 import { configTimeoutMs, modelIdleTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
+
+function writeBundledUploadViewer(uploadDir) {
+  const { html, bundlePath } = buildProductionViewer(buildViewerSrc())
+  fs.writeFileSync(path.join(uploadDir, 'player.view.html'), html, 'utf8')
+  fs.copyFileSync(bundlePath, path.join(uploadDir, VIEWER_BUNDLE_FILE))
+  return html
+}
 
 function escapeRegex(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -564,8 +571,10 @@ test('export viewer strips editMode and buildEditor', () => {
   assert.match(src, /const editMode = false \/\* viewer-only \*\//)
   assert.doesNotMatch(src, /buildEditor\(\)/)
   const view = fs.readFileSync(path.join(ROOT, 'player.view.html'), 'utf8')
-  assert.match(view, /const editMode = false \/\* viewer-only \*\//)
-  assert.doesNotMatch(view, /buildEditor\(\)/)
+  assert.match(view, /src="\.\/player\.bundle\.js"/)
+  const bundle = fs.readFileSync(path.join(ROOT, VIEWER_BUNDLE_FILE), 'utf8')
+  assert.match(bundle, /\beditMode = false\b/)
+  assert.doesNotMatch(bundle, /buildEditor\(\)/)
 })
 
 test('viewer output omits editor hotspot boot diagnostics', () => {
@@ -576,20 +585,24 @@ test('viewer output omits editor hotspot boot diagnostics', () => {
   assert.match(view, /ensureHotspotIds\(cfg\.hotspots \|\| \[\]\)/)
 })
 
-test('upload pack includes leader-geom.js and resolves player imports', () => {
+test('production viewer is bundled without import map', () => {
+  const { html } = buildProductionViewer(buildViewerSrc())
+  assert.doesNotMatch(html, /<script type="importmap">/)
+  assert.match(html, /src="\.\/player\.bundle\.js"/)
+  const bundle = fs.readFileSync(path.join(ROOT, VIEWER_BUNDLE_FILE), 'utf8')
+  assert.ok(bundle.includes('ensureHotspotIds'), 'bundle must include viewer boot logic')
+})
+
+test('upload pack includes player.bundle.js and resolves viewer deps', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
   try {
     const uploadDir = path.join(tmp, 'exhibits-upload')
     initUploadVendor(uploadDir)
-    for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
-      fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
-    }
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    writeBundledUploadViewer(uploadDir)
     const uploadHtmlPath = path.join(uploadDir, 'player.view.html')
-    fs.writeFileSync(uploadHtmlPath, uploadHtml, 'utf8')
     const missing = checkHtmlImports(uploadHtmlPath)
     assert.deepEqual(missing, [], `missing upload imports: ${missing.join(', ')}`)
-    assert.ok(fs.existsSync(path.join(uploadDir, 'leader-geom.js')), 'leader-geom.js must be in upload pack')
+    assert.ok(fs.existsSync(path.join(uploadDir, VIEWER_BUNDLE_FILE)), 'player.bundle.js must be in upload pack')
     const runtimeMissing = checkUploadRuntimeDeps(uploadDir, uploadHtmlPath)
     assert.deepEqual(runtimeMissing, [], `missing runtime deps: ${runtimeMissing.join(', ')}`)
     const synced = syncUploadExhibits(uploadDir)
@@ -662,8 +675,9 @@ test('first deploy preflight passes when modules synced inside preflight', () =>
     const uploadDir = path.join(tmp, 'exhibits-upload')
     initUploadVendor(uploadDir)
     syncUploadAssets(uploadDir)
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
-    const pre = runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: false, syncModules: true })
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
+    fs.copyFileSync(bundlePath, path.join(uploadDir, VIEWER_BUNDLE_FILE))
+    const pre = runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: false })
     assert.equal(pre.ok, true, pre.stage || JSON.stringify(pre.missing))
     assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), false)
   } finally {
@@ -683,8 +697,9 @@ test('runUploadPreflight failure does not require prior viewer write', () => {
     const modelPath = path.join(uploadDir, 'craft-001/assets/model.glb')
     assert.ok(fs.existsSync(modelPath), 'fixture model must exist before delete')
     fs.unlinkSync(modelPath)
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
-    const pre = runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: false, syncModules: true })
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
+    fs.copyFileSync(bundlePath, path.join(uploadDir, VIEWER_BUNDLE_FILE))
+    const pre = runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: false })
     assert.equal(pre.ok, false)
     assert.equal(pre.stage, 'assets')
     assert.equal(fs.readFileSync(cfgPath, 'utf8'), oldCfg)
@@ -706,7 +721,7 @@ test('deployUploadPack failure leaves live module bytes unchanged', () => {
     const sentinel = '/* LIVE-SENTINEL-KEEP */'
     fs.writeFileSync(modPath, sentinel, 'utf8')
     fs.unlinkSync(path.join(uploadDir, 'craft-001/assets/model.glb'))
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
     const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false })
     assert.equal(dep.ok, false)
     assert.equal(dep.stage, 'assets')
@@ -794,7 +809,7 @@ test('deployUploadPack promotion failure preserves verified staging for retry', 
     syncUploadModules(uploadDir)
     const modPath = path.join(uploadDir, 'hotspot-id.js')
     fs.writeFileSync(modPath, '/* LIVE-OLD */', 'utf8')
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
     let renames = 0
     let thrown
     try {
@@ -815,7 +830,9 @@ test('deployUploadPack promotion failure preserves verified staging for retry', 
     assert.equal(fs.readFileSync(modPath, 'utf8'), '/* LIVE-OLD */')
     assert.ok(thrown.recovery?.stagingDir)
     assert.ok(fs.existsSync(path.join(thrown.recovery.stagingDir, 'player.view.html')))
-    assert.match(fs.readFileSync(path.join(thrown.recovery.stagingDir, 'player.view.html'), 'utf8'), /viewer-only/)
+    const stagingHtml = fs.readFileSync(path.join(thrown.recovery.stagingDir, 'player.view.html'), 'utf8')
+    assert.match(stagingHtml, /src="\.\/player\.bundle\.js"/)
+    assert.ok(fs.existsSync(path.join(thrown.recovery.stagingDir, VIEWER_BUNDLE_FILE)))
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
@@ -940,7 +957,7 @@ test('deployUploadPack rejects corrupt source config without changing live', () 
     const sentinel = '/* LIVE-SENTINEL-CFG */'
     fs.writeFileSync(modPath, sentinel, 'utf8')
     fs.writeFileSync(cfgPath, '{ broken json')
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
     const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false })
     assert.equal(dep.ok, false)
     assert.equal(dep.stage, 'source')
@@ -967,7 +984,7 @@ test('deployUploadPack rejects missing source index without changing live', () =
     const modPath = path.join(uploadDir, 'hotspot-id.js')
     const sentinel = '/* LIVE-SENTINEL-MISSING-IDX */'
     fs.writeFileSync(modPath, sentinel, 'utf8')
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
     const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false })
     assert.equal(dep.ok, false)
     assert.equal(dep.stage, 'source')
@@ -996,7 +1013,7 @@ test('deployUploadPack rejects missing source config with prune without changing
     const modPath = path.join(uploadDir, 'hotspot-id.js')
     const sentinel = '/* LIVE-SENTINEL-MISSING-CFG */'
     fs.writeFileSync(modPath, sentinel, 'utf8')
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
     const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false, uploadPrune: true })
     assert.equal(dep.ok, false)
     assert.equal(dep.stage, 'source')
@@ -1024,7 +1041,7 @@ test('deployUploadPack without prune keeps orphaned craft dirs', () => {
     const ghostDir = path.join(uploadDir, 'craft-999')
     fs.mkdirSync(ghostDir, { recursive: true })
     fs.writeFileSync(path.join(ghostDir, 'config.json'), '{"assets":{}}', 'utf8')
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
     const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false, uploadPrune: false })
     assert.equal(dep.ok, true)
     assert.ok(fs.existsSync(path.join(uploadDir, 'craft-999/config.json')))
@@ -1045,7 +1062,7 @@ test('deployUploadPack with uploadPrune removes orphaned craft dirs', () => {
     const ghostDir = path.join(uploadDir, 'craft-999')
     fs.mkdirSync(ghostDir, { recursive: true })
     fs.writeFileSync(path.join(ghostDir, 'config.json'), '{"assets":{}}', 'utf8')
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
     const dep = deployUploadPack(uploadDir, uploadHtml, { uploadAssets: false, uploadPrune: true })
     assert.equal(dep.ok, true)
     assert.equal(fs.existsSync(path.join(uploadDir, 'craft-999')), false)
@@ -1175,19 +1192,15 @@ test('modelIdleTimeoutMs defaults to 20s', () => {
   assert.equal(modelIdleTimeoutMs(null, null, null), 20000)
 })
 
-test('collectModuleGraph fails when OrbitControls.js missing', () => {
+test('collectModuleGraph fails when player.bundle.js missing', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-orbit-'))
   try {
     const uploadDir = path.join(tmp, 'exhibits-upload')
     initUploadVendor(uploadDir)
-    fs.unlinkSync(path.join(uploadDir, 'vendor/addons/controls/OrbitControls.js'))
-    const uploadHtmlPath = path.join(uploadDir, 'player.view.html')
-    fs.writeFileSync(uploadHtmlPath, buildUploadViewerSrc(buildViewerSrc()), 'utf8')
-    for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
-      fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
-    }
-    const missing = collectModuleGraph(uploadHtmlPath, uploadDir)
-    assert.ok(missing.some(m => /OrbitControls/.test(m)), `expected OrbitControls missing, got ${missing.join(', ')}`)
+    const { html } = buildProductionViewer(buildViewerSrc())
+    fs.writeFileSync(path.join(uploadDir, 'player.view.html'), html, 'utf8')
+    const missing = collectModuleGraph(path.join(uploadDir, 'player.view.html'), uploadDir)
+    assert.deepEqual(missing, [VIEWER_BUNDLE_FILE])
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }
@@ -1201,8 +1214,9 @@ test('--upload runtime deps fail without vendor', () => {
     for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
       fs.copyFileSync(path.join(ROOT, srcName), path.join(uploadDir, dstName))
     }
-    const uploadHtml = buildUploadViewerSrc(buildViewerSrc())
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
     fs.writeFileSync(path.join(uploadDir, 'player.view.html'), uploadHtml, 'utf8')
+    fs.copyFileSync(bundlePath, path.join(uploadDir, VIEWER_BUNDLE_FILE))
     const runtimeMissing = checkUploadRuntimeDeps(uploadDir, path.join(uploadDir, 'player.view.html'))
     assert.ok(runtimeMissing.some(m => m.includes('vendor/three.module.js')))
   } finally {
@@ -1219,7 +1233,9 @@ test('patchExhibitIndexTitle uses config zh title', () => {
 
 test('viewer output imports boot timeouts from player-persist', () => {
   const view = buildViewerSrc()
-  assert.match(view, /import \{ configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers \} from '\.\/player-persist\.mjs'/)
+  assert.match(view, /import \{[^}]+\} from '\.\/player-persist\.mjs'/)
+  assert.match(view, /configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers/)
+  assert.match(view, /strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH/)
   assert.doesNotMatch(view, /applyExposureToCfg/)
   assert.doesNotMatch(view, /configExportFilename/)
 })

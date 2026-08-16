@@ -41,17 +41,20 @@ WEB_PAGES = ('studio.html', 'player.html', 'player.view.html')
 WEB_REQUIRED = (*WEB_PAGES, 'manifest.json', '_server/studio-server.mjs')
 
 # import 'x' / import a from "x" / importmap 里的 "three": "./vendor/three.module.js"
+# script type=module src="./player.bundle.js"
 _IMPORT_RE = re.compile(r"""import\s+(?:[\w*{}\s,]+\s+from\s+)?['"]([^'"]+)['"]""")
 _IMPORTMAP_RE = re.compile(r"""["'](\.{1,2}/[^"']+\.(?:m?js))["']""")
+_MODULE_SRC_RE = re.compile(r"""<script\s+type=["']module["']\s+src=["'](\.{1,2}/[^"']+\.js)["']""", re.I)
 
 
 def iter_page_imports(page: str, text: str):
-    """页面里所有相对路径的 module 依赖（含 importmap），换算成 ZIP 内的路径。"""
+    """页面里所有相对路径的 module 依赖（含 importmap、bundle script src），换算成 ZIP 内的路径。"""
     base = PurePosixPath(page).parent
     specs = set(_IMPORT_RE.findall(text))
-    # importmap 不一定在 <head> 里（player.html 就在 body），全文扫
     for block in re.findall(r'<script type="importmap">(.*?)</script>', text, re.S):
         specs |= set(_IMPORTMAP_RE.findall(block))
+    for spec in _MODULE_SRC_RE.findall(text):
+        specs.add(spec)
     for spec in specs:
         if not spec.startswith(('./', '../')):
             continue

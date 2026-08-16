@@ -2,6 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { assetFingerprint, deploymentFileHash } from './pano-check.mjs'
+import { buildBundledViewer, VIEWER_BUNDLE_FILE, validateBundledViewerHtml } from './build-viewer-bundle.mjs'
+
+export { VIEWER_BUNDLE_FILE }
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.join(ROOT, 'player.view.html')
@@ -129,9 +132,15 @@ export function resolveModuleSpec(spec, fromFile, htmlDir, importMap) {
   return bare
 }
 
-/** 从 player HTML 内联 module + 递归 JS import 收集缺失模块 */
+/** 从 player HTML 内联 module + 递归 JS import 收集缺失模块；bundled viewer 只校验 bundle 文件。 */
 export function collectModuleGraph(htmlPath, uploadDir) {
   const html = fs.readFileSync(htmlPath, 'utf8')
+  const bundleRef = html.match(/<script type="module"\s+src="\.\/([^"]+)"/)
+  if (bundleRef) {
+    const rel = bundleRef[1]
+    const abs = path.join(uploadDir, rel)
+    return fs.existsSync(abs) ? [] : [rel]
+  }
   const htmlDir = path.dirname(htmlPath)
   const importMap = parseImportMap(html)
   const missing = []
@@ -349,9 +358,16 @@ export function verifyUploadAssets(uploadDir = UPLOAD_DIR, sourceExhibits = null
   return { ok: errors.length === 0, present, errors, warnings }
 }
 
+/** Bundled production viewer loads player.bundle.js instead of import map + inline module. */
+export function viewerUsesBundle(html) {
+  return html.includes(`src="./${VIEWER_BUNDLE_FILE}"`)
+}
+
 /** 写入 upload 前的预检：可选先同步资产/模块，再校验资源与运行时依赖（不写 viewer/config） */
-export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAssets = false, syncModules: doModules = true, sourceExhibits = null } = {}) {
+export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAssets = false, syncModules: doModules = null, sourceExhibits = null } = {}) {
   if (doAssets) syncUploadAssets(uploadDir, sourceExhibits)
+  const useBundle = viewerUsesBundle(uploadHtml)
+  if (doModules === null) doModules = !useBundle
   if (doModules) syncUploadModules(uploadDir)
   const assets = verifyUploadAssets(uploadDir, sourceExhibits)
   if (!assets.ok) return { ok: false, stage: 'assets', assets }
@@ -481,23 +497,30 @@ export function prepareUploadStaging(uploadDir) {
 }
 
 /** Full staged deploy: preflight in sibling staging, atomic swap only on success. */
-export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false, uploadPrune = false, hooks = {} } = {}) {
+export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false, uploadPrune = false, hooks = {}, bundlePath = path.join(ROOT, VIEWER_BUNDLE_FILE) } = {}) {
   fs.mkdirSync(path.dirname(uploadDir), { recursive: true })
   const source = auditSourceExhibits()
   if (!source.ok) return { ok: false, stage: 'source', errors: source.errors }
+  const useBundle = viewerUsesBundle(uploadHtml)
+  if (useBundle) {
+    const bundled = validateBundledViewerHtml(uploadHtml)
+    if (!bundled.ok) return { ok: false, stage: 'runtime', missing: [bundled.reason] }
+    if (!fs.existsSync(bundlePath)) return { ok: false, stage: 'runtime', missing: [VIEWER_BUNDLE_FILE] }
+  }
   const staging = prepareUploadStaging(uploadDir)
   try {
     if (uploadInit) initUploadVendor(staging)
     if (uploadAssets) syncUploadAssets(staging, source.exhibits)
     const orphansBefore = orphanUploadExhibits(staging, source.craftDirs)
     const pruned = uploadPrune && orphansBefore.length ? pruneUploadExhibits(staging, source.craftDirs) : []
-    const pre = runUploadPreflight(staging, uploadHtml, { uploadAssets: false, syncModules: true, sourceExhibits: source.exhibits })
+    if (useBundle) fs.copyFileSync(bundlePath, path.join(staging, VIEWER_BUNDLE_FILE))
+    const pre = runUploadPreflight(staging, uploadHtml, { uploadAssets: false, syncModules: !useBundle, sourceExhibits: source.exhibits })
     if (!pre.ok) {
       discardUploadStaging(staging)
       return { ok: false, ...pre }
     }
     fs.writeFileSync(path.join(staging, 'player.view.html'), uploadHtml, 'utf8')
-    syncUploadModules(staging)
+    if (!useBundle) syncUploadModules(staging)
     const exhibitFiles = syncUploadExhibits(staging, source.exhibits)
     const promoted = promoteUploadStaging(staging, uploadDir, hooks)
     return {
@@ -581,7 +604,7 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
     .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/if \(editMode\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/import \{[^}]+\} from '\.\/hotspot-id\.mjs'/, "import { ensureHotspotIds } from './hotspot-id.mjs'")
-    .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, "import { configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers } from './player-persist.mjs'")
+    .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, "import { configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'")
     .replace(/import \{[^}]+\} from '\.\/light-rig\.mjs'/, `import { ${VIEWER_LIGHT_RIG_IMPORTS.join(', ')} } from './light-rig.mjs'`)
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
@@ -656,6 +679,10 @@ export function assertViewerBuild(viewHtml = buildViewerSrc()) {
   return viewHtml
 }
 
+export function buildProductionViewer(viewerSrc = assertViewerBuild(buildViewerSrc())) {
+  return buildBundledViewer(viewerSrc, { outDir: ROOT, bundleName: VIEWER_BUNDLE_FILE })
+}
+
 function usage() {
   console.log(`Usage: node build-viewer.mjs [--check] [--upload] [--upload-init] [--upload-assets] [--upload-prune]
 
@@ -704,37 +731,51 @@ if (uploadAssets && !upload) {
   process.exit(1)
 }
 
-const next = assertViewerBuild(buildViewerSrc())
+const viewerSrc = assertViewerBuild(buildViewerSrc())
+const { html: bundledHtml, bundlePath } = buildProductionViewer(viewerSrc)
 
 if (check) {
   if (!fs.existsSync(OUT)) {
     console.error('player.view.html missing; run without --check to generate')
     process.exit(1)
   }
-  const cur = fs.readFileSync(OUT)
-  const exp = Buffer.from(next, 'utf8')
-  if (cur.length !== exp.length || !cur.equals(exp)) {
-    console.error(`player.view.html out of sync (${cur.length} bytes vs ${exp.length} expected)`)
+  const curHtml = fs.readFileSync(OUT)
+  const expHtml = Buffer.from(bundledHtml, 'utf8')
+  if (curHtml.length !== expHtml.length || !curHtml.equals(expHtml)) {
+    console.error(`player.view.html out of sync (${curHtml.length} bytes vs ${expHtml.length} expected)`)
     console.error('Run: node build-viewer.mjs')
     process.exit(1)
   }
-  console.log('player.view.html OK (byte-identical + semantics)')
+  const bundleOut = path.join(ROOT, VIEWER_BUNDLE_FILE)
+  if (!fs.existsSync(bundleOut)) {
+    console.error(`${VIEWER_BUNDLE_FILE} missing; run without --check to generate`)
+    process.exit(1)
+  }
+  const curBundle = fs.readFileSync(bundleOut)
+  const expBundle = fs.readFileSync(bundlePath)
+  if (curBundle.length !== expBundle.length || !curBundle.equals(expBundle)) {
+    console.error(`${VIEWER_BUNDLE_FILE} out of sync (${curBundle.length} bytes vs ${expBundle.length} expected)`)
+    console.error('Run: node build-viewer.mjs')
+    process.exit(1)
+  }
+  console.log(`player.view.html + ${VIEWER_BUNDLE_FILE} OK (byte-identical + semantics)`)
   process.exit(0)
 }
 
-fs.writeFileSync(OUT, next, 'utf8')
+fs.writeFileSync(OUT, bundledHtml, 'utf8')
+fs.copyFileSync(bundlePath, path.join(ROOT, VIEWER_BUNDLE_FILE))
 console.log('player.view.html written')
+console.log(`${VIEWER_BUNDLE_FILE} written`)
 
 if (upload) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true })
-  const uploadHtml = buildUploadViewerSrc(next)
-  const uploadSem = validateViewerSemantics(uploadHtml)
+  const uploadSem = validateBundledViewerHtml(bundledHtml)
   if (!uploadSem.ok) {
     console.error('upload viewer semantics:', uploadSem.reason)
     process.exit(1)
   }
   try {
-    const dep = deployUploadPack(UPLOAD_DIR, uploadHtml, { uploadInit, uploadAssets, uploadPrune })
+    const dep = deployUploadPack(UPLOAD_DIR, bundledHtml, { uploadInit, uploadAssets, uploadPrune, bundlePath })
     if (!dep.ok) {
       if (dep.stage === 'source') {
         console.error('exhibits source config errors (upload directory unchanged):')
@@ -751,8 +792,7 @@ if (upload) {
       }
       process.exit(1)
     }
-    console.log('exhibits-upload/player.view.html written (.js imports)')
-    console.log('exhibits-upload/*.js module copies synced')
+    console.log(`exhibits-upload/player.view.html + ${VIEWER_BUNDLE_FILE} written`)
     if (dep.exhibitFiles?.length) console.log('exhibits-upload exhibit files synced:', dep.exhibitFiles.join(', '))
     else console.log('exhibits-upload: no craft-XXX/config.json to sync')
     if (dep.pruned?.length) console.log('exhibits-upload pruned retired crafts:', dep.pruned.join(', '))

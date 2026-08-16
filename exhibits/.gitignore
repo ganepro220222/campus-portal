@@ -13,3 +13,7 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# viewer bundle temp entry (build-viewer.mjs)
+.player-viewer-entry.mjs
+.build/

@@ -902,7 +902,8 @@ test.describe('boot timeout', () => {
     await page.route('**/leader-geom.js', route => route.abort('failed'))
     await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('#error:not([hidden])', { timeout: 5000 })
-    await expect(page.locator('#err-text')).toContainText('模块加载失败')
+    // 文案随 syPlayerBootFailureMessage 改过；这里只认「加载失败 + 可重试」这两件事
+    await expect(page.locator('#err-text')).toContainText(/加载失败/)
     await Promise.all([
       page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
       page.locator('#err-btn').click(),

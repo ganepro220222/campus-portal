@@ -545,10 +545,12 @@ test.describe('预设（灯光方案）', () => {
       shadow: { enabled: false },
       presets: [{ id: 'old', label: { zh: '老预设' }, exposure: 1.4, envMapIntensity: 1.6, showAsButton: true }],
     })
+    const before = (await lightState()).envIntensity
     await page.click('#presets .preset[data-id="old"]')
     const st = await lightState()
     expect(st.shadow.rendererEnabled).toBe(false)
-    expect(st.envIntensity).toBeCloseTo(1.15, 3)
+    // 老预设没有 environment 字段 → 环境强度原样不动（别把展品配置里的值写死进断言）
+    expect(st.envIntensity).toBeCloseTo(before, 3)
   })
 
   test('再次点击已选预设还原首屏光照（桌面与手机同路径）', async () => {

@@ -28527,8 +28527,13 @@ function applyPreset(p) {
   if (p.background) scene.background = ((_a = cfg.environment) == null ? void 0 : _a.visibleBackground) ? scene.background : new Color(p.background);
   if (p.environment) {
     cfg.environment = Object.assign(cfg.environment || {}, p.environment);
-    applyEnvironmentIBL();
-    applyEnvironment();
+    if (resolveEnvSource(cfg).kind === "panorama" && envRT) {
+      applyEnvironment();
+      applyVisibleBackgroundPreview();
+    } else {
+      applyEnvironmentIBL();
+      applyEnvironment();
+    }
   }
   if (p.lights) {
     cfg.lights = cfg.lights || {};

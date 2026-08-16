@@ -1680,7 +1680,16 @@ function applyPreset(p) {
   if (p.background) scene.background = cfg.environment?.visibleBackground ? scene.background : new THREE.Color(p.background)
   if (p.environment) {   // 环境预设 / 环境光照 / 环境旋转（不动 mode 与全景图，免得把展品的全景顶掉）
     cfg.environment = Object.assign(cfg.environment || {}, p.environment)
-    applyEnvironmentIBL(); applyEnvironment()
+    // 与 restoreBootLighting 同一个道理：全景 IBL 已经在 envRT 里了，预设既然不动 mode
+    // 也不动全景图，就没有任何理由重跑一遍 PMREM。少了这个判断，点一次预设就要把
+    // 8042×4021 的全景重新解码 + PMREM（实测软件渲染下 11.2 秒），手机上就是一次长卡顿。
+    // 预设里的 preset 字段在全景接管时本来就不生效，跳过它不改变任何观感。
+    if (resolveEnvSource(cfg).kind === 'panorama' && envRT) {
+      applyEnvironment()
+      applyVisibleBackgroundPreview()
+    } else {
+      applyEnvironmentIBL(); applyEnvironment()
+    }
   }
   if (p.lights) {   // 预设含灯光方案 → 应用灯组（含角度 / 启用 / 跟随相机）
     cfg.lights = cfg.lights || {}

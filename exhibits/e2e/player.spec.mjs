@@ -750,6 +750,33 @@ test.describe('全景就绪超时', () => {
     await page.close()
   })
 
+  /* 上面那条跑的是 player.html。生产环境跑的是 player.view.html + esbuild bundle，
+     而 build-viewer 会把 player-persist 的 import 重写成一份**白名单**——漏加名字时：
+       · esbuild 不报错（自由标识符当全局变量处理）
+       · build-viewer --check 不报错（比字节与语义，不求值）
+       · 只跑 player.html 的 E2E 不报错
+       · 运行时也不报错（外层 catch 把 ReferenceError 吞了，照常揭示）
+     结果就是整个超时功能在生产版里静默失效。所以这条必须打生产 viewer。 */
+  test('生产 viewer（bundle）里超时同样生效，不是只在 player.html 里管用', async ({ browser }) => {
+    const page = await browser.newPage()
+    const errs = []
+    page.on('pageerror', e => errs.push(e.message))
+    await page.addInitScript(() => {
+      window.__SY_PLAYER = { panoramaRevealTimeoutMs: 1200, module: false, bootStarted: false, ready: false }
+    })
+    await stallPanorama(page)
+    await page.goto('/player.view.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
+    expect(await page.evaluate(() => !!document.querySelector('script[src="./player.bundle.js"]'))).toBe(true)
+    await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 60_000 })
+    const tags = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
+    // 走到超时分支才算数：只看「揭示了」会被外层 catch 的兜底揭示骗过去
+    expect(tags).toContain('pano:await-before-reveal')
+    expect(tags).toContain('pano:await-timeout')
+    expect(errs).toEqual([])
+    await releaseWebGL(page)
+    await page.close()
+  })
+
   test('全景正常时不触发超时分支（不能为了保命牺牲正常路径）', async ({ browser }) => {
     const page = await browser.newPage()
     await page.goto('/player.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })

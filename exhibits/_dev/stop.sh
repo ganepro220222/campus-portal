@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Git Bash — Windows 请用 停止服务.bat
-PORT="${1:-8199}"
+PORT="${1:-8200}"
 found=0
 while read -r line; do
   pid=$(echo "$line" | awk '{print $NF}')

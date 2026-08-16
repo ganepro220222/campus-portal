@@ -2,7 +2,7 @@
 # Git Bash / macOS / Linux — Windows 请用 打开工作台.bat
 set -e
 cd "$(dirname "$0")/.."
-PORT="${1:-8199}"
+PORT="${1:-8200}"
 echo "Studio: http://127.0.0.1:$PORT/studio.html"
 if command -v node >/dev/null 2>&1; then
   PORT="$PORT" exec node _server/studio-server.mjs

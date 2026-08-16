@@ -1,6 +1,6 @@
 /**
  * Per-exhibits-root identity from normalized absolute path (survives folder copy).
- * Launchers compare rootHash to detect 8199 occupied by another directory.
+ * Launchers compare rootHash to detect default studio port occupied by another directory.
  */
 import crypto from 'node:crypto'
 import path from 'node:path'

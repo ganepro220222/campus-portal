@@ -29,4 +29,4 @@
   · 拷贝「已安装完成的整个文件夹」（含 _runtime/python）：通常可直接「打开工作台.bat」
 
 【手动地址】
-  http://127.0.0.1:8199/studio.html
+  http://127.0.0.1:8200/studio.html

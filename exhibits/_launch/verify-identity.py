@@ -24,7 +24,7 @@ def compute_root_hash(root: Path) -> str:
 
 
 def main() -> int:
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8199
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8200
     root = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else Path(__file__).resolve().parent.parent
     url = f'http://127.0.0.1:{port}/studio-api/identity'
     headers = {'Cache-Control': 'no-store'}
@@ -56,7 +56,7 @@ def main() -> int:
         print(f'  占用端口 rootHash：{remote or "?"}', file=sys.stderr)
         print('', file=sys.stderr)
         print('请先在本目录运行「停止服务.bat」，或关闭占用端口的旧副本，再重新打开工作台。', file=sys.stderr)
-        print('也可指定其他端口：打开工作台.bat 8280', file=sys.stderr)
+        print('也可指定其他端口：打开工作台.bat 8300', file=sys.stderr)
         return 4
     return 0
 

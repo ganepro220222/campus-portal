@@ -7,7 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { computeRootHash } from '../_server/studio-identity.mjs'
 
-const port = Number(process.argv[2] || 8199)
+const port = Number(process.argv[2] || 8200)
 const root = path.resolve(process.argv[3] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'))
 const url = `http://127.0.0.1:${port}/studio-api/identity`
 
@@ -48,7 +48,7 @@ if (!remote || local !== remote) {
   console.error('  占用端口 rootHash：' + (remote || '?'))
   console.error('')
   console.error('请先在本目录运行「停止服务.bat」，或关闭占用端口的旧副本，再重新打开工作台。')
-  console.error('也可指定其他端口：打开工作台.bat 8280')
+  console.error('也可指定其他端口：打开工作台.bat 8300')
   process.exit(4)
 }
 

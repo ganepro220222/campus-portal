@@ -27,7 +27,8 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 NO_STORE = 'no-store, no-cache, must-revalidate'
-PORT = int(os.environ.get('PORT') or (sys.argv[1] if len(sys.argv) > 1 else 8199))
+DEFAULT_PORT = 8200  # 8199 在部分 Windows（Hyper-V/WSL）上被系统保留，无法绑定
+PORT = int(os.environ.get('PORT') or (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_PORT))
 USER = os.environ.get('STUDIO_USER', 'admin')
 PASS = os.environ.get('STUDIO_PASS', '')
 SAFE = re.compile(r'^[A-Za-z0-9_-]+$')
@@ -274,11 +275,29 @@ class Handler(SimpleHTTPRequestHandler):
             self._json(400, {'ok': False, 'error': str(e)})
 
 
+def _bind_error_hint(port: int, err: BaseException) -> None:
+    winerr = getattr(err, 'winerror', None)
+    if os.name == 'nt' and winerr == 10013 and port in range(8100, 8200):
+        print('ERROR: 无法绑定端口 %s — Windows 已保留 8100–8199 段（常见于 Hyper-V / WSL / Docker）。' % port, file=sys.stderr)
+        print('  请改用：python serve.py %s  或  打开工作台.bat %s' % (DEFAULT_PORT, DEFAULT_PORT), file=sys.stderr)
+        return
+    print('ERROR: 无法绑定端口 %s — %s' % (port, err), file=sys.stderr)
+    if os.name == 'nt' and winerr == 10013:
+        print('  端口可能被系统保留或被其他程序占用。可尝试：打开工作台.bat %s' % DEFAULT_PORT, file=sys.stderr)
+
+
 if __name__ == '__main__':
     if not PASS:
         print('WARN: STUDIO_PASS not set - no auth, local use only')
-    with HTTPServer(('', PORT), Handler) as httpd:
-        print('Exhibits server: http://127.0.0.1:%s/studio.html  %s' % (
-            PORT, '(auth on)' if PASS else '(no auth, local only)'))
-        print('  rootHash: %s' % ROOT_HASH)
-        httpd.serve_forever()
+    try:
+        with HTTPServer(('', PORT), Handler) as httpd:
+            print('Exhibits server: http://127.0.0.1:%s/studio.html  %s' % (
+                PORT, '(auth on)' if PASS else '(no auth, local only)'))
+            print('  rootHash: %s' % ROOT_HASH)
+            httpd.serve_forever()
+    except PermissionError as e:
+        _bind_error_hint(PORT, e)
+        raise SystemExit(1)
+    except OSError as e:
+        _bind_error_hint(PORT, e)
+        raise SystemExit(1)

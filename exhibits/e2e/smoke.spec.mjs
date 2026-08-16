@@ -4,7 +4,7 @@ import {
   HIDDEN_OVERLAP_GEOM, openFirstHotspot, calloutSnapshot, segmentCount, releaseWebGL,
 } from './helpers.mjs'
 
-const CRAFTS = ['craft-001', 'craft-002', 'craft-003', 'craft-004']
+const CRAFTS = ['craft-001']
 
 test.describe('public entry (fast)', () => {
   for (const dir of CRAFTS) {

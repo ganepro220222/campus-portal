@@ -27700,25 +27700,35 @@ var ED_PANEL_NARROW_MAX = 720;
 function editorPanelNarrow() {
   return editMode && innerWidth <= ED_PANEL_NARROW_MAX;
 }
+function toggleEditorPanel() {
+  window.__edPanelUserToggled = true;
+  setEditorPanelCollapsed(!document.body.classList.contains("ed-panel-collapsed"));
+}
+function syncEditorPanelBtn() {
+  const b = document.querySelector("[data-k=editPanel]");
+  if (!b) return;
+  const narrow = editorPanelNarrow();
+  b.hidden = !narrow;
+  if (!narrow) return;
+  const collapsed = document.body.classList.contains("ed-panel-collapsed");
+  b.classList.toggle("on", !collapsed);
+  b.setAttribute("aria-pressed", collapsed ? "false" : "true");
+  b.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  const tx = b.querySelector(".tx");
+  if (tx) tx.textContent = collapsed ? BTN.editPanel[lang] : BTN.editPanelClose[lang];
+}
 function setEditorPanelCollapsed(collapsed) {
   if (!editMode) return;
   document.body.classList.toggle("ed-panel-collapsed", collapsed);
-  const toggle = $("ed-panel-toggle");
-  if (toggle) toggle.textContent = collapsed ? "\u7F16\u8F91\u9762\u677F \u25B4" : "\u6536\u8D77\u7F16\u8F91 \u25BE";
+  syncEditorPanelBtn();
 }
 function syncEditorPanelLayout() {
   if (!editMode) return;
   const narrow = editorPanelNarrow();
   document.body.classList.toggle("ed-narrow", narrow);
-  const toggle = $("ed-panel-toggle");
-  if (toggle) {
-    if (narrow) toggle.removeAttribute("hidden");
-    else {
-      toggle.setAttribute("hidden", "");
-      document.body.classList.remove("ed-panel-collapsed");
-    }
-  }
+  if (!narrow) document.body.classList.remove("ed-panel-collapsed");
   if (narrow && !window.__edPanelUserToggled) setEditorPanelCollapsed(true);
+  else syncEditorPanelBtn();
 }
 function applyEnvironment() {
   var _a, _b;
@@ -28447,7 +28457,14 @@ function renderText() {
   });
   labelBtns();
 }
-var BTN = { rotate: { zh: "\u81EA\u52A8\u65CB\u8F6C", en: "Auto" }, hot: { zh: "\u70ED\u70B9", en: "Hotspots" }, reset: { zh: "\u91CD\u7F6E", en: "Reset" }, full: { zh: "\u5168\u5C4F", en: "Full" } };
+var BTN = {
+  rotate: { zh: "\u81EA\u52A8\u65CB\u8F6C", en: "Auto" },
+  hot: { zh: "\u70ED\u70B9", en: "Hotspots" },
+  reset: { zh: "\u91CD\u7F6E", en: "Reset" },
+  full: { zh: "\u5168\u5C4F", en: "Full" },
+  editPanel: { zh: "\u7F16\u8F91", en: "Edit" },
+  editPanelClose: { zh: "\u6536\u8D77", en: "Close" }
+};
 var ICONS = (() => {
   const svg = (d) => `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
@@ -28459,7 +28476,9 @@ var ICONS = (() => {
     // 四角向内收：重置视角
     reset: svg('<path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/>'),
     // 四角向外展：全屏
-    full: svg('<path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/>')
+    full: svg('<path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/>'),
+    // 三列滑条：编辑面板
+    editPanel: svg('<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>')
   };
 })();
 function labelBtns() {
@@ -28592,9 +28611,11 @@ function buildHUD() {
   if (ui.showResetButton !== false) mk("reset", false, () => {
     closeHotspot();
   });
+  if (editMode) mk("editPanel", false, toggleEditorPanel);
   if (ui.showFullscreenButton !== false && FS.supported) mk("full", FS.active(), () => FS.toggle());
   labelBtns();
   syncBtns();
+  syncEditorPanelBtn();
   if (renderer) {
     const cur = renderer.toneMappingExposure;
     const m = (cfg.presets || []).find((p) => Math.abs(num2(p.exposure, -99) - cur) < 0.02);

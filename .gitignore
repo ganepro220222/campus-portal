@@ -61,8 +61,16 @@ tmp-export-test.xlsx
 docs/开发协作三大原则.md
 *.bundle
 
+# 合作伙伴本地交付副本（从 exhibits 同步，不进 Git）
+编辑器模块/
+模型转换模块/
+
 # OBJ→GLB 转换器本地构建产物（不进远端）
 exhibits/模型转换/.venv-build/
 exhibits/模型转换/dist/
 exhibits/模型转换/build/
 exhibits/模型转换/*.spec
+
+# build-viewer.mjs --upload 临时目录（进程号后缀，成功后会自动删）
+/exhibits-upload.staging-*/
+/exhibits-upload.backup-*/

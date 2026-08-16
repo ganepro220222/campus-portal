@@ -128,7 +128,18 @@ async function selectExhibits(page, dirs) {
 }
 
 function loadCfg(dir) {
-  return JSON.parse(fs.readFileSync(path.join(ROOT, dir, 'config.json'), 'utf8'))
+  const live = path.join(ROOT, dir, 'config.json')
+  const fix = path.join(ROOT, 'e2e/fixtures', `${dir}.config.json`)
+  const p = fs.existsSync(live) ? live : fix
+  if (!fs.existsSync(p)) throw new Error(`missing config for ${dir}`)
+  return JSON.parse(fs.readFileSync(p, 'utf8'))
+}
+
+const STUB_CRAFT_A = { dir: 'craft-001', title: '甲', hotspots: 2, hasPano: true, usesPanorama: true, envMode: 'panorama', hasModel: true, panorama: '../共享背景/8.jpg', poster: 'craft-001/assets/poster.jpg', mtime: 100 }
+const STUB_CRAFT_B = { dir: 'craft-002', title: '乙', hotspots: 2, hasPano: true, usesPanorama: true, envMode: 'panorama', hasModel: true, panorama: 'assets/panorama.jpg', poster: 'craft-002/assets/poster.jpg', mtime: 200 }
+
+async function gotoStudioBatchPair(page) {
+  await gotoStudioWithExhibits(page, [STUB_CRAFT_A, STUB_CRAFT_B])
 }
 
 test.describe('studio.html', () => {
@@ -150,7 +161,7 @@ test.describe('studio.html', () => {
   test('默认按目录序号升序，方向按钮翻转顺序且刷新后保持', async ({ page }) => {
     await waitForStudioReady(page)
     const asc = await domOrder(page)
-    expect(asc).toEqual([...asc].sort())            // craft-001 … craft-004
+    expect(asc).toEqual([...asc].sort())            // 当前仅有 craft-001 时也须保持升序
     await expect(page.locator('#sortDir')).toHaveText('↑ 升序')
 
     await page.locator('#sortDir').click()
@@ -164,7 +175,7 @@ test.describe('studio.html', () => {
   })
 
   test('排序不重建卡片：重排后批量选中状态保留', async ({ page }) => {
-    await waitForStudioReady(page)
+    await gotoStudioBatchPair(page)
     await openBatchPanel(page)
     await selectExhibits(page, ['craft-002'])
     await page.locator('#sortDir').click()
@@ -929,7 +940,7 @@ test.describe('studio.html', () => {
       saves.push(route.request().postDataJSON())
       await route.fulfill({ json: { ok: true } })
     })
-    await waitForStudioReady(page)
+    await gotoStudioBatchPair(page)
     await openBatchPanel(page)
     await selectExhibits(page, ['craft-001', 'craft-002'])
     await page.locator('#en-hcolor').check()
@@ -955,7 +966,7 @@ test.describe('studio.html', () => {
         await route.fulfill({ json: { ok: true } })
       }
     })
-    await waitForStudioReady(page)
+    await gotoStudioBatchPair(page)
     await openBatchPanel(page)
     await selectExhibits(page, ['craft-001', 'craft-002'])
     await page.locator('#en-hcolor').check()

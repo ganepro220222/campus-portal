@@ -2429,6 +2429,7 @@ function renderEditor() {
 }
 
 function wireEditor() {
+  const el = id => document.getElementById(id)
   const g=cfg.materials.global, m=cfg.model, c=cfg.camera, L=cfg.lights
   const ed = $('editor')
   const sheetClose = el('ed-sheet-close')
@@ -2566,7 +2567,6 @@ function syncShadowHint(){
   // 用户端按钮显隐
   $('editor').querySelectorAll('[data-ui]').forEach(cb=>cb.onchange=e=>{ cfg.ui=cfg.ui||{}; cfg.ui[cb.dataset.ui]=e.target.checked; buildHUD_refresh() })
 
-  const el=id=>document.getElementById(id)
   // 基本信息：标题 / 副标题（实时更新左上角）
   const bindInfo=(id,key)=>{ const i=el(id); if(i) i.oninput=e=>{ cfg.i18n=cfg.i18n||{}; cfg.i18n.zh=cfg.i18n.zh||{}; cfg.i18n.zh[key]=e.target.value; renderText() } }
   bindInfo('ed-title','title'); bindInfo('ed-subtitle','subtitle')

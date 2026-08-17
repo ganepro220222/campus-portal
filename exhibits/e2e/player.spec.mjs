@@ -68,6 +68,7 @@ test.describe('leader modes (desktop)', () => {
     await closeHotspotIfOpen(page)
     await reloadPlayer(page, { panel: { leader: 'straight' } })
     await openFirstHotspot(page)
+    await page.evaluate(() => window.__SY_TEST__.settleLeaderAnim())
     const snap = await calloutSnapshot(page)
     expect(segmentCount(snap.points)).toBe(1)
     await expect(page.locator('#hs-leader')).toHaveClass(/straight/)
@@ -79,6 +80,7 @@ test.describe('leader modes (desktop)', () => {
       panel: { leader: 'elbow', elbowMode: 'leg1-lock', leg1Axis: 'h', leaderGap: 48 },
     })
     await openFirstHotspot(page)
+    await page.evaluate(() => window.__SY_TEST__.settleLeaderAnim())
     expect(segmentCount((await calloutSnapshot(page)).points)).toBe(2)
   })
 
@@ -88,6 +90,7 @@ test.describe('leader modes (desktop)', () => {
       panel: { leader: 'elbow', elbowMode: 'leg2-lock', leg2Axis: 'v', leaderTail: 40 },
     })
     await openFirstHotspot(page)
+    await page.evaluate(() => window.__SY_TEST__.settleLeaderAnim())
     expect(segmentCount((await calloutSnapshot(page)).points)).toBe(2)
   })
 })
@@ -1235,7 +1238,8 @@ test.describe('HUD 图标对齐', () => {
     test(`${width}px：四个图标墨迹垂直居中完全一致`, async () => {
       await reloadPlayer(page, { viewport: { width, height: 780 } })
       await page.waitForSelector('#actions .btn svg')
-      const centers = await page.evaluate(() => [...document.querySelectorAll('#actions .btn')].map(btn => {
+      const centers = await page.evaluate(() => [...document.querySelectorAll('#actions .btn:not([hidden])')]
+        .filter(btn => btn.dataset.k !== 'editPanel').map(btn => {
         const svg = btn.querySelector('svg'), br = btn.getBoundingClientRect(), sr = svg.getBoundingClientRect()
         let y0 = 1e9, y1 = -1e9
         for (const el of svg.querySelectorAll('path,circle')) {
@@ -1251,7 +1255,7 @@ test.describe('HUD 图标对齐', () => {
 
   test('图标是 SVG 而不是字符（缺字的机器会显示豆腐块）', async () => {
     await reloadPlayer(page, { viewport: { width: 900, height: 700 } })
-    await expect(page.locator('#actions .btn .ic svg')).toHaveCount(4)
+    await expect(page.locator('#actions .btn:not([data-k=editPanel]) .ic svg')).toHaveCount(4)
     const txt = await page.$$eval('#actions .btn .ic', els => els.map(e => e.textContent.trim()).join(''))
     expect(txt).toBe('')
   })

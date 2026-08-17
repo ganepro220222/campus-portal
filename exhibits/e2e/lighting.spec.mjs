@@ -27,31 +27,13 @@ const openLightSection = async () => {
     }
   })
 }
-/** 拖滑条：设值并派发 input，与真实操作同一条代码路径 */
+/** 拖滑条：设值并派发 input，与真实操作同一条代码路径（不走测试 hook 旁路） */
 const setRange = async (k, v) => {
-  if (/^l\.([^.]+)\.i$/.test(k)) {
-    const lk = k.split('.')[1]
-    await page.evaluate(([light, val]) => {
-      const el = document.querySelector(`#editor input[type=range][data-k="l.${light}.i"]`)
-      if (el) {
-        el.value = String(val)
-        el.dispatchEvent(new Event('input', { bubbles: true }))
-      }
-      const st = window.__SY_TEST__.lightState().cfgLights[light]
-      if (Math.abs((st?.intensity ?? NaN) - val) >= 0.01) window.__SY_TEST__.setLightIntensity(light, val)
-    }, [lk, v])
-    return
-  }
-  await page.evaluate(([key, val]) => {
-    if (typeof window.__SY_TEST__?.applyEditorRange === 'function') {
-      window.__SY_TEST__.applyEditorRange(key, val)
-      return
-    }
-    const el = document.querySelector(`#editor input[type=range][data-k="${key}"]`)
-    if (!el) throw new Error(`missing range ${key}`)
+  const loc = page.locator(`#editor input[type=range][data-k="${k}"]`)
+  await loc.evaluate((el, val) => {
     el.value = String(val)
     el.dispatchEvent(new Event('input', { bubbles: true }))
-  }, [k, v])
+  }, v)
 }
 
 test.describe('灯光面板', () => {

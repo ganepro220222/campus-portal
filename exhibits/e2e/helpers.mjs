@@ -54,6 +54,34 @@ export async function waitForPlayerReady(page) {
   }, null, { timeout: 90_000 })
 }
 
+/** 等 WebGL 帧里出现可读的模型像素（headless/SwiftShader 上 readPixels 常需多等几帧） */
+export async function waitForSceneSilhouette(page, { minSpan = 0.1, timeout = 30_000 } = {}) {
+  await waitForPlayerReady(page)
+  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))
+  await page.waitForFunction((want) => {
+    window.__SY_TEST__?.forceRender?.()
+    const c = document.getElementById('scene')
+    const g = c?.getContext('webgl2') || c?.getContext('webgl')
+    if (!g || !c.width || !c.height) return false
+    const W = c.width
+    const H = c.height
+    const px = new Uint8Array(W * H * 4)
+    g.readPixels(0, 0, W, H, g.RGBA, g.UNSIGNED_BYTE, px)
+    let minY = H
+    let maxY = -1
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4
+        if ((px[i] + px[i + 1] + px[i + 2]) / 3 > 45) {
+          if (y < minY) minY = y
+          if (y > maxY) maxY = y
+        }
+      }
+    }
+    return maxY >= 0 && (maxY - minY) / H >= want
+  }, minSpan, { timeout })
+}
+
 /** 关闭 WebGL 渲染循环并离开 3D 页，避免 Windows 上 browserContext.close 卡死 */
 export async function releaseWebGL(page) {
   if (!page) return

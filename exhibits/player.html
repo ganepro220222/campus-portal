@@ -2434,14 +2434,14 @@ function wireEditor() {
   const sheetClose = el('ed-sheet-close')
   if (sheetClose) sheetClose.onclick = () => { window.__edPanelUserToggled = true; setEditorPanelCollapsed(true) }
   // 灯光：l.<灯名>.<i|az|el>（强度 / 方位角 / 仰角），关闭的灯写配置但送 0 给渲染
-  function syncLightIntensity(k){ if (lightRefs[k]) lightRefs[k].intensity = effectiveIntensity(k, L[k]) }
+  function syncLightIntensity(k){ if (lightRefs[k]) lightRefs[k].intensity = effectiveIntensity(k, cfg.lights[k]) }
   function syncLightAndShadow(k) {
     syncLightIntensity(k)
     if (k === SHADOW_CASTER) applyShadow()
     syncShadowHint()
   }
   function applyLight(k, what, v){
-    const c = L[k] = L[k] || {}
+    const c = cfg.lights[k] = cfg.lights[k] || {}
     if (what === 'i') { c.intensity = v }
     else {
       c.position = withAngle(c, k, what, v)
@@ -2533,7 +2533,7 @@ function syncShadowHint(){
   })
   // 灯光：单灯启用 / 跟随相机 / 亮度诊断 / 恢复出厂
   ed.querySelectorAll('[data-lon]').forEach(cb => cb.onchange = e => {
-    const k=cb.dataset.lon; L[k]=L[k]||{}; L[k].enabled=e.target.checked; syncLightAndShadow(k) })
+    const k=cb.dataset.lon; cfg.lights[k]=cfg.lights[k]||{}; cfg.lights[k].enabled=e.target.checked; syncLightAndShadow(k) })
   { const c2=document.getElementById('ed-shadow-on')
     if(c2) c2.onchange=e=>{ cfg.shadow=cfg.shadow||{}; cfg.shadow.enabled=e.target.checked; applyShadow(); syncShadowHint() } }
   { const c3=document.getElementById('ed-shadow-plate')
@@ -2694,6 +2694,7 @@ function syncShadowHint(){
   ;['px','py','pz'].forEach((ax,ai)=>$('editor').querySelectorAll(`[data-hs-${ax}]`).forEach(inp=>inp.oninput=()=>{
     const h=cfg.hotspots[+inp.getAttribute(`data-hs-${ax}`)]; if(!h) return
     h.position=(h.position||[0,0,0]).slice(); h.position[ai]=parseFloat(inp.value)||0; buildHotspots() }))
+  if (window.__SY_TEST__) window.__SY_TEST__.applyEditorRange = applyRange
 }
 /* ---------- 按材质名覆盖 ----------
    规则只有一条：编辑器只写用户真正动过的那一项。
@@ -2944,6 +2945,14 @@ window.__SY_TEST__ = {
   modelLengthUnknown: () => _bootModelTimers?.isLengthUnknown?.() === true,
   modelLoadPhaseActive: () => _bootModelTimers != null,
   playerReady: () => window.__SY_PLAYER.ready === true,
+  forceRender: () => {
+    controls?.update()
+    updateLightRig?.()
+    updateHotspots?.()
+    updateCallout?.()
+    renderer?.render(scene, camera)
+    return true
+  },
   deferPanoramaIBL: () => deferPanoramaIBL,
   strictWebKitHost: () => strictWebKit,
   panoramaPmremMaxWidth: () => panoramaPmremMaxWidth(),
@@ -3296,6 +3305,16 @@ if (editMode) {
         leaderHidden: lay.meta?.leaderHidden,
         points: $('hs-leader').getAttribute('points'),
       }
+    },
+    setLightIntensity: (k, v) => {
+      cfg.lights[k] = cfg.lights[k] || {}
+      cfg.lights[k].intensity = v
+      if (lightRefs[k]) lightRefs[k].intensity = effectiveIntensity(k, cfg.lights[k])
+      const el = document.querySelector(`#editor input[type=range][data-k="l.${k}.i"]`)
+      const num = document.querySelector(`#editor .ed-num[data-num="l.${k}.i"]`)
+      if (el) el.value = String(v)
+      if (num) num.value = String(v)
+      return cfg.lights[k].intensity
     },
     lightState: () => ({
       rigRotY: +(lightRig?.rotation.y ?? 0).toFixed(4),

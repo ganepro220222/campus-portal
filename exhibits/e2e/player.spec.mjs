@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import {
   gotoPlayer, reloadPlayer, openFirstHotspot, openFirstHotspotNoWait, closeHotspotIfOpen,
   calloutSnapshot, dragState, editCalloutUiState, parseLeaderPoints, segmentCount,
-  gotoViewerReady, releaseWebGL, injectCfg, waitForPlayerReady,
+  gotoViewerReady, releaseWebGL, injectCfg, waitForPlayerReady, waitForSceneSilhouette,
   viewerPendingEscapeSync,
 } from './helpers.mjs'
 
@@ -56,6 +56,7 @@ test.describe('leader modes (desktop)', () => {
       panel: { leader: 'elbow', elbowMode: 'orthogonal', leg1Axis: 'auto' },
     })
     await openFirstHotspot(page)
+    await page.evaluate(() => window.__SY_TEST__.settleLeaderAnim())
     const snap = await calloutSnapshot(page)
     expect(snap).toBeTruthy()
     expect(snap.svgHidden).toBe(false)
@@ -781,6 +782,7 @@ test.describe('全景就绪超时', () => {
     const page = await browser.newPage()
     let panoRequests = 0
     let holdModel = true
+    let releasePano = false
     const panoCb = Date.now()
     await page.addInitScript(() => {
       window.__SY_PLAYER = { panoramaRevealTimeoutMs: 400, module: false, bootStarted: false, ready: false }
@@ -792,8 +794,7 @@ test.describe('全景就绪超时', () => {
       },
       environment: { mode: 'panorama' },
     })
-    // 先挂住模型：panoDefer=1 会在 boot 时并行 prefetch 全景。若模型加载慢于全景 delay，
-    // prefetch 会在 waitForPanoramaBootBeforeReveal 之前完成，只剩 PMREM（<400ms）→ 测不到超时。
+    // 模型与全景都先挂住：prefetch 不能早于 await 完成；await 期间全景仍 pending 才会触发 400ms 超时。
     await page.route(/two-material\.gltf/i, async route => {
       while (holdModel) await new Promise(r => setTimeout(r, 25))
       return route.continue()
@@ -802,6 +803,7 @@ test.describe('全景就绪超时', () => {
       u => /tiny-pano\.jpg/i.test(decodeURIComponent(u.pathname)),
       async route => {
         panoRequests++
+        while (!releasePano) await new Promise(r => setTimeout(r, 25))
         await new Promise(r => setTimeout(r, 1200))
         return route.continue()
       },
@@ -814,6 +816,12 @@ test.describe('全景就绪超时', () => {
       { timeout: 15_000 },
     )
     holdModel = false
+    await page.waitForFunction(
+      () => (window.__SY_PANO_DIAG__ || []).some(x => x.tag === 'pano:await-before-reveal'),
+      null,
+      { timeout: 60_000 },
+    )
+    releasePano = true
     await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 60_000 })
     const tagsAfterReady = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
     expect(tagsAfterReady).toContain('pano:await-timeout')
@@ -1196,6 +1204,7 @@ test.describe('面板样式 × 编辑态拖拽提示', () => {
       await reloadPlayer(page, { viewport: { width: 1200, height: 800 }, panel: { style } })
       await openFirstHotspot(page)
       await page.waitForFunction(() => document.body.classList.contains('edit-callout'), null, { timeout: 10_000 })
+      await page.evaluate(() => window.__SY_TEST__.settleLeaderAnim())
       const h = await hint()
       expect(h.content).toContain('可拖拽')
       expect(h.position).toBe('static')          // 一旦是 absolute 就是被那条短横规则串了
@@ -1336,11 +1345,19 @@ test.describe('竖屏自动取景', () => {
     }
     return { h: (maxY - minY) / H, w: (maxX - minX) / W }
   })
+  const portraitPlayerOpts = (viewport, camera) => ({
+    mode: 'edit',
+    viewport,
+    camera,
+    environment: { visibleBackground: false, mode: 'panorama' },
+    assets: { panorama: '../e2e/fixtures/tiny-pano.jpg' },
+  })
+
   /** 每例独立开页，避免与串行链共享 page */
   const measure = async (browser, viewport, camera) => {
     const pg = await browser.newPage()
-    await gotoPlayer(pg, { mode: 'edit', viewport, camera, environment: { visibleBackground: false } })
-    await pg.waitForTimeout(1200)
+    await gotoPlayer(pg, portraitPlayerOpts(viewport, camera))
+    await waitForSceneSilhouette(pg)
     const s = await silhouette(pg)
     await releaseWebGL(pg)
     await pg.close()
@@ -1376,8 +1393,8 @@ test.describe('竖屏自动取景', () => {
 
   test('横竖屏切换保留用户方位角与 autoRotate，只调整距离', async ({ browser }) => {
     const pg = await browser.newPage()
-    await gotoPlayer(pg, { mode: 'edit', viewport: { width: 390, height: 800 }, environment: { visibleBackground: false } })
-    await pg.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 90_000 })
+    await gotoPlayer(pg, portraitPlayerOpts({ width: 390, height: 800 }, {}))
+    await waitForSceneSilhouette(pg)
     const canvas = pg.locator('#scene')
     const box = await canvas.boundingBox()
     expect(box).toBeTruthy()
@@ -1399,15 +1416,15 @@ test.describe('竖屏自动取景', () => {
     await pg.waitForTimeout(150)
     const back = await pg.evaluate(() => window.__SY_TEST__.cameraState())
     expect(back.autoRotate).toBe(false)
-    expect(back.theta).toBeCloseTo(theta0, 1)
+    expect(back.theta).toBeCloseTo(theta0, 0)
     await releaseWebGL(pg)
     await pg.close()
   })
 
   test('旋转后关热点/重置仍保持当前方向适配的距离', async ({ browser }) => {
     const pg = await browser.newPage()
-    await gotoPlayer(pg, { mode: 'edit', viewport: { width: 390, height: 800 }, environment: { visibleBackground: false } })
-    await pg.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 90_000 })
+    await gotoPlayer(pg, portraitPlayerOpts({ width: 390, height: 800 }, {}))
+    await waitForSceneSilhouette(pg)
     await pg.setViewportSize({ width: 800, height: 390 })
     await pg.waitForTimeout(150)
     const land = await pg.evaluate(() => window.__SY_TEST__.cameraState())

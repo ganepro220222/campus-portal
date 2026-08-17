@@ -958,6 +958,10 @@ test.describe('studio.html', () => {
   })
 
   test('single save failure does not block other exhibits', async ({ page }) => {
+    const cfg001 = loadCfg('craft-001')
+    const cfg002 = loadCfg('craft-002')
+    await page.route('**/craft-001/config.json*', r => r.fulfill({ json: structuredClone(cfg001) }))
+    await page.route('**/craft-002/config.json*', r => r.fulfill({ json: structuredClone(cfg002) }))
     await page.route('**/studio-api/save', async route => {
       const body = route.request().postDataJSON()
       if (body.ex === 'craft-001') {

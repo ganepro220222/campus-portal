@@ -1,4 +1,4 @@
-/* packageC/activity/enroll.wxss — 高保真视觉 */
+/* packageC/activity/enroll.wxss */
 .enroll-page {
   height: 100vh;
   display: flex;

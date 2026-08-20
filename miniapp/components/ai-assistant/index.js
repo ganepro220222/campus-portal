@@ -1,4 +1,4 @@
-// components/ai-assistant/index.js — 书院文化助手浮标（对接后端 RAG + 每日配额）
+// components/ai-assistant/index.js — 书院助手浮标（对接后端 RAG + 每日配额）
 const {
   createSession,
   fetchQuota,

@@ -1,4 +1,4 @@
-/* packageC/activity/detail.wxss — 高保真视觉 */
+/* packageC/activity/detail.wxss */
 .detail-page {
   min-height: 100vh;
   background: #F5F8FC;

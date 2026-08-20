@@ -1,4 +1,4 @@
-// packageB/course/player.js — 真视频播放 + 进度上报（详细方案 Phase 3）
+// packageB/course/player.js — 真视频播放 + 进度上报
 const { get, post } = require('../../utils/request')
 const { requireLogin } = require('../../utils/auth')
 const { mergeCourseDetail } = require('../../utils/content')

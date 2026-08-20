@@ -26,8 +26,7 @@ Page({
       .catch(() => this.setData({ loading: false }))
   },
 
-  // 后台未配置或接口不可用时，正文为空——给出可重试的空状态，
-  // 而不是留下两张空白卡片（审核员会直接点开本页）。
+  // 后台未配置或拉取失败时，由 onRetry 重新请求。
   onRetry() {
     if (this.data.loading) return
     this.load()

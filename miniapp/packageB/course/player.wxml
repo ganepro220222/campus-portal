@@ -1,4 +1,4 @@
-// packageB/course/player.wxml — 真视频播放（验收 §2.6）
+<!-- packageB/course/player.wxml — 真视频播放 -->
 <view class="player-page">
 
   <view class="stage">

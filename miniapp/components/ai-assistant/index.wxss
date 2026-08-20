@@ -1,4 +1,4 @@
-/* 文化问答浮标 + 底部抽屉 */
+/* 书院助手浮标 + 底部抽屉 */
 .ai-fab {
   position: fixed;
   right: 32rpx;
@@ -123,7 +123,7 @@
 }
 .chip:active { background: var(--sky-3); }
 
-/* 底栏 = 输入行 + AI 生成标识；分隔线与安全区内边距挂在外层，避免标识被压在安全区里 */
+/* 底栏：输入区 + AI 生成标识 */
 .sheet-foot {
   flex-shrink: 0;
   border-top: 1rpx solid var(--line);

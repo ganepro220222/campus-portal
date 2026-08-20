@@ -1,7 +1,7 @@
 <!-- components/skeleton/index.wxml -->
 <view class="sk" wx:if="{{show}}">
 
-  <!-- 横向卡片列表（新闻 / 课程） -->
+  <!-- 横向卡片列表（动态 / 课程） -->
   <block wx:if="{{type === 'list'}}">
     <view class="sk-card" wx:for="{{items}}" wx:key="index">
       <view class="sk-thumb sk-sh"></view>

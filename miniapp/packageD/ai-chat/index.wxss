@@ -69,7 +69,7 @@
 .chip:active { background: var(--sky-2); }
 .chat-pad { height: 20rpx; }
 
-/* 输入区（底栏 = 输入行 + AI 生成标识，安全区内边距挂在外层） */
+/* 底栏：输入区 + AI 生成标识 */
 .chat-foot {
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.97);

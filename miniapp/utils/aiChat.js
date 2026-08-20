@@ -1,4 +1,4 @@
-// utils/aiChat.js — 书院文化助手（会话、配额、提问）
+// utils/aiChat.js — 书院助手（会话、配额、提问）
 
 const { get, post } = require('./request')
 

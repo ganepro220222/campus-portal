@@ -44,7 +44,7 @@ Page({
       const filtered = cat ? src.filter(n => (n.category || n.categoryName) === cat) : src
       this.setData({ newsList: decorateNewsFeed(filtered), loading: false })
     } catch (err) {
-      console.warn('[news] 资讯列表加载失败', err)
+      console.warn('[news] 动态列表加载失败', err)
       this.setData({ newsList: decorateNewsFeed(withListFallback(null, mock.newsFull)), loading: false })
     }
   },

@@ -1,4 +1,4 @@
-// packageD/ai-chat/index.js — AI 文化问答（对接后端 RAG）
+// packageD/ai-chat/index.js — 智能问答（对接后端 RAG）
 const {
   createSession,
   fetchQuota,

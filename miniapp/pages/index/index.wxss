@@ -346,7 +346,7 @@
   line-height: 1.35;
 }
 
-/* ── 资讯 / 课程卡片 ── */
+/* ── 动态 / 课程卡片 ── */
 .cards { display: flex; flex-direction: column; gap: 20rpx; }
 .ncard, .ccard {
   display: flex;

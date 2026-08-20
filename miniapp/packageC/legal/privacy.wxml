@@ -1,4 +1,4 @@
-<!-- packageC/legal/privacy.wxml —— 内容由后台「协议内容」配置 -->
+<!-- packageC/legal/privacy.wxml —— 内容由后台「协议内容」配置，失败时使用缓存或内置基线 -->
 <view class="legal-page">
   <nav-bar title="隐私与用户协议" />
   <scroll-view scroll-y class="legal-scroll" enhanced show-scrollbar="{{false}}">
@@ -6,20 +6,20 @@
     <view wx:if="{{loading}}" class="legal-loading">加载中…</view>
 
     <block wx:else>
+      <view wx:if="{{sourceHint}}" class="legal-hint">{{sourceHint}}</view>
+
       <view class="legal-card">
         <view class="legal-title serif">隐私政策</view>
         <rich-text wx:if="{{privacyHtml}}" class="legal-rt" nodes="{{privacyHtml}}"></rich-text>
-        <view wx:else class="legal-empty">暂未获取到隐私政策正文，请检查网络后重试。</view>
       </view>
 
       <view class="legal-card">
         <view class="legal-title serif">用户协议</view>
         <rich-text wx:if="{{agreementHtml}}" class="legal-rt" nodes="{{agreementHtml}}"></rich-text>
-        <view wx:else class="legal-empty">暂未获取到用户协议正文，请检查网络后重试。</view>
       </view>
 
-      <view wx:if="{{!privacyHtml || !agreementHtml}}" class="legal-retry-wrap">
-        <view class="legal-retry" bindtap="onRetry">重新加载</view>
+      <view wx:if="{{showRetry}}" class="legal-retry-wrap">
+        <view class="legal-retry" bindtap="onRetry">重新加载最新版本</view>
       </view>
 
       <view class="legal-foot">© 2026 贵州交通职业大学中华文化书院</view>

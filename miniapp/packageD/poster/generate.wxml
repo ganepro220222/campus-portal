@@ -18,11 +18,8 @@
         </view>
         <view class="p-sub">{{subtitle}}</view>
         <view class="p-foot">
-          <view class="p-qr">
-            <view class="qr-c qr-tl"></view>
-            <view class="qr-c qr-tr"></view>
-            <view class="qr-c qr-bl"></view>
-            <view class="qr-mid" style="background: {{tpl.accent}};"></view>
+          <view class="p-qr p-qr-placeholder">
+            <text class="p-qr-hint">保存时将加载\n小程序码</text>
           </view>
           <view class="p-foot-tx">
             <text class="pf-1">长按识别小程序码</text>
@@ -51,7 +48,7 @@
 
     <view class="poster-tip">
       <icon name="star" size="14" color="#BE9C44" />
-      <text>海报将保存为图片到手机相册，可分享至微信、朋友圈</text>
+      <text>保存时将嵌入可识别的小程序码；若码生成失败将提示重试，不会保存无效海报</text>
     </view>
 
     <view class="poster-bottom"></view>

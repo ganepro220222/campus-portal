@@ -1,5 +1,6 @@
 // packageD/poster/generate.js — 分享海报生成
 const { get } = require('../../utils/request')
+const { parseWxacodeResponse } = require('../../utils/wxacode')
 
 const TEMPLATES = [
   { key: 'blue', name: '阳明蓝', c1: '#1E2654', c2: '#3F57B5', accent: '#BE9C44' },
@@ -7,6 +8,8 @@ const TEMPLATES = [
   { key: 'red',  name: '红韵',   c1: '#5A1E22', c2: '#A0505A', accent: '#E7C86A' },
   { key: 'gold', name: '鎏金',   c1: '#3A2E12', c2: '#8A6A2E', accent: '#F0DCA0' }
 ]
+
+const WXACODE_ERR = { type: 'wxacode' }
 
 Page({
   data: {
@@ -46,6 +49,8 @@ Page({
             confirmText: '去设置',
             success: (r) => { if (r.confirm) wx.openSetting() }
           })
+        } else if (err && err.type === 'wxacode') {
+          wx.showToast({ title: '小程序码生成失败，请检查网络后重试', icon: 'none', duration: 2800 })
         } else {
           wx.showToast({ title: '生成失败，请重试', icon: 'none' })
         }
@@ -54,18 +59,27 @@ Page({
       .then(() => this.setData({ saving: false }))
   },
 
-  // 绘制海报到离屏 canvas，返回临时图片路径
-  async _render() {
-    const { tpl, title, subtitle } = this.data
-    let qrBase64 = null
+  async _fetchWxacodeBase64() {
+    let payload
     try {
-      const wxacode = await get('/miniapp/wxacode', { path: 'pages/index/index', width: 280 })
-      if (wxacode && wxacode.available && wxacode.imageBase64) {
-        qrBase64 = wxacode.imageBase64
-      }
+      payload = await get('/miniapp/wxacode', { path: 'pages/index/index', width: 280 })
     } catch (e) {
-      console.warn('[poster] 小程序码获取失败，使用占位图', e)
+      console.warn('[poster] 小程序码接口请求失败', e)
+      throw WXACODE_ERR
     }
+    const parsed = parseWxacodeResponse(payload)
+    if (!parsed.ok) {
+      console.warn('[poster] 小程序码不可用', parsed.reason)
+      throw WXACODE_ERR
+    }
+    return parsed.base64
+  },
+
+  // 绘制海报到离屏 canvas；必须成功嵌入可识别的小程序码
+  async _render() {
+    const qrBase64 = await this._fetchWxacodeBase64()
+    const { tpl, title, subtitle } = this.data
+
     return new Promise((resolve, reject) => {
       wx.createSelectorQuery().in(this).select('#posterCanvas').fields({ node: true, size: true }).exec((res) => {
         if (!res || !res[0] || !res[0].node) return reject(new Error('canvas not ready'))
@@ -77,33 +91,28 @@ Page({
         canvas.height = H * dpr
         ctx.scale(dpr, dpr)
 
-        // 背景渐变
         const grad = ctx.createLinearGradient(0, 0, W, H)
         grad.addColorStop(0, tpl.c1)
         grad.addColorStop(1, tpl.c2)
         ctx.fillStyle = grad
         ctx.fillRect(0, 0, W, H)
 
-        // 描边内框
         ctx.strokeStyle = hexA(tpl.accent, 0.55)
         ctx.lineWidth = 1
         strokeRoundRect(ctx, 14, 14, W - 28, H - 28, 12)
 
-        // 顶部书院名
         ctx.fillStyle = 'rgba(255,255,255,0.85)'
         ctx.font = '13px sans-serif'
         ctx.textAlign = 'center'
         ctx.fillText('中 华 文 化 书 院', W / 2, 52)
 
         const drawRest = () => {
-          // 标题（自动换行）
           ctx.fillStyle = '#ffffff'
           ctx.font = 'bold 22px serif'
           const lines = wrapText(ctx, title, W - 80)
           let ty = 250
           lines.slice(0, 3).forEach((ln) => { ctx.fillText(ln, W / 2, ty); ty += 32 })
 
-          // 分隔符
           ctx.strokeStyle = tpl.accent
           ctx.lineWidth = 1.5
           ctx.beginPath()
@@ -114,7 +123,6 @@ Page({
           ctx.font = '12px serif'
           ctx.fillText('❖', W / 2, ty + 9)
 
-          // 副标题
           ctx.fillStyle = 'rgba(232,240,252,0.9)'
           ctx.font = '13px sans-serif'
           ctx.fillText(subtitle, W / 2, ty + 34)
@@ -130,27 +138,21 @@ Page({
             })
           }
 
-          if (qrBase64) {
-            const qrImg = canvas.createImage()
-            qrImg.onload = () => {
-              const qs = 64, qx = W / 2 - qs / 2, qy = H - 108
-              ctx.fillStyle = '#ffffff'
-              strokeFillRoundRect(ctx, qx - 6, qy - 6, qs + 12, qs + 12, 8)
-              ctx.drawImage(qrImg, qx, qy, qs, qs)
-              finishPoster()
-            }
-            qrImg.onerror = () => {
-              drawQR(ctx, W / 2 - 32, H - 108, 64, tpl.accent)
-              finishPoster()
-            }
-            qrImg.src = 'data:image/png;base64,' + qrBase64
-          } else {
-            drawQR(ctx, W / 2 - 32, H - 108, 64, tpl.accent)
+          const qrImg = canvas.createImage()
+          qrImg.onload = () => {
+            const qs = 64, qx = W / 2 - qs / 2, qy = H - 108
+            ctx.fillStyle = '#ffffff'
+            strokeFillRoundRect(ctx, qx - 6, qy - 6, qs + 12, qs + 12, 8)
+            ctx.drawImage(qrImg, qx, qy, qs, qs)
             finishPoster()
           }
+          qrImg.onerror = () => {
+            console.warn('[poster] 小程序码图片解码失败')
+            reject(WXACODE_ERR)
+          }
+          qrImg.src = 'data:image/png;base64,' + qrBase64
         }
 
-        // 徽记（尽力加载品牌图，失败则画金环占位）
         const img = canvas.createImage()
         img.onload = () => {
           const s = 96, ix = W / 2 - s / 2, iy = 90
@@ -220,29 +222,6 @@ function strokeRoundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r)
   ctx.arcTo(x, y, x + w, y, r)
   ctx.stroke()
-}
-
-function drawQR(ctx, x, y, size, accent) {
-  ctx.fillStyle = '#ffffff'
-  strokeFillRoundRect(ctx, x - 6, y - 6, size + 12, size + 12, 8)
-  ctx.fillStyle = '#2B356E'
-  const c = size / 3.2
-  // 三个定位角
-  drawFinder(ctx, x + 2, y + 2, c)
-  drawFinder(ctx, x + size - c - 2, y + 2, c)
-  drawFinder(ctx, x + 2, y + size - c - 2, c)
-  // 中心点缀
-  ctx.fillStyle = accent
-  ctx.fillRect(x + size / 2 - 5, y + size / 2 - 5, 10, 10)
-}
-
-function drawFinder(ctx, x, y, s) {
-  ctx.fillStyle = '#2B356E'
-  ctx.fillRect(x, y, s, s)
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(x + s * 0.22, y + s * 0.22, s * 0.56, s * 0.56)
-  ctx.fillStyle = '#2B356E'
-  ctx.fillRect(x + s * 0.36, y + s * 0.36, s * 0.28, s * 0.28)
 }
 
 function strokeFillRoundRect(ctx, x, y, w, h, r) {

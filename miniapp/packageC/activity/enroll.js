@@ -8,6 +8,13 @@ const {
 } = require('../../utils/activity')
 const { requireLogin } = require('../../utils/auth')
 const { requestSubscribe } = require('../../utils/subscribe')
+const {
+  buildVoucherQrText,
+  pickRemoteQrSrc,
+  shouldShowVoucherQr,
+  mapEnrollVoucherFields
+} = require('../../utils/enrollVoucher')
+const { exportVoucherQr } = require('../../utils/voucherQrCanvas')
 
 Page({
   data: {
@@ -21,7 +28,9 @@ Page({
     enrolledHint: '',
     success: false,
     result: null,
-    resultHint: ''
+    resultHint: '',
+    showVoucherQr: false,
+    voucherQrSrc: ''
   },
 
   onLoad(opts) {
@@ -66,6 +75,14 @@ Page({
           college: (profile && profile.college) || '',
           grade: ''
         }
+      }, () => {
+        if (detail.enrollStatus === 'approved' && detail.voucherCode) {
+          this._refreshVoucherQr(mapEnrollVoucherFields({
+            enrollId: detail.enrollId,
+            voucherCode: detail.voucherCode,
+            enrollStatus: detail.enrollStatus
+          }))
+        }
       })
     } catch (err) {
       console.warn('[activity/enroll] 初始化失败', err)
@@ -102,6 +119,8 @@ Page({
         result,
         resultHint,
         submitting: false
+      }, () => {
+        this._refreshVoucherQr(mapEnrollVoucherFields(result))
       })
     } catch (err) {
       this.setData({ submitting: false })
@@ -119,5 +138,42 @@ Page({
 
   onMyEnrolls() {
     wx.navigateTo({ url: '/packageC/profile/list?type=enrolls' })
+  },
+
+  async _refreshVoucherQr(ctx) {
+    const fields = mapEnrollVoucherFields(ctx)
+    const { status, voucherCode, qrCodeUrl, enrollId } = fields
+    if (!shouldShowVoucherQr(status, voucherCode)) {
+      this.setData({ showVoucherQr: false, voucherQrSrc: '' })
+      return
+    }
+
+    let remote = pickRemoteQrSrc(qrCodeUrl)
+    if (!remote && enrollId) {
+      try {
+        const voucher = await get(`/enrolls/${enrollId}/voucher`)
+        remote = pickRemoteQrSrc(voucher && voucher.qrCodeUrl)
+      } catch (err) {
+        console.warn('[activity/enroll] 凭证接口未返回二维码', err)
+      }
+    }
+    if (remote) {
+      this.setData({ showVoucherQr: true, voucherQrSrc: remote })
+      return
+    }
+
+    try {
+      const text = buildVoucherQrText(voucherCode)
+      const path = await exportVoucherQr(this, 'voucherQrCanvas', text)
+      this.setData({ showVoucherQr: true, voucherQrSrc: path })
+    } catch (err) {
+      console.warn('[activity/enroll] 本地二维码生成失败', err)
+      this.setData({ showVoucherQr: false, voucherQrSrc: '' })
+    }
+  },
+
+  onPreviewQr() {
+    const src = this.data.voucherQrSrc
+    if (src) wx.previewImage({ urls: [src] })
   }
 })

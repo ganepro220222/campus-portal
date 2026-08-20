@@ -25,6 +25,16 @@
         <icon name="medal" size="40" color="#C9A227" />
         <text class="result-title">{{result.statusLabel || '报名成功'}}</text>
         <text wx:if="{{result.voucherCode}}" class="result-code">凭证码：{{result.voucherCode}}</text>
+        <view wx:if="{{showVoucherQr && voucherQrSrc && result.status === 'approved'}}" class="voucher-qr-box">
+          <image
+            class="voucher-qr-img"
+            src="{{voucherQrSrc}}"
+            mode="aspectFit"
+            show-menu-by-longpress="{{true}}"
+            bindtap="onPreviewQr"
+          />
+          <text class="voucher-qr-hint">签到二维码 · 长按可保存</text>
+        </view>
         <text class="result-hint">{{resultHint}}</text>
         <button class="btn-outline" bindtap="onBackDetail">返回活动详情</button>
         <button class="btn-link" bindtap="onMyEnrolls">查看我的报名</button>
@@ -34,6 +44,16 @@
       <view wx:elif="{{hasEnrolled}}" class="result-card">
         <text class="result-title">{{statusLabel}}</text>
         <text wx:if="{{detail.voucherCode && detail.enrollStatus === 'approved'}}" class="result-code">凭证码：{{detail.voucherCode}}</text>
+        <view wx:if="{{showVoucherQr && voucherQrSrc && detail.enrollStatus === 'approved'}}" class="voucher-qr-box">
+          <image
+            class="voucher-qr-img"
+            src="{{voucherQrSrc}}"
+            mode="aspectFit"
+            show-menu-by-longpress="{{true}}"
+            bindtap="onPreviewQr"
+          />
+          <text class="voucher-qr-hint">签到二维码 · 长按可保存</text>
+        </view>
         <text class="result-hint">{{enrolledHint}}</text>
         <button class="btn-outline" bindtap="onBackDetail">返回活动详情</button>
       </view>
@@ -98,4 +118,6 @@
   <view wx:else class="state-box">
     <text class="state-text">活动不存在或已下架</text>
   </view>
+
+  <canvas type="2d" id="voucherQrCanvas" class="voucher-qr-canvas-offscreen" />
 </view>

@@ -49,6 +49,7 @@ function mergeEnrollResult(raw) {
     status: raw.status,
     statusLabel: ENROLL_STATUS[raw.status] || raw.status,
     voucherCode: raw.voucherCode,
+    qrCodeUrl: raw.qrCodeUrl || '',
     createTime: raw.createTime,
     activityTitle: raw.activityTitle
   }

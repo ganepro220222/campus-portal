@@ -85,32 +85,8 @@ Page({
   },
 
   async onVoucherTap() {
-    const { detail } = this.data
-    if (!detail || !detail.enrollId) {
-      if (detail && detail.voucherCode) {
-        this._showVoucher(detail.voucherCode, detail.title)
-        return
-      }
-      wx.showToast({ title: '暂无凭证信息', icon: 'none' })
-      return
-    }
-    try {
-      const v = await get(`/enrolls/${detail.enrollId}/voucher`)
-      const code = (v && v.voucherCode) || detail.voucherCode
-      this._showVoucher(code, (v && v.activityTitle) || detail.title)
-    } catch (e) {
-      if (detail.voucherCode) {
-        this._showVoucher(detail.voucherCode, detail.title)
-      }
-    }
-  },
-
-  _showVoucher(code, title) {
-    wx.showModal({
-      title: '报名凭证',
-      content: `活动：${title || ''}\n凭证码：${code || '—'}`,
-      showCancel: false,
-      confirmText: '知道了'
-    })
+    const { activityId } = this.data
+    if (!activityId) return
+    wx.navigateTo({ url: `/packageC/activity/enroll?id=${activityId}` })
   }
 })

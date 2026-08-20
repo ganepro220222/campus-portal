@@ -37,6 +37,7 @@ public class OssService {
     private static Map<String, Set<String>> buildSceneExtensions() {
         Map<String, Set<String>> map = new HashMap<>();
         map.put("image", Set.of("jpg", "jpeg", "png", "webp", "gif"));
+        map.put("feedback", Set.of("jpg", "jpeg", "png", "webp", "gif"));
         map.put("video", Set.of("mp4", "mov"));
         map.put("audio", Set.of("mp3", "m4a", "wav"));
         map.put("document", Set.of("pdf", "doc", "docx", "ppt", "pptx"));
@@ -200,7 +201,7 @@ public class OssService {
             return "image";
         }
         return switch (scene.toLowerCase(Locale.ROOT)) {
-            case "cover", "hall", "craft", "news", "banner" -> "image";
+            case "cover", "hall", "craft", "news", "banner", "feedback" -> "image";
             case "course", "resource" -> "video";
             case "audio" -> "audio";
             case "file" -> "document";

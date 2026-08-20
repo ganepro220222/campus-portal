@@ -26,6 +26,34 @@
       />
       <view class="fb-count">{{content.length}}/500</view>
 
+      <view class="fb-label">附图（选填，最多 {{maxImages}} 张）</view>
+      <view class="fb-images">
+        <view
+          wx:for="{{images}}"
+          wx:key="id"
+          class="fb-img-cell"
+        >
+          <image
+            class="fb-img"
+            src="{{item.url || item.localPath}}"
+            mode="aspectFill"
+            bindtap="onPreviewImage"
+            data-src="{{item.url || item.localPath}}"
+          />
+          <view wx:if="{{item.uploading}}" class="fb-img-mask">上传中…</view>
+          <view wx:elif="{{item.failed}}" class="fb-img-mask fb-img-fail">失败</view>
+          <view class="fb-img-del" data-id="{{item.id}}" catchtap="onRemoveImage">×</view>
+        </view>
+        <view
+          wx:if="{{images.length < maxImages}}"
+          class="fb-img-add"
+          bindtap="onChooseImages"
+        >
+          <text class="fb-img-add-plus">+</text>
+          <text class="fb-img-add-tip">添加图片</text>
+        </view>
+      </view>
+
       <view class="fb-label">联系方式</view>
       <input
         class="fb-input"

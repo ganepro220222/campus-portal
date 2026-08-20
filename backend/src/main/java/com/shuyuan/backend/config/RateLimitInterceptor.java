@@ -38,6 +38,15 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             rateLimitService.checkIp("wxacode", ip, cfg.getWxacodePerMinute(), Duration.ofMinutes(1));
             return true;
         }
+        if (uri.endsWith("/api/v1/miniapp/upload")) {
+            Long memberId = MemberContext.getMemberId();
+            if (memberId != null) {
+                rateLimitService.checkUser("miniapp-upload", memberId, 20, Duration.ofMinutes(1));
+            } else {
+                rateLimitService.checkIp("miniapp-upload", ip, 10, Duration.ofMinutes(1));
+            }
+            return true;
+        }
         if (!"POST".equalsIgnoreCase(method)) {
             return true;
         }

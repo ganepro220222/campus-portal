@@ -81,7 +81,7 @@ public class ProfileService {
         return enrollService.myEnrolls();
     }
 
-    /** 收藏汇总（新闻/展馆/文创/课程/资源） */
+    /** 收藏汇总（动态/展馆/文创/课程/资源） */
     public List<Map<String, Object>> favorites() {
         Long memberId = requireMemberId();
         List<Favorite> list = favoriteMapper.selectList(new LambdaQueryWrapper<Favorite>()
@@ -245,7 +245,7 @@ public class ProfileService {
             return "";
         }
         return switch (type) {
-            case "news" -> "新闻";
+            case "news" -> "动态";
             case "hall" -> "展馆";
             case "craft" -> "文创";
             case "course" -> "课程";

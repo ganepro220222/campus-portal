@@ -103,6 +103,12 @@ Page({
       if (type === 'badges') {
         return { ...item, title: item.name, createTime: item.achievedAt }
       }
+      if (type === 'favorites') {
+        return {
+          ...item,
+          subtitle: item.targetTypeLabel || ''
+        }
+      }
       return item
     })
   },

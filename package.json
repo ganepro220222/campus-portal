@@ -5,12 +5,14 @@
     "check:prod-mock": "node scripts/check-no-prod-mock.js",
     "check:release-env": "node scripts/check-no-prod-mock.js --release",
     "check:deploy-env": "node scripts/check-deploy-env.js",
+    "check:wxml": "node scripts/check-wxml.js",
     "check:release-all": "node scripts/check-release-all.js",
     "test:deploy-env": "node scripts/test-deploy-env.js",
     "test:mock-guard": "node scripts/test-mock-guard.js",
     "test:sync-navigate-appids": "node scripts/test-sync-navigate-appids.js",
     "test:release-gate": "node scripts/test-release-gate.js",
-    "preflight:local": "npm run test:deploy-env && npm run check:deploy-env && npm run test:mock-guard && npm run test:sync-navigate-appids && npm run test:release-gate",
+    "test:miniapp-utils": "node scripts/test-miniapp-utils.js",
+    "preflight:local": "npm run test:deploy-env && npm run check:deploy-env && npm run check:wxml && npm run test:miniapp-utils && npm run test:mock-guard && npm run test:sync-navigate-appids && npm run test:release-gate",
     "load:enroll": "node scripts/load/enroll-concurrent.mjs",
     "load:browse": "node scripts/load/browse-load.mjs"
   }

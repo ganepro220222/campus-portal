@@ -18,8 +18,10 @@
         </view>
         <view class="p-sub">{{subtitle}}</view>
         <view class="p-foot">
+          <!-- WXML 文本节点不解析 \n 转义；换行靠两个 text 元素，宽度也才好核算 -->
           <view class="p-qr p-qr-placeholder">
-            <text class="p-qr-hint">保存时将加载\n小程序码</text>
+            <text class="p-qr-hint">小程序码</text>
+            <text class="p-qr-hint p-qr-sub">保存时生成</text>
           </view>
           <view class="p-foot-tx">
             <text class="pf-1">长按识别小程序码</text>

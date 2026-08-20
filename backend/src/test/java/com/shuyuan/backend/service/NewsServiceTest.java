@@ -33,6 +33,8 @@ class NewsServiceTest {
     private PointService pointService;
     @Mock
     private ViewCountService viewCountService;
+    @Mock
+    private NewsInteractionService newsInteractionService;
 
     @InjectMocks
     private NewsService newsService;
@@ -60,6 +62,7 @@ class NewsServiceTest {
 
         verify(viewCountService).recordView("news", 3L, null, "127.0.0.1");
         verify(newsMapper, org.mockito.Mockito.never()).updateById(news);
+        verify(newsInteractionService).enrichDetailInteraction(result, news);
         assertEquals(11, result.get("viewCount"));
         assertEquals(11, result.get("readCount"));
     }

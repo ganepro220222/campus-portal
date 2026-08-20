@@ -24,6 +24,7 @@ public class NewsService {
     private final EventLogService eventLogService;
     private final PointService pointService;
     private final ViewCountService viewCountService;
+    private final NewsInteractionService newsInteractionService;
 
     public Object list(String category, Long categoryId, Integer page, Integer size) {
         Map<Long, String> catMap = categoryService.nameMap("news");
@@ -76,6 +77,7 @@ public class NewsService {
         m.put("drop", FormatUtils.firstChar(lead));
         m.put("paras", paras);
         m.put("content", news.getContent());
+        newsInteractionService.enrichDetailInteraction(m, news);
         return m;
     }
 

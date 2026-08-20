@@ -30,11 +30,11 @@
           <view class="act-row">
             <view class="act {{liked ? 'act-on' : ''}}" bindtap="onLike">
               <icon name="thumb" size="16" color="{{liked ? '#C0392B' : '#5A648A'}}" />
-              <text>{{liked ? '已赞' : '点赞'}}</text>
+              <text>{{likeLabel}}</text>
             </view>
             <view class="act {{collected ? 'act-on' : ''}}" bindtap="onCollect">
               <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
-              <text>{{collected ? '已收藏' : '收藏'}}</text>
+              <text>{{collectLabel}}</text>
             </view>
             <button class="act act-share-btn" open-type="share" hover-class="act-share-hover">
               <icon name="share" size="16" color="#5A648A" />

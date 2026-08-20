@@ -2,7 +2,16 @@
 const { get, post } = require('../../utils/request')
 const { mergeNewsArticle } = require('../../utils/content')
 const { requireLogin } = require('../../utils/auth')
-const { buildNewsShareAppMessage, buildNewsShareTimeline } = require('../../utils/newsShare')
+const {
+  buildNewsDetailPath,
+  buildNewsShareAppMessage,
+  buildNewsShareTimeline
+} = require('../../utils/newsShare')
+const {
+  mapDetailInteraction,
+  applyLikeToggle,
+  applyFavoriteToggle
+} = require('../../utils/newsInteraction')
 
 Page({
   data: {
@@ -10,6 +19,10 @@ Page({
     reco: [],
     liked: false,
     collected: false,
+    likeCount: 0,
+    favoriteCount: 0,
+    likeLabel: '点赞',
+    collectLabel: '收藏',
     articleId: null
   },
 
@@ -32,7 +45,11 @@ Page({
 
   _loadDetail(id) {
     get(`/news/${id}`).then(a => {
-      if (a) this.setData({ article: mergeNewsArticle(a) })
+      if (!a) return
+      this.setData({
+        article: mergeNewsArticle(a),
+        ...mapDetailInteraction(a)
+      })
     }).catch(err => {
       console.warn('[news/detail] 详情加载失败', err)
     })
@@ -49,13 +66,13 @@ Page({
       const id = this.data.articleId
       if (!id) return
       post(`/news/${id}/like`).then(res => {
-        const liked = res && res.liked != null ? res.liked : !this.data.liked
-        this.setData({ liked })
-        if (liked) wx.showToast({ title: '点赞成功', icon: 'none' })
+        const patch = applyLikeToggle(this.data, res)
+        this.setData(patch)
+        if (patch.liked) wx.showToast({ title: '点赞成功', icon: 'none' })
       }).catch(() => {
-        const liked = !this.data.liked
-        this.setData({ liked })
-        if (liked) wx.showToast({ title: '点赞成功', icon: 'none' })
+        const patch = applyLikeToggle(this.data, { liked: !this.data.liked })
+        this.setData(patch)
+        if (patch.liked) wx.showToast({ title: '点赞成功', icon: 'none' })
       })
     })
   },
@@ -65,13 +82,13 @@ Page({
       const id = this.data.articleId
       if (!id) return
       post(`/news/${id}/favorite`).then(res => {
-        const collected = res && res.collected != null ? res.collected : !this.data.collected
-        this.setData({ collected })
-        if (collected) wx.showToast({ title: '收藏成功', icon: 'none' })
+        const patch = applyFavoriteToggle(this.data, res)
+        this.setData(patch)
+        if (patch.collected) wx.showToast({ title: '收藏成功', icon: 'none' })
       }).catch(() => {
-        const collected = !this.data.collected
-        this.setData({ collected })
-        if (collected) wx.showToast({ title: '收藏成功', icon: 'none' })
+        const patch = applyFavoriteToggle(this.data, { collected: !this.data.collected })
+        this.setData(patch)
+        if (patch.collected) wx.showToast({ title: '收藏成功', icon: 'none' })
       })
     })
   },

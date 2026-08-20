@@ -10,7 +10,7 @@ const HISTORY_KEY = 'search_history'
 // 接口不可用时的本地检索索引（仅 dev mock 模式）
 function localIndex() {
   const idx = []
-  ;(mock.newsFull || []).forEach(n => idx.push({ title: n.title, targetType: 'news', targetId: n.id, typeLabel: '新闻', sub: n.category }))
+  ;(mock.newsFull || []).forEach(n => idx.push({ title: n.title, targetType: 'news', targetId: n.id, typeLabel: '动态', sub: n.category }))
   ;(mock.hallsFull || []).forEach(h => idx.push({ title: h.name, targetType: 'hall', targetId: h.id, typeLabel: '展馆', sub: h.desc }))
   ;(mock.crafts || []).forEach(c => idx.push({ title: c.name, targetType: 'craft', targetId: c.id, typeLabel: '文创', sub: c.intro }))
   ;(mock.coursesFull || []).forEach(c => idx.push({ title: c.name, targetType: 'course', targetId: c.id, typeLabel: '课程', sub: c.desc }))

@@ -6,7 +6,7 @@
   <view class="sbar">
     <view class="sbox">
       <icon name="search" size="17" color="#8A93B2" />
-      <input class="sinput" placeholder="搜索新闻、课程、展馆、资源…" placeholder-class="sph"
+      <input class="sinput" placeholder="搜索动态、课程、展馆、资源…" placeholder-class="sph"
         value="{{keyword}}" focus confirm-type="search" bindinput="onInput" bindconfirm="onConfirm" />
       <view wx:if="{{keyword}}" class="sclear" bindtap="onClear"><icon name="eye-off" size="15" color="#8A93B2" /></view>
     </view>

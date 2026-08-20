@@ -4,14 +4,14 @@ module.exports = {
   banners: [
     { id: 1, title: '王阳明“知行合一”专题讲座圆满举行', description: '名家云集，共探黔中阳明心学的当代价值', colorClass: 's1', category: '书院动态', linkType: 'news', linkValue: '1' },
     { id: 2, title: '“通途之路”研学品牌正式启动', description: '线上承载 · 线下研学，打造协同育人新格局', colorClass: 's2', category: '通途之路', linkType: 'fixed', linkValue: 'hall' },
-    { id: 3, title: '屯堡地戏走进校园 · 六百年非遗活态传承', description: '沉浸式线上展馆同步上线，可听语音讲解', colorClass: 's3', category: '文化传承', linkType: 'fixed', linkValue: 'course' }
+    { id: 3, title: '屯堡地戏走进校园 · 六百年非遗活态传承', description: '沉浸式线上展馆同步上线，可听语音讲解', colorClass: 's3', category: '专题学习', linkType: 'fixed', linkValue: 'course' }
   ],
 
   // 各模块默认分类（接口 /categories 不可用时的兜底）
   categories: {
-    news:   ['全部', '书院动态', '活动通知', '文化传承'],
+    news:   ['全部', '书院动态', '活动通知', '专题学习'],
     hall:   ['全部', '博物馆与校史', '红色教育', '研学服务', '素质教育', '文化艺术', '安全教育', '主题宣教'],
-    course: ['全部', '阳明文化', '思政必修', '文化传承', '美育素养']
+    course: ['全部', '阳明文化', '思政必修', '专题学习', '美育素养']
   },
 
   hallsHome: [
@@ -39,15 +39,15 @@ module.exports = {
   newsHome: [
     { id: 1, title: '中华文化书院举办王阳明“知行合一”专题讲座', categoryName: '书院动态', publishTime: '2026-06-05' },
     { id: 2, title: '“通途之路”研学品牌启动仪式在我校举行', categoryName: '活动通知', publishTime: '2026-06-03' },
-    { id: 3, title: '屯堡地戏走进校园：非遗活态传承公开课开讲', categoryName: '文化传承', publishTime: '2026-06-01' }
+    { id: 3, title: '屯堡地戏走进校园：非遗活态传承公开课开讲', categoryName: '专题学习', publishTime: '2026-06-01' }
   ],
 
   newsFull: [
     { id: 1, title: '中华文化书院举办王阳明“知行合一”专题讲座', category: '书院动态', publishTime: '2026-06-05', readCount: 1234 },
     { id: 2, title: '“通途之路”研学品牌启动仪式在我校举行', category: '活动通知', publishTime: '2026-06-03', readCount: 980 },
-    { id: 3, title: '屯堡地戏走进校园：非遗活态传承公开课开讲', category: '文化传承', publishTime: '2026-06-01', readCount: 1500 },
+    { id: 3, title: '屯堡地戏走进校园：非遗活态传承公开课开讲', category: '专题学习', publishTime: '2026-06-01', readCount: 1500 },
     { id: 4, title: '阳明心学十二讲课程上线，欢迎选学', category: '书院动态', publishTime: '2026-05-28', readCount: 860 },
-    { id: 5, title: '红色交通史主题展在校史馆开展', category: '文化传承', publishTime: '2026-05-25', readCount: 742 },
+    { id: 5, title: '红色交通史主题展在校史馆开展', category: '专题学习', publishTime: '2026-05-25', readCount: 742 },
     { id: 6, title: '关于开展 2026 年传统文化系列研学活动的通知', category: '活动通知', publishTime: '2026-05-20', readCount: 655 }
   ],
 
@@ -61,9 +61,9 @@ module.exports = {
       desc: '从龙场悟道到致良知，系统讲授阳明心学的精髓与当代价值。' },
     { id: 2, name: '长征精神与红色交通史', cat: '思政必修', audience: '全校学生', lessonCount: 8, tag: '思政必修',
       desc: '重温红色交通线，传承长征精神，赓续红色血脉。' },
-    { id: 3, name: '屯堡文化探源', cat: '文化传承', audience: '全校学生', lessonCount: 6, tag: '文化传承',
+    { id: 3, name: '屯堡文化探源', cat: '专题学习', audience: '全校学生', lessonCount: 6, tag: '专题学习',
       desc: '走进六百年江南遗风，解读屯堡地戏与石头建筑的活态传承。' },
-    { id: 4, name: '贵州非遗技艺赏析', cat: '文化传承', audience: '全校学生', lessonCount: 10, tag: '非遗',
+    { id: 4, name: '贵州非遗技艺赏析', cat: '专题学习', audience: '全校学生', lessonCount: 10, tag: '非遗',
       desc: '蜡染、银饰、地戏……感受多彩黔中的匠心与巧思。' },
     { id: 5, name: '中华书法入门', cat: '美育素养', audience: '全校学生', lessonCount: 12, tag: '美育',
       desc: '笔墨纸砚，从执笔运锋到临帖创作，涵养审美与心性。' }
@@ -128,7 +128,7 @@ module.exports = {
   resources: [
     { id: 1, name: '阳明心学导读.pdf', fileType: 'pdf', fileSizeKb: 2048, fileSizeText: '2.0 MB', categoryName: '思政学习' },
     { id: 2, name: '长征精神学习课件.ppt', fileType: 'ppt', fileSizeKb: 5120, fileSizeText: '5.0 MB', categoryName: '思政学习' },
-    { id: 3, name: '屯堡文化读本.doc', fileType: 'word', fileSizeKb: 1024, fileSizeText: '1.0 MB', categoryName: '文化读本' },
+    { id: 3, name: '屯堡文化读本.doc', fileType: 'word', fileSizeKb: 1024, fileSizeText: '1.0 MB', categoryName: '学习读本' },
     { id: 4, name: '阳明心学十二讲·配套课件.pptx', fileType: 'ppt', fileSizeKb: 6220, fileSizeText: '6.1 MB', categoryName: '课程课件' },
     { id: 5, name: '龙场悟道·情景微课.mp4', fileType: 'mp4', fileSizeKb: 86016, fileSizeText: '84 MB', categoryName: '视频课程' },
     { id: 6, name: '致良知·音频导读.mp3', fileType: 'mp3', fileSizeKb: 18432, fileSizeText: '18 MB', categoryName: '音频伴学' },
@@ -151,7 +151,7 @@ module.exports = {
     },
     reco: [
       { id: 2, n: '“通途之路”研学品牌启动仪式在我校举行', m: '活动通知 · 2026-06-03' },
-      { id: 3, n: '屯堡地戏走进校园：非遗活态传承公开课开讲', m: '文化传承 · 2026-06-01' },
+      { id: 3, n: '屯堡地戏走进校园：非遗活态传承公开课开讲', m: '专题学习 · 2026-06-01' },
       { id: 4, n: '阳明心学十二讲课程上线，欢迎选学', m: '书院动态 · 2026-05-28' }
     ]
   },

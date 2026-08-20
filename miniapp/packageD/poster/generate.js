@@ -1,4 +1,4 @@
-// packageD/poster/generate.js — 文化分享海报生成
+// packageD/poster/generate.js — 分享海报生成
 const { get } = require('../../utils/request')
 
 const TEMPLATES = [
@@ -13,8 +13,8 @@ Page({
     templates: TEMPLATES,
     active: 0,
     tpl: TEMPLATES[0],
-    title: '云端书院 · 文化分享',
-    subtitle: '传承中华优秀传统文化',
+    title: '云端书院 · 分享',
+    subtitle: '扫码进入云端书院',
     type: '',
     saving: false
   },

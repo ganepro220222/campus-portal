@@ -6,7 +6,7 @@ const CONFIG = {
   enrolls:    { title: '我的报名',   api: '/profile/enrolls',    empty: '暂无报名' },
   downloads:  { title: '下载记录',   api: '/profile/downloads',  empty: '暂无下载记录' },
   footprints: { title: '学习足迹',   api: '/profile/footprints', empty: '近 30 天暂无足迹' },
-  badges:     { title: '文化徽章',   api: '/profile/badges',     empty: '暂无徽章数据' }
+  badges:     { title: '学习徽章',   api: '/profile/badges',     empty: '暂无徽章数据' }
 }
 
 // 有效报名状态；cancelled 由后端排除，不在「我的报名」列表返回

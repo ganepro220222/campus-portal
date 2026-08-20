@@ -6,7 +6,7 @@ Component({
     inactive: '#8A93B2',
     list: [
       { icon: 'home',   text: '首页', path: '/pages/index/index' },
-      { icon: 'news',   text: '新闻', path: '/pages/news/index' },
+      { icon: 'news',   text: '动态', path: '/pages/news/index' },
       { icon: 'museum', text: '展馆', path: '/pages/hall/index' },
       { icon: 'course', text: '课程', path: '/pages/course/index' }
     ]

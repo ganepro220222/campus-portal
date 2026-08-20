@@ -41,7 +41,7 @@
   <view wx:elif="{{!hasMore && newsList.length}}" class="list-tip">— 已加载全部 —</view>
   <view wx:elif="{{!newsList.length}}" class="empty-state">
     <icon name="news" size="40" color="#C3CCE0" />
-    <text>暂无新闻</text>
+    <text>暂无动态</text>
   </view>
 
   <view class="list-bottom"></view>

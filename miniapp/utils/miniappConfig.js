@@ -3,7 +3,7 @@
 const { get } = require('./request')
 
 const DEFAULT = {
-  aiAssistantWelcome: '你好！我是书院文化助手，可以基于书院知识库为你解答文化相关问题。',
+  aiAssistantWelcome: '你好！我是书院助手，可以基于书院知识库为你解答学习相关问题。',
   aiAssistantChips: ['什么是阳明文化？', '屯堡文化有何特色？', '龙场悟道讲了什么？'],
   searchHotTags: ['阳明文化', '屯堡地戏', '红色交通', '非遗银饰', '知行合一']
 }

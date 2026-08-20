@@ -60,7 +60,7 @@ function decorateNewsFeed(list) {
 function decorateCourses(list) {
   return (list || []).map((it, i) => withCoverFields({
     ...it,
-    categoryName: it.categoryName || '文化课程',
+    categoryName: it.categoryName || '精品课程',
     colorClass: it.colorClass || HALL_COLORS[i % HALL_COLORS.length],
     icon: it.icon || COURSE_ICONS[i % COURSE_ICONS.length]
   }))
@@ -72,7 +72,7 @@ function decorateCourseCards(list) {
     colorClass: it.colorClass || COURSE_COLORS[i % COURSE_COLORS.length],
     icon: it.icon || COURSE_CARD_ICONS[i % COURSE_CARD_ICONS.length],
     audience: it.audience || it.targetAudience || '全校学生',
-    tag: it.tag || it.categoryName || '文化课程',
+    tag: it.tag || it.categoryName || '精品课程',
     tagGold: it.tagGold || it.tag === 'AI 字幕'
   }))
 }

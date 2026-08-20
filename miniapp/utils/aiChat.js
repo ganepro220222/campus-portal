@@ -56,7 +56,7 @@ function resolveErrorAnswer(err, question) {
     return err.message || '今日问答次数已用完，请明天再来'
   }
   if (err && err.code === 401) {
-    return '请先登录后再使用书院文化助手。'
+    return '请先登录后再使用书院助手。'
   }
   return '暂时无法回答，请确认已登录，或在管理后台录入知识库资料后重试。'
 }

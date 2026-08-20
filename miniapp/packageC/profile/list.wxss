@@ -76,6 +76,9 @@
 }
 .pl-badge.on { background: rgba(201, 162, 39, 0.15); color: #C9A227; }
 
+/* 文案在「再次下载」(4 字 = 88rpx) 与「下载中」(3 字 = 66rpx) 之间切换，
+   而 .pl-right 是 flex-shrink:0、.pl-body 是 flex:1——不锁宽的话点一下芯片缩 22rpx，
+   左边两行截断的标题跟着重排，看起来就是「抖了一下」。按长的那个态定死下限。 */
 .pl-redownload {
   font-size: 22rpx;
   font-weight: 600;
@@ -84,6 +87,9 @@
   padding: 10rpx 20rpx;
   border-radius: 22rpx;
   white-space: nowrap;
+  box-sizing: border-box;
+  min-width: 128rpx;
+  text-align: center;
 }
 .pl-redownload.is-loading {
   opacity: 0.65;

@@ -39,6 +39,7 @@
         "college/list",
         "college/webview",
         "profile/list",
+        "profile/edit",
         "message/index",
         "feedback/index",
         "about/index",

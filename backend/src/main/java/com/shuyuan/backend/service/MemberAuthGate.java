@@ -78,7 +78,11 @@ public class MemberAuthGate {
                 || "OPTIONS".equalsIgnoreCase(method)) {
             return true;
         }
-        return "POST".equalsIgnoreCase(method)
-                && "/api/v1/auth/change-password".equals(request.getRequestURI());
+        String uri = request.getRequestURI();
+        if ("POST".equalsIgnoreCase(method) && "/api/v1/auth/change-password".equals(uri)) {
+            return true;
+        }
+        // 首次登录须改密期间仍允许完善个人资料（报名预填依赖 member_profile）
+        return "PUT".equalsIgnoreCase(method) && "/api/v1/profile".equals(uri);
     }
 }

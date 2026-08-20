@@ -1,0 +1,62 @@
+/* packageC/profile/edit.wxss */
+.pe-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.pe-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8A93B2;
+  font-size: 28rpx;
+}
+.pe-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
+
+.pe-card {
+  margin: 0 28rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  box-shadow: var(--shadow-sm);
+}
+.pe-hint {
+  font-size: 24rpx;
+  color: var(--sub);
+  line-height: 1.6;
+  margin-bottom: 24rpx;
+  padding: 18rpx 20rpx;
+  background: var(--sky-3);
+  border-radius: 16rpx;
+}
+.pe-label { font-size: 27rpx; font-weight: 600; color: var(--ink); margin-bottom: 14rpx; }
+.pe-label:not(:first-of-type) { margin-top: 26rpx; }
+.req { color: var(--color-danger); margin-left: 4rpx; }
+
+.pe-input {
+  width: 100%;
+  height: 84rpx;
+  background: var(--sky-3);
+  border: 1rpx solid var(--line);
+  border-radius: 18rpx;
+  padding: 0 22rpx;
+  font-size: 27rpx;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.pe-pad { height: 40rpx; }
+.pe-bar {
+  padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1rpx solid var(--line);
+}
+.pe-submit {
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  color: #fff;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  height: 88rpx;
+  line-height: 88rpx;
+}
+.pe-submit::after { border: none; }
+.pe-submit.ing { opacity: 0.75; }

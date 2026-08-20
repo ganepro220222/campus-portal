@@ -1,10 +1,13 @@
 package com.shuyuan.backend.controller.api;
 
 import com.shuyuan.backend.common.Result;
+import com.shuyuan.backend.dto.ProfileUpdateRequest;
 import com.shuyuan.backend.service.ProfileService;
 import com.shuyuan.backend.vo.MemberVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,6 +25,11 @@ public class ProfileController {
     @GetMapping
     public Result<MemberVO> profile() {
         return Result.ok(profileService.profile());
+    }
+
+    @PutMapping
+    public Result<MemberVO> updateProfile(@RequestBody ProfileUpdateRequest req) {
+        return Result.ok(profileService.updateProfile(req));
     }
 
     @GetMapping("/stats")

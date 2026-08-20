@@ -10,6 +10,9 @@ public class MemberVO {
     private Long id;
     private String nickname;
     private String avatar;
+    private String realName;
     private String college;
+    private String grade;
+    private String phone;
     private Integer points;
 }

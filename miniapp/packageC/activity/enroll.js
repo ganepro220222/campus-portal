@@ -70,10 +70,10 @@ Page({
         statusLabel: enrollStatusLabel(detail.enrollStatus),
         enrolledHint,
         form: {
-          name: '',
-          phone: '',
+          name: (profile && profile.realName) || '',
+          phone: (profile && profile.phone) || '',
           college: (profile && profile.college) || '',
-          grade: ''
+          grade: (profile && profile.grade) || ''
         }
       }, () => {
         if (detail.enrollStatus === 'approved' && detail.voucherCode) {

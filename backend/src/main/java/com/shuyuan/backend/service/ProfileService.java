@@ -3,12 +3,14 @@ package com.shuyuan.backend.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.dto.ProfileUpdateRequest;
 import com.shuyuan.backend.entity.*;
 import com.shuyuan.backend.mapper.*;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.vo.MemberVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -44,14 +46,82 @@ public class ProfileService {
         if (member == null) {
             throw new BusinessException(401, "请先登录");
         }
+        return toMemberVo(member, memberProfileMapper.selectById(memberId));
+    }
+
+    /** 更新个人资料（member_profile 为主，昵称可选更新 member） */
+    @Transactional
+    public MemberVO updateProfile(ProfileUpdateRequest req) {
+        Long memberId = requireMemberId();
+        Member member = memberMapper.selectById(memberId);
+        if (member == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+
+        String realName = trim(req.getRealName());
+        String phone = trim(req.getPhone());
+        if (realName.isBlank()) {
+            throw new BusinessException(400, "请填写姓名");
+        }
+        if (phone.isBlank()) {
+            throw new BusinessException(400, "请填写手机号");
+        }
+        if (!isValidCnMobile(phone)) {
+            throw new BusinessException(400, "手机号格式不正确");
+        }
+
+        String nickname = trim(req.getNickname());
+        if (!nickname.isBlank()) {
+            Member nickUpdate = new Member();
+            nickUpdate.setId(memberId);
+            nickUpdate.setNickname(nickname);
+            memberMapper.updateById(nickUpdate);
+            member.setNickname(nickname);
+        }
+
         MemberProfile profile = memberProfileMapper.selectById(memberId);
+        boolean insert = profile == null;
+        if (insert) {
+            profile = new MemberProfile();
+            profile.setMemberId(memberId);
+        }
+        profile.setRealName(realName);
+        profile.setCollege(trim(req.getCollege()));
+        profile.setGrade(trim(req.getGrade()));
+        profile.setPhone(phone);
+        profile.setUpdateTime(LocalDateTime.now());
+        if (insert) {
+            memberProfileMapper.insert(profile);
+        } else {
+            memberProfileMapper.updateById(profile);
+        }
+
+        member = memberMapper.selectById(memberId);
+        return toMemberVo(member, profile);
+    }
+
+    private MemberVO toMemberVo(Member member, MemberProfile profile) {
+        String college = profile != null && profile.getCollege() != null && !profile.getCollege().isBlank()
+                ? profile.getCollege()
+                : "贵州交通职业大学 · 中华文化书院";
         return MemberVO.builder()
                 .id(member.getId())
                 .nickname(member.getNickname())
                 .avatar(member.getAvatar())
-                .college(profile != null ? profile.getCollege() : "贵州交通职业大学 · 中华文化书院")
+                .realName(profile != null ? profile.getRealName() : null)
+                .college(college)
+                .grade(profile != null ? profile.getGrade() : null)
+                .phone(profile != null ? profile.getPhone() : null)
                 .points(member.getPoints())
                 .build();
+    }
+
+    private static String trim(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private static boolean isValidCnMobile(String phone) {
+        return phone != null && phone.matches("^1[3-9]\\d{9}$");
     }
 
     public Map<String, Object> stats() {

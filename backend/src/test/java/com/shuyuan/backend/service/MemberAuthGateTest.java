@@ -102,10 +102,12 @@ class MemberAuthGateTest {
         MemberSession session = new MemberSession(9L, true);
         MockHttpServletRequest enroll = new MockHttpServletRequest("POST", "/api/v1/activities/1/enroll");
         MockHttpServletRequest changePwd = new MockHttpServletRequest("POST", "/api/v1/auth/change-password");
+        MockHttpServletRequest profileUpdate = new MockHttpServletRequest("PUT", "/api/v1/profile");
         MockHttpServletRequest read = new MockHttpServletRequest("GET", "/api/v1/activities");
 
         assertTrue(memberAuthGate.blocksWriteForMustChangePassword(enroll, session));
         assertFalse(memberAuthGate.blocksWriteForMustChangePassword(changePwd, session));
+        assertFalse(memberAuthGate.blocksWriteForMustChangePassword(profileUpdate, session));
         assertFalse(memberAuthGate.blocksWriteForMustChangePassword(read, session));
     }
 

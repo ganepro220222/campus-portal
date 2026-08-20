@@ -211,7 +211,10 @@ public class AuthService {
                 .id(member.getId())
                 .nickname(member.getNickname())
                 .avatar(member.getAvatar())
+                .realName(profile != null ? profile.getRealName() : null)
                 .college(profile != null ? profile.getCollege() : null)
+                .grade(profile != null ? profile.getGrade() : null)
+                .phone(profile != null ? profile.getPhone() : null)
                 .points(member.getPoints())
                 .build();
         return LoginVO.builder()

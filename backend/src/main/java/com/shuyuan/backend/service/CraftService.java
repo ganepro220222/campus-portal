@@ -24,6 +24,7 @@ public class CraftService {
     private final CraftContactMapper craftContactMapper;
     private final CategoryService categoryService;
     private final EventLogService eventLogService;
+    private final FavoriteService favoriteService;
 
     public List<Map<String, Object>> list(String category) {
         Map<Long, String> catMap = categoryService.nameMap("craft");
@@ -80,6 +81,7 @@ public class CraftService {
         m.put("images", imageList);
         m.put("contact", contactVo);
         eventLogService.record("view", "craft", id);
+        favoriteService.enrichCollected(m, "craft", id);
         return m;
     }
 

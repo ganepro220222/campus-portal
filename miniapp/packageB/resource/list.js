@@ -2,6 +2,8 @@
 const { get } = require('../../utils/request')
 const { mergeResourceList } = require('../../utils/content')
 const { downloadResource } = require('../../utils/resourceDownload')
+const { requireLogin } = require('../../utils/auth')
+const { applyListCollected, patchListItemCollected, toggleFavorite } = require('../../utils/favoriteToggle')
 
 // 文件类型 → 色标 / 标签 / 归类
 const FT = {
@@ -36,10 +38,10 @@ Page({
     let all
     try {
       const list = await get('/resources').catch(() => null)
-      all = decorate(mergeResourceList(list))
+      all = applyListCollected(decorate(mergeResourceList(list)))
     } catch (err) {
       console.warn('[resource/list] 加载失败', err)
-      all = decorate(mergeResourceList(null))
+      all = applyListCollected(decorate(mergeResourceList(null)))
     }
     this.setData({ all, loading: false })
     this._applyFilter()
@@ -75,6 +77,21 @@ Page({
     }
     downloadResource(id, {
       onRecorded: () => this._bumpDownloadCount(id)
+    })
+  },
+
+  onCollect(e) {
+    const id = e.currentTarget.dataset.id
+    if (id == null || id === '') return
+    requireLogin(() => {
+      toggleFavorite('resource', id).then(res => {
+        const collected = !!(res && res.collected)
+        this.setData({
+          all: patchListItemCollected(this.data.all, id, collected),
+          resourceList: patchListItemCollected(this.data.resourceList, id, collected)
+        })
+        if (collected) wx.showToast({ title: '收藏成功', icon: 'none' })
+      })
     })
   },
 

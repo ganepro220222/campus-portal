@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ public class ResourceService {
     private final EventLogService eventLogService;
     private final PointService pointService;
     private final OssService ossService;
+    private final FavoriteService favoriteService;
 
     public List<Map<String, Object>> list(String category, String fileType) {
         Map<Long, String> catMap = categoryService.nameMap("resource");
@@ -42,16 +44,20 @@ public class ResourceService {
         if (fileType != null && !fileType.isBlank() && !"全部".equals(fileType)) {
             qw.eq(Resource::getFileType, fileType);
         }
-        return resourceMapper.selectList(qw).stream()
+        List<Map<String, Object>> list = new ArrayList<>(resourceMapper.selectList(qw).stream()
                 .map(r -> toListItem(r, catMap))
-                .toList();
+                .toList());
+        favoriteService.enrichListCollected(list, "resource");
+        return list;
     }
 
     public Map<String, Object> detail(Long id) {
         Resource resource = requireResource(id);
         Map<Long, String> catMap = categoryService.nameMap("resource");
         eventLogService.record("view", "resource", id);
-        return toDetailVo(resource, catMap);
+        Map<String, Object> m = toDetailVo(resource, catMap);
+        favoriteService.enrichCollected(m, "resource", id);
+        return m;
     }
 
     /** 记录下载并返回文件地址（需登录；调用本接口即记下载，与文件是否成功打开无关） */

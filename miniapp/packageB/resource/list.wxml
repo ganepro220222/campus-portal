@@ -31,8 +31,13 @@
           <text class="res-s">{{item.categoryName}} · {{item.fileSizeText}}</text>
         </view>
       </view>
-      <view class="res-dl" catchtap="onDownload" data-id="{{item.id}}" data-name="{{item.name}}" data-file-type="{{item.fileType}}">
-        <icon name="download" size="18" color="#2B356E" />
+      <view class="res-actions">
+        <view class="fav-icon {{item.collected ? 'fav-on' : ''}}" catchtap="onCollect" data-id="{{item.id}}">
+          <icon name="bookmark" size="16" color="{{item.collected ? '#C0392B' : '#5A648A'}}" />
+        </view>
+        <view class="res-dl" catchtap="onDownload" data-id="{{item.id}}" data-name="{{item.name}}" data-file-type="{{item.fileType}}">
+          <icon name="download" size="18" color="#2B356E" />
+        </view>
       </view>
     </view>
 

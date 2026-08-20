@@ -4,6 +4,8 @@ const mock = require('../../mock/defaults')
 const { mergeHallDetail } = require('../../utils/content')
 const { buildPosterNavigateUrl, pickHallCover } = require('../../utils/posterCover')
 const { useMock } = require('../../utils/mockGuard')
+const { requireLogin } = require('../../utils/auth')
+const { mapCollectedFromDetail, applyCollectedToggle, toggleFavorite } = require('../../utils/favoriteToggle')
 
 const emptyHall = mergeHallDetail(null)
 
@@ -16,13 +18,16 @@ Page({
     audioPlaying: false,
     scrollProgress: 0,
     activeSectionId: '',
-    scrollIntoView: ''
+    scrollIntoView: '',
+    collected: false,
+    collectLabel: '收藏'
   },
 
   onLoad(opts) {
     this._audio = null
     this._sectionObserver = null
     const id = opts && opts.id
+    this._hallId = id
     if (!id) {
       if (useMock) this._initImmersive(mock.hallDetail)
       return
@@ -33,7 +38,8 @@ Page({
         const hall = mergeHallDetail(h, demoFallback)
         this.setData({
           hall,
-          currentCaption: hall.currentCaption || hall.caption
+          currentCaption: hall.currentCaption || hall.caption,
+          ...mapCollectedFromDetail(h)
         })
         this._initImmersive(hall)
       }
@@ -190,6 +196,18 @@ Page({
         title: hall.name || '',
         subtitle: '线上展馆 · 沉浸式文化体验',
         cover: pickHallCover(hall)
+      })
+    })
+  },
+
+  onCollect() {
+    const id = (this.data.hall && this.data.hall.id) || (this._hallId)
+    if (!id) return
+    requireLogin(() => {
+      toggleFavorite('hall', id).then(res => {
+        const patch = applyCollectedToggle(this.data, res)
+        this.setData(patch)
+        if (patch.collected) wx.showToast({ title: '收藏成功', icon: 'none' })
       })
     })
   }

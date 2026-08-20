@@ -4,6 +4,8 @@ const { mergeCraftDetail } = require('../../utils/content')
 const { buildPosterNavigateUrl, pickCraftCover } = require('../../utils/posterCover')
 const mock = require('../../mock/defaults')
 const { useMock } = require('../../utils/mockGuard')
+const { requireLogin } = require('../../utils/auth')
+const { mapCollectedFromDetail, applyCollectedToggle, toggleFavorite } = require('../../utils/favoriteToggle')
 
 const COVER_CLASSES = ['gi1', 'gi2', 'gi3']
 
@@ -13,7 +15,9 @@ Page({
     detail: mergeCraftDetail(null),
     slides: [],
     galleryIndex: 0,
-    lang: 'zh'
+    lang: 'zh',
+    collected: false,
+    collectLabel: '收藏'
   },
 
   onLoad(opts) {
@@ -31,7 +35,8 @@ Page({
     this.setData({
       detail,
       slides: buildSlides(detail),
-      galleryIndex: 0
+      galleryIndex: 0,
+      ...mapCollectedFromDetail(detail)
     })
   },
 
@@ -95,6 +100,18 @@ Page({
         title: d.name || '',
         subtitle: '精品好物 · 书院文创展示',
         cover: pickCraftCover(d)
+      })
+    })
+  },
+
+  onCollect() {
+    const id = this.data.craftId || (this.data.detail && this.data.detail.id)
+    if (!id) return
+    requireLogin(() => {
+      toggleFavorite('craft', id).then(res => {
+        const patch = applyCollectedToggle(this.data, res)
+        this.setData(patch)
+        if (patch.collected) wx.showToast({ title: '收藏成功', icon: 'none' })
       })
     })
   }

@@ -260,3 +260,35 @@ page {
   flex-shrink: 0;
 }
 .pill.gold { background: #FBF3DD; color: #9C7C2E; }
+
+/* 详情页收藏按钮（展馆/文创/课程/资源共用） */
+.fav-bar { display: flex; justify-content: flex-end; margin: 0 28rpx 8rpx; }
+.fav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 28rpx;
+  border-radius: 30rpx;
+  border: 1rpx solid var(--line);
+  background: #fff;
+  font-size: 25rpx;
+  color: var(--sub);
+}
+.fav-btn.fav-on {
+  color: #C0392B;
+  border-color: #F3C9C2;
+  background: #FDF1EF;
+}
+.fav-bar-inline { margin: 20rpx 0 0; justify-content: flex-start; }
+.fav-icon {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--sky-3);
+  border: 1rpx solid var(--line);
+  flex-shrink: 0;
+}
+.fav-icon.fav-on { background: #FDF1EF; border-color: #F3C9C2; }

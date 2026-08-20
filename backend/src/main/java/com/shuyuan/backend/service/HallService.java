@@ -27,6 +27,7 @@ public class HallService {
     private final CategoryService categoryService;
     private final EventLogService eventLogService;
     private final PointService pointService;
+    private final FavoriteService favoriteService;
 
     public List<Map<String, Object>> list(String category) {
         Map<Long, String> catMap = categoryService.nameMap("hall");
@@ -91,6 +92,7 @@ public class HallService {
         m.put("audioTime", audio != null && audio.getCaption() != null ? audio.getCaption() : "语音讲解");
         eventLogService.record("view", "hall", id);
         pointService.awardCurrentUser("view_hall");
+        favoriteService.enrichCollected(m, "hall", id);
         return m;
     }
 

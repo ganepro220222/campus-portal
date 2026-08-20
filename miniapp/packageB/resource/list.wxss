@@ -72,6 +72,12 @@
 }
 .res-meta { display: flex; align-items: center; gap: 12rpx; margin-top: 10rpx; }
 .res-s { font-size: 21rpx; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
 .res-dl {
   width: 72rpx;
   height: 72rpx;

@@ -4,16 +4,17 @@ const { mergeCourseDetail } = require('../../utils/content')
 const { requireLogin } = require('../../utils/auth')
 const { downloadResource } = require('../../utils/resourceDownload')
 const { formatDuration } = require('../../utils/format')
+const { mapCollectedFromDetail, applyCollectedToggle, toggleFavorite } = require('../../utils/favoriteToggle')
 
 Page({
-  data: { course: mergeCourseDetail(null), progressHint: '' },
+  data: { course: mergeCourseDetail(null), progressHint: '', collected: false, collectLabel: '收藏' },
 
   onLoad(opts) {
     const id = opts && opts.id
     if (!id) return
     this._courseId = id
     get(`/courses/${id}`).then(c => {
-      if (c) this.setData({ course: mergeCourseDetail(c) })
+      if (c) this.setData({ course: mergeCourseDetail(c), ...mapCollectedFromDetail(c) })
     }).catch(err => {
       console.warn('[course/detail] 详情加载失败', err)
     })
@@ -52,5 +53,17 @@ Page({
       return
     }
     downloadResource(id)
+  },
+
+  onCollect() {
+    const id = this._courseId || (this.data.course && this.data.course.id)
+    if (!id) return
+    requireLogin(() => {
+      toggleFavorite('course', id).then(res => {
+        const patch = applyCollectedToggle(this.data, res)
+        this.setData(patch)
+        if (patch.collected) wx.showToast({ title: '收藏成功', icon: 'none' })
+      })
+    })
   }
 })

@@ -102,6 +102,13 @@
         </view>
       </view>
 
+      <view class="fav-bar">
+        <view class="fav-btn {{collected ? 'fav-on' : ''}}" bindtap="onCollect">
+          <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
+          <text>{{collectLabel}}</text>
+        </view>
+      </view>
+
       <view class="poster-btn-wrap">
         <button class="poster-btn" bindtap="onPoster">
           <icon name="poster" size="18" color="#ffffff" />

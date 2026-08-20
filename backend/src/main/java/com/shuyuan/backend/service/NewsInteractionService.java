@@ -26,6 +26,7 @@ public class NewsInteractionService {
     private final FavoriteMapper favoriteMapper;
     private final EventLogService eventLogService;
     private final PointService pointService;
+    private final FavoriteService favoriteService;
 
     @Transactional
     public Map<String, Object> toggleLike(Long newsId) {
@@ -66,39 +67,7 @@ public class NewsInteractionService {
 
     @Transactional
     public Map<String, Object> toggleFavorite(Long newsId) {
-        Long memberId = requireMemberId();
-        News news = requireNews(newsId);
-
-        Favorite existing = favoriteMapper.selectOne(new LambdaQueryWrapper<Favorite>()
-                .eq(Favorite::getMemberId, memberId)
-                .eq(Favorite::getTargetType, "news")
-                .eq(Favorite::getTargetId, newsId)
-                .last("LIMIT 1"));
-
-        int favoriteCount = news.getFavoriteCount() != null ? news.getFavoriteCount() : 0;
-        boolean collected;
-        if (existing != null) {
-            favoriteMapper.deleteById(existing.getId());
-            favoriteCount = Math.max(0, favoriteCount - 1);
-            collected = false;
-        } else {
-            Favorite record = new Favorite();
-            record.setMemberId(memberId);
-            record.setTargetType("news");
-            record.setTargetId(newsId);
-            favoriteMapper.insert(record);
-            favoriteCount = favoriteCount + 1;
-            collected = true;
-            eventLogService.recordIfLoggedIn("favorite", "news", newsId);
-            pointService.awardCurrentUser("favorite");
-        }
-        news.setFavoriteCount(favoriteCount);
-        newsMapper.updateById(news);
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("collected", collected);
-        result.put("favoriteCount", favoriteCount);
-        return result;
+        return favoriteService.toggle("news", newsId);
     }
 
     public void enrichDetailInteraction(Map<String, Object> detail, News news) {

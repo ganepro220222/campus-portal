@@ -31,6 +31,12 @@
           <view class="mi"><icon name="book" size="15" color="#2B356E" /><text>分类：{{course.category}}</text></view>
         </view>
         <view class="intro">{{course.intro}}</view>
+        <view class="fav-bar fav-bar-inline">
+          <view class="fav-btn {{collected ? 'fav-on' : ''}}" bindtap="onCollect">
+            <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
+            <text>{{collectLabel}}</text>
+          </view>
+        </view>
       </view>
 
       <!-- 配套资源 -->

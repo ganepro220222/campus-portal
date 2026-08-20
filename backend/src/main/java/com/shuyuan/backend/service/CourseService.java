@@ -29,6 +29,7 @@ public class CourseService {
     private final CategoryService categoryService;
     private final EventLogService eventLogService;
     private final OssService ossService;
+    private final FavoriteService favoriteService;
 
     public List<Map<String, Object>> list(String category) {
         Map<Long, String> catMap = categoryService.nameMap("course");
@@ -69,6 +70,7 @@ public class CourseService {
         m.put("tags", List.of(categoryName, hasSubtitle ? "AI 字幕" : "在线课程"));
         m.put("resources", loadLinkedResources(id));
         eventLogService.record("view", "course", id);
+        favoriteService.enrichCollected(m, "course", id);
         return m;
     }
 

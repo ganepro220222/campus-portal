@@ -92,5 +92,6 @@ function openContentLink(linkType, linkValue) {
 module.exports = {
   openContentLink,
   isTabPage,
-  resolveBannerPath
+  resolveBannerPath,
+  openPath
 }

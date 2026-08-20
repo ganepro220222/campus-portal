@@ -8,6 +8,7 @@ const {
 } = require('../../utils/decorate')
 const { openContentLink } = require('../../utils/navigate')
 const { getNavBarLayout } = require('../../utils/navbar')
+const { mergeHomeNavItems, openNavItem, DEFAULT_ENTRIES } = require('../../utils/homeNav')
 
 Page({
   data: {
@@ -19,6 +20,7 @@ Page({
     courseList:         mockOrEmpty(decorateCourses(mock.coursesHome), []),
     collegeList:        [],
     collegeHome:        [],
+    navEntries:         DEFAULT_ENTRIES,
     hasNewAnnouncement: false,
     loading:            true,
     statusBarHeight:    20,
@@ -46,12 +48,20 @@ Page({
 
   async _loadPage() {
     const cached = store.getCache('home')
-    if (cached) { this.setData({ ...cached, loading: false }); return }
+    if (cached) {
+      this.setData({
+        ...cached,
+        navEntries: cached.navEntries || DEFAULT_ENTRIES,
+        loading: false
+      })
+      return
+    }
     try {
-      const [banners, recommends, colleges] = await Promise.all([
+      const [banners, recommends, colleges, navItems] = await Promise.all([
         get('/banners').catch(() => []),
         get('/home/recommends').catch(() => ({})),
-        get('/colleges/home').catch(() => [])
+        get('/colleges/home').catch(() => []),
+        get('/home/nav-items').catch(() => [])
       ])
       const collegeAll = withListFallback(colleges, mock.collegesHome || [])
       const data = {
@@ -60,7 +70,8 @@ Page({
         newsList:   decorateNews(withListFallback(recommends && recommends.news, mock.newsHome)),
         courseList: decorateCourses(withListFallback(recommends && recommends.courses, mock.coursesHome)),
         collegeList: collegeAll,
-        collegeHome: collegeAll.slice(0, 3)
+        collegeHome: collegeAll.slice(0, 3),
+        navEntries: mergeHomeNavItems(navItems)
       }
       store.setCache('home', data)
       this.setData({ ...data, loading: false })
@@ -107,11 +118,14 @@ Page({
   },
 
   onEntryTap(e) {
-    const key = e.currentTarget.dataset.key
-    const TAB = { news: '/pages/news/index', hall: '/pages/hall/index', course: '/pages/course/index' }
-    const NAV = { resource: '/packageB/resource/list', enroll: '/pages/activity/index' }
-    if (TAB[key]) wx.switchTab({ url: TAB[key] })
-    else if (NAV[key]) wx.navigateTo({ url: NAV[key] })
+    const index = Number(e.currentTarget.dataset.index)
+    const entry = (this.data.navEntries || [])[index]
+    if (entry) openNavItem(entry)
+  },
+
+  onSectionMore(e) {
+    const path = e.currentTarget.dataset.path
+    if (path) openNavItem({ path })
   },
 
   onHallTap(e) { wx.navigateTo({ url: `/packageA/hall/detail?id=${e.currentTarget.dataset.id}` }) },

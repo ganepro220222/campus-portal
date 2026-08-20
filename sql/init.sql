@@ -678,6 +678,13 @@ CREATE TABLE IF NOT EXISTS `nav_item` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='首页功能入口';
 
+INSERT IGNORE INTO `nav_item` (`id`, `label`, `icon`, `path`, `sort`, `status`) VALUES
+(1, '书院动态', 'entry-news',     '/pages/news/index',        1, 1),
+(2, '展馆展示', 'museum',         '/pages/hall/index',        2, 1),
+(3, '课程中心', 'course',         '/pages/course/index',      3, 1),
+(4, '资源下载', 'entry-resource', '/packageB/resource/list', 4, 1),
+(5, '报名',     'entry-enroll',   '/pages/activity/index',    5, 1);
+
 CREATE TABLE IF NOT EXISTS `sys_config` (
   `config_key`   VARCHAR(100) NOT NULL COMMENT '配置键',
   `config_value` TEXT         DEFAULT NULL COMMENT '配置值',

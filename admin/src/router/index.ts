@@ -31,6 +31,12 @@ const router = createRouter({
           meta: { title: '首页轮播', permission: 'admin:super' }
         },
         {
+          path: 'nav-items',
+          name: 'NavItems',
+          component: () => import('@/views/nav/NavItemListView.vue'),
+          meta: { title: '功能入口', permission: 'admin:super' }
+        },
+        {
           path: 'announcements',
           name: 'Announcements',
           component: () => import('@/views/announcement/AnnouncementListView.vue'),
@@ -216,6 +222,7 @@ export const menuItems: MenuNode[] = [
     icon: Monitor, // 首页配置（首页展示屏）
     children: [
       { path: '/banners', title: '首页轮播', icon: Picture, permissions: ['admin:super'] },
+      { path: '/nav-items', title: '功能入口', icon: Grid, permissions: ['admin:super'] },
       { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] }
     ]
   },

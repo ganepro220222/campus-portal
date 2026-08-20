@@ -76,25 +76,15 @@
     <!-- 功能入口矩阵 -->
     <view class="entries-wrap wrap">
       <view class="entries">
-        <view class="entry" bindtap="onEntryTap" data-key="news">
-          <view class="ico e1"><icon name="entry-news" size="25" color="#ffffff" /></view>
-          <text class="entry-label">书院动态</text>
-        </view>
-        <view class="entry" bindtap="onEntryTap" data-key="hall">
-          <view class="ico e2"><icon name="museum" size="25" color="#ffffff" /></view>
-          <text class="entry-label">展馆展示</text>
-        </view>
-        <view class="entry" bindtap="onEntryTap" data-key="course">
-          <view class="ico e3"><icon name="course" size="25" color="#ffffff" /></view>
-          <text class="entry-label">课程中心</text>
-        </view>
-        <view class="entry" bindtap="onEntryTap" data-key="resource">
-          <view class="ico e4"><icon name="entry-resource" size="25" color="#ffffff" /></view>
-          <text class="entry-label">资源下载</text>
-        </view>
-        <view class="entry" bindtap="onEntryTap" data-key="enroll">
-          <view class="ico e5"><icon name="entry-enroll" size="25" color="#ffffff" /></view>
-          <text class="entry-label">报名</text>
+        <view
+          wx:for="{{navEntries}}"
+          wx:key="id"
+          class="entry"
+          bindtap="onEntryTap"
+          data-index="{{index}}"
+        >
+          <view class="ico {{item.toneClass}}"><icon name="{{item.icon}}" size="25" color="#ffffff" /></view>
+          <text class="entry-label">{{item.label}}</text>
         </view>
       </view>
     </view>
@@ -115,7 +105,7 @@
     <view class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">线上展馆 · 11 馆</view>
-        <view class="sec-more" bindtap="onEntryTap" data-key="hall">全部<icon name="chevron-right" size="13" color="#8A93B2" /></view>
+        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/hall/index">全部<icon name="chevron-right" size="13" color="#8A93B2" /></view>
       </view>
       <scroll-view scroll-x class="halls-scroll" enhanced show-scrollbar="{{false}}">
         <view class="halls-inner">
@@ -143,7 +133,7 @@
     <view class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">最新动态</view>
-        <view class="sec-more" bindtap="onEntryTap" data-key="news">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
+        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/news/index">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
       </view>
       <view class="cards">
         <view
@@ -172,7 +162,7 @@
     <view class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">热门课程</view>
-        <view class="sec-more" bindtap="onEntryTap" data-key="course">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
+        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/course/index">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
       </view>
       <view class="cards">
         <view

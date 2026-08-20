@@ -38,6 +38,15 @@ export interface BannerItem {
   status: number
 }
 
+export interface NavItemRecord {
+  id: number
+  label: string
+  icon: string
+  path: string
+  sort: number
+  status: number
+}
+
 export interface AnnouncementItem {
   id: number
   content: string

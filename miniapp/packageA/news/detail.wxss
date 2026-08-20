@@ -101,6 +101,17 @@
 }
 .act:active { background: var(--sky-3); }
 .act-on { color: #C0392B; border-color: #F3C9C2; background: #FDF1EF; }
+.act-share-btn {
+  flex: 1;
+  height: 78rpx;
+  margin: 0;
+  padding: 0;
+  line-height: normal;
+  font-weight: normal;
+  border-radius: 20rpx;
+}
+.act-share-btn::after { border: none; }
+.act-share-hover { background: var(--sky-3); }
 
 /* AI 推荐 */
 .reco {

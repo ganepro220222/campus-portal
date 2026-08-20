@@ -36,10 +36,10 @@
               <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
               <text>{{collected ? '已收藏' : '收藏'}}</text>
             </view>
-            <view class="act" bindtap="onShare">
+            <button class="act act-share-btn" open-type="share" hover-class="act-share-hover">
               <icon name="share" size="16" color="#5A648A" />
               <text>分享</text>
-            </view>
+            </button>
           </view>
         </view>
       </view>

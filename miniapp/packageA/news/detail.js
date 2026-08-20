@@ -2,6 +2,7 @@
 const { get, post } = require('../../utils/request')
 const { mergeNewsArticle } = require('../../utils/content')
 const { requireLogin } = require('../../utils/auth')
+const { buildNewsShareAppMessage, buildNewsShareTimeline } = require('../../utils/newsShare')
 
 Page({
   data: {
@@ -16,8 +17,17 @@ Page({
     const id = opts && opts.id
     if (!id) return
     this.setData({ articleId: id })
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
     this._loadDetail(id)
     this._loadRelated(id)
+  },
+
+  onShareAppMessage() {
+    return buildNewsShareAppMessage(this.data.article, this.data.articleId)
+  },
+
+  onShareTimeline() {
+    return buildNewsShareTimeline(this.data.article, this.data.articleId)
   },
 
   _loadDetail(id) {

@@ -95,3 +95,11 @@
 .ncard-sub { font-size: 22rpx; color: var(--muted); }
 
 .list-bottom { height: calc(150rpx + env(safe-area-inset-bottom)); }
+
+.list-foot {
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--muted);
+  padding: 8rpx 0 24rpx;
+}
+.list-foot-done { color: #C3CCE0; }

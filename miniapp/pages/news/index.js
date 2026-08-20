@@ -1,10 +1,19 @@
 // pages/news/index.js
 const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
-const { withListFallback } = require('../../utils/mockGuard')
+const mockGuard = require('../../utils/mockGuard')
 const { decorateNewsFeed } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
 const { getNavBarLayout } = require('../../utils/navbar')
+const {
+  DEFAULT_PAGE_SIZE,
+  extractPageRecords,
+  mergePageRecords,
+  calcHasMore,
+  filterByCategory,
+  sliceMockPage,
+  mockHasMore
+} = require('../../utils/newsListPage')
 
 Page({
   data: {
@@ -14,7 +23,10 @@ Page({
     cats: ['全部'],
     activeCat: 0,
     newsList: [],
-    loading: true
+    page: 1,
+    hasMore: true,
+    loading: true,
+    loadingMore: false
   },
 
   onLoad() {
@@ -22,7 +34,7 @@ Page({
     loadCategoryNames('news').then(cats => {
       this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })
     })
-    this._load()
+    this._loadList(true)
   },
 
   onShow() {
@@ -32,28 +44,64 @@ Page({
   },
 
   onPullDownRefresh() {
-    this._load().then(() => wx.stopPullDownRefresh())
+    this._loadList(true).then(() => wx.stopPullDownRefresh())
   },
 
-  async _load() {
-    this.setData({ loading: true })
-    const cat = this.data.activeCat ? this.data.cats[this.data.activeCat] : undefined
+  onScrollToLower() {
+    if (this.data.hasMore && !this.data.loading && !this.data.loadingMore) {
+      this._loadList(false)
+    }
+  },
+
+  async _loadList(reset) {
+    if (this.data.loading || this.data.loadingMore) return
+    const page = reset ? 1 : this.data.page
+    const catLabel = this.data.cats[this.data.activeCat]
+    const category = catLabel && catLabel !== '全部' ? catLabel : undefined
+
+    this.setData(reset ? { loading: true } : { loadingMore: true })
+
     try {
-      const list = await get('/news', { category: cat }).catch(() => null)
-      const src = withListFallback(list, mock.newsFull)
-      const filtered = cat ? src.filter(n => (n.category || n.categoryName) === cat) : src
-      this.setData({ newsList: decorateNewsFeed(filtered), loading: false })
+      const res = await get('/news', {
+        page,
+        size: DEFAULT_PAGE_SIZE,
+        category
+      }).catch(() => null)
+
+      let records = extractPageRecords(res)
+      let hasMore = calcHasMore(records, DEFAULT_PAGE_SIZE)
+
+      if (!records.length && mockGuard.useMock) {
+        const mockFull = filterByCategory(mock.newsFull || [], category)
+        records = sliceMockPage(mockFull, page, DEFAULT_PAGE_SIZE)
+        hasMore = mockHasMore(mockFull, page, DEFAULT_PAGE_SIZE)
+      } else if (!records.length && !reset) {
+        hasMore = false
+      }
+
+      const merged = mergePageRecords(
+        reset ? [] : this.data.newsList,
+        decorateNewsFeed(records),
+        reset
+      )
+      this.setData({
+        newsList: merged,
+        page: page + 1,
+        hasMore: merged.length ? hasMore : false,
+        loading: false,
+        loadingMore: false
+      })
     } catch (err) {
       console.warn('[news] 动态列表加载失败', err)
-      this.setData({ newsList: decorateNewsFeed(withListFallback(null, mock.newsFull)), loading: false })
+      this.setData({ loading: false, loadingMore: false, hasMore: false })
     }
   },
 
   switchCat(e) {
     const i = e.currentTarget.dataset.index
     if (i === this.data.activeCat) return
-    this.setData({ activeCat: i })
-    this._load()
+    this.setData({ activeCat: i, hasMore: true })
+    this._loadList(true)
   },
 
   onSearch() {

@@ -24,8 +24,15 @@
     </scroll-view>
   </view>
 
-  <!-- 列表 -->
-  <scroll-view scroll-y class="news-scroll" enhanced show-scrollbar="{{false}}">
+  <!-- 列表（内层 scroll-view，触底用 bindscrolltolower 而非页面 onReachBottom） -->
+  <scroll-view
+    scroll-y
+    class="news-scroll"
+    enhanced
+    show-scrollbar="{{false}}"
+    bindscrolltolower="onScrollToLower"
+    lower-threshold="120"
+  >
     <skeleton show="{{loading && !newsList.length}}" type="list" count="6" />
     <view class="news-wrap">
       <view
@@ -51,6 +58,9 @@
         <icon name="file" size="40" color="#C3CCE0" />
         <text>暂无动态</text>
       </view>
+
+      <view wx:if="{{loadingMore}}" class="list-foot">加载中…</view>
+      <view wx:elif="{{newsList.length && !hasMore}}" class="list-foot list-foot-done">没有更多了</view>
 
       <view class="list-bottom"></view>
     </view>

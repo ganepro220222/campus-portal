@@ -1,9 +1,13 @@
-// utils/newsShare.js — 动态详情分享参数（好友 / 朋友圈）
+// utils/newsShare.js — 动态详情分享与跳转路径
+
+function buildNewsDetailPath(id) {
+  return id != null && id !== '' ? `/packageA/news/detail?id=${id}` : ''
+}
 
 function buildNewsShareAppMessage(article, articleId) {
   const id = articleId != null ? articleId : (article && article.id)
   const title = (article && article.title) ? String(article.title) : '书院动态'
-  const path = id ? `/packageA/news/detail?id=${id}` : '/pages/news/index'
+  const path = buildNewsDetailPath(id) || '/pages/news/index'
   const msg = { title, path }
   const cover = article && article.cover
   if (cover) msg.imageUrl = String(cover)
@@ -19,4 +23,4 @@ function buildNewsShareTimeline(article, articleId) {
   }
 }
 
-module.exports = { buildNewsShareAppMessage, buildNewsShareTimeline }
+module.exports = { buildNewsDetailPath, buildNewsShareAppMessage, buildNewsShareTimeline }

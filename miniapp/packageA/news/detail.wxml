@@ -47,7 +47,7 @@
       <!-- AI 推荐 -->
       <view class="reco">
         <view class="reco-head">智能相关推荐<text class="reco-ai">AI 推荐</text></view>
-        <view class="reco-it" wx:for="{{reco}}" wx:key="id" data-id="{{item.id}}" bindtap="onReco">
+        <view class="reco-it" wx:for="{{reco}}" wx:key="id" data-id="{{item.id}}" bindtap="onRecoTap">
           <view class="reco-num">{{index + 1}}</view>
           <view class="reco-txt">
             <view class="reco-n">{{item.n}}</view>

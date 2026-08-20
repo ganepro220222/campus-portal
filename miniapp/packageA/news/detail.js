@@ -77,6 +77,9 @@ Page({
   },
 
   onRecoTap(e) {
-    wx.navigateTo({ url: `./detail?id=${e.currentTarget.dataset.id}` })
+    const id = e.currentTarget.dataset.id
+    const url = buildNewsDetailPath(id)
+    if (!url) return
+    wx.navigateTo({ url })
   }
 })

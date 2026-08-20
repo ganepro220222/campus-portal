@@ -2,6 +2,7 @@
 const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
 const { mergeHallDetail } = require('../../utils/content')
+const { buildPosterNavigateUrl, pickHallCover } = require('../../utils/posterCover')
 const { useMock } = require('../../utils/mockGuard')
 
 const emptyHall = mergeHallDetail(null)
@@ -182,7 +183,14 @@ Page({
   },
 
   onPoster() {
-    const name = (this.data.hall && this.data.hall.name) || ''
-    wx.navigateTo({ url: `/packageD/poster/generate?type=hall&title=${encodeURIComponent(name)}` })
+    const hall = this.data.hall || {}
+    wx.navigateTo({
+      url: buildPosterNavigateUrl({
+        type: 'hall',
+        title: hall.name || '',
+        subtitle: '线上展馆 · 沉浸式文化体验',
+        cover: pickHallCover(hall)
+      })
+    })
   }
 })

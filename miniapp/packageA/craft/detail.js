@@ -1,6 +1,7 @@
 // packageA/craft/detail.js — 文创详情：多角度图片 + 中英文切换
 const { get } = require('../../utils/request')
 const { mergeCraftDetail } = require('../../utils/content')
+const { buildPosterNavigateUrl, pickCraftCover } = require('../../utils/posterCover')
 const mock = require('../../mock/defaults')
 const { useMock } = require('../../utils/mockGuard')
 
@@ -88,7 +89,14 @@ Page({
 
   onPoster() {
     const d = this.data.detail || {}
-    wx.navigateTo({ url: `/packageD/poster/generate?type=craft&title=${encodeURIComponent(d.name || '')}` })
+    wx.navigateTo({
+      url: buildPosterNavigateUrl({
+        type: 'craft',
+        title: d.name || '',
+        subtitle: '精品好物 · 书院文创展示',
+        cover: pickCraftCover(d)
+      })
+    })
   }
 })
 

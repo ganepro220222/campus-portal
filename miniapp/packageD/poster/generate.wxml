@@ -8,10 +8,16 @@
       <view class="poster" style="background: linear-gradient(160deg, {{tpl.c1}}, {{tpl.c2}});">
         <view class="p-frame" style="border-color: {{tpl.accent}};"></view>
         <view class="p-top">中 华 文 化 书 院</view>
-        <view class="p-seal" style="box-shadow: 0 0 0 2rpx {{tpl.accent}};">
+        <view wx:if="{{hasCover}}" class="p-cover" style="box-shadow: 0 0 0 2rpx {{tpl.accent}};">
+          <image class="p-cover-img" src="{{coverUrl}}" mode="aspectFill" />
+          <view class="p-cover-badge" style="box-shadow: 0 0 0 2rpx {{tpl.accent}};">
+            <image class="p-cover-badge-img" src="/assets/images/school-badge.png" mode="aspectFit" />
+          </view>
+        </view>
+        <view wx:else class="p-seal" style="box-shadow: 0 0 0 2rpx {{tpl.accent}};">
           <image class="p-seal-img" src="/assets/images/school-badge.png" mode="aspectFit" />
         </view>
-        <view class="p-title serif">{{title}}</view>
+        <view class="p-title serif {{hasCover ? 'p-title-cover' : ''}}">{{title}}</view>
         <view class="p-div">
           <view class="p-line" style="background: linear-gradient(90deg, transparent, {{tpl.accent}}, transparent);"></view>
           <text class="p-orn" style="color: {{tpl.accent}};">❖</text>

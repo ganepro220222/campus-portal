@@ -1,6 +1,14 @@
 // packageD/poster/generate.js — 分享海报生成
 const { get } = require('../../utils/request')
 const { parseWxacodeResponse } = require('../../utils/wxacode')
+const {
+  BADGE_SRC,
+  parsePosterCover,
+  coverRect,
+  titleStartY,
+  roundRectPath,
+  drawCoverFill
+} = require('../../utils/posterCover')
 
 const TEMPLATES = [
   { key: 'blue', name: '阳明蓝', c1: '#1E2654', c2: '#3F57B5', accent: '#BE9C44' },
@@ -20,12 +28,22 @@ Page({
     title: '云端书院',
     subtitle: '线上展馆 · 精品课程 · 文创展示',
     type: '',
+    coverUrl: '',
+    hasCover: false,
     saving: false
   },
 
   onLoad(opts) {
     const title = opts.title ? decodeURIComponent(opts.title) : this.data.title
-    this.setData({ title, type: opts.type || '' })
+    const subtitle = opts.subtitle ? decodeURIComponent(opts.subtitle) : this.data.subtitle
+    const coverUrl = parsePosterCover(opts.cover)
+    this.setData({
+      title,
+      subtitle,
+      type: opts.type || '',
+      coverUrl,
+      hasCover: !!coverUrl
+    })
   },
 
   onPick(e) {
@@ -78,7 +96,7 @@ Page({
   // 绘制海报到离屏 canvas；必须成功嵌入可识别的小程序码
   async _render() {
     const qrBase64 = await this._fetchWxacodeBase64()
-    const { tpl, title, subtitle } = this.data
+    const { tpl, title, subtitle, coverUrl } = this.data
 
     return new Promise((resolve, reject) => {
       wx.createSelectorQuery().in(this).select('#posterCanvas').fields({ node: true, size: true }).exec((res) => {
@@ -86,7 +104,8 @@ Page({
         const canvas = res[0].node
         const ctx = canvas.getContext('2d')
         const dpr = (wx.getWindowInfo && wx.getWindowInfo().pixelRatio) || 2
-        const W = 300, H = 500
+        const W = 300
+        const H = 500
         canvas.width = W * dpr
         canvas.height = H * dpr
         ctx.scale(dpr, dpr)
@@ -106,11 +125,11 @@ Page({
         ctx.textAlign = 'center'
         ctx.fillText('中 华 文 化 书 院', W / 2, 52)
 
-        const drawRest = () => {
+        const drawRest = (startY) => {
           ctx.fillStyle = '#ffffff'
           ctx.font = 'bold 22px serif'
           const lines = wrapText(ctx, title, W - 80)
-          let ty = 250
+          let ty = startY
           lines.slice(0, 3).forEach((ln) => { ctx.fillText(ln, W / 2, ty); ty += 32 })
 
           ctx.strokeStyle = tpl.accent
@@ -140,7 +159,9 @@ Page({
 
           const qrImg = canvas.createImage()
           qrImg.onload = () => {
-            const qs = 64, qx = W / 2 - qs / 2, qy = H - 108
+            const qs = 64
+            const qx = W / 2 - qs / 2
+            const qy = H - 108
             ctx.fillStyle = '#ffffff'
             strokeFillRoundRect(ctx, qx - 6, qy - 6, qs + 12, qs + 12, 8)
             ctx.drawImage(qrImg, qx, qy, qs, qs)
@@ -153,37 +174,71 @@ Page({
           qrImg.src = 'data:image/png;base64,' + qrBase64
         }
 
-        const img = canvas.createImage()
-        img.onload = () => {
-          const s = 96, ix = W / 2 - s / 2, iy = 90
-          ctx.save()
-          ctx.beginPath()
-          ctx.arc(W / 2, iy + s / 2, s / 2, 0, Math.PI * 2)
-          ctx.fillStyle = '#ffffff'
-          ctx.fill()
-          ctx.strokeStyle = tpl.accent
-          ctx.lineWidth = 2
-          ctx.stroke()
-          ctx.clip()
-          ctx.drawImage(img, ix + 8, iy + 8, s - 16, s - 16)
-          ctx.restore()
-          drawRest()
+        const drawBadgeCircle = (cx, cy, size) => {
+          const half = size / 2
+          return new Promise((resolveBadge) => {
+            const badge = canvas.createImage()
+            badge.onload = () => {
+              ctx.save()
+              ctx.beginPath()
+              ctx.arc(cx, cy, half, 0, Math.PI * 2)
+              ctx.fillStyle = '#ffffff'
+              ctx.fill()
+              ctx.strokeStyle = tpl.accent
+              ctx.lineWidth = 2
+              ctx.stroke()
+              ctx.clip()
+              const inset = size * 0.12
+              ctx.drawImage(badge, cx - half + inset, cy - half + inset, size - inset * 2, size - inset * 2)
+              ctx.restore()
+              resolveBadge()
+            }
+            badge.onerror = () => {
+              ctx.beginPath()
+              ctx.arc(cx, cy, half, 0, Math.PI * 2)
+              ctx.fillStyle = 'rgba(255,255,255,0.14)'
+              ctx.fill()
+              ctx.strokeStyle = tpl.accent
+              ctx.lineWidth = 2
+              ctx.stroke()
+              ctx.fillStyle = tpl.accent
+              ctx.font = 'bold 18px serif'
+              ctx.fillText('書院', cx, cy + 6)
+              resolveBadge()
+            }
+            badge.src = BADGE_SRC
+          })
         }
-        img.onerror = () => {
-          const s = 96, iy = 90
-          ctx.beginPath()
-          ctx.arc(W / 2, iy + s / 2, s / 2, 0, Math.PI * 2)
-          ctx.fillStyle = 'rgba(255,255,255,0.14)'
-          ctx.fill()
-          ctx.strokeStyle = tpl.accent
-          ctx.lineWidth = 2
-          ctx.stroke()
-          ctx.fillStyle = tpl.accent
-          ctx.font = 'bold 26px serif'
-          ctx.fillText('書院', W / 2, iy + s / 2 + 9)
-          drawRest()
+
+        const startHero = () => {
+          if (!coverUrl) {
+            drawBadgeCircle(W / 2, 90 + 48, 96).then(() => drawRest(titleStartY(false)))
+            return
+          }
+          const rect = coverRect(W)
+          const coverImg = canvas.createImage()
+          coverImg.onload = () => {
+            ctx.save()
+            roundRectPath(ctx, rect.x, rect.y, rect.w, rect.h, rect.r)
+            ctx.clip()
+            drawCoverFill(ctx, coverImg, rect)
+            ctx.restore()
+            ctx.strokeStyle = hexA(tpl.accent, 0.85)
+            ctx.lineWidth = 2
+            strokeRoundRect(ctx, rect.x, rect.y, rect.w, rect.h, rect.r)
+            const badgeSize = 52
+            const bx = rect.x + rect.w - badgeSize * 0.35
+            const by = rect.y + rect.h - badgeSize * 0.25
+            drawBadgeCircle(bx, by, badgeSize).then(() => drawRest(titleStartY(true)))
+          }
+          coverImg.onerror = () => {
+            console.warn('[poster] 封面加载失败，降级为校徽布局')
+            drawBadgeCircle(W / 2, 90 + 48, 96).then(() => drawRest(titleStartY(false)))
+          }
+          coverImg.src = coverUrl
         }
-        img.src = '/assets/images/school-badge.png'
+
+        startHero()
       })
     })
   },

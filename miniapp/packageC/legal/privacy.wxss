@@ -16,5 +16,17 @@
   color: #4A5568;
 }
 .legal-loading { text-align: center; color: #8A93B2; font-size: 26rpx; padding: 80rpx 0; }
+.legal-empty { font-size: 25rpx; line-height: 1.7; color: #8A93B2; padding: 8rpx 0 4rpx; }
+.legal-retry-wrap { display: flex; justify-content: center; padding: 4rpx 0 12rpx; }
+.legal-retry {
+  font-size: 26rpx;
+  color: #2B356E;
+  font-weight: 600;
+  padding: 16rpx 44rpx;
+  background: #fff;
+  border: 1rpx solid #D6DEEE;
+  border-radius: 40rpx;
+}
+.legal-retry:active { background: #EEF3FA; }
 .legal-foot { text-align: center; font-size: 22rpx; color: #8A93B2; padding: 16rpx 0 40rpx; }
 .legal-bottom { height: env(safe-area-inset-bottom); }

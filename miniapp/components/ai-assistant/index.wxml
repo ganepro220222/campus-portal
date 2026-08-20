@@ -30,17 +30,21 @@
     </view>
   </scroll-view>
 
-  <view class="sheet-input">
-    <input
-      class="ai-input"
-      value="{{input}}"
-      placeholder="向书院助手提问…"
-      placeholder-class="ai-ph"
-      maxlength="500"
-      confirm-type="send"
-      bindinput="onInput"
-      bindconfirm="send"
-    />
-    <view class="send" bindtap="send"><icon name="send" size="18" color="#ffffff" /></view>
+  <view class="sheet-foot">
+    <view class="sheet-input">
+      <input
+        class="ai-input"
+        value="{{input}}"
+        placeholder="向书院助手提问…"
+        placeholder-class="ai-ph"
+        maxlength="500"
+        confirm-type="send"
+        bindinput="onInput"
+        bindconfirm="send"
+      />
+      <view class="send" bindtap="send"><icon name="send" size="18" color="#ffffff" /></view>
+    </view>
+    <!-- 生成式 AI 服务须在界面显著位置标识，勿删 -->
+    <view class="ai-note">内容由 AI 生成，仅供参考</view>
   </view>
 </view>

@@ -8,12 +8,18 @@
     <block wx:else>
       <view class="legal-card">
         <view class="legal-title serif">隐私政策</view>
-        <rich-text class="legal-rt" nodes="{{privacyHtml}}"></rich-text>
+        <rich-text wx:if="{{privacyHtml}}" class="legal-rt" nodes="{{privacyHtml}}"></rich-text>
+        <view wx:else class="legal-empty">暂未获取到隐私政策正文，请检查网络后重试。</view>
       </view>
 
       <view class="legal-card">
         <view class="legal-title serif">用户协议</view>
-        <rich-text class="legal-rt" nodes="{{agreementHtml}}"></rich-text>
+        <rich-text wx:if="{{agreementHtml}}" class="legal-rt" nodes="{{agreementHtml}}"></rich-text>
+        <view wx:else class="legal-empty">暂未获取到用户协议正文，请检查网络后重试。</view>
+      </view>
+
+      <view wx:if="{{!privacyHtml || !agreementHtml}}" class="legal-retry-wrap">
+        <view class="legal-retry" bindtap="onRetry">重新加载</view>
       </view>
 
       <view class="legal-foot">© 2026 贵州交通职业大学中华文化书院</view>

@@ -105,7 +105,8 @@
         <view class="craft-ic"><icon name="medal" size="28" color="#ffffff" /></view>
         <view class="craft-text">
           <text class="craft-title serif">精品好物</text>
-          <text class="craft-sub">工艺品鉴赏 · 咨询选购</text>
+          <!-- 站内无交易环节，不用「选购」等电商表述；与详情页「合作与咨询」板块对齐 -->
+          <text class="craft-sub">工艺品鉴赏 · 合作咨询</text>
         </view>
         <icon name="chevron-right" size="18" color="rgba(255,255,255,0.85)" />
       </view>

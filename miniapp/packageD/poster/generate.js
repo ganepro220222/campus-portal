@@ -13,8 +13,11 @@ Page({
     templates: TEMPLATES,
     active: 0,
     tpl: TEMPLATES[0],
-    title: '云端书院 · 分享',
-    subtitle: '扫码进入云端书院',
+    // 无参进入时的兜底；真实入口（文创 / 展馆详情）会用展品名覆盖 title。
+    // 副标题只作描述，不再出现「扫码」——海报是分享进微信的图片，识别方式是长按，
+    // 与底栏「长按识别小程序码」冲突，且两处同义重复。
+    title: '云端书院',
+    subtitle: '线上展馆 · 精品课程 · 文创展示',
     type: '',
     saving: false
   },

@@ -11,8 +11,8 @@ Page({
     email: 'shuyuan@gzjtzy.edu.cn',
     icp: '',
     features: [
-      { icon: 'museum', name: '线上展馆', desc: '11 座沉浸式线上展馆，图文 + 语音讲解' },
-      { icon: 'course', name: '精品课程', desc: '多门精品课程与 AI 字幕' },
+      { icon: 'museum', name: '线上展馆', desc: '11 座沉浸式展馆，图文 + 语音讲解' },
+      { icon: 'course', name: '精品课程', desc: '多门在线课程，支持 AI 字幕' },
       { icon: 'medal',  name: '文创展示', desc: '精品好物双语鉴赏与多图 / 3D 展示' },
       { icon: 'calendar', name: '活动报名', desc: '讲座研学在线报名与凭证签到' },
       { icon: 'robot',  name: '智能问答', desc: '基于书院知识库的智能问答助手' }

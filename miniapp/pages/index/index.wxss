@@ -225,21 +225,31 @@
 }
 
 /* ── 功能入口矩阵 ── */
+/* 元素上写的是 class="entries-wrap wrap"，但本规则在文件里排在 .wrap 之后、
+   specificity 又相同，padding 简写把 .wrap 的 0 32rpx 整个盖掉了——于是这张带描边、
+   圆角和投影的白卡是唯一一个贴着屏幕左右边跑的（轮播、精品好物、各 section 都缩进 32rpx），
+   两侧的圆角与阴影全被压在屏幕边上。缩进改用 margin 表达，就不会再和 padding 打架。 */
 .entries-wrap {
-  margin-top: 24rpx;
+  margin: 24rpx 32rpx 0;
   background: #fff;
   border-radius: 28rpx;
   padding: 30rpx 12rpx 24rpx;
   border: 1rpx solid #E7ECF6;
   box-shadow: 0 4rpx 14rpx rgba(31, 40, 90, 0.06);
 }
-.entries { display: flex; justify-content: space-around; }
+/* B2 之后这一排由后台配置，条数和文案都不再是写死的 5 个 4 字词。
+   原来 flex:1 均分：6 条时每格 111rpx、7 条只剩 95rpx，而 .ico 是死的 100rpx，
+   第 7 条起图标就顶出格子；文案又是 nowrap，5 字以上会和邻格叠在一起。
+   改成固定 5 列换行——5 条时每格仍是 670/5 = 134rpx，与改前逐像素一致，
+   第 6 条起自然落到第二行。列间距必须为 0，否则 5×20% 加间距就挤不下 5 列。 */
+.entries { display: flex; flex-wrap: wrap; gap: 26rpx 0; }
 .entry {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14rpx;
-  flex: 1;
+  flex: 0 0 20%;
+  min-width: 0;
 }
 .entry:active .ico { transform: translateY(-4rpx); }
 .ico {
@@ -257,7 +267,16 @@
 .e3 { background: linear-gradient(135deg, #5867B8, #39418A); }
 .e4 { background: linear-gradient(135deg, #6E8FCB, #46639E); }
 .e5 { background: linear-gradient(135deg, #C0A24E, #9C7C2E); }
-.entry-label { font-size: 23rpx; color: #1F2547; font-weight: 500; white-space: nowrap; }
+/* 后台可以填任意长度的名字，超出格宽就省略号，不许挤到邻格上去 */
+.entry-label {
+  font-size: 23rpx;
+  color: #1F2547;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* ── Section 通用 ── */
 .section { margin-top: 40rpx; }

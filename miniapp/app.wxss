@@ -262,10 +262,17 @@ page {
 .pill.gold { background: #FBF3DD; color: #9C7C2E; }
 
 /* 详情页收藏按钮（展馆/文创/课程/资源共用） */
-.fav-bar { display: flex; justify-content: flex-end; margin: 0 28rpx 8rpx; }
+/* 三处调用都在 .detail-wrap（padding: 24rpx 28rpx）里，这里再给 28rpx 横向外边距
+   会把胶囊比同页其他内容多缩进一个 28rpx，右边缘对不齐联系卡片与海报按钮。
+   横向留给容器，这里只管上下节奏。 */
+.fav-bar { display: flex; justify-content: flex-end; margin: 24rpx 0 8rpx; }
+/* 文案在「收藏」(2 字) 与「已收藏」(3 字) 之间切换 = 25rpx 宽度差，
+   而胶囊是右对齐的，不锁宽就会每点一次左边缘蹦一下。按长的那个态定死下限：
+   图标 32rpx + gap 8rpx + 3×25rpx 文字 + 28rpx×2 内边距 = 171rpx。 */
 .fav-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8rpx;
   padding: 12rpx 28rpx;
   border-radius: 30rpx;
@@ -273,6 +280,8 @@ page {
   background: #fff;
   font-size: 25rpx;
   color: var(--sub);
+  box-sizing: border-box;
+  min-width: 172rpx;
 }
 .fav-btn.fav-on {
   color: #C0392B;
@@ -280,15 +289,19 @@ page {
   background: #FDF1EF;
 }
 .fav-bar-inline { margin: 20rpx 0 0; justify-content: flex-start; }
+/* 资源列表里它与 .res-dl 并排。两颗都是正圆，尺寸/底色必须一致，
+   否则同一行里一大一小、一个带描边一个不带，看着像没对齐。跟 .res-dl 取齐：
+   72rpx + var(--sky-2) + 无描边，选中态再用红系区分。 */
 .fav-icon {
-  width: 56rpx;
-  height: 56rpx;
+  width: 72rpx;
+  height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--sky-3);
-  border: 1rpx solid var(--line);
+  background: var(--sky-2);
   flex-shrink: 0;
 }
-.fav-icon.fav-on { background: #FDF1EF; border-color: #F3C9C2; }
+.fav-icon:active { background: var(--sky); }
+.fav-icon.fav-on { background: #FDF1EF; }
+.fav-icon.fav-on:active { background: #F8E3DF; }

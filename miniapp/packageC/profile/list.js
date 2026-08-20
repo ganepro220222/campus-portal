@@ -1,6 +1,8 @@
 // packageC/profile/list.js — 个人中心通用列表（收藏/报名/下载/足迹/徽章）
 const { get } = require('../../utils/request')
 const { groupFootprintsByDate } = require('../../utils/footprintTimeline')
+const { mapDownloadRecordItem } = require('../../utils/downloadRecord')
+const { downloadResource } = require('../../utils/resourceDownload')
 
 const CONFIG = {
   favorites:  { title: '我的收藏',   api: '/profile/favorites',  empty: '暂无收藏' },
@@ -36,7 +38,8 @@ Page({
     navTitle: '我的',
     emptyText: '暂无数据',
     typeIcon: 'heart',
-    typeCls: 'tc-rose'
+    typeCls: 'tc-rose',
+    redownloadingId: null
   },
 
   onLoad(options) {
@@ -94,6 +97,9 @@ Page({
       if (type === 'footprints') {
         return item
       }
+      if (type === 'downloads') {
+        return mapDownloadRecordItem(item)
+      }
       if (type === 'badges') {
         return { ...item, title: item.name, createTime: item.achievedAt }
       }
@@ -106,5 +112,21 @@ Page({
     if (route) {
       wx.navigateTo({ url: route, fail: () => {} })
     }
+  },
+
+  onRedownload(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id || this.data.redownloadingId) return
+    this.setData({ redownloadingId: id })
+    downloadResource(id, {
+      onRecorded: () => {
+        if (this.data.type === 'downloads') {
+          this._load('downloads', CONFIG.downloads.api)
+        }
+      },
+      onComplete: () => {
+        this.setData({ redownloadingId: null })
+      }
+    })
   }
 })

@@ -135,6 +135,10 @@ function downloadResource(resourceId, options = {}) {
       }
     } catch (e) {
       // request.js 已 toast；此处仅吞掉未处理异常
+    } finally {
+      if (typeof options.onComplete === 'function') {
+        options.onComplete()
+      }
     }
   })
 }

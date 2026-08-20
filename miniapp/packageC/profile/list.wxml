@@ -63,6 +63,12 @@
       </view>
 
       <view class="pl-right">
+        <view
+          wx:if="{{type === 'downloads' && item.canRedownload}}"
+          class="pl-redownload {{redownloadingId === item.resourceId ? 'is-loading' : ''}}"
+          catchtap="onRedownload"
+          data-id="{{item.resourceId}}"
+        >{{redownloadingId === item.resourceId ? '下载中' : '再次下载'}}</view>
         <view wx:if="{{item.statusLabel}}" class="pl-status st-{{item.statusClass}}">{{item.statusLabel}}</view>
         <view wx:elif="{{type === 'badges'}}" class="pl-badge {{item.earned ? 'on' : ''}}">{{item.earned ? '已获得' : '未获得'}}</view>
         <icon wx:elif="{{item.route}}" name="chevron-right" size="16" color="#C3CCE0" />

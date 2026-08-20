@@ -76,6 +76,22 @@
 }
 .pl-badge.on { background: rgba(201, 162, 39, 0.15); color: #C9A227; }
 
+.pl-redownload {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--sky-2);
+  padding: 10rpx 20rpx;
+  border-radius: 22rpx;
+  white-space: nowrap;
+}
+.pl-redownload.is-loading {
+  opacity: 0.65;
+}
+.pl-redownload:active {
+  background: var(--sky-3);
+}
+
 .pl-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }
 
 /* 学习足迹时间轴 */

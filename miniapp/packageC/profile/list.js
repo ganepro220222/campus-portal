@@ -1,5 +1,6 @@
 // packageC/profile/list.js — 个人中心通用列表（收藏/报名/下载/足迹/徽章）
 const { get } = require('../../utils/request')
+const { groupFootprintsByDate } = require('../../utils/footprintTimeline')
 
 const CONFIG = {
   favorites:  { title: '我的收藏',   api: '/profile/favorites',  empty: '暂无收藏' },
@@ -29,6 +30,8 @@ Page({
   data: {
     type: '',
     list: [],
+    timelineGroups: [],
+    isEmpty: true,
     loading: true,
     navTitle: '我的',
     emptyText: '暂无数据',
@@ -48,9 +51,25 @@ Page({
     this.setData({ loading: true })
     try {
       const raw = await get(api).catch(() => [])
-      this.setData({ list: this._normalize(type, raw || []), loading: false })
+      if (type === 'footprints') {
+        const timelineGroups = groupFootprintsByDate(raw || [])
+        this.setData({
+          timelineGroups,
+          list: [],
+          isEmpty: !timelineGroups.length,
+          loading: false
+        })
+        return
+      }
+      const list = this._normalize(type, raw || [])
+      this.setData({
+        list,
+        timelineGroups: [],
+        isEmpty: !list.length,
+        loading: false
+      })
     } catch (e) {
-      this.setData({ list: [], loading: false })
+      this.setData({ list: [], timelineGroups: [], isEmpty: true, loading: false })
     }
   },
 
@@ -73,7 +92,7 @@ Page({
         }
       }
       if (type === 'footprints') {
-        return { ...item, title: item.title, createTime: item.createdAt }
+        return item
       }
       if (type === 'badges') {
         return { ...item, title: item.name, createTime: item.achievedAt }

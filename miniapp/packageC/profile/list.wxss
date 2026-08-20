@@ -77,3 +77,110 @@
 .pl-badge.on { background: rgba(201, 162, 39, 0.15); color: #C9A227; }
 
 .pl-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }
+
+/* 学习足迹时间轴 */
+.fp-timeline {
+  padding: 24rpx 28rpx 0;
+}
+.fp-day {
+  margin-bottom: 12rpx;
+}
+.fp-day-head {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 8rpx;
+  padding-left: 8rpx;
+}
+.fp-day-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  box-shadow: 0 0 0 6rpx rgba(63, 87, 181, 0.15);
+  flex-shrink: 0;
+}
+.fp-day-label {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.fp-day-list {
+  margin-left: 16rpx;
+  padding-left: 24rpx;
+  border-left: 2rpx solid rgba(63, 87, 181, 0.18);
+}
+.fp-item {
+  display: flex;
+  align-items: stretch;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  position: relative;
+}
+.fp-item:active .fp-card {
+  background: var(--sky-3);
+}
+.fp-rail {
+  width: 24rpx;
+  position: relative;
+  flex-shrink: 0;
+}
+.fp-rail-line {
+  display: none;
+}
+.fp-rail-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #C3CCE0;
+  position: absolute;
+  left: -31rpx;
+  top: 28rpx;
+}
+.fp-card {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 18rpx;
+  padding: 20rpx 22rpx;
+  box-shadow: var(--shadow-sm);
+}
+.fp-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 10rpx;
+}
+.fp-time {
+  font-size: 22rpx;
+  color: var(--muted);
+}
+.fp-tag {
+  font-size: 21rpx;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--sky-2);
+  padding: 4rpx 14rpx;
+  border-radius: 16rpx;
+}
+.fp-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.45;
+}
+.fp-sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 23rpx;
+  color: var(--sub);
+}
+.fp-arrow {
+  align-self: center;
+  flex-shrink: 0;
+  margin-right: 4rpx;
+}

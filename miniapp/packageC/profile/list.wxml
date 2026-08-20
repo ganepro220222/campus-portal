@@ -3,9 +3,43 @@
   <nav-bar title="{{navTitle}}" />
   <view wx:if="{{loading}}" class="pl-state"><text>加载中…</text></view>
 
-  <view wx:elif="{{!list.length}}" class="empty-state">
+  <view wx:elif="{{isEmpty}}" class="empty-state">
     <icon name="{{typeIcon}}" size="42" color="#C3CCE0" />
     <text>{{emptyText}}</text>
+  </view>
+
+  <!-- 学习足迹：按日期分组时间轴 -->
+  <view wx:elif="{{type === 'footprints'}}" class="fp-timeline">
+    <view wx:for="{{timelineGroups}}" wx:key="dateKey" class="fp-day">
+      <view class="fp-day-head">
+        <view class="fp-day-dot"></view>
+        <text class="fp-day-label">{{item.dateLabel}}</text>
+      </view>
+      <view class="fp-day-list">
+        <view
+          wx:for="{{item.items}}"
+          wx:for-item="fp"
+          wx:key="id"
+          class="fp-item"
+          bindtap="onItemTap"
+          data-route="{{fp.route}}"
+        >
+          <view class="fp-rail">
+            <view class="fp-rail-line"></view>
+            <view class="fp-rail-dot"></view>
+          </view>
+          <view class="fp-card">
+            <view class="fp-card-top">
+              <text class="fp-time">{{fp.timeLabel}}</text>
+              <text class="fp-tag">{{fp.eventLabel}}</text>
+            </view>
+            <text class="fp-title">{{fp.title}}</text>
+            <text wx:if="{{fp.targetTypeLabel}}" class="fp-sub">{{fp.targetTypeLabel}}</text>
+          </view>
+          <icon wx:if="{{fp.route}}" class="fp-arrow" name="chevron-right" size="16" color="#C3CCE0" />
+        </view>
+      </view>
+    </view>
   </view>
 
   <view wx:else class="pl-list">

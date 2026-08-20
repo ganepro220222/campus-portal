@@ -27,6 +27,35 @@ async function sendQuestion(sessionId, question) {
   return post(`/ai/chat/sessions/${sessionId}/messages`, { question })
 }
 
+async function fetchSessions(options = {}) {
+  const list = await get('/ai/chat/sessions', {}, options)
+  return Array.isArray(list) ? list : []
+}
+
+async function fetchSessionMessages(sessionId, options = {}) {
+  const list = await get(`/ai/chat/sessions/${sessionId}/messages`, {}, options)
+  return Array.isArray(list) ? list : []
+}
+
+function mapSessionItem(raw) {
+  if (!raw) return null
+  const preview = raw.preview || '暂无提问'
+  return {
+    id: raw.id,
+    createdAt: raw.createdAt || '',
+    preview,
+    title: preview
+  }
+}
+
+function mapMessagesToUi(messages) {
+  if (!Array.isArray(messages)) return []
+  return messages.map((m) => ({
+    role: m.role === 'user' ? 'me' : 'ai',
+    text: m.content || ''
+  }))
+}
+
 function quotaSubtitle(quota) {
   if (!quota || quota.needLogin) {
     return '登录后可使用 AI 智能问答'
@@ -64,7 +93,11 @@ function resolveErrorAnswer(err, question) {
 module.exports = {
   createSession,
   fetchQuota,
+  fetchSessions,
+  fetchSessionMessages,
   sendQuestion,
+  mapSessionItem,
+  mapMessagesToUi,
   quotaSubtitle,
   applyQuotaFromMessage,
   resolveErrorAnswer

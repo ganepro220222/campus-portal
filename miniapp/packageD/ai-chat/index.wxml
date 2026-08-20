@@ -7,6 +7,7 @@
       <view class="ci-avatar"><icon name="robot" size="32" color="#ffffff" /></view>
       <view class="ci-name serif">书院助手</view>
       <view class="ci-desc">{{quotaText}}</view>
+      <view class="ci-history" bindtap="onHistory">历史会话</view>
     </view>
 
     <view class="row {{item.role}}" wx:for="{{messages}}" wx:key="index" id="m{{index}}">

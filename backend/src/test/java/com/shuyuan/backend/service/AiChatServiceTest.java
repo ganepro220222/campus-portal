@@ -116,4 +116,24 @@ class AiChatServiceTest {
         assertEquals(true, result.get("needLogin"));
         assertEquals(0, result.get("remaining"));
     }
+
+    @Test
+    void listSessions_includesPreviewFromFirstUserMessage() {
+        com.shuyuan.backend.common.context.MemberContext.setMemberId(3L);
+        AiSession session = new AiSession();
+        session.setId(7L);
+        session.setMemberId(3L);
+        when(aiSessionMapper.selectList(any())).thenReturn(List.of(session));
+
+        AiMessage question = new AiMessage();
+        question.setRole("user");
+        question.setContent("请介绍阳明心学");
+        when(aiMessageMapper.selectOne(any())).thenReturn(question);
+
+        var result = aiChatService.listSessions();
+
+        assertEquals(1, result.size());
+        assertEquals("请介绍阳明心学", result.get(0).get("preview"));
+        com.shuyuan.backend.common.context.MemberContext.clear();
+    }
 }

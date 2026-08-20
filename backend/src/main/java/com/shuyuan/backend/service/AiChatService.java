@@ -69,7 +69,11 @@ public class AiChatService {
                         .eq(AiSession::getMemberId, memberId)
                         .orderByDesc(AiSession::getCreatedAt)
                         .last("LIMIT 30"));
-        return sessions.stream().map(this::sessionVo).toList();
+        return sessions.stream().map(session -> {
+            Map<String, Object> m = sessionVo(session);
+            m.put("preview", sessionPreview(session.getId()));
+            return m;
+        }).toList();
     }
 
     public List<Map<String, Object>> listMessages(Long sessionId) {
@@ -134,6 +138,19 @@ public class AiChatService {
         m.put("id", session.getId());
         m.put("createdAt", FormatUtils.formatDateTime(session.getCreatedAt()));
         return m;
+    }
+
+    private String sessionPreview(Long sessionId) {
+        AiMessage msg = aiMessageMapper.selectOne(new LambdaQueryWrapper<AiMessage>()
+                .eq(AiMessage::getSessionId, sessionId)
+                .eq(AiMessage::getRole, "user")
+                .orderByAsc(AiMessage::getCreatedAt)
+                .last("LIMIT 1"));
+        if (msg == null || msg.getContent() == null || msg.getContent().isBlank()) {
+            return "暂无提问";
+        }
+        String content = msg.getContent().trim();
+        return content.length() > 48 ? content.substring(0, 48) + "…" : content;
     }
 
     private Map<String, Object> messageVo(AiMessage msg) {

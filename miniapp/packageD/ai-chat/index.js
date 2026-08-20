@@ -2,7 +2,9 @@
 const {
   createSession,
   fetchQuota,
+  fetchSessionMessages,
   sendQuestion,
+  mapMessagesToUi,
   quotaSubtitle,
   applyQuotaFromMessage,
   resolveErrorAnswer
@@ -27,9 +29,15 @@ Page({
     quotaText: '登录后可使用 AI 智能问答'
   },
 
-  onLoad() {
-    this._loadPublicConfig()
-    this._prepareSession()
+  async onLoad(opts) {
+    const rawId = opts && opts.sessionId
+    const parsed = rawId != null && rawId !== '' ? Number(rawId) : null
+    const sessionId = Number.isFinite(parsed) && parsed > 0 ? parsed : null
+    if (sessionId) {
+      this.setData({ sessionId })
+    }
+    await this._loadPublicConfig()
+    this._prepareSession(sessionId)
   },
 
   async _loadPublicConfig() {
@@ -44,10 +52,14 @@ Page({
     }
   },
 
-  async _prepareSession() {
+  async _prepareSession(existingSessionId) {
     try {
       const quota = await fetchQuota()
       this._setQuota(quota)
+      if (existingSessionId && !quota.needLogin) {
+        await this._loadSessionMessages(existingSessionId)
+        return
+      }
       if (!quota.needLogin) {
         const sessionId = await createSession({ silent: true })
         if (sessionId) {
@@ -56,6 +68,25 @@ Page({
       }
     } catch (e) {
       // 未登录时保留本地展示
+    }
+  },
+
+  async _loadSessionMessages(sessionId) {
+    try {
+      const raw = await fetchSessionMessages(sessionId)
+      const mapped = mapMessagesToUi(raw)
+      const welcome = this.data.messages[0] && this.data.messages[0].text
+        ? this.data.messages[0].text
+        : DEFAULT_MINIAPP_CONFIG.aiAssistantWelcome
+      this.setData({
+        sessionId,
+        messages: mapped.length ? mapped : [{ role: 'ai', text: welcome }],
+        firstAsk: mapped.length === 0,
+        scrollTo: mapped.length ? `m${mapped.length - 1}` : ''
+      })
+    } catch (err) {
+      console.warn('[ai-chat] 历史消息加载失败', err)
+      wx.showToast({ title: '会话加载失败', icon: 'none' })
     }
   },
 
@@ -120,5 +151,13 @@ Page({
       }
       this.setData({ messages: list, scrollTo: 'm' + idx, loading: false })
     }
+  },
+
+  onHistory() {
+    if (this.data.quota && this.data.quota.needLogin) {
+      wx.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    wx.navigateTo({ url: '/packageD/ai-chat/history' })
   }
 })

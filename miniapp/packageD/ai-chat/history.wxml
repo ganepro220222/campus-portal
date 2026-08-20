@@ -1,0 +1,39 @@
+<!-- packageD/ai-chat/history.wxml — AI 会话历史 -->
+<view class="history-page">
+  <nav-bar title="问答历史" />
+  <view wx:if="{{loading}}" class="history-state">
+    <text>加载中…</text>
+  </view>
+
+  <view wx:elif="{{!list.length}}" class="empty-state">
+    <icon name="robot" size="42" color="#C3CCE0" />
+    <text class="empty-text">暂无历史会话</text>
+    <text class="empty-hint">向书院助手提问后，会话会保存在这里</text>
+    <button class="btn-primary" bindtap="onNewChat">开始提问</button>
+  </view>
+
+  <view wx:else class="history-list">
+    <view
+      class="history-item"
+      wx:for="{{list}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onItemTap"
+    >
+      <view class="history-ic">
+        <icon name="robot" size="22" color="#ffffff" />
+      </view>
+      <view class="history-body">
+        <text class="history-title">{{item.title}}</text>
+        <text class="history-time">{{item.createdAt}}</text>
+      </view>
+      <icon name="chevron-right" size="16" color="#C3CCE0" />
+    </view>
+  </view>
+
+  <view wx:if="{{list.length}}" class="history-foot">
+    <button class="btn-outline" bindtap="onNewChat">新建会话</button>
+  </view>
+
+  <view class="history-bottom"></view>
+</view>

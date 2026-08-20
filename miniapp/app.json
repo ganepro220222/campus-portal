@@ -50,6 +50,7 @@
       "name": "智能",
       "pages": [
         "ai-chat/index",
+        "ai-chat/history",
         "poster/generate"
       ]
     }

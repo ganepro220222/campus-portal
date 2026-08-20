@@ -58,6 +58,14 @@ Page({
     wx.navigateTo({ url: '/packageD/ai-chat/index' })
   },
 
+  onAiHistory() {
+    if (!this.data.isLoggedIn) {
+      this.onLoginTap()
+      return
+    }
+    wx.navigateTo({ url: '/packageD/ai-chat/history' })
+  },
+
   onFeedback() {
     wx.navigateTo({ url: '/packageC/feedback/index' })
   },

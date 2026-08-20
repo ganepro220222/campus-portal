@@ -1,0 +1,117 @@
+/* packageD/ai-chat/history.wxss */
+.history-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #EAF1FB 0, #F5F8FC 220rpx);
+}
+
+.history-state {
+  padding: 120rpx 40rpx;
+  text-align: center;
+  color: var(--muted);
+  font-size: 28rpx;
+}
+
+.empty-state {
+  padding: 120rpx 48rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.empty-text {
+  margin-top: 24rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--ink);
+}
+.empty-hint {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.history-list {
+  padding: 24rpx 28rpx 0;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 18rpx;
+  box-shadow: var(--shadow-sm);
+}
+.history-item:active {
+  background: var(--sky-3);
+}
+.history-ic {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 6rpx 16rpx rgba(31, 40, 90, 0.16);
+}
+.history-body {
+  flex: 1;
+  min-width: 0;
+}
+.history-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.history-time {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+}
+
+.history-foot {
+  padding: 8rpx 28rpx 0;
+}
+
+.btn-primary {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  border: none;
+  margin-top: 36rpx;
+  box-shadow: 0 12rpx 30rpx rgba(43, 53, 110, 0.28);
+}
+.btn-primary::after { border: none; }
+
+.btn-outline {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #2B356E;
+  background: #fff;
+  border: 2rpx solid #2B356E;
+}
+.btn-outline::after { border: none; }
+
+.history-bottom {
+  height: calc(40rpx + env(safe-area-inset-bottom));
+}

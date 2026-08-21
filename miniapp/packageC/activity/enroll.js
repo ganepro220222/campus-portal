@@ -1,21 +1,24 @@
 // packageC/activity/enroll.js — 活动报名
 const { get, post } = require('../../utils/request')
-const {
-  mergeActivityDetail,
-  mergeEnrollResult,
-  enrollStatusLabel,
-  hasActiveEnroll
-} = require('../../utils/activity')
+const { mergeEnrollResult } = require('../../utils/activity')
 const { requireLogin } = require('../../utils/auth')
 const { requestSubscribe } = require('../../utils/subscribe')
 const { mapEnrollVoucherFields } = require('../../utils/enrollVoucher')
 const { validateEnrollForm } = require('../../utils/enrollForm')
 const { exportVoucherQr } = require('../../utils/voucherQrCanvas')
 const { resolveVoucherQrSrc } = require('../../utils/enrollVoucherPage')
+const {
+  buildEnrollLoadingPatch,
+  buildEnrollLoadedView,
+  buildEnrollFailurePatch,
+  canSubmitEnroll
+} = require('../../utils/enrollPageInit')
 
 Page({
   data: {
     loading: true,
+    loadError: false,
+    notFound: false,
     submitting: false,
     activityId: null,
     detail: null,
@@ -35,7 +38,7 @@ Page({
   onLoad(opts) {
     const id = opts.id || opts.activityId
     if (!id) {
-      this.setData({ loading: false })
+      this.setData({ loading: false, notFound: true })
       return
     }
     this.setData({ activityId: id })
@@ -48,46 +51,35 @@ Page({
   },
 
   async _init(id) {
-    this.setData({ loading: true })
+    this.setData(buildEnrollLoadingPatch())
     try {
       const [raw, profile] = await Promise.all([
-        get(`/activities/${id}`).catch(() => null),
+        get(`/activities/${id}`),
         get('/profile').catch(() => null)
       ])
-      const detail = mergeActivityDetail(raw)
-      const active = hasActiveEnroll(detail)
-      let enrolledHint = ''
-      if (detail.enrollStatus === 'pending') {
-        enrolledHint = '您的报名正在审核中，请耐心等待。'
-      } else if (detail.enrollStatus === 'approved') {
-        enrolledHint = '您已成功报名，活动当天请凭凭证码签到。'
-      }
-      this.setData({
-        detail,
-        loading: false,
-        hasEnrolled: active,
-        statusLabel: enrollStatusLabel(detail.enrollStatus),
-        enrolledHint,
-        profileSnapshot: profile || null,
-        form: {
-          name: (profile && profile.realName) || '',
-          phone: (profile && profile.phone) || '',
-          college: (profile && profile.college) || '',
-          grade: (profile && profile.grade) || ''
-        }
-      }, () => {
-        if (detail.enrollStatus === 'approved' && detail.voucherCode) {
+      const view = buildEnrollLoadedView(raw, profile, id)
+      this.setData(view, () => {
+        if (view.detail.enrollStatus === 'approved' && view.detail.voucherCode) {
           this._refreshVoucherQr(mapEnrollVoucherFields({
-            enrollId: detail.enrollId,
-            voucherCode: detail.voucherCode,
-            enrollStatus: detail.enrollStatus
+            enrollId: view.detail.enrollId,
+            voucherCode: view.detail.voucherCode,
+            enrollStatus: view.detail.enrollStatus
           }))
         }
       })
     } catch (err) {
       console.warn('[activity/enroll] 初始化失败', err)
-      this.setData({ detail: null, loading: false })
+      this.setData(buildEnrollFailurePatch(err))
     }
+  },
+
+  onRetry() {
+    const id = this.data.activityId
+    if (id) this._init(id)
+  },
+
+  onBackList() {
+    wx.redirectTo({ url: '/pages/activity/index' })
   },
 
   onInput(e) {
@@ -100,10 +92,9 @@ Page({
   },
 
   async onSubmit() {
-    if (this.data.submitting) return
-    const { activityId, form, profileSnapshot } = this.data
-    if (!activityId) return
+    if (!canSubmitEnroll(this.data)) return
 
+    const { activityId, form, profileSnapshot } = this.data
     const validation = validateEnrollForm(form, profileSnapshot)
     if (!validation.ok) {
       this.setData({

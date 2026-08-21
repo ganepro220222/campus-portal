@@ -5,6 +5,17 @@
     <text class="state-text">加载中…</text>
   </view>
 
+  <view wx:elif="{{loadError}}" class="state-box">
+    <text class="state-text">活动信息加载失败，请检查网络后重试</text>
+    <view class="enroll-retry" bindtap="onRetry">重新加载</view>
+    <view class="enroll-retry-link" bindtap="onBackList">返回活动列表</view>
+  </view>
+
+  <view wx:elif="{{notFound}}" class="state-box">
+    <text class="state-text">活动不存在或已下架</text>
+    <view class="enroll-retry-link" bindtap="onBackList">返回活动列表</view>
+  </view>
+
   <block wx:elif="{{detail}}">
     <scroll-view scroll-y class="enroll-scroll" enhanced show-scrollbar="{{false}}">
       <!-- 活动摘要 -->
@@ -118,10 +129,6 @@
       <view class="scroll-bottom"></view>
     </scroll-view>
   </block>
-
-  <view wx:else class="state-box">
-    <text class="state-text">活动不存在或已下架</text>
-  </view>
 
   <canvas type="2d" id="voucherQrCanvas" class="voucher-qr-canvas-offscreen" />
 </view>

@@ -11,9 +11,16 @@ const ENROLL_STATUS = {
   cancelled: '已取消'
 }
 
+function resolveEmptyActivityDetail(useMockFlag = useMock) {
+  if (useMockFlag) {
+    return { ...mock.activityDetail }
+  }
+  return null
+}
+
 function mergeActivityDetail(raw, fallback) {
   const base = fallback || (useMock ? mock.activityDetail : {})
-  if (!raw) return useMock ? { ...base } : {}
+  if (!raw) return resolveEmptyActivityDetail(useMock)
   const quota = raw.quota != null ? raw.quota : base.quota
   const enrolledCount = raw.enrolledCount != null ? raw.enrolledCount : base.enrolledCount
   const full = raw.full != null
@@ -81,6 +88,7 @@ function resolveDetailAction(detail, isLoggedIn) {
 }
 
 module.exports = {
+  resolveEmptyActivityDetail,
   mergeActivityDetail,
   mergeEnrollResult,
   enrollStatusLabel,

@@ -5,7 +5,22 @@
     <text class="state-text">加载中…</text>
   </view>
 
+  <view wx:elif="{{loadError}}" class="state-box">
+    <text class="state-text">活动信息加载失败，请检查网络后重试</text>
+    <view class="detail-retry" bindtap="onRetry">重新加载</view>
+    <view class="detail-retry-link" bindtap="onBackList">返回活动列表</view>
+  </view>
+
+  <view wx:elif="{{notFound}}" class="state-box">
+    <text class="state-text">活动不存在或已下架</text>
+    <view class="detail-retry-link" bindtap="onBackList">返回活动列表</view>
+  </view>
+
   <block wx:elif="{{detail}}">
+    <view wx:if="{{refreshError && !loading}}" class="detail-refresh-bar" bindtap="onRetry">
+      <text class="detail-refresh-text">活动信息刷新失败，点击重试</text>
+    </view>
+
     <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
       <!-- 封面 -->
       <view class="hero {{coverClass}}">
@@ -53,7 +68,7 @@
     </scroll-view>
 
     <!-- 底部操作栏 -->
-    <view class="foot-bar">
+    <view wx:if="{{!loadError && !notFound && !loading}}" class="foot-bar">
       <block wx:if="{{actionType === 'login'}}">
         <button class="btn-primary" bindtap="onLoginTap">登录后报名</button>
       </block>
@@ -75,8 +90,4 @@
       </block>
     </view>
   </block>
-
-  <view wx:else class="state-box">
-    <text class="state-text">活动不存在或已下架</text>
-  </view>
 </view>

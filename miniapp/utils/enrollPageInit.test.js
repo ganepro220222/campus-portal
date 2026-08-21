@@ -3,9 +3,8 @@
  * 运行：node miniapp/utils/enrollPageInit.test.js
  */
 const assert = require('assert')
+const { assertActivityDetailRaw } = require('./activityDetailLoad')
 const {
-  classifyActivityLoadError,
-  assertActivityDetailRaw,
   buildEnrollLoadingPatch,
   buildEnrollLoadedView,
   buildEnrollFailurePatch,
@@ -14,12 +13,6 @@ const {
   resolveEnrollPagePhase,
   canSubmitEnroll
 } = require('./enrollPageInit')
-
-assert.strictEqual(classifyActivityLoadError({ code: 404 }), 'notFound')
-assert.strictEqual(classifyActivityLoadError({ statusCode: 404 }), 'notFound')
-assert.strictEqual(classifyActivityLoadError({ kind: 'notFound' }), 'notFound')
-assert.strictEqual(classifyActivityLoadError({ code: 500 }), 'loadError')
-assert.strictEqual(classifyActivityLoadError(new Error('network')), 'loadError')
 
 assert.throws(() => assertActivityDetailRaw(null, 1), /activity detail unavailable/)
 assert.throws(() => assertActivityDetailRaw({}, 1), /activity detail unavailable/)

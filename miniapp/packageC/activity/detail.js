@@ -1,16 +1,22 @@
 // packageC/activity/detail.js — 活动详情
 const { get, del } = require('../../utils/request')
-const {
-  mergeActivityDetail,
-  resolveDetailAction,
-  enrollStatusLabel
-} = require('../../utils/activity')
 const { requireLogin } = require('../../utils/auth')
 const { decorateActivities } = require('../../utils/decorate')
+const {
+  buildDetailLoadedView,
+  buildDetailInitialFailurePatch,
+  buildDetailRefreshFailurePatch,
+  buildDetailLoadingPatch,
+  shouldRefreshDetailOnShow
+} = require('../../utils/detailPageInit')
+const { shouldSilentRefreshDetail } = require('../../utils/activityDetailLoad')
 
 Page({
   data: {
     loading: true,
+    loadError: false,
+    notFound: false,
+    refreshError: false,
     activityId: null,
     detail: null,
     coverClass: 'hc1',
@@ -29,30 +35,49 @@ Page({
   onShow() {
     const loggedIn = getApp().isLoggedIn()
     this.setData({ isLoggedIn: loggedIn })
-    if (this.data.activityId && !this.data.loading) {
-      this._loadDetail(this.data.activityId, false)
+    if (shouldRefreshDetailOnShow(this._hasShownOnce, this.data.loading)) {
+      this._loadDetail(this.data.activityId, { silent: true })
+    }
+    this._hasShownOnce = true
+  },
+
+  async _loadDetail(id, options = {}) {
+    const { showLoading = true, silent = false } = options
+    const prev = this.data
+    if (showLoading) {
+      this.setData(buildDetailLoadingPatch())
+    }
+    try {
+      const raw = await get(`/activities/${id}`)
+      const view = buildDetailLoadedView(raw, id, getApp().isLoggedIn(), (merged) => {
+        return decorateActivities([merged])[0]
+      })
+      this.setData(view)
+    } catch (err) {
+      console.warn('[activity/detail] 加载失败', err)
+      if (silent && shouldSilentRefreshDetail(prev)) {
+        this.setData(buildDetailRefreshFailurePatch(err, prev))
+      } else {
+        this.setData(buildDetailInitialFailurePatch(err))
+      }
     }
   },
 
-  async _loadDetail(id, showLoading = true) {
-    if (showLoading) this.setData({ loading: true })
-    try {
-      const raw = await get(`/activities/${id}`).catch(() => null)
-      const detail = mergeActivityDetail(raw)
-      const decorated = decorateActivities([detail])[0]
-      const action = resolveDetailAction(detail, getApp().isLoggedIn())
-      this.setData({
-        detail: { ...detail, coverImageMode: decorated.coverImageMode },
-        coverClass: decorated.colorClass || 'hc1',
-        loading: false,
-        actionType: action.actionType,
-        actionHint: action.hint,
-        statusLabel: enrollStatusLabel(detail.enrollStatus)
-      })
-    } catch (err) {
-      console.warn('[activity/detail] 加载失败', err)
-      this.setData({ detail: null, loading: false })
+  onRetry() {
+    const id = this.data.activityId
+    if (!id) return
+    if (this.data.loadError || this.data.notFound) {
+      this._loadDetail(id)
+      return
     }
+    if (this.data.refreshError) {
+      this.setData({ refreshError: false })
+      this._loadDetail(id, { showLoading: false, silent: true })
+    }
+  },
+
+  onBackList() {
+    wx.redirectTo({ url: '/pages/activity/index' })
   },
 
   onLoginTap() {
@@ -76,7 +101,7 @@ Page({
         try {
           await del(`/activities/${activityId}/enroll`)
           wx.showToast({ title: '已取消报名', icon: 'success' })
-          this._loadDetail(activityId, false)
+          this._loadDetail(activityId, { showLoading: false, silent: true })
         } catch (e) {
           // 错误 toast 由 request.js 处理
         }

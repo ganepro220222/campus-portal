@@ -5,6 +5,12 @@ const {
   enrollStatusLabel,
   hasActiveEnroll
 } = require('./activity')
+const {
+  assertActivityDetailRaw,
+  buildActivityDetailLoadingPatch,
+  buildActivityDetailFailurePatch,
+  resolveActivityDetailPagePhase
+} = require('./activityDetailLoad')
 
 function buildApprovedEnrolledHint() {
   return '您已成功报名，活动当天请凭二维码或凭证码签到。'
@@ -29,33 +35,8 @@ function buildEnrollFormFromProfile(profile) {
   }
 }
 
-function classifyActivityLoadError(err) {
-  const code = err && (err.code != null ? err.code : err.statusCode)
-  if (code === 404) return 'notFound'
-  if (err && err.kind === 'notFound') return 'notFound'
-  return 'loadError'
-}
-
-function assertActivityDetailRaw(raw, activityId) {
-  if (!raw || raw.id == null) {
-    const err = new Error('activity detail unavailable')
-    err.kind = 'notFound'
-    throw err
-  }
-  if (String(raw.id) !== String(activityId)) {
-    const err = new Error('activity id mismatch')
-    err.kind = 'notFound'
-    throw err
-  }
-}
-
 function buildEnrollLoadingPatch() {
-  return {
-    loading: true,
-    loadError: false,
-    notFound: false,
-    detail: null
-  }
+  return buildActivityDetailLoadingPatch()
 }
 
 function buildEnrollLoadedView(raw, profile, activityId) {
@@ -80,12 +61,8 @@ function buildEnrollLoadedView(raw, profile, activityId) {
 }
 
 function buildEnrollFailurePatch(err) {
-  const kind = classifyActivityLoadError(err)
   return {
-    loading: false,
-    detail: null,
-    loadError: kind === 'loadError',
-    notFound: kind === 'notFound',
+    ...buildActivityDetailFailurePatch(err),
     hasEnrolled: false,
     statusLabel: '',
     enrolledHint: '',
@@ -96,11 +73,7 @@ function buildEnrollFailurePatch(err) {
 }
 
 function resolveEnrollPagePhase(state) {
-  if (state.loading) return 'loading'
-  if (state.loadError) return 'loadError'
-  if (state.notFound) return 'notFound'
-  if (state.detail && state.detail.id != null) return 'content'
-  return 'notFound'
+  return resolveActivityDetailPagePhase(state)
 }
 
 function canSubmitEnroll(state) {
@@ -116,7 +89,6 @@ module.exports = {
   buildApprovedEnrolledHint,
   buildEnrolledHint,
   buildEnrollFormFromProfile,
-  classifyActivityLoadError,
   assertActivityDetailRaw,
   buildEnrollLoadingPatch,
   buildEnrollLoadedView,

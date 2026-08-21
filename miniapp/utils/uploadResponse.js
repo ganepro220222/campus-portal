@@ -6,6 +6,10 @@ function uploadErrorMessage(statusCode, body) {
   return '上传失败'
 }
 
+function isUnauthorized(statusCode, body) {
+  return statusCode === 401 || !!(body && body.code === 401)
+}
+
 /**
  * 解析 uploadFile success 回调的 res，统一为 { ok, data?, error?, unauthorized? }
  */
@@ -26,10 +30,12 @@ function parseUploadFileResponse(res) {
 
   const statusCode = res.statusCode || 0
   if (statusCode < 200 || statusCode >= 300) {
+    const unauthorized = isUnauthorized(statusCode, body)
     return {
       ok: false,
+      unauthorized: unauthorized || undefined,
       error: {
-        code: statusCode,
+        code: unauthorized ? 401 : statusCode,
         message: uploadErrorMessage(statusCode, body),
         body
       }
@@ -52,5 +58,6 @@ function parseUploadFileResponse(res) {
 
 module.exports = {
   uploadErrorMessage,
+  isUnauthorized,
   parseUploadFileResponse
 }

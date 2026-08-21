@@ -26,7 +26,8 @@ Page({
     likeLabel: '点赞',
     collectLabel: '收藏',
     articleId: null,
-    interactionBusy: false
+    likeBusy: false,
+    favoriteBusy: false
   },
 
   onLoad(opts) {
@@ -67,15 +68,15 @@ Page({
   onLike() {
     requireLogin(() => {
       const id = this.data.articleId
-      if (!id || this.data.interactionBusy) return
-      this.setData({ interactionBusy: true })
+      if (!id || this.data.likeBusy) return
+      this.setData({ likeBusy: true })
       post(`/news/${id}/like`).then(res => {
         const patch = mergeLikeSuccess(this.data, res)
-        this.setData({ ...patch, interactionBusy: false })
+        this.setData({ ...patch, likeBusy: false })
         const toast = likeSuccessToast(patch)
         if (toast) wx.showToast({ title: toast, icon: 'none' })
       }).catch(() => {
-        this.setData({ interactionBusy: false })
+        this.setData({ likeBusy: false })
       })
     })
   },
@@ -83,15 +84,15 @@ Page({
   onCollect() {
     requireLogin(() => {
       const id = this.data.articleId
-      if (!id || this.data.interactionBusy) return
-      this.setData({ interactionBusy: true })
+      if (!id || this.data.favoriteBusy) return
+      this.setData({ favoriteBusy: true })
       post(`/news/${id}/favorite`).then(res => {
         const patch = mergeFavoriteSuccess(this.data, res)
-        this.setData({ ...patch, interactionBusy: false })
+        this.setData({ ...patch, favoriteBusy: false })
         const toast = favoriteSuccessToast(patch)
         if (toast) wx.showToast({ title: toast, icon: 'none' })
       }).catch(() => {
-        this.setData({ interactionBusy: false })
+        this.setData({ favoriteBusy: false })
       })
     })
   },

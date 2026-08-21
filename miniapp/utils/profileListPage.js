@@ -85,11 +85,27 @@ function shouldShowLoadError(error, loading) {
   return error && !loading
 }
 
+/** 从详情返回后需刷新的列表类型（取消收藏/取消报名等） */
+const REFRESH_ON_SHOW_TYPES = new Set(['favorites', 'enrolls'])
+
+function shouldRefreshOnShow(hasShownOnce, type) {
+  if (!hasShownOnce) return false
+  return REFRESH_ON_SHOW_TYPES.has(type)
+}
+
+function shouldSilentRefresh(prev) {
+  return !!(prev.list && prev.list.length)
+    || !!(prev.timelineGroups && prev.timelineGroups.length)
+}
+
 module.exports = {
   normalizeProfileList,
   normalizeProfileListItem,
   buildLoadedViewState,
   buildErrorViewState,
   shouldShowBusinessEmpty,
-  shouldShowLoadError
+  shouldShowLoadError,
+  REFRESH_ON_SHOW_TYPES,
+  shouldRefreshOnShow,
+  shouldSilentRefresh
 }

@@ -8,6 +8,8 @@ const {
   buildErrorViewState,
   shouldShowBusinessEmpty,
   shouldShowLoadError,
+  shouldRefreshOnShow,
+  shouldSilentRefresh,
   normalizeProfileList
 } = require('./profileListPage')
 
@@ -55,5 +57,15 @@ assert.strictEqual(shouldShowBusinessEmpty(true, false), true)
 assert.strictEqual(shouldShowBusinessEmpty(true, true), false)
 assert.strictEqual(shouldShowLoadError(true, false), true)
 assert.strictEqual(shouldShowLoadError(true, true), false)
+
+assert.strictEqual(shouldRefreshOnShow(false, 'favorites'), false)
+assert.strictEqual(shouldRefreshOnShow(true, 'favorites'), true)
+assert.strictEqual(shouldRefreshOnShow(true, 'enrolls'), true)
+assert.strictEqual(shouldRefreshOnShow(true, 'downloads'), false)
+assert.strictEqual(shouldRefreshOnShow(true, 'badges'), false)
+
+assert.strictEqual(shouldSilentRefresh({ list: [], timelineGroups: [] }), false)
+assert.strictEqual(shouldSilentRefresh({ list: [{ id: 1 }], timelineGroups: [] }), true)
+assert.strictEqual(shouldSilentRefresh({ list: [], timelineGroups: [{ dateKey: 'd' }] }), true)
 
 console.log('[profileListPage.test] PASS')

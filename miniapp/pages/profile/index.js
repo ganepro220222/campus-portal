@@ -1,5 +1,5 @@
 // pages/profile/index.js —— 个人中心（从首页顶栏「我的」进入）
-const { getUserInfo } = require('../../utils/auth')
+const { getUserInfo, requireLogin } = require('../../utils/auth')
 const { get } = require('../../utils/request')
 
 Page({
@@ -75,7 +75,9 @@ Page({
   },
 
   onFeedback() {
-    wx.navigateTo({ url: '/packageC/feedback/index' })
+    requireLogin(() => {
+      wx.navigateTo({ url: '/packageC/feedback/index' })
+    })
   },
 
   onAbout() {

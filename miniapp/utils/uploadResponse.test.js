@@ -3,7 +3,7 @@
  * 运行：node miniapp/utils/uploadResponse.test.js
  */
 const assert = require('assert')
-const { parseUploadFileResponse, uploadErrorMessage } = require('./uploadResponse')
+const { parseUploadFileResponse, uploadErrorMessage, isUnauthorized } = require('./uploadResponse')
 
 const okJson = parseUploadFileResponse({
   statusCode: 200,
@@ -25,6 +25,19 @@ const unauthorized = parseUploadFileResponse({
 })
 assert.strictEqual(unauthorized.ok, false)
 assert.strictEqual(unauthorized.unauthorized, true)
+
+const httpUnauthorized = parseUploadFileResponse({
+  statusCode: 401,
+  data: JSON.stringify({ code: 401, message: '请先登录' })
+})
+assert.strictEqual(httpUnauthorized.ok, false)
+assert.strictEqual(httpUnauthorized.unauthorized, true)
+assert.strictEqual(httpUnauthorized.error.code, 401)
+assert.strictEqual(httpUnauthorized.error.message, '请先登录')
+
+assert.strictEqual(isUnauthorized(401, { code: 401 }), true)
+assert.strictEqual(isUnauthorized(200, { code: 401 }), true)
+assert.strictEqual(isUnauthorized(403, { code: 403 }), false)
 
 const html502 = parseUploadFileResponse({
   statusCode: 502,

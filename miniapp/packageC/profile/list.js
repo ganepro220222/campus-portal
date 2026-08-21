@@ -3,7 +3,9 @@ const { get } = require('../../utils/request')
 const { downloadResource } = require('../../utils/resourceDownload')
 const {
   buildLoadedViewState,
-  buildErrorViewState
+  buildErrorViewState,
+  shouldRefreshOnShow,
+  shouldSilentRefresh
 } = require('../../utils/profileListPage')
 
 const CONFIG = {
@@ -38,11 +40,22 @@ Page({
   },
 
   onLoad(options) {
+    this._shownOnce = false
     const type = options.type || 'favorites'
     const cfg = CONFIG[type] || CONFIG.favorites
     const meta = TYPE_META[type] || TYPE_META.favorites
     this.setData({ type, navTitle: cfg.title, emptyText: cfg.empty, typeIcon: meta.icon, typeCls: meta.cls })
     this._load(type, cfg.api)
+  },
+
+  onShow() {
+    if (!shouldRefreshOnShow(this._shownOnce, this.data.type)) {
+      this._shownOnce = true
+      return
+    }
+    const type = this.data.type
+    const cfg = CONFIG[type] || CONFIG.favorites
+    this._load(type, cfg.api, { silent: shouldSilentRefresh(this.data) })
   },
 
   onRetry() {
@@ -51,12 +64,18 @@ Page({
     this._load(type, cfg.api)
   },
 
-  async _load(type, api) {
-    this.setData({ loading: true, error: false })
+  async _load(type, api, options = {}) {
+    const silent = options.silent === true
+    if (!silent) this.setData({ loading: true, error: false })
     try {
       const raw = await get(api)
       this.setData(buildLoadedViewState(type, raw))
     } catch (e) {
+      if (silent) {
+        wx.showToast({ title: '刷新失败，请下拉重试', icon: 'none' })
+        console.warn('[profile/list] 静默刷新失败', type, e)
+        return
+      }
       this.setData(buildErrorViewState(this.data))
       console.warn('[profile/list] 列表加载失败', type, e)
     }

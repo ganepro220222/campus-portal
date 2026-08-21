@@ -141,7 +141,7 @@ module.exports = {
   post:   (url, data, options) => request(url, 'POST', data, options),
   put:    (url, data, options) => request(url, 'PUT', data, options),
   del:    (url, options)       => request(url, 'DELETE', {}, options),
-  upload: (url, fp, name, fd) => upload(url, fp, name, fd),
+  upload: (url, fp, name, fd, options) => upload(url, fp, name, fd, options),
   // 供单测校验：不在模块顶层缓存 getApp()
   _getRuntimeApp: getRuntimeApp,
   _resolveBaseUrl: resolveBaseUrl,

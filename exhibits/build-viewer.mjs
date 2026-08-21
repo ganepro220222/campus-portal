@@ -613,13 +613,22 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
 }
 
 /** Nginx 未配置 .mjs MIME 时，部署包须 import .js 副本 */
-export function buildUploadViewerSrc(viewerSrc = buildViewerSrc()) {
-  let out = viewerSrc
+function rewriteMjsImportsToJs(html) {
+  let out = html
   for (const [, dstName] of UPLOAD_JS_COPIES) {
     const base = dstName.replace(/\.js$/, '')
     out = out.replace(new RegExp(`from '\\./${base}\\.mjs'`, 'g'), `from './${base}.js'`)
   }
   return out
+}
+
+export function buildUploadViewerSrc(viewerSrc = buildViewerSrc()) {
+  return rewriteMjsImportsToJs(viewerSrc)
+}
+
+/** 完整编辑版 player.html，供无法正确提供 .mjs 的测试服务器上传（import 指向同目录 .js 副本） */
+export function buildUploadPlayerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
+  return rewriteMjsImportsToJs(playerHtml)
 }
 
 export function syncUploadModules(uploadDir = UPLOAD_DIR) {
@@ -736,10 +745,17 @@ function usage() {
     node build-viewer.mjs --upload --upload-prune
 
   New/changed models or panoramas:
-    node build-viewer.mjs --upload-assets --upload`)
+    node build-viewer.mjs --upload-assets --upload
+
+  Test server without .mjs MIME (full editor player.html, imports .js copies):
+    node build-viewer.mjs --deploy-player`)
 }
 
+const DEPLOY_PLAYER_OUT = path.join(ROOT, 'player.deploy.html')
+const DEPLOY_PLAYER_DIR = path.join(ROOT, 'deploy-test-server')
+
 const check = process.argv.includes('--check')
+const deployPlayer = process.argv.includes('--deploy-player')
 const upload = process.argv.includes('--upload')
 const uploadInit = process.argv.includes('--upload-init')
 const uploadAssets = process.argv.includes('--upload-assets')
@@ -760,6 +776,34 @@ if (uploadAssets && !upload) {
   console.error('--upload-assets requires --upload (assets copy runs inside staged deploy)')
   console.error('Run: node build-viewer.mjs --upload-assets --upload')
   process.exit(1)
+}
+
+if (deployPlayer) {
+  fs.mkdirSync(DEPLOY_PLAYER_DIR, { recursive: true })
+  fs.writeFileSync(path.join(DEPLOY_PLAYER_DIR, 'player.html'), buildUploadPlayerSrc(), 'utf8')
+  fs.writeFileSync(DEPLOY_PLAYER_OUT, fs.readFileSync(path.join(DEPLOY_PLAYER_DIR, 'player.html'), 'utf8'), 'utf8')
+  for (const [srcName, dstName] of UPLOAD_JS_COPIES) {
+    fs.copyFileSync(path.join(ROOT, srcName), path.join(DEPLOY_PLAYER_DIR, dstName))
+  }
+  fs.copyFileSync(path.join(ROOT, 'leader-geom.js'), path.join(DEPLOY_PLAYER_DIR, 'leader-geom.js'))
+  fs.writeFileSync(path.join(DEPLOY_PLAYER_DIR, 'README.txt'), [
+    '测试服务器上传包（不支持 .mjs 或模块过旧时使用）',
+    '',
+    '上传到站点 exhibits 根目录（与 craft-001、vendor 同级），覆盖同名文件：',
+    '  player.html',
+    '  hotspot-id.js',
+    '  player-persist.js',
+    '  light-rig.js',
+    '  material-override.js',
+    '  leader-geom.js',
+    '',
+    '上传后访问：player.html?ex=craft-001&mode=edit',
+    '正式服务器有命令权限时改用 node build-viewer.mjs --upload。',
+    '',
+  ].join('\n'), 'utf8')
+  console.log(`deploy-test-server/ written (${UPLOAD_JS_COPIES.length + 2} files + README)`)
+  console.log('Upload everything in deploy-test-server/ to your test host (same folder as vendor/)')
+  process.exit(0)
 }
 
 const viewerSrc = assertViewerBuild(buildViewerSrc())

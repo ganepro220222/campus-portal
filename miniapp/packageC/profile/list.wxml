@@ -3,6 +3,12 @@
   <nav-bar title="{{navTitle}}" />
   <view wx:if="{{loading}}" class="pl-state"><text>加载中…</text></view>
 
+  <view wx:elif="{{error && isEmpty}}" class="empty-state">
+    <icon name="{{typeIcon}}" size="42" color="#C3CCE0" />
+    <text>加载失败，请重试</text>
+    <view class="pl-retry" bindtap="onRetry">重新加载</view>
+  </view>
+
   <view wx:elif="{{isEmpty}}" class="empty-state">
     <icon name="{{typeIcon}}" size="42" color="#C3CCE0" />
     <text>{{emptyText}}</text>

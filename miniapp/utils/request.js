@@ -89,7 +89,10 @@ const request = (url, method = 'GET', data = {}, options = {}) => {
  * 上传文件到后端（后端再转存对象存储）
  * 大文件建议使用服务端签名 + 小程序直传的方式，避免流量经过应用服务器
  */
-const upload = (url, filePath, name = 'file', formData = {}) => {
+const { parseUploadFileResponse } = require('./uploadResponse')
+
+const upload = (url, filePath, name = 'file', formData = {}, options = {}) => {
+  const silent = options.silent === true
   return new Promise((resolve, reject) => {
     const token = resolveToken()
     wx.uploadFile({
@@ -97,13 +100,38 @@ const upload = (url, filePath, name = 'file', formData = {}) => {
       filePath,
       name,
       formData,
+      timeout: 60000,
       header: { 'Authorization': token ? `Bearer ${token}` : '' },
       success(res) {
-        const body = JSON.parse(res.data)
-        if (body.code === 200) return resolve(body.data)
-        reject(body)
+        const parsed = parseUploadFileResponse(res)
+        if (parsed.ok) {
+          resolve(parsed.data)
+          return
+        }
+        if (parsed.unauthorized) {
+          logoutIfNeeded(url)
+          if (!silent) {
+            wx.showToast({
+              title: (parsed.error && parsed.error.message) || '请先登录',
+              icon: 'none',
+              duration: 2500
+            })
+          }
+          reject(parsed.error)
+          return
+        }
+        const message = (parsed.error && parsed.error.message) || '上传失败'
+        if (!silent) {
+          wx.showToast({ title: message, icon: 'none', duration: 2500 })
+        }
+        reject(parsed.error)
       },
-      fail: reject
+      fail(err) {
+        if (!silent) {
+          wx.showToast({ title: '网络异常，请检查连接', icon: 'none' })
+        }
+        reject(err)
+      }
     })
   })
 }

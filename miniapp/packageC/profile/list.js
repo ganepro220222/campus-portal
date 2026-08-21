@@ -1,8 +1,10 @@
 // packageC/profile/list.js — 个人中心通用列表（收藏/报名/下载/足迹/徽章）
 const { get } = require('../../utils/request')
-const { groupFootprintsByDate } = require('../../utils/footprintTimeline')
-const { mapDownloadRecordItem } = require('../../utils/downloadRecord')
 const { downloadResource } = require('../../utils/resourceDownload')
+const {
+  buildLoadedViewState,
+  buildErrorViewState
+} = require('../../utils/profileListPage')
 
 const CONFIG = {
   favorites:  { title: '我的收藏',   api: '/profile/favorites',  empty: '暂无收藏' },
@@ -12,14 +14,6 @@ const CONFIG = {
   badges:     { title: '学习徽章',   api: '/profile/badges',     empty: '暂无徽章数据' }
 }
 
-// 有效报名状态；cancelled 由后端排除，不在「我的报名」列表返回
-const ENROLL_STATUS = {
-  pending: '待审核',
-  approved: '已通过',
-  rejected: '已拒绝'
-}
-
-// 各类型的图标与配色
 const TYPE_META = {
   favorites:  { icon: 'heart',     cls: 'tc-rose' },
   enrolls:    { icon: 'calendar',  cls: 'tc-blue' },
@@ -35,6 +29,7 @@ Page({
     timelineGroups: [],
     isEmpty: true,
     loading: true,
+    error: false,
     navTitle: '我的',
     emptyText: '暂无数据',
     typeIcon: 'heart',
@@ -50,67 +45,21 @@ Page({
     this._load(type, cfg.api)
   },
 
-  async _load(type, api) {
-    this.setData({ loading: true })
-    try {
-      const raw = await get(api).catch(() => [])
-      if (type === 'footprints') {
-        const timelineGroups = groupFootprintsByDate(raw || [])
-        this.setData({
-          timelineGroups,
-          list: [],
-          isEmpty: !timelineGroups.length,
-          loading: false
-        })
-        return
-      }
-      const list = this._normalize(type, raw || [])
-      this.setData({
-        list,
-        timelineGroups: [],
-        isEmpty: !list.length,
-        loading: false
-      })
-    } catch (e) {
-      this.setData({ list: [], timelineGroups: [], isEmpty: true, loading: false })
-    }
+  onRetry() {
+    const type = this.data.type || 'favorites'
+    const cfg = CONFIG[type] || CONFIG.favorites
+    this._load(type, cfg.api)
   },
 
-  /** 统一各接口字段，便于 WXML 复用 */
-  _normalize(type, list) {
-    return list.map(item => {
-      if (type === 'enrolls') {
-        const statusLabel = ENROLL_STATUS[item.status] || item.status
-        // 活动已取消但报名仍为 rejected 时，后端会附带 activityStatusLabel
-        const activityHint = item.activityStatusLabel || ''
-        return {
-          ...item,
-          title: item.activityTitle,
-          subtitle: item.activityLocation,
-          statusLabel: activityHint ? `${statusLabel} · ${activityHint}` : statusLabel,
-          statusClass: item.status || 'pending',
-          route: item.activityStatus === 'cancelled' || !item.activityId
-            ? ''
-            : `/packageC/activity/detail?id=${item.activityId}`
-        }
-      }
-      if (type === 'footprints') {
-        return item
-      }
-      if (type === 'downloads') {
-        return mapDownloadRecordItem(item)
-      }
-      if (type === 'badges') {
-        return { ...item, title: item.name, createTime: item.achievedAt }
-      }
-      if (type === 'favorites') {
-        return {
-          ...item,
-          subtitle: item.targetTypeLabel || ''
-        }
-      }
-      return item
-    })
+  async _load(type, api) {
+    this.setData({ loading: true, error: false })
+    try {
+      const raw = await get(api)
+      this.setData(buildLoadedViewState(type, raw))
+    } catch (e) {
+      this.setData(buildErrorViewState(this.data))
+      console.warn('[profile/list] 列表加载失败', type, e)
+    }
   },
 
   onItemTap(e) {

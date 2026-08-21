@@ -2,6 +2,17 @@
 .pl-page { min-height: 100vh; background: linear-gradient(180deg, #EAF1FB 0, #F5F8FC 220rpx); }
 .pl-state { padding: 100rpx 40rpx; text-align: center; color: var(--muted); font-size: 28rpx; }
 
+.pl-retry {
+  margin-top: 28rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--sky-2);
+  padding: 16rpx 40rpx;
+  border-radius: 28rpx;
+}
+.pl-retry:active { background: var(--sky-3); }
+
 .pl-list { padding: 24rpx 28rpx 0; }
 .pl-item {
   display: flex;

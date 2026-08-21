@@ -35,6 +35,8 @@ class HallServiceTest {
     private EventLogService eventLogService;
     @Mock
     private PointService pointService;
+    @Mock
+    private FavoriteService favoriteService;
 
     @InjectMocks
     private HallService hallService;

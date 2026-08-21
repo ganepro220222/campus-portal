@@ -35,6 +35,8 @@ class CourseServiceTest {
     private EventLogService eventLogService;
     @Mock
     private OssService ossService;
+    @Mock
+    private FavoriteService favoriteService;
 
     @InjectMocks
     private CourseService courseService;

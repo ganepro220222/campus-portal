@@ -37,6 +37,8 @@ class CraftServiceTest {
     private CategoryService categoryService;
     @Mock
     private EventLogService eventLogService;
+    @Mock
+    private FavoriteService favoriteService;
 
     @InjectMocks
     private CraftService craftService;

@@ -36,6 +36,8 @@ class ResourceServiceTest {
     private PointService pointService;
     @Mock
     private OssService ossService;
+    @Mock
+    private FavoriteService favoriteService;
 
     @InjectMocks
     private ResourceService resourceService;

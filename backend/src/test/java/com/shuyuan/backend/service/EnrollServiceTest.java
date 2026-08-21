@@ -157,6 +157,74 @@ class EnrollServiceTest {
     }
 
     @Test
+    void enroll_rejectsInvalidPhone_beforeQuotaIncr() {
+        Activity activity = publishedActivity(10, 3);
+        EnrollRequest req = enrollRequest();
+        req.setPhone("1");
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(null);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.enroll(ACTIVITY_ID, req));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("手机号"));
+        verify(activityMapper, never()).incrEnrolledCount(anyLong());
+        verify(enrollMapper, never()).insert(any());
+    }
+
+    @Test
+    void enroll_rejectsInvalidProfilePhone_beforeQuotaIncr() {
+        Activity activity = publishedActivity(10, 3);
+        EnrollRequest req = new EnrollRequest();
+        MemberProfile profile = memberProfile();
+        profile.setPhone("123456");
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(null);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(profile);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.enroll(ACTIVITY_ID, req));
+        assertEquals(400, ex.getCode());
+        verify(activityMapper, never()).incrEnrolledCount(anyLong());
+    }
+
+    @Test
+    void enroll_rejectsBlankIdentity_beforeQuotaIncr() {
+        Activity activity = publishedActivity(10, 3);
+        EnrollRequest req = new EnrollRequest();
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(null);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.enroll(ACTIVITY_ID, req));
+        assertEquals(400, ex.getCode());
+        verify(activityMapper, never()).incrEnrolledCount(anyLong());
+    }
+
+    @Test
+    void enroll_usesProfileWhenRequestEmpty() {
+        Activity activity = publishedActivity(10, 3);
+        EnrollRequest req = new EnrollRequest();
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(null);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
+        when(activityMapper.incrEnrolledCount(ACTIVITY_ID)).thenReturn(1);
+
+        Map<String, Object> result = enrollService.enroll(ACTIVITY_ID, req);
+
+        assertNotNull(result);
+        verify(activityMapper).incrEnrolledCount(ACTIVITY_ID);
+        verify(enrollMapper).insert(argThat(enroll ->
+                "张三".equals(enroll.getName()) && "13800138000".equals(enroll.getPhone())));
+    }
+
+    @Test
     void voucher_requiresApprovedAndPublishedActivity() {
         Enroll pending = new Enroll();
         pending.setId(30L);

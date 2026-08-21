@@ -105,6 +105,16 @@
   color: #1F2547;
   box-sizing: border-box;
 }
+.field-err .field-input {
+  border-color: rgba(192, 57, 43, 0.45);
+  background: rgba(192, 57, 43, 0.04);
+}
+.field-error {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #C0392B;
+}
 
 .btn-primary {
   width: 100%;

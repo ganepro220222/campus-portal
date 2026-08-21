@@ -14,7 +14,7 @@ const {
   shouldShowVoucherQr,
   mapEnrollVoucherFields
 } = require('../../utils/enrollVoucher')
-const { exportVoucherQr } = require('../../utils/voucherQrCanvas')
+const { validateEnrollForm } = require('../../utils/enrollForm')
 
 Page({
   data: {
@@ -23,6 +23,8 @@ Page({
     activityId: null,
     detail: null,
     form: { name: '', phone: '', college: '', grade: '' },
+    profileSnapshot: null,
+    fieldErrors: { name: '', phone: '', college: '', grade: '' },
     hasEnrolled: false,
     statusLabel: '',
     enrolledHint: '',
@@ -69,6 +71,7 @@ Page({
         hasEnrolled: active,
         statusLabel: enrollStatusLabel(detail.enrollStatus),
         enrolledHint,
+        profileSnapshot: profile || null,
         form: {
           name: (profile && profile.realName) || '',
           phone: (profile && profile.phone) || '',
@@ -92,24 +95,31 @@ Page({
 
   onInput(e) {
     const field = e.currentTarget.dataset.field
-    this.setData({ [`form.${field}`]: e.detail.value })
+    const patch = { [`form.${field}`]: e.detail.value }
+    if (this.data.fieldErrors && this.data.fieldErrors[field]) {
+      patch[`fieldErrors.${field}`] = ''
+    }
+    this.setData(patch)
   },
 
   async onSubmit() {
     if (this.data.submitting) return
-    const { activityId, form } = this.data
+    const { activityId, form, profileSnapshot } = this.data
     if (!activityId) return
 
-    this.setData({ submitting: true })
+    const validation = validateEnrollForm(form, profileSnapshot)
+    if (!validation.ok) {
+      this.setData({
+        [`fieldErrors.${validation.field}`]: validation.message
+      })
+      wx.showToast({ title: validation.message, icon: 'none' })
+      return
+    }
+
+    this.setData({ submitting: true, fieldErrors: { name: '', phone: '', college: '', grade: '' } })
     try {
       await requestSubscribe('enroll_success', 'enrollSuccess')
-      const payload = {}
-      if (form.name.trim()) payload.name = form.name.trim()
-      if (form.phone.trim()) payload.phone = form.phone.trim()
-      if (form.college.trim()) payload.college = form.college.trim()
-      if (form.grade.trim()) payload.grade = form.grade.trim()
-
-      const raw = await post(`/activities/${activityId}/enroll`, payload)
+      const raw = await post(`/activities/${activityId}/enroll`, validation.payload)
       const result = mergeEnrollResult(raw)
       const resultHint = result.status === 'pending'
         ? '报名已提交，请等待管理员审核。'

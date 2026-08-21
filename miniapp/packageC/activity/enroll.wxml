@@ -63,7 +63,7 @@
         <view class="form-title">填写报名信息</view>
         <view class="form-hint">姓名与手机号为必填；若已在个人资料中完善，可留空由系统自动读取。</view>
 
-        <view class="field">
+        <view class="field {{fieldErrors.name ? 'field-err' : ''}}">
           <text class="field-label">姓名</text>
           <input
             class="field-input"
@@ -72,8 +72,9 @@
             bindinput="onInput"
             data-field="name"
           />
+          <text wx:if="{{fieldErrors.name}}" class="field-error">{{fieldErrors.name}}</text>
         </view>
-        <view class="field">
+        <view class="field {{fieldErrors.phone ? 'field-err' : ''}}">
           <text class="field-label">手机号</text>
           <input
             class="field-input"
@@ -84,8 +85,9 @@
             bindinput="onInput"
             data-field="phone"
           />
+          <text wx:if="{{fieldErrors.phone}}" class="field-error">{{fieldErrors.phone}}</text>
         </view>
-        <view class="field">
+        <view class="field {{fieldErrors.college ? 'field-err' : ''}}">
           <text class="field-label">学院</text>
           <input
             class="field-input"
@@ -94,8 +96,9 @@
             bindinput="onInput"
             data-field="college"
           />
+          <text wx:if="{{fieldErrors.college}}" class="field-error">{{fieldErrors.college}}</text>
         </view>
-        <view class="field">
+        <view class="field {{fieldErrors.grade ? 'field-err' : ''}}">
           <text class="field-label">年级</text>
           <input
             class="field-input"
@@ -104,6 +107,7 @@
             bindinput="onInput"
             data-field="grade"
           />
+          <text wx:if="{{fieldErrors.grade}}" class="field-error">{{fieldErrors.grade}}</text>
         </view>
 
         <button class="btn-primary" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onSubmit">

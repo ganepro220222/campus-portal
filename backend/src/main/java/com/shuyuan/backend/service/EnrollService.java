@@ -47,9 +47,10 @@ public class EnrollService {
         MemberProfile profile = memberProfileMapper.selectById(memberId);
         String name = pickName(req, profile);
         String phone = pickPhone(req, profile);
-        if (name.isBlank() || phone.isBlank()) {
-            throw new BusinessException(400, "请先完善个人资料中的姓名和手机号");
-        }
+        validateEnrollIdentity(name, phone);
+        String college = firstNonBlank(req.getCollege(), profile != null ? profile.getCollege() : null);
+        String grade = firstNonBlank(req.getGrade(), profile != null ? profile.getGrade() : null);
+        validateEnrollOptionalFields(college, grade);
 
         int affected = activityMapper.incrEnrolledCount(activityId);
         if (affected == 0) {
@@ -65,8 +66,8 @@ public class EnrollService {
                 update.setId(existing.getId());
                 update.setName(name);
                 update.setPhone(phone);
-                update.setCollege(firstNonBlank(req.getCollege(), profile != null ? profile.getCollege() : null));
-                update.setGrade(firstNonBlank(req.getGrade(), profile != null ? profile.getGrade() : null));
+                update.setCollege(college);
+                update.setGrade(grade);
                 update.setStatus(status);
                 update.setVoucherCode(voucherCode);
                 update.setRejectReason(null);
@@ -78,8 +79,8 @@ public class EnrollService {
                 enroll.setMemberId(memberId);
                 enroll.setName(name);
                 enroll.setPhone(phone);
-                enroll.setCollege(firstNonBlank(req.getCollege(), profile != null ? profile.getCollege() : null));
-                enroll.setGrade(firstNonBlank(req.getGrade(), profile != null ? profile.getGrade() : null));
+                enroll.setCollege(college);
+                enroll.setGrade(grade);
                 enroll.setStatus(status);
                 enroll.setVoucherCode(voucherCode);
                 enrollMapper.insert(enroll);
@@ -290,6 +291,31 @@ public class EnrollService {
 
     private String pickPhone(EnrollRequest req, MemberProfile profile) {
         return firstNonBlank(req.getPhone(), profile != null ? profile.getPhone() : null);
+    }
+
+    private void validateEnrollIdentity(String name, String phone) {
+        if (name.isBlank() || phone.isBlank()) {
+            throw new BusinessException(400, "请先完善个人资料中的姓名和手机号");
+        }
+        if (name.length() > 32) {
+            throw new BusinessException(400, "姓名过长");
+        }
+        if (!isValidCnMobile(phone)) {
+            throw new BusinessException(400, "手机号格式不正确");
+        }
+    }
+
+    private void validateEnrollOptionalFields(String college, String grade) {
+        if (college != null && college.length() > 64) {
+            throw new BusinessException(400, "学院名称过长");
+        }
+        if (grade != null && grade.length() > 16) {
+            throw new BusinessException(400, "年级格式过长");
+        }
+    }
+
+    private static boolean isValidCnMobile(String phone) {
+        return phone != null && phone.matches("^1[3-9]\\d{9}$");
     }
 
     private String firstNonBlank(String... values) {

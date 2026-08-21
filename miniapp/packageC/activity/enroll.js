@@ -8,13 +8,10 @@ const {
 } = require('../../utils/activity')
 const { requireLogin } = require('../../utils/auth')
 const { requestSubscribe } = require('../../utils/subscribe')
-const {
-  buildVoucherQrText,
-  pickRemoteQrSrc,
-  shouldShowVoucherQr,
-  mapEnrollVoucherFields
-} = require('../../utils/enrollVoucher')
+const { mapEnrollVoucherFields } = require('../../utils/enrollVoucher')
 const { validateEnrollForm } = require('../../utils/enrollForm')
+const { exportVoucherQr } = require('../../utils/voucherQrCanvas')
+const { resolveVoucherQrSrc } = require('../../utils/enrollVoucherPage')
 
 Page({
   data: {
@@ -151,34 +148,22 @@ Page({
   },
 
   async _refreshVoucherQr(ctx) {
-    const fields = mapEnrollVoucherFields(ctx)
-    const { status, voucherCode, qrCodeUrl, enrollId } = fields
-    if (!shouldShowVoucherQr(status, voucherCode)) {
-      this.setData({ showVoucherQr: false, voucherQrSrc: '' })
-      return
-    }
-
-    let remote = pickRemoteQrSrc(qrCodeUrl)
-    if (!remote && enrollId) {
-      try {
-        const voucher = await get(`/enrolls/${enrollId}/voucher`)
-        remote = pickRemoteQrSrc(voucher && voucher.qrCodeUrl)
-      } catch (err) {
-        console.warn('[activity/enroll] 凭证接口未返回二维码', err)
-      }
-    }
-    if (remote) {
-      this.setData({ showVoucherQr: true, voucherQrSrc: remote })
-      return
-    }
-
     try {
-      const text = buildVoucherQrText(voucherCode)
-      const path = await exportVoucherQr(this, 'voucherQrCanvas', text)
-      this.setData({ showVoucherQr: true, voucherQrSrc: path })
+      const view = await resolveVoucherQrSrc(ctx, {
+        fetchVoucherQrUrl: async (enrollId) => {
+          const voucher = await get(`/enrolls/${enrollId}/voucher`)
+          return voucher && voucher.qrCodeUrl
+        },
+        exportLocalQr: (text) => exportVoucherQr(this, 'voucherQrCanvas', text)
+      })
+      this.setData({
+        showVoucherQr: view.showVoucherQr,
+        voucherQrSrc: view.voucherQrSrc
+      })
     } catch (err) {
       console.warn('[activity/enroll] 本地二维码生成失败', err)
       this.setData({ showVoucherQr: false, voucherQrSrc: '' })
+      wx.showToast({ title: '二维码生成失败，请使用凭证码签到', icon: 'none' })
     }
   },
 

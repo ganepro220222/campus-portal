@@ -54,6 +54,7 @@ function buildLoadedViewState(type, raw) {
       list: [],
       isEmpty: !timelineGroups.length,
       error: false,
+      refreshError: false,
       loading: false
     }
   }
@@ -63,6 +64,7 @@ function buildLoadedViewState(type, raw) {
     list,
     isEmpty: !list.length,
     error: false,
+    refreshError: false,
     loading: false
   }
 }
@@ -73,8 +75,17 @@ function buildErrorViewState(prev) {
   return {
     loading: false,
     error: true,
+    refreshError: false,
     isEmpty: !hasContent
   }
+}
+
+function buildSilentRefreshErrorViewState() {
+  return { refreshError: true }
+}
+
+function shouldShowRefreshErrorBar(refreshError, loading, hasContent) {
+  return !!refreshError && !loading && !!hasContent
 }
 
 function shouldShowBusinessEmpty(isEmpty, error) {
@@ -103,8 +114,10 @@ module.exports = {
   normalizeProfileListItem,
   buildLoadedViewState,
   buildErrorViewState,
+  buildSilentRefreshErrorViewState,
   shouldShowBusinessEmpty,
   shouldShowLoadError,
+  shouldShowRefreshErrorBar,
   REFRESH_ON_SHOW_TYPES,
   shouldRefreshOnShow,
   shouldSilentRefresh

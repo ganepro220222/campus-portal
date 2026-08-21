@@ -6,8 +6,10 @@ const assert = require('assert')
 const {
   buildLoadedViewState,
   buildErrorViewState,
+  buildSilentRefreshErrorViewState,
   shouldShowBusinessEmpty,
   shouldShowLoadError,
+  shouldShowRefreshErrorBar,
   shouldRefreshOnShow,
   shouldSilentRefresh,
   normalizeProfileList
@@ -67,5 +69,19 @@ assert.strictEqual(shouldRefreshOnShow(true, 'badges'), false)
 assert.strictEqual(shouldSilentRefresh({ list: [], timelineGroups: [] }), false)
 assert.strictEqual(shouldSilentRefresh({ list: [{ id: 1 }], timelineGroups: [] }), true)
 assert.strictEqual(shouldSilentRefresh({ list: [], timelineGroups: [{ dateKey: 'd' }] }), true)
+
+const silentErr = buildSilentRefreshErrorViewState()
+assert.strictEqual(silentErr.refreshError, true)
+
+const loaded = buildLoadedViewState('favorites', [{ id: 1, targetTypeLabel: '动态' }])
+assert.strictEqual(loaded.refreshError, false)
+
+const errState = buildErrorViewState({ list: [{ id: 1 }], timelineGroups: [] })
+assert.strictEqual(errState.refreshError, false)
+
+assert.strictEqual(shouldShowRefreshErrorBar(true, false, true), true)
+assert.strictEqual(shouldShowRefreshErrorBar(true, true, true), false)
+assert.strictEqual(shouldShowRefreshErrorBar(false, false, true), false)
+assert.strictEqual(shouldShowRefreshErrorBar(true, false, false), false)
 
 console.log('[profileListPage.test] PASS')

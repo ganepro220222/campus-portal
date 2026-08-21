@@ -4,6 +4,7 @@ const { downloadResource } = require('../../utils/resourceDownload')
 const {
   buildLoadedViewState,
   buildErrorViewState,
+  buildSilentRefreshErrorViewState,
   shouldRefreshOnShow,
   shouldSilentRefresh
 } = require('../../utils/profileListPage')
@@ -32,6 +33,7 @@ Page({
     isEmpty: true,
     loading: true,
     error: false,
+    refreshError: false,
     navTitle: '我的',
     emptyText: '暂无数据',
     typeIcon: 'heart',
@@ -61,18 +63,19 @@ Page({
   onRetry() {
     const type = this.data.type || 'favorites'
     const cfg = CONFIG[type] || CONFIG.favorites
-    this._load(type, cfg.api)
+    this.setData({ refreshError: false })
+    this._load(type, cfg.api, { silent: shouldSilentRefresh(this.data) })
   },
 
   async _load(type, api, options = {}) {
     const silent = options.silent === true
-    if (!silent) this.setData({ loading: true, error: false })
+    if (!silent) this.setData({ loading: true, error: false, refreshError: false })
     try {
       const raw = await get(api)
       this.setData(buildLoadedViewState(type, raw))
     } catch (e) {
       if (silent) {
-        wx.showToast({ title: '刷新失败，请下拉重试', icon: 'none' })
+        this.setData(buildSilentRefreshErrorViewState())
         console.warn('[profile/list] 静默刷新失败', type, e)
         return
       }

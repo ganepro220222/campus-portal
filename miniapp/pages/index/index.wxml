@@ -190,7 +190,7 @@
     <!-- 协同育人 · 关联小程序（App 入口横条；1→N 统一，首页至多 3 条，余下进「更多」） -->
     <view wx:if="{{collegeList.length}}" class="section wrap">
       <view class="sec-head">
-        <view class="sec-title serif">协同育人</view>
+        <view class="sec-title serif">关联应用</view>
         <view class="sec-more" bindtap="onCollegeMore">全部<icon name="chevron-right" size="13" color="#8A93B2" /></view>
       </view>
       <view class="app-list">

@@ -2,10 +2,16 @@
 
 const { get } = require('./request')
 
+/*
+ * 注意：这里是「后台没配」时的兜底，和 mock/defaults.js 不一样——
+ * mock 走 useMock 开关、prod 根本不加载；这份 DEFAULT 在 prod 照样生效。
+ * 提审时若后台内容配置还是空的，审核员看到的就是下面这几行，
+ * 所以一律取功能导向的中性表述，不放具体内容话题。
+ */
 const DEFAULT = {
-  aiAssistantWelcome: '你好！我是书院助手，可以基于书院知识库为你解答学习相关问题。',
-  aiAssistantChips: ['什么是阳明文化？', '屯堡文化有何特色？', '龙场悟道讲了什么？'],
-  searchHotTags: ['阳明文化', '屯堡地戏', '红色交通', '非遗银饰', '知行合一']
+  aiAssistantWelcome: '你好！我是书院助手，可以基于平台知识库为你解答使用与学习相关的问题。',
+  aiAssistantChips: ['平台有哪些线上展馆？', '怎么报名参加活动？', '在哪查看学习足迹？'],
+  searchHotTags: ['线上展馆', '精品课程', '活动报名', '学习资源', '文创展示']
 }
 
 let cached = null

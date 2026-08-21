@@ -57,7 +57,7 @@
     </view>
 
     <view class="ab-foot">
-      <text class="ab-slogan">“马院 + 书院”协同育人 · 云端思政平台</text>
+      <text class="ab-slogan">校园学习与活动服务平台</text>
       <text class="ab-copy">© 2026 贵州交通职业大学中华文化书院</text>
       <text wx:if="{{icp}}" class="ab-icp">{{icp}}</text>
     </view>

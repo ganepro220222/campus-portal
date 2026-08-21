@@ -108,3 +108,7 @@
 .meta-i { display: flex; align-items: center; gap: 6rpx; font-size: 22rpx; color: var(--muted); }
 
 .list-bottom { height: calc(150rpx + env(safe-area-inset-bottom)); }
+
+/* 全局 .page-refresh-bar 默认 28rpx 横向边距（对齐详情页栏距），本页内容栏距是 32rpx（.course-wrap），
+   不覆写的话红条会比下方卡片各窄 4rpx，边缘对不齐。加根类提权，避免依赖样式表先后顺序。 */
+.course-page .page-refresh-bar { margin-left: 32rpx; margin-right: 32rpx; }

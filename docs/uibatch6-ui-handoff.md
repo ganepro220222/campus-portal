@@ -15,7 +15,10 @@
 | `.page-state-link` | 次要链接（返回列表） |
 | `.page-refresh-bar` | 有内容时的顶部静默刷新失败条 |
 
-当前仅占位样式（居中、可读），** intentionally 朴素 **，便于 UI 统一美化。
+~~当前仅占位样式（居中、可读），intentionally 朴素，便于 UI 统一美化。~~
+
+> **UI 批次已完成对接**（见 `小程序文案备案对照清单_V1.0.md` §14）。占位样式已替换为正式视觉，
+> 逐页边距、按下反馈、错误态图标均已处理，并新增 `scripts/check-press-feedback.js` 作为回归关卡。
 
 ## UI 对接建议（uibatch6 范围）
 
@@ -28,8 +31,8 @@
    - 动态 / 展馆 / 课程 / 活动 / 文创 / 资源：错误态与空态间距、icon 是否补全
    - 骨架屏与错误态互斥（工程已用 `!error` 条件，UI 只需美化）
 
-3. **按下反馈扫描**
-   - 延续 uibatch5：全仓 `:active` 背景应「变深」；可扩展 `scripts/check-press-feedback.js`
+3. **按下反馈扫描** ✅ 已落地
+   - `scripts/check-press-feedback.js` 已创建并接入 `npm run preflight:local`，支持 hex / `var()` / `rgba()`
 
 4. **不要改动的部分**
    - `contentPageInit.js` / `feedListPage.js` / `activityDetailLoad.js` 状态字段名
@@ -55,9 +58,9 @@
 
 ## 验收勾选（UI 批次完成后写入文案备案清单 §14）
 
-- [ ] 全局 `.page-state-*` 与活动详情 retry 风格一致
-- [ ] 刷新失败条在各页边距与主内容对齐
-- [ ] 错误态下点赞/收藏/报名等交互不可点（工程已 guard，UI 确认无漏网按钮）
+- [x] 全局 `.page-state-*` 与活动详情 retry 风格一致
+- [x] 刷新失败条在各页边距与主内容对齐（10/10 逐页核对）
+- [x] 错误态下点赞/收藏/报名等交互不可点（已确认：正文与底部操作栏均在 `wx:elif="{{content}}"` 内，错误态整块不渲染）
 - [ ] 弱网首次进入 → 加载失败 → 重试 → 正常内容
 - [ ] 有内容时静默刷新失败 → 保留旧列表/详情 + 顶栏可点重试
 

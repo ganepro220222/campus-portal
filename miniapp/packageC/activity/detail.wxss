@@ -23,17 +23,18 @@
   font-size: 26rpx;
   font-weight: 600;
   color: #2B356E;
-  background: #EAF1FB;
+  background: var(--sky-2);
   padding: 16rpx 40rpx;
   border-radius: 28rpx;
 }
-.detail-retry:active { background: #E1ECF9; }
+.detail-retry:active { background: var(--sky); }
 
 .detail-retry-link {
   margin-top: 20rpx;
   font-size: 26rpx;
   color: #3F57B5;
 }
+.detail-retry-link:active { opacity: 0.7; }
 
 .detail-refresh-bar {
   margin: 16rpx 24rpx 0;

@@ -42,6 +42,7 @@
     </view>
 
     <view wx:if="{{error && !loading && !activityList.length}}" class="page-state-box">
+      <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
       <text class="page-state-text">加载失败，请检查网络后重试</text>
       <view class="page-state-action" bindtap="onRetry">重新加载</view>
     </view>

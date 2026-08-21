@@ -135,12 +135,26 @@ page {
 .empty-state text { margin-top: 16rpx; font-size: 26rpx; }
 
 /*
- * 页面加载/错误态 — 逻辑层占位（结构 + 可读性）。
- * 视觉 polish（间距、配色、按下反馈）由 UI 批次 uibatch6 对接，见 docs/uibatch6-ui-handoff.md
+ * 页面加载/错误态（uibatch6 视觉对接完成）。
+ *
+ * 与活动详情/报名页既有的 .state-box / .detail-retry / .detail-refresh-bar 同一套配方，
+ * 差别只在那两页是页面内私有 class、这里是全局的。四处「重新加载」胶囊
+ * （.page-state-action / .detail-retry / .enroll-retry / .pl-retry）现在静息同为 --sky-2、
+ * 按下同为 --sky，不再各写各的十六进制。
+ *
+ * 横向边距默认 28rpx，对齐详情页 .detail-wrap 与资源列表 .res 的栏距；
+ * 栏距是 32rpx 的 5 个 Tab/列表页在各自 wxss 里覆写（搜 page-refresh-bar）。
  */
 .page-state-box {
   padding: 120rpx 40rpx;
   text-align: center;
+}
+/* 同页的空态（.empty-state）都有 40px / #C3CCE0 的图标，错误态原本只有一行灰字，
+   两个全页状态看着不像一家人。用同样的尺寸与颜色补上——警示语义由三角形和文案表达，
+   红色留给正文中间那条必须抢注意力的 .page-refresh-bar。 */
+.page-state-icon {
+  display: block;
+  margin-bottom: 20rpx;
 }
 .page-state-text {
   display: block;
@@ -152,21 +166,33 @@ page {
   display: inline-block;
   margin-top: 28rpx;
   font-size: 26rpx;
+  font-weight: 600;
   color: var(--navy);
+  background: var(--sky-2);
+  padding: 16rpx 40rpx;
+  border-radius: 28rpx;
 }
+.page-state-action:active { background: var(--sky); }
 .page-state-link {
   display: block;
   margin-top: 20rpx;
   font-size: 26rpx;
   color: var(--blue);
 }
+.page-state-link:active { opacity: 0.7; }
+/* 文案是无 class 的 <text> 子节点，字号/字重/颜色靠继承落到它身上 */
 .page-refresh-bar {
   margin: 16rpx 28rpx 0;
   padding: 20rpx 24rpx;
+  background: rgba(192, 57, 43, 0.08);
+  border: 1rpx solid rgba(192, 57, 43, 0.18);
+  border-radius: 16rpx;
   text-align: center;
   font-size: 24rpx;
+  font-weight: 600;
   color: #C0392B;
 }
+.page-refresh-bar:active { background: rgba(192, 57, 43, 0.12); }
 
 /* ── 底部安全区 ── */
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }

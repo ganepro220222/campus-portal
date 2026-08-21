@@ -7,6 +7,8 @@ const {
   buildDetailLoadedView,
   buildDetailInitialFailurePatch,
   buildDetailRefreshFailurePatch,
+  buildDetailMissingIdPatch,
+  resolveDetailOnLoad,
   buildDetailLoadingPatch,
   shouldRefreshDetailOnShow
 } = require('./detailPageInit')
@@ -87,5 +89,34 @@ assert.strictEqual(loadingPatch.detail, null)
 assert.strictEqual(shouldRefreshDetailOnShow(false, false), false)
 assert.strictEqual(shouldRefreshDetailOnShow(true, false), true)
 assert.strictEqual(shouldRefreshDetailOnShow(true, true), false)
+
+const missingIdPatch = buildDetailMissingIdPatch()
+assert.strictEqual(missingIdPatch.loading, false)
+assert.strictEqual(missingIdPatch.notFound, true)
+assert.strictEqual(missingIdPatch.loadError, false)
+assert.strictEqual(missingIdPatch.detail, null)
+
+const noOpts = resolveDetailOnLoad(undefined)
+assert.strictEqual(noOpts.shouldLoad, false)
+assert.strictEqual(noOpts.activityId, null)
+assert.strictEqual(noOpts.patch.notFound, true)
+assert.strictEqual(noOpts.patch.loading, false)
+
+const emptyOpts = resolveDetailOnLoad({})
+assert.strictEqual(emptyOpts.shouldLoad, false)
+assert.strictEqual(emptyOpts.patch.notFound, true)
+
+const blankId = resolveDetailOnLoad({ id: '' })
+assert.strictEqual(blankId.shouldLoad, false)
+assert.strictEqual(blankId.patch.notFound, true)
+
+const validId = resolveDetailOnLoad({ id: 5 })
+assert.strictEqual(validId.shouldLoad, true)
+assert.strictEqual(validId.activityId, 5)
+assert.deepStrictEqual(validId.patch, { activityId: 5 })
+
+const altId = resolveDetailOnLoad({ activityId: '8' })
+assert.strictEqual(altId.shouldLoad, true)
+assert.strictEqual(altId.activityId, '8')
 
 console.log('[detailPageInit.test] PASS')

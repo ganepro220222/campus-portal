@@ -7,6 +7,7 @@ const {
   buildDetailInitialFailurePatch,
   buildDetailRefreshFailurePatch,
   buildDetailLoadingPatch,
+  resolveDetailOnLoad,
   shouldRefreshDetailOnShow
 } = require('../../utils/detailPageInit')
 const { shouldSilentRefreshDetail } = require('../../utils/activityDetailLoad')
@@ -27,9 +28,11 @@ Page({
   },
 
   onLoad(opts) {
-    const id = opts.id
-    this.setData({ activityId: id })
-    if (id) this._loadDetail(id)
+    const entry = resolveDetailOnLoad(opts)
+    this.setData(entry.patch)
+    if (entry.shouldLoad) {
+      this._loadDetail(entry.activityId)
+    }
   },
 
   onShow() {

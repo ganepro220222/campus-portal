@@ -71,10 +71,39 @@ function shouldRefreshDetailOnShow(hasShownOnce, loading) {
   return !loading
 }
 
+function buildDetailMissingIdPatch() {
+  return buildDetailInitialFailurePatch({
+    code: 404,
+    message: 'missing activity id'
+  })
+}
+
+function resolveDetailOnLoad(opts) {
+  const safeOpts = opts || {}
+  const id = safeOpts.id || safeOpts.activityId
+  if (!id) {
+    return {
+      shouldLoad: false,
+      activityId: null,
+      patch: {
+        activityId: null,
+        ...buildDetailMissingIdPatch()
+      }
+    }
+  }
+  return {
+    shouldLoad: true,
+    activityId: id,
+    patch: { activityId: id }
+  }
+}
+
 module.exports = {
   buildDetailLoadedView,
   buildDetailInitialFailurePatch,
   buildDetailRefreshFailurePatch,
+  buildDetailMissingIdPatch,
+  resolveDetailOnLoad,
   buildDetailLoadingPatch: buildActivityDetailLoadingPatch,
   shouldRefreshDetailOnShow
 }

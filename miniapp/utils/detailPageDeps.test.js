@@ -23,6 +23,7 @@ mustInclude('buildDetailInitialFailurePatch', 'detail.js must use buildDetailIni
 mustInclude('buildDetailRefreshFailurePatch', 'detail.js must use buildDetailRefreshFailurePatch')
 mustInclude('onRetry', 'detail.js must expose onRetry')
 mustInclude('onBackList', 'detail.js must expose onBackList')
+mustInclude('resolveDetailOnLoad', 'detail.js must resolve missing activity id on load')
 mustNotInclude('.catch(() => null)', 'detail.js must not swallow activity detail errors')
 
 console.log('[detailPageDeps.test] PASS')

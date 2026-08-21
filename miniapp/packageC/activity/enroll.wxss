@@ -109,7 +109,6 @@
 .btn-primary {
   width: 100%;
   height: 92rpx;
-  line-height: 92rpx;
   border-radius: 46rpx;
   font-size: 31rpx;
   font-weight: 700;
@@ -195,7 +194,6 @@
 .btn-outline {
   width: 100%;
   height: 88rpx;
-  line-height: 88rpx;
   border-radius: 44rpx;
   font-size: 30rpx;
   font-weight: 700;

@@ -106,9 +106,13 @@
   height: 78rpx;
   margin: 0;
   padding: 0;
-  line-height: normal;
   font-weight: normal;
   border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  line-height: normal;
 }
 .act-share-btn::after { border: none; }
 .act-share-hover { background: var(--sky-3); }

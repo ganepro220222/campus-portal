@@ -50,13 +50,18 @@
   border-top: 1rpx solid var(--line);
 }
 .pe-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: 44rpx;
   background: linear-gradient(135deg, #3F57B5, #2B356E);
   color: #fff;
-  border-radius: 44rpx;
   font-size: 30rpx;
   font-weight: 600;
-  height: 88rpx;
-  line-height: 88rpx;
+  letter-spacing: 2rpx;
+  border: none;
+  box-shadow: 0 12rpx 30rpx rgba(43, 53, 110, 0.32);
 }
 .pe-submit::after { border: none; }
-.pe-submit.ing { opacity: 0.75; }
+.pe-submit.ing { opacity: 0.7; }

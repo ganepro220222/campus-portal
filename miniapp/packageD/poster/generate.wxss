@@ -205,16 +205,12 @@
   width: 100%;
   box-sizing: border-box;
   height: 92rpx;
-  line-height: 92rpx;
   border-radius: 46rpx;
   background: linear-gradient(135deg, #CDA94E, #B58A2F);
   color: #fff;
   font-size: 31rpx;
   font-weight: 700;
   border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 12rpx;
   box-shadow: 0 14rpx 34rpx rgba(150, 110, 30, 0.35);
 }

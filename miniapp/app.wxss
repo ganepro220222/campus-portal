@@ -138,6 +138,15 @@ page {
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
 /* ── 通用按钮 ── */
+.btn-navy,
+.btn-gold,
+.btn-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  line-height: normal;
+}
 .btn-navy {
   height: 88rpx;
   background: linear-gradient(135deg, #3F57B5, #2B356E);
@@ -163,6 +172,38 @@ page {
   border-radius: 44rpx;
   font-size: 30rpx;
   border: 1rpx solid rgba(255,255,255,.28);
+}
+
+/*
+ * 原生 button 垂直居中：勿用 line-height = height（基础库内边距会导致文字偏下）。
+ * 各页主按钮/提交按钮统一 flex；disabled 时覆盖基础库 30% 黑字。
+ */
+button.btn-primary,
+button.btn-outline,
+button.btn-disabled,
+button.save-btn,
+button.fb-submit,
+button.pe-submit,
+button.lbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+}
+button.btn-primary[disabled],
+button.save-btn[disabled],
+button.fb-submit[disabled],
+button.pe-submit[disabled] {
+  color: #fff;
+}
+button.btn-outline[disabled] {
+  color: #2B356E;
+}
+button.lbtn-primary[disabled] {
+  color: #2B356E;
+}
+button.lbtn-ghost[disabled] {
+  color: #fff;
 }
 
 /* ── 文件类型色标 ── */

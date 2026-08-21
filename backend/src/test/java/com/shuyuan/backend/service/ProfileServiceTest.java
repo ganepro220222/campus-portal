@@ -9,6 +9,7 @@ import com.shuyuan.backend.entity.Member;
 import com.shuyuan.backend.entity.MemberProfile;
 import com.shuyuan.backend.entity.News;
 import com.shuyuan.backend.mapper.*;
+import com.shuyuan.backend.vo.MemberVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -54,7 +54,7 @@ Page({
   },
 
   async _loadList(reset) {
-    if (this.data.loading || this.data.loadingMore) return
+    if (!reset && (this.data.loading || this.data.loadingMore)) return
     const page = reset ? 1 : this.data.page
     const catLabel = this.data.cats[this.data.activeCat]
     const category = catLabel && catLabel !== '全部' ? catLabel : undefined

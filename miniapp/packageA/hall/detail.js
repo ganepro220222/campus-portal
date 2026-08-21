@@ -6,12 +6,27 @@ const { buildPosterNavigateUrl, pickHallCover } = require('../../utils/posterCov
 const { useMock } = require('../../utils/mockGuard')
 const { requireLogin } = require('../../utils/auth')
 const { mapCollectedFromDetail, applyCollectedToggle, toggleFavorite } = require('../../utils/favoriteToggle')
+const {
+  buildContentDetailLoadedView,
+  buildContentDetailInitialFailurePatch,
+  buildContentDetailRefreshFailurePatch,
+  buildContentDetailLoadingPatch,
+  resolveContentDetailOnLoad,
+  shouldSilentRefreshContent,
+  shouldRefreshContentOnShow,
+  canInteractWithContent
+} = require('../../utils/contentPageInit')
 
-const emptyHall = mergeHallDetail(null)
+const CONTENT_KEY = 'hall'
 
 Page({
   data: {
-    hall: emptyHall,
+    loading: true,
+    loadError: false,
+    notFound: false,
+    refreshError: false,
+    contentId: null,
+    hall: null,
     galleryIndex: 0,
     currentCaption: '',
     waveBars: Array.from({ length: 16 }, (_, i) => (i * 0.06).toFixed(2)),
@@ -26,26 +41,89 @@ Page({
   onLoad(opts) {
     this._audio = null
     this._sectionObserver = null
-    const id = opts && opts.id
-    this._hallId = id
-    if (!id) {
-      if (useMock) this._initImmersive(mock.hallDetail)
+    const entry = resolveContentDetailOnLoad(opts, { contentKey: CONTENT_KEY })
+    if (!entry.shouldLoad) {
+      if (useMock) {
+        this._applyHall(mock.hallDetail)
+        this._initImmersive(mock.hallDetail)
+        return
+      }
+      this.setData(entry.patch)
       return
     }
-    get(`/halls/${id}`).then(h => {
-      if (h) {
-        const demoFallback = useMock && id === '2' ? mock.hallDetail : undefined
-        const hall = mergeHallDetail(h, demoFallback)
-        this.setData({
-          hall,
-          currentCaption: hall.currentCaption || hall.caption,
-          ...mapCollectedFromDetail(h)
-        })
-        this._initImmersive(hall)
-      }
-    }).catch(err => {
-      console.warn('[hall/detail] 详情加载失败', err)
+    this._hallId = entry.contentId
+    this.setData(entry.patch)
+    this._loadDetail(entry.contentId)
+  },
+
+  onShow() {
+    if (!shouldRefreshContentOnShow(this._hasShownOnce, this.data.loading)) {
+      this._hasShownOnce = true
+      return
+    }
+    const id = this.data.contentId
+    if (id) this._loadDetail(id, { silent: true })
+    this._hasShownOnce = true
+  },
+
+  onRetry() {
+    const id = this.data.contentId
+    if (!id) return
+    if (this.data.loadError || this.data.notFound) {
+      this._loadDetail(id)
+      return
+    }
+    if (this.data.refreshError) {
+      this.setData({ refreshError: false })
+      this._loadDetail(id, { silent: true })
+    }
+  },
+
+  onBackList() {
+    wx.switchTab({ url: '/pages/hall/index' })
+  },
+
+  _applyHall(hall) {
+    this.setData({
+      hall,
+      loading: false,
+      loadError: false,
+      notFound: false,
+      refreshError: false,
+      currentCaption: hall.currentCaption || hall.caption,
+      ...mapCollectedFromDetail(hall)
     })
+  },
+
+  async _loadDetail(id, options = {}) {
+    const { silent = false } = options
+    const prev = this.data
+    if (!silent) {
+      this.setData(buildContentDetailLoadingPatch(CONTENT_KEY))
+    }
+    try {
+      const raw = await get(`/halls/${id}`)
+      const demoFallback = useMock && String(id) === '2' ? mock.hallDetail : undefined
+      const view = buildContentDetailLoadedView(
+        raw,
+        id,
+        CONTENT_KEY,
+        (row) => mergeHallDetail(row, demoFallback),
+        (row) => mapCollectedFromDetail(row)
+      )
+      this.setData({
+        ...view,
+        currentCaption: view.hall.currentCaption || view.hall.caption
+      })
+      this._initImmersive(view.hall)
+    } catch (err) {
+      console.warn('[hall/detail] 详情加载失败', err)
+      if (silent && shouldSilentRefreshContent(prev, CONTENT_KEY)) {
+        this.setData(buildContentDetailRefreshFailurePatch(err, prev, CONTENT_KEY))
+      } else {
+        this.setData(buildContentDetailInitialFailurePatch(err, CONTENT_KEY))
+      }
+    }
   },
 
   onReady() {
@@ -201,7 +279,8 @@ Page({
   },
 
   onCollect() {
-    const id = (this.data.hall && this.data.hall.id) || (this._hallId)
+    if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
+    const id = this.data.contentId || this._hallId
     if (!id) return
     requireLogin(() => {
       toggleFavorite('hall', id).then(res => {

@@ -1,10 +1,15 @@
 // pages/hall/index.js
 const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
-const { withListFallback } = require('../../utils/mockGuard')
+const mockGuard = require('../../utils/mockGuard')
 const { decorateHalls } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
 const { getNavBarLayout } = require('../../utils/navbar')
+const {
+  buildFeedLoadingPatch,
+  buildFeedLoadedPatch,
+  buildFeedFailurePatch
+} = require('../../utils/feedListPage')
 
 Page({
   data: {
@@ -14,7 +19,9 @@ Page({
     cats: ['全部'],
     activeCat: 0,
     hallList: [],
-    loading: true
+    loading: true,
+    error: false,
+    refreshError: false
   },
 
   onLoad() {
@@ -22,7 +29,7 @@ Page({
     loadCategoryNames('hall').then(cats => {
       this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })
     })
-    this._load()
+    this._load(true)
   },
 
   onShow() {
@@ -31,21 +38,31 @@ Page({
     }
   },
 
-  onPullDownRefresh() { this._load().then(() => wx.stopPullDownRefresh()) },
+  onPullDownRefresh() { this._load(true).then(() => wx.stopPullDownRefresh()) },
+
+  onRetry() {
+    this.setData({ refreshError: false, error: false })
+    this._load(true)
+  },
 
   onSearch() { wx.navigateTo({ url: '/packageC/search/index' }) },
 
-  async _load() {
-    this.setData({ loading: true })
+  async _load(reset) {
+    const prev = this.data
+    const silent = !reset && prev.hallList && prev.hallList.length > 0
+    this.setData(buildFeedLoadingPatch(reset))
     const cat = this.data.activeCat ? this.data.cats[this.data.activeCat] : undefined
     try {
-      const list = await get('/halls', { category: cat }).catch(() => null)
-      const src = withListFallback(list, mock.hallsFull)
+      const list = await get('/halls', { category: cat })
+      let src = Array.isArray(list) ? list : []
+      if (!src.length && mockGuard.useMock) {
+        src = mock.hallsFull || []
+      }
       const filtered = cat ? src.filter(h => (h.cat || h.categoryName) === cat) : src
-      this.setData({ hallList: decorateHalls(filtered), loading: false })
+      this.setData(buildFeedLoadedPatch('hallList', decorateHalls(filtered), 1, false))
     } catch (err) {
       console.warn('[hall] 展馆列表加载失败', err)
-      this.setData({ hallList: decorateHalls(withListFallback(null, mock.hallsFull)), loading: false })
+      this.setData(buildFeedFailurePatch(err, silent ? prev : { hallList: [] }, 'hallList'))
     }
   },
 
@@ -53,7 +70,7 @@ Page({
     const i = e.currentTarget.dataset.index
     if (i === this.data.activeCat) return
     this.setData({ activeCat: i })
-    this._load()
+    this._load(true)
   },
 
   onCardTap(e) {

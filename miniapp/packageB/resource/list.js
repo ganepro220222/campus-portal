@@ -4,6 +4,11 @@ const { mergeResourceList } = require('../../utils/content')
 const { downloadResource } = require('../../utils/resourceDownload')
 const { requireLogin } = require('../../utils/auth')
 const { applyListCollected, patchListItemCollected, toggleFavorite } = require('../../utils/favoriteToggle')
+const {
+  buildFeedLoadingPatch,
+  buildFeedLoadedPatch,
+  buildFeedFailurePatch
+} = require('../../utils/feedListPage')
 
 // 文件类型 → 色标 / 标签 / 归类
 const FT = {
@@ -29,22 +34,29 @@ function decorate(list) {
 }
 
 Page({
-  data: { all: [], resourceList: [], loading: true, cats: CATS, activeCat: 0, keyword: '' },
+  data: { all: [], resourceList: [], loading: true, error: false, refreshError: false, cats: CATS, activeCat: 0, keyword: '' },
 
-  onLoad() { this._loadList() },
+  onLoad() { this._loadList(true) },
 
-  async _loadList() {
-    this.setData({ loading: true })
-    let all
+  onRetry() {
+    this.setData({ refreshError: false, error: false })
+    this._loadList(true)
+  },
+
+  async _loadList(reset) {
+    const prev = this.data
+    const silent = !reset && prev.all && prev.all.length > 0
+    this.setData(buildFeedLoadingPatch(reset))
     try {
-      const list = await get('/resources').catch(() => null)
-      all = applyListCollected(decorate(mergeResourceList(list)))
+      const list = await get('/resources')
+      const all = applyListCollected(decorate(mergeResourceList(list)))
+      this.setData(buildFeedLoadedPatch('all', all, 1, false))
+      this._applyFilter()
     } catch (err) {
       console.warn('[resource/list] 加载失败', err)
-      all = applyListCollected(decorate(mergeResourceList(null)))
+      this.setData(buildFeedFailurePatch(err, silent ? prev : { all: [] }, 'all'))
+      this._applyFilter()
     }
-    this.setData({ all, loading: false })
-    this._applyFilter()
   },
 
   switchCat(e) {

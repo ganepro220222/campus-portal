@@ -1,6 +1,27 @@
 <!-- packageA/craft/detail.wxml -->
 <view class="detail-page">
   <nav-bar title="文创详情" />
+
+  <view wx:if="{{loading}}" class="page-state-box">
+    <text class="page-state-text">加载中…</text>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="page-state-box">
+    <text class="page-state-text">文创加载失败，请检查网络后重试</text>
+    <view class="page-state-action" bindtap="onRetry">重新加载</view>
+    <view class="page-state-link" bindtap="onBackList">返回文创列表</view>
+  </view>
+
+  <view wx:elif="{{notFound}}" class="page-state-box">
+    <text class="page-state-text">文创不存在或已下架</text>
+    <view class="page-state-link" bindtap="onBackList">返回文创列表</view>
+  </view>
+
+  <block wx:elif="{{detail}}">
+    <view wx:if="{{refreshError && !loading}}" class="page-refresh-bar" bindtap="onRetry">
+      <text>文创信息刷新失败，点击重试</text>
+    </view>
+
   <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
     <view class="detail-wrap">
 
@@ -71,6 +92,7 @@
       <view class="detail-bottom"></view>
     </view>
   </scroll-view>
+  </block>
 
   <ai-assistant bottom="60" />
 </view>

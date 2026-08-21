@@ -45,6 +45,27 @@ jobs:
       - name: Check prod mock policy
         run: npm run check:prod-mock
 
+  miniapp-quality:
+    name: Miniapp Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: WXML check
+        run: npm run check:wxml
+
+      - name: Admin menu icon check
+        run: npm run check:admin-menu-icons
+
+      - name: Miniapp utils tests
+        run: npm run test:miniapp-utils
+
   deploy-env-guard:
     name: Deploy Env Guard
     runs-on: ubuntu-latest

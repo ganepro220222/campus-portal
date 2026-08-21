@@ -14,10 +14,27 @@ const {
   likeSuccessToast,
   favoriteSuccessToast
 } = require('../../utils/newsDetailActions')
+const {
+  buildContentDetailLoadedView,
+  buildContentDetailInitialFailurePatch,
+  buildContentDetailRefreshFailurePatch,
+  buildContentDetailLoadingPatch,
+  resolveContentDetailOnLoad,
+  shouldSilentRefreshContent,
+  shouldRefreshContentOnShow,
+  canInteractWithContent
+} = require('../../utils/contentPageInit')
+
+const CONTENT_KEY = 'article'
 
 Page({
   data: {
-    article: mergeNewsArticle(null),
+    loading: true,
+    loadError: false,
+    notFound: false,
+    refreshError: false,
+    contentId: null,
+    article: null,
     reco: [],
     liked: false,
     collected: false,
@@ -31,12 +48,25 @@ Page({
   },
 
   onLoad(opts) {
-    const id = opts && opts.id
-    if (!id) return
-    this.setData({ articleId: id })
+    const entry = resolveContentDetailOnLoad(opts, { contentKey: CONTENT_KEY })
+    this.setData({
+      ...entry.patch,
+      articleId: entry.contentId
+    })
+    if (!entry.shouldLoad) return
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
-    this._loadDetail(id)
-    this._loadRelated(id)
+    this._loadDetail(entry.contentId)
+    this._loadRelated(entry.contentId)
+  },
+
+  onShow() {
+    if (!shouldRefreshContentOnShow(this._hasShownOnce, this.data.loading)) {
+      this._hasShownOnce = true
+      return
+    }
+    const id = this.data.contentId
+    if (id) this._loadDetail(id, { silent: true })
+    this._hasShownOnce = true
   },
 
   onShareAppMessage() {
@@ -47,16 +77,51 @@ Page({
     return buildNewsShareTimeline(this.data.article, this.data.articleId)
   },
 
-  _loadDetail(id) {
-    get(`/news/${id}`).then(a => {
-      if (!a) return
+  onRetry() {
+    const id = this.data.contentId
+    if (!id) return
+    if (this.data.loadError || this.data.notFound) {
+      this._loadDetail(id)
+      this._loadRelated(id)
+      return
+    }
+    if (this.data.refreshError) {
+      this.setData({ refreshError: false })
+      this._loadDetail(id, { silent: true })
+    }
+  },
+
+  onBackList() {
+    wx.switchTab({ url: '/pages/news/index' })
+  },
+
+  async _loadDetail(id, options = {}) {
+    const { silent = false } = options
+    const prev = this.data
+    if (!silent) {
+      this.setData(buildContentDetailLoadingPatch(CONTENT_KEY))
+    }
+    try {
+      const raw = await get(`/news/${id}`)
+      const view = buildContentDetailLoadedView(
+        raw,
+        id,
+        CONTENT_KEY,
+        mergeNewsArticle,
+        (row) => mapDetailInteraction(row)
+      )
       this.setData({
-        article: mergeNewsArticle(a),
-        ...mapDetailInteraction(a)
+        ...view,
+        articleId: id
       })
-    }).catch(err => {
+    } catch (err) {
       console.warn('[news/detail] 详情加载失败', err)
-    })
+      if (silent && shouldSilentRefreshContent(prev, CONTENT_KEY)) {
+        this.setData(buildContentDetailRefreshFailurePatch(err, prev, CONTENT_KEY))
+      } else {
+        this.setData(buildContentDetailInitialFailurePatch(err, CONTENT_KEY))
+      }
+    }
   },
 
   _loadRelated(id) {
@@ -66,8 +131,9 @@ Page({
   },
 
   onLike() {
+    if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
     requireLogin(() => {
-      const id = this.data.articleId
+      const id = this.data.contentId
       if (!id || this.data.likeBusy) return
       this.setData({ likeBusy: true })
       post(`/news/${id}/like`).then(res => {
@@ -82,8 +148,9 @@ Page({
   },
 
   onCollect() {
+    if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
     requireLogin(() => {
-      const id = this.data.articleId
+      const id = this.data.contentId
       if (!id || this.data.favoriteBusy) return
       this.setData({ favoriteBusy: true })
       post(`/news/${id}/favorite`).then(res => {

@@ -8,6 +8,14 @@
       <text class="ci-en">Selected Creative Works</text>
     </view>
 
+    <view wx:if="{{loading && !craftList.length && !error}}" class="page-state-box">
+      <text class="page-state-text">加载中…</text>
+    </view>
+
+    <view wx:if="{{refreshError && !loading}}" class="page-refresh-bar" bindtap="onRetry">
+      <text>列表刷新失败，点击重试</text>
+    </view>
+
     <view class="craft-grid">
       <view
         wx:for="{{craftList}}"
@@ -31,7 +39,12 @@
       </view>
     </view>
 
-    <view wx:if="{{!loading && !craftList.length}}" class="empty-state">
+    <view wx:if="{{error && !loading && !craftList.length}}" class="page-state-box">
+      <text class="page-state-text">加载失败，请检查网络后重试</text>
+      <view class="page-state-action" bindtap="onRetry">重新加载</view>
+    </view>
+
+    <view wx:elif="{{!loading && !craftList.length && !error}}" class="empty-state">
       <icon name="medal" size="40" color="#C3CCE0" />
       <text>暂无文创内容</text>
     </view>

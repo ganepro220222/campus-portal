@@ -1,5 +1,25 @@
 <!-- packageA/hall/detail.wxml -->
 <view class="detail-page">
+  <view wx:if="{{loading}}" class="page-state-box">
+    <text class="page-state-text">加载中…</text>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="page-state-box">
+    <text class="page-state-text">展馆加载失败，请检查网络后重试</text>
+    <view class="page-state-action" bindtap="onRetry">重新加载</view>
+    <view class="page-state-link" bindtap="onBackList">返回展馆列表</view>
+  </view>
+
+  <view wx:elif="{{notFound}}" class="page-state-box">
+    <text class="page-state-text">展馆不存在或已下架</text>
+    <view class="page-state-link" bindtap="onBackList">返回展馆列表</view>
+  </view>
+
+  <block wx:elif="{{hall}}">
+    <view wx:if="{{refreshError && !loading}}" class="page-refresh-bar" bindtap="onRetry">
+      <text>展馆信息刷新失败，点击重试</text>
+    </view>
+
   <scroll-view
     scroll-y
     class="detail-scroll"
@@ -124,6 +144,7 @@
   <view wx:if="{{hall.hasImmersive}}" class="read-progress">
     <view class="read-progress-bar" style="width: {{scrollProgress}}%;"></view>
   </view>
+  </block>
 
   <ai-assistant bottom="60" />
 </view>

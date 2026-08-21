@@ -29,9 +29,16 @@ function stripUnsafeHtml(html) {
     .replace(/\son\w+='[^']*'/gi, '')
 }
 
+function resolveEmptyContentObject(fallback, useMockFlag = useMock) {
+  if (useMockFlag) {
+    return fallback != null ? { ...fallback } : {}
+  }
+  return null
+}
+
 function mergeNewsArticle(raw, fallback) {
   const base = fallback || (useMock ? mock.newsDetail.article : {})
-  if (!raw) return useMock ? base : {}
+  if (!raw) return resolveEmptyContentObject(base)
   const lead = raw.lead || raw.summary || base.lead
   const contentHtml = isHtmlContent(raw.content) ? stripUnsafeHtml(raw.content) : ''
   const useRichText = !!contentHtml
@@ -55,7 +62,7 @@ function mergeNewsArticle(raw, fallback) {
 
 function mergeHallDetail(raw, fallback) {
   const base = fallback || (useMock ? mock.hallDetail : {})
-  if (!raw) return useMock ? base : {}
+  if (!raw) return resolveEmptyContentObject(base)
   const slides = (raw.slides && raw.slides.length)
     ? raw.slides.map((s, i) => ({
       cls: 'gi' + ((i % 3) + 1),
@@ -95,7 +102,7 @@ function mergeHallDetail(raw, fallback) {
 
 function mergeCourseDetail(raw, fallback) {
   const base = fallback || (useMock ? mock.courseDetail : {})
-  if (!raw) return useMock ? base : {}
+  if (!raw) return resolveEmptyContentObject(base)
   return {
     ...base,
     ...raw,
@@ -111,7 +118,7 @@ function mergeCourseDetail(raw, fallback) {
 /** 文创详情合并：小程序仅支持多角度图片展示 */
 function mergeCraftDetail(raw, fallback) {
   const base = fallback || (useMock ? mock.craftDetail : {})
-  if (!raw) return useMock ? base : {}
+  if (!raw) return resolveEmptyContentObject(base)
   const images = raw.images && raw.images.length ? raw.images : base.images
   return {
     ...base,
@@ -140,6 +147,7 @@ function formatFileSize(kb) {
 }
 
 module.exports = {
+  resolveEmptyContentObject,
   formatDate,
   isHtmlContent,
   stripUnsafeHtml,

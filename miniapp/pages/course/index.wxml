@@ -25,7 +25,11 @@
 
   <!-- 课程列表 -->
   <scroll-view scroll-y class="course-scroll" enhanced show-scrollbar="{{false}}">
-    <skeleton show="{{loading && !courseList.length}}" type="list" count="6" />
+    <skeleton show="{{loading && !courseList.length && !error}}" type="list" count="6" />
+
+    <view wx:if="{{refreshError && !loading}}" class="page-refresh-bar" bindtap="onRetry">
+      <text>列表刷新失败，点击重试</text>
+    </view>
     <view class="course-wrap">
       <view
         wx:for="{{courseList}}"
@@ -49,7 +53,12 @@
         </view>
       </view>
 
-      <view wx:if="{{!loading && !courseList.length}}" class="empty-state">
+      <view wx:if="{{error && !loading && !courseList.length}}" class="page-state-box">
+        <text class="page-state-text">加载失败，请检查网络后重试</text>
+        <view class="page-state-action" bindtap="onRetry">重新加载</view>
+      </view>
+
+      <view wx:elif="{{!loading && !courseList.length && !error}}" class="empty-state">
         <icon name="course" size="40" color="#C3CCE0" />
         <text>暂无课程</text>
       </view>

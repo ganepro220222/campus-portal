@@ -22,6 +22,10 @@
   </view>
 
   <scroll-view scroll-y class="res-scroll" enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{refreshError && !loading}}" class="page-refresh-bar" bindtap="onRetry">
+      <text>列表刷新失败，点击重试</text>
+    </view>
+
     <view class="res" wx:for="{{resourceList}}" wx:key="id">
       <view class="ft {{item.ftClass}}">{{item.ftLabel}}</view>
       <view class="res-info">
@@ -41,7 +45,12 @@
       </view>
     </view>
 
-    <view wx:if="{{!loading && !resourceList.length}}" class="empty-state">
+    <view wx:if="{{error && !loading && !all.length}}" class="page-state-box">
+      <text class="page-state-text">加载失败，请检查网络后重试</text>
+      <view class="page-state-action" bindtap="onRetry">重新加载</view>
+    </view>
+
+    <view wx:elif="{{!loading && !resourceList.length && !error}}" class="empty-state">
       <icon name="download" size="40" color="#C3CCE0" />
       <text>暂无相关资源</text>
     </view>

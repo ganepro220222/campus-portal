@@ -6,6 +6,11 @@ const { decorateNewsFeed } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
 const { getNavBarLayout } = require('../../utils/navbar')
 const {
+  buildFeedLoadingPatch,
+  buildFeedLoadedPatch,
+  buildFeedFailurePatch
+} = require('../../utils/feedListPage')
+const {
   DEFAULT_PAGE_SIZE,
   extractPageRecords,
   mergePageRecords,
@@ -26,7 +31,9 @@ Page({
     page: 1,
     hasMore: true,
     loading: true,
-    loadingMore: false
+    loadingMore: false,
+    error: false,
+    refreshError: false
   },
 
   onLoad() {
@@ -53,20 +60,27 @@ Page({
     }
   },
 
+  onRetry() {
+    this.setData({ refreshError: false, error: false })
+    this._loadList(true)
+  },
+
   async _loadList(reset) {
     if (!reset && (this.data.loading || this.data.loadingMore)) return
     const page = reset ? 1 : this.data.page
     const catLabel = this.data.cats[this.data.activeCat]
     const category = catLabel && catLabel !== '全部' ? catLabel : undefined
+    const prev = this.data
+    const silent = !reset && prev.newsList && prev.newsList.length > 0
 
-    this.setData(reset ? { loading: true } : { loadingMore: true })
+    this.setData(buildFeedLoadingPatch(reset))
 
     try {
       const res = await get('/news', {
         page,
         size: DEFAULT_PAGE_SIZE,
         category
-      }).catch(() => null)
+      })
 
       let records = extractPageRecords(res)
       let hasMore = calcHasMore(records, DEFAULT_PAGE_SIZE)
@@ -84,16 +98,14 @@ Page({
         decorateNewsFeed(records),
         reset
       )
-      this.setData({
-        newsList: merged,
-        page: page + 1,
-        hasMore: merged.length ? hasMore : false,
-        loading: false,
-        loadingMore: false
-      })
+      this.setData(buildFeedLoadedPatch('newsList', merged, page + 1, hasMore))
     } catch (err) {
       console.warn('[news] 动态列表加载失败', err)
-      this.setData({ loading: false, loadingMore: false, hasMore: false })
+      if (silent) {
+        this.setData(buildFeedFailurePatch(err, prev, 'newsList'))
+      } else {
+        this.setData(buildFeedFailurePatch(err, { newsList: [] }, 'newsList'))
+      }
     }
   },
 

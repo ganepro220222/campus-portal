@@ -6,13 +6,29 @@ const mock = require('../../mock/defaults')
 const { useMock } = require('../../utils/mockGuard')
 const { requireLogin } = require('../../utils/auth')
 const { mapCollectedFromDetail, applyCollectedToggle, toggleFavorite } = require('../../utils/favoriteToggle')
+const {
+  buildContentDetailLoadedView,
+  buildContentDetailInitialFailurePatch,
+  buildContentDetailRefreshFailurePatch,
+  buildContentDetailLoadingPatch,
+  resolveContentDetailOnLoad,
+  shouldSilentRefreshContent,
+  shouldRefreshContentOnShow,
+  canInteractWithContent
+} = require('../../utils/contentPageInit')
 
+const CONTENT_KEY = 'detail'
 const COVER_CLASSES = ['gi1', 'gi2', 'gi3']
 
 Page({
   data: {
+    loading: true,
+    loadError: false,
+    notFound: false,
+    refreshError: false,
+    contentId: null,
     craftId: null,
-    detail: mergeCraftDetail(null),
+    detail: null,
     slides: [],
     galleryIndex: 0,
     lang: 'zh',
@@ -21,13 +37,44 @@ Page({
   },
 
   onLoad(opts) {
-    const id = opts.id
-    this.setData({ craftId: id })
-    if (id) this._loadDetail(id)
+    const entry = resolveContentDetailOnLoad(opts, { contentKey: CONTENT_KEY })
+    this.setData({
+      ...entry.patch,
+      craftId: entry.contentId
+    })
+    if (!entry.shouldLoad) return
+    this._loadDetail(entry.contentId)
+  },
+
+  onShow() {
+    if (!shouldRefreshContentOnShow(this._hasShownOnce, this.data.loading)) {
+      this._hasShownOnce = true
+      return
+    }
+    const id = this.data.contentId
+    if (id) this._loadDetail(id, { silent: true })
+    this._hasShownOnce = true
+  },
+
+  onRetry() {
+    const id = this.data.contentId
+    if (!id) return
+    if (this.data.loadError || this.data.notFound) {
+      this._loadDetail(id)
+      return
+    }
+    if (this.data.refreshError) {
+      this.setData({ refreshError: false })
+      this._loadDetail(id, { silent: true })
+    }
+  },
+
+  onBackList() {
+    wx.navigateTo({ url: '/packageA/craft/list' })
   },
 
   _fallbackForId(id) {
-    if (!useMock) return {}
+    if (!useMock) return undefined
     return mock.craftDetail
   },
 
@@ -40,21 +87,42 @@ Page({
     })
   },
 
-  async _loadDetail(id) {
+  async _loadDetail(id, options = {}) {
+    const { silent = false } = options
+    const prev = this.data
     const fallback = this._fallbackForId(id)
+    if (!silent) {
+      this.setData(buildContentDetailLoadingPatch(CONTENT_KEY))
+    }
     try {
-      const raw = await get(`/crafts/${id}`).catch(() => null)
-      const detail = mergeCraftDetail(raw, fallback)
-      this._applyDetail(detail)
+      const raw = await get(`/crafts/${id}`)
+      const view = buildContentDetailLoadedView(
+        raw,
+        id,
+        CONTENT_KEY,
+        (row) => mergeCraftDetail(row, fallback),
+        (row) => mapCollectedFromDetail(row)
+      )
+      this.setData({
+        ...view,
+        craftId: id,
+        slides: buildSlides(view.detail),
+        galleryIndex: 0
+      })
     } catch (err) {
       console.warn('[craft/detail] 加载失败', err)
-      this._applyDetail(mergeCraftDetail(null, fallback))
+      if (silent && shouldSilentRefreshContent(prev, CONTENT_KEY)) {
+        this.setData(buildContentDetailRefreshFailurePatch(err, prev, CONTENT_KEY))
+      } else {
+        this.setData(buildContentDetailInitialFailurePatch(err, CONTENT_KEY))
+      }
     }
   },
 
   onGallery(e) { this.setData({ galleryIndex: e.detail.current }) },
 
   onLangSwitch(e) {
+    if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
     const lang = e.currentTarget.dataset.lang
     if (!lang || lang === this.data.lang) return
     if (lang === 'en' && !this.data.detail.introEn) {
@@ -65,6 +133,7 @@ Page({
   },
 
   onPreview(e) {
+    if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
     const url = e.currentTarget.dataset.url
     if (!url) {
       wx.showToast({ title: '高清图即将上线', icon: 'none' })
@@ -75,6 +144,7 @@ Page({
   },
 
   onPhone(e) {
+    if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
     const phone = e.currentTarget.dataset.val
     if (!phone) return
     wx.makePhoneCall({
@@ -84,6 +154,7 @@ Page({
   },
 
   onCopy(e) {
+    if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
     const val = e.currentTarget.dataset.val
     if (!val) return
     wx.setClipboardData({
@@ -93,6 +164,7 @@ Page({
   },
 
   onPoster() {
+    if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
     const d = this.data.detail || {}
     wx.navigateTo({
       url: buildPosterNavigateUrl({
@@ -105,8 +177,8 @@ Page({
   },
 
   onCollect() {
-    const id = this.data.craftId || (this.data.detail && this.data.detail.id)
-    if (!id) return
+    if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
+    const id = this.data.contentId
     requireLogin(() => {
       toggleFavorite('craft', id).then(res => {
         const patch = applyCollectedToggle(this.data, res)

@@ -1,64 +1,86 @@
 <!-- packageA/news/detail.wxml -->
 <view class="detail-page">
   <nav-bar title="书院动态" />
-  <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
-    <view class="detail-wrap">
 
-      <!-- 文章 -->
-      <view class="article">
-        <view class="art-hero {{article.colorClass}}">
-          <view class="art-hero-deco"></view>
-          <view class="art-hero-title serif">{{article.title}}</view>
-        </view>
-        <view class="art-body">
-          <view class="art-meta">
-            <text>📅 {{article.date}}</text>
-            <text>👁 阅读 {{article.read}}</text>
-            <text class="pill">{{article.category}}</text>
-          </view>
-          <view wx:if="{{article.lead && !article.useRichText}}" class="art-p">
-            <text class="drop serif">{{article.drop}}</text>{{article.lead}}
-          </view>
-          <view wx:elif="{{article.lead && article.useRichText}}" class="art-lead">{{article.lead}}</view>
-          <view wx:if="{{article.useRichText}}" class="art-rich">
-            <rich-text nodes="{{article.contentHtml}}" />
-          </view>
-          <block wx:else>
-            <view class="art-p" wx:for="{{article.paras}}" wx:key="index">{{item}}</view>
-          </block>
+  <view wx:if="{{loading}}" class="page-state-box">
+    <text class="page-state-text">加载中…</text>
+  </view>
 
-          <view class="act-row">
-            <view class="act {{liked ? 'act-on' : ''}}" bindtap="onLike">
-              <icon name="thumb" size="16" color="{{liked ? '#C0392B' : '#5A648A'}}" />
-              <text>{{likeLabel}}</text>
-            </view>
-            <view class="act {{collected ? 'act-on' : ''}}" bindtap="onCollect">
-              <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
-              <text>{{collectLabel}}</text>
-            </view>
-            <button class="act act-share-btn" open-type="share" hover-class="act-share-hover">
-              <icon name="share" size="16" color="#5A648A" />
-              <text>分享</text>
-            </button>
-          </view>
-        </view>
-      </view>
+  <view wx:elif="{{loadError}}" class="page-state-box">
+    <text class="page-state-text">内容加载失败，请检查网络后重试</text>
+    <view class="page-state-action" bindtap="onRetry">重新加载</view>
+    <view class="page-state-link" bindtap="onBackList">返回动态列表</view>
+  </view>
 
-      <!-- AI 推荐 -->
-      <view class="reco">
-        <view class="reco-head">智能相关推荐<text class="reco-ai">AI 推荐</text></view>
-        <view class="reco-it" wx:for="{{reco}}" wx:key="id" data-id="{{item.id}}" bindtap="onRecoTap">
-          <view class="reco-num">{{index + 1}}</view>
-          <view class="reco-txt">
-            <view class="reco-n">{{item.n}}</view>
-            <view class="reco-m">{{item.m}}</view>
-          </view>
-        </view>
-      </view>
+  <view wx:elif="{{notFound}}" class="page-state-box">
+    <text class="page-state-text">内容不存在或已下架</text>
+    <view class="page-state-link" bindtap="onBackList">返回动态列表</view>
+  </view>
 
-      <view class="detail-bottom"></view>
+  <block wx:elif="{{article}}">
+    <view wx:if="{{refreshError && !loading}}" class="page-refresh-bar" bindtap="onRetry">
+      <text>内容刷新失败，点击重试</text>
     </view>
-  </scroll-view>
+
+    <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="detail-wrap">
+
+        <!-- 文章 -->
+        <view class="article">
+          <view class="art-hero {{article.colorClass}}">
+            <view class="art-hero-deco"></view>
+            <view class="art-hero-title serif">{{article.title}}</view>
+          </view>
+          <view class="art-body">
+            <view class="art-meta">
+              <text>📅 {{article.date}}</text>
+              <text>👁 阅读 {{article.read}}</text>
+              <text class="pill">{{article.category}}</text>
+            </view>
+            <view wx:if="{{article.lead && !article.useRichText}}" class="art-p">
+              <text class="drop serif">{{article.drop}}</text>{{article.lead}}
+            </view>
+            <view wx:elif="{{article.lead && article.useRichText}}" class="art-lead">{{article.lead}}</view>
+            <view wx:if="{{article.useRichText}}" class="art-rich">
+              <rich-text nodes="{{article.contentHtml}}" />
+            </view>
+            <block wx:else>
+              <view class="art-p" wx:for="{{article.paras}}" wx:key="index">{{item}}</view>
+            </block>
+
+            <view class="act-row">
+              <view class="act {{liked ? 'act-on' : ''}}" bindtap="onLike">
+                <icon name="thumb" size="16" color="{{liked ? '#C0392B' : '#5A648A'}}" />
+                <text>{{likeLabel}}</text>
+              </view>
+              <view class="act {{collected ? 'act-on' : ''}}" bindtap="onCollect">
+                <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
+                <text>{{collectLabel}}</text>
+              </view>
+              <button class="act act-share-btn" open-type="share" hover-class="act-share-hover">
+                <icon name="share" size="16" color="#5A648A" />
+                <text>分享</text>
+              </button>
+            </view>
+          </view>
+        </view>
+
+        <!-- AI 推荐 -->
+        <view class="reco">
+          <view class="reco-head">智能相关推荐<text class="reco-ai">AI 推荐</text></view>
+          <view class="reco-it" wx:for="{{reco}}" wx:key="id" data-id="{{item.id}}" bindtap="onRecoTap">
+            <view class="reco-num">{{index + 1}}</view>
+            <view class="reco-txt">
+              <view class="reco-n">{{item.n}}</view>
+              <view class="reco-m">{{item.m}}</view>
+            </view>
+          </view>
+        </view>
+
+        <view class="detail-bottom"></view>
+      </view>
+    </scroll-view>
+  </block>
 
   <ai-assistant bottom="60" />
 </view>

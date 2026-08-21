@@ -14,6 +14,7 @@
     "test:sync-navigate-appids": "node scripts/test-sync-navigate-appids.js",
     "test:release-gate": "node scripts/test-release-gate.js",
     "test:miniapp-utils": "node scripts/test-miniapp-utils.js",
+    "smoke:api": "node scripts/api-smoke.mjs",
     "preflight:local": "npm run test:deploy-env && npm run check:deploy-env && npm run check:wxml && npm run check:admin-menu-icons && npm run check:press-feedback && npm run test:miniapp-utils && npm run test:mock-guard && npm run test:sync-navigate-appids && npm run test:release-gate",
     "load:enroll": "node scripts/load/enroll-concurrent.mjs",
     "load:browse": "node scripts/load/browse-load.mjs"

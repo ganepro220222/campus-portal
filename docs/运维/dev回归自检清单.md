@@ -8,15 +8,17 @@
 ```bash
 cd backend && mvn test
 cd admin && npm run typecheck && npm run build
-cd .. && npm run test:mock-guard && npm run check:prod-mock
+cd .. && npm run preflight:local
+# Docker 已启动时可选：
+npm run smoke:api
 # 发布前额外执行（尚未接入 CI；dev 下失败属预期，见环境变量说明 §5）：
 # npm run check:release-env
 ```
 
-- [ ] 三项全部通过
+`preflight:local` 含：`check:wxml`、`check:admin-menu-icons`、**`check:press-feedback`**、`test:miniapp-utils` 等。
 
-> **2026-07-12 自动化实测：** `mvn test` 176 passed · admin typecheck+build OK · mock-guard OK  
-> `check:release-env` 仅在切 `ENV=prod` + 正式域名后执行，dev 分支失败正常。
+- [ ] `mvn test` + admin 构建 + `preflight:local` 全部通过
+- [ ] （可选）`smoke:api` 7 项通过
 
 ## 1. 健康与基础
 
@@ -38,13 +40,13 @@ cd .. && npm run test:mock-guard && npm run check:prod-mock
 | 模块 | 检查点 | ✓ |
 |------|--------|---|
 | 首页 | Banner、推荐、公告、搜索入口 | |
-| 新闻 | 列表、详情、点赞/收藏 | |
-| 展馆 | 11 馆列表；有 VR 的馆可点「进入 VR」 | |
-| 课程 | 列表、详情、播放器、进度上报；快速退出不将已完成回退 | |
-| 资源 | 登录后点下载 → 个人中心下载记录 +1；列表 downloadCount 即时 +1（文档类打开成功后） | |
-| 活动 | 报名、名额满提示 | |
-| 个人中心 | 收藏/报名/足迹/消息/徽章 | |
-| 活动取消 | 管理端取消活动 → 学员消息中心有通知；「我的报名」待审/已通过记录消失（不展示 cancelled） | |
+| 新闻 | 列表、详情、点赞/收藏；**断网/无 id 错误态与重试** | |
+| 展馆 | 11 馆列表；有 VR 的馆可点「进入 VR」；详情错误态 | |
+| 课程 | 列表、详情、播放器、进度上报；详情错误态 | |
+| 资源 | 登录后点下载 → 个人中心下载记录 +1；列表错误态 | |
+| 活动 | 报名、名额满提示；详情/报名错误态 | |
+| 个人中心 | 收藏/报名/足迹/消息/徽章；**stats 静默刷新失败顶栏** | |
+| 活动取消 | 管理端取消活动 → 学员消息中心有通知；「我的报名」待审/已通过记录消失 | |
 | AI 助手 | 悬浮入口打开；副标题显示剩余次数；提问有回复 | |
 | 关联小程序 | 列表页可打开（演示数据） | |
 
@@ -80,6 +82,14 @@ Swagger：`http://localhost:8080/swagger-ui.html`
 | 不存在接口 | HTTP 404，`body.code=404` |
 | 后端 500（可临时停 DB 模拟） | 小程序 toast「请求失败」或「网络异常」，页面不白屏 |
 
+## 5.2 弱网错误态（uibatch6 §14.6，开发者工具「弱网」）
+
+| 场景 | 预期 |
+|------|------|
+| 首次进入 Tab/详情，网络失败 | 全页错误态 + alert 图标 +「重新加载」胶囊 |
+| 已有列表/详情，静默刷新失败 | 保留旧内容 + 顶部红条可点重试 |
+| 错误态下 | 点赞/收藏/报名等按钮不渲染（工程 guard） |
+
 ## 6. 已知 dev 限制（不算 FAIL）
 
 - 微信订阅消息不会真发到手机（无模板 ID）
@@ -89,4 +99,4 @@ Swagger：`http://localhost:8080/swagger-ui.html`
 
 ---
 
-*修订：2026-07-11 初稿；2026-07-12 增补小程序 HTTP 错误态抽测 §5.1*
+*修订：2026-07-11 初稿；2026-07-12 增补 §5.1；**2026-08-21** 对齐 preflight/press-feedback、错误态与 smoke:api*

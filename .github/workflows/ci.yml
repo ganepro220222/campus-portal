@@ -63,6 +63,9 @@ jobs:
       - name: Admin menu icon check
         run: npm run check:admin-menu-icons
 
+      - name: Press feedback check
+        run: npm run check:press-feedback
+
       - name: Miniapp utils tests
         run: npm run test:miniapp-utils
 

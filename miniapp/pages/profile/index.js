@@ -4,8 +4,9 @@ const { get } = require('../../utils/request')
 
 Page({
   data: {
-    userInfo:   null,
-    stats:      { favorites: 0, enrolls: 0, downloads: 0, points: 0, unreadMessages: 0 },
+    userInfo: null,
+    stats: { favorites: 0, enrolls: 0, downloads: 0, points: 0, unreadMessages: 0 },
+    statsRefreshError: false,
     isLoggedIn: false
   },
 
@@ -16,18 +17,43 @@ Page({
     if (loggedIn) this._loadProfile()
   },
 
+  onRetryStats() {
+    if (!this.data.isLoggedIn) return
+    this.setData({ statsRefreshError: false })
+    this._loadStats({ silent: true })
+  },
+
   async _loadProfile() {
+    await Promise.all([
+      this._loadUserProfile(),
+      this._loadStats()
+    ])
+  },
+
+  async _loadUserProfile() {
     try {
-      const [profile, stats] = await Promise.all([
-        get('/profile').catch(() => null),
-        get('/profile/stats').catch(() => null)
-      ])
-      this.setData({
-        userInfo: profile || this.data.userInfo,
-        stats:    stats || this.data.stats
-      })
+      const profile = await get('/profile')
+      if (profile) this.setData({ userInfo: profile })
     } catch (err) {
-      console.warn('[profile] 个人数据加载失败', err)
+      console.warn('[profile] 个人资料加载失败', err)
+    }
+  },
+
+  async _loadStats(options = {}) {
+    const { silent = false } = options
+    const prev = this.data.stats
+    const hadStats = !!(prev && (prev.favorites || prev.enrolls || prev.downloads || prev.points))
+    if (!silent) this.setData({ statsRefreshError: false })
+    try {
+      const stats = await get('/profile/stats')
+      if (stats) {
+        this.setData({ stats, statsRefreshError: false })
+      }
+    } catch (err) {
+      console.warn('[profile] 统计数据加载失败', err)
+      if (silent && hadStats) {
+        this.setData({ statsRefreshError: true })
+      }
     }
   },
 

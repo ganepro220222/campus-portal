@@ -87,13 +87,17 @@
 }
 
 /* 统计卡（上浮覆盖 hero 底部）*/
-.stats-card {
+.stats-wrap {
   position: relative;
   z-index: 3;
+  margin: -56rpx 32rpx 0;
+}
+.profile-stats-bar { margin: 0 0 12rpx; }
+
+.stats-card {
   display: flex;
   align-items: center;
   background: #fff;
-  margin: -56rpx 32rpx 0;
   border-radius: 28rpx;
   padding: 34rpx 0;
   box-shadow: 0 12rpx 32rpx rgba(31, 40, 90, 0.12);

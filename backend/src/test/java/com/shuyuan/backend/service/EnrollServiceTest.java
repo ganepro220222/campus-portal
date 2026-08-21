@@ -171,7 +171,7 @@ class EnrollServiceTest {
         assertEquals(400, ex.getCode());
         assertTrue(ex.getMessage().contains("手机号"));
         verify(activityMapper, never()).incrEnrolledCount(anyLong());
-        verify(enrollMapper, never()).insert(any());
+        verify(enrollMapper, never()).insert(any(Enroll.class));
     }
 
     @Test
@@ -220,7 +220,7 @@ class EnrollServiceTest {
 
         assertNotNull(result);
         verify(activityMapper).incrEnrolledCount(ACTIVITY_ID);
-        verify(enrollMapper).insert(argThat(enroll ->
+        verify(enrollMapper).insert(argThat((Enroll enroll) ->
                 "张三".equals(enroll.getName()) && "13800138000".equals(enroll.getPhone())));
     }
 

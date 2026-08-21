@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, ChatDotSquare, List, Reading, Connection, Grid, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets, DeleteFilled } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, Operation, List, Reading, Connection, Grid, PriceTag, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets, DeleteFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -212,7 +212,7 @@ export const menuItems: MenuNode[] = [
       { path: '/courses', title: '课程管理', icon: VideoCamera, permissions: ['course:read'] },
       { path: '/resources', title: '资源管理', icon: FolderOpened, permissions: ['course:read'] },
       { path: '/activities', title: '活动管理', icon: Calendar, permissions: ['enroll:read'] },
-      { path: '/categories', title: '分类管理', icon: Grid, permissions: ['category:read'] },
+      { path: '/categories', title: '分类管理', icon: PriceTag, permissions: ['category:read'] },
       { path: '/recycle-bin', title: '回收站', icon: DeleteFilled, permissions: ['admin:super'] }
     ]
   },
@@ -241,7 +241,7 @@ export const menuItems: MenuNode[] = [
     icon: MagicStick, // 智能助手
     children: [
       { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] },
-      { path: '/ai-assistant-config', title: 'AI 助手配置', icon: ChatDotSquare, permissions: ['admin:super'] }
+      { path: '/ai-assistant-config', title: 'AI 助手配置', icon: Operation, permissions: ['admin:super'] }
     ]
   },
   {

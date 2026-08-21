@@ -11,7 +11,10 @@
   padding: 16rpx 40rpx;
   border-radius: 28rpx;
 }
-.pl-retry:active { background: var(--sky-3); }
+/* 全仓 19 处可点面的按下反馈里，17 处是变深（.res-dl、.fav-icon、.chip、.legal-retry…），
+   只有本文件这两处用 --sky-3 变浅，按下去像是「弹起来」而不是「按下去」。
+   静息同为 --sky-2，按深一档到 --sky，与 .res-dl / .fav-icon 完全对齐。 */
+.pl-retry:active { background: var(--sky); }
 
 .pl-refresh-bar {
   margin: 16rpx 28rpx 0;
@@ -121,7 +124,7 @@
   opacity: 0.65;
 }
 .pl-redownload:active {
-  background: var(--sky-3);
+  background: var(--sky);
 }
 
 .pl-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }

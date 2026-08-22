@@ -6,9 +6,14 @@ const { decorateCourseCards } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
 const { getNavBarLayout } = require('../../utils/navbar')
 const {
+  FEED_LOAD,
   buildFeedLoadingPatch,
   buildFeedLoadedPatch,
-  buildFeedFailurePatch
+  buildFeedFailurePatch,
+  prevForFeedFailure,
+  resolveFeedRetryMode,
+  bumpListGeneration,
+  isStaleCategoryRequest
 } = require('../../utils/feedListPage')
 
 Page({
@@ -29,7 +34,7 @@ Page({
     loadCategoryNames('course').then(cats => {
       this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })
     })
-    this._load(true)
+    this._load(FEED_LOAD.initial)
   },
 
   onShow() {
@@ -38,22 +43,29 @@ Page({
     }
   },
 
-  onPullDownRefresh() { this._load(true).then(() => wx.stopPullDownRefresh()) },
+  onPullDownRefresh() {
+    this._load(FEED_LOAD.pullRefresh).then(() => wx.stopPullDownRefresh())
+  },
 
   onRetry() {
     this.setData({ refreshError: false, error: false })
-    this._load(true)
+    this._load(resolveFeedRetryMode(this.data.courseList.length))
   },
 
   onSearch() { wx.navigateTo({ url: '/packageC/search/index' }) },
 
-  async _load(reset) {
+  async _load(options) {
+    const generation = bumpListGeneration(this)
+    const catIndex = this.data.activeCat
     const prev = this.data
-    const silent = !reset && prev.courseList && prev.courseList.length > 0
-    this.setData(buildFeedLoadingPatch(reset))
-    const cat = this.data.activeCat ? this.data.cats[this.data.activeCat] : undefined
+    const cat = catIndex ? this.data.cats[catIndex] : undefined
+
+    this.setData(buildFeedLoadingPatch(options, prev, 'courseList'))
+
     try {
       const list = await get('/courses', { category: cat })
+      if (isStaleCategoryRequest(this, generation, catIndex)) return
+
       let src = Array.isArray(list) ? list : []
       if (!src.length && mockGuard.useMock) {
         src = mock.coursesFull || []
@@ -61,8 +73,13 @@ Page({
       const filtered = cat ? src.filter(c => (c.cat || c.categoryName) === cat) : src
       this.setData(buildFeedLoadedPatch('courseList', decorateCourseCards(filtered), 1, false))
     } catch (err) {
+      if (isStaleCategoryRequest(this, generation, catIndex)) return
       console.warn('[course] 课程列表加载失败', err)
-      this.setData(buildFeedFailurePatch(err, silent ? prev : { courseList: [] }, 'courseList'))
+      this.setData(buildFeedFailurePatch(
+        err,
+        prevForFeedFailure(options, prev, 'courseList'),
+        'courseList'
+      ))
     }
   },
 
@@ -70,7 +87,7 @@ Page({
     const i = e.currentTarget.dataset.index
     if (i === this.data.activeCat) return
     this.setData({ activeCat: i })
-    this._load(true)
+    this._load(FEED_LOAD.categorySwitch)
   },
 
   onCardTap(e) {

@@ -6,9 +6,15 @@ const { decorateNewsFeed } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
 const { getNavBarLayout } = require('../../utils/navbar')
 const {
+  FEED_LOAD,
+  normalizeFeedLoadOptions,
   buildFeedLoadingPatch,
   buildFeedLoadedPatch,
-  buildFeedFailurePatch
+  buildFeedFailurePatch,
+  prevForFeedFailure,
+  resolveFeedRetryMode,
+  bumpListGeneration,
+  isStaleCategoryRequest
 } = require('../../utils/feedListPage')
 const {
   DEFAULT_PAGE_SIZE,
@@ -41,7 +47,7 @@ Page({
     loadCategoryNames('news').then(cats => {
       this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })
     })
-    this._loadList(true)
+    this._loadList(FEED_LOAD.initial)
   },
 
   onShow() {
@@ -51,29 +57,33 @@ Page({
   },
 
   onPullDownRefresh() {
-    this._loadList(true).then(() => wx.stopPullDownRefresh())
+    this._loadList(FEED_LOAD.pullRefresh).then(() => wx.stopPullDownRefresh())
   },
 
   onScrollToLower() {
     if (this.data.hasMore && !this.data.loading && !this.data.loadingMore) {
-      this._loadList(false)
+      this._loadList(FEED_LOAD.loadMore)
     }
   },
 
   onRetry() {
     this.setData({ refreshError: false, error: false })
-    this._loadList(true)
+    this._loadList(resolveFeedRetryMode(this.data.newsList.length))
   },
 
-  async _loadList(reset) {
-    if (!reset && (this.data.loading || this.data.loadingMore)) return
-    const page = reset ? 1 : this.data.page
-    const catLabel = this.data.cats[this.data.activeCat]
+  async _loadList(options) {
+    const loadOpts = normalizeFeedLoadOptions(options)
+    const replaceOnSuccess = loadOpts.replaceOnSuccess
+    if (!replaceOnSuccess && (this.data.loading || this.data.loadingMore)) return
+
+    const generation = bumpListGeneration(this)
+    const page = replaceOnSuccess ? 1 : this.data.page
+    const catIndex = this.data.activeCat
+    const catLabel = this.data.cats[catIndex]
     const category = catLabel && catLabel !== '全部' ? catLabel : undefined
     const prev = this.data
-    const silent = !reset && prev.newsList && prev.newsList.length > 0
 
-    this.setData(buildFeedLoadingPatch(reset))
+    this.setData(buildFeedLoadingPatch(loadOpts, prev, 'newsList'))
 
     try {
       const res = await get('/news', {
@@ -82,6 +92,8 @@ Page({
         category
       })
 
+      if (isStaleCategoryRequest(this, generation, catIndex)) return
+
       let records = extractPageRecords(res)
       let hasMore = calcHasMore(records, DEFAULT_PAGE_SIZE)
 
@@ -89,23 +101,24 @@ Page({
         const mockFull = filterByCategory(mock.newsFull || [], category)
         records = sliceMockPage(mockFull, page, DEFAULT_PAGE_SIZE)
         hasMore = mockHasMore(mockFull, page, DEFAULT_PAGE_SIZE)
-      } else if (!records.length && !reset) {
+      } else if (!records.length && replaceOnSuccess) {
         hasMore = false
       }
 
       const merged = mergePageRecords(
-        reset ? [] : this.data.newsList,
+        replaceOnSuccess ? [] : this.data.newsList,
         decorateNewsFeed(records),
-        reset
+        replaceOnSuccess
       )
       this.setData(buildFeedLoadedPatch('newsList', merged, page + 1, hasMore))
     } catch (err) {
+      if (isStaleCategoryRequest(this, generation, catIndex)) return
       console.warn('[news] 动态列表加载失败', err)
-      if (silent) {
-        this.setData(buildFeedFailurePatch(err, prev, 'newsList'))
-      } else {
-        this.setData(buildFeedFailurePatch(err, { newsList: [] }, 'newsList'))
-      }
+      this.setData(buildFeedFailurePatch(
+        err,
+        prevForFeedFailure(loadOpts, prev, 'newsList'),
+        'newsList'
+      ))
     }
   },
 
@@ -113,7 +126,7 @@ Page({
     const i = e.currentTarget.dataset.index
     if (i === this.data.activeCat) return
     this.setData({ activeCat: i, hasMore: true })
-    this._loadList(true)
+    this._loadList(FEED_LOAD.categorySwitch)
   },
 
   onSearch() {

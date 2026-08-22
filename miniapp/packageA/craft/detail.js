@@ -70,7 +70,9 @@ Page({
   },
 
   onBackList() {
-    wx.navigateTo({ url: '/packageA/craft/list' })
+    wx.navigateBack({
+      fail: () => wx.redirectTo({ url: '/packageA/craft/list' })
+    })
   },
 
   _fallbackForId(id) {

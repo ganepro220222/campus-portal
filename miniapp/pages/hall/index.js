@@ -6,9 +6,14 @@ const { decorateHalls } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
 const { getNavBarLayout } = require('../../utils/navbar')
 const {
+  FEED_LOAD,
   buildFeedLoadingPatch,
   buildFeedLoadedPatch,
-  buildFeedFailurePatch
+  buildFeedFailurePatch,
+  prevForFeedFailure,
+  resolveFeedRetryMode,
+  bumpListGeneration,
+  isStaleCategoryRequest
 } = require('../../utils/feedListPage')
 
 Page({
@@ -29,7 +34,7 @@ Page({
     loadCategoryNames('hall').then(cats => {
       this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })
     })
-    this._load(true)
+    this._load(FEED_LOAD.initial)
   },
 
   onShow() {
@@ -38,22 +43,29 @@ Page({
     }
   },
 
-  onPullDownRefresh() { this._load(true).then(() => wx.stopPullDownRefresh()) },
+  onPullDownRefresh() {
+    this._load(FEED_LOAD.pullRefresh).then(() => wx.stopPullDownRefresh())
+  },
 
   onRetry() {
     this.setData({ refreshError: false, error: false })
-    this._load(true)
+    this._load(resolveFeedRetryMode(this.data.hallList.length))
   },
 
   onSearch() { wx.navigateTo({ url: '/packageC/search/index' }) },
 
-  async _load(reset) {
+  async _load(options) {
+    const generation = bumpListGeneration(this)
+    const catIndex = this.data.activeCat
     const prev = this.data
-    const silent = !reset && prev.hallList && prev.hallList.length > 0
-    this.setData(buildFeedLoadingPatch(reset))
-    const cat = this.data.activeCat ? this.data.cats[this.data.activeCat] : undefined
+    const cat = catIndex ? this.data.cats[catIndex] : undefined
+
+    this.setData(buildFeedLoadingPatch(options, prev, 'hallList'))
+
     try {
       const list = await get('/halls', { category: cat })
+      if (isStaleCategoryRequest(this, generation, catIndex)) return
+
       let src = Array.isArray(list) ? list : []
       if (!src.length && mockGuard.useMock) {
         src = mock.hallsFull || []
@@ -61,8 +73,13 @@ Page({
       const filtered = cat ? src.filter(h => (h.cat || h.categoryName) === cat) : src
       this.setData(buildFeedLoadedPatch('hallList', decorateHalls(filtered), 1, false))
     } catch (err) {
+      if (isStaleCategoryRequest(this, generation, catIndex)) return
       console.warn('[hall] 展馆列表加载失败', err)
-      this.setData(buildFeedFailurePatch(err, silent ? prev : { hallList: [] }, 'hallList'))
+      this.setData(buildFeedFailurePatch(
+        err,
+        prevForFeedFailure(options, prev, 'hallList'),
+        'hallList'
+      ))
     }
   },
 
@@ -70,7 +87,7 @@ Page({
     const i = e.currentTarget.dataset.index
     if (i === this.data.activeCat) return
     this.setData({ activeCat: i })
-    this._load(true)
+    this._load(FEED_LOAD.categorySwitch)
   },
 
   onCardTap(e) {

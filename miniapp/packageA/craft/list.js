@@ -4,9 +4,14 @@ const { decorateCrafts } = require('../../utils/decorate')
 const mock = require('../../mock/defaults')
 const mockGuard = require('../../utils/mockGuard')
 const {
+  FEED_LOAD,
   buildFeedLoadingPatch,
   buildFeedLoadedPatch,
-  buildFeedFailurePatch
+  buildFeedFailurePatch,
+  prevForFeedFailure,
+  resolveFeedRetryMode,
+  bumpListGeneration,
+  isStaleListRequest
 } = require('../../utils/feedListPage')
 
 Page({
@@ -17,29 +22,40 @@ Page({
     refreshError: false
   },
 
-  onLoad() { this._loadList(true) },
+  onLoad() { this._loadList(FEED_LOAD.initial) },
 
-  onPullDownRefresh() { this._loadList(true).then(() => wx.stopPullDownRefresh()) },
+  onPullDownRefresh() {
+    this._loadList(FEED_LOAD.pullRefresh).then(() => wx.stopPullDownRefresh())
+  },
 
   onRetry() {
     this.setData({ refreshError: false, error: false })
-    this._loadList(true)
+    this._loadList(resolveFeedRetryMode(this.data.craftList.length))
   },
 
-  async _loadList(reset) {
+  async _loadList(options) {
+    const generation = bumpListGeneration(this)
     const prev = this.data
-    const silent = !reset && prev.craftList && prev.craftList.length > 0
-    this.setData(buildFeedLoadingPatch(reset))
+
+    this.setData(buildFeedLoadingPatch(options, prev, 'craftList'))
+
     try {
       const list = await get('/crafts')
+      if (isStaleListRequest(this, generation)) return
+
       let records = Array.isArray(list) ? list : []
       if (!records.length && mockGuard.useMock) {
         records = mock.crafts || []
       }
       this.setData(buildFeedLoadedPatch('craftList', decorateCrafts(records), 1, false))
     } catch (err) {
+      if (isStaleListRequest(this, generation)) return
       console.warn('[craft/list] 加载失败', err)
-      this.setData(buildFeedFailurePatch(err, silent ? prev : { craftList: [] }, 'craftList'))
+      this.setData(buildFeedFailurePatch(
+        err,
+        prevForFeedFailure(options, prev, 'craftList'),
+        'craftList'
+      ))
     }
   },
 

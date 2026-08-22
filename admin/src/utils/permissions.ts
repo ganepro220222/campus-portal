@@ -15,11 +15,11 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [{ key: 'admin:super', label: '超级管理员（全部权限）' }]
   },
   {
-    group: '新闻',
+    group: '动态',
     permissions: [
-      { key: 'news:read', label: '查看新闻' },
-      { key: 'news:write', label: '编辑新闻' },
-      { key: 'news:publish', label: '发布/下架新闻' }
+      { key: 'news:read', label: '查看动态' },
+      { key: 'news:write', label: '编辑动态' },
+      { key: 'news:publish', label: '发布/下架动态' }
     ]
   },
   {

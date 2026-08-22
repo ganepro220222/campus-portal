@@ -52,7 +52,7 @@ const router = createRouter({
           path: 'news',
           name: 'News',
           component: () => import('@/views/news/NewsListView.vue'),
-          meta: { title: '新闻管理', permission: 'news:read' }
+          meta: { title: '动态管理', permission: 'news:read' }
         },
         {
           path: 'halls',
@@ -206,7 +206,7 @@ export const menuItems: MenuNode[] = [
     title: '内容运营',
     icon: Collection, // 内容运营（内容集合）
     children: [
-      { path: '/news', title: '新闻管理', icon: Document, permissions: ['news:read'] },
+      { path: '/news', title: '动态管理', icon: Document, permissions: ['news:read'] },
       { path: '/halls', title: '展馆管理', icon: OfficeBuilding, permissions: ['hall:read'] },
       { path: '/crafts', title: '文创管理', icon: Goods, permissions: ['hall:read'] },
       { path: '/courses', title: '课程管理', icon: VideoCamera, permissions: ['course:read'] },

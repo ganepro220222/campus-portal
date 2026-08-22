@@ -26,7 +26,7 @@ export function removeCategory(id: number) {
 }
 
 export const CATEGORY_TYPE_OPTIONS: { value: CategoryType; label: string }[] = [
-  { value: 'news', label: '新闻' },
+  { value: 'news', label: '动态' },
   { value: 'hall', label: '展馆' },
   { value: 'craft', label: '文创' },
   { value: 'course', label: '课程' },

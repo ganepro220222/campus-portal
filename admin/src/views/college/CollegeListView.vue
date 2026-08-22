@@ -7,7 +7,7 @@
 
     <p class="text-muted">
       配置兄弟小程序或 H5 入口与对接方式。保存并上架后，小程序「关联小程序」页按排序展示；
-      首页「协同育人」横滑仅展示 <code>jump</code> 类型。
+      首页「关联应用」横滑仅展示 <code>jump</code> 类型。
       若使用「小程序跳转」，请复制 <code>navigate-appids.template.json</code> 为 <code>navigate-appids.json</code> 填入 AppID 后执行
       <code>node scripts/sync-navigate-appids.js</code> 生成白名单。
       「接口同步」为预留能力，待甲方 API 文档到位后对接。

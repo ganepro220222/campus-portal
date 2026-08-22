@@ -1,8 +1,8 @@
 <template>
   <div class="page-card">
     <div class="page-header">
-      <h2>新闻管理</h2>
-      <el-button v-if="canWrite" type="primary" :icon="Plus" @click="openDialog()">新建新闻</el-button>
+      <h2>动态管理</h2>
+      <el-button v-if="canWrite" type="primary" :icon="Plus" @click="openDialog()">新建动态</el-button>
     </div>
 
     <div class="toolbar">
@@ -77,7 +77,7 @@
 
     <el-dialog
       v-model="dialogVisible"
-      :title="editingId ? '编辑新闻' : '新建新闻'"
+      :title="editingId ? '编辑动态' : '新建动态'"
       width="860px"
       destroy-on-close
       top="5vh"
@@ -129,7 +129,7 @@
           />
           <WangEditor
             v-model="form.content"
-            placeholder="撰写新闻正文，可插入图片与排版"
+            placeholder="撰写动态正文，可插入图片与排版"
             @change="onContentChange"
           />
           <div class="form-tip">正文支持图文排版；AI 润色/扩写结果需确认采纳后才会写入</div>

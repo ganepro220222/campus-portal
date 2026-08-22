@@ -23,7 +23,7 @@ export interface BannerLinkOption {
 export const BANNER_LINK_TYPE_OPTIONS: BannerLinkOption[] = [
   { value: 'none', label: '无跳转' },
   { value: 'fixed', label: '频道页面' },
-  { value: 'news', label: '新闻详情' },
+  { value: 'news', label: '动态详情' },
   { value: 'course', label: '课程详情' },
   { value: 'hall', label: '展馆详情' },
   { value: 'activity', label: '活动详情' },
@@ -33,7 +33,7 @@ export const BANNER_LINK_TYPE_OPTIONS: BannerLinkOption[] = [
 
 export const BANNER_FIXED_PAGE_OPTIONS: BannerLinkOption[] = [
   { value: 'home', label: '首页' },
-  { value: 'news', label: '新闻频道' },
+  { value: 'news', label: '动态频道' },
   { value: 'hall', label: '展馆频道' },
   { value: 'course', label: '课程频道' },
   { value: 'activity', label: '活动报名' }

@@ -8,14 +8,15 @@
           <div class="seal"><img :src="sealMark" alt="中华文化书院印" /></div>
           <h1 class="brand-title">云端书院</h1>
           <div class="brand-divider"><span></span>❖<span></span></div>
-          <p class="brand-sub">贵州交通职业大学 · 中华文化书院</p>
+          <p class="brand-sub">中华文化书院</p>
+          <p class="brand-en">Academy of Chinese Culture</p>
           <ul class="brand-feats">
             <li><el-icon><Document /></el-icon> 内容 · 展馆 · 文创统一管理</li>
             <li><el-icon><Calendar /></el-icon> 活动发布与报名审核导出</li>
             <li><el-icon><VideoCamera /></el-icon> 课程字幕与资源配套维护</li>
           </ul>
         </div>
-        <div class="brand-foot">“马院 + 书院”协同育人 · 云端思政平台</div>
+        <div class="brand-foot">校园学习与活动服务平台 · 管理端</div>
         <svg class="wave" viewBox="0 0 400 120" preserveAspectRatio="none">
           <path d="M0 70 Q60 40 120 66 T240 66 T400 54 V120 H0 Z" fill="#D0E7F7" opacity="0.14" />
           <path d="M0 92 Q70 68 150 88 T300 86 T400 78 V120 H0 Z" fill="#9CB6E8" opacity="0.12" />
@@ -48,7 +49,9 @@
           </el-button>
         </el-form>
 
-        <p class="hint">开发环境默认账号 admin / Admin@123<br />生产环境请使用独立超管账号，并禁用默认 admin<br />连续 5 次密码错误将锁定 5 分钟</p>
+        <!-- 默认凭据只在开发构建里提示；生产环境不得把账号密码印在登录页上 -->
+        <p v-if="isDev" class="hint">开发环境默认账号 admin / Admin@123<br />生产环境请使用独立超管账号，并禁用默认 admin</p>
+        <p class="hint">连续 5 次密码错误将锁定 5 分钟</p>
       </div>
     </div>
   </div>
@@ -66,6 +69,8 @@ import sealMark from '@/assets/brand-seal.png'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+/** 仅开发构建为 true；生产构建下 Vite 会把这个分支整段摇掉 */
+const isDev = import.meta.env.DEV
 const formRef = ref<FormInstance>()
 const loading = ref(false)
 
@@ -190,6 +195,14 @@ async function onSubmit() {
   color: rgba(214, 224, 248, 0.9);
   letter-spacing: 1px;
 }
+/* 中英文分两行：.brand-side 是 max-width 860px 的 46%，减 padding 后仅剩 316px，
+   合成一行正好卡死、必然折行且断点不可控（可能断在 Academy 中间） */
+.brand-en {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: rgba(170, 184, 224, 0.72);
+  letter-spacing: 0.5px;
+}
 .brand-feats {
   list-style: none;
   padding: 0;
@@ -268,6 +281,8 @@ async function onSubmit() {
   color: #c0c4cc;
   line-height: 1.7;
 }
+/* 开发提示与锁定提示是两段，别再各留一次 22px 上边距 */
+.hint + .hint { margin-top: 4px; }
 
 @media (max-width: 720px) {
   .brand-side {

@@ -51,7 +51,7 @@ import shuWatermark from '@/assets/brand-seal-white.png'
 const auth = useAuthStore()
 
 const modules = [
-  { title: '新闻管理', desc: '新闻发布、分类维护与置顶推荐', path: '/news', perm: 'news:read', icon: Document, grad: 'linear-gradient(135deg,#3F57B5,#2B356E)' },
+  { title: '动态管理', desc: '动态发布、分类维护与置顶推荐', path: '/news', perm: 'news:read', icon: Document, grad: 'linear-gradient(135deg,#3F57B5,#2B356E)' },
   { title: '展馆管理', desc: '11 馆信息维护，下架后小程序不可见', path: '/halls', perm: 'hall:read', icon: OfficeBuilding, grad: 'linear-gradient(135deg,#365E8C,#2E7C8C)' },
   { title: '文创管理', desc: '工艺品双语介绍、多角度鉴赏图与咨询方式', path: '/crafts', perm: 'hall:read', icon: Goods, grad: 'linear-gradient(135deg,#7A2E36,#A0505A)' },
   { title: '课程管理', desc: '在线课程上下架、视频与 AI 字幕配置', path: '/courses', perm: 'course:read', icon: VideoCamera, grad: 'linear-gradient(135deg,#5A4E86,#7E72B0)' },
@@ -61,7 +61,7 @@ const modules = [
   { title: '首页轮播', desc: '首页轮播图配置与排序', path: '/banners', perm: 'admin:super', icon: Picture, grad: 'linear-gradient(135deg,#4E7CC4,#2F5E92)' },
   { title: '公告管理', desc: '首页公告通知条内容维护', path: '/announcements', perm: 'admin:super', icon: Bell, grad: 'linear-gradient(135deg,#6E8FCB,#46639E)' },
   { title: '师生账号', desc: '学号账号导入、启用禁用与清退', path: '/members', perm: 'admin:super', icon: Postcard, grad: 'linear-gradient(135deg,#2E8C86,#256E72)' },
-  { title: '关联小程序', desc: '协同育人小程序入口与图标维护', path: '/colleges', perm: 'admin:super', icon: Connection, grad: 'linear-gradient(135deg,#8A6BB0,#5E4A86)' },
+  { title: '关联小程序', desc: '关联应用入口与图标维护', path: '/colleges', perm: 'admin:super', icon: Connection, grad: 'linear-gradient(135deg,#8A6BB0,#5E4A86)' },
   { title: '内容配置', desc: '关于页信息与隐私 / 用户协议', path: '/content-docs', perm: 'admin:super', icon: Tickets, grad: 'linear-gradient(135deg,#C67A4E,#9C5A2E)' }
 ]
 

@@ -75,7 +75,7 @@ Vite dev server proxies `/api` to `http://localhost:8080`. Production build: `np
 
 ## Local dev (without Docker backend)
 
-Requires JDK 17+ on the host. Start only infra with compose, then `mvn spring-boot:run` in `backend/` (profile `dev`). Load seed manually if needed: `mysql ... < sql/seed-dev.sql`.
+Requires JDK 17+ on the host. Start only infra with compose, then `mvn spring-boot:run` in `backend/` (profile `dev`). Redis is mapped to host port **16379** (Windows may reserve 6379). Load seed manually if needed: `mysql ... < sql/seed-dev.sql`.
 
 ## 相关文档
 

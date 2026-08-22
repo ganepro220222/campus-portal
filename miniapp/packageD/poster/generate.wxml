@@ -9,7 +9,7 @@
         <view class="p-frame" style="border-color: {{tpl.accent}};"></view>
         <view class="p-top">中 华 文 化 书 院</view>
         <view wx:if="{{hasCover}}" class="p-cover" style="box-shadow: 0 0 0 2rpx {{tpl.accent}};">
-          <image class="p-cover-img" src="{{coverUrl}}" mode="aspectFill" />
+          <image class="p-cover-img" src="{{coverUrl}}" mode="aspectFill" binderror="onCoverError" />
           <view class="p-cover-badge" style="box-shadow: 0 0 0 2rpx {{tpl.accent}};">
             <image class="p-cover-badge-img" src="/assets/images/academy-seal-navy.png" mode="aspectFit" />
           </view>

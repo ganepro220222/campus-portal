@@ -71,13 +71,16 @@
   pointer-events: none;
 }
 
+/* padding-top 由 60rpx 提到 108rpx，把原来 .seal 的 48rpx 并进来——
+   .seal 的 margin-top 改成 auto 后需要一个保底值，否则小屏（剩余空间为 0）时印章会贴住状态栏。
+   并进来之后：空间不足时印章距顶 108+statusBar，与改前的 60+statusBar+48 逐像素一致。 */
 .login-inner {
   position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 60rpx 60rpx 40rpx;
+  padding: 108rpx 60rpx 40rpx;
   min-height: 100vh;
   box-sizing: border-box;
 }
@@ -95,7 +98,10 @@
 .seal {
   width: 248rpx; height: 248rpx;
   border-radius: 56rpx;
-  margin-top: 48rpx;
+  /* 与 .login-form 的 margin-top:auto 配对，把剩余空间上下均分。
+     原来只有下面那一个 auto，剩余空间全堆在品牌区与表单之间，
+     印章由 300 收到 248rpx 后那块空白更明显。 */
+  margin-top: auto;
   position: relative;
   flex-shrink: 0;
   box-sizing: border-box;

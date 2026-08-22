@@ -47,6 +47,17 @@ Page({
     })
   },
 
+  /*
+   * 封面拿不到图时，画布侧 coverImg.onerror 会降级成「居中徽记」布局；
+   * 预览侧原来只看 URL 合不合法、不看图片是否真的加载得出来，于是预览留一个空白灰框、
+   * 存下来的图却是徽记布局——预览即成品在这里断了。让预览跟着降级。
+   */
+  onCoverError() {
+    if (!this.data.hasCover) return
+    console.warn('[poster] 封面加载失败，预览降级为徽记布局')
+    this.setData({ hasCover: false, coverUrl: '' })
+  },
+
   onPick(e) {
     const i = e.currentTarget.dataset.i
     this.setData({ active: i, tpl: TEMPLATES[i] })

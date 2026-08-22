@@ -8,8 +8,13 @@ const {
   titleStartY,
   roundRectPath,
   drawCoverFill,
-  badgeFitRect
+  badgeFitRect,
+  balanceLines
 } = require('../../utils/posterCover')
+
+const TITLE_MAX_LINES = 3
+const TITLE_FONT = 'bold 22px serif'
+const TITLE_BOX = 220          // 画布可用宽 = W(300) - 80
 
 const TEMPLATES = [
   { key: 'blue', name: '阳明蓝', c1: '#1E2654', c2: '#3F57B5', accent: '#BE9C44' },
@@ -31,6 +36,10 @@ Page({
     type: '',
     coverUrl: '',
     hasCover: false,
+    // 标题折行结果。预览与画布共用同一份：海报预览是 400rpx 宽配 40rpx 字，
+    // 画布是 220px 宽配 22px 字，都等于 10em，所以量一次两边通用。
+    // 空数组 = 还没量到（画布未就绪），预览退回交给 CSS 自然折行。
+    titleLines: [],
     saving: false
   },
 
@@ -45,6 +54,35 @@ Page({
       coverUrl,
       hasCover: !!coverUrl
     })
+  },
+
+  // 量标题要拿到离屏 canvas 节点，onLoad 时结构还没渲染出来，得等 onReady
+  onReady() {
+    this._measureTitle(this.data.title)
+  },
+
+  /*
+   * 用离屏画布把标题量准，再做「均衡折行」。
+   * 贪心折行会把「贵州交通博物馆 · 教育馆」断出一个单字末行，海报上很难看；
+   * balanceLines 会在不增加行数的前提下把最宽的一行压到最窄（见 utils/posterCover.js）。
+   * 量不到（画布还没就绪、真机异常）就保持空数组，预览走 CSS 折行、画布走贪心，
+   * 与改动前一致，不会因为量不到而白屏。
+   */
+  _measureTitle(title) {
+    wx.createSelectorQuery().in(this).select('#posterCanvas')
+      .fields({ node: true }).exec((res) => {
+        const node = res && res[0] && res[0].node
+        if (!node) return
+        try {
+          const ctx = node.getContext('2d')
+          ctx.font = TITLE_FONT
+          const lines = balanceLines(title, TITLE_BOX,
+            (s) => ctx.measureText(s).width, TITLE_MAX_LINES)
+          this.setData({ titleLines: lines.slice(0, TITLE_MAX_LINES) })
+        } catch (e) {
+          console.warn('[poster] 标题折行量算失败，退回自然折行', e)
+        }
+      })
   },
 
   /*
@@ -139,10 +177,14 @@ Page({
 
         const drawRest = (startY) => {
           ctx.fillStyle = '#ffffff'
-          ctx.font = 'bold 22px serif'
-          const lines = wrapText(ctx, title, W - 80)
+          ctx.font = TITLE_FONT
+          // 优先用预览已经量好的那份，保证「预览即成品」；量不到再现场折
+          const measured = this.data.titleLines
+          const lines = (measured && measured.length)
+            ? measured
+            : wrapText(ctx, title, TITLE_BOX)
           let ty = startY
-          lines.slice(0, 3).forEach((ln) => { ctx.fillText(ln, W / 2, ty); ty += 32 })
+          lines.slice(0, TITLE_MAX_LINES).forEach((ln) => { ctx.fillText(ln, W / 2, ty); ty += 32 })
 
           /*
            * 线 — ❖ — 线。旧版是一条 80px 的通长实线，再把 ❖ 画在它正中间，

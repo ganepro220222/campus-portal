@@ -111,8 +111,58 @@ function drawCoverFill(ctx, img, rect) {
   ctx.drawImage(img, dx, dy, dw, dh)
 }
 
+/*
+ * 标题折行：贪心折行会把「贵州交通博物馆 · 教育馆」断成「……教育」+「馆」，
+ * 末行只剩一个字，海报上很难看。
+ *
+ * 做法是「先定行数，再把行数压到最窄」：
+ *   1. 用整幅可用宽度贪心折一遍，得到最少需要几行 n；
+ *   2. 二分找出「仍然只折成 n 行」的最小宽度 W；
+ *   3. 按 W 折出来的行自然就均匀了——想让某行更短，就必须多出一行。
+ * 这样既不会多占行数，也不会出现孤字。
+ *
+ * measure 由调用方给：画布传 ctx.measureText().width，预览可以传同一套
+ * （海报预览 400rpx 宽配 40rpx 字、画布 220px 宽配 22px 字，都是 10em，
+ * 所以一次测算两边通用）。
+ */
+function greedyWrap(text, maxWidth, measure) {
+  const lines = []
+  let cur = ''
+  for (const ch of String(text)) {
+    if (cur && measure(cur + ch) > maxWidth) { lines.push(cur); cur = ch }
+    else cur += ch
+  }
+  if (cur) lines.push(cur)
+  return lines
+}
+
+function balanceLines(text, maxWidth, measure, maxLines) {
+  const raw = String(text == null ? '' : text)
+  if (!raw) return ['']
+  if (!(maxWidth > 0) || typeof measure !== 'function') return [raw]
+
+  const full = greedyWrap(raw, maxWidth, measure)
+  const cap = maxLines > 0 ? maxLines : full.length
+  // 超出上限时不再均衡：多余的行会被调用方截掉，压窄反而把内容挤到被截的行里
+  if (full.length <= 1 || full.length > cap) return full
+
+  const n = full.length
+  let lo = 1
+  let hi = maxWidth
+  let best = full
+  // 宽度是连续量，二分到 0.5px 以内即可，行数只会在离散点上跳变
+  for (let i = 0; i < 40 && hi - lo > 0.5; i++) {
+    const mid = (lo + hi) / 2
+    const lines = greedyWrap(raw, mid, measure)
+    if (lines.length <= n) { best = lines; hi = mid } else { lo = mid }
+  }
+  return best
+}
+
 module.exports = {
   BADGE_SRC,
+  greedyWrap,
+  balanceLines,
   parsePosterCover,
   pickHallCover,
   pickCraftCover,

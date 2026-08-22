@@ -10,7 +10,9 @@ const {
   buildPosterNavigateUrl,
   titleStartY,
   coverRect,
-  badgeFitRect
+  badgeFitRect,
+  greedyWrap,
+  balanceLines
 } = require('./posterCover')
 
 assert.strictEqual(parsePosterCover(''), '')
@@ -96,5 +98,65 @@ assert.ok(
 
 // 无封面沿用既有取值，本轮不动它的观感
 assert.strictEqual(titleStartY(false), 250)
+
+/*
+ * 标题折行：不能出现「末行只剩一个字」这种排版。
+ * 用等宽假测量（每个字符 1 单位）跑，断言与真实字体无关的那部分性质。
+ */
+{
+  const each = (s) => [...String(s)].length          // 每字符宽 1
+  const T = '一'.repeat(11)                          // 宽 10 时贪心必定折成 10 + 1
+
+  // 整幅宽度贪心：10 + 1，末行孤字
+  const greedy = greedyWrap(T, 10, each)
+  assert.deepStrictEqual(greedy.map(l => l.length), [10, 1], '前提变了：贪心不再产生孤字')
+
+  // 均衡后仍是 2 行，但两行长度接近，且末行不止一个字
+  const balanced = balanceLines(T, 10, each)
+  assert.strictEqual(balanced.length, 2, `均衡后不应改变行数：${JSON.stringify(balanced)}`)
+  assert.strictEqual(balanced.join(''), T, '均衡不能吞字或改字')
+  assert.ok(balanced[balanced.length - 1].length > 1,
+    `末行孤字没修掉：${JSON.stringify(balanced)}`)
+  assert.ok(Math.abs(balanced[0].length - balanced[1].length) <= 1,
+    `两行长度应接近：${JSON.stringify(balanced)}`)
+
+  // 真实案例：截图里的「贵州交通博物馆 · 教育馆」。CJK 与中点/空格宽度不同，
+  // 这里按 CJK 1、其余 0.5 粗略建模，只断言与字体无关的性质。
+  {
+    const w = (s) => [...String(s)].reduce((n, c) => n + (/[\u4e00-\u9fa5]/.test(c) ? 1 : 0.5), 0)
+    const real = '贵州交通博物馆 · 教育馆'
+    const g = greedyWrap(real, 8.5, w)
+    const bal = balanceLines(real, 8.5, w)
+    assert.strictEqual(bal.join(''), real)
+    assert.strictEqual(bal.length, g.length, '均衡不应改变行数')
+    assert.ok(bal[bal.length - 1].length > 1, `末行孤字：${JSON.stringify(bal)}`)
+  }
+
+  // 一行放得下就不折
+  assert.deepStrictEqual(balanceLines('云端书院', 10, each), ['云端书院'])
+
+  /*
+   * 三行的情形：目标是「最宽的一行尽量窄」，不是「每行一样长」——
+   * 25 个字折 3 行的最优解就是 9/9/7，压到 8 会变成 4 行。
+   * 所以这里断言：行数不变、最宽行不比贪心更宽、末行不是孤字。
+   */
+  const long = '一'.repeat(25)
+  const g3 = greedyWrap(long, 10, each)
+  const b3 = balanceLines(long, 10, each)
+  assert.strictEqual(b3.length, g3.length, '均衡不应多出一行')
+  assert.strictEqual(b3.join(''), long)
+  assert.ok(Math.max(...b3.map(l => l.length)) <= Math.max(...g3.map(l => l.length)),
+    `最宽行没变窄：${JSON.stringify(b3)}`)
+  assert.ok(b3[b3.length - 1].length > 1, `末行孤字：${JSON.stringify(b3)}`)
+
+  // 超过上限时保持贪心：压窄只会把内容挤进将被截掉的那几行
+  const over = '一'.repeat(40)
+  assert.deepStrictEqual(balanceLines(over, 10, each, 3), greedyWrap(over, 10, each))
+
+  // 边界：空串、坏参数不能抛
+  assert.deepStrictEqual(balanceLines('', 10, each), [''])
+  assert.deepStrictEqual(balanceLines('abc', 0, each), ['abc'])
+  assert.deepStrictEqual(balanceLines('abc', 10, null), ['abc'])
+}
 
 console.log('[posterCover.test] PASS')

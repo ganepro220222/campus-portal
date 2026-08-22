@@ -72,6 +72,9 @@ jobs:
       - name: UI copy check
         run: npm run check:ui-copy
 
+      - name: rpx scaling check
+        run: npm run check:rpx-scaling
+
       - name: Miniapp utils tests
         run: npm run test:miniapp-utils
 

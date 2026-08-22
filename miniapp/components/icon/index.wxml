@@ -1,6 +1,9 @@
+<!-- 尺寸走 rpx 而不是 px：页面上其它元素全是 rpx，会随屏宽等比放大，
+     图标用 px 就被钉死在原尺寸，屏幕越宽显得越小（平板上只剩一半）。
+     boxRpx = size × 2，在 375pt 宽的机型上 2rpx 正好 1pt，与改前逐像素一致。 -->
 <image
   class="cp-icon"
   src="{{src}}"
   mode="scaleToFill"
-  style="width:{{size}}px;height:{{size}}px;"
+  style="width:{{boxRpx}}rpx;height:{{boxRpx}}rpx;"
 />

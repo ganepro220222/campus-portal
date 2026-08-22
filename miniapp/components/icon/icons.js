@@ -81,8 +81,15 @@ function buildSrc(name, size, color, sw) {
     attrs = 'fill="none" stroke="' + color + '" stroke-width="' + width +
             '" stroke-linecap="round" stroke-linejoin="round"'
   }
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size +
-    '" height="' + size + '" viewBox="0 0 24 24" ' + attrs + '>' + inner + '</svg>'
+  /*
+   * width/height 只是 SVG 的标称尺寸，真正决定形状的是 viewBox —— 图标是矢量，
+   * 放到多大都不会糊。但个别基础库会按标称尺寸先栅格化再缩放，
+   * 而组件现在按 rpx 渲染、宽屏上实际显示尺寸会大于 size，所以标称值放大到 3 倍兜底。
+   * stroke-width 走 viewBox 单位，不受影响。
+   */
+  const nominal = size * 3
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + nominal +
+    '" height="' + nominal + '" viewBox="0 0 24 24" ' + attrs + '>' + inner + '</svg>'
   return 'data:image/svg+xml,' + encodeURIComponent(svg)
 }
 

@@ -250,6 +250,27 @@ button.lbtn {
   justify-content: center;
   line-height: normal;
 }
+
+/*
+ * 通栏按钮的宽度钉死。真机 iPad 上这几个按钮明显比同一列的输入框窄一大截，
+ * 按钮文字是 nowrap、又被基础库自带的 overflow:hidden 切掉
+ * （登录页「微信授权登录」只剩半截）。页面里写的都是 width:100%，
+ * 浏览器里复现不出来，说明是基础库自己的按钮宽度规则在宽屏下生效了——
+ * 那条规则的选择器我们看不到，只能用 !important 压住。
+ *
+ * 只列**独占一行**的按钮。activity/detail 的 .btn-primary / .btn-outline 放在
+ * display:flex 的 .foot-bar 里，有单按钮和「查看凭证 + 取消报名」两种排法，
+ * 钉成 100% 会把那一行挤坏，所以不在此列。
+ */
+button.lbtn,
+button.save-btn,
+button.fb-submit,
+button.pe-submit {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0;
+  box-sizing: border-box;
+}
 button.btn-primary[disabled],
 button.save-btn[disabled],
 button.fb-submit[disabled],

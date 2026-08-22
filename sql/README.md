@@ -53,6 +53,7 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 | 14 | `patch-sys-config-miniapp.sql` | AI 助手欢迎语/推荐问题、搜索热词配置项 | ✅ 已并入 init.sql |
 | 15 | `patch-subtitle-asr-poll.sql` | 课程 ASR 轮询元数据字段（`subtitle_asr_*`） | ✅ 已并入 init.sql；**可重复执行** |
 | 16 | `patch-subject-neutral-config.sql` | **主体归属对齐**：把库里随 init.sql 写入的旧默认文案与机构占位串换成中性表述 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
+| 17 | `patch-college-app-demo.sql` | **首页关联应用**：`college_app` 从旧版 11 条学院名收敛为通途星 + 2 条示例 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
 
 #### `patch-subject-neutral-config.sql`（旧库必读）
 
@@ -73,6 +74,18 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 关于页简介与隐私 / 用户协议不在本 patch 范围内：那两项旧版是写死在 Java 里的，
 库里通常没有对应行；代码侧已改成「后台没配就返回空」，小程序会落到自带基线。
 若你们已在后台保存过带学校名或 edu.cn 邮箱的版本，请到后台「内容配置」直接改。
+
+#### `patch-college-app-demo.sql`（旧库首页关联应用）
+
+`seed-dev.sql` 对 `college_app` 使用 `INSERT IGNORE`，**不会覆盖**旧库里已有的 11 条学院名。
+小程序首页「关联应用」读的就是这张表，因此仅改代码或跑 `patch-subject-neutral-config.sql`
+仍可能看到马克思主义学院等旧条目。
+
+本 patch 先 `DELETE` 再写入固定 id 1–3（通途星 + 2 条示例），可重复执行。
+**会清空并重建整张 `college_app` 表**——若后台曾手工维护过关联应用，请先导出再决定是否执行。
+
+与 `patch-subject-neutral-config.sql` 互补：后者不动 `college_app`；全新 Docker 库（`init.sql` +
+`seed-dev.sql`）已含新数据，**无需**再跑本 patch。
 
 #### `patch-subtitle-asr-poll.sql`（旧库 ASR 字幕必读）
 

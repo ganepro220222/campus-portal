@@ -43,5 +43,4 @@
     <view class="player-bottom"></view>
   </scroll-view>
 
-  <ai-assistant bottom="40" />
 </view>

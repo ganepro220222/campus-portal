@@ -5,7 +5,7 @@
       <el-button type="primary" :icon="Plus" @click="openDialog()">新建轮播图</el-button>
     </div>
 
-    <p class="text-muted">配置首页轮播图与跳转目标，保存后小程序端可在缓存刷新后展示（验收标准：5 分钟内同步）。</p>
+    <p class="text-muted">配置首页轮播图与跳转目标。保存后小程序端在缓存刷新后更新，通常 5 分钟内可见。</p>
 
     <el-table v-loading="loading" :data="list" stripe border>
       <el-table-column prop="sort" label="排序" width="70" align="center" />

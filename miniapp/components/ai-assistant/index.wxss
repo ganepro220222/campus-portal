@@ -63,6 +63,18 @@
 }
 .sheet.show { transform: translateY(0); }
 
+/* tabBar 页面：抽屉整体抬到导航栏之上。
+   不能靠 z-index 压过去——自定义 tabBar 是页面之外的独立层，
+   页面里给再高的 z-index 也盖不住它（真机实测：输入框与发送键被整条切掉）。
+   108rpx 与 custom-tab-bar/index.wxss 的 .tabbar 高度一致；
+   安全区那段已由 tabbar 自己的 padding-bottom 占掉，这里再算一次会多让一截。 */
+.sheet.above-tabbar {
+  bottom: calc(108rpx + env(safe-area-inset-bottom));
+}
+.sheet.above-tabbar .sheet-foot {
+  padding-bottom: 16rpx;
+}
+
 .sheet-head {
   display: flex;
   align-items: center;

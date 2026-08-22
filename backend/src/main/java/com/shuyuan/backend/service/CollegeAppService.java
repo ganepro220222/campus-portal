@@ -66,7 +66,9 @@ public class CollegeAppService {
             return "H5 嵌入";
         }
         if ("api_sync".equals(type)) {
-            return "接口同步（预留）";
+            // 这个标签会随接口下发到小程序，显示在「关联小程序」条目上，
+            // 所以不能带「预留」这类内部路线图措辞
+            return "接口同步";
         }
         return type;
     }

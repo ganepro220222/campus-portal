@@ -9,7 +9,7 @@
 <view class="mask {{open ? 'show' : ''}}" bindtap="close" catchtouchmove="noop"></view>
 
 <!-- 底部抽屉 -->
-<view class="sheet {{open ? 'show' : ''}}">
+<view class="sheet {{open ? 'show' : ''}} {{onTabBar ? 'above-tabbar' : ''}}">
   <view class="sheet-head">
     <view class="avt"><icon name="robot" size="20" color="#ffffff" /></view>
     <view class="sheet-head-txt">

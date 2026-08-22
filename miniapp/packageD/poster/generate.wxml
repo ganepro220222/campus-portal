@@ -19,8 +19,9 @@
         </view>
         <view class="p-title serif {{hasCover ? 'p-title-cover' : ''}}">{{title}}</view>
         <view class="p-div">
-          <view class="p-line" style="background: linear-gradient(90deg, transparent, {{tpl.accent}}, transparent);"></view>
+          <view class="p-line" style="background: linear-gradient(90deg, transparent, {{tpl.accent}});"></view>
           <text class="p-orn" style="color: {{tpl.accent}};">❖</text>
+          <view class="p-line p-line-r" style="background: linear-gradient(90deg, {{tpl.accent}}, transparent);"></view>
         </view>
         <view class="p-sub">{{subtitle}}</view>
         <view class="p-foot">

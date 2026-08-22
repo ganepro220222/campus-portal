@@ -37,7 +37,7 @@
       </el-form-item>
 
       <el-divider content-position="left">沉浸式章节</el-divider>
-      <p class="text-muted section-tip">按章节组织长卷图文，小程序端连续滚动展示（验收 §2.4）</p>
+      <p class="text-muted section-tip">按章节组织长卷图文，小程序端连续滚动展示</p>
       <FieldHint :text="FIELD_HINTS.hallSectionTitle" />
       <div class="sections-block">
         <el-button type="primary" link :icon="Plus" @click="addSection">添加章节</el-button>

@@ -8,6 +8,7 @@ const {
   resolveErrorAnswer
 } = require('../../utils/aiChat')
 const { loadMiniappConfig, DEFAULT_MINIAPP_CONFIG } = require('../../utils/miniappConfig')
+const { isOnTabBarPage } = require('../../utils/tabRoutes')
 
 const QUESTION_MAX = 500
 
@@ -24,13 +25,28 @@ Component({
       { role: 'ai', text: DEFAULT_MINIAPP_CONFIG.aiAssistantWelcome }
     ],
     scrollTo: '',
+    // tabBar 由微信在页面之外单独渲染，页面里的 z-index 盖不住它，
+    // 抽屉贴着 bottom:0 时底部输入框会被挡掉（见 utils/tabRoutes.js）。
+    onTabBar: false,
     sessionId: null,
     quota: null,
     quotaText: '登录后可使用 AI 智能问答',
     loading: false
   },
+  lifetimes: {
+    attached() {
+      this._syncTabBarOffset()
+    }
+  },
   methods: {
+    // attached 时页面栈理论上已经就位，但真出意外（取不到页面栈）就会退回
+    // bottom:0，底部输入框重新被 tabbar 切掉。打开抽屉前再确认一次，成本可以忽略。
+    _syncTabBarOffset() {
+      const onTabBar = isOnTabBarPage()
+      if (onTabBar !== this.data.onTabBar) this.setData({ onTabBar })
+    },
     async open() {
+      this._syncTabBarOffset()
       this.setData({ open: true })
       await this._loadPublicConfig()
       await this._prepareSession()

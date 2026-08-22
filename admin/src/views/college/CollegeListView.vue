@@ -6,11 +6,9 @@
     </div>
 
     <p class="text-muted">
-      配置兄弟小程序或 H5 入口与对接方式。保存并上架后，小程序「关联小程序」页按排序展示；
-      首页「关联应用」横滑仅展示 <code>jump</code> 类型。
-      若使用「小程序跳转」，请复制 <code>navigate-appids.template.json</code> 为 <code>navigate-appids.json</code> 填入 AppID 后执行
-      <code>node scripts/sync-navigate-appids.js</code> 生成白名单。
-      「接口同步」为预留能力，待甲方 API 文档到位后对接。
+      配置关联小程序或 H5 入口与对接方式。保存并上架后，小程序「关联小程序」页按排序展示；
+      首页「关联应用」横滑仅展示「小程序跳转」类型。
+      选用「小程序跳转」时，目标 AppID 需先加入跳转白名单才能打开，新增 AppID 请联系技术人员配置。
     </p>
 
     <el-table v-loading="loading" :data="list" stripe border>
@@ -78,7 +76,7 @@
             <el-option label="手动录入（卡片展示简介）" value="manual" />
             <el-option label="小程序跳转" value="jump" />
             <el-option label="H5 嵌入" value="embed_h5" />
-            <el-option label="接口同步（预留）" value="api_sync" />
+            <el-option label="接口同步（暂未开放）" value="api_sync" disabled />
           </el-select>
         </el-form-item>
         <template v-if="form.contentType === 'jump'">

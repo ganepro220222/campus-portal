@@ -66,6 +66,12 @@ jobs:
       - name: Press feedback check
         run: npm run check:press-feedback
 
+      - name: TabBar route consistency check
+        run: npm run check:tabbar-routes
+
+      - name: UI copy check
+        run: npm run check:ui-copy
+
       - name: Miniapp utils tests
         run: npm run test:miniapp-utils
 

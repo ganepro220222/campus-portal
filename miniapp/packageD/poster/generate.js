@@ -144,15 +144,37 @@ Page({
           let ty = startY
           lines.slice(0, 3).forEach((ln) => { ctx.fillText(ln, W / 2, ty); ty += 32 })
 
-          ctx.strokeStyle = tpl.accent
-          ctx.lineWidth = 1.5
+          /*
+           * 线 — ❖ — 线。旧版是一条 80px 的通长实线，再把 ❖ 画在它正中间，
+           * 两者直接重叠；预览侧也是同样的写法，所以「预览即成品」这点是成立的，
+           * 只是两边一起难看。现在两段各自朝外淡出，中间留空，与登录页一致。
+           * 尺寸由预览换算：海报宽 480rpx 对应画布 300px，系数 0.625。
+           *   半宽 162/2 rpx → 50px；❖ 半宽 18rpx → 5.5px；间距 14rpx → 9px。
+           */
+          const dy = ty + 4
+          const OUT = 50
+          const IN = 14.5                     // 5.5（❖ 半宽）+ 9（间距）
+          ctx.lineWidth = 1
+          const gl = ctx.createLinearGradient(W / 2 - OUT, 0, W / 2 - IN, 0)
+          gl.addColorStop(0, hexA(tpl.accent, 0))
+          gl.addColorStop(1, hexA(tpl.accent, 0.85))
+          ctx.strokeStyle = gl
           ctx.beginPath()
-          ctx.moveTo(W / 2 - 40, ty + 4)
-          ctx.lineTo(W / 2 + 40, ty + 4)
+          ctx.moveTo(W / 2 - OUT, dy)
+          ctx.lineTo(W / 2 - IN, dy)
           ctx.stroke()
+          const gr = ctx.createLinearGradient(W / 2 + IN, 0, W / 2 + OUT, 0)
+          gr.addColorStop(0, hexA(tpl.accent, 0.85))
+          gr.addColorStop(1, hexA(tpl.accent, 0))
+          ctx.strokeStyle = gr
+          ctx.beginPath()
+          ctx.moveTo(W / 2 + IN, dy)
+          ctx.lineTo(W / 2 + OUT, dy)
+          ctx.stroke()
+          // 11px serif 的 ❖ 视觉中心约在基线上方 4px，落到与两段线同一条水平轴上
           ctx.fillStyle = tpl.accent
-          ctx.font = '12px serif'
-          ctx.fillText('❖', W / 2, ty + 9)
+          ctx.font = '11px serif'
+          ctx.fillText('❖', W / 2, dy + 4)
 
           ctx.fillStyle = 'rgba(232,240,252,0.9)'
           ctx.font = '13px sans-serif'

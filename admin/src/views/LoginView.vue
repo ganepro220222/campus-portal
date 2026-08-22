@@ -49,8 +49,9 @@
           </el-button>
         </el-form>
 
-        <!-- 默认凭据只在开发构建里提示；生产环境不得把账号密码印在登录页上 -->
-        <p v-if="isDev" class="hint">开发环境默认账号 admin / Admin@123<br />生产环境请使用独立超管账号，并禁用默认 admin</p>
+        <!-- 默认凭据只在本地开发构建里提示（import.meta.env.DEV），打包发布时整行不存在。
+             部署侧的要求（启用独立超管账号、停用默认 admin）属于运维文档，不该印在登录页上。 -->
+        <p v-if="isDev" class="hint">本地开发默认账号：admin / Admin@123</p>
         <p class="hint">连续 5 次密码错误将锁定 5 分钟</p>
       </div>
     </div>

@@ -4,7 +4,7 @@
       <h2>操作日志</h2>
     </div>
 
-    <p class="text-muted">记录管理后台所有写操作（新增/修改/删除），可按时间与关键词检索，满足验收「操作有日志」。</p>
+    <p class="text-muted">记录管理后台的所有写操作（新增 / 修改 / 删除），可按操作时间与关键词检索。</p>
 
     <div class="filters">
       <el-input

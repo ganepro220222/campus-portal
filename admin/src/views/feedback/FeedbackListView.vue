@@ -8,7 +8,7 @@
       </el-select>
     </div>
 
-    <p class="text-muted">查看小程序用户提交的意见反馈，支持后台回复（用户端消息通知二期接入）。</p>
+    <p class="text-muted">查看小程序用户提交的意见反馈。回复内容仅保存在后台备查，用户端不会收到通知；需要答复用户时，请使用其填写的联系方式。</p>
 
     <el-table v-loading="loading" :data="list" stripe border>
       <el-table-column prop="createTime" label="提交时间" width="150" />

@@ -97,14 +97,22 @@
 .p-title-cover {
   margin-top: 36rpx;
 }
-.p-div { position: relative; width: 160rpx; height: 24rpx; margin-top: 26rpx; z-index: 2; }
-.p-line { position: absolute; left: 0; right: 0; top: 50%; height: 1rpx; }
-.p-orn {
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -60%);
-  font-size: 20rpx;
+/* 线 — ❖ — 线，与登录页 .brand-div 同一套语言。
+   旧版是一条通长的线加一个绝对定位的 ❖ 压在上面，两者重叠成一团；
+   现在两段线各自朝外淡出，中间给菱形让出空隙。
+   尺寸按海报宽 480rpx / 登录页 750rpx = 0.64 等比缩下来：
+   线 92→58、间距 20→13、字号 22→14；字号取 18rpx 是因为 14rpx 在海报上几乎看不见，
+   合计 58+14+18+14+58 = 162rpx，与旧版 160rpx 的占位基本一致，不影响上下留白。 */
+.p-div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14rpx;
+  margin-top: 26rpx;
+  z-index: 2;
 }
+.p-line { width: 58rpx; height: 1rpx; flex-shrink: 0; }
+.p-orn { font-size: 18rpx; line-height: 1; }
 .p-sub {
   font-size: 22rpx;
   color: rgba(232, 240, 252, 0.9);

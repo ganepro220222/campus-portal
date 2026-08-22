@@ -103,6 +103,7 @@
   padding: 8rpx 0 24rpx;
 }
 .list-foot-done { color: #C3CCE0; }
+.list-foot-retry { color: var(--navy); }
 
 /* 全局 .page-refresh-bar 默认 28rpx 横向边距（对齐详情页栏距），本页内容栏距是 32rpx（.news-wrap），
    不覆写的话红条会比下方卡片各窄 4rpx，边缘对不齐。加根类提权，避免依赖样式表先后顺序。 */

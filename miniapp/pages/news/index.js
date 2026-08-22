@@ -12,7 +12,6 @@ const {
   buildFeedLoadedPatch,
   buildFeedFailurePatch,
   prevForFeedFailure,
-  resolveFeedRetryMode,
   bumpListGeneration,
   isStaleCategoryRequest
 } = require('../../utils/feedListPage')
@@ -39,7 +38,8 @@ Page({
     loading: true,
     loadingMore: false,
     error: false,
-    refreshError: false
+    refreshError: false,
+    loadMoreError: false
   },
 
   onLoad() {
@@ -61,14 +61,25 @@ Page({
   },
 
   onScrollToLower() {
+    if (this.data.loadMoreError) return
     if (this.data.hasMore && !this.data.loading && !this.data.loadingMore) {
       this._loadList(FEED_LOAD.loadMore)
     }
   },
 
-  onRetry() {
-    this.setData({ refreshError: false, error: false })
-    this._loadList(resolveFeedRetryMode(this.data.newsList.length))
+  onRetryRefresh() {
+    this.setData({ refreshError: false })
+    this._loadList(FEED_LOAD.pullRefresh)
+  },
+
+  onRetryLoadMore() {
+    this.setData({ loadMoreError: false })
+    this._loadList(FEED_LOAD.loadMore)
+  },
+
+  onRetryInitial() {
+    this.setData({ error: false })
+    this._loadList(FEED_LOAD.initial)
   },
 
   async _loadList(options) {
@@ -117,7 +128,8 @@ Page({
       this.setData(buildFeedFailurePatch(
         err,
         prevForFeedFailure(loadOpts, prev, 'newsList'),
-        'newsList'
+        'newsList',
+        loadOpts
       ))
     }
   },

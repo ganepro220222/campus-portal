@@ -78,7 +78,8 @@ Page({
       this.setData(buildFeedFailurePatch(
         err,
         prevForFeedFailure(options, prev, 'courseList'),
-        'courseList'
+        'courseList',
+        options
       ))
     }
   },

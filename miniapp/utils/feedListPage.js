@@ -11,7 +11,7 @@ const FEED_LOAD = {
     showBlockingLoading: true,
     clearListOnStart: false
   },
-  /** 下拉刷新：保留旧列表，失败走 refreshError 横幅 */
+  /** 下拉刷新：保留旧列表，失败走顶部 refreshError 横幅 */
   pullRefresh: {
     replaceOnSuccess: true,
     preserveOnFailure: true,
@@ -25,7 +25,7 @@ const FEED_LOAD = {
     showBlockingLoading: true,
     clearListOnStart: true
   },
-  /** 加载下一页：保留已有内容，失败走 refreshError */
+  /** 加载下一页：保留已有内容，失败走底部 loadMoreError */
   loadMore: {
     replaceOnSuccess: false,
     preserveOnFailure: true,
@@ -51,7 +51,8 @@ function buildFeedLoadingPatch(options, prev, listKey) {
   const opts = normalizeFeedLoadOptions(options)
   const patch = {
     error: false,
-    refreshError: false
+    refreshError: false,
+    loadMoreError: false
   }
   if (opts.clearListOnStart && listKey) {
     patch[listKey] = []
@@ -59,7 +60,10 @@ function buildFeedLoadingPatch(options, prev, listKey) {
   if (!opts.replaceOnSuccess) {
     return { ...patch, loadingMore: true }
   }
-  return { ...patch, loading: true, loadingMore: false }
+  if (opts.showBlockingLoading) {
+    return { ...patch, loading: true, loadingMore: false }
+  }
+  return { ...patch, loading: false, loadingMore: false }
 }
 
 function buildFeedLoadedPatch(listKey, list, page, hasMore) {
@@ -70,17 +74,28 @@ function buildFeedLoadedPatch(listKey, list, page, hasMore) {
     loading: false,
     loadingMore: false,
     error: false,
-    refreshError: false
+    refreshError: false,
+    loadMoreError: false
   }
 }
 
-function buildFeedFailurePatch(err, prev, listKey) {
+function buildFeedFailurePatch(err, prev, listKey, options) {
+  const opts = normalizeFeedLoadOptions(options)
   const hasContent = !!(prev && prev[listKey] && prev[listKey].length)
   if (hasContent) {
+    if (!opts.replaceOnSuccess) {
+      return {
+        loading: false,
+        loadingMore: false,
+        loadMoreError: true,
+        refreshError: false
+      }
+    }
     return {
       loading: false,
       loadingMore: false,
-      refreshError: true
+      refreshError: true,
+      loadMoreError: false
     }
   }
   const kind = classifyActivityLoadError(err)
@@ -90,6 +105,7 @@ function buildFeedFailurePatch(err, prev, listKey) {
     error: kind === 'loadError',
     notFound: kind === 'notFound',
     refreshError: false,
+    loadMoreError: false,
     [listKey]: [],
     hasMore: false
   }
@@ -132,6 +148,10 @@ function shouldShowFeedRefreshBar(refreshError, loading, listLength) {
   return !!refreshError && !loading && !!listLength
 }
 
+function shouldShowFeedLoadMoreBar(loadMoreError, loadingMore, listLength, hasMore) {
+  return !!loadMoreError && !loadingMore && !!listLength && !!hasMore
+}
+
 module.exports = {
   FEED_LOAD,
   normalizeFeedLoadOptions,
@@ -144,5 +164,6 @@ module.exports = {
   isStaleListRequest,
   isStaleCategoryRequest,
   shouldShowFeedLoadError,
-  shouldShowFeedRefreshBar
+  shouldShowFeedRefreshBar,
+  shouldShowFeedLoadMoreBar
 }

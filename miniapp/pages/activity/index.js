@@ -54,7 +54,8 @@ Page({
       this.setData(buildFeedFailurePatch(
         err,
         prevForFeedFailure(options, prev, 'activityList'),
-        'activityList'
+        'activityList',
+        options
       ))
     }
   },

@@ -35,7 +35,7 @@
   >
     <skeleton show="{{loading && !newsList.length && !error}}" type="list" count="6" />
 
-    <view wx:if="{{refreshError && !loading}}" class="page-refresh-bar" bindtap="onRetry">
+    <view wx:if="{{refreshError && !loading}}" class="page-refresh-bar" bindtap="onRetryRefresh">
       <text>列表刷新失败，点击重试</text>
     </view>
 
@@ -62,7 +62,7 @@
       <view wx:if="{{error && !loading && !newsList.length}}" class="page-state-box">
         <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
         <text class="page-state-text">加载失败，请检查网络后重试</text>
-        <view class="page-state-action" bindtap="onRetry">重新加载</view>
+        <view class="page-state-action" bindtap="onRetryInitial">重新加载</view>
       </view>
 
       <view wx:elif="{{!loading && !newsList.length && !error}}" class="empty-state">
@@ -71,6 +71,7 @@
       </view>
 
       <view wx:if="{{loadingMore}}" class="list-foot">加载中…</view>
+      <view wx:elif="{{loadMoreError && newsList.length && hasMore}}" class="list-foot list-foot-retry" bindtap="onRetryLoadMore">加载更多失败，点击重试</view>
       <view wx:elif="{{newsList.length && !hasMore}}" class="list-foot list-foot-done">没有更多了</view>
 
       <view class="list-bottom"></view>

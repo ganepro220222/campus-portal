@@ -183,7 +183,7 @@
   letter-spacing: 5rpx;
 }
 .brand-en {
-  color: rgba(170,184,224,.7);
+  color: rgba(170,184,224,.85);
   font-size: 20rpx;
   margin-top: 10rpx;
   letter-spacing: 1rpx;
@@ -217,7 +217,19 @@
   font-size: 30rpx;
   box-sizing: border-box;
 }
-.field-ph { color: rgba(214,224,248,.55); }
+/* 深蓝底上的弱化文字，之前一律用 .55~.7 的透明度，量下来对比度只有 3.1~3.8，
+   低于 WCAG AA 的 4.5。这几处只调透明度、不动色相，版面一点不变：
+   占位 .55→.70（5.12）、分隔文字 .55→.70、英文名 .7→.85（4.65）、页脚次行 .6→.85。 */
+.field-ph { color: rgba(214,224,248,.70); }
+
+/* 聚焦态。深色表单上两个输入框长得一模一样，点进去只有一个光标，
+   很容易忘了自己在填哪一格。描边换成印章那支金色并加一层内发光，
+   与页面既有的金色语言一致，不引入新颜色。 */
+.field-input.on {
+  border-color: rgba(201,162,39,.62);
+  background: rgba(255,255,255,.14);
+  box-shadow: 0 0 0 2rpx rgba(201,162,39,.18);
+}
 
 /* 按钮 */
 .lbtn {
@@ -251,7 +263,7 @@
   align-items: center;
   gap: 24rpx;
   margin: 40rpx 4rpx;
-  color: rgba(214,224,248,.55);
+  color: rgba(214,224,248,.70);
   font-size: 24rpx;
 }
 .divider::before, .divider::after {
@@ -278,7 +290,7 @@
 }
 .foot-s {
   display: block;
-  color: rgba(170,184,224,.6);
+  color: rgba(170,184,224,.85);
   font-size: 21rpx;
   letter-spacing: 1rpx;
   margin-top: 6rpx;

@@ -112,7 +112,7 @@
 }
 .hcard-vr-off {
   background: #F0F2F7;
-  color: #8A93B2;
+  color: #67708C;
 }
 .hcard-desc {
   font-size: 21rpx;

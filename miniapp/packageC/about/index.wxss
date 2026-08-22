@@ -91,7 +91,7 @@
   padding: 20rpx 0 4rpx;
 }
 .legal-link-tx { font-size: 28rpx; color: #2B356E; }
-.legal-link-arr { font-size: 32rpx; color: #8A93B2; }
+.legal-link-arr { font-size: 32rpx; color: #67708C; }
 
 /* 页脚 */
 .ab-foot { text-align: center; padding: 40rpx 40rpx 0; }

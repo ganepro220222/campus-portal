@@ -19,12 +19,12 @@
   align-items: center;
   justify-content: center;
   gap: 16rpx;
-  color: #8A93B2;
+  color: #67708C;
   font-size: 26rpx;
 }
 .video-empty-ic {
   font-size: 48rpx;
-  color: #8A93B2;
+  color: #67708C;
   line-height: 1;
 }
 .cc-badge {

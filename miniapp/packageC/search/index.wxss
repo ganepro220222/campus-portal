@@ -24,7 +24,15 @@
 }
 .sinput { flex: 1; font-size: 27rpx; color: var(--ink); }
 .sph { color: var(--muted); }
-.sclear { width: 40rpx; height: 40rpx; display: flex; align-items: center; justify-content: center; }
+/* 触控区由 40rpx（20pt）放到 64rpx（32pt）：清空键是高频操作，20pt 太难点。
+   图标本身仍是 14，靠盒子留白扩大可点范围，观感不变；
+   右侧用负外边距抵消，避免把「搜索」按钮推远。 */
+.sclear {
+  width: 64rpx; height: 64rpx;
+  margin-right: -12rpx;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
 .sbtn { flex-shrink: 0; font-size: 28rpx; font-weight: 600; color: var(--navy); }
 
 /* 内容 */

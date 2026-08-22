@@ -24,7 +24,11 @@ page {
   --gold-line:   #D8C79A;
   --ink:         #1F2547;
   --sub:         #5A648A;
-  --muted:       #8A93B2;
+  /* 由 #8A93B2 调深到 #67708C。旧值在白底上的对比度只有 3.04:1、在 --paper 上 2.86:1，
+     都低于 WCAG AA 对正文的 4.5:1；而它承担的是全站的提示文字、tabBar 未选中标签、
+     空态说明这些"看不清就真的看不见"的角色。新值白底 4.91、paper 底 4.61，两处都过线。
+     与 --sub(#5A648A, 5.79) 的层级仍在，只是拉近了一点——sub 用在更大的字号与更重的字重上。 */
+  --muted:       #67708C;
   --line:        #E7ECF6;
   --shadow:      0 10px 30px rgba(31,40,90,.10);
   --shadow-sm:   0 4px 14px rgba(31,40,90,.08);
@@ -34,7 +38,7 @@ page {
   --color-primary-light: #3F57B5;
   --color-text:      #1F2547;
   --color-text-sub:  #5A648A;
-  --color-text-hint: #8A93B2;
+  --color-text-hint: #67708C;
   --color-border:    #E7ECF6;
   --color-bg:        #F5F8FC;
   --color-bg-white:  #FFFFFF;

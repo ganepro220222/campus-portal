@@ -152,7 +152,7 @@
   font-size: 17rpx;
   line-height: 1.4;
   text-align: center;
-  color: #8A93B2;
+  color: #67708C;
   white-space: nowrap;
 }
 .p-qr-sub { color: #A9B2C8; }

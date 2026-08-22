@@ -30,11 +30,11 @@
       <view class="acard-body">
         <view class="acard-title">{{item.title}}</view>
         <view class="acard-meta">
-          <icon name="calendar" size="14" color="#8A93B2" />
+          <icon name="calendar" size="14" color="#67708C" />
           <text class="acard-mt">{{item.startTime}}</text>
         </view>
         <view class="acard-meta">
-          <icon name="pin" size="14" color="#8A93B2" />
+          <icon name="pin" size="14" color="#67708C" />
           <text class="acard-mt">{{item.location}}</text>
         </view>
         <view class="acard-foot">

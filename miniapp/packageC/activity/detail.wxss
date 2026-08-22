@@ -15,7 +15,7 @@
   padding: 120rpx 40rpx;
   text-align: center;
 }
-.state-text { font-size: 28rpx; color: #8A93B2; line-height: 1.6; }
+.state-text { font-size: 28rpx; color: #67708C; line-height: 1.6; }
 
 .detail-retry {
   display: inline-block;
@@ -128,7 +128,7 @@
   border-radius: 14rpx;
   padding: 10rpx 22rpx;
 }
-.quota-chip.full { color: #8A93B2; background: #F0F3F8; }
+.quota-chip.full { color: #67708C; background: #F0F3F8; }
 .review-chip {
   font-size: 22rpx;
   font-weight: 600;
@@ -140,7 +140,7 @@
 
 .enroll-window {
   font-size: 24rpx;
-  color: #8A93B2;
+  color: #67708C;
   line-height: 1.5;
   margin: 16rpx 0;
 }
@@ -243,7 +243,7 @@
   border: 2rpx solid #2B356E;
 }
 .btn-disabled {
-  color: #8A93B2;
+  color: #67708C;
   background: #F0F3F8;
 }
 .btn-half { flex: 1; }

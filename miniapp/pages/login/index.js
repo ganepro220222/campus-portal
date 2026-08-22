@@ -13,7 +13,10 @@ Page({
     statusBarHeight: 20,
     bindMode: false,
     changePasswordMode: false,
-    wxBindToken: ''
+    wxBindToken: '',
+    // 当前聚焦的输入框字段名。深色表单上两格长得一样，
+    // 没有聚焦态就只剩一个光标可辨认（样式见 .field-input.on）。
+    focusField: ''
   },
 
   onLoad(options) {
@@ -43,6 +46,18 @@ Page({
 
   onInput(e) {
     this.setData({ [e.currentTarget.dataset.field]: e.detail.value })
+  },
+
+  onFieldFocus(e) {
+    this.setData({ focusField: e.currentTarget.dataset.field || '' })
+  },
+
+  /* 失焦时只清掉"还是自己"的那一次：两格之间切换时 blur 与 focus 的先后
+     在不同基础库上并不一致，无条件清空会把刚聚上的那格也一起熄掉。 */
+  onFieldBlur(e) {
+    if (this.data.focusField === e.currentTarget.dataset.field) {
+      this.setData({ focusField: '' })
+    }
   },
 
   async onWxLogin() {

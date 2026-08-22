@@ -46,8 +46,8 @@
           <view class="ccard-title serif">{{item.name}}</view>
           <view class="ccard-desc">{{item.desc}}</view>
           <view class="ccard-meta">
-            <view class="meta-i"><icon name="users" size="13" color="#8A93B2" /><text>{{item.audience}}</text></view>
-            <view class="meta-i"><icon name="clock" size="13" color="#8A93B2" /><text>{{item.lessonCount}} 课时</text></view>
+            <view class="meta-i"><icon name="users" size="13" color="#67708C" /><text>{{item.audience}}</text></view>
+            <view class="meta-i"><icon name="clock" size="13" color="#67708C" /><text>{{item.lessonCount}} 课时</text></view>
             <text class="pill {{item.tagGold ? 'gold' : ''}}">{{item.tag}}</text>
           </view>
         </view>

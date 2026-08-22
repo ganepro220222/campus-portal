@@ -33,11 +33,11 @@
         <view class="title serif">{{detail.title}}</view>
 
         <view class="meta-row">
-          <icon name="calendar" size="16" color="#8A93B2" />
+          <icon name="calendar" size="16" color="#67708C" />
           <text>{{detail.startTime}}</text>
         </view>
         <view class="meta-row">
-          <icon name="pin" size="16" color="#8A93B2" />
+          <icon name="pin" size="16" color="#67708C" />
           <text>{{detail.location}}</text>
         </view>
 

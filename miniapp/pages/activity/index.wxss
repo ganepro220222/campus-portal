@@ -71,7 +71,7 @@
   padding: 6rpx 16rpx;
   font-weight: 600;
 }
-.quota-full { color: #8A93B2; background: #F0F3F8; }
+.quota-full { color: #67708C; background: #F0F3F8; }
 .enroll-btn {
   font-size: 24rpx;
   font-weight: 700;

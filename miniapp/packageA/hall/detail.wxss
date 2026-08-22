@@ -65,7 +65,7 @@
 .vr-btn::after { border: none; }
 .vr-btn-off {
   background: #E8ECF4;
-  color: #8A93B2;
+  color: #67708C;
 }
 .vr-hint {
   display: block;

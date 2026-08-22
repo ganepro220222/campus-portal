@@ -25,8 +25,8 @@
   border-radius: 16rpx;
   border: 1rpx solid #D6DEEE;
 }
-.legal-loading { text-align: center; color: #8A93B2; font-size: 26rpx; padding: 80rpx 0; }
-.legal-empty { font-size: 25rpx; line-height: 1.7; color: #8A93B2; padding: 8rpx 0 4rpx; }
+.legal-loading { text-align: center; color: #67708C; font-size: 26rpx; padding: 80rpx 0; }
+.legal-empty { font-size: 25rpx; line-height: 1.7; color: #67708C; padding: 8rpx 0 4rpx; }
 .legal-retry-wrap { display: flex; justify-content: center; padding: 4rpx 0 12rpx; }
 .legal-retry {
   font-size: 26rpx;
@@ -38,5 +38,5 @@
   border-radius: 40rpx;
 }
 .legal-retry:active { background: #EEF3FA; }
-.legal-foot { text-align: center; font-size: 22rpx; color: #8A93B2; padding: 16rpx 0 40rpx; }
+.legal-foot { text-align: center; font-size: 22rpx; color: #67708C; padding: 16rpx 0 40rpx; }
 .legal-bottom { height: env(safe-area-inset-bottom); }

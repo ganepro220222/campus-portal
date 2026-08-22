@@ -46,25 +46,29 @@
       <view class="field">
         <view class="field-ic"><icon name="user" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
-          class="field-input"
+          class="field-input {{focusField === 'studentNo' ? 'on' : ''}}"
           placeholder="请输入学号 / 账号"
           placeholder-class="field-ph"
           value="{{studentNo}}"
           data-field="studentNo"
           bindinput="onInput"
+          bindfocus="onFieldFocus"
+          bindblur="onFieldBlur"
           maxlength="30"
         />
       </view>
       <view class="field">
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
-          class="field-input"
+          class="field-input {{focusField === 'password' ? 'on' : ''}}"
           placeholder="请输入密码"
           placeholder-class="field-ph"
           password
           value="{{password}}"
           data-field="password"
           bindinput="onInput"
+          bindfocus="onFieldFocus"
+          bindblur="onFieldBlur"
           maxlength="50"
         />
       </view>
@@ -89,39 +93,45 @@
       <view class="field">
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
-          class="field-input"
+          class="field-input {{focusField === 'oldPassword' ? 'on' : ''}}"
           placeholder="请输入当前密码（初始密码）"
           placeholder-class="field-ph"
           password
           value="{{oldPassword}}"
           data-field="oldPassword"
           bindinput="onInput"
+          bindfocus="onFieldFocus"
+          bindblur="onFieldBlur"
           maxlength="50"
         />
       </view>
       <view class="field">
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
-          class="field-input"
+          class="field-input {{focusField === 'newPassword' ? 'on' : ''}}"
           placeholder="请输入新密码"
           placeholder-class="field-ph"
           password
           value="{{newPassword}}"
           data-field="newPassword"
           bindinput="onInput"
+          bindfocus="onFieldFocus"
+          bindblur="onFieldBlur"
           maxlength="50"
         />
       </view>
       <view class="field">
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
-          class="field-input"
+          class="field-input {{focusField === 'confirmPassword' ? 'on' : ''}}"
           placeholder="请再次输入新密码"
           placeholder-class="field-ph"
           password
           value="{{confirmPassword}}"
           data-field="confirmPassword"
           bindinput="onInput"
+          bindfocus="onFieldFocus"
+          bindblur="onFieldBlur"
           maxlength="50"
         />
       </view>

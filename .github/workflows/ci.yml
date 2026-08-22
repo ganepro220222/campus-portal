@@ -75,6 +75,9 @@ jobs:
       - name: rpx scaling check
         run: npm run check:rpx-scaling
 
+      - name: Text contrast check
+        run: npm run check:contrast
+
       - name: Miniapp utils tests
         run: npm run test:miniapp-utils
 

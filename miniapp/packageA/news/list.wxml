@@ -30,7 +30,7 @@
         <view class="nmeta">
           <text class="pill">{{item.categoryName}}</text>
           <view class="nmeta-r">
-            <view class="nread"><icon name="eye" size="12" color="#8A93B2" /><text>{{item.readText}}</text></view>
+            <view class="nread"><icon name="eye" size="12" color="#67708C" /><text>{{item.readText}}</text></view>
             <text class="ndate">{{item.publishTime}}</text>
           </view>
         </view>

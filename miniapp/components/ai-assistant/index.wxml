@@ -17,7 +17,7 @@
       <view class="sheet-sub">{{quotaText}}</view>
     </view>
     <view class="sheet-close" bindtap="close">
-      <icon name="chevron-right" size="18" color="#8A93B2" sw="2.6" />
+      <icon name="chevron-right" size="18" color="#67708C" sw="2.6" />
     </view>
   </view>
 

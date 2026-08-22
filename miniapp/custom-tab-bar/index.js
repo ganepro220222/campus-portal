@@ -3,7 +3,7 @@ Component({
   data: {
     selected: 0,
     active:   '#2B356E',
-    inactive: '#8A93B2',
+    inactive: '#67708C',
     list: [
       { icon: 'home',   text: '首页', path: '/pages/index/index' },
       { icon: 'news',   text: '动态', path: '/pages/news/index' },

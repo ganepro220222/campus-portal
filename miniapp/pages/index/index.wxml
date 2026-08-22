@@ -14,7 +14,7 @@
         <icon name="user-circle" size="24" color="#2B356E" />
       </view>
       <view class="search-bar" bindtap="onSearchTap">
-        <icon name="search" size="17" color="#8A93B2" />
+        <icon name="search" size="17" color="#67708C" />
         <text class="search-placeholder">搜索动态、课程、展馆、资源…</text>
       </view>
       <view class="header-icon" bindtap="onBellTap">
@@ -69,7 +69,7 @@
       <view wx:if="{{announcements.length}}" class="notice-bar" bindtap="onNoticeTap">
         <icon name="megaphone" size="16" color="#BE9C44" />
         <text class="notice-text">{{announcements[0].content}}</text>
-        <icon name="chevron-right" size="15" color="#8A93B2" />
+        <icon name="chevron-right" size="15" color="#67708C" />
       </view>
     </view>
 
@@ -105,7 +105,7 @@
     <view class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">线上展馆 · 11 馆</view>
-        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/hall/index">全部<icon name="chevron-right" size="13" color="#8A93B2" /></view>
+        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/hall/index">全部<icon name="chevron-right" size="13" color="#67708C" /></view>
       </view>
       <scroll-view scroll-x class="halls-scroll" enhanced show-scrollbar="{{false}}">
         <view class="halls-inner">
@@ -133,7 +133,7 @@
     <view class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">最新动态</view>
-        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/news/index">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
+        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/news/index">更多<icon name="chevron-right" size="13" color="#67708C" /></view>
       </view>
       <view class="cards">
         <view
@@ -162,7 +162,7 @@
     <view class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">热门课程</view>
-        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/course/index">更多<icon name="chevron-right" size="13" color="#8A93B2" /></view>
+        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/course/index">更多<icon name="chevron-right" size="13" color="#67708C" /></view>
       </view>
       <view class="cards">
         <view
@@ -191,7 +191,7 @@
     <view wx:if="{{collegeList.length}}" class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">关联应用</view>
-        <view class="sec-more" bindtap="onCollegeMore">全部<icon name="chevron-right" size="13" color="#8A93B2" /></view>
+        <view class="sec-more" bindtap="onCollegeMore">全部<icon name="chevron-right" size="13" color="#67708C" /></view>
       </view>
       <view class="app-list">
         <view

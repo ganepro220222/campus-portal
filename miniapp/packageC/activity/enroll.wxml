@@ -22,11 +22,11 @@
       <view class="summary-card">
         <view class="summary-title serif">{{detail.title}}</view>
         <view class="summary-meta">
-          <icon name="calendar" size="14" color="#8A93B2" />
+          <icon name="calendar" size="14" color="#67708C" />
           <text>{{detail.startTime}}</text>
         </view>
         <view class="summary-meta">
-          <icon name="pin" size="14" color="#8A93B2" />
+          <icon name="pin" size="14" color="#67708C" />
           <text>{{detail.location}}</text>
         </view>
       </view>

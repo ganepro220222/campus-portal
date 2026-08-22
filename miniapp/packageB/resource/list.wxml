@@ -4,7 +4,7 @@
 
   <view class="res-top">
     <view class="res-search">
-      <icon name="search" size="17" color="#8A93B2" />
+      <icon name="search" size="17" color="#67708C" />
       <input class="rs-input" placeholder="搜索资源名称…" placeholder-class="rs-ph"
         value="{{keyword}}" bindinput="onSearch" confirm-type="search" />
     </view>

@@ -73,7 +73,7 @@
   gap: 14rpx;
 }
 .search-bar:active { background: #EDF3FB; }
-.search-placeholder { font-size: 26rpx; color: #8A93B2; }
+.search-placeholder { font-size: 26rpx; color: #67708C; }
 
 /* ── 可滚动内容区 ── */
 .scroll-body { flex: 1; overflow: hidden; }
@@ -312,7 +312,7 @@
 }
 .sec-more {
   font-size: 24rpx;
-  color: #8A93B2;
+  color: #67708C;
   display: flex;
   align-items: center;
   gap: 2rpx;
@@ -423,4 +423,4 @@
   gap: 14rpx;
   margin-top: 14rpx;
 }
-.ncard-date, .ccard-sub { font-size: 22rpx; color: #8A93B2; }
+.ncard-date, .ccard-sub { font-size: 22rpx; color: #67708C; }

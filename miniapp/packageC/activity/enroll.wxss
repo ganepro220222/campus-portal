@@ -14,7 +14,7 @@
   padding: 120rpx 40rpx;
   text-align: center;
 }
-.state-text { font-size: 28rpx; color: #8A93B2; line-height: 1.6; }
+.state-text { font-size: 28rpx; color: #67708C; line-height: 1.6; }
 
 .enroll-retry {
   display: inline-block;
@@ -101,7 +101,7 @@
 }
 .form-hint {
   font-size: 24rpx;
-  color: #8A93B2;
+  color: #67708C;
   line-height: 1.6;
   margin-bottom: 26rpx;
 }
@@ -186,7 +186,7 @@
 }
 .result-hint {
   font-size: 26rpx;
-  color: #8A93B2;
+  color: #67708C;
   line-height: 1.6;
   margin: 20rpx 0 34rpx;
 }
@@ -208,7 +208,7 @@
   display: block;
   margin-top: 16rpx;
   font-size: 24rpx;
-  color: #8A93B2;
+  color: #67708C;
 }
 .voucher-qr-canvas-offscreen {
   position: fixed;

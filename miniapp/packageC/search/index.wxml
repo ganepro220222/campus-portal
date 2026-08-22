@@ -5,10 +5,10 @@
   <!-- 搜索栏 -->
   <view class="sbar">
     <view class="sbox">
-      <icon name="search" size="17" color="#8A93B2" />
+      <icon name="search" size="17" color="#67708C" />
       <input class="sinput" placeholder="搜索动态、课程、展馆、资源…" placeholder-class="sph"
         value="{{keyword}}" focus confirm-type="search" bindinput="onInput" bindconfirm="onConfirm" />
-      <view wx:if="{{keyword}}" class="sclear" bindtap="onClear"><icon name="eye-off" size="15" color="#8A93B2" /></view>
+      <view wx:if="{{keyword}}" class="sclear" bindtap="onClear"><icon name="close" size="14" color="#67708C" /></view>
     </view>
     <view class="sbtn" bindtap="onConfirm">搜索</view>
   </view>
@@ -28,7 +28,7 @@
       <view class="sec" wx:if="{{history.length}}">
         <view class="sec-h-row">
           <text class="sec-h serif">搜索历史</text>
-          <view class="sec-clear" bindtap="clearHistory"><icon name="logout" size="15" color="#8A93B2" /><text>清空</text></view>
+          <view class="sec-clear" bindtap="clearHistory"><icon name="logout" size="15" color="#67708C" /><text>清空</text></view>
         </view>
         <view class="tags">
           <view class="tag tag-ghost" wx:for="{{history}}" wx:key="*this" data-k="{{item}}" bindtap="onTag">{{item}}</view>

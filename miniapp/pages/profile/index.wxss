@@ -105,7 +105,7 @@
 .stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6rpx; }
 .stat-num { font-size: 40rpx; font-weight: 700; color: #2B356E; line-height: 1; }
 .stat-ic { height: 40rpx; display: flex; align-items: center; }
-.stat-lbl { font-size: 22rpx; color: #8A93B2; }
+.stat-lbl { font-size: 22rpx; color: #67708C; }
 .stat-dv { width: 1rpx; height: 48rpx; background: #E7ECF6; }
 
 /* 菜单 */

@@ -94,11 +94,16 @@ const UTIL_GUARDED = new Set([
   'utils/category.js'
 ])
 
+/** 仅匹配 require('…/mock/defaults')，避免注释里提到 mock/defaults 误报 */
+function requiresMockDefaults(content) {
+  return /require\s*\(\s*['"][^'"]*mock\/defaults['"]\s*\)/.test(content)
+}
+
 walkJsFiles(miniappRoot).forEach((filePath) => {
   const rel = path.relative(miniappRoot, filePath).replace(/\\/g, '/')
   if (rel.startsWith('mock/')) return
   const content = read(filePath)
-  if (!content.includes('mock/defaults')) return
+  if (!requiresMockDefaults(content)) return
   if (UTIL_GUARDED.has(rel)) return
   if (!content.includes('mockGuard')) {
     errors.push(`${rel} 引用了 mock/defaults 但未使用 mockGuard`)

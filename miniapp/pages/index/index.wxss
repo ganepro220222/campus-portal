@@ -262,11 +262,17 @@
   box-shadow: 0 12rpx 28rpx rgba(31, 40, 90, 0.16);
   transition: transform 0.15s;
 }
+ /* 五格同属蓝色系。第五格原来是金色（#C0A24E → #9C7C2E）：
+   金色是全站的强调色——印章、徽记、下面那张「精品好物」大卡都用它，
+   放在五个平级入口中的一个上，会让「报名」看着像主操作，而它并不是；
+   同一屏里两处大面积金色也互相削弱。改成同族蓝，金色留给真正该强调的地方。
+   明度上取 e1~e3 那一档而不是继续往浅了排——e4 的 #6E8FCB 配白色图标
+   对比度已经是这排里最低的，再浅就该看不清了。 */
 .e1 { background: linear-gradient(135deg, #3F57B5, #2B356E); }
 .e2 { background: linear-gradient(135deg, #4E7CC4, #2F5E92); }
 .e3 { background: linear-gradient(135deg, #5867B8, #39418A); }
 .e4 { background: linear-gradient(135deg, #6E8FCB, #46639E); }
-.e5 { background: linear-gradient(135deg, #C0A24E, #9C7C2E); }
+.e5 { background: linear-gradient(135deg, #5C79C8, #34479B); }
 /* 后台可以填任意长度的名字，超出格宽就省略号，不许挤到邻格上去 */
 .entry-label {
   font-size: 23rpx;

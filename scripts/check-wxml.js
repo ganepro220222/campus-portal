@@ -149,10 +149,37 @@ function checkNavStyle() {
   return errs
 }
 
+/*
+ * F. 图标视觉居中机制还在。
+ *
+ * icons.js 里每个图标可以带一个 c: [dx, dy]，把手写路径的墨迹推回 viewBox 中心；
+ * 没有它，首页那排功能入口就会像截图里那样一高一低（「展馆展示」与「课程中心」
+ * 的墨迹中心差 2.5 个 viewBox 单位）。这里只做"机制没被删、数值没写飞"的体检——
+ * 真正的居中测量要跑真实 SVG 引擎，见 scripts/measure-icon-centering.mjs（不进 preflight）。
+ */
+function checkIconCentering() {
+  const src = fs.readFileSync(path.join(miniappDir, 'components/icon/icons.js'), 'utf8')
+  const errs = []
+  if (!/const \[dx, dy\] = def\.c \|\| \[0, 0\]/.test(src) ||
+      !/viewBox="' \+ \(-dx\) \+ ' ' \+ \(-dy\)/.test(src)) {
+    errs.push('components/icon/icons.js  buildSrc 不再应用 c 视觉居中修正；' +
+      '删掉它首页功能入口那排图标会一高一低')
+  }
+  for (const m of src.matchAll(/'([\w-]+)':\s*\{[^}]*?\bc:\s*\[\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\]/g)) {
+    const [, name, dx, dy] = m
+    // 修正量本质是"把墨迹挪回中心"，超过 viewBox 的 1/8 基本可以断定是写错了
+    if (Math.abs(+dx) > 3 || Math.abs(+dy) > 3) {
+      errs.push(`components/icon/icons.js  ${name} 的 c: [${dx}, ${dy}] 超出合理范围（±3）；` +
+        '跑 node scripts/measure-icon-centering.mjs 重新量')
+    }
+  }
+  return errs
+}
+
 function main() {
   const icons = definedIcons()
   const files = walk(miniappDir)
-  const errs = files.flatMap(f => checkFile(f, icons)).concat(checkNavStyle())
+  const errs = files.flatMap(f => checkFile(f, icons)).concat(checkNavStyle()).concat(checkIconCentering())
   if (errs.length) {
     console.error('check-wxml 发现问题：')
     for (const e of errs) console.error('  ✗ ' + e)

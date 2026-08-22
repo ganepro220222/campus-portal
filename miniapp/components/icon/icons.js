@@ -1,11 +1,31 @@
 // components/icon/icons.js — SVG 图标路径库，供 icon 组件生成 data URI
+//
+// 字段：
+//   i  图形内容（viewBox 0 0 24 24）
+//   m  'stroke' | 'fill'
+//   w  描边宽度（m='stroke' 时）
+//   c  [dx, dy] 视觉居中修正，单位同 viewBox
+//
+// 关于 c：这些图标是手写路径，各自的墨迹在 24×24 的框里并不都居中。
+// 首页那排功能入口最明显——量出来「展馆展示」的墨迹中心在 y=13、
+// 「课程中心」在 y=10.5，同一排里两个图标差了 2.5 个 viewBox 单位，
+// 换算到 50rpx 的实际尺寸就是 5rpx，肉眼能看出没对齐。
+// c 把每个图标的墨迹推回 (12, 12)，由 buildSrc 通过挪 viewBox 原点实现，
+// 不动路径数据本身，改错了也只会平移、不会把图形改形。
+//
+// 数值不是拍的，是量的：node scripts/measure-icon-centering.mjs
+// 会在真实 SVG 引擎里逐个 getBBox（含描边宽度）算出来并打印建议值。
+// 新增图标后跑一遍，把它给的 c 填进来即可。
+//
+// 唯一的例外是 'play'：右向三角形的视觉重心本来就该偏右于几何中心
+// （放在圆形播放键里若按墨迹居中，看着反而偏左），它的 +1.5 是刻意的，别去"修正"。
 
 const ICONS = {
   /* ── TabBar ── */
-  'home':        { i: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>', m: 'stroke', w: 2 },
-  'news':        { i: '<path d="M4 4h13a2 2 0 0 1 2 2v13a1 1 0 0 0 2 0"/><path d="M4 4v16h13"/><line x1="7" y1="9" x2="14" y2="9"/><line x1="7" y1="13" x2="14" y2="13"/>', m: 'stroke', w: 2 },
-  'museum':      { i: '<path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/>', m: 'stroke', w: 1.8 },
-  'course':      { i: '<path d="M2 7l10-4 10 4-10 4z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>', m: 'stroke', w: 1.8 },
+  'home':        { i: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>', c: [0, 0.5], m: 'stroke', w: 2 },
+  'news':        { i: '<path d="M4 4h13a2 2 0 0 1 2 2v13a1 1 0 0 0 2 0"/><path d="M4 4v16h13"/><line x1="7" y1="9" x2="14" y2="9"/><line x1="7" y1="13" x2="14" y2="13"/>', c: [-0.5, 0], m: 'stroke', w: 2 },
+  'museum':      { i: '<path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/>', c: [0, -1], m: 'stroke', w: 1.8 },
+  'course':      { i: '<path d="M2 7l10-4 10 4-10 4z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>', c: [0, 1.5], m: 'stroke', w: 1.8 },
 
   /* ── 顶栏 / 通用 ── */
   'bell':        { i: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>', m: 'stroke', w: 2 },
@@ -16,22 +36,22 @@ const ICONS = {
   'arrow-right': { i: '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>', m: 'stroke', w: 2 },
 
   /* ── 功能入口 ── */
-  'entry-news':     { i: '<path d="M4 4h13a2 2 0 0 1 2 2v13a1 1 0 0 0 2 0V8"/><path d="M4 4v15a1 1 0 0 0 1 1h13"/><line x1="7" y1="8" x2="14" y2="8"/><line x1="7" y1="12" x2="14" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/>', m: 'stroke', w: 1.8 },
+  'entry-news':     { i: '<path d="M4 4h13a2 2 0 0 1 2 2v13a1 1 0 0 0 2 0V8"/><path d="M4 4v15a1 1 0 0 0 1 1h13"/><line x1="7" y1="8" x2="14" y2="8"/><line x1="7" y1="12" x2="14" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/>', c: [-0.5, 0], m: 'stroke', w: 1.8 },
   'entry-resource': { i: '<path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 18 15 15"/>', m: 'stroke', w: 1.8 },
-  'entry-enroll':   { i: '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>', m: 'stroke', w: 1.8 },
+  'entry-enroll':   { i: '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>', c: [0, -0.5], m: 'stroke', w: 1.8 },
 
   /* ── 公告 / 动态 ── */
-  'megaphone':   { i: '<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>', m: 'stroke', w: 2 },
-  'file':        { i: '<path d="M4 19V6a2 2 0 0 1 2-2h9l5 5v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', m: 'stroke', w: 1.6 },
+  'megaphone':   { i: '<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>', c: [0, -0.5], m: 'stroke', w: 2 },
+  'file':        { i: '<path d="M4 19V6a2 2 0 0 1 2-2h9l5 5v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>', c: [0, -0.5], m: 'stroke', w: 1.6 },
   /* 加载失败等全页错误态；全仓仅此一处三角形，不与任何既有图标撞形 */
   'alert':       { i: '<path d="M21.73 18l-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/>', m: 'stroke', w: 1.8 },
-  'flag':        { i: '<path d="M4 4v16M4 4h11l-2 4 2 4H4"/>', m: 'stroke', w: 1.6 },
+  'flag':        { i: '<path d="M4 4v16M4 4h11l-2 4 2 4H4"/>', c: [2.5, 0], m: 'stroke', w: 1.6 },
   'star':        { i: '<path d="M12 3l2.5 5 5.5.8-4 3.9 1 5.5L12 21l-5-2.9 1-5.5-4-3.9 5.5-.8z"/>', m: 'stroke', w: 1.6 },
 
   /* ── 课程 / 详情 元信息 ── */
-  'users':       { i: '<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/>', m: 'stroke', w: 2 },
+  'users':       { i: '<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/>', c: [2, 0], m: 'stroke', w: 2 },
   'clock':       { i: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', m: 'stroke', w: 2 },
-  'calendar':    { i: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>', m: 'stroke', w: 2 },
+  'calendar':    { i: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>', c: [0, 0.5], m: 'stroke', w: 2 },
   'book':        { i: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>', m: 'stroke', w: 2 },
   'cc':          { i: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 11h3M7 14h6M14 11h3"/>', m: 'stroke', w: 2 },
   'download':    { i: '<path d="M12 3v12"/><polyline points="7 12 12 17 17 12"/><path d="M5 21h14"/>', m: 'stroke', w: 2.2 },
@@ -41,17 +61,17 @@ const ICONS = {
   'pause':       { i: '<rect x="7" y="5" width="4" height="14" rx="1"/><rect x="13" y="5" width="4" height="14" rx="1"/>', m: 'fill' },
 
   /* ── 操作：赞 / 藏 / 享 / 海报 ── */
-  'thumb':       { i: '<path d="M14 9V5a3 3 0 0 0-6 0v4H5l1.5 11h11L19 9z"/>', m: 'stroke', w: 2 },
+  'thumb':       { i: '<path d="M14 9V5a3 3 0 0 0-6 0v4H5l1.5 11h11L19 9z"/>', c: [0, 1], m: 'stroke', w: 2 },
   'bookmark':    { i: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>', m: 'stroke', w: 2 },
   'share':       { i: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>', m: 'stroke', w: 2 },
   'poster':      { i: '<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M4 17l5-4 4 3 3-2 4 3"/>', m: 'stroke', w: 2 },
 
   /* 智能问答 */
-  'robot':       { i: '<path d="M12 3a7 7 0 0 1 7 7c0 2-1 3.7-2.5 4.8V18a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-3.2A7 7 0 0 1 12 3z"/><path d="M9 21h6"/><circle cx="9.5" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="10" r="1" fill="currentColor" stroke="none"/>', m: 'stroke', w: 1.8 },
+  'robot':       { i: '<path d="M12 3a7 7 0 0 1 7 7c0 2-1 3.7-2.5 4.8V18a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-3.2A7 7 0 0 1 12 3z"/><path d="M9 21h6"/><circle cx="9.5" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="10" r="1" fill="currentColor" stroke="none"/>', c: [-0.29, 0], m: 'stroke', w: 1.8 },
   'send':        { i: '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/>', m: 'stroke', w: 2.2 },
 
   /* ── 登录 ── */
-  'user':        { i: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', m: 'stroke', w: 2 },
+  'user':        { i: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', c: [0, -0.5], m: 'stroke', w: 2 },
   'lock':        { i: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>', m: 'stroke', w: 2 },
   'login':       { i: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>', m: 'stroke', w: 2.4 },
   'wechat':      { i: '<path fill-rule="evenodd" d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.213 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.626-6.446 1.48-1.483 3.573-2.148 5.663-2.014-.607-3.36-3.973-5.284-7.877-5.284zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 2.02-1.72 1.687-2.505 4.174-1.174 6.71.982 1.872 3.088 3.077 5.462 3.077.775 0 1.548-.164 2.334-.36a.752.752 0 0 1 .618.061l1.658.964a.272.272 0 0 0 .144.047c.14 0 .253-.115.253-.256 0-.062-.024-.123-.04-.183l-.34-1.29a.53.53 0 0 1-.023-.16.494.494 0 0 1 .184-.377C23.474 18.28 24 16.695 24 15.043c0-3.324-3.132-6.185-7.062-6.185zm-2.907 3.303c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>', m: 'fill' },
@@ -63,8 +83,8 @@ const ICONS = {
   'cube':        { i: '<path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5"/><path d="M12 12v10"/>', m: 'stroke', w: 1.8 },
   'chat':        { i: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', m: 'stroke', w: 2 },
   'logout':      { i: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>', m: 'stroke', w: 2 },
-  'heart':       { i: '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/>', m: 'stroke', w: 2 },
-  'footprint':   { i: '<path d="M4 16c0-2 1-3 2.5-3S9 14 9 16s-1 4-2.5 4S4 18 4 16z"/><path d="M6 9c0-1.5.7-2.5 1.8-2.5S9.5 7.5 9.5 9"/><path d="M15 12c0-2 1-3 2.5-3s2.5 1 2.5 3-1 4-2.5 4-2.5-2-2.5-4z"/><path d="M17 5c0-1.5.7-2.5 1.8-2.5S20.5 3.5 20.5 5"/>', m: 'stroke', w: 1.8 },
+  'heart':       { i: '<path d="M20.8 5.6a5.5 5.5 0 0 0-7.8 0L12 6.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/>', c: [0, -0.49], m: 'stroke', w: 2 },
+  'footprint':   { i: '<path d="M4 16c0-2 1-3 2.5-3S9 14 9 16s-1 4-2.5 4S4 18 4 16z"/><path d="M6 9c0-1.5.7-2.5 1.8-2.5S9.5 7.5 9.5 9"/><path d="M15 12c0-2 1-3 2.5-3s2.5 1 2.5 3-1 4-2.5 4-2.5-2-2.5-4z"/><path d="M17 5c0-1.5.7-2.5 1.8-2.5S20.5 3.5 20.5 5"/>', c: [-0.25, 0.75], m: 'stroke', w: 1.8 },
   'grid':        { i: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>', m: 'stroke', w: 1.8 },
   'pin':         { i: '<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>', m: 'stroke', w: 2 }
 }
@@ -88,8 +108,15 @@ function buildSrc(name, size, color, sw) {
    * stroke-width 走 viewBox 单位，不受影响。
    */
   const nominal = size * 3
+  /*
+   * 视觉居中：把 viewBox 的原点往反方向挪，等价于把图形平移 (dx, dy)。
+   * 用 viewBox 而不是包一层 <g transform>，是因为不必改动路径字符串——
+   * 路径一旦手改就可能把图形改形，平移则只会挪位置。
+   */
+  const [dx, dy] = def.c || [0, 0]
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + nominal +
-    '" height="' + nominal + '" viewBox="0 0 24 24" ' + attrs + '>' + inner + '</svg>'
+    '" height="' + nominal + '" viewBox="' + (-dx) + ' ' + (-dy) + ' 24 24" ' +
+    attrs + '>' + inner + '</svg>'
   return 'data:image/svg+xml,' + encodeURIComponent(svg)
 }
 

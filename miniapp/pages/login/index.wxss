@@ -80,7 +80,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 108rpx 60rpx 40rpx;
+  /* 左右由 60rpx 收到 76rpx：表单宽度从 630rpx（占屏宽 84%）收到 598rpx（80%）。
+     84% 时表单几乎顶到屏幕两边，而上方印章 248rpx、主标题墨迹约 312rpx，
+     横向重心明显不在一条轴上；收到 80% 后表单是主标题的 1.81 倍，
+     竖排的印章—标题—表单三段才连成一根中轴。
+     按钮仍有 311pt 宽（iPhone 13），触控尺寸绰绰有余。 */
+  padding: 108rpx 76rpx 40rpx;
   min-height: 100vh;
   box-sizing: border-box;
 }

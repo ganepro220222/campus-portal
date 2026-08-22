@@ -82,7 +82,10 @@
   box-sizing: border-box;
 }
 
-/* ── 校徽印章（白色底 + 金环，衬原色校徽）── */
+/* ── 书院篆印（金印落深蓝，与管理后台登录页同一效果）──
+   原本是白底圆盘衬多色校徽；换成单色篆印后白底反而让金面发灰，故去掉。
+   一并去掉那条 0 20rpx 56rpx 的向下投影——没有实体白盘再投影，
+   深蓝上只会糊出一块脏暗圆。金环与外发光保留，那是原本就好看的部分。 */
 .seal {
   width: 300rpx; height: 300rpx;
   border-radius: 50%;
@@ -90,11 +93,10 @@
   position: relative;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: #FFFFFF;
+  background: rgba(255,255,255,.04);
   box-shadow:
     0 0 0 2rpx rgba(190,156,68,.55),
-    0 20rpx 56rpx rgba(8,12,30,.45),
-    0 0 52rpx rgba(150,180,235,.45);
+    0 0 52rpx rgba(150,180,235,.35);
 }
 .seal::after {
   content: "";
@@ -103,7 +105,9 @@
   border-radius: 50%;
   border: 1rpx solid rgba(190,156,68,.5);
 }
-.seal-img { width: 232rpx; height: 232rpx; }
+/* 印面 560×499（比例 1.122），容器按同比例给，aspectFit 才不留空也不变形。
+   对角 √(184²+164²)=246rpx，落在 300rpx 圆内四周各余 27rpx。 */
+.seal-img { width: 184rpx; height: 164rpx; }
 
 /* ── 校名 ── */
 .brand { margin-top: 44rpx; text-align: center; }

@@ -7,7 +7,8 @@ const {
   buildFormFromProfile,
   validateProfileForm,
   mergeSavedProfile,
-  DEFAULT_COLLEGE
+  DEFAULT_COLLEGE,
+  PLACEHOLDER_COLLEGES
 } = require('./profileForm')
 
 const form = buildFormFromProfile({
@@ -20,6 +21,14 @@ const form = buildFormFromProfile({
 assert.strictEqual(form.nickname, '小明')
 assert.strictEqual(form.realName, '张三')
 assert.strictEqual(form.college, '')
+
+// 机构占位串（含改文案前的旧值）一律按「未填写」处理，别让用户看到自己没填过的机构名
+for (const placeholder of PLACEHOLDER_COLLEGES) {
+  const f = buildFormFromProfile({ college: placeholder })
+  assert.strictEqual(f.college, '', `占位串未被识别：${placeholder}`)
+}
+assert.ok(PLACEHOLDER_COLLEGES.includes('贵州交通职业大学 · 中华文化书院'), '旧占位串不能丢')
+assert.strictEqual(buildFormFromProfile({ college: '机械工程学院' }).college, '机械工程学院')
 
 const bad = validateProfileForm({ realName: '', phone: '' })
 assert.strictEqual(bad.ok, false)

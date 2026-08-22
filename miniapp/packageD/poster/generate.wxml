@@ -11,11 +11,11 @@
         <view wx:if="{{hasCover}}" class="p-cover" style="box-shadow: 0 0 0 2rpx {{tpl.accent}};">
           <image class="p-cover-img" src="{{coverUrl}}" mode="aspectFill" />
           <view class="p-cover-badge" style="box-shadow: 0 0 0 2rpx {{tpl.accent}};">
-            <image class="p-cover-badge-img" src="/assets/images/school-badge.png" mode="aspectFit" />
+            <image class="p-cover-badge-img" src="/assets/images/academy-seal-navy.png" mode="aspectFit" />
           </view>
         </view>
         <view wx:else class="p-seal" style="box-shadow: 0 0 0 2rpx {{tpl.accent}};">
-          <image class="p-seal-img" src="/assets/images/school-badge.png" mode="aspectFit" />
+          <image class="p-seal-img" src="/assets/images/academy-seal-navy.png" mode="aspectFit" />
         </view>
         <view class="p-title serif {{hasCover ? 'p-title-cover' : ''}}">{{title}}</view>
         <view class="p-div">

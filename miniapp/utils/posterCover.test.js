@@ -9,7 +9,8 @@ const {
   pickCraftCover,
   buildPosterNavigateUrl,
   titleStartY,
-  coverRect
+  coverRect,
+  badgeFitRect
 } = require('./posterCover')
 
 assert.strictEqual(parsePosterCover(''), '')
@@ -38,6 +39,32 @@ assert.strictEqual(coverRect(300).w, 220)
  * 数字对了，画出来副标题却压在二维码上。这里改成核算几何：按 generate.js 里
  * _render 的真实排版复算一遍，断言副标题永远落在二维码白底板上方。
  */
+/*
+ * 徽记不能被压扁：篆印是 560×499，画成正方形会明显变形。
+ * 断言按真实比例 aspectFit，且不超出给定方框。
+ */
+{
+  const SEAL_W = 560, SEAL_H = 499
+  const box = 52 - 52 * 0.12 * 2      // drawBadgeCircle 里 size=52、inset=12% 时的可用方框
+  const fit = badgeFitRect(SEAL_W, SEAL_H, box)
+  assert.ok(Math.abs(fit.w / fit.h - SEAL_W / SEAL_H) < 1e-9,
+    `徽记被压扁了：画出来 ${fit.w.toFixed(2)}x${fit.h.toFixed(2)}，原图比例 ${(SEAL_W / SEAL_H).toFixed(3)}`)
+  assert.ok(fit.w <= box + 1e-9 && fit.h <= box + 1e-9, '徽记超出方框')
+  assert.ok(fit.w > box - 1e-9, '横图应以宽度贴满方框')
+
+  const tall = badgeFitRect(300, 600, 100)          // 竖图走另一分支
+  assert.strictEqual(tall.h, 100)
+  assert.strictEqual(tall.w, 50)
+
+  // 正方形（原校徽）行为不变，保证这次改动对旧素材无损
+  assert.deepStrictEqual(badgeFitRect(480, 480, 100), { w: 100, h: 100 })
+
+  // 拿不到尺寸时退回方形，不能算出 NaN 把画布画坏
+  for (const bad of [[0, 0], [undefined, undefined], [NaN, 10]]) {
+    assert.deepStrictEqual(badgeFitRect(bad[0], bad[1], 80), { w: 80, h: 80 })
+  }
+}
+
 const CANVAS = { W: 300, H: 500 }
 const QR_SIZE = 64
 const QR_PLATE_TOP = (CANVAS.H - 108) - 6      // strokeFillRoundRect(qx-6, qy-6, ...)

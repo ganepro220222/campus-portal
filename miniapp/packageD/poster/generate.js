@@ -7,7 +7,8 @@ const {
   coverRect,
   titleStartY,
   roundRectPath,
-  drawCoverFill
+  drawCoverFill,
+  badgeFitRect
 } = require('../../utils/posterCover')
 
 const TEMPLATES = [
@@ -188,8 +189,11 @@ Page({
               ctx.lineWidth = 2
               ctx.stroke()
               ctx.clip()
-              const inset = size * 0.12
-              ctx.drawImage(badge, cx - half + inset, cy - half + inset, size - inset * 2, size - inset * 2)
+              // 0.61 占比与预览的 .p-seal-img / .p-cover-badge-img 对齐（预览即成品）；
+              // 方形内接圆的临界是 0.747，12% 的旧 inset 给到 0.76，四角会被 clip 裁掉
+              const box = size * 0.61
+              const fit = badgeFitRect(badge.width, badge.height, box)
+              ctx.drawImage(badge, cx - fit.w / 2, cy - fit.h / 2, fit.w, fit.h)
               ctx.restore()
               resolveBadge()
             }

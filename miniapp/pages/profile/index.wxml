@@ -13,7 +13,7 @@
         </view>
         <view class="hero-info">
           <text class="nickname">{{userInfo.nickname || '书院用户'}}</text>
-          <text class="college">{{userInfo.college || '贵州交通职业大学 · 中华文化书院'}}</text>
+          <text class="college">{{userInfo.college || '中华文化书院'}}</text>
           <text class="points-inline">积分 {{stats.points || 0}}</text>
         </view>
         <view class="edit-chip">

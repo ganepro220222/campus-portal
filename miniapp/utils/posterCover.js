@@ -1,6 +1,6 @@
 // utils/posterCover.js — 分享海报封面参数与布局
 
-const BADGE_SRC = '/assets/images/school-badge.png'
+const BADGE_SRC = '/assets/images/academy-seal-navy.png'
 
 function parsePosterCover(raw) {
   if (raw == null || raw === '') return ''
@@ -74,6 +74,21 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath()
 }
 
+/*
+ * 徽记按 aspectFit 落进圆内。
+ *
+ * 原来是 ctx.drawImage(badge, x, y, box, box) 直接画成正方形——校徽本身就是 1:1，
+ * 看不出问题；换成 560×499 的篆印后会被压扁。这里按图片真实比例算，
+ * 不硬编码 1.122，换素材也不用回来改。
+ */
+function badgeFitRect(imgW, imgH, box) {
+  const w = Number(imgW)
+  const h = Number(imgH)
+  if (!(w > 0) || !(h > 0) || !(box > 0)) return { w: box, h: box }
+  const r = w / h
+  return r >= 1 ? { w: box, h: box / r } : { w: box * r, h: box }
+}
+
 function drawCoverFill(ctx, img, rect) {
   const { x, y, w, h } = rect
   const ir = img.width / img.height
@@ -104,6 +119,7 @@ module.exports = {
   buildPosterNavigateUrl,
   coverRect,
   titleStartY,
+  badgeFitRect,
   roundRectPath,
   drawCoverFill
 }

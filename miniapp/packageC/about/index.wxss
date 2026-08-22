@@ -15,13 +15,16 @@
   width: 150rpx;
   height: 150rpx;
   border-radius: 50%;
-  background: #fff;
+  /* 与登录页同一处理：单色篆印不用白底衬，去掉后金面才亮得起来 */
+  background: rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 2rpx rgba(190, 156, 68, 0.6), 0 16rpx 40rpx rgba(8, 12, 30, 0.4);
+  box-shadow: 0 0 0 2rpx rgba(190, 156, 68, 0.6), 0 0 32rpx rgba(150, 180, 235, 0.3);
 }
-.ab-seal-img { width: 116rpx; height: 116rpx; }
+/* 印面比例 1.122；对角 √(92²+82²)=123rpx 落在 150rpx 圆内，四周各余 13rpx，
+   与登录页 184/300 的占比（61%）保持一致 */
+.ab-seal-img { width: 92rpx; height: 82rpx; }
 .ab-name { font-size: 42rpx; font-weight: 700; letter-spacing: 6rpx; margin-top: 26rpx; }
 .ab-ver { font-size: 22rpx; color: rgba(214, 224, 248, 0.75); margin-top: 12rpx; }
 .ab-org { font-size: 23rpx; color: rgba(214, 224, 248, 0.9); margin-top: 8rpx; letter-spacing: 1rpx; }
@@ -85,6 +88,9 @@
 /* 页脚 */
 .ab-foot { text-align: center; padding: 40rpx 40rpx 0; }
 .ab-slogan { display: block; font-size: 23rpx; color: var(--sub); letter-spacing: 1rpx; }
-.ab-copy { display: block; font-size: 21rpx; color: var(--muted); margin-top: 12rpx; }
+/* 页脚四层归属：平台定位 → 内容来源 → 运营主体 → 备案号。
+   .ab-src 与 .ab-copy 同级，不抢也不弱于版权行。 */
+.ab-src { display: block; font-size: 21rpx; color: var(--muted); margin-top: 12rpx; }
+.ab-copy { display: block; font-size: 21rpx; color: var(--muted); margin-top: 6rpx; }
 .ab-icp { display: block; font-size: 20rpx; color: var(--muted); margin-top: 6rpx; letter-spacing: 0.5rpx; }
 .ab-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }

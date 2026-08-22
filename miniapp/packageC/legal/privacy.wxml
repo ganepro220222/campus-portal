@@ -22,7 +22,7 @@
         <view class="legal-retry" bindtap="onRetry">重新加载最新版本</view>
       </view>
 
-      <view class="legal-foot">© 2026 贵州交通职业大学中华文化书院</view>
+      <view class="legal-foot">© 2026 贵州云漫科技有限公司</view>
       <view class="legal-bottom"></view>
     </block>
   </scroll-view>

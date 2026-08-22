@@ -13,7 +13,7 @@
 
     <block wx:if="{{!changePasswordMode}}">
       <view class="seal">
-        <image class="seal-img" src="/assets/images/school-badge.png" mode="aspectFit" />
+        <image class="seal-img" src="/assets/images/academy-seal-gold.png" mode="aspectFit" />
       </view>
 
       <view class="brand">
@@ -23,8 +23,8 @@
           <text class="brand-div-orn">❖</text>
           <view class="brand-div-line brand-div-line-r"></view>
         </view>
-        <view class="brand-sub serif">贵州交通职业大学 · 中华文化书院</view>
-        <view class="brand-en">Guizhou Communications Polytechnic University</view>
+        <view class="brand-sub serif">中华文化书院</view>
+        <view class="brand-en">Academy of Chinese Culture</view>
       </view>
     </block>
 

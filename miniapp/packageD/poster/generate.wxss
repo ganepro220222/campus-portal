@@ -41,7 +41,9 @@
   justify-content: center;
   z-index: 2;
 }
-.p-seal-img { width: 118rpx; height: 118rpx; }
+/* 印面 1.122 比例。原来 118 正方 → aspectFit 后对角 158rpx，比 150rpx 的圆还大，
+   四角会露在圆外。统一按 0.61 占比给，与登录页/关于页一致。 */
+.p-seal-img { width: 92rpx; height: 82rpx; }
 
 .p-cover {
   position: relative;
@@ -71,8 +73,8 @@
   justify-content: center;
 }
 .p-cover-badge-img {
-  width: 62rpx;
-  height: 62rpx;
+  width: 51rpx;
+  height: 46rpx;
 }
 
 /* 画布那边是 lines.slice(0, 3)，预览不设上限的话，长标题会在预览里排到第四行、

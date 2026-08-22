@@ -9,7 +9,9 @@ Page({
     address: '贵州省贵阳市清镇职教城西区',
     phone: '0851-12345678',
     email: 'shuyuan@gzjtzy.edu.cn',
-    icp: '',
+    // 小程序备案号须在小程序内可见（《互联网信息服务管理办法》）。
+    // 后台「内容配置」可覆盖；这里必须有兜底值，否则后台没配就等于没展示。
+    icp: '黔ICP备17005610号-10X',
     features: [
       { icon: 'museum', name: '线上展馆', desc: '11 座沉浸式展馆，图文 + 语音讲解' },
       { icon: 'course', name: '精品课程', desc: '多门在线课程，支持 AI 字幕' },
@@ -32,7 +34,8 @@ Page({
         address: res.address || this.data.address,
         phone: res.phone || this.data.phone,
         email: res.email || this.data.email,
-        icp: res.icp || ''
+        // 与上面几项一致：后台没配就保留兜底，不要清空成 ''
+        icp: res.icp || this.data.icp
       })
     }).catch(() => {})
   },

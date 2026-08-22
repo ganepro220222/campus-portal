@@ -82,32 +82,40 @@
   box-sizing: border-box;
 }
 
-/* ── 书院篆印（金印落深蓝，与管理后台登录页同一效果）──
-   原本是白底圆盘衬多色校徽；换成单色篆印后白底反而让金面发灰，故去掉。
-   一并去掉那条 0 20rpx 56rpx 的向下投影——没有实体白盘再投影，
-   深蓝上只会糊出一块脏暗圆。金环与外发光保留，那是原本就好看的部分。 */
+/* ── 书院篆印 ──────────────────────────────────────────
+   印面是方的，就不该再套圆环——旧版把方印塞进 300rpx 的圆里，四角空荡、
+   两种形状互相打架。改用管理后台登录页那套语言：圆角方框 + 金边 + 内发光，
+   两端视觉统一，也贴合「印匣」的意象。
+
+   尺寸不照搬后台的 68px：方形的视觉重量比同尺寸圆大约 1.27 倍，
+   等尺寸换过来会压住下面的「云端书院」，故由 300rpx 收到 248rpx。
+   印面占比 0.70 —— 后台在 68px 的小尺寸下 0.647 显紧凑，放大四倍后同比例会显空，
+   渲染比对后 0.70 最饱满；0.74 就贴到内框了。
+   外框（::after）延续旧版双环的层次语言，只是跟着改成圆角方形。 */
 .seal {
-  width: 300rpx; height: 300rpx;
-  border-radius: 50%;
+  width: 248rpx; height: 248rpx;
+  border-radius: 56rpx;
   margin-top: 48rpx;
   position: relative;
   flex-shrink: 0;
+  box-sizing: border-box;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,.04);
+  /* 165deg 顶光：与页面 170deg 的深蓝渐变同向，光感才连得上 */
+  background: linear-gradient(165deg, rgba(255,255,255,.11), rgba(255,255,255,.035) 58%, rgba(255,255,255,.02));
+  border: 2rpx solid rgba(201,162,39,.78);
   box-shadow:
-    0 0 0 2rpx rgba(190,156,68,.55),
-    0 0 52rpx rgba(150,180,235,.35);
+    0 0 60rpx rgba(201,162,39,.30),
+    0 0 40rpx rgba(150,180,235,.26);
 }
 .seal::after {
   content: "";
   position: absolute;
-  left: -14rpx; top: -14rpx; right: -14rpx; bottom: -14rpx;
-  border-radius: 50%;
-  border: 1rpx solid rgba(190,156,68,.5);
+  left: -22rpx; top: -22rpx; right: -22rpx; bottom: -22rpx;
+  border-radius: 78rpx;
+  border: 1rpx solid rgba(201,162,39,.55);
 }
-/* 印面 560×499（比例 1.122），容器按同比例给，aspectFit 才不留空也不变形。
-   对角 √(184²+164²)=246rpx，落在 300rpx 圆内四周各余 27rpx。 */
-.seal-img { width: 184rpx; height: 164rpx; }
+/* 印面 560×499（1.122）：174 / 1.122 = 155，给准比例，aspectFit 才既不留空也不变形 */
+.seal-img { width: 174rpx; height: 155rpx; }
 
 /* ── 校名 ── */
 .brand { margin-top: 44rpx; text-align: center; }

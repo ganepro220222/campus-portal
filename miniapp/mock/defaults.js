@@ -87,25 +87,20 @@ module.exports = {
     { id: 4, title: '示例活动：企业参观与实习宣讲', startTime: '2026-07-02 08:30', location: '校内报告厅', enrolledCount: 56, quota: 80, tag: '参观' }
   ],
 
+  /*
+   * 关联小程序。真实的只有「通途星」一个，AppID 尚未拿到（配置在
+   * config/navigate-appids.json，由 scripts/sync-navigate-appids.js 同步进 app.json）。
+   * 其余两条明确标注为示例，只为在 dev 下撑起列表布局——别当成真实院系名。
+   */
   colleges: [
-    { id: 1,  name: '马克思主义学院', short: '马院', en: 'Marxism',        desc: '思想政治理论课教学与研究', colorClass: 'hc3' },
-    { id: 2,  name: '轨道交通学院', short: '轨道', en: 'Rail Transit',     desc: '轨道牵引 · 智慧运维', colorClass: 'hc1' },
-    { id: 3,  name: '智能交通学院', short: '智交', en: 'Smart Traffic',    desc: '车路协同 · 智慧出行', colorClass: 'hc1' },
-    { id: 4,  name: '汽车工程学院', short: '汽车', en: 'Automobile',       desc: '新能源 · 智能网联', colorClass: 'hc2' },
-    { id: 5,  name: '路桥工程学院', short: '路桥', en: 'Road & Bridge',    desc: '通途之路 · 大国工匠', colorClass: 'hc2' },
-    { id: 6,  name: '交通运输学院', short: '运输', en: 'Transportation',   desc: '运输组织 · 物流管理', colorClass: 'hc4' },
-    { id: 7,  name: '航运航空学院', short: '航运', en: 'Aviation',         desc: '海空联运 · 蓝色梦想', colorClass: 'hc4' },
-    { id: 8,  name: '建筑工程学院', short: '建工', en: 'Construction',     desc: '匠筑营造 · 品质人居', colorClass: 'hc5' },
-    { id: 9,  name: '信息工程学院', short: '信息', en: 'Information',       desc: '数字技术 · 智能应用', colorClass: 'hc1' },
-    { id: 10, name: '经济管理学院', short: '经管', en: 'Management',        desc: '经世致用 · 知行合一', colorClass: 'hc3' },
-    { id: 11, name: '人文艺术学院', short: '人文', en: 'Humanities',       desc: '以美育人 · 以文化人', colorClass: 'hc5' }
+    { id: 1, name: '通途星', short: '通途', en: 'Tongtu', desc: '关联小程序 · AppID 待配置', colorClass: 'hc1' },
+    { id: 2, name: '示例关联应用 A', short: '示例', en: 'Sample A', desc: '示例条目 · 用于演示列表布局', colorClass: 'hc2' },
+    { id: 3, name: '示例关联应用 B', short: '示例', en: 'Sample B', desc: '示例条目 · 用于演示列表布局', colorClass: 'hc4' }
   ],
 
-  /** 首页协同育人横滑（jump 类型演示） */
+  /** 首页「关联应用」横滑兜底：现实中只有通途星一个，就只放一个 */
   collegesHome: [
-    { id: 1, name: '马克思主义学院', short: '马院', en: '小程序跳转', desc: '学院小程序入口', colorClass: 'hc3', contentType: 'jump', appid: 'wxPLACEHOLDER001', path: 'pages/index/index' },
-    { id: 2, name: '轨道交通学院', short: '轨道', en: '小程序跳转', desc: '智慧运维', colorClass: 'hc1', contentType: 'jump', appid: 'wxPLACEHOLDER002', path: 'pages/index/index' },
-    { id: 3, name: '智能交通学院', short: '智交', en: '小程序跳转', desc: '智慧出行', colorClass: 'hc2', contentType: 'jump', appid: 'wxPLACEHOLDER003', path: 'pages/index/index' }
+    { id: 1, name: '通途星', short: '通途', en: '小程序跳转', desc: '关联小程序 · AppID 待配置', colorClass: 'hc1', contentType: 'jump', appid: 'wxPLACEHOLDER001', path: 'pages/index/index' }
   ],
 
   activityDetail: {

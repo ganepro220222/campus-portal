@@ -175,31 +175,30 @@ Page({
           qrImg.src = 'data:image/png;base64,' + qrBase64
         }
 
-        const drawBadgeCircle = (cx, cy, size) => {
+        /* 印面是方的，牌子也画成圆角方形——圆牌配方印两种形状打架。
+           圆角比 0.226、印面占比 0.70，与预览的 .p-seal / .p-cover-badge 一致。 */
+        const drawBadgePlate = (cx, cy, size) => {
           const half = size / 2
+          const radius = size * 0.226
+          const plate = () => roundRectPath(ctx, cx - half, cy - half, size, size, radius)
           return new Promise((resolveBadge) => {
             const badge = canvas.createImage()
             badge.onload = () => {
               ctx.save()
-              ctx.beginPath()
-              ctx.arc(cx, cy, half, 0, Math.PI * 2)
+              plate()
               ctx.fillStyle = '#ffffff'
               ctx.fill()
               ctx.strokeStyle = tpl.accent
               ctx.lineWidth = 2
               ctx.stroke()
               ctx.clip()
-              // 0.61 占比与预览的 .p-seal-img / .p-cover-badge-img 对齐（预览即成品）；
-              // 方形内接圆的临界是 0.747，12% 的旧 inset 给到 0.76，四角会被 clip 裁掉
-              const box = size * 0.61
-              const fit = badgeFitRect(badge.width, badge.height, box)
+              const fit = badgeFitRect(badge.width, badge.height, size * 0.70)
               ctx.drawImage(badge, cx - fit.w / 2, cy - fit.h / 2, fit.w, fit.h)
               ctx.restore()
               resolveBadge()
             }
             badge.onerror = () => {
-              ctx.beginPath()
-              ctx.arc(cx, cy, half, 0, Math.PI * 2)
+              plate()
               ctx.fillStyle = 'rgba(255,255,255,0.14)'
               ctx.fill()
               ctx.strokeStyle = tpl.accent
@@ -216,7 +215,7 @@ Page({
 
         const startHero = () => {
           if (!coverUrl) {
-            drawBadgeCircle(W / 2, 90 + 48, 96).then(() => drawRest(titleStartY(false)))
+            drawBadgePlate(W / 2, 90 + 48, 96).then(() => drawRest(titleStartY(false)))
             return
           }
           const rect = coverRect(W)
@@ -233,11 +232,11 @@ Page({
             const badgeSize = 52
             const bx = rect.x + rect.w - badgeSize * 0.35
             const by = rect.y + rect.h - badgeSize * 0.25
-            drawBadgeCircle(bx, by, badgeSize).then(() => drawRest(titleStartY(true)))
+            drawBadgePlate(bx, by, badgeSize).then(() => drawRest(titleStartY(true)))
           }
           coverImg.onerror = () => {
             console.warn('[poster] 封面加载失败，降级为校徽布局')
-            drawBadgeCircle(W / 2, 90 + 48, 96).then(() => drawRest(titleStartY(false)))
+            drawBadgePlate(W / 2, 90 + 48, 96).then(() => drawRest(titleStartY(false)))
           }
           coverImg.src = coverUrl
         }

@@ -45,7 +45,7 @@ assert.strictEqual(coverRect(300).w, 220)
  */
 {
   const SEAL_W = 560, SEAL_H = 499
-  const box = 52 - 52 * 0.12 * 2      // drawBadgeCircle 里 size=52、inset=12% 时的可用方框
+  const box = 52 * 0.70               // drawBadgePlate 里 size=52 时的可用方框
   const fit = badgeFitRect(SEAL_W, SEAL_H, box)
   assert.ok(Math.abs(fit.w / fit.h - SEAL_W / SEAL_H) < 1e-9,
     `徽记被压扁了：画出来 ${fit.w.toFixed(2)}x${fit.h.toFixed(2)}，原图比例 ${(SEAL_W / SEAL_H).toFixed(3)}`)

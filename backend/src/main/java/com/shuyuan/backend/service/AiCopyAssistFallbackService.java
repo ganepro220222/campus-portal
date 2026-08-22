@@ -61,7 +61,7 @@ public class AiCopyAssistFallbackService {
         String seed = text.length() > 36 ? text.substring(0, 36).trim() + "…" : text;
         return "1. 【书院速递】" + seed + "\n"
                 + "2. 云端书院 · " + seed + "\n"
-                + "3. 文化传承视角下的" + seed;
+                + "3. " + seed + "（详情）";
     }
 
     private String translateEn(String text) {

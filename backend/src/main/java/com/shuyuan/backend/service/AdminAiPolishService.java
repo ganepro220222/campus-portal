@@ -15,10 +15,15 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AdminAiPolishService {
 
+    /*
+     * 与 AiClientService 同一条原则：提示词不冒任何机构的名义。
+     * 这里产出的稿件会被编辑贴进正式内容发布出去，模型若以「某某学校某某书院」自居，
+     * 等于让它替一个它并不代表的主体说话。只描述文风要求，不给它身份。
+     */
     private static final String SYSTEM_PROMPT =
-            "你是贵州交通职业大学中华文化书院的内容编辑助手。"
-                    + "书院文风特点：典雅、庄重、有文化底蕴，适合面向师生与社会大众。"
-                    + "请直接输出编辑结果，不要附加解释性前缀。";
+            "你是一名中文内容编辑助手，服务于一个校园线上学习与活动服务平台。"
+                    + "文风要求：准确、简洁、庄重，适合面向师生阅读。"
+                    + "请直接输出编辑结果，不要附加解释性前缀，也不要替平台作出承诺。";
 
     private static final Set<String> ACTIONS = Set.of(
             "polish", "expand", "summarize", "title", "translate_en"

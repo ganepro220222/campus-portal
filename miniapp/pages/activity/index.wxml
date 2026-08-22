@@ -1,5 +1,11 @@
 <!-- pages/activity/index.wxml -->
 <view class="act-page">
+  <!-- 自绘顶栏：原先这页用的是原生导航栏，标题由微信客户端绘制，
+       字号跟随「微信 → 我 → 设置 → 通用 → 字体大小」缩放，而栏高是固定的，
+       字体调大时「活动报名」下缘会被切掉，页面样式无从干预。
+       与同一流程的活动详情页（packageC/activity/detail）统一到 nav-bar 后，
+       字号走 rpx，不再受该设置影响。 -->
+  <nav-bar title="活动报名" />
   <view wx:if="{{loading && !activityList.length && !error}}" class="page-state-box">
     <text class="page-state-text">加载中…</text>
   </view>

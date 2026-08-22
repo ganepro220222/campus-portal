@@ -27,35 +27,43 @@ public class SysConfigService {
     public static final String CONTACT_EMAIL = "contact_email";
     public static final String ABOUT_ICP = "about_icp";
 
+    /*
+     * 下面这些默认值不是「示例数据」——后台没配时，接口返回的就是它们，
+     * 小程序照单展示，提审时审核员看到的也是它们。所以它们必须始终是
+     * 可以直接对外的文案，且与 miniapp/utils/miniappConfig.js 里的 DEFAULT 逐字一致：
+     * 后端非空就会盖掉小程序侧的兜底（`res.intro || this.data.intro`），
+     * 两边写得不一样等于小程序那份永远不生效，改了也白改。
+     */
     private static final String DEFAULT_ABOUT_INTRO =
-            "云端书院是“马院 + 书院”协同育人的线上思政平台，依托中华文化书院资源，将阳明文化、屯堡文化、"
-            + "红色文化与非遗技艺搬上云端，线上线下相结合，传承中华优秀传统文化，涵养师生家国情怀与笃行精神。";
-    private static final String DEFAULT_ADDRESS = "贵州省贵阳市清镇职教城西区";
-    private static final String DEFAULT_PHONE = "0851-12345678";
-    private static final String DEFAULT_EMAIL = "shuyuan@gzjtzy.edu.cn";
+            "云端书院是面向校园的线上学习服务平台，整合线上展馆、精品课程、文创展示与活动报名等功能，"
+            + "支持随时随地学习与交流，线上线下相结合。";
 
-    private static final String DEFAULT_PRIVACY =
-            "<p>贵州交通职业大学中华文化书院（「我们」）重视您的个人信息保护。本政策说明云端书院小程序如何收集、使用与保护您的信息。</p>"
-            + "<p><b>一、我们收集的信息</b></p>"
-            + "<p>在您使用服务时，我们可能收集：微信昵称与头像（经您授权）、学号/账号信息（学号登录时）、浏览与学习行为记录（用于足迹与统计）、报名与反馈内容。</p>"
-            + "<p><b>二、信息的使用</b></p>"
-            + "<p>用于账号识别、内容展示、活动报名、学习进度、积分徽章、消息通知及平台安全审计。我们不会将您的个人信息出售给第三方。</p>"
-            + "<p><b>三、存储与安全</b></p>"
-            + "<p>数据存储于中华人民共和国境内服务器，采用加密传输（HTTPS）与访问控制。管理员操作留有审计日志。</p>"
-            + "<p><b>四、您的权利</b></p>"
-            + "<p>您可通过「意见反馈」或联系书院管理员查询、更正或删除相关账户信息（法律法规另有规定的除外）。</p>"
-            + "<p><b>五、联系我们</b></p>"
-            + "<p>邮箱：shuyuan@gzjtzy.edu.cn（占位）· 地址：贵州省贵阳市清镇职教城西区</p>";
-    private static final String DEFAULT_AGREEMENT =
-            "<p>使用云端书院即表示您同意遵守本协议及学校相关规定。平台内容仅供教育文化传播与非商业学习使用。</p>"
-            + "<p>禁止利用本平台发布违法违规信息、攻击系统或干扰他人正常使用。AI 文化助手回答基于书院知识库，仅供参考，不构成专业意见。</p>";
+    /*
+     * 联系方式默认留空，关于页对这三行都有 wx:if，空值即不渲染。
+     * 原先内置的是 0851-12345678 与 shuyuan@gzjtzy.edu.cn：号码是编的，
+     * 邮箱是学校的 edu.cn 域——备案主体已是贵州云漫科技有限公司，
+     * 界面上再挂学校域名的联系方式，与主体和授权范围都对不上。
+     * 真实联系方式请在后台「内容配置」填写。
+     */
+    private static final String DEFAULT_ADDRESS = "";
+    private static final String DEFAULT_PHONE = "";
+    private static final String DEFAULT_EMAIL = "";
+
+    /*
+     * 隐私政策 / 用户协议不再内置 Java 版默认值：基线正文只留一份，
+     * 在 miniapp/utils/legalDocuments.js 的 BASELINE 里。这里返回空串时，
+     * 小程序会自动落到那份基线（见 resolveFromSources），后台编辑器则显示空白，
+     * 提示管理员这两份文档尚未正式配置。
+     * 早先这里内置的版本写的是「贵州交通职业大学中华文化书院（我们）」并留了
+     * edu.cn 邮箱，一直在盖掉小程序里已经改好的基线。
+     */
 
     private static final String DEFAULT_WELCOME =
-            "你好！我是书院文化助手，可以基于书院知识库为你解答文化相关问题。";
+            "你好！我是书院助手，可以基于平台知识库为你解答使用与学习相关的问题。";
     private static final String DEFAULT_CHIPS_JSON =
-            "[\"什么是阳明文化？\",\"屯堡文化有何特色？\",\"龙场悟道讲了什么？\"]";
+            "[\"平台有哪些线上展馆？\",\"怎么报名参加活动？\",\"在哪查看学习足迹？\"]";
     private static final String DEFAULT_HOT_TAGS_JSON =
-            "[\"阳明文化\",\"屯堡地戏\",\"红色交通\",\"非遗银饰\",\"知行合一\"]";
+            "[\"线上展馆\",\"精品课程\",\"活动报名\",\"学习资源\",\"文创展示\"]";
 
     private final SysConfigMapper sysConfigMapper;
 
@@ -96,8 +104,8 @@ public class SysConfigService {
     /** 协议/内容文档（隐私政策、用户协议）—— 供小程序与后台读取。 */
     public Map<String, Object> getContentDocs() {
         Map<String, Object> m = new HashMap<>();
-        m.put("privacy", getString(DOC_PRIVACY, DEFAULT_PRIVACY));
-        m.put("agreement", getString(DOC_AGREEMENT, DEFAULT_AGREEMENT));
+        m.put("privacy", getString(DOC_PRIVACY, ""));
+        m.put("agreement", getString(DOC_AGREEMENT, ""));
         return m;
     }
 

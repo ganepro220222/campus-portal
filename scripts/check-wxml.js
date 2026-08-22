@@ -101,10 +101,58 @@ function checkFile(file, icons) {
   return errs
 }
 
+/*
+ * E. 导航栏方案一致性。
+ *
+ * 用原生导航栏（页面 json 没写 navigationStyle: custom）时，标题由微信客户端绘制：
+ * 字号跟随「微信 → 我 → 设置 → 通用 → 字体大小」缩放，栏高却是固定的，
+ * 调大字体后标题下缘会被切掉——页面 WXSS 完全干预不了。自绘 nav-bar 走 rpx，没这问题。
+ * 全站已统一到自绘顶栏，这条拦住「新页面忘了写 navigationStyle」。
+ *
+ * 两个例外，必须留原生导航（原因写在这里，别顺手删）：
+ *   - packageC/college/webview：根节点是 <web-view>，属原生组件，层级永远压在自绘顶栏之上；
+ *   - packageB/course/player：<video> 同样是原生组件，且要走全屏，固定顶栏会和它抢层级。
+ */
+const NATIVE_NAV_ALLOWED = new Set([
+  'packageC/college/webview',
+  'packageB/course/player'
+])
+
+function checkNavStyle() {
+  const errs = []
+  for (const wxml of walk(miniappDir)) {
+    const jsonPath = wxml.replace(/\.wxml$/, '.json')
+    if (!fs.existsSync(jsonPath)) continue          // 组件没有独立的导航栏配置
+    let cfg
+    try {
+      cfg = JSON.parse(fs.readFileSync(jsonPath, 'utf8'))
+    } catch (e) {
+      errs.push(`${path.relative(root, jsonPath)}  不是合法 JSON：${e.message}`)
+      continue
+    }
+    if (cfg.component) continue                     // 自定义组件
+    const id = path.relative(miniappDir, wxml).replace(/\.wxml$/, '').split(path.sep).join('/')
+    const src = fs.readFileSync(wxml, 'utf8')
+    const drawsOwnBar = /<nav-bar\b/.test(src) || /statusBarHeight/.test(src)
+
+    if (cfg.navigationStyle === 'custom') {
+      if (!drawsOwnBar) {
+        errs.push(`${id}  声明了 navigationStyle: custom，却没画顶栏：` +
+          `加 <nav-bar title="…" />，否则整页会顶到状态栏下面`)
+      }
+    } else if (!NATIVE_NAV_ALLOWED.has(id)) {
+      errs.push(`${id}  还在用原生导航栏；标题字号会随微信字体设置放大而被切掉。` +
+        `请在 json 里加 "navigationStyle": "custom" 并在 wxml 顶部加 <nav-bar title="…" />；` +
+        `确有必要保留原生导航的，写进 check-wxml.js 的 NATIVE_NAV_ALLOWED 并注明原因`)
+    }
+  }
+  return errs
+}
+
 function main() {
   const icons = definedIcons()
   const files = walk(miniappDir)
-  const errs = files.flatMap(f => checkFile(f, icons))
+  const errs = files.flatMap(f => checkFile(f, icons)).concat(checkNavStyle())
   if (errs.length) {
     console.error('check-wxml 发现问题：')
     for (const e of errs) console.error('  ✗ ' + e)

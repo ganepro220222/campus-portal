@@ -1,5 +1,6 @@
 <!-- packageA/news/list.wxml -->
 <view class="news-page">
+  <nav-bar title="书院动态" />
   <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
     <view class="cats-inner">
       <view

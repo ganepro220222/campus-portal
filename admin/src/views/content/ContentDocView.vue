@@ -14,16 +14,23 @@
       <el-divider content-position="left">关于页</el-divider>
       <el-form label-width="88px" class="about-form">
         <el-form-item label="书院简介">
-          <el-input v-model="form.intro" type="textarea" :rows="4" maxlength="500" show-word-limit />
+          <el-input
+            v-model="form.intro"
+            type="textarea"
+            :rows="4"
+            maxlength="500"
+            show-word-limit
+            placeholder="留空则显示内置简介"
+          />
         </el-form-item>
         <el-form-item label="联系地址">
-          <el-input v-model="form.address" maxlength="100" />
+          <el-input v-model="form.address" maxlength="100" placeholder="留空则不展示该行" />
         </el-form-item>
         <el-form-item label="联系电话">
-          <el-input v-model="form.phone" maxlength="40" />
+          <el-input v-model="form.phone" maxlength="40" placeholder="留空则不展示该行" />
         </el-form-item>
         <el-form-item label="联系邮箱">
-          <el-input v-model="form.email" maxlength="100" />
+          <el-input v-model="form.email" maxlength="100" placeholder="留空则不展示该行" />
         </el-form-item>
         <el-form-item label="备案号">
           <el-input v-model="form.icp" maxlength="100" placeholder="如：黔ICP备xxxxxxxx号（留空则不展示）" />
@@ -32,6 +39,9 @@
 
       <!-- 协议 -->
       <el-divider content-position="left">协议</el-divider>
+      <p class="text-muted">
+        两份协议留空时，小程序会显示内置的基线版本（可正常提审），填写后即以这里的内容为准。
+      </p>
       <div class="doc-block">
         <div class="doc-label">隐私政策</div>
         <WangEditor v-model="form.privacy" min-height="240px" placeholder="请输入隐私政策内容" />

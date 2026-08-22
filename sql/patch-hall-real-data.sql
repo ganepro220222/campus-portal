@@ -36,7 +36,7 @@ WHERE `id` = 1;
 UPDATE `hall` SET
   `name` = '校史馆',
   `short_name` = '校史馆',
-  `intro` = '回顾贵州交通职业大学办学历程与重要里程碑，传承校训校风。',
+  `intro` = '学校办学历程与重要发展节点的线上展陈，支持 VR 全景漫游与图文介绍。',
   `vr_url` = 'https://roma.720yun.com/vr/b5b7196093f3c25a/',
   `category_id` = 4,
   `sort` = 2,
@@ -46,7 +46,7 @@ WHERE `id` = 2;
 UPDATE `hall` SET
   `name` = '贵州交通红色教育基地',
   `short_name` = '红色教育基地',
-  `intro` = '弘扬长征精神与交通红色基因，开展沉浸式红色文化育人。',
+  `intro` = '基地实体展陈的线上导览入口，支持 VR 全景漫游与图文介绍。',
   `vr_url` = 'https://roma.720yun.com/vr/59e140eb05f9e134/',
   `category_id` = 5,
   `sort` = 3,

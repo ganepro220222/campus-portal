@@ -52,6 +52,27 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 | 13 | `patch-point-record-unique.sql` | **旧库** 添加 `uk_member_action_remark`（幂等，可重复执行） | ✅ 已并入 init.sql |
 | 14 | `patch-sys-config-miniapp.sql` | AI 助手欢迎语/推荐问题、搜索热词配置项 | ✅ 已并入 init.sql |
 | 15 | `patch-subtitle-asr-poll.sql` | 课程 ASR 轮询元数据字段（`subtitle_asr_*`） | ✅ 已并入 init.sql；**可重复执行** |
+| 16 | `patch-subject-neutral-config.sql` | **主体归属对齐**：把库里随 init.sql 写入的旧默认文案与机构占位串换成中性表述 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
+
+#### `patch-subject-neutral-config.sql`（旧库必读）
+
+小程序备案主体已是**贵州云漫科技有限公司**，界面不再打学校名号；按微信审核口径，
+内容表述也要避开「新闻 / 文化 / 历史 / 政治」类框架。
+
+代码侧（miniapp、`SysConfigService` 的默认值、`init.sql`）已经改完，但**已经建好的库**里
+存的还是旧值——接口读的是库，改代码不会自动生效。本 patch 负责把库补上：
+
+- `sys_config` 的 AI 欢迎语 / 推荐问题 / 搜索热词；
+- `badge` 里带「文化」字样的两个徽章名；
+- `member_profile.college`、`enroll.college` 里的旧占位串
+  「贵州交通职业大学 · 中华文化书院」（个人中心顶部显示的就是它）。
+
+所有 UPDATE 都带 `WHERE 旧值 = '…'` 精确匹配，**只覆盖从未被人改过的默认值**，
+后台里管理员自己写过的内容一律不动，可重复执行。
+
+关于页简介与隐私 / 用户协议不在本 patch 范围内：那两项旧版是写死在 Java 里的，
+库里通常没有对应行；代码侧已改成「后台没配就返回空」，小程序会落到自带基线。
+若你们已在后台保存过带学校名或 edu.cn 邮箱的版本，请到后台「内容配置」直接改。
 
 #### `patch-subtitle-asr-poll.sql`（旧库 ASR 字幕必读）
 

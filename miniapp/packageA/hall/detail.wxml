@@ -1,5 +1,6 @@
 <!-- packageA/hall/detail.wxml -->
 <view class="detail-page">
+  <nav-bar title="线上展馆" />
   <view wx:if="{{loading}}" class="page-state-box">
     <text class="page-state-text">加载中…</text>
   </view>

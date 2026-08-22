@@ -1,1 +1,5 @@
-{ "navigationBarTitleText": "书院动态", "enablePullDownRefresh": true }
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "书院动态",
+  "enablePullDownRefresh": true
+}

@@ -101,9 +101,13 @@ public class ProfileService {
     }
 
     private MemberVO toMemberVo(Member member, MemberProfile profile) {
+        // 没填所属机构时接口回填的展示串。原先回填的是「贵州交通职业大学 · 中华文化书院」，
+        // 这才是个人中心顶部打出学校名号的源头——小程序侧把它当占位串归一化了，
+        // 但源头不改，其它调用方（后台、导出）仍会拿到它。
+        // 旧串已落在历史数据里，miniapp/utils/profileForm.js 的 PLACEHOLDER_COLLEGES 继续认它。
         String college = profile != null && profile.getCollege() != null && !profile.getCollege().isBlank()
                 ? profile.getCollege()
-                : "贵州交通职业大学 · 中华文化书院";
+                : "中华文化书院";
         return MemberVO.builder()
                 .id(member.getId())
                 .nickname(member.getNickname())

@@ -72,7 +72,7 @@
 }
 
 /* padding-top 由 60rpx 提到 108rpx，把原来 .seal 的 48rpx 并进来——
-   .seal 的 margin-top 改成 auto 后需要一个保底值，否则小屏（剩余空间为 0）时印章会贴住状态栏。
+   剩余空间改由隔条分配后需要一个保底值，否则小屏（剩余空间为 0）时印章会贴住状态栏。
    并进来之后：空间不足时印章距顶 108+statusBar，与改前的 60+statusBar+48 逐像素一致。 */
 .login-inner {
   position: relative;
@@ -84,6 +84,18 @@
   min-height: 100vh;
   box-sizing: border-box;
 }
+
+/* ── 剩余空间的分配 ──────────────────────────────────────
+   高屏上 .login-inner 的内容撑不满一屏，多出来的空白得有个去处。
+   先前用两个 margin-top:auto（印章上方 / 表单上方）对半分，但 auto 只会均分，
+   中间那段仍留 70~130rpx（随屏高涨），整屏被切成「品牌」「表单」两半，
+   正是截图里圈出来的那块空。改成三根弹性隔条按 3 : 1 : 3 分配：
+   中间只拿七分之一，其余落到顶部光晕与底部波浪上——那两处本就是留白区。
+   空间不足时三根全部塌成 0，各处间距回到固定值，与改前逐像素一致。 */
+.lg-sp { width: 100%; }
+.lg-sp-top { flex-grow: 3; }
+.lg-sp-mid { flex-grow: 1; }
+.lg-sp-bot { flex-grow: 3; }
 
 /* ── 书院篆印 ──────────────────────────────────────────
    印面是方的，就不该再套圆环——旧版把方印塞进 300rpx 的圆里，四角空荡、
@@ -98,10 +110,6 @@
 .seal {
   width: 248rpx; height: 248rpx;
   border-radius: 56rpx;
-  /* 与 .login-form 的 margin-top:auto 配对，把剩余空间上下均分。
-     原来只有下面那一个 auto，剩余空间全堆在品牌区与表单之间，
-     印章由 300 收到 248rpx 后那块空白更明显。 */
-  margin-top: auto;
   position: relative;
   flex-shrink: 0;
   box-sizing: border-box;
@@ -179,7 +187,6 @@
 /* ── 表单 ── */
 .login-form {
   width: 100%;
-  margin-top: auto;
   padding-top: 44rpx;
 }
 .field {
@@ -249,6 +256,8 @@
   background: rgba(255,255,255,.16);
 }
 
+/* 40rpx 是隔条塌成 0 时的保底间距；flex 里外边距不会合并，
+   有剩余空间时它与上面那根隔条相加。 */
 .foot {
   margin-top: 40rpx;
   text-align: center;

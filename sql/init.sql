@@ -723,8 +723,8 @@ INSERT IGNORE INTO `point_rule` (`action`, `points`, `daily_limit`, `status`) VA
 -- 徽章初始数据
 INSERT IGNORE INTO `badge` (`name`, `icon_url`, `description`, `condition_type`, `condition_value`, `status`) VALUES
 ('书院入门',  NULL, '首次登录书院小程序', 'login_count', 1, 1),
-('文化探索者', NULL, '累计积分达到 50 分', 'points', 50, 1),
-('文化传播者', NULL, '累计积分达到 200 分', 'points', 200, 1),
+('探索之星',  NULL, '累计积分达到 50 分', 'points', 50, 1),
+('积分达人',  NULL, '累计积分达到 200 分', 'points', 200, 1),
 ('展馆达人',  NULL, '参观全部 11 个展馆', 'hall_count', 11, 1),
 ('学习先锋',  NULL, '完成 3 门课程学习', 'course_count', 3, 1),
 ('活动达人',  NULL, '参加 5 次活动', 'enroll_count', 5, 1);
@@ -735,9 +735,9 @@ INSERT IGNORE INTO `sys_config` (`config_key`, `config_value`, `remark`) VALUES
 ('site_logo',       '',                           'Logo图片URL'),
 ('ai_daily_limit',  '20',                         '每用户每日AI问答次数上限'),
 ('ai_cache_ttl',    '86400',                      'AI答案缓存时长（秒）'),
-('ai_assistant_welcome', '你好！我是书院文化助手，可以基于书院知识库为你解答文化相关问题。', 'AI 助手欢迎语'),
-('ai_assistant_chips',   '["什么是阳明文化？","屯堡文化有何特色？","龙场悟道讲了什么？"]', 'AI 助手推荐问题'),
-('search_hot_tags',      '["阳明文化","屯堡地戏","红色交通","非遗银饰","知行合一"]', '搜索热词'),
+('ai_assistant_welcome', '你好！我是书院助手，可以基于平台知识库为你解答使用与学习相关的问题。', 'AI 助手欢迎语'),
+('ai_assistant_chips',   '["平台有哪些线上展馆？","怎么报名参加活动？","在哪查看学习足迹？"]', 'AI 助手推荐问题'),
+('search_hot_tags',      '["线上展馆","精品课程","活动报名","学习资源","文创展示"]', '搜索热词'),
 ('wx_appid',        '',                           '微信小程序AppID'),
 ('wx_secret',       '',                           '微信小程序Secret');
 

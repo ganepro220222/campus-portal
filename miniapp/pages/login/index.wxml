@@ -12,6 +12,10 @@
     <view style="height: {{statusBarHeight}}px; flex-shrink: 0;"></view>
 
     <block wx:if="{{!changePasswordMode}}">
+      <!-- 三根弹性隔条把剩余空间按 3 : 1 : 3 分给「印章上方 / 品牌与表单之间 / 表单与页脚之间」。
+           用隔条而不是 margin:auto，是因为 auto 只能均分——均分后中间那段仍有 70~100rpx 的空档，
+           整屏被切成上下两半。压到七分之一后，空白落到顶部光晕与底部波浪上，那里本就该留白。 -->
+      <view class="lg-sp lg-sp-top"></view>
       <view class="seal">
         <image class="seal-img" src="/assets/images/academy-seal-gold.png" mode="aspectFit" />
       </view>
@@ -26,6 +30,7 @@
         <view class="brand-sub serif">中华文化书院</view>
         <view class="brand-en">Academy of Chinese Culture</view>
       </view>
+      <view class="lg-sp lg-sp-mid"></view>
     </block>
 
     <view wx:if="{{changePasswordMode}}" class="cp-badge">
@@ -77,11 +82,6 @@
         <icon name="wechat" size="20" color="#ffffff" />
         <text class="lbtn-tx">微信授权登录</text>
       </button>
-
-      <view class="foot">
-        <text class="foot-b">校园学习与活动服务平台</text>
-        <text class="foot-s">线上线下相结合 · 随时随地学习</text>
-      </view>
     </view>
 
     <!-- 改密表单 -->
@@ -133,6 +133,14 @@
       </button>
 
       <view class="bind-tip muted">修改完成后即可正常使用小程序</view>
+    </view>
+
+    <!-- 页脚移出 .login-form：只有作为 .login-inner 的直接子元素，
+         它上面那根隔条才参与 flex 的剩余空间分配。 -->
+    <view class="lg-sp lg-sp-bot" wx:if="{{!changePasswordMode}}"></view>
+    <view class="foot" wx:if="{{!changePasswordMode}}">
+      <text class="foot-b">校园学习与活动服务平台</text>
+      <text class="foot-s">线上线下相结合 · 随时随地学习</text>
     </view>
   </view>
 </view>

@@ -31,7 +31,7 @@ UPDATE `sys_role` SET `role_name` = '内容审核',
 WHERE `id` = 4;
 
 INSERT IGNORE INTO `member_profile` (`member_id`, `real_name`, `college`, `phone`) VALUES
-(1, '测试学员', '贵州交通职业大学 · 中华文化书院', '13800001234')
+(1, '测试学员', '中华文化书院', '13800001234')
 ON DUPLICATE KEY UPDATE `phone` = VALUES(`phone`), `real_name` = VALUES(`real_name`);
 
 INSERT IGNORE INTO `member_account` (`member_id`, `student_no`, `username`, `password_hash`, `status`) VALUES
@@ -41,7 +41,7 @@ INSERT IGNORE INTO `member_account` (`member_id`, `student_no`, `username`, `pas
 INSERT IGNORE INTO `category` (`id`, `type`, `name`, `sort`, `status`) VALUES
 (1,  'news',   '书院动态', 1, 1),
 (2,  'news',   '活动通知', 2, 1),
-(3,  'news',   '文化传承', 3, 1),
+(3,  'news',   '专题学习', 3, 1),
 (4,  'hall',   '博物馆与校史', 1, 1),
 (5,  'hall',   '红色教育', 2, 1),
 (6,  'hall',   '研学服务', 3, 1),
@@ -50,20 +50,20 @@ INSERT IGNORE INTO `category` (`id`, `type`, `name`, `sort`, `status`) VALUES
 (17, 'hall',   '安全教育', 6, 1),
 (18, 'hall',   '主题宣教', 7, 1),
 (19, 'hall',   '待上线', 8, 1),
-(8,  'course', '阳明文化', 1, 1),
-(9,  'course', '思政必修', 2, 1),
-(10, 'course', '文化传承', 3, 1),
+(8,  'course', '职业素养', 1, 1),
+(9,  'course', '通识必修', 2, 1),
+(10, 'course', '专题学习', 3, 1),
 (11, 'course', '美育素养', 4, 1),
-(12, 'craft',   '非遗工艺', 1, 1),
+(12, 'craft',   '手工技艺', 1, 1),
 (13, 'craft',   '书画艺术', 2, 1),
-(14, 'resource','思政学习', 1, 1),
-(15, 'resource','文化读本', 2, 1);
+(14, 'resource','学习资料', 1, 1),
+(15, 'resource','阅读材料', 2, 1);
 
 -- Banner
 INSERT IGNORE INTO `banner` (`id`, `title`, `description`, `image_url`, `link_type`, `link_value`, `sort`, `status`) VALUES
-(1, '王阳明“知行合一”专题讲座圆满举行', '名家云集，共探黔中阳明心学的当代价值', NULL, 'news', '1', 1, 1),
-(2, '“通途之路”研学品牌正式启动', '线上承载 · 线下研学，打造协同育人新格局', NULL, 'fixed', 'hall', 2, 1),
-(3, '屯堡地戏走进校园 · 六百年非遗活态传承', '沉浸式线上展馆同步上线，可听语音讲解', NULL, 'fixed', 'course', 3, 1);
+(1, '示例：春季学期选课通道开放', '选课时间、操作指引与常见问题说明', NULL, 'news', '1', 1, 1),
+(2, '示例：线上展馆新增语音讲解', '六座展馆支持 VR 漫游与语音导览', NULL, 'fixed', 'hall', 2, 1),
+(3, '示例：职业素养系列课程上线', '沟通表达、数字素养与安全基础', NULL, 'fixed', 'course', 3, 1);
 
 -- 公告
 INSERT IGNORE INTO `announcement` (`id`, `content`, `sort`, `status`, `start_time`, `end_time`) VALUES
@@ -71,36 +71,36 @@ INSERT IGNORE INTO `announcement` (`id`, `content`, `sort`, `status`, `start_tim
 
 -- 新闻
 INSERT IGNORE INTO `news` (`id`, `title`, `summary`, `content`, `category_id`, `status`, `view_count`, `publish_time`) VALUES
-(1, '中华文化书院举办王阳明“知行合一”专题讲座',
- '月五日，贵州交通职业大学中华文化书院在明德讲堂举办专题讲座，深入阐释阳明心学。',
- '主讲人结合黔中文化与当代育人实践，指出阳明心学“知行合一”的理念，对于新时代青年学子立德修身、笃行实干具有重要的现实意义。现场互动热烈，师生纷纷表示受益匪浅。\n\n据悉，本次讲座是书院“马院 + 书院”协同育人系列活动之一，后续还将依托云端书院平台陆续推出线上课程与线上展馆。',
+(1, '示例：云端书院小程序上线试运行',
+ '示例内容。平台面向师生开放，展馆、课程、资源、活动四个模块均可正常使用。',
+ '示例内容，仅用于演示列表与详情页排版，正式内容请在管理后台发布。\n\n本次上线包含线上展馆 VR 导览、课程学习与进度记录、学习资源下载、活动在线报名四项功能；个人中心可查看学习足迹、收藏与报名凭证。',
  1, 'published', 1234, '2026-06-05 10:00:00'),
-(2, '“通途之路”研学品牌启动仪式在我校举行',
- '研学品牌正式启动，打造协同育人新格局。',
- '“通途之路”研学品牌聚焦交通文化与红色传承，线上线下联动开展。',
+(2, '示例：线上展馆新增语音讲解',
+ '示例内容。部分展馆已支持语音导览。',
+ '示例内容。进入展馆详情页后可直接跳转 VR 全景，配合图文与语音讲解浏览。',
  2, 'published', 980, '2026-06-03 09:00:00'),
-(3, '屯堡地戏走进校园：非遗活态传承公开课开讲',
- '六百年江南遗风走进课堂。',
- '屯堡地戏被誉为“戏剧活化石”，本次公开课带领师生沉浸式体验非遗魅力。',
+(3, '示例：课程中心支持自动字幕',
+ '示例内容。部分课程可在播放页开启字幕。',
+ '示例内容。字幕由后台生成后随课程一同下发，播放页可切换开关。',
  3, 'published', 1500, '2026-06-01 14:00:00'),
-(4, '阳明心学十二讲课程上线，欢迎选学',
- '线上课程开放选学。',
- '课程围绕心即理、知行合一、致良知三大命题展开。',
+(4, '示例：职业素养系列课程开放选学',
+ '示例内容。课程已开放选学。',
+ '示例内容。系列课程围绕沟通表达、数字素养与安全基础展开，支持进度续播。',
  1, 'published', 860, '2026-05-28 08:00:00'),
-(5, '红色交通史主题展在校史馆开展',
- '校史馆主题展开展。',
- '展览回顾贵州交通发展脉络与红色记忆。',
+(5, '示例：学习资源下载专区上线',
+ '示例内容。常用资料已归类整理。',
+ '示例内容。资源支持在线预览与下载，下载记录可在个人中心查看。',
  3, 'published', 742, '2026-05-25 10:00:00'),
-(6, '关于开展 2026 年传统文化系列研学活动的通知',
- '传统文化研学活动通知。',
- '活动面向全校师生，详情见活动报名页。',
+(6, '示例：关于完善个人资料的提示',
+ '示例内容。建议补全姓名与联系方式。',
+ '示例内容。资料完善后，活动报名与通知送达会更顺畅。',
  2, 'published', 655, '2026-05-20 09:00:00');
 
 -- 展馆（11 馆 — 校方 VR 展馆清单）
 INSERT IGNORE INTO `hall` (`id`, `name`, `short_name`, `intro`, `vr_url`, `category_id`, `sort`, `status`) VALUES
 (1,  '贵州交通博物馆·教育馆', '交通博物馆', '贵州交通发展历程与教育成果数字化展陈，支持 VR 全景漫游与图文介绍。', 'https://roma.720yun.com/vr/515a9635070ca212/', 4, 1, 1),
-(2,  '校史馆', '校史馆', '回顾贵州交通职业大学办学历程与重要里程碑，传承校训校风。', 'https://roma.720yun.com/vr/b5b7196093f3c25a/', 4, 2, 1),
-(3,  '贵州交通红色教育基地', '红色教育基地', '弘扬长征精神与交通红色基因，开展沉浸式红色文化育人。', 'https://roma.720yun.com/vr/59e140eb05f9e134/', 5, 3, 1),
+(2,  '校史馆', '校史馆', '学校办学历程与重要发展节点的线上展陈，支持 VR 全景漫游与图文介绍。', 'https://roma.720yun.com/vr/b5b7196093f3c25a/', 4, 2, 1),
+(3,  '贵州交通红色教育基地', '红色教育基地', '基地实体展陈的线上导览入口，支持 VR 全景漫游与图文介绍。', 'https://roma.720yun.com/vr/59e140eb05f9e134/', 5, 3, 1),
 (4,  '交旅融合研学服务中心', '交旅研学', '交旅融合主题研学服务展示，连接线上云游与线下研学实践。', 'https://roma.720yun.com/vr/96cb6946cefd5b99/', 6, 4, 1),
 (5,  '学生素质发展中心', '素质发展中心', '学生综合素质培养成果与活动空间线上展示。', 'https://www.720yun.com/vr/374j5dyvrf2', 7, 5, 1),
 (6,  '学生科普体验中心', '科普体验中心', '交通科技与学生科普互动体验场景，激发科学探索兴趣。', 'https://www.720yun.com/vr/7a0j5dyksk9', 7, 6, 1),
@@ -124,18 +124,18 @@ INSERT IGNORE INTO `hall_media` (`hall_id`, `section_id`, `media_type`, `url`, `
 
 -- 课程
 INSERT IGNORE INTO `course` (`id`, `name`, `intro`, `category_id`, `target_audience`, `duration_minutes`, `start_time`, `subtitle_status`, `status`) VALUES
-(1, '阳明心学十二讲', '从龙场悟道到致良知，系统讲授阳明心学的精髓与当代价值。', 8, '全校学生', 540, '2026-06-01 00:00:00', 'ready', 1),
-(2, '长征精神与红色交通史', '重温红色交通线，传承长征精神，赓续红色血脉。', 9, '全校学生', 360, '2026-05-01 00:00:00', 'none', 1),
-(3, '屯堡文化探源', '走进六百年江南遗风，解读屯堡地戏与石头建筑的活态传承。', 10, '全校学生', 270, '2026-04-01 00:00:00', 'none', 1),
-(4, '贵州非遗技艺赏析', '蜡染、银饰、地戏……感受多彩黔中的匠心与巧思。', 10, '全校学生', 450, '2026-03-01 00:00:00', 'none', 1),
-(5, '中华书法入门', '笔墨纸砚，从执笔运锋到临帖创作，涵养审美与心性。', 11, '全校学生', 540, '2026-02-01 00:00:00', 'none', 1);
+(1, '示例课程：沟通表达十二讲', '示例内容。从结构化表达到公开演讲，逐步建立表达能力。', 8, '全校学生', 540, '2026-06-01 00:00:00', 'ready', 1),
+(2, '示例课程：平台使用入门', '示例内容。一课讲清展馆导览、课程学习、资源下载与活动报名的完整流程。', 9, '全校学生', 360, '2026-05-01 00:00:00', 'none', 1),
+(3, '示例课程：数字素养基础', '示例内容。信息检索、资料整理与网络安全常识。', 10, '全校学生', 270, '2026-04-01 00:00:00', 'none', 1),
+(4, '示例课程：手工技艺赏析', '示例内容。蜡染、银饰、木作……了解手工技艺的材料与工序。', 10, '全校学生', 450, '2026-03-01 00:00:00', 'none', 1),
+(5, '示例课程：书法入门', '示例内容。笔墨纸砚，从执笔运锋到临帖创作，涵养审美与心性。', 11, '全校学生', 540, '2026-02-01 00:00:00', 'none', 1);
 
 -- 活动（含报名时间窗）
 INSERT IGNORE INTO `activity` (`id`, `title`, `intro`, `location`, `start_time`, `enroll_start_time`, `enroll_end_time`, `quota`, `enrolled_count`, `status`, `need_review`) VALUES
-(1, '“知行合一”阳明文化专题讲座', '讲座', '明德讲堂', '2026-06-15 14:30:00', '2026-01-01 00:00:00', '2026-06-14 23:59:59', 300, 186, 'published', 0),
-(2, '“通途之路”研学品牌启动仪式', '活动', '学术报告厅', '2026-06-20 09:00:00', '2026-01-01 00:00:00', '2026-06-19 23:59:59', 240, 240, 'published', 0),
-(3, '屯堡地戏非遗活态传承公开课', '公开课', '非遗技艺馆', '2026-06-25 15:00:00', '2026-01-01 00:00:00', '2026-06-24 23:59:59', 120, 88, 'published', 1),
-(4, '红色交通史主题研学行', '研学', '遵义会议会址', '2026-07-02 08:30:00', '2026-01-01 00:00:00', '2026-07-01 23:59:59', 80, 56, 'published', 0);
+(1, '示例活动：职业规划专题讲座', '讲座', '明德讲堂', '2026-06-15 14:30:00', '2026-01-01 00:00:00', '2026-06-14 23:59:59', 300, 186, 'published', 0),
+(2, '示例活动：平台使用说明会', '活动', '学术报告厅', '2026-06-20 09:00:00', '2026-01-01 00:00:00', '2026-06-19 23:59:59', 240, 240, 'published', 0),
+(3, '示例活动：手工技艺体验公开课', '公开课', '实训中心', '2026-06-25 15:00:00', '2026-01-01 00:00:00', '2026-06-24 23:59:59', 120, 88, 'published', 1),
+(4, '示例活动：校外研学实践行', '研学', '校外实践基地', '2026-07-02 08:30:00', '2026-01-01 00:00:00', '2026-07-01 23:59:59', 80, 56, 'published', 0);
 
 UPDATE `activity` SET
   `enroll_start_time` = '2026-01-01 00:00:00',
@@ -164,9 +164,9 @@ INSERT IGNORE INTO `home_recommend` (`id`, `module_type`, `target_id`, `sort`, `
 
 -- 文创
 INSERT IGNORE INTO `craft` (`id`, `name`, `intro_zh`, `intro_en`, `category_id`, `sort`, `status`) VALUES
-(1, '苗族银饰·蝴蝶冠', '贵州苗族传统银饰，以蝴蝶妈妈为图腾，寓意生命与美好。', 'Traditional Miao silver headdress featuring butterfly motifs.', 12, 1, 1),
-(2, '蜡染壁挂·山水阳明', '以蜡染工艺呈现龙场山水与阳明先生悟道意境。', 'Batik wall hanging depicting Yangming\'s enlightenment landscape.', 12, 2, 1),
-(3, '屯堡石雕·地戏面具', '屯堡传统石雕地戏面具，六百年非遗活态传承。', 'Tunpu stone-carved opera mask, living heritage craft.', 12, 3, 1);
+(1, '示例文创：银饰·蝴蝶冠', '示例内容。以蝴蝶为主题的传统银饰，錾刻与掐丝工艺。', 'Sample item. Traditional silver headdress featuring butterfly motifs.', 12, 1, 1),
+(2, '示例文创：蜡染壁挂·山水', '示例内容。以蜡染工艺呈现山水意境，靛蓝与白坯的层次变化。', 'Sample item. Batik wall hanging depicting a landscape scene.', 12, 2, 1),
+(3, '示例文创：石雕·戏剧面具', '示例内容。传统石雕面具，线条粗犷，保留手工凿痕。', 'Sample item. Stone-carved opera mask, traditional craft.', 12, 3, 1);
 
 INSERT IGNORE INTO `craft_image` (`craft_id`, `image_url`, `angle_label`, `sort`) VALUES
 (1, 'https://cdn.example.com/craft/silver-1.jpg', '正面', 1),
@@ -175,27 +175,27 @@ INSERT IGNORE INTO `craft_image` (`craft_id`, `image_url`, `angle_label`, `sort`
 (3, 'https://cdn.example.com/craft/mask-1.jpg', '正面', 1);
 
 INSERT IGNORE INTO `craft_contact` (`craft_id`, `phone`, `wechat`, `email`) VALUES
-(1, '0851-12345678', 'shuyuan_craft', 'craft@gzjtzy.edu.cn'),
-(2, '0851-12345678', 'shuyuan_craft', 'craft@gzjtzy.edu.cn'),
-(3, '0851-12345678', 'shuyuan_craft', 'craft@gzjtzy.edu.cn');
+(1, '0851-12345678', 'shuyuan_craft', 'craft@example.com'),
+(2, '0851-12345678', 'shuyuan_craft', 'craft@example.com'),
+(3, '0851-12345678', 'shuyuan_craft', 'craft@example.com');
 
 -- 学习资源
 INSERT IGNORE INTO `resource` (`id`, `name`, `file_url`, `preview_url`, `file_type`, `file_size_kb`, `category_id`, `download_count`, `status`) VALUES
-(1, '阳明心学导读.pdf', 'https://cdn.example.com/res/yangming.pdf', 'https://cdn.example.com/res/yangming.pdf', 'pdf', 2048, 14, 128, 1),
-(2, '长征精神学习课件.ppt', 'https://cdn.example.com/res/changzheng.ppt', NULL, 'ppt', 5120, 14, 86, 1),
-(3, '屯堡文化读本.doc', 'https://cdn.example.com/res/tunpu.doc', NULL, 'word', 1024, 15, 64, 1),
-(4, '非遗技艺赏析视频.mp4', 'https://cdn.example.com/res/feiyi.mp4', 'https://cdn.example.com/res/feiyi.mp4', 'mp4', 15360, 15, 42, 1);
+(1, '示例资料：沟通表达导读.pdf', 'https://cdn.example.com/res/sample-1.pdf', 'https://cdn.example.com/res/sample-1.pdf', 'pdf', 2048, 14, 128, 1),
+(2, '示例资料：平台使用手册.ppt', 'https://cdn.example.com/res/sample-2.ppt', NULL, 'ppt', 5120, 14, 86, 1),
+(3, '示例资料：手工技艺入门读本.doc', 'https://cdn.example.com/res/sample-3.doc', NULL, 'word', 1024, 15, 64, 1),
+(4, '示例资料：手工技艺赏析视频.mp4', 'https://cdn.example.com/res/sample-4.mp4', 'https://cdn.example.com/res/sample-4.mp4', 'mp4', 15360, 15, 42, 1);
 
 -- 搜索索引（从已发布内容同步）
 INSERT IGNORE INTO `search_index` (`target_type`, `target_id`, `title`, `summary`, `status`, `publish_time`) VALUES
-('news', 1, '中华文化书院举办王阳明“知行合一”专题讲座', '阳明心学专题讲座', 1, '2026-06-05 10:00:00'),
-('news', 2, '“通途之路”研学品牌启动仪式在我校举行', '研学品牌启动', 1, '2026-06-03 09:00:00'),
+('news', 1, '示例：云端书院小程序上线试运行', '平台上线试运行', 1, '2026-06-05 10:00:00'),
+('news', 2, '示例：线上展馆新增语音讲解', '展馆语音导览', 1, '2026-06-03 09:00:00'),
 ('hall', 1, '贵州交通博物馆·教育馆', '交通博物馆 VR 展馆', 1, '2026-01-01 00:00:00'),
 ('hall', 2, '校史馆', '校史 VR 展馆', 1, '2026-01-01 00:00:00'),
 ('hall', 3, '贵州交通红色教育基地', '红色教育 VR 展馆', 1, '2026-01-01 00:00:00'),
-('craft', 1, '苗族银饰·蝴蝶冠', '贵州苗族传统银饰', 1, '2026-01-01 00:00:00'),
-('course', 1, '阳明心学十二讲', '系统讲授阳明心学', 1, '2026-06-01 00:00:00'),
-('resource', 1, '阳明心学导读.pdf', 'PDF 学习资料', 1, '2026-01-01 00:00:00');
+('craft', 1, '示例文创：银饰·蝴蝶冠', '传统银饰示例', 1, '2026-01-01 00:00:00'),
+('course', 1, '示例课程：沟通表达十二讲', '表达能力系列课', 1, '2026-06-01 00:00:00'),
+('resource', 1, '示例资料：沟通表达导读.pdf', 'PDF 学习资料', 1, '2026-01-01 00:00:00');
 
 -- 个人中心演示数据（测试学员 member_id=1）
 INSERT IGNORE INTO `favorite` (`member_id`, `target_type`, `target_id`) VALUES
@@ -205,12 +205,12 @@ INSERT IGNORE INTO `favorite` (`member_id`, `target_type`, `target_id`) VALUES
 (1, 'course', 1);
 
 INSERT IGNORE INTO `enroll` (`id`, `activity_id`, `member_id`, `name`, `phone`, `college`, `status`, `voucher_code`) VALUES
-(1, 1, 1, '测试学员', '13800001234', '贵州交通职业大学 · 中华文化书院', 'approved', 'V20260001'),
-(2, 3, 1, '测试学员', '13800001234', '贵州交通职业大学 · 中华文化书院', 'pending', NULL);
+(1, 1, 1, '测试学员', '13800001234', '中华文化书院', 'approved', 'V20260001'),
+(2, 3, 1, '测试学员', '13800001234', '中华文化书院', 'pending', NULL);
 
 INSERT IGNORE INTO `download_record` (`member_id`, `resource_id`, `file_name`, `downloaded_at`) VALUES
-(1, 1, '阳明心学导读.pdf', '2026-06-10 14:20:00'),
-(1, 2, '长征精神学习课件.ppt', '2026-06-08 09:15:00');
+(1, 1, '示例资料：沟通表达导读.pdf', '2026-06-10 14:20:00'),
+(1, 2, '示例资料：平台使用手册.ppt', '2026-06-08 09:15:00');
 
 INSERT IGNORE INTO `event_log` (`member_id`, `event_type`, `target_type`, `target_id`, `created_at`) VALUES
 (1, 'view', 'news', 1, '2026-06-12 10:00:00'),
@@ -222,29 +222,26 @@ INSERT IGNORE INTO `event_log` (`member_id`, `event_type`, `target_type`, `targe
 INSERT IGNORE INTO `member_badge` (`member_id`, `badge_id`, `achieved_at`) VALUES
 (1, 1, '2026-06-01 08:00:00');
 
--- 关联小程序（演示数据；前 3 条为 jump 占位 AppID，待甲方替换后执行 sync-navigate-appids.js）
+-- 关联小程序。
+-- 真实存在的关联小程序**只有「通途星」一个**，且 AppID 尚未拿到，先留占位符；
+-- 拿到后填进 miniapp/config/navigate-appids.json 并执行 scripts/sync-navigate-appids.js。
+-- 其余两条是演示条目，用来展示列表的两种形态（跳转 / 图文），不是真实学院。
+-- 早先这里铺了 11 个学院名，其中「马克思主义学院」等既不是真实关联对象，
+-- 又正好撞在要回避的表述上——首页「关联应用」把它们直接显示了出来。
 INSERT IGNORE INTO `college_app` (`id`, `name`, `description`, `sort`, `status`, `content_type`, `appid`, `path`) VALUES
-(1,  '马克思主义学院', '马院 + 书院协同育人', 1,  1, 'jump', 'wxPLACEHOLDER001', 'pages/index/index'),
-(2,  '轨道交通学院',   '轨道牵引 · 智慧运维', 2,  1, 'jump', 'wxPLACEHOLDER002', 'pages/index/index'),
-(3,  '智能交通学院',   '车路协同 · 智慧出行', 3,  1, 'jump', 'wxPLACEHOLDER003', 'pages/index/index'),
-(4,  '汽车工程学院',   '新能源 · 智能网联',   4,  1, 'manual', NULL, NULL),
-(5,  '路桥工程学院',   '通途之路 · 大国工匠', 5,  1, 'manual', NULL, NULL),
-(6,  '交通运输学院',   '运输组织 · 物流管理', 6,  1, 'manual', NULL, NULL),
-(7,  '航运航空学院',   '海空联运 · 蓝色梦想', 7,  1, 'manual', NULL, NULL),
-(8,  '建筑工程学院',   '匠筑营造 · 品质人居', 8,  1, 'manual', NULL, NULL),
-(9,  '信息工程学院',   '数字技术 · 智能应用', 9,  1, 'manual', NULL, NULL),
-(10, '经济管理学院',   '经世致用 · 知行合一', 10, 1, 'manual', NULL, NULL),
-(11, '人文艺术学院',   '以美育人 · 以文化人', 11, 1, 'manual', NULL, NULL);
+(1, '通途星',         '关联小程序 · AppID 待配置',   1, 1, 'jump',   'wxPLACEHOLDER001', 'pages/index/index'),
+(2, '示例关联应用 A', '示例条目 · 用于演示列表布局', 2, 1, 'manual', NULL, NULL),
+(3, '示例关联应用 B', '示例条目 · 用于演示跳转形态', 3, 1, 'jump',   'wxPLACEHOLDER002', 'pages/index/index');
 
 -- AI 知识库演示资料（关键词检索，无 API Key 亦可演示 Fallback 回答）
 INSERT IGNORE INTO `knowledge_doc` (`id`, `title`, `file_url`, `source_type`, `char_count`, `chunk_count`, `status`, `uploaded_by`, `created_at`) VALUES
-(1, '阳明心学导读', 'manual://阳明心学导读', 'manual', 420, 3, 'ready', 1, '2026-07-01 10:00:00'),
+(1, '平台功能说明', 'manual://平台功能说明', 'manual', 420, 3, 'ready', 1, '2026-07-01 10:00:00'),
 (2, '云端书院简介', 'manual://云端书院简介', 'manual', 380, 2, 'ready', 1, '2026-07-01 10:05:00');
 
 INSERT IGNORE INTO `knowledge_chunk` (`id`, `doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`) VALUES
-(1, 1, '阳明心学是明代思想家王阳明创立的哲学体系，核心命题为「心即理」「知行合一」「致良知」。书院课程与展馆中常以此阐释修身齐家、经世致用的育人理念。', 0, '阳明心学 知行合一 致良知', 72),
-(2, 1, '「知行合一」强调认识与实践不可分离：知是行的主意，行是知的功夫。云端书院将阳明文化融入思政课程、研学活动与线上展馆讲解，引导学生在实践中体悟传统文化。', 1, '知行合一 阳明文化 思政', 78),
-(3, 1, '参观建议：可先浏览「阳明文化」线上展馆，再学习配套课程《阳明心学入门》，结合书院组织的读书沙龙与研学活动加深理解。', 2, '阳明文化 展馆 课程', 58),
-(4, 2, '云端书院是贵州交通职业大学中华文化书院的线上思政平台，依托「马院+书院」协同育人模式，将新闻资讯、线上展馆、文创展示、课程学习、活动报名与 AI 文化问答整合于一体。', 0, '云端书院 中华文化书院 思政', 82),
-(5, 2, '平台特色包括：11 座沉浸式线上展馆、精品文化课程、非遗文创双语展示、活动在线报名，以及基于书院知识库的 AI 文化助手（每日限次，内容经安全审核）。', 1, '线上展馆 AI 文化助手 活动报名', 72);
+(1, 1, '线上展馆：在「展馆」页选择展馆后进入详情，点「进入 VR」可打开 720 全景漫游；部分展馆配有图文与语音讲解，支持收藏与生成分享海报。', 0, '展馆 VR 全景 讲解', 72),
+(2, 1, '课程学习：在「课程」页选课后进入播放页，进度会自动记录，下次从上次位置续播；部分课程支持字幕，可在播放页开关。', 1, '课程 播放 进度 字幕', 78),
+(3, 1, '活动报名：在「报名」页选择活动，报名成功后可在个人中心查看凭证码；部分活动需管理员审核，通过后才会生成凭证。', 2, '活动 报名 凭证 审核', 58),
+(4, 2, '云端书院是面向校园的线上学习与活动服务平台，整合线上展馆、课程学习、资源下载、活动报名、文创展示与智能问答六个模块。', 0, '云端书院 平台 模块', 82),
+(5, 2, '账号由管理员统一导入，不开放自助注册；首次微信登录需绑定管理员分配的账号与密码。智能问答每日有次数上限，回答仅供参考。', 1, '账号 登录 绑定 智能问答', 72);
 

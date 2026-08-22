@@ -22,7 +22,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("云端书院 API")
-                        .description("贵州交通职业大学 · 云端书院小程序与管理后台接口。"
+                        .description("云端书院小程序与管理后台接口。"
                                 + "小程序前缀 /api/v1；管理端前缀 /api/v1/admin。"
                                 + "需登录接口在 Header 携带 Authorization: Bearer {token}。")
                         .version("1.0")

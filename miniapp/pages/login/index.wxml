@@ -60,10 +60,10 @@
       <view class="field">
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
-          class="field-input {{focusField === 'password' ? 'on' : ''}}"
+          class="field-input has-eye {{focusField === 'password' ? 'on' : ''}}"
           placeholder="请输入密码"
           placeholder-class="field-ph"
-          password
+          password="{{!pwdVisible.password}}"
           value="{{password}}"
           data-field="password"
           bindinput="onInput"
@@ -71,6 +71,9 @@
           bindblur="onFieldBlur"
           maxlength="50"
         />
+        <view class="field-eye" data-field="password" bindtap="onTogglePwd" hover-class="field-eye-hover">
+          <icon name="{{pwdVisible.password ? 'eye-off' : 'eye'}}" size="18" color="rgba(214,224,248,0.7)" />
+        </view>
       </view>
 
       <button class="lbtn lbtn-primary" bindtap="{{bindMode ? 'onBindWxAccount' : 'onAccountLogin'}}" loading="{{loading}}" disabled="{{loading}}">
@@ -93,10 +96,10 @@
       <view class="field">
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
-          class="field-input {{focusField === 'oldPassword' ? 'on' : ''}}"
+          class="field-input has-eye {{focusField === 'oldPassword' ? 'on' : ''}}"
           placeholder="请输入当前密码（初始密码）"
           placeholder-class="field-ph"
-          password
+          password="{{!pwdVisible.oldPassword}}"
           value="{{oldPassword}}"
           data-field="oldPassword"
           bindinput="onInput"
@@ -104,14 +107,17 @@
           bindblur="onFieldBlur"
           maxlength="50"
         />
+        <view class="field-eye" data-field="oldPassword" bindtap="onTogglePwd" hover-class="field-eye-hover">
+          <icon name="{{pwdVisible.oldPassword ? 'eye-off' : 'eye'}}" size="18" color="rgba(214,224,248,0.7)" />
+        </view>
       </view>
       <view class="field">
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
-          class="field-input {{focusField === 'newPassword' ? 'on' : ''}}"
+          class="field-input has-eye {{focusField === 'newPassword' ? 'on' : ''}}"
           placeholder="请输入新密码"
           placeholder-class="field-ph"
-          password
+          password="{{!pwdVisible.newPassword}}"
           value="{{newPassword}}"
           data-field="newPassword"
           bindinput="onInput"
@@ -119,14 +125,17 @@
           bindblur="onFieldBlur"
           maxlength="50"
         />
+        <view class="field-eye" data-field="newPassword" bindtap="onTogglePwd" hover-class="field-eye-hover">
+          <icon name="{{pwdVisible.newPassword ? 'eye-off' : 'eye'}}" size="18" color="rgba(214,224,248,0.7)" />
+        </view>
       </view>
       <view class="field">
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
-          class="field-input {{focusField === 'confirmPassword' ? 'on' : ''}}"
+          class="field-input has-eye {{focusField === 'confirmPassword' ? 'on' : ''}}"
           placeholder="请再次输入新密码"
           placeholder-class="field-ph"
-          password
+          password="{{!pwdVisible.confirmPassword}}"
           value="{{confirmPassword}}"
           data-field="confirmPassword"
           bindinput="onInput"
@@ -134,6 +143,9 @@
           bindblur="onFieldBlur"
           maxlength="50"
         />
+        <view class="field-eye" data-field="confirmPassword" bindtap="onTogglePwd" hover-class="field-eye-hover">
+          <icon name="{{pwdVisible.confirmPassword ? 'eye-off' : 'eye'}}" size="18" color="rgba(214,224,248,0.7)" />
+        </view>
       </view>
 
       <view class="cp-policy">新密码须至少 8 位，且包含字母与数字</view>

@@ -16,7 +16,15 @@ Page({
     wxBindToken: '',
     // 当前聚焦的输入框字段名。深色表单上两格长得一样，
     // 没有聚焦态就只剩一个光标可辨认（样式见 .field-input.on）。
-    focusField: ''
+    focusField: '',
+    /* 各密码框的显隐开关。逐个存而不是共用一个：改密页有三格
+       （当前 / 新 / 确认），"新密码"与"确认密码"往往要同时看着比对。 */
+    pwdVisible: {
+      password: false,
+      oldPassword: false,
+      newPassword: false,
+      confirmPassword: false
+    }
   },
 
   onLoad(options) {
@@ -58,6 +66,16 @@ Page({
     if (this.data.focusField === e.currentTarget.dataset.field) {
       this.setData({ focusField: '' })
     }
+  },
+
+  /* 点眼睛会让输入框失焦（小程序里点任何 view 都会），因而聚焦态那圈金边会消失。
+     没有去做"切完再自动聚回来"：`focus` 属性得靠 false→true 翻转触发，
+     和这里的 blur 清理逻辑绕在一起容易把键盘搞出闪烁，
+     而显隐通常是打完或打之前点一下，不是边打边点。 */
+  onTogglePwd(e) {
+    const field = e.currentTarget.dataset.field
+    if (!field || !(field in this.data.pwdVisible)) return
+    this.setData({ ['pwdVisible.' + field]: !this.data.pwdVisible[field] })
   },
 
   async onWxLogin() {

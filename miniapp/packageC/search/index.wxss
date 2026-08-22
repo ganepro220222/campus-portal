@@ -14,8 +14,11 @@
 .sbox {
   flex: 1;
   height: 74rpx;
-  background: var(--sky-3);
-  border: 1rpx solid var(--line);
+  /* 与首页搜索框同一组值：这条也坐在近白的 .sbar 上，
+     用 --sky-3 / --line 时边界与白底只差 1.08 / 1.18，几乎看不见。
+     这里写死而不动那两个 token —— 它们在别处（浅底分隔线）是合适的。 */
+  background: #EAF0F9;
+  border: 1rpx solid #D3DCEC;
   border-radius: 37rpx;
   display: flex;
   align-items: center;

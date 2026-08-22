@@ -64,15 +64,20 @@
   flex: 1;
   min-width: 0;
   height: 72rpx;
-  background: #F2F7FC;
-  border: 1rpx solid #E7ECF6;
+  /* 搜索框坐在纯白 header 上，原来填充 #F2F7FC 与白底只差 1.08:1、
+     描边 #E7ECF6 只差 1.18:1——描边其实一直都在，只是两个颜色都太接近白，
+     整个框几乎看不出边界。填充与描边各加深一档（1.15 / 1.38），
+     框的轮廓清楚了，又不至于变成"描边输入框"那种硬边。
+     再深就压过 header 里那两个图标的分量了。 */
+  background: #EAF0F9;
+  border: 1rpx solid #D3DCEC;
   border-radius: 36rpx;
   display: flex;
   align-items: center;
   padding: 0 24rpx;
   gap: 14rpx;
 }
-.search-bar:active { background: #EDF3FB; }
+.search-bar:active { background: #E1E9F5; }
 .search-placeholder { font-size: 26rpx; color: #67708C; }
 
 /* ── 可滚动内容区 ── */
@@ -262,17 +267,26 @@
   box-shadow: 0 12rpx 28rpx rgba(31, 40, 90, 0.16);
   transition: transform 0.15s;
 }
- /* 五格同属蓝色系。第五格原来是金色（#C0A24E → #9C7C2E）：
-   金色是全站的强调色——印章、徽记、下面那张「精品好物」大卡都用它，
-   放在五个平级入口中的一个上，会让「报名」看着像主操作，而它并不是；
-   同一屏里两处大面积金色也互相削弱。改成同族蓝，金色留给真正该强调的地方。
-   明度上取 e1~e3 那一档而不是继续往浅了排——e4 的 #6E8FCB 配白色图标
-   对比度已经是这排里最低的，再浅就该看不清了。 */
-.e1 { background: linear-gradient(135deg, #3F57B5, #2B356E); }
-.e2 { background: linear-gradient(135deg, #4E7CC4, #2F5E92); }
-.e3 { background: linear-gradient(135deg, #5867B8, #39418A); }
-.e4 { background: linear-gradient(135deg, #6E8FCB, #46639E); }
-.e5 { background: linear-gradient(135deg, #5C79C8, #34479B); }
+ /* ── 五个入口的色阶 ──────────────────────────────────────
+   旧版是五个几乎一样的蓝（#3F57B5 / #4E7CC4 / #5867B8 / #6E8FCB / #5C79C8），
+   100rpx 的尺寸下分不出来，看着像没调准而不像有意为之；早先第五格还是金色，
+   金是全站的强调色（印章、徽记、精品好物大卡），放在五个平级入口之一上会让
+   「报名」看着像主操作。
+
+   现在改成**等对比度的色相扫描**：色相从 238° 走到 198°（40° 跨度，
+   由品牌蓝起、到深青止，全程仍在冷色一族，不会散成一堆杂色），
+   而每一格的明度是**按"白色图标落在它上面的对比度"反推出来的**，
+   五格统一钉在 6.2:1 —— HSL 的 L 不等于人眼感知亮度（同样 L，青色比紫色亮得多），
+   直接扫色相会让越靠后的格子图标越淡。等对比度之后五格视觉分量一致，
+   差别只在色相，既拉得开又不跳。
+
+   实测白色图标对比度：6.21 / 6.16 / 6.20 / 6.23 / 6.14（图形类要求 ≥3）。
+   数值由 scratchpad 的色板脚本二分算出，改任一格都要重算，别手调。 */
+.e1 { background: linear-gradient(135deg, #5256B8, #383B90); }
+.e2 { background: linear-gradient(135deg, #475CAE, #324280); }
+.e3 { background: linear-gradient(135deg, #3F619A, #2A436D); }
+.e4 { background: linear-gradient(135deg, #39648B, #24435D); }
+.e5 { background: linear-gradient(135deg, #33687E, #1F4150); }
 /* 后台可以填任意长度的名字，超出格宽就省略号，不许挤到邻格上去 */
 .entry-label {
   font-size: 23rpx;

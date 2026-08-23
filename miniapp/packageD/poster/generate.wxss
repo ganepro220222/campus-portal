@@ -155,7 +155,7 @@
   color: #67708C;
   white-space: nowrap;
 }
-.p-qr-sub { color: #A9B2C8; }
+.p-qr-sub { color: #67708C; }
 .p-foot-tx { display: flex; flex-direction: column; gap: 6rpx; }
 .pf-1 { font-size: 22rpx; color: #fff; font-weight: 600; }
 .pf-2 { font-size: 19rpx; color: rgba(232, 240, 252, 0.75); }

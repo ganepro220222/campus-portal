@@ -76,9 +76,8 @@
   font-size: 22rpx;
 }
 .fb-img-fail { background: rgba(180, 60, 60, 0.55); }
-/* 圆点由 40rpx（20pt）放到 48rpx（24pt），再用一层透明的 ::after 把可点范围
-   外扩到 72rpx（36pt）——删除键不宜做得太大（误删比难点更糟），
-   但 20pt 确实偏小。缩略图是 168rpx，72rpx 的热区占角上不到一半，不会抢走看图的点击。 */
+/* 可见圆点仍 48rpx；透明 ::after 外扩到 88rpx（44pt）热区——
+   删除键不宜占满缩略图（误删比难点更糟），168rpx 角上 88rpx 仍不到一半宽。 */
 .fb-img-del {
   position: absolute;
   top: 6rpx;
@@ -95,7 +94,7 @@
 .fb-img-del::after {
   content: "";
   position: absolute;
-  left: -12rpx; top: -12rpx; right: -12rpx; bottom: -12rpx;
+  left: -20rpx; top: -20rpx; right: -20rpx; bottom: -20rpx;
 }
 .fb-img-add {
   display: flex;

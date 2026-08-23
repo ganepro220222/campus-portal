@@ -78,6 +78,9 @@ jobs:
       - name: Text contrast check
         run: npm run check:contrast
 
+      - name: Touch target check
+        run: npm run check:touch-targets
+
       - name: Miniapp utils tests
         run: npm run test:miniapp-utils
 

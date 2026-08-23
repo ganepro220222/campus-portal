@@ -220,13 +220,14 @@
 /* 密码框右侧要给眼睛键让位，左右内边距对称 */
 .field-input.has-eye { padding-right: 92rpx; }
 
-/* 眼睛键：与左侧图标镜像对称（left:30 ↔ right:30），
-   盒子做到 72rpx（36pt）——图标本身还是 18，靠留白撑开可点范围。 */
+/* 眼睛键：与左侧图标镜像对称，图标中心仍距右 50rpx。
+   热区 88rpx（44pt）——图标本身还是 18，靠留白撑开可点范围，观感不变。
+   几何：right:22 + margin-right:-16 → 右缘 6rpx，中心 6+44=50。 */
 .field-eye {
   position: absolute;
-  right: 30rpx; top: 50%;
+  right: 22rpx; top: 50%;
   transform: translateY(-50%);
-  width: 72rpx; height: 72rpx;
+  width: 88rpx; height: 88rpx;
   margin-right: -16rpx;
   display: flex; align-items: center; justify-content: center;
   z-index: 3;

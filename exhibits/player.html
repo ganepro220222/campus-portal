@@ -2992,16 +2992,6 @@ window.__SY_TEST__ = {
       initialCamRadius: ic.length(),
     }
   },
-  /** E2E：等 OrbitControls 阻尼收完再采样方位角，避免 mouseup 瞬间读到过渡态 */
-  settleCameraDamping: (maxFrames = 120) => {
-    if (!controls) return false
-    for (let i = 0; i < maxFrames; i++) {
-      controls.update()
-      const d = controls._sphericalDelta
-      if (Math.abs(d.theta) < 1e-5 && Math.abs(d.phi) < 1e-5) return true
-    }
-    return false
-  },
   /** E2E：模拟拖曳刚结束、阻尼尚未衰减完的 _sphericalDelta（生产 bug 触发条件） */
   simulatePendingDragInertia: (theta = 0.05, phi = 0) => {
     if (!controls) return false

@@ -145,7 +145,12 @@
   border: 1rpx dashed rgba(43, 53, 110, 0.35);
   background: rgba(255, 255, 255, 0.92);
 }
-/* 框内可用宽 94rpx（96 减 1rpx 边框×2）。汉字advance 恒为 1em，
+/* 两行同色：第二行原来是 #A9B2C8，在白底占位板上只有 2.3:1，看不清；
+   调到 --muted 的 #67708C（4.91:1）后与第一行同色，.p-qr-sub 也就没有存在意义了，
+   一并删掉——留着一条不起作用的规则，下次很容易被人"顺手调浅一点"再破坏对比度。
+   两行的层级靠行序与内容区分即可，这块只是保存前的占位板。
+
+   框内可用宽 94rpx（96 减 1rpx 边框×2）。汉字advance 恒为 1em，
    两行分别是 4×17=68rpx 与 5×17=85rpx，都留有余量，所以 nowrap 是安全的——
    不禁止折行反而会被挤成三四行顶破 96rpx 的方框。 */
 .p-qr-hint {
@@ -155,7 +160,6 @@
   color: #67708C;
   white-space: nowrap;
 }
-.p-qr-sub { color: #67708C; }
 .p-foot-tx { display: flex; flex-direction: column; gap: 6rpx; }
 .pf-1 { font-size: 22rpx; color: #fff; font-weight: 600; }
 .pf-2 { font-size: 19rpx; color: rgba(232, 240, 252, 0.75); }

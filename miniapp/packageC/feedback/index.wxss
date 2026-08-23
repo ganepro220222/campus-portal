@@ -76,8 +76,13 @@
   font-size: 22rpx;
 }
 .fb-img-fail { background: rgba(180, 60, 60, 0.55); }
-/* 可见圆点仍 48rpx；透明 ::after 外扩到 88rpx（44pt）热区——
-   删除键不宜占满缩略图（误删比难点更糟），168rpx 角上 88rpx 仍不到一半宽。 */
+/* 可见圆点仍 48rpx，热区靠透明 ::after 扩到 88rpx（44pt）。
+   要点：父级 .fb-img-cell 是 overflow:hidden，**往外扩的部分会连同热区一起被裁掉**。
+   元素本身距上/右各 6rpx，所以外侧最多只能扩 6rpx；再多写也不会生效——
+   之前写 -20rpx，实际热区只有 6+48+20 = 74rpx（37pt），并没有到 44pt。
+   改成不对称外扩：外侧 -6rpx（正好贴到 cell 边），内侧 -34rpx，
+   合计 6+48+34 = 88rpx，整块都落在 cell 内。
+   内侧只扩到刚好 88rpx 为止：缩略图本身绑了预览点击，删除区越大越容易误删。 */
 .fb-img-del {
   position: absolute;
   top: 6rpx;
@@ -94,7 +99,9 @@
 .fb-img-del::after {
   content: "";
   position: absolute;
-  left: -20rpx; top: -20rpx; right: -20rpx; bottom: -20rpx;
+  /* 元素贴的是右上角：横向外侧是 right、内侧是 left；纵向外侧是 top、内侧是 bottom。
+     所以外侧两条（right / top）各 -6rpx，内侧两条（left / bottom）各 -34rpx。 */
+  left: -34rpx; top: -6rpx; right: -6rpx; bottom: -34rpx;
 }
 .fb-img-add {
   display: flex;

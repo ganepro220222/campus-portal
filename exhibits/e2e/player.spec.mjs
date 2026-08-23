@@ -1406,7 +1406,7 @@ test.describe('竖屏自动取景', () => {
     await pg.mouse.down()
     await pg.mouse.move(box.x + box.width * 0.5 + 90, box.y + box.height * 0.5, { steps: 12 })
     await pg.mouse.up()
-    // 不调用 settleCameraDamping：模拟用户拖完立刻转屏，此时 _sphericalDelta 通常仍非零
+    // 不等阻尼衰减：模拟用户拖完立刻转屏，此时 _sphericalDelta 通常仍非零
     await pg.evaluate(() => window.__SY_TEST__.simulatePendingDragInertia(0.05, 0))
     const before = await pg.evaluate(() => window.__SY_TEST__.cameraState())
     expect(before.autoRotate).toBe(false)

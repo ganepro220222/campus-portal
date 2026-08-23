@@ -22,7 +22,9 @@ function rpx(decl, prop) {
 /** @param {string} rel @param {string} selector */
 function ruleBlock(rel, selector) {
   const src = fs.readFileSync(path.join(root, rel), 'utf8')
-  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const esc = selector
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\n/g, '\\r?\\n')
   const m = src.match(new RegExp(esc + '\\s*\\{([^}]*)\\}', 's'))
   if (!m) throw new Error(`${rel} 找不到 ${selector}`)
   return m[1]
@@ -45,16 +47,34 @@ function main() {
     errs.push(`搜索清空 .sclear 热区 ${scW}×${scH}rpx，低于 ${MIN_RPX}rpx（44pt）`)
   }
 
+  /*
+   * 反馈删除键要连同「父级会裁掉外扩部分」一起算。
+   * .fb-img-cell 是 overflow:hidden，::after 超出 cell 的那截不显示、也收不到点击，
+   * 所以往外能扩的量被元素自身的 top/right 偏移封顶：
+   *     有效热区 = min(外扩量, 距 cell 边的偏移) + 圆点尺寸 + 内扩量
+   * 只按 base + inset×2 算会高估——曾经写 -20rpx 外扩，账面 88rpx，实际只有 74rpx。
+   */
+  const cell = ruleBlock('miniapp/packageC/feedback/index.wxss', '.fb-img-cell,\n.fb-img-add')
+  if (!/overflow\s*:\s*hidden/.test(cell)) {
+    errs.push('.fb-img-cell 不再是 overflow:hidden —— 下面这段热区换算的前提变了，请重新核对')
+  }
   const del = ruleBlock('miniapp/packageC/feedback/index.wxss', '.fb-img-del')
   const after = ruleBlock('miniapp/packageC/feedback/index.wxss', '.fb-img-del::after')
   const base = rpx(del, 'width')
-  const inset = rpx(after, 'left')
-  if (base == null || inset == null) {
+  const offTop = rpx(del, 'top')
+  const offRight = rpx(del, 'right')
+  const outTop = rpx(after, 'top')
+  const outRight = rpx(after, 'right')
+  const inLeft = rpx(after, 'left')
+  const inBottom = rpx(after, 'bottom')
+  if ([base, offTop, offRight, outTop, outRight, inLeft, inBottom].some((v) => v == null)) {
     errs.push('反馈删除 .fb-img-del / ::after 解析失败')
   } else {
-    const hit = base + inset * 2
-    if (hit < MIN_RPX) {
-      errs.push(`反馈删除 .fb-img-del 热区 ${hit}rpx（${base}+${inset}×2），低于 ${MIN_RPX}rpx`)
+    const hitW = Math.min(outRight, offRight) + base + inLeft
+    const hitH = Math.min(outTop, offTop) + base + inBottom
+    if (hitW < MIN_RPX || hitH < MIN_RPX) {
+      errs.push(`反馈删除 .fb-img-del 有效热区 ${hitW}×${hitH}rpx（外扩被 cell 的 overflow:hidden 裁到 ` +
+        `min(${outRight},${offRight})），低于 ${MIN_RPX}rpx`)
     }
   }
 

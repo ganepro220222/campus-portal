@@ -1406,6 +1406,7 @@ test.describe('竖屏自动取景', () => {
     await pg.mouse.down()
     await pg.mouse.move(box.x + box.width * 0.5 + 90, box.y + box.height * 0.5, { steps: 12 })
     await pg.mouse.up()
+    await pg.evaluate(() => window.__SY_TEST__.settleCameraDamping())
     const before = await pg.evaluate(() => window.__SY_TEST__.cameraState())
     expect(before.autoRotate).toBe(false)
     const theta0 = before.theta

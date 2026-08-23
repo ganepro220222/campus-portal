@@ -27685,6 +27685,11 @@ function updateInitialCameraDistance(desired) {
   }
   initialCam.copy(pivot).add(baseOffset);
 }
+function clearControlsInertia() {
+  if (!controls) return;
+  controls._sphericalDelta.set(0, 0, 0);
+  controls._panOffset.set(0, 0, 0);
+}
 function refitCameraDistanceForOrientation() {
   var _a;
   if (!camera || !controls || !model) return;
@@ -27694,6 +27699,7 @@ function refitCameraDistanceForOrientation() {
   offset.setLength(desired);
   camera.position.copy(controls.target).add(offset);
   updateInitialCameraDistance(desired);
+  clearControlsInertia();
   controls.update();
 }
 var ED_PANEL_NARROW_MAX = 720;

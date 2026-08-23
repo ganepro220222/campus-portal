@@ -870,6 +870,13 @@ function updateInitialCameraDistance(desired) {
   }
   initialCam.copy(pivot).add(baseOffset)
 }
+/** 外部直接改过 camera.position 后，清掉 OrbitControls 里未衰减完的拖曳惯性。
+   否则下一帧 update 会把 _sphericalDelta 叠上去，横竖屏 refit 会把用户刚拖好的方位角拽偏。 */
+function clearControlsInertia() {
+  if (!controls) return
+  controls._sphericalDelta.set(0, 0, 0)
+  controls._panOffset.set(0, 0, 0)
+}
 function refitCameraDistanceForOrientation() {
   if (!camera || !controls || !model) return
   const desired = autoFitDistance() ?? num(cfg.camera?.distance, 3.4)
@@ -878,6 +885,7 @@ function refitCameraDistanceForOrientation() {
   offset.setLength(desired)
   camera.position.copy(controls.target).add(offset)
   updateInitialCameraDistance(desired)
+  clearControlsInertia()
   controls.update()
 }
 const ED_PANEL_NARROW_MAX = 720
@@ -2983,6 +2991,16 @@ window.__SY_TEST__ = {
       autoRotate: !!controls.autoRotate,
       initialCamRadius: ic.length(),
     }
+  },
+  /** E2E：等 OrbitControls 阻尼收完再采样方位角，避免 mouseup 瞬间读到过渡态 */
+  settleCameraDamping: (maxFrames = 120) => {
+    if (!controls) return false
+    for (let i = 0; i < maxFrames; i++) {
+      controls.update()
+      const d = controls._sphericalDelta
+      if (Math.abs(d.theta) < 1e-5 && Math.abs(d.phi) < 1e-5) return true
+    }
+    return false
   },
   envPanoPrefetchCleared: () => envPanoPrefetch == null,
   envSourceKind: () => effectiveEnvSource().kind,

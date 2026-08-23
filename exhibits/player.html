@@ -3002,6 +3002,32 @@ window.__SY_TEST__ = {
     }
     return false
   },
+  /** E2E：模拟拖曳刚结束、阻尼尚未衰减完的 _sphericalDelta（生产 bug 触发条件） */
+  simulatePendingDragInertia: (theta = 0.05, phi = 0) => {
+    if (!controls) return false
+    // Spherical.set(radius, phi, theta) —— 勿把 theta 传进第一个参数
+    controls._sphericalDelta.radius = 0
+    controls._sphericalDelta.theta = theta
+    controls._sphericalDelta.phi = phi
+    controls._panOffset.set(0, 0, 0)
+    return true
+  },
+  controlsDelta: () => {
+    if (!controls) return null
+    const d = controls._sphericalDelta
+    return { theta: d.theta, phi: d.phi }
+  },
+  runControlsUpdates: (n = 30) => {
+    if (!controls) return false
+    const count = Math.max(0, Math.min(Number(n) || 0, 200))
+    for (let i = 0; i < count; i++) controls.update()
+    return true
+  },
+  /** E2E：直接调用横竖屏 refit（与 onResize 里走的是同一条路径） */
+  refitOrientationForTest: () => {
+    refitCameraDistanceForOrientation()
+    return true
+  },
   envPanoPrefetchCleared: () => envPanoPrefetch == null,
   envSourceKind: () => effectiveEnvSource().kind,
   applyPresetById: (id) => {

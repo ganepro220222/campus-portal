@@ -1406,22 +1406,56 @@ test.describe('竖屏自动取景', () => {
     await pg.mouse.down()
     await pg.mouse.move(box.x + box.width * 0.5 + 90, box.y + box.height * 0.5, { steps: 12 })
     await pg.mouse.up()
-    await pg.evaluate(() => window.__SY_TEST__.settleCameraDamping())
+    // 不调用 settleCameraDamping：模拟用户拖完立刻转屏，此时 _sphericalDelta 通常仍非零
+    await pg.evaluate(() => window.__SY_TEST__.simulatePendingDragInertia(0.05, 0))
     const before = await pg.evaluate(() => window.__SY_TEST__.cameraState())
     expect(before.autoRotate).toBe(false)
     const theta0 = before.theta
     const radiusPortrait = before.radius
     await pg.setViewportSize({ width: 800, height: 390 })
     await pg.waitForTimeout(150)
-    const land = await pg.evaluate(() => window.__SY_TEST__.cameraState())
-    expect(land.autoRotate).toBe(false)
-    expect(land.theta).toBeCloseTo(theta0, 1)
-    expect(land.radius).not.toBeCloseTo(radiusPortrait, 1)
+    const land = await pg.evaluate(() => ({
+      delta: window.__SY_TEST__.controlsDelta(),
+      cam: window.__SY_TEST__.cameraState(),
+    }))
+    expect(land.cam.autoRotate).toBe(false)
+    expect(land.delta.theta).toBeCloseTo(0, 4)
+    expect(land.delta.phi).toBeCloseTo(0, 4)
+    expect(land.cam.theta).toBeCloseTo(theta0, 1)
+    expect(land.cam.radius).not.toBeCloseTo(radiusPortrait, 1)
+    await pg.evaluate(() => window.__SY_TEST__.runControlsUpdates(80))
+    const afterDrift = await pg.evaluate(() => window.__SY_TEST__.cameraState())
+    expect(afterDrift.theta).toBeCloseTo(land.cam.theta, 2)
     await pg.setViewportSize({ width: 390, height: 800 })
     await pg.waitForTimeout(150)
     const back = await pg.evaluate(() => window.__SY_TEST__.cameraState())
     expect(back.autoRotate).toBe(false)
     expect(back.theta).toBeCloseTo(theta0, 0)
+    await releaseWebGL(pg)
+    await pg.close()
+  })
+
+  test('refit 清除注入的拖曳惯性，后续 update 不再漂移方位角', async ({ browser }) => {
+    const pg = await browser.newPage()
+    await gotoPlayer(pg, portraitPlayerOpts({ width: 390, height: 800 }, {}))
+    await waitForSceneSilhouette(pg)
+    const snap = await pg.evaluate(() => {
+      window.__SY_TEST__.simulatePendingDragInertia(0.05, 0.01)
+      const injected = window.__SY_TEST__.controlsDelta()
+      window.__SY_TEST__.refitOrientationForTest()
+      const afterRefit = {
+        delta: window.__SY_TEST__.controlsDelta(),
+        theta: window.__SY_TEST__.cameraState().theta,
+      }
+      window.__SY_TEST__.runControlsUpdates(80)
+      const afterUpdates = window.__SY_TEST__.cameraState().theta
+      return { injected, afterRefit, afterUpdates }
+    })
+    expect(snap.injected.theta).toBeCloseTo(0.05, 4)
+    expect(snap.injected.phi).toBeCloseTo(0.01, 4)
+    expect(snap.afterRefit.delta.theta).toBeCloseTo(0, 5)
+    expect(snap.afterRefit.delta.phi).toBeCloseTo(0, 5)
+    expect(snap.afterUpdates).toBeCloseTo(snap.afterRefit.theta, 2)
     await releaseWebGL(pg)
     await pg.close()
   })

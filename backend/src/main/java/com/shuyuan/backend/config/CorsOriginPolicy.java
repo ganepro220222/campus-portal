@@ -38,6 +38,22 @@ public final class CorsOriginPolicy {
         return configured.toArray(new String[0]);
     }
 
+    /** staging/prod 同源反代且未配置分域白名单时，不暴露 CORS（浏览器不触发跨域）。 */
+    public static boolean shouldRegisterCors(String[] allowedOriginPatterns) {
+        return allowedOriginPatterns != null && allowedOriginPatterns.length > 0;
+    }
+
+    /**
+     * Spring 禁止 allowCredentials(true) 与通配符 * 同时使用。
+     * dev 本地 * 仅用于无 Cookie 的 Bearer 鉴权场景。
+     */
+    public static boolean allowCredentials(String[] allowedOriginPatterns) {
+        if (!shouldRegisterCors(allowedOriginPatterns)) {
+            return false;
+        }
+        return allowedOriginPatterns.length != 1 || !"*".equals(allowedOriginPatterns[0]);
+    }
+
     public static void validateGuardedCorsOrigins(String[] activeProfiles, List<String> configured) {
         if (!requiresRestrictedCors(activeProfiles) || configured == null) {
             return;

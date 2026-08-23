@@ -65,4 +65,23 @@ class CorsOriginPolicyTest {
                         new String[] {"dev"},
                         List.of("http://localhost:5173", "*")));
     }
+
+    @Test
+    void shouldRegisterCors_falseWhenStagingSameOriginEmptyList() {
+        assertFalse(CorsOriginPolicy.shouldRegisterCors(
+                CorsOriginPolicy.resolveAllowedOriginPatterns(new String[] {"staging"}, List.of())));
+    }
+
+    @Test
+    void shouldRegisterCors_trueWhenStagingHasPatterns() {
+        assertTrue(CorsOriginPolicy.shouldRegisterCors(
+                new String[] {"https://admin.example.com"}));
+    }
+
+    @Test
+    void allowCredentials_falseForWildcardOrEmpty() {
+        assertFalse(CorsOriginPolicy.allowCredentials(new String[] {"*"}));
+        assertFalse(CorsOriginPolicy.allowCredentials(new String[0]));
+        assertTrue(CorsOriginPolicy.allowCredentials(new String[] {"https://admin.example.com"}));
+    }
 }

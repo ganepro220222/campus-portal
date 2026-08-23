@@ -23,11 +23,14 @@ public class WebConfig implements WebMvcConfigurer {
         String[] origins = CorsOriginPolicy.resolveAllowedOriginPatterns(
                 environment.getActiveProfiles(),
                 properties.getCors().getAllowedOriginPatterns());
+        if (!CorsOriginPolicy.shouldRegisterCors(origins)) {
+            return;
+        }
         registry.addMapping("/api/**")
                 .allowedOriginPatterns(origins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowCredentials(CorsOriginPolicy.allowCredentials(origins));
     }
 
     @Override

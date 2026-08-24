@@ -13,6 +13,11 @@ import {
   panoramaRevealTimeoutMs,
   fitCameraDistance,
   portraitFillTarget,
+  PREVIEW_DEVICES,
+  DEFAULT_PREVIEW_DEVICE,
+  previewDevice,
+  framingCoverage,
+  devicePreviewFit,
   shouldAutoFitCamera,
   DEFAULT_PORTRAIT_FILL,
 } from './player-persist.mjs'
@@ -199,6 +204,91 @@ test('shouldAutoFitCamera：只在竖屏生效，横屏与关闭时都不接管'
   assert.equal(shouldAutoFitCamera(1600 / 900, 0.78), false)   // 桌面
   assert.equal(shouldAutoFitCamera(800 / 390, 0.78), false)    // 手机横屏
   assert.equal(shouldAutoFitCamera(390 / 800, 0), false)       // 显式关闭
+})
+
+/* ---------- 机型取景预览 ---------- */
+
+test('PREVIEW_DEVICES：机型合法，且比例覆盖到手机与平板两端', () => {
+  assert.ok(PREVIEW_DEVICES.length >= 4)
+  const ids = new Set()
+  for (const d of PREVIEW_DEVICES) {
+    assert.ok(d.w > 0 && d.h > 0, `${d.id} 尺寸非法`)
+    assert.ok(d.w < d.h, `${d.id} 必须是竖屏——横屏本来就不触发 auto-fit`)
+    assert.ok(d.label && d.hint, `${d.id} 缺标签`)
+    assert.ok(!ids.has(d.id), `${d.id} 重复`)
+    ids.add(d.id)
+  }
+  const ratios = PREVIEW_DEVICES.map(d => d.w / d.h)
+  assert.ok(Math.min(...ratios) < 0.5, '缺少 19.5:9 一类的窄机型')
+  assert.ok(Math.max(...ratios) > 0.7, '缺少 4:3 一类的平板')
+})
+
+test('previewDevice：认不出的 id 回落到默认机型，而不是 undefined', () => {
+  assert.equal(previewDevice('ph-m').id, 'ph-m')
+  assert.equal(previewDevice('不存在').id, DEFAULT_PREVIEW_DEVICE)
+  assert.equal(previewDevice(undefined).id, DEFAULT_PREVIEW_DEVICE)
+})
+
+test('framingCoverage：与 fitCameraDistance 互为逆运算', () => {
+  // 反解出来的距离再算占屏，必须落回目标 fill——两者用的是同一套截面近似
+  for (const [w, h] of [[1, 2], [2, 1], [1, 1], [0.4, 3]]) {
+    for (const dev of PREVIEW_DEVICES) {
+      const aspect = dev.w / dev.h
+      const d = fitCameraDistance({ width: w, height: h, fovDeg: 40, aspect, fill: 0.78 })
+      const c = framingCoverage({ width: w, height: h, fovDeg: 40, aspect, distance: d })
+      // 谁先顶满就以谁为准，所以两者的较大值等于 fill
+      assert.ok(Math.abs(Math.max(c.h, c.w) - 0.78) < 1e-9,
+        `${w}×${h} @ ${dev.id}：max(${c.h.toFixed(4)}, ${c.w.toFixed(4)}) ≠ 0.78`)
+      assert.ok(c.h <= 0.78 + 1e-9 && c.w <= 0.78 + 1e-9, '另一条轴不该超出目标')
+    }
+  }
+})
+
+test('framingCoverage：距离非法一律 null，不返回 Infinity/NaN', () => {
+  for (const bad of [0, -1, NaN, undefined, null, 'x']) {
+    assert.equal(framingCoverage({ width: 1, height: 2, fovDeg: 40, aspect: 0.5, distance: bad }), null)
+  }
+})
+
+test('devicePreviewFit：比例只由宽高比决定，与绝对分辨率无关', () => {
+  const base = { width: 1, height: 2, fovDeg: 40, fill: 0.78 }
+  const a = devicePreviewFit({ ...base, device: { w: 390, h: 844 } })
+  // 同一比例、分辨率翻三倍（相当于 DPR 3 的物理像素），结论必须完全一致
+  const b = devicePreviewFit({ ...base, device: { w: 1170, h: 2532 } })
+  assert.equal(a.aspect, b.aspect)
+  assert.equal(a.distance, b.distance)
+  assert.deepEqual(a.coverage, b.coverage)
+})
+
+test('devicePreviewFit：被最近/最远距离夹住时如实标记，占屏读数跟着走', () => {
+  // 1×2 的器物在 19.5:9 上是**宽度**先顶满，所以看「绑定的那条轴」而不是固定看高
+  const bound = c => Math.max(c.h, c.w)
+  const base = { width: 1, height: 2, fovDeg: 40, fill: 0.78, device: { w: 390, h: 844 } }
+  const free = devicePreviewFit(base)
+  assert.equal(free.clamped, false)
+  assert.ok(Math.abs(bound(free.coverage) - 0.78) < 1e-9)
+  assert.ok(free.coverage.w > free.coverage.h, '窄屏上应当由宽度绑定')
+
+  // 顶到最远距离：被拉近了，占屏比目标大
+  const far = devicePreviewFit({ ...base, maxDistance: free.rawDistance * 0.5 })
+  assert.equal(far.clamped, true)
+  assert.equal(far.distance, free.rawDistance * 0.5)
+  assert.ok(Math.abs(bound(far.coverage) - 1.56) < 1e-9, '距离减半，占屏翻倍')
+
+  const near = devicePreviewFit({ ...base, minDistance: free.rawDistance * 2 })
+  assert.equal(near.clamped, true)
+  assert.ok(Math.abs(bound(near.coverage) - 0.39) < 1e-9, '距离翻倍，占屏减半')
+})
+
+test('devicePreviewFit：最近/最远写反时不夹，机型非法返回 null', () => {
+  const base = { width: 1, height: 2, fovDeg: 40, fill: 0.78, device: { w: 390, h: 844 } }
+  const free = devicePreviewFit(base)
+  const inverted = devicePreviewFit({ ...base, minDistance: 9, maxDistance: 1 })
+  assert.equal(inverted.distance, free.rawDistance)
+  assert.equal(inverted.clamped, false)
+
+  assert.equal(devicePreviewFit({ ...base, device: null }), null)
+  assert.equal(devicePreviewFit({ ...base, device: { w: 0, h: 844 } }), null)
 })
 
 console.log('')

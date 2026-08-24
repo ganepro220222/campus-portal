@@ -234,3 +234,72 @@ export function portraitFillTarget(cfg) {
 export function shouldAutoFitCamera(aspect, fill) {
   return typeof aspect === 'number' && aspect > 0 && aspect < 1 && fill > 0
 }
+
+/*
+ * 机型取景预览
+ * -----------
+ * 编辑器是横屏，调「手机竖屏占屏」时看不到手机上的效果，只能靠数字盲调。
+ *
+ * 这里要澄清一个常见的误解：做机型预览**不需要**适配各种分辨率。
+ * fitCameraDistance() 的入参是 aspect（宽高比），像素数、DPR、屏幕物理尺寸
+ * 一概不参与取景计算。所以微信开发者工具那张长长的机型表，在这里会塌缩成
+ * 很少的几个比例；下面五档已经覆盖了绝大多数在售机型。
+ *
+ * 注意 390×844 与 430×932 的比例几乎一样（2.164 vs 2.167），预览结果会重合——
+ * 这不是冗余，恰恰是「只有比例有用」这件事最直观的演示。
+ */
+export const PREVIEW_DEVICES = Object.freeze([
+  { id: 'ph-s', label: '小屏手机', hint: 'iPhone SE / 老款 16:9', w: 375, h: 667 },
+  { id: 'ph-m', label: '主流手机', hint: '19.5:9 全面屏', w: 390, h: 844 },
+  { id: 'ph-l', label: '大屏手机', hint: 'Pro Max / 安卓大屏', w: 430, h: 932 },
+  { id: 'pad-s', label: 'iPad 竖屏', hint: '4:3', w: 768, h: 1024 },
+  { id: 'pad-l', label: 'iPad Air 竖屏', hint: '约 1:1.44', w: 820, h: 1180 },
+])
+
+export const DEFAULT_PREVIEW_DEVICE = 'ph-m'
+
+export function previewDevice(id) {
+  return PREVIEW_DEVICES.find(d => d.id === id)
+      || PREVIEW_DEVICES.find(d => d.id === DEFAULT_PREVIEW_DEVICE)
+}
+
+/**
+ * 器物在画面里实际占了多少：返回高/宽两个方向的比例（0~1，可能 >1 表示已经出画）。
+ *
+ * 用的是「包围盒在过中心那一层的截面」这个近似，与 fitCameraDistance() 同一套假设——
+ * 真实的透视投影会比这略大（近端的面更靠近相机）。两边保持同一近似，读数才和
+ * 反解出来的目标值对得上；要看真实取景，右边的预览画面才是准的。
+ */
+export function framingCoverage({ width, height, fovDeg, aspect, distance }) {
+  const d = Number(distance)
+  const a = (typeof aspect === 'number' && aspect > 0) ? aspect : 1
+  const tanV = Math.tan((fovDeg || 40) * Math.PI / 360)
+  if (!(d > 0) || !(tanV > 0)) return null
+  const visH = 2 * d * tanV
+  const visW = visH * a
+  return { h: Math.max(height, 0) / visH, w: Math.max(width, 0) / visW }
+}
+
+/**
+ * 一台机型上的完整取景结论：比例、反解距离、是否被最近/最远距离夹住、实际占屏。
+ * 编辑器的文字说明与预览画面共用这一个来源，免得两处各算各的。
+ */
+export function devicePreviewFit({ width, height, fovDeg, device, fill, minDistance, maxDistance }) {
+  if (!device || !(device.w > 0) || !(device.h > 0)) return null
+  const aspect = device.w / device.h
+  const raw = fitCameraDistance({ width, height, fovDeg, aspect, fill })
+  if (!raw) return null
+  // 缺省成 ∓∞ 而不是 raw：只传一端时另一端必须是「不设限」，
+  // 否则 lo 会等于 raw 而 hi 比它小，撞进下面那条「写反了」的分支，夹不住。
+  const lo = Number.isFinite(minDistance) ? minDistance : -Infinity
+  const hi = Number.isFinite(maxDistance) ? maxDistance : Infinity
+  // lo > hi 是配置写反了：此时不夹，如实用反解值，别给出一个两头不靠的假距离
+  const distance = lo <= hi ? Math.min(Math.max(raw, lo), hi) : raw
+  return {
+    aspect,
+    rawDistance: raw,
+    distance,
+    clamped: Math.abs(distance - raw) > 1e-6,
+    coverage: framingCoverage({ width, height, fovDeg, aspect, distance }),
+  }
+}

@@ -248,12 +248,14 @@ export function shouldAutoFitCamera(aspect, fill) {
  * 注意 390×844 与 430×932 的比例几乎一样（2.164 vs 2.167），预览结果会重合——
  * 这不是冗余，恰恰是「只有比例有用」这件事最直观的演示。
  */
-export const PREVIEW_DEVICES = Object.freeze([
-  { id: 'ph-s', label: '小屏手机', hint: 'iPhone SE / 老款 16:9', w: 375, h: 667 },
-  { id: 'ph-m', label: '主流手机', hint: '19.5:9 全面屏', w: 390, h: 844 },
-  { id: 'ph-l', label: '大屏手机', hint: 'Pro Max / 安卓大屏', w: 430, h: 932 },
-  { id: 'pad-s', label: 'iPad 竖屏', hint: '4:3', w: 768, h: 1024 },
-  { id: 'pad-l', label: 'iPad Air 竖屏', hint: '约 1:1.44', w: 820, h: 1180 },
+// @__PURE__ 让 esbuild 敢摇掉：仅观看版不含编辑器，这张表在那边是死数据。
+// 不加的话 Object.freeze() 是有副作用的调用，打包器只能原样保留。
+export const PREVIEW_DEVICES = /* @__PURE__ */ Object.freeze([
+  { id: 'ph-s', short: '小屏', label: '小屏手机', hint: 'iPhone SE / 老款 16:9', w: 375, h: 667 },
+  { id: 'ph-m', short: '全面屏', label: '主流手机', hint: '19.5:9 全面屏', w: 390, h: 844 },
+  { id: 'ph-l', short: '大屏', label: '大屏手机', hint: 'Pro Max / 安卓大屏', w: 430, h: 932 },
+  { id: 'pad-s', short: 'iPad', label: 'iPad 竖屏', hint: '4:3', w: 768, h: 1024 },
+  { id: 'pad-l', short: 'iPad Air', label: 'iPad Air 竖屏', hint: '约 1:1.44', w: 820, h: 1180 },
 ])
 
 export const DEFAULT_PREVIEW_DEVICE = 'ph-m'

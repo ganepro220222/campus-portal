@@ -28676,10 +28676,13 @@ function onResize() {
     if (model) refitCameraDistanceForOrientation();
   }
   syncEditorPanelLayout();
+  if (devicePreviewResync) devicePreviewResync();
 }
 var fps = 0;
 var _ft = performance.now();
 var _fc = 0;
+var devicePreviewTick = null;
+var devicePreviewResync = null;
 function animate() {
   raf = requestAnimationFrame(animate);
   controls.update();
@@ -28687,6 +28690,7 @@ function animate() {
   updateHotspots();
   updateCallout();
   renderer.render(scene, camera);
+  if (devicePreviewTick) devicePreviewTick();
   _fc++;
   const n2 = performance.now();
   if (n2 - _ft >= 500) {

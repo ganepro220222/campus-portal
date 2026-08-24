@@ -851,7 +851,9 @@ test.describe('studio.html', () => {
 
   /* 抽屉底下凭空多出横向滚动条：卡片 flex-basis 是 260px，但 min-width 默认 auto，
      全景下拉的长选项文本把「环境 IBL」那张卡顶到 411px，六张一加就越过视口宽度。
-     1903 = 1920 屏减掉页面竖条后的实际视口，正是用户碰到的那一档。 */
+     1903 = 1920 屏减掉页面竖条后的实际视口，正是用户碰到的那一档。
+     后来加到第七张卡（相机取景）时又越界一次，改成 flex-wrap:wrap 按行折下去，
+     所以这条断言对任何宽度都该成立，不再只管 ≥1903。 */
   for (const width of [1400, 1903, 2200]) {
     test(`${width}px：批量卡片一律等宽，抽屉不额外长出横向滚动条`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
@@ -867,8 +869,8 @@ test.describe('studio.html', () => {
       })
       expect(new Set(g.cards).size).toBe(1)            // 所有卡片同宽
       expect(g.cards[0]).toBe(260)
-      // 内容宽度不许超过容器：视口够宽时就不该出现横条
-      if (width >= 1903) expect(g.sw).toBeLessThanOrEqual(g.cw)
+      // 内容宽度不许超过容器：卡片会换行，任何宽度都不该出现横条
+      expect(g.sw).toBeLessThanOrEqual(g.cw)
     })
   }
 

@@ -113,7 +113,12 @@
   .bpanel .bhead .n { font-size:14px; font-weight:700; color:#f4e6c8; }
   .bpanel .bhead .sel-n { font-size:13px; color:var(--gold); }
   .bpanel .bhead .grow { flex:1; }
-  .bwrap { display:flex; gap:22px; overflow:auto; padding:16px clamp(16px,4vw,48px) 4px; }
+  /* 换行而不是单行横向滚动：卡片一律 260px，六张时 1920 屏刚好排得下，
+     加到第七张（相机取景）就越界，抽屉底下又会长出那条横向滚动条。
+     让它按行折下去，抽屉在 max-height:70vh 内改成纵向滚动——竖着滚是抽屉里的常态，
+     横着滚才是那个老坑；顺带以后再加组也不会再撞上。 */
+  .bwrap { display:flex; flex-wrap:wrap; align-content:flex-start; gap:22px;
+    overflow:auto; padding:16px clamp(16px,4vw,48px) 4px; }
   .bf-hint { flex-basis:100%; font-size:11.5px; line-height:1.5; color:#8a90a6; margin:2px 0 0 26px; }
   .bf-hint.warn { color:#e0b070; }
   /* min-width:0 是关键：flex item 的自动最小尺寸是 min-content，不归零的话卡片里只要有

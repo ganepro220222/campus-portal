@@ -1485,3 +1485,167 @@ test.describe('竖屏自动取景', () => {
     await pg.close()
   })
 })
+
+/* 机型取景预览：编辑器是横屏，调「手机竖屏占屏」时看不到手机上的效果。
+   预览画面来自同一个 renderer 在主画布上多渲的一小块视口（setScissor + setViewport），
+   再逐帧拷进卡片自己的 2D 画布；那块小视口就摆在预览画布的位置上，被不透明的机身底色盖住。 */
+test.describe('机型取景预览', () => {
+  const openPreview = async (pg, viewport = { width: 1280, height: 820 }) => {
+    await gotoPlayer(pg, {
+      mode: 'edit',
+      viewport,
+      camera: {},
+      environment: { visibleBackground: false, mode: 'panorama' },
+      assets: { panorama: '../e2e/fixtures/tiny-pano.jpg' },
+    })
+    await waitForSceneSilhouette(pg)
+    await pg.evaluate(() => {
+      for (const d of document.querySelectorAll('#editor details.ed-sec')) {
+        if (d.querySelector('summary')?.textContent.trim() === '相机') d.open = true
+      }
+    })
+    await pg.locator('#ed-devpreview').check()
+    await waitForPreviewPixels(pg)
+  }
+
+  /* 等预览画布真的出图，而不是干等固定毫秒数：软件渲染下 500ms 可能只跑到两三帧，
+     而画中画是每 4 帧才拷一次，量到的会是一张空画布。 */
+  const waitForPreviewPixels = pg => pg.waitForFunction(() => {
+    const cv = document.getElementById('dp-cv')
+    if (!cv || cv.width < 2 || cv.height < 2) return false
+    const g = cv.getContext('2d')
+    const px = g.getImageData(0, 0, cv.width, cv.height).data
+    for (let i = 0; i < px.length; i += 4 * 97) {          // 稀疏采样，够判断「非空」
+      if (px[i + 3] > 0 && (px[i] + px[i + 1] + px[i + 2]) / 3 > 45) return true
+    }
+    return false
+  }, null, { timeout: 30_000 })
+
+  const geom = pg => pg.evaluate(() => {
+    const cv = document.getElementById('dp-cv')
+    const bez = document.getElementById('dp-bezel')
+    const card = document.getElementById('dev-preview')
+    const c = cv.getBoundingClientRect(), b = bez.getBoundingClientRect()
+    const stage = bez.parentElement.getBoundingClientRect()
+    const hud = document.querySelector('.hud')?.getBoundingClientRect()
+    return {
+      hidden: card.hidden,
+      cardTop: card.getBoundingClientRect().top,
+      cardBottom: card.getBoundingClientRect().bottom,
+      hudTop: hud ? hud.top : Infinity,
+      w: c.width, h: c.height,
+      backW: cv.width, backH: cv.height,
+      // 主画布上那块小视口 = cv 的 border box，必须完全落在不透明的机身底色里
+      bezelOpaque: getComputedStyle(bez).backgroundColor === 'rgb(11, 13, 20)',
+      bezelCovers: b.left <= c.left && b.top <= c.top && b.right >= c.right && b.bottom >= c.bottom,
+      insideStage: c.top >= stage.top - 0.5 && c.bottom <= stage.bottom + 0.5,
+      read: document.getElementById('dp-read').innerText,
+    }
+  })
+
+  test('比例只由宽高比决定：换机型只改屏的形状，卡片不动', async ({ browser }) => {
+    const pg = await browser.newPage()
+    await openPreview(pg)
+    const phone = await geom(pg)
+    expect(phone.hidden).toBe(false)
+    expect(phone.w / phone.h).toBeCloseTo(390 / 844, 2)
+    expect(phone.read).toContain('390 × 844')
+
+    await pg.locator('[data-dp="pad-s"]').click()
+    await waitForPreviewPixels(pg)
+    const pad = await geom(pg)
+    expect(pad.w / pad.h).toBeCloseTo(768 / 1024, 2)
+    expect(pad.read).toContain('768 × 1024')
+    // 卡片位置固定，只有里面那块屏换形状
+    expect(pad.cardTop).toBeCloseTo(phone.cardTop, 1)
+    expect(pad.cardBottom).toBeCloseTo(phone.cardBottom, 1)
+    await releaseWebGL(pg)
+    await pg.close()
+  })
+
+  test('小视口被不透明机身完全盖住，且不越出舞台压到读数', async ({ browser }) => {
+    const pg = await browser.newPage()
+    await openPreview(pg)
+    // 先量「刚打开、还没点过任何机型」这一刻：读数为空时舞台会多分到 50 多像素，
+    // 屏据此定尺寸就会撑破卡片压住下面那行。点过机型之后再量是量不到这个的。
+    const first = await geom(pg)
+    expect(first.insideStage, '刚打开时屏就不能越出舞台').toBe(true)
+    expect(first.bezelCovers, '刚打开时机身就要盖住整块小视口').toBe(true)
+    for (const id of ['ph-s', 'ph-m', 'ph-l', 'pad-s', 'pad-l']) {
+      await pg.locator(`[data-dp="${id}"]`).click()
+      await waitForPreviewPixels(pg)
+      const g = await geom(pg)
+      expect(g.bezelOpaque, `${id}: 机身底色必须不透明`).toBe(true)
+      expect(g.bezelCovers, `${id}: 机身要盖住整块小视口`).toBe(true)
+      expect(g.insideStage, `${id}: 屏越出舞台会压住下面的读数`).toBe(true)
+      expect(g.cardBottom).toBeLessThan(g.hudTop)
+      expect(g.backW).toBeGreaterThan(1)
+      expect(g.backH).toBeGreaterThan(1)
+    }
+    await releaseWebGL(pg)
+    await pg.close()
+  })
+
+  test('预览真的画出了竖屏取景，而不是把桌面画面缩小', async ({ browser }) => {
+    const pg = await browser.newPage()
+    await openPreview(pg)
+    // 量预览画布里的器物轮廓：竖屏由宽度绑定，应贴近 0.78 目标
+    const s = await pg.evaluate(() => {
+      const cv = document.getElementById('dp-cv')
+      const g = cv.getContext('2d')
+      const W = cv.width, H = cv.height
+      const px = g.getImageData(0, 0, W, H).data
+      let minY = H, maxY = -1, minX = W, maxX = -1
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4
+        if ((px[i] + px[i + 1] + px[i + 2]) / 3 > 45) {
+          if (y < minY) minY = y; if (y > maxY) maxY = y
+          if (x < minX) minX = x; if (x > maxX) maxX = x
+        }
+      }
+      return { h: (maxY - minY) / H, w: (maxX - minX) / W }
+    })
+    expect(Math.max(s.w, s.h)).toBeGreaterThan(0.68)
+    expect(Math.max(s.w, s.h)).toBeLessThan(0.88)
+    await releaseWebGL(pg)
+    await pg.close()
+  })
+
+  test('窗口收窄到编辑器变底部 sheet 时预览让位，还原后自己回来', async ({ browser }) => {
+    const pg = await browser.newPage()
+    await openPreview(pg)
+    expect((await geom(pg)).hidden).toBe(false)
+
+    await pg.setViewportSize({ width: 700, height: 820 })
+    await pg.waitForTimeout(300)
+    expect((await geom(pg)).hidden).toBe(true)
+
+    await pg.setViewportSize({ width: 1280, height: 500 })   // 够宽但太矮
+    await pg.waitForTimeout(300)
+    expect((await geom(pg)).hidden).toBe(true)
+
+    await pg.setViewportSize({ width: 1280, height: 820 })
+    await waitForPreviewPixels(pg)
+    const back = await geom(pg)
+    expect(back.hidden).toBe(false)
+    expect(back.insideStage).toBe(true)
+    await releaseWebGL(pg)
+    await pg.close()
+  })
+
+  test('关闭键收起预览，并把「相机」里的勾选同步取消', async ({ browser }) => {
+    const pg = await browser.newPage()
+    await openPreview(pg)
+    await pg.locator('#dp-close').click()
+    await pg.waitForTimeout(400)
+    const after = await pg.evaluate(() => ({
+      hidden: document.getElementById('dev-preview').hidden,
+      checked: document.getElementById('ed-devpreview').checked,
+    }))
+    expect(after.hidden).toBe(true)
+    expect(after.checked).toBe(false)
+    // 收起后不该再往主画布上多渲那一小块：主画面的轮廓与从未开过预览时一致
+    await releaseWebGL(pg)
+    await pg.close()
+  })
+})

@@ -253,6 +253,51 @@
     body.ed-narrow:not(.ed-panel-collapsed) .ed-sheet-scroll {
       flex:1; min-height:0; overflow-y:auto; padding:12px 16px calc(env(safe-area-inset-bottom) + 12px); }
   }
+
+  /* 机型取景预览
+     ------------
+     贴左边缘、坐在 HUD 之上：右侧 300px 是编辑面板，中间是器物本体，左边这条
+     竖带是编辑态唯一稳定空着的地方。上边界避开左上角的语音播放器（top 88 + 约 50 高），
+     下边界避开 HUD（约 132 高），所以用 bottom 定位、向上生长，高度按窗口收缩。
+     z-index 19：压住热点/引线/信息卡（4~8），但让编辑面板（20）盖在它上面。 */
+  .dev-preview { position:absolute; left:16px; bottom:148px; z-index:19; width:232px;
+    /* 必须是确定高度而不是 max-height：舞台靠 flex:1 吃掉剩余空间，
+       卡片若由内容撑高，「剩余空间」恒为 0，屏会缩成一小块。 */
+    height:min(560px, calc(100vh - 300px));
+    display:flex; flex-direction:column; gap:10px;
+    padding:12px; border-radius:14px; background:rgba(14,16,24,.96);
+    border:1px solid rgba(255,255,255,.1); box-shadow:0 18px 44px rgba(0,0,0,.5); }
+  .dp-head { display:flex; align-items:center; justify-content:space-between; flex:0 0 auto; }
+  .dp-title { font-size:12px; font-weight:600; color:var(--gold); letter-spacing:.4px; }
+  .dp-close { appearance:none; width:22px; height:22px; padding:0; line-height:1; flex:0 0 auto;
+    border:1px solid rgba(255,255,255,.16); border-radius:50%; background:rgba(255,255,255,.06);
+    color:#cfd3e0; font-size:14px; cursor:pointer; }
+  .dp-close:hover { border-color:var(--gold); color:#f4e6c8; }
+  .dp-chips { display:flex; flex-wrap:wrap; gap:6px; flex:0 0 auto; }
+  /* 选中态沿用 HUD 预设按钮的既有写法，整套编辑器里「选中」只有这一种长相 */
+  .dp-chip { appearance:none; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.06);
+    color:rgba(238,240,245,.82); font-size:11px; line-height:1; padding:5px 9px; border-radius:999px;
+    cursor:pointer; white-space:nowrap; transition:.18s; }
+  .dp-chip:hover { border-color:rgba(200,168,106,.55); }
+  .dp-chip.on { border-color:var(--gold); background:rgba(200,168,106,.2); color:#f4e6c8; }
+  /* 舞台尺寸固定、机型在里面居中留边：换机型时只有「屏」的形状变，卡片不跳 */
+  .dp-stage { flex:1 1 auto; min-height:120px; display:flex; align-items:center; justify-content:center; }
+  .dp-bezel { position:relative; box-sizing:border-box; padding:5px 5px 11px;
+    border:1px solid rgba(200,168,106,.34); border-radius:13px; background:#0b0d14;
+    max-width:100%; max-height:100%; }
+  /* 底部那道细横条 = home indicator。画在机身留边上，不压画面，
+     一眼看出这是一块「屏」，又不像刘海那样谎报可视区域。 */
+  .dp-bezel::after { content:""; position:absolute; left:50%; bottom:4px; transform:translateX(-50%);
+    width:38%; height:3px; border-radius:2px; background:rgba(255,255,255,.22); }
+  .dp-cv { display:block; border-radius:8px; background:#05070c; }
+  /* 固定三行高：读数最多三行（尺寸 / 距离占屏 / 警告）。留满高度，
+     警告行出现或消失时舞台高度才不会跟着变，屏也就不会忽大忽小。 */
+  .dp-read { flex:0 0 auto; min-height:54px; font-size:11px; line-height:1.65; color:#8a90a6; }
+  .dp-read b { color:#eef0f5; font-weight:600; }
+  .dp-read b.pin { color:#d9c08a; }   /* 绑定轴：占屏比就是照着它反解的 */
+  .dp-read .warn { color:#e0b070; }
+  /* 窄屏编辑器变成底部 sheet，左边这条竖带不再空着，预览也失去意义 */
+  @media (max-width: 720px) { .dev-preview { display:none !important; } }
   /* EDITOR-CSS-END */
 </style>
 </head>
@@ -313,6 +358,20 @@
   <!-- EDITOR-HTML-START （导出仅观看版时整段剔除） -->
   <div class="editor" hidden id="editor"></div>
   <div class="ed-badge" hidden id="ed-badge">编辑模式</div>
+  <!-- 机型取景预览：画面来自主画布上一块被本卡片完全遮住的小视口，逐帧拷进 .dp-cv。
+       之所以不做成「卡片中空、直接透出主画布」，是因为热点层(z4)、引线(z6)、
+       信息卡(z8)都在主画布之上，会压在预览画面上。 -->
+  <div class="dev-preview" hidden id="dev-preview">
+    <div class="dp-head">
+      <span class="dp-title">机型取景预览</span>
+      <button class="dp-close" id="dp-close" type="button" title="关闭预览" aria-label="关闭预览">×</button>
+    </div>
+    <div class="dp-chips" id="dp-chips"></div>
+    <div class="dp-stage">
+      <div class="dp-bezel" id="dp-bezel"><canvas class="dp-cv" id="dp-cv"></canvas></div>
+    </div>
+    <div class="dp-read" id="dp-read"></div>
+  </div>
   <!-- EDITOR-HTML-END -->
 </div>
 
@@ -363,7 +422,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'
+import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, PREVIEW_DEVICES, DEFAULT_PREVIEW_DEVICE, previewDevice, framingCoverage, devicePreviewFit, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 
@@ -1823,9 +1882,16 @@ function onResize() {
     if (model) refitCameraDistanceForOrientation()
   }
   syncEditorPanelLayout()
+  // 窗口变了：舞台可用空间跟着变；收窄到编辑器变底部 sheet 时预览要一起停掉
+  if (devicePreviewResync) devicePreviewResync()
 }
 let fps=0, _ft=performance.now(), _fc=0
+/* 编辑器的机型取景预览往这两个钩子上挂回调（仅编辑模式）。声明留在剔除区之外，
+   仅观看版里它们恒为 null，那两行判断即等于不存在。 */
+let devicePreviewTick = null
+let devicePreviewResync = null
 function animate(){ raf=requestAnimationFrame(animate); controls.update(); updateLightRig(); updateHotspots(); updateCallout(); renderer.render(scene,camera)
+  if (devicePreviewTick) devicePreviewTick()
   _fc++; const n=performance.now(); if(n-_ft>=500){ fps=Math.round(_fc*1000/(n-_ft)); _fc=0; _ft=n } }
 /* 统一构造 GLTFLoader：挂载 Draco（几何压缩）+ KTX2/Basis（贴图压缩）解码器，自托管于 vendor/ */
 let _draco = null, _ktx2 = null
@@ -2134,6 +2200,8 @@ function buildEditor() {
   syncEditorPanelLayout()
   renderEditor()
   wireCanvasAdd()
+  // 预览卡在 #editor 之外，renderEditor() 重绘不到它，关闭键只绑一次
+  { const x = document.getElementById('dp-close'); if (x) x.onclick = () => setDevicePreview(false) }
   clearInterval(_perfTimer)
   _perfTimer = setInterval(() => {
     const el = document.getElementById('ed-perf'); if (!el) return
@@ -2287,6 +2355,7 @@ function renderEditor() {
     ${rng('c.pivy','旋转轴 Y 偏移',-1,1,0.01,(c.pivot||[0,0,0])[1])}
     <div class="ed-note">自动/手动旋转均绕此轴。默认 0 = 模型中轴；仅需偏移旋转中心时再调。</div>
     ${rng('c.pfill','手机竖屏占屏',0.5,0.95,0.01, portraitFillTarget(cfg) || DEFAULT_PORTRAIT_FILL)}
+    <label class="ed-row"><span class="ed-label">机型取景预览</span><input type="checkbox" id="ed-devpreview" ${DP.want ? 'checked' : ''}></label>
     <div class="ed-note" id="ed-fit-note"></div>
     <button class="ed-btn" id="ed-cam-save">保存当前视角为默认</button>
   </details>
@@ -2436,6 +2505,209 @@ function renderEditor() {
   wireEditor()
 }
 
+  /* 编辑器是横屏，看不到手机效果——把反解出来的数值如实写出来，让操作者能核对。
+   同时说明它在当前（横屏）视口不生效，免得以为滑条坏了。 */
+/** 当前模型的包围盒尺寸（宽取 x/z 的较大者，与 autoFitDistance 保持同一口径） */
+function fitBoxSize() {
+  if (!model) return null
+  const s = modelBox.getSize(new THREE.Vector3())
+  return s.y > 0 ? { width: Math.max(s.x, s.z), height: s.y } : null
+}
+/** 某机型上的取景结论。fill=0（关闭）时如实反映「沿用默认距离」，而不是按贴边取景算。 */
+function fitOnDevice(dev) {
+  const box = fitBoxSize(); if (!box || !dev) return null
+  const c = cfg.camera || {}
+  const fill = portraitFillTarget(cfg)
+  const fovDeg = num(c.fov, 40)
+  if (!fill) {
+    const distance = num(c.distance, 3.4)
+    const aspect = dev.w / dev.h
+    return { off: true, aspect, distance, rawDistance: distance, clamped: false,
+      coverage: framingCoverage({ ...box, fovDeg, aspect, distance }) }
+  }
+  return devicePreviewFit({ ...box, fovDeg, device: dev, fill,
+    minDistance: num(c.minDistance, 1.4), maxDistance: num(c.maxDistance, 7) })
+}
+function syncFitNote() {
+  const el = document.getElementById('ed-fit-note'); if (!el) return
+  const fill = portraitFillTarget(cfg)
+  if (!fill) { el.textContent = '已关闭竖屏自动取景，手机上沿用上面的默认距离。'; return }
+  const parts = [`竖屏（宽高比 < 1）时自动按包围盒反解相机距离，让器物占屏 ${Math.round(fill * 100)}%；横屏与桌面不受影响，仍用保存的默认视角。`]
+  // 取一手机一平板做代表；完整的五档在「机型取景预览」里逐台看
+  for (const id of ['ph-m', 'pad-s']) {
+    const dev = previewDevice(id)
+    const f = fitOnDevice(dev)
+    if (!f) continue
+    parts.push(`${dev.label} ${dev.w}×${dev.h} → 距离 ${f.distance.toFixed(2)}${f.clamped ? '（已被最近/最远距离夹住）' : ''}`)
+  }
+  el.innerHTML = parts.join('<br>')
+}
+
+/* ---------- 机型取景预览 ----------
+   画面并不是另开一个渲染器，而是用同一个 renderer 在主画布上多画一块小视口
+   （setScissor + setViewport），再逐帧拷进卡片自己的 2D 画布。
+   那块小视口就摆在卡片里 .dp-cv 的位置上——.dp-cv 是不透明的，把它完全盖住，
+   所以既不会有底噪透出，也绕开了「卡片中空」必然遇到的层级问题：
+   热点(z4)、引线(z6)、信息卡(z8)都在主画布之上，会压在预览画面上。 */
+/* want = 用户的意图，与「此刻是否真的显示」分开记：窗口收窄/压扁时预览要让位，
+   但意图得留着，窗口一还原就自己回来，而不是逼用户再勾一次。 */
+const DP = { want: false, id: DEFAULT_PREVIEW_DEVICE, ctx: null, frame: 0, cssW: 0, cssH: 0 }
+const DP_EVERY = 4          // 每 4 帧出一次图：预览不需要 60fps，省掉四分之三的额外绘制
+const DP_MIN_H = 560        // 再矮就要压到左上角的语音条上了
+let dpCam = null
+
+// renderEditor() 里那个 esc 是它的局部函数，这里够不着；机型表是源码常量，
+// 转义纯属防御，但别为了省这一行就往 innerHTML 里塞未转义的字符串。
+const dpEsc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
+function dpDevice() { return previewDevice(DP.id) }
+function dpVisible() { return DP.want && innerWidth > ED_PANEL_NARROW_MAX && innerHeight >= DP_MIN_H }
+
+function dpSyncChips() {
+  const box = document.getElementById('dp-chips'); if (!box) return
+  box.innerHTML = PREVIEW_DEVICES.map(d =>
+    `<button type="button" class="dp-chip${d.id === DP.id ? ' on' : ''}" data-dp="${d.id}"` +
+    ` title="${dpEsc(d.label)} · ${d.w} × ${d.h} · ${dpEsc(d.hint)}">${dpEsc(d.short)}</button>`).join('')
+  box.querySelectorAll('[data-dp]').forEach(b => {
+    b.onclick = () => { DP.id = b.dataset.dp; dpSyncChips(); dpLayout(); dpSyncRead() }
+  })
+}
+
+/** 按当前舞台可用空间与机型比例定出「屏」的尺寸。舞台尺寸固定，换机型只改屏的形状，卡片不跳。 */
+function dpLayout() {
+  const cv = document.getElementById('dp-cv')
+  const bezel = document.getElementById('dp-bezel')
+  if (!cv || !bezel || !dpVisible()) return
+  const stage = bezel.parentElement
+  const cs = getComputedStyle(bezel)
+  const chromeW = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) * 2
+  const chromeH = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) * 2
+  const availW = Math.max(40, stage.clientWidth - chromeW)
+  const availH = Math.max(40, stage.clientHeight - chromeH)
+  const dev = dpDevice()
+  const ar = dev.w / dev.h
+  const w = Math.floor(Math.min(availW, availH * ar))
+  const h = Math.floor(w / ar)
+  if (!(w > 0 && h > 0)) return
+  if (w === DP.cssW && h === DP.cssH) return   // 没变就别写样式，免得 ResizeObserver 自激
+  DP.cssW = w; DP.cssH = h
+  cv.style.width = w + 'px'
+  cv.style.height = h + 'px'
+  // 后备存储用渲染器自己的 pixelRatio，拷贝时才是 1:1，不经重采样
+  const dpr = renderer ? renderer.getPixelRatio() : (devicePixelRatio || 1)
+  const bw = Math.max(1, Math.round(w * dpr)), bh = Math.max(1, Math.round(h * dpr))
+  if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh }
+  if (!DP.ctx) DP.ctx = cv.getContext('2d')
+}
+
+function pct(v) { return Math.round(v * 100) + '%' }
+function dpSyncRead() {
+  const el = document.getElementById('dp-read'); if (!el) return
+  // 逐帧调用，内容没变就不碰 DOM，免得每秒十几次无谓的重排
+  const dev = dpDevice()
+  const ratio = (dev.h / dev.w).toFixed(2)
+  const f = fitOnDevice(dev)
+  const lines = [`${dev.w} × ${dev.h}　比例 1 : ${ratio}`]
+  if (!f) {
+    lines.push('模型未就绪')
+  } else {
+    // 谁先顶满谁说了算：把绑定的那条轴挑成金色，一眼看出滑条上的数字落在哪一边
+    const bindH = f.coverage.h >= f.coverage.w
+    const ax = (on, v) => `<b class="${on ? 'pin' : ''}">${pct(v)}</b>`
+    lines.push(`距离 <b>${f.distance.toFixed(2)}</b>　占屏 高 ${ax(bindH, f.coverage.h)} · 宽 ${ax(!bindH, f.coverage.w)}`)
+    if (f.off) lines.push('<span class="warn">竖屏自动取景已关闭，沿用默认距离</span>')
+    else if (f.clamped) lines.push('<span class="warn">已被最近/最远距离夹住</span>')
+  }
+  const html = lines.join('<br>')
+  if (html === DP.lastRead) return
+  DP.lastRead = html
+  el.innerHTML = html
+}
+
+/** 逐帧出图。挂在 animate() 之后，读的是本帧已经画完的主画布。 */
+function dpTick() {
+  if (!dpVisible() || !renderer || !camera || !controls) return
+  if ((DP.frame++ % DP_EVERY) !== 0) return
+  const cv = document.getElementById('dp-cv')
+  if (!cv || !DP.ctx || !(DP.cssW > 1) || !(DP.cssH > 1)) return
+  const dev = dpDevice()
+  const f = fitOnDevice(dev)
+  const target = controls.target
+  const dist = f ? f.distance : camera.position.distanceTo(target)
+  if (!(dist > 0)) return
+
+  // 预览相机只替换「距离」与「宽高比」，方位角随用户当前视角走，拖动时预览跟着转
+  if (!dpCam) dpCam = new THREE.PerspectiveCamera(40, 1, 0.1, 1000)
+  dpCam.fov = num(cfg.camera?.fov, 40)
+  dpCam.aspect = dev.w / dev.h
+  dpCam.near = camera.near; dpCam.far = camera.far
+  dpCam.updateProjectionMatrix()
+  const off = camera.position.clone().sub(target)
+  if (off.lengthSq() === 0) off.set(0, 0, 1)
+  dpCam.position.copy(target).add(off.setLength(dist))
+  dpCam.up.copy(camera.up)
+  dpCam.lookAt(target)
+
+  const canvasRect = renderer.domElement.getBoundingClientRect()
+  const cvRect = cv.getBoundingClientRect()
+  const x = cvRect.left - canvasRect.left
+  const yTop = cvRect.top - canvasRect.top
+  // WebGL 视口的 y 从画布底边往上量
+  const y = canvasRect.height - yTop - DP.cssH
+  if (x < 0 || y < 0 || x + DP.cssW > canvasRect.width + 1 || yTop + DP.cssH > canvasRect.height + 1) return
+
+  // renderer.info.render 每次 render() 都会重置，编辑器的性能面板读的就是它。
+  // 不还原的话，开着预览时面板有四分之一的采样落在这块小视口上，Draw 数忽大忽小。
+  const infoSnap = { ...renderer.info.render }
+  const shadowAuto = renderer.shadowMap.autoUpdate
+  renderer.shadowMap.autoUpdate = false   // 阴影贴图本帧主渲染已更新过，别再来一遍
+  renderer.setScissorTest(true)
+  renderer.setViewport(x, y, DP.cssW, DP.cssH)
+  renderer.setScissor(x, y, DP.cssW, DP.cssH)
+  renderer.render(scene, dpCam)
+  renderer.setScissorTest(false)
+  renderer.setViewport(0, 0, canvasRect.width, canvasRect.height)
+  renderer.shadowMap.autoUpdate = shadowAuto
+  Object.assign(renderer.info.render, infoSnap)
+
+  const dpr = renderer.getPixelRatio()
+  DP.ctx.drawImage(renderer.domElement,
+    Math.round(x * dpr), Math.round(yTop * dpr), cv.width, cv.height,
+    0, 0, cv.width, cv.height)
+  dpSyncRead()
+}
+
+function setDevicePreview(on, { quiet = false } = {}) {
+  DP.want = !!on
+  const box = document.querySelector('#editor #ed-devpreview')
+  if (box) box.checked = DP.want
+  const card = document.getElementById('dev-preview')
+  if (!card) return
+  const vis = dpVisible()
+  card.hidden = !vis
+  devicePreviewTick = vis ? dpTick : null
+  if (!vis) {
+    if (DP.want && !quiet) flash(`窗口太小：机型取景预览需要至少 ${ED_PANEL_NARROW_MAX + 1} × ${DP_MIN_H}`)
+    return
+  }
+  dpSyncChips()
+  // 先填读数再量舞台：读数为空时舞台会多分到 50 多像素，屏会撑破卡片压住下面那行
+  dpSyncRead()
+  requestAnimationFrame(() => {
+    dpSyncRead()
+    dpLayout()
+    // 上面两句（先填读数、再量舞台）已经够让首屏正确了（已用 e2e 反向验证）。
+    // 观察者是兜底：字体加载完、机型条换行数变了都会改舞台可用空间，
+    // 别再依赖「某一帧量到的值刚好是最终值」。
+    const stage = document.getElementById('dp-bezel')?.parentElement
+    if (stage && !DP.ro && typeof ResizeObserver === 'function') {
+      DP.ro = new ResizeObserver(() => dpLayout())
+      DP.ro.observe(stage)
+    }
+  })
+}
+// 窗口变化时按意图重算可见性：静默，否则拖窗口会一路弹提示
+devicePreviewResync = () => { if (DP.want) setDevicePreview(true, { quiet: true }) }
+
 function wireEditor() {
   const el = id => document.getElementById(id)
   const g=cfg.materials.global, m=cfg.model, c=cfg.camera, L=cfg.lights
@@ -2460,24 +2732,6 @@ function wireEditor() {
   }
   function setShadow(key, v){ cfg.shadow = cfg.shadow || {}; cfg.shadow[key] = v; applyShadow() }
   // 主光被关掉 / 转到水平面以下时，地面接不到影子——就地提示，不整段重绘
-  /* 编辑器是横屏，看不到手机效果——把反解出来的数值如实写出来，让操作者能核对。
-   同时说明它在当前（横屏）视口不生效，免得以为滑条坏了。 */
-function syncFitNote() {
-  const el = document.getElementById('ed-fit-note'); if (!el) return
-  const c = cfg.camera || {}
-  const fill = portraitFillTarget(cfg)
-  if (!fill) { el.textContent = '已关闭竖屏自动取景，手机上沿用上面的默认距离。'; return }
-  const size = model ? modelBox.getSize(new THREE.Vector3()) : null
-  const parts = [`竖屏（宽高比 < 1）时自动按包围盒反解相机距离，让器物占屏 ${Math.round(fill * 100)}%；横屏与桌面不受影响，仍用保存的默认视角。`]
-  if (size && size.y > 0) {
-    for (const [label, w, h] of [['手机 390×800', 390, 800], ['平板 768×1024', 768, 1024]]) {
-      const d = fitCameraDistance({ width: Math.max(size.x, size.z), height: size.y, fovDeg: num(c.fov, 40), aspect: w / h, fill })
-      const clamped = Math.min(Math.max(d, num(c.minDistance, 1.4)), num(c.maxDistance, 7))
-      parts.push(`${label} → 距离 ${clamped.toFixed(2)}${clamped !== d ? '（已被最近/最远距离夹住）' : ''}`)
-    }
-  }
-  el.innerHTML = parts.join('<br>')
-}
 function syncShadowHint(){
     const el = document.getElementById('ed-shadow-warn'); if (!el) return
     el.innerHTML = (resolveShadow(cfg).enabled && !shadowWillLand(cfg))
@@ -2632,7 +2886,8 @@ function syncShadowHint(){
   const dz=el('editor'); ;['dragover','drop'].forEach(ev=>dz.addEventListener(ev,e=>e.preventDefault()))
   el('ed-m-reset').onclick=()=>{ m.scale=1; m.position=[0,0,0]; m.rotationDeg=[0,0,0]; normalize(model); renderEditor() }
   el('ed-cam-save').onclick=()=>{ const s=new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target))
-    c.distance=+s.radius.toFixed(3); c.phi=+s.phi.toFixed(3); c.theta=+s.theta.toFixed(3); initialCam.copy(camera.position); flash('已保存当前视角') }
+    c.distance=+s.radius.toFixed(3); c.phi=+s.phi.toFixed(3); c.theta=+s.theta.toFixed(3); initialCam.copy(camera.position); flash('已保存当前视角'); dpSyncRead() }
+  { const c2=el('ed-devpreview'); if(c2) c2.onchange=e=>setDevicePreview(e.target.checked) }
   el('ed-pano-load').onclick = async () => {
     const u = el('ed-pano').value.trim()
     if (!u) return
@@ -2807,7 +3062,9 @@ function downloadJSON(){
   flash(`已导出 ${name} — 请重命名为 config.json 并覆盖 exhibits/${EX || 'craft-XXX'}/`) }
 // 截取「整器入镜」的一帧作缩略图/封面（临时把相机拉到刚好框住整个模型，拍完复位）
 function capturePoster(){
-  if(!model) return renderer.domElement.toDataURL('image/jpeg',0.86)
+  // 先重画一帧再读：直接读缓冲区会拿到上一帧的残留（开着机型预览时，那上面还盖着
+  // 一块预览用的小视口）。有模型的分支下面本来就会重画，这里补齐无模型的情形。
+  if(!model){ renderer.render(scene,camera); return renderer.domElement.toDataURL('image/jpeg',0.86) }
   const box=modelBox.clone(), c=box.getCenter(new THREE.Vector3()), s=box.getSize(new THREE.Vector3())
   const maxDim=Math.max(s.x,s.y,s.z)||1
   const fit=(maxDim*0.5)/Math.tan(camera.fov*Math.PI/360)*1.5 + maxDim*0.2   // 留边距

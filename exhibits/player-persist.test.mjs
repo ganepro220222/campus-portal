@@ -214,7 +214,8 @@ test('PREVIEW_DEVICES：机型合法，且比例覆盖到手机与平板两端',
   for (const d of PREVIEW_DEVICES) {
     assert.ok(d.w > 0 && d.h > 0, `${d.id} 尺寸非法`)
     assert.ok(d.w < d.h, `${d.id} 必须是竖屏——横屏本来就不触发 auto-fit`)
-    assert.ok(d.label && d.hint, `${d.id} 缺标签`)
+    assert.ok(d.label && d.hint && d.short, `${d.id} 缺标签`)
+    assert.ok(d.short.length <= 8, `${d.id} 的 short 太长，机型条会换行`)
     assert.ok(!ids.has(d.id), `${d.id} 重复`)
     ids.add(d.id)
   }

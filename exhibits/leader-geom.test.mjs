@@ -13,7 +13,8 @@ import {
   layoutPanelFromHotspot, probeLeaderLayouts, hotspotClearance,
   anchorOnPanelEdge, getOrthPreferFirst, setOrthPreferFirst, clearOrthPreferFirst,
 } from './leader-geom.js'
-import { batchFieldApplies, batchFieldModeOff, collectBatchOps } from './studio-batch.mjs'
+import { batchFieldApplies, batchFieldModeOff, collectBatchOps,
+  BATCH_SAFE_CAMERA_PATHS, isBatchSafeCameraPath } from './studio-batch.mjs'
 import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { buildViewerSrc, buildProductionViewer, syncUploadModules, syncUploadExhibits, syncUploadAssets,
@@ -301,6 +302,50 @@ test('craft index shells point to player.view.html only', () => {
     assert.ok(!html.includes('player.html'))
     assert.match(html, /params\.delete\('mode'\)/)
   }
+})
+
+/* 批量的相机组只收「比例/角度」类字段。绝对长度（最近/最远距离、旋转轴偏移、默认距离）
+   与器物自身尺寸死绑，一刷就会把小件的取景夹死，必须留在单件编辑器里。
+   下面这条直接读 studio.html 源码，防的是「以后有人顺手往注册表里加一个 camera.minDistance」。 */
+test('batch: studio.html 的相机字段只允许与器物尺度无关的那几个', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'studio.html'), 'utf8')
+  const groups = src.slice(src.indexOf('const GROUPS = ['), src.indexOf('const groupFields'))
+  const paths = [...groups.matchAll(/path\s*:\s*'(camera\.[\w.]+)'/g)].map(m => m[1])
+  const expandOpsPaths = [...groups.matchAll(/path\s*:\s*'(camera\.[\w.]+)'\s*,\s*value/g)].map(m => m[1])
+  const all = [...new Set([...paths, ...expandOpsPaths])]
+  assert.ok(all.length > 0, 'studio.html 里没抠到任何 camera.* 字段，正则可能失效了')
+  for (const p of all) {
+    assert.ok(isBatchSafeCameraPath(p), `camera 字段 ${p} 不该出现在批量注册表里`)
+  }
+  // 反向：白名单里的三项确实都已经接进去了，别让这条测试变成永远为真的空转
+  for (const p of BATCH_SAFE_CAMERA_PATHS) {
+    assert.ok(all.includes(p), `白名单里的 ${p} 还没接进批量注册表`)
+  }
+})
+
+test('batch: isBatchSafeCameraPath 只管 camera.*，绝对长度一律拒收', () => {
+  assert.ok(isBatchSafeCameraPath('camera.portraitFill'))
+  assert.ok(isBatchSafeCameraPath('camera.fov'))
+  assert.ok(isBatchSafeCameraPath('camera.autoRotateSpeed'))
+  assert.ok(!isBatchSafeCameraPath('camera.minDistance'))
+  assert.ok(!isBatchSafeCameraPath('camera.maxDistance'))
+  assert.ok(!isBatchSafeCameraPath('camera.distance'))
+  assert.ok(!isBatchSafeCameraPath('camera.pivot'))
+  // 非相机字段不归这条约束管
+  assert.ok(isBatchSafeCameraPath('panel.style'))
+  assert.ok(isBatchSafeCameraPath(''))
+  assert.ok(isBatchSafeCameraPath(undefined))
+})
+
+test('batch: 关闭竖屏取景是 action，展开成 portraitFill=0', () => {
+  const off = {
+    id: 'pfilloff', type: 'action',
+    expandOps() { return [{ path: 'camera.portraitFill', value: 0 }] },
+  }
+  const ops = collectBatchOps({ off }, {
+    enabled: () => true, modeOff: () => false, value: () => 0, schemeOps: () => [],
+  })
+  assert.deepEqual(ops, [{ path: 'camera.portraitFill', value: 0 }])
 })
 
 test('batch: leg1-lock mode enables lgap and laxis only', () => {

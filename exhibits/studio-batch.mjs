@@ -1,5 +1,32 @@
 /** 工作台批量字段模式过滤（纯函数，可单测） */
 
+/**
+ * 允许进批量的相机字段白名单。
+ *
+ * 批量的语义是「一个值套到 N 件展品上」，所以只有**与器物尺度无关**的字段才配得上：
+ *   - camera.portraitFill    占屏「比例」。真正的距离由 fitCameraDistance() 按各自的包围盒反解，
+ *                            同一个 0.78 套到 3 米的碑和 8 厘米的印章上，取景松紧观感一致。
+ *   - camera.fov             视野角，纯观感风格。
+ *   - camera.autoRotateSpeed 转速，纯观感风格。
+ *
+ * 反过来，camera.distance / minDistance / maxDistance / pivot 是**绝对长度**，
+ * 与器物自身尺寸死绑：同一个 1.8 的最近距离，对大件够不着、对小件直接把取景夹死
+ * （见 player.html autoFitDistance() 末尾的 clamp）。这类字段必须留在单件编辑器里，
+ * 任何时候都不要往批量注册表里加。
+ */
+export const BATCH_SAFE_CAMERA_PATHS = Object.freeze([
+  'camera.portraitFill',
+  'camera.fov',
+  'camera.autoRotateSpeed',
+])
+
+/** 该 config 路径是否允许出现在批量注册表里（非 camera.* 一律放行，本约束只管相机）。 */
+export function isBatchSafeCameraPath(path) {
+  const p = String(path ?? '')
+  if (!p.startsWith('camera.')) return true
+  return BATCH_SAFE_CAMERA_PATHS.includes(p)
+}
+
 export function batchFieldApplies(field, mode, leader) {
   if (field.leaders?.length && !field.leaders.includes(leader)) return false
   if (!field.modes) return true

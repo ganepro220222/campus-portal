@@ -120,14 +120,30 @@ public class SubscribeService {
         return payload;
     }
 
+    /**
+     * 字段 key 须与公众平台「我的模板」详情一致（公库模板编号因选用关键词而异）。
+     * enroll_success：活动报名成功通知 → thing1 + time3
+     * enroll_approved：报名审核通知 → phrase1 + thing8 + time11
+     */
     private Map<String, String> buildKeywordData(String scene, SubscribeOutboxPayload payload) {
         Map<String, String> data = new HashMap<>();
-        data.put("thing1", trim(payload.getActivityTitle(), 20));
-        data.put("phrase2", trim(resolvePhrase2(scene, payload), 5));
-        if (payload.getVoucherCode() != null && !payload.getVoucherCode().isBlank()) {
-            data.put("character_string3", trim(payload.getVoucherCode(), 32));
+        String title = trim(payload.getActivityTitle(), 20);
+        String startTime = payload.getActivityStartTime() != null ? payload.getActivityStartTime() : "";
+        if (SCENE_ENROLL_APPROVED.equals(scene)) {
+            data.put("phrase1", trim(resolvePhrase2(scene, payload), 5));
+            data.put("thing8", title);
+            data.put("time11", startTime);
+            return data;
         }
-        data.put("time4", payload.getActivityStartTime() != null ? payload.getActivityStartTime() : "");
+        if (SCENE_ENROLL_SUCCESS.equals(scene)) {
+            data.put("thing1", title);
+            data.put("time3", startTime);
+            return data;
+        }
+        // activity_remind 等未配置公库模板时保留旧占位 key，便于后续替换
+        data.put("thing1", title);
+        data.put("phrase2", trim(resolvePhrase2(scene, payload), 5));
+        data.put("time4", startTime);
         return data;
     }
 

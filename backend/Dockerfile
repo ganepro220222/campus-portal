@@ -8,7 +8,7 @@ COPY mvnw .
 COPY .mvn .mvn
 COPY src src
 
-RUN chmod +x mvnw && ./mvnw -q -DskipTests package
+RUN chmod +x mvnw && ./mvnw -q -DskipTests package -s .mvn/settings.xml
 
 # 运行阶段
 FROM docker.m.daocloud.io/library/eclipse-temurin:17-jre-jammy

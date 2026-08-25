@@ -104,7 +104,7 @@
     <!-- 线上展馆 -->
     <view class="section wrap">
       <view class="sec-head">
-        <view class="sec-title serif">线上展馆 · 11 馆</view>
+        <view class="sec-title serif">线上展馆</view>
         <view class="sec-more" bindtap="onSectionMore" data-path="/pages/hall/index">全部<icon name="chevron-right" size="13" color="#67708C" /></view>
       </view>
       <scroll-view scroll-x class="halls-scroll" enhanced show-scrollbar="{{false}}">

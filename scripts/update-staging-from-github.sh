@@ -4,15 +4,13 @@
 #
 # 用法（SSH 登录 ECS 后）：
 #   cd /opt/shuyuan
-#   bash scripts/update-staging-from-github.sh
-#
-# 管理后台 admin/dist 不在 Git 中，更新 backend 后若需改后台：
-#   在本机 admin/ build，再 scp dist 到服务器（见部署手册）。
+#   SKIP_DOCKER=1 bash scripts/update-staging-from-github.sh
 #
 # 环境变量：
 #   GIT_REMOTE=origin   GIT_BRANCH=main
 #   SKIP_DOCKER=1       只拉代码不重建容器
 #   SKIP_SLIM=1         跳过瘦身（一般不要设）
+#   DOCKER_COMPOSE_FILE=...  显式指定 compose（推荐 staging 服务器设置）
 #
 # 若要从 Git 恢复展品 config（覆盖在线编辑），见 scripts/restore-exhibit-content-from-git.sh
 
@@ -25,6 +23,9 @@ REMOTE="${GIT_REMOTE:-origin}"
 BRANCH="${GIT_BRANCH:-main}"
 REF="$REMOTE/$BRANCH"
 BACKUP=""
+CODE_BACKUP=""
+CODE_PATHS=()
+UPDATE_OK=0
 
 backup_craft_configs() {
   BACKUP="exhibits/_content_backup/$(date +%Y%m%d_%H%M%S)"
@@ -39,6 +40,7 @@ backup_craft_configs() {
 }
 
 restore_craft_configs() {
+  [ -n "$BACKUP" ] || return 0
   for cfg in exhibits/craft-*/config.json; do
     [ -f "$cfg" ] || continue
     rel="${cfg#exhibits/}"
@@ -49,22 +51,83 @@ restore_craft_configs() {
   echo "已恢复 craft config 自备份"
 }
 
-verify_craft_configs_unchanged() {
+# checkout 后、restore 前：检测 craft config 是否被 git 覆盖
+detect_craft_configs_changed_by_checkout() {
   local cfg rel changed=0
   for cfg in exhibits/craft-*/config.json; do
     [ -f "$cfg" ] || continue
     rel="${cfg#exhibits/}"
     [ -f "$BACKUP/$rel" ] || continue
     if ! cmp -s "$cfg" "$BACKUP/$rel"; then
-      echo "错误: $cfg 在代码更新后被改动，已从备份恢复" >&2
-      cp "$BACKUP/$rel" "$cfg"
+      echo "错误: $cfg 被 checkout 改动（collector 清单可能误含 craft 内容）" >&2
       changed=1
     fi
   done
   if [ "$changed" -ne 0 ]; then
-    echo "craft config 已与备份对齐；请检查 checkout 清单是否误含 craft-* 内容路径" >&2
+    restore_craft_configs
     exit 1
   fi
+}
+
+assert_exhibits_paths_safe() {
+  local p
+  for p in "$@"; do
+    case "$p" in
+      exhibits/craft-*|exhibits/craft-*/*)
+        echo "错误: collector 清单含展品内容路径: $p" >&2
+        exit 1
+        ;;
+    esac
+  done
+}
+
+backup_code_paths() {
+  local p rel
+  CODE_BACKUP="exhibits/_code_backup/$(date +%Y%m%d_%H%M%S)"
+  mkdir -p "$CODE_BACKUP"
+  for p in "$@"; do
+    [ -e "$p" ] || continue
+    rel="${p#exhibits/}"
+    if [ -d "$p" ]; then
+      mkdir -p "$CODE_BACKUP/$(dirname "$rel")"
+      rm -rf "$CODE_BACKUP/$rel"
+      cp -a "$p" "$CODE_BACKUP/$rel"
+    else
+      mkdir -p "$CODE_BACKUP/$(dirname "$rel")"
+      cp "$p" "$CODE_BACKUP/$rel"
+    fi
+  done
+  echo "已备份 exhibits 代码 → $CODE_BACKUP"
+}
+
+restore_code_paths() {
+  local p rel
+  [ -n "$CODE_BACKUP" ] || return 0
+  [ -d "$CODE_BACKUP" ] || return 0
+  for p in "${CODE_PATHS[@]}"; do
+    rel="${p#exhibits/}"
+    [ -e "$CODE_BACKUP/$rel" ] || continue
+    rm -rf "$p"
+    if [ -d "$CODE_BACKUP/$rel" ]; then
+      mkdir -p "$(dirname "$p")"
+      cp -a "$CODE_BACKUP/$rel" "$p"
+    else
+      mkdir -p "$(dirname "$p")"
+      cp "$CODE_BACKUP/$rel" "$p"
+    fi
+  done
+  echo "已恢复 exhibits 代码自备份"
+}
+
+on_update_err() {
+  local ec=$?
+  if [ "$UPDATE_OK" -eq 1 ]; then
+    exit "$ec"
+  fi
+  echo "更新失败 (exit $ec)，回滚 craft config 与 exhibits 代码..." >&2
+  restore_craft_configs || true
+  restore_code_paths || true
+  exit "$ec"
 }
 
 # 仅 checkout Git 中存在的路径（staging compose 等可能只在服务器本地维护）
@@ -89,7 +152,7 @@ resolve_compose_file() {
     echo "$DOCKER_COMPOSE_FILE"
     return 0
   fi
-  for f in docker-compose.staging.yml docker-compose.yml docker-compose.dev.yml; do
+  for f in docker-compose.staging.yml docker-compose.yml; do
     if [ -f "$f" ]; then
       echo "$f"
       return 0
@@ -97,6 +160,23 @@ resolve_compose_file() {
   done
   return 1
 }
+
+run_exhibits_post_checks() {
+  if ! command -v node >/dev/null 2>&1; then
+    echo "警告: 未找到 node，跳过 exhibits 静态校验" >&2
+    return 0
+  fi
+  echo ""
+  echo "=== exhibits 静态校验 ==="
+  (cd exhibits && node check-static-deps.mjs)
+  if [ -f exhibits/node_modules/esbuild/package.json ]; then
+    (cd exhibits && node build-viewer.mjs --check)
+  else
+    echo "跳过 build-viewer --check（ECS 无 node_modules/esbuild）"
+  fi
+}
+
+trap on_update_err ERR
 
 echo "=== update-staging-from-github @ $ROOT ==="
 echo "拉取: $REF"
@@ -119,13 +199,17 @@ backup_craft_configs
 
 echo ""
 echo "=== bootstrap collector 依赖（跨版本升级必须先于 collect）==="
-git checkout "$REF" -- \
-  scripts \
-  exhibits/staging-editor-paths.mjs \
-  exhibits/build-viewer.mjs \
-  exhibits/build-viewer-bundle.mjs \
-  exhibits/player.html \
+BOOTSTRAP_PATHS=(
+  scripts
+  exhibits/staging-editor-paths.mjs
+  exhibits/build-viewer.mjs
+  exhibits/build-viewer-bundle.mjs
+  exhibits/player.html
   exhibits/studio.html
+)
+CODE_PATHS=("${BOOTSTRAP_PATHS[@]}")
+backup_code_paths "${BOOTSTRAP_PATHS[@]}"
+git checkout "$REF" -- "${BOOTSTRAP_PATHS[@]}"
 
 echo ""
 echo "=== checkout 运行路径（不含 miniapp/design/test/admin 源码）==="
@@ -138,10 +222,35 @@ if [ "${#EXHIBITS_PATHS[@]}" -eq 0 ]; then
   echo "错误: collect-staging-editor-files.mjs 未输出路径" >&2
   exit 1
 fi
+assert_exhibits_paths_safe "${EXHIBITS_PATHS[@]}"
+for p in "${EXHIBITS_PATHS[@]}"; do
+  case " ${CODE_PATHS[*]} " in
+    *" $p "*) ;;
+    *) CODE_PATHS+=("$p") ;;
+  esac
+done
+# 追加备份 collector 清单里 bootstrap 未覆盖的路径
+for p in "${EXHIBITS_PATHS[@]}"; do
+  case " ${BOOTSTRAP_PATHS[*]} " in
+    *" $p "*) continue ;;
+  esac
+  [ -e "$p" ] || continue
+  rel="${p#exhibits/}"
+  if [ -d "$p" ]; then
+    mkdir -p "$CODE_BACKUP/$(dirname "$rel")"
+    rm -rf "$CODE_BACKUP/$rel"
+    cp -a "$p" "$CODE_BACKUP/$rel"
+  else
+    mkdir -p "$CODE_BACKUP/$(dirname "$rel")"
+    cp "$p" "$CODE_BACKUP/$rel"
+  fi
+done
+
 git checkout "$REF" -- "${EXHIBITS_PATHS[@]}"
 
+detect_craft_configs_changed_by_checkout
 restore_craft_configs
-verify_craft_configs_unchanged
+run_exhibits_post_checks
 
 echo ""
 echo "=== 瘦身（移回 _slim_archive，exhibits 里被拉回的测试目录也会被清掉）==="
@@ -165,6 +274,9 @@ if [ "${SKIP_DOCKER:-0}" != "1" ]; then
 else
   echo "SKIP_DOCKER=1，跳过 Docker"
 fi
+
+UPDATE_OK=1
+trap - ERR
 
 echo ""
 echo "完成。若改了管理后台 Vue 代码，请在本机 build 并 scp admin/dist 到 ECS。"

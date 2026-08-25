@@ -13,7 +13,9 @@ PLAYER="$EX/player.html"
 STUDIO_PREFIX="${STUDIO_HTTP_PREFIX:-/studio}"
 PUBLIC_HOST="${STUDIO_PUBLIC_HOST:-47.109.0.192}"
 PROBE_FAIL=0
-STUDIO_OK=0
+STUDIO_HTML_OK=0
+PLAYER_HTML_OK=0
+API_OK=0
 
 echo "=== apply-staging-editor @ $ROOT ==="
 
@@ -42,52 +44,45 @@ else
   echo "警告: 未找到 node，跳过 check-static-deps" >&2
 fi
 
-probe() {
+probe_optional() {
   local url="$1"
-  local expect_ok="${2:-1}"
   local line code
   line="$(curl -sI "$url" 2>/dev/null | head -1 || true)"
   code="$(echo "$line" | awk '{print $2}')"
   printf '%-55s ' "$url"
-  if [ "$expect_ok" = "1" ]; then
-    case "$code" in
-      200|301|302|401) echo "OK  $line" ;;
-      *) echo "FAIL $line"; PROBE_FAIL=1 ;;
-    esac
-  else
-    echo "${line:-curl failed}"
-  fi
+  echo "${line:-curl failed}"
 }
 
-probe_studio() {
+# 必需入口：任一失败则 PROBE_FAIL=1（401 表示 Basic Auth 正常）
+probe_required() {
   local url="$1"
   local line code
   line="$(curl -sI "$url" 2>/dev/null | head -1 || true)"
   code="$(echo "$line" | awk '{print $2}')"
   printf '%-55s ' "$url"
   case "$code" in
-    200|301|302|401) echo "OK  $line"; STUDIO_OK=1 ;;
-    *) echo "FAIL $line"; PROBE_FAIL=1 ;;
+    200|301|302|401) echo "OK  $line"; return 0 ;;
+    *) echo "FAIL $line"; PROBE_FAIL=1; return 1 ;;
   esac
 }
 
 echo ""
 echo "=== HTTP 探测（本机 Nginx，编辑器入口 ${STUDIO_PREFIX}/）==="
-probe_studio "http://127.0.0.1${STUDIO_PREFIX}/studio.html"
-probe_studio "http://127.0.0.1${STUDIO_PREFIX}/player.html"
-probe "http://127.0.0.1/studio-api/list"
+probe_required "http://127.0.0.1${STUDIO_PREFIX}/studio.html" && STUDIO_HTML_OK=1 || true
+probe_required "http://127.0.0.1${STUDIO_PREFIX}/player.html" && PLAYER_HTML_OK=1 || true
+probe_required "http://127.0.0.1/studio-api/list" && API_OK=1 || true
 echo ""
 echo "=== 参考（/exhibits/ 未配置 alias 时 404 属正常）==="
-probe "http://127.0.0.1/exhibits/studio.html" 0
-probe "http://127.0.0.1/exhibits/studio-api/list" 0
+probe_optional "http://127.0.0.1/exhibits/studio.html"
+probe_optional "http://127.0.0.1/exhibits/studio-api/list"
 
 echo ""
-if [ "$STUDIO_OK" -eq 0 ]; then
-  echo "编辑器 HTTP 探测失败：请确认 studio-server 在跑且 Nginx 已配置 ${STUDIO_PREFIX}/ 反代" >&2
-  exit 1
-fi
 if [ "$PROBE_FAIL" -ne 0 ]; then
-  echo "部分探测失败（若 ${STUDIO_PREFIX}/ 已 OK 可忽略 /exhibits/ 404）" >&2
+  echo "编辑器 HTTP 探测失败（studio/player/API 均须 OK）" >&2
+  echo "  studio.html: $([ "$STUDIO_HTML_OK" -eq 1 ] && echo OK || echo FAIL)" >&2
+  echo "  player.html: $([ "$PLAYER_HTML_OK" -eq 1 ] && echo OK || echo FAIL)" >&2
+  echo "  studio-api:  $([ "$API_OK" -eq 1 ] && echo OK || echo FAIL)" >&2
+  exit 1
 fi
 
 echo "外网：http://${PUBLIC_HOST}${STUDIO_PREFIX}/studio.html"

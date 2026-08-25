@@ -13,22 +13,30 @@ function idx(re) {
   return m ? m.index : -1
 }
 
-const bootstrap = idx(/git checkout "\$REF" -- \\\s*\n\s*scripts/)
-const buildViewer = idx(/exhibits\/build-viewer\.mjs/)
+const bootstrap = idx(/BOOTSTRAP_PATHS=\(/)
+const bootstrapCheckout = sh.indexOf('git checkout "$REF" -- "${BOOTSTRAP_PATHS[@]}"')
+
+assert.ok(bootstrap >= 0, 'missing BOOTSTRAP_PATHS')
+assert.ok(bootstrapCheckout > bootstrap, 'bootstrap checkout must follow path list')
 const collect = idx(/collect-staging-editor-files\.mjs --repo/)
 const backupCall = sh.indexOf('\nbackup_craft_configs\n')
-const verifyCall = sh.lastIndexOf('verify_craft_configs_unchanged')
-
-assert.ok(bootstrap >= 0, 'missing scripts bootstrap checkout')
-assert.ok(buildViewer > bootstrap, 'build-viewer.mjs must be bootstrapped')
-assert.ok(collect > buildViewer, 'collector must run after build-viewer bootstrap')
+const detectCall = sh.indexOf('\ndetect_craft_configs_changed_by_checkout\n')
+const restoreCall = sh.lastIndexOf('\nrestore_craft_configs\n')
+const bootstrapBackup = sh.indexOf('backup_code_paths "${BOOTSTRAP_PATHS[@]}"')
 assert.ok(backupCall >= 0 && backupCall < bootstrap, 'backup must happen before bootstrap checkout')
-assert.ok(verifyCall > collect, 'config verify must run after exhibits checkout')
+assert.ok(bootstrapBackup > backupCall, 'bootstrap code backup before bootstrap checkout')
+assert.ok(bootstrapCheckout > bootstrapBackup, 'bootstrap checkout after backup')
+assert.ok(collect > bootstrapCheckout, 'collector after bootstrap')
+assert.ok(detectCall > collect, 'detect config drift must run after exhibits checkout')
+assert.ok(restoreCall > detectCall, 'restore craft config must run after detect')
 
 assert.doesNotMatch(sh, /REPLACE_CONTENT_FROM_GIT/, 'misleading REPLACE_CONTENT_FROM_GIT removed')
 assert.doesNotMatch(sh, /拒绝 git checkout 覆盖/, 'must not block on dirty craft config')
-assert.match(sh, /checkout_ref_paths/, 'must skip paths missing from git')
-assert.match(sh, /staging-editor-paths\.mjs/, 'must bootstrap esbuild-free collector module')
+assert.doesNotMatch(sh, /verify_craft_configs_unchanged/, 'post-restore verify removed')
+assert.match(sh, /assert_exhibits_paths_safe/, 'must reject craft paths in collector list')
+assert.match(sh, /trap on_update_err ERR/, 'must rollback on failure')
+assert.match(sh, /check-static-deps/, 'must run static deps after update')
+assert.doesNotMatch(sh, /docker-compose\.dev\.yml/, 'must not fall back to dev compose')
 
 const ps1 = fs.readFileSync(path.join(ROOT, 'scripts/push-staging-editor.ps1'), 'utf8')
 assert.doesNotMatch(ps1, /Inject-SaveApi|Set-Content.*player\.html/, 'push must not mutate player.html on disk')

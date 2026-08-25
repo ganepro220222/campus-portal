@@ -309,6 +309,40 @@ assert d.get("data", {}).get("status") == "UP", d
 '
 }
 
+backend_container_exited() {
+  local compose_file="$1" cid state
+  cid="$(docker compose -f "$compose_file" ps -q backend 2>/dev/null | head -1 || true)"
+  [ -n "$cid" ] || return 1
+  state="$(docker inspect --format='{{.State.Status}}' "$cid" 2>/dev/null || echo unknown)"
+  case "$state" in
+    exited | dead) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+wait_backend_health() {
+  local compose_file="${1:-}" timeout interval elapsed
+  timeout="${BACKEND_HEALTH_TIMEOUT:-120}"
+  interval="${BACKEND_HEALTH_INTERVAL:-3}"
+  elapsed=0
+
+  while [ "$elapsed" -lt "$timeout" ]; do
+    if [ -n "$compose_file" ] && backend_container_exited "$compose_file"; then
+      echo "backend 容器已退出，不再等待 health" >&2
+      docker compose -f "$compose_file" logs --tail 40 backend >&2 || true
+      return 1
+    fi
+    if verify_backend_health; then
+      return 0
+    fi
+    echo "等待 backend ready：${elapsed}/${timeout}s"
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+  echo "backend health 在 ${timeout}s 内未就绪" >&2
+  return 1
+}
+
 rollback_backend_container() {
   local compose_file="$1" override
   if ! docker image inspect "$BACKEND_ROLLBACK_TAG" >/dev/null 2>&1; then
@@ -328,7 +362,7 @@ deploy_backend_with_health() {
   docker compose -f "$compose_file" up -d --build backend
   echo ""
   echo "=== health ==="
-  if verify_backend_health; then
+  if wait_backend_health "$compose_file"; then
     curl -s http://127.0.0.1:8080/api/v1/health | python3 -m json.tool | head -12
     return 0
   fi
@@ -336,7 +370,7 @@ deploy_backend_with_health() {
   if docker image inspect "$BACKEND_ROLLBACK_TAG" >/dev/null 2>&1; then
     echo "尝试回滚 backend 容器..." >&2
     rollback_backend_container "$compose_file" || true
-    if verify_backend_health; then
+    if wait_backend_health "$compose_file"; then
       echo "backend 容器已回滚，health 恢复" >&2
     else
       echo "P0: backend 容器回滚后 health 仍失败，请人工检查 docker compose logs backend" >&2

@@ -45,5 +45,19 @@ assert.match(sh, /正式验收须设置 STUDIO_PASS/)
 assert.match(sh, /ALLOW_AUTH_ONLY_PROBE/)
 assert.match(sh, /exit 2/)
 assert.doesNotMatch(sh, /未设 STUDIO_PASS：仅验证 401/)
+assert.match(
+  sh,
+  /probe_html_required "http:\/\/127\.0\.0\.1\$\{STUDIO_PREFIX\}\/studio\.html" "\$\{STUDIO_PREFIX\}\/studio\.html"/,
+  'expect_path must follow STUDIO_HTTP_PREFIX',
+)
+assert.match(
+  sh,
+  /probe_html_required "http:\/\/127\.0\.0\.1\$\{STUDIO_PREFIX\}\/player\.html" "\$\{STUDIO_PREFIX\}\/player\.html"/,
+  'player expect_path must follow STUDIO_HTTP_PREFIX',
+)
+assert.equal(
+  htmlProbeOk(200, 'http://127.0.0.1/exhibits/studio.html', '/exhibits/studio.html', '3D 鉴赏工作台', '3D 鉴赏工作台', true),
+  true,
+)
 
 console.log('apply-staging-editor.test: PASS')

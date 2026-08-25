@@ -153,8 +153,8 @@ if [ -n "$STUDIO_PASS" ]; then
 elif [ "${ALLOW_AUTH_ONLY_PROBE:-0}" = "1" ]; then
   echo "ALLOW_AUTH_ONLY_PROBE=1：仅验证 401，不验证页面内容与 API JSON"
 fi
-probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/studio.html" "/studio/studio.html" "3D 鉴赏工作台" && STUDIO_HTML_OK=1 || true
-probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/player.html" "/studio/player.html" "window.__SY_PLAYER" && PLAYER_HTML_OK=1 || true
+probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/studio.html" "${STUDIO_PREFIX}/studio.html" "3D 鉴赏工作台" && STUDIO_HTML_OK=1 || true
+probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/player.html" "${STUDIO_PREFIX}/player.html" "window.__SY_PLAYER" && PLAYER_HTML_OK=1 || true
 probe_api_list_required "http://127.0.0.1/studio-api/list" && API_OK=1 || true
 echo ""
 echo "=== 参考（/exhibits/ 未配置 alias 时 404 属正常）==="

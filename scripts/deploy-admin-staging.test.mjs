@@ -17,5 +17,6 @@ assert.match(ps1, /Assert-AdminDistAssets/)
 assert.match(ps1, /function Quote-BashSingle/)
 assert.match(ps1, /\$\{RemoteDir\}\.staging/)
 assert.match(ps1, /test -f .*\/index\.html/)
+assert.match(ps1, /if ! mv .* then if \[ -d .* \]; then mv .* fi; exit 1; fi/, 'swap must restore dist.old when staging mv fails')
 
 console.log('deploy-admin-staging.test: PASS')

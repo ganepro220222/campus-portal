@@ -80,7 +80,7 @@ Assert-LastExitCode 'ssh mkdir staging'
 & scp -r (Join-Path $Dist '.') $TargetStaging
 Assert-LastExitCode 'scp upload'
 
-$swapCmd = 'set -e; test -f ' + $qStaging + '/index.html; rm -rf ' + $qOld + '; if [ -d ' + $qDir + ' ]; then mv ' + $qDir + ' ' + $qOld + '; fi; mv ' + $qStaging + ' ' + $qDir + '; rm -rf ' + $qOld
+$swapCmd = 'set -e; test -f ' + $qStaging + '/index.html; rm -rf ' + $qOld + '; if [ -d ' + $qDir + ' ]; then mv ' + $qDir + ' ' + $qOld + '; fi; if ! mv ' + $qStaging + ' ' + $qDir + '; then if [ -d ' + $qOld + ' ]; then mv ' + $qOld + ' ' + $qDir + '; fi; exit 1; fi; rm -rf ' + $qOld
 & ssh $SshTarget $swapCmd
 Assert-LastExitCode 'ssh swap dist'
 

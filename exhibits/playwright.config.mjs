@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test'
 
 const PORT = process.env.PORT || '8888'
 const isCI = !!process.env.CI
+const STUDIO_USER = process.env.STUDIO_USER || 'admin'
+const STUDIO_PASS = process.env.STUDIO_PASS || 'playwright-test'
 
 export default defineConfig({
   testDir: './e2e',
@@ -17,6 +19,8 @@ export default defineConfig({
   reporter: isCI ? 'github' : [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
+    // studio-server 全站 Basic Auth（fail-closed）；须与 webServer.env 的凭据一致
+    httpCredentials: { username: STUDIO_USER, password: STUDIO_PASS },
     viewport: { width: 900, height: 700 },
     actionTimeout: 30_000,
     navigationTimeout: 30_000,
@@ -28,6 +32,6 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/studio.html`,
     reuseExistingServer: !isCI,
     timeout: 30_000,
-    env: { ...process.env, PORT: String(PORT), STUDIO_PASS: 'playwright-test', STUDIO_USER: 'admin' },
+    env: { ...process.env, PORT: String(PORT), STUDIO_PASS, STUDIO_USER },
   },
 })

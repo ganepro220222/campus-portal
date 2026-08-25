@@ -35,6 +35,9 @@ assert.doesNotMatch(sh, /拒绝 git checkout 覆盖/, 'must not block on dirty c
 assert.doesNotMatch(sh, /verify_craft_configs_unchanged/, 'post-restore verify removed')
 assert.match(sh, /assert_exhibits_paths_safe/, 'must reject craft paths in collector list')
 assert.match(sh, /trap on_update_err ERR/, 'must rollback on failure')
+assert.match(sh, /manifest\.tsv/, 'must track path manifest for rollback')
+assert.match(sh, /restore_backend_paths/, 'must restore backend on failure')
+assert.match(sh, /Docker 容器\/image 不会自动恢复/, 'must warn docker not rolled back')
 assert.match(sh, /check-static-deps/, 'must run static deps after update')
 assert.doesNotMatch(sh, /docker-compose\.dev\.yml/, 'must not fall back to dev compose')
 

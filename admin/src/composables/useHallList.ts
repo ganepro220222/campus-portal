@@ -161,6 +161,15 @@ export function useHallList() {
     await loadData()
   }
 
+  const listSummary = computed(() => {
+    if (!total.value) return ''
+    const allLoaded = list.value.length >= total.value
+    if (!allLoaded) return `当前共 ${total.value} 馆`
+    const vrPending = list.value.filter((h) => !h.vrReady).length
+    if (vrPending > 0) return `当前共 ${total.value} 馆，其中 ${vrPending} 馆 VR 待配置`
+    return `当前共 ${total.value} 馆`
+  })
+
   onMounted(async () => {
     await loadCategories()
     await loadData()
@@ -180,6 +189,7 @@ export function useHallList() {
     editingId,
     form,
     rules,
+    listSummary,
     loadData,
     openDialog,
     onSave,

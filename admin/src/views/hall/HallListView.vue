@@ -6,7 +6,8 @@
     </div>
 
     <p class="text-muted">
-      维护 11 个 VR 展馆的名称、短名称、全景链接、轮播图文与语音讲解；下架后小程序不可见。
+      维护各展馆的名称、短名称、全景链接、轮播图文与语音讲解；下架后小程序不可见。
+      <template v-if="listSummary"> {{ listSummary }}。</template>
     </p>
 
     <el-table v-loading="loading" :data="list" stripe border>
@@ -96,6 +97,7 @@ const {
   editingId,
   form,
   rules,
+  listSummary,
   loadData,
   openDialog,
   onSave,

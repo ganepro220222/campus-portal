@@ -24,7 +24,12 @@ BRANCH="${GIT_BRANCH:-main}"
 REF="$REMOTE/$BRANCH"
 BACKUP=""
 CODE_BACKUP=""
+CODE_MANIFEST=""
 CODE_PATHS=()
+BACKEND_BACKUP=""
+BACKEND_MANIFEST=""
+BACKEND_CHECKED_OUT=0
+DOCKER_ATTEMPTED=0
 UPDATE_OK=0
 
 backup_craft_configs() {
@@ -81,11 +86,24 @@ assert_exhibits_paths_safe() {
   done
 }
 
+manifest_record() {
+  local p="$1"
+  [ -n "${CODE_MANIFEST:-}" ] || return 0
+  if [ -e "$p" ]; then
+    printf '%s\t1\n' "$p" >> "$CODE_MANIFEST"
+  else
+    printf '%s\t0\n' "$p" >> "$CODE_MANIFEST"
+  fi
+}
+
 backup_code_paths() {
   local p rel
   CODE_BACKUP="exhibits/_code_backup/$(date +%Y%m%d_%H%M%S)"
+  CODE_MANIFEST="$CODE_BACKUP/manifest.tsv"
   mkdir -p "$CODE_BACKUP"
+  : > "$CODE_MANIFEST"
   for p in "$@"; do
+    manifest_record "$p"
     [ -e "$p" ] || continue
     rel="${p#exhibits/}"
     if [ -d "$p" ]; then
@@ -100,23 +118,111 @@ backup_code_paths() {
   echo "已备份 exhibits 代码 → $CODE_BACKUP"
 }
 
+backup_path_into_code_backup() {
+  local p="$1" rel
+  manifest_record "$p"
+  [ -e "$p" ] || return 0
+  rel="${p#exhibits/}"
+  if [ -d "$p" ]; then
+    mkdir -p "$CODE_BACKUP/$(dirname "$rel")"
+    rm -rf "$CODE_BACKUP/$rel"
+    cp -a "$p" "$CODE_BACKUP/$rel"
+  else
+    mkdir -p "$CODE_BACKUP/$(dirname "$rel")"
+    cp "$p" "$CODE_BACKUP/$rel"
+  fi
+}
+
 restore_code_paths() {
-  local p rel
+  local p rel existed
   [ -n "$CODE_BACKUP" ] || return 0
   [ -d "$CODE_BACKUP" ] || return 0
-  for p in "${CODE_PATHS[@]}"; do
-    rel="${p#exhibits/}"
-    [ -e "$CODE_BACKUP/$rel" ] || continue
-    rm -rf "$p"
-    if [ -d "$CODE_BACKUP/$rel" ]; then
-      mkdir -p "$(dirname "$p")"
-      cp -a "$CODE_BACKUP/$rel" "$p"
-    else
-      mkdir -p "$(dirname "$p")"
-      cp "$CODE_BACKUP/$rel" "$p"
+  if [ -f "$CODE_MANIFEST" ]; then
+    while IFS=$'\t' read -r p existed; do
+      [ -n "$p" ] || continue
+      if [ "$existed" = "0" ]; then
+        if [ -e "$p" ]; then
+          rm -rf "$p"
+          echo "  删除本轮新增: $p"
+        fi
+        continue
+      fi
+      rel="${p#exhibits/}"
+      [ -e "$CODE_BACKUP/$rel" ] || continue
+      rm -rf "$p"
+      if [ -d "$CODE_BACKUP/$rel" ]; then
+        mkdir -p "$(dirname "$p")"
+        cp -a "$CODE_BACKUP/$rel" "$p"
+      else
+        mkdir -p "$(dirname "$p")"
+        cp "$CODE_BACKUP/$rel" "$p"
+      fi
+    done < "$CODE_MANIFEST"
+  fi
+  echo "已恢复 exhibits 代码自备份"
+}
+
+backend_manifest_record() {
+  local p="$1"
+  [ -n "${BACKEND_MANIFEST:-}" ] || return 0
+  if [ -e "$p" ]; then
+    printf '%s\t1\n' "$p" >> "$BACKEND_MANIFEST"
+  else
+    printf '%s\t0\n' "$p" >> "$BACKEND_MANIFEST"
+  fi
+}
+
+backup_backend_paths() {
+  local p ref="$1"
+  shift
+  local paths=("$@")
+  BACKEND_BACKUP="_deploy_backup/backend/$(date +%Y%m%d_%H%M%S)"
+  BACKEND_MANIFEST="$BACKEND_BACKUP/manifest.tsv"
+  mkdir -p "$BACKEND_BACKUP"
+  : > "$BACKEND_MANIFEST"
+  for p in "${paths[@]}"; do
+    if git cat-file -e "$ref:$p" 2>/dev/null; then
+      backend_manifest_record "$p"
+      if [ -e "$p" ]; then
+        if [ -d "$p" ]; then
+          mkdir -p "$BACKEND_BACKUP/$(dirname "$p")"
+          rm -rf "$BACKEND_BACKUP/$p"
+          cp -a "$p" "$BACKEND_BACKUP/$p"
+        else
+          mkdir -p "$BACKEND_BACKUP/$(dirname "$p")"
+          cp "$p" "$BACKEND_BACKUP/$p"
+        fi
+      fi
     fi
   done
-  echo "已恢复 exhibits 代码自备份"
+  echo "已备份 backend/sql/compose → $BACKEND_BACKUP"
+}
+
+restore_backend_paths() {
+  local p existed
+  [ -n "$BACKEND_BACKUP" ] || return 0
+  [ -d "$BACKEND_BACKUP" ] || return 0
+  [ -f "$BACKEND_MANIFEST" ] || return 0
+  while IFS=$'\t' read -r p existed; do
+    [ -n "$p" ] || continue
+    if [ "$existed" = "0" ]; then
+      if [ -e "$p" ]; then
+        rm -rf "$p"
+        echo "  删除本轮新增: $p"
+      fi
+      continue
+    fi
+    [ -e "$BACKEND_BACKUP/$p" ] || continue
+    rm -rf "$p"
+    if [ -d "$BACKEND_BACKUP/$p" ]; then
+      mkdir -p "$(dirname "$p")"
+      cp -a "$BACKEND_BACKUP/$p" "$p"
+    else
+      mkdir -p "$(dirname "$p")"
+      cp "$BACKEND_BACKUP/$p" "$p"
+    fi
+  done < "$BACKEND_MANIFEST"
+  echo "已恢复 backend/sql/compose 自备份"
 }
 
 on_update_err() {
@@ -127,6 +233,14 @@ on_update_err() {
   echo "更新失败 (exit $ec)，回滚 craft config 与 exhibits 代码..." >&2
   restore_craft_configs || true
   restore_code_paths || true
+  if [ "$BACKEND_CHECKED_OUT" -eq 1 ]; then
+    restore_backend_paths || true
+    echo "注意: backend 源码已尝试回滚。" >&2
+    if [ "$DOCKER_ATTEMPTED" -eq 1 ]; then
+      echo "      Docker 容器/image 不会自动恢复，请检查:" >&2
+      echo "        docker compose ps && docker compose logs backend --tail 80" >&2
+    fi
+  fi
   exit "$ec"
 }
 
@@ -213,7 +327,10 @@ git checkout "$REF" -- "${BOOTSTRAP_PATHS[@]}"
 
 echo ""
 echo "=== checkout 运行路径（不含 miniapp/design/test/admin 源码）==="
-checkout_ref_paths "$REF" backend sql docker-compose.staging.yml docker-compose.yml
+BACKEND_CHECKOUT_PATHS=(backend sql docker-compose.staging.yml docker-compose.yml)
+backup_backend_paths "$REF" "${BACKEND_CHECKOUT_PATHS[@]}"
+checkout_ref_paths "$REF" "${BACKEND_CHECKOUT_PATHS[@]}"
+BACKEND_CHECKED_OUT=1
 
 echo ""
 echo "=== checkout exhibits 代码路径（保留 craft-* 在线内容）==="
@@ -234,16 +351,7 @@ for p in "${EXHIBITS_PATHS[@]}"; do
   case " ${BOOTSTRAP_PATHS[*]} " in
     *" $p "*) continue ;;
   esac
-  [ -e "$p" ] || continue
-  rel="${p#exhibits/}"
-  if [ -d "$p" ]; then
-    mkdir -p "$CODE_BACKUP/$(dirname "$rel")"
-    rm -rf "$CODE_BACKUP/$rel"
-    cp -a "$p" "$CODE_BACKUP/$rel"
-  else
-    mkdir -p "$CODE_BACKUP/$(dirname "$rel")"
-    cp "$p" "$CODE_BACKUP/$rel"
-  fi
+  backup_path_into_code_backup "$p"
 done
 
 git checkout "$REF" -- "${EXHIBITS_PATHS[@]}"
@@ -264,6 +372,7 @@ echo ""
 if [ "${SKIP_DOCKER:-0}" != "1" ]; then
   if compose_file="$(resolve_compose_file)"; then
     echo "=== 重建 backend 容器 ($compose_file) ==="
+    DOCKER_ATTEMPTED=1
     docker compose -f "$compose_file" up -d --build backend
     echo ""
     echo "=== health ==="

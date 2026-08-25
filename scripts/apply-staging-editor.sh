@@ -5,6 +5,8 @@
 #
 # staging Nginx 通常把编辑器反代到 /studio/（不是 /exhibits/），可用：
 #   STUDIO_HTTP_PREFIX=/studio  bash scripts/apply-staging-editor.sh
+#
+# 若设置了 STUDIO_PASS，会用 Basic Auth 拉取页面正文并校验 marker / JSON。
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -12,10 +14,17 @@ EX="$ROOT/exhibits"
 PLAYER="$EX/player.html"
 STUDIO_PREFIX="${STUDIO_HTTP_PREFIX:-/studio}"
 PUBLIC_HOST="${STUDIO_PUBLIC_HOST:-47.109.0.192}"
+STUDIO_USER="${STUDIO_USER:-admin}"
+STUDIO_PASS="${STUDIO_PASS:-}"
 PROBE_FAIL=0
 STUDIO_HTML_OK=0
 PLAYER_HTML_OK=0
 API_OK=0
+
+CURL_AUTH=()
+if [ -n "$STUDIO_PASS" ]; then
+  CURL_AUTH=(-u "${STUDIO_USER}:${STUDIO_PASS}")
+fi
 
 echo "=== apply-staging-editor @ $ROOT ==="
 
@@ -53,24 +62,96 @@ probe_optional() {
   echo "${line:-curl failed}"
 }
 
-# 必需入口：任一失败则 PROBE_FAIL=1（401 表示 Basic Auth 正常）
-probe_required() {
+# 跟随重定向，最终须 200（有凭据时可验正文）或 401（无凭据）；301/302 不算成功
+probe_html_required() {
+  local url="$1" expect_path="$2" marker="$3"
+  local tmp code effective
+  tmp="$(mktemp)"
+  code="$(curl -sS -L --max-redirs 5 "${CURL_AUTH[@]}" -o "$tmp" -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
+  effective="$(curl -sS -L --max-redirs 5 "${CURL_AUTH[@]}" -o /dev/null -w '%{url_effective}' "$url" 2>/dev/null || true)"
+  printf '%-55s ' "$url"
+  if [[ "$effective" != *"$expect_path"* ]]; then
+    echo "FAIL redirect→${effective:-unknown} (expected *${expect_path}*)"
+    PROBE_FAIL=1
+    rm -f "$tmp"
+    return 1
+  fi
+  case "$code" in
+    200)
+      if grep -qF "$marker" "$tmp" 2>/dev/null; then
+        echo "OK  HTTP/1.1 200 marker"
+        rm -f "$tmp"
+        return 0
+      fi
+      echo "FAIL HTTP/1.1 200 missing marker"
+      PROBE_FAIL=1
+      rm -f "$tmp"
+      return 1
+      ;;
+    401)
+      if [ -n "$STUDIO_PASS" ]; then
+        echo "FAIL HTTP/1.1 401 (STUDIO_PASS 可能被拒)"
+        PROBE_FAIL=1
+        rm -f "$tmp"
+        return 1
+      fi
+      echo "OK  HTTP/1.1 401 Unauthorized"
+      rm -f "$tmp"
+      return 0
+      ;;
+    *)
+      echo "FAIL HTTP/${code} (301/302 须跟随到 200/401，不可直接视为成功)"
+      PROBE_FAIL=1
+      rm -f "$tmp"
+      return 1
+      ;;
+  esac
+}
+
+probe_api_list_required() {
   local url="$1"
-  local line code
-  line="$(curl -sI "$url" 2>/dev/null | head -1 || true)"
-  code="$(echo "$line" | awk '{print $2}')"
+  local body code
+  body="$(curl -sS -L --max-redirs 5 "${CURL_AUTH[@]}" -w '\n%{http_code}' "$url" 2>/dev/null || printf '\n000')"
+  code="${body##*$'\n'}"
+  body="${body%$'\n'*}"
   printf '%-55s ' "$url"
   case "$code" in
-    200|301|302|401) echo "OK  $line"; return 0 ;;
-    *) echo "FAIL $line"; PROBE_FAIL=1; return 1 ;;
+    200)
+      if printf '%s' "$body" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert isinstance(d.get("exhibits"), list)' 2>/dev/null; then
+        echo "OK  HTTP/1.1 200 JSON exhibits[]"
+        return 0
+      fi
+      echo "FAIL HTTP/1.1 200 but body is not studio-api JSON"
+      PROBE_FAIL=1
+      return 1
+      ;;
+    401)
+      if [ -n "$STUDIO_PASS" ]; then
+        echo "FAIL HTTP/1.1 401 (STUDIO_PASS 可能被拒)"
+        PROBE_FAIL=1
+        return 1
+      fi
+      echo "OK  HTTP/1.1 401 Unauthorized"
+      return 0
+      ;;
+    *)
+      echo "FAIL HTTP/${code}"
+      PROBE_FAIL=1
+      return 1
+      ;;
   esac
 }
 
 echo ""
 echo "=== HTTP 探测（本机 Nginx，编辑器入口 ${STUDIO_PREFIX}/）==="
-probe_required "http://127.0.0.1${STUDIO_PREFIX}/studio.html" && STUDIO_HTML_OK=1 || true
-probe_required "http://127.0.0.1${STUDIO_PREFIX}/player.html" && PLAYER_HTML_OK=1 || true
-probe_required "http://127.0.0.1/studio-api/list" && API_OK=1 || true
+if [ -n "$STUDIO_PASS" ]; then
+  echo "使用 STUDIO_USER/STUDIO_PASS 进行认证探测"
+else
+  echo "未设 STUDIO_PASS：仅验证 401；设后可校验页面 marker 与 API JSON"
+fi
+probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/studio.html" "/studio/studio.html" "3D 鉴赏工作台" && STUDIO_HTML_OK=1 || true
+probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/player.html" "/studio/player.html" "window.__SY_PLAYER" && PLAYER_HTML_OK=1 || true
+probe_api_list_required "http://127.0.0.1/studio-api/list" && API_OK=1 || true
 echo ""
 echo "=== 参考（/exhibits/ 未配置 alias 时 404 属正常）==="
 probe_optional "http://127.0.0.1/exhibits/studio.html"

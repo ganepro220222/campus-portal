@@ -23,6 +23,23 @@ assert.doesNotMatch(
 )
 assert.doesNotMatch(conf, /expires 7d/, 'studio editor assets must not use long public cache in example')
 
+/** Node 反代段：鉴权由 STUDIO_PASS 负责，勿与 Nginx auth_basic 叠层（浏览器只有一个 Authorization 头） */
+const nodeSection = conf.match(/# 1\) Node studio-server[\s\S]*?(?=# 2\) PHP)/)?.[0] ?? ''
+const nodeActive = nodeSection
+  .split('\n')
+  .filter((line) => !/^\s*#/.test(line))
+  .join('\n')
+assert.doesNotMatch(
+  nodeActive,
+  /auth_basic/,
+  'active Node proxy block must not use auth_basic (Studio STUDIO_PASS handles auth)',
+)
+assert.match(
+  conf,
+  /勿再加 auth_basic/,
+  'example must document why nginx auth must not stack on Node proxy',
+)
+
 /** studio.html 相对 import → 浏览器请求 /studio/<file>；上游须收到 /<file> */
 const imports = [...studioSrc.matchAll(/from '\.\/([^']+\.mjs)'/g)].map(m => m[1])
 assert.ok(imports.length >= 3, 'studio.html should import local .mjs modules')

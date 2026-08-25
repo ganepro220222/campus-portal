@@ -1,10 +1,15 @@
 # Nginx 片段：staging 在线编辑器（/studio/ + /studio-api/）
 # 合并进 sites-enabled 里 shuyuan 站点配置后 nginx -t && systemctl reload nginx
 #
-# 前提：
-#   - studio-server systemd 已设置 STUDIO_USER / STUDIO_PASS（见 exhibits/_server/README.md）
-#   - 或使用下方 auth_basic + htpasswd（与 studio-server 二选一，勿重复）
-#   - PHP 路径须 php-fpm pool 注入 STUDIO_PASS（clear_env=no 或 env[STUDIO_PASS]=...）
+# 前提（Node 反代，staging 推荐）：
+#   - studio-server systemd 设置 STUDIO_USER / STUDIO_PASS（见 exhibits/_server/README.md）
+#   - Nginx 仅反代，勿再加 auth_basic（浏览器只有一个 Authorization 头；若 Nginx htpasswd
+#     与 STUDIO_PASS 不一致，会出现反复登录或 401）
+#   - scripts/apply-staging-editor.sh 用同一组 STUDIO_USER/STUDIO_PASS 验收
+#
+# 备选（PHP 静态托管，见下方注释块）：
+#   - 可改用 auth_basic + htpasswd 保护 studio.html / player.html
+#   - php-fpm pool 仍须注入 STUDIO_PASS（clear_env=no 或 env[STUDIO_PASS]=...）
 #
 # 重要：location /studio/ 必须用 ^~，且 proxy_pass 带尾斜杠以剥离 /studio/ 前缀。
 #       勿再为 *.js 单独写 regex location（会抢占前缀并把 /studio/foo.mjs 原样转发 upstream → 404）。
@@ -13,10 +18,8 @@ gzip on;
 gzip_types text/plain text/css application/javascript application/json image/svg+xml;
 gzip_min_length 256;
 
-# 1) Node studio-server（staging 推荐：反代到 127.0.0.1:8200）
+# 1) Node studio-server（staging 推荐：反代到 127.0.0.1:8200；鉴权由 STUDIO_PASS 负责）
 location /studio-api/ {
-    auth_basic "3D Studio";
-    auth_basic_user_file /etc/nginx/.htpasswd-studio;
     proxy_pass http://127.0.0.1:8200;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
@@ -24,8 +27,6 @@ location /studio-api/ {
 }
 
 location ^~ /studio/ {
-    auth_basic "3D Studio";
-    auth_basic_user_file /etc/nginx/.htpasswd-studio;
     proxy_pass http://127.0.0.1:8200/;
     proxy_http_version 1.1;
     proxy_set_header Host $host;

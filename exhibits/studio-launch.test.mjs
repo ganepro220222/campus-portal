@@ -44,7 +44,12 @@ async function withStudioServer(fn) {
   const port = await freePort()
   const child = spawn(process.execPath, [path.join(ROOT, '_server', 'studio-server.mjs')], {
     cwd: ROOT,
-    env: { ...process.env, PORT: String(port) },
+    env: {
+      ...process.env,
+      PORT: String(port),
+      STUDIO_PASS: 'local-test',
+      STUDIO_USER: 'admin',
+    },
     stdio: 'pipe',
   })
   try {
@@ -56,8 +61,13 @@ async function withStudioServer(fn) {
 }
 
 async function fetchHead(url) {
-  const res = await fetch(url)
+  const res = await fetch(url, { headers: studioAuthHeaders() })
   return { status: res.status, cc: res.headers.get('cache-control') || '' }
+}
+
+function studioAuthHeaders() {
+  const token = Buffer.from('admin:local-test').toString('base64')
+  return { Authorization: `Basic ${token}` }
 }
 
 console.log('studio-launch tests')
@@ -130,20 +140,20 @@ test('Node server create API works end-to-end', async () => {
     await withStudioServer(async (port) => {
       const create = await fetch(`http://127.0.0.1:${port}/studio-api/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...studioAuthHeaders() },
         body: JSON.stringify({ dir: '99886', title: 'Node smoke', subtitle: '' }),
       })
       const created = await create.json()
       assert.equal(create.status, 200, JSON.stringify(created))
       assert.equal(created.ok, true)
       assert.ok(fs.existsSync(path.join(ROOT, EX, 'config.json')))
-      const list = await (await fetch(`http://127.0.0.1:${port}/studio-api/list`)).json()
+      const list = await (await fetch(`http://127.0.0.1:${port}/studio-api/list`, { headers: studioAuthHeaders() })).json()
       const row = list.exhibits.find(e => e.dir === EX)
       assert.equal(row?.hasPano, false)
       const assets = path.join(ROOT, EX, 'assets')
       fs.mkdirSync(assets, { recursive: true })
       fs.writeFileSync(path.join(assets, 'panorama.jpg'), 'x')
-      const list2 = await (await fetch(`http://127.0.0.1:${port}/studio-api/list`)).json()
+      const list2 = await (await fetch(`http://127.0.0.1:${port}/studio-api/list`, { headers: studioAuthHeaders() })).json()
       assert.equal(list2.exhibits.find(e => e.dir === EX)?.hasPano, true)
     })
   } finally {
@@ -174,7 +184,7 @@ test('ensure-server.bat returns 4 when another exhibits root owns the port', asy
   const port = await freePort()
   const child = spawn(process.execPath, [path.join(ROOT, '_server', 'studio-server.mjs')], {
     cwd: ROOT,
-    env: { ...process.env, PORT: String(port) },
+    env: { ...process.env, PORT: String(port), STUDIO_PASS: 'secret' },
     stdio: 'pipe',
   })
   const copyRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-copy-'))

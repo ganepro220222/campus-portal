@@ -49,6 +49,7 @@ def main() -> int:
     port = free_port()
     env = os.environ.copy()
     env['PORT'] = str(port)
+    env['STUDIO_ALLOW_INSECURE'] = '1'
     proc = subprocess.Popen(
         pick_python() + [str(ROOT / 'serve.py'), str(port)],
         cwd=ROOT,

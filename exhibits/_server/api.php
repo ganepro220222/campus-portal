@@ -304,10 +304,39 @@ function studio_list_panorama_candidates(string $root): array {
 // 只加载函数、不执行请求分发（供单元测试比对三份实现的指纹算法；保持本文件单文件可部署）
 if (defined('STUDIO_API_LIB_ONLY')) return;
 
-if ($PASS !== '' && !($isIdentity && $isLocal)) {
+function studio_auth_unconfigured(): bool {
+  global $PASS;
+  return $PASS === '';
+}
+
+function studio_allow_insecure(): bool {
+  return getenv('STUDIO_ALLOW_INSECURE') === '1';
+}
+
+function studio_reject_unconfigured_auth(): void {
+  if (!studio_auth_unconfigured() || studio_allow_insecure()) {
+    return;
+  }
+  if ($GLOBALS['isIdentity'] && $GLOBALS['isLocal']) {
+    return;
+  }
+  header('Content-Type: application/json; charset=utf-8');
+  http_response_code(503);
+  echo json_encode([
+    'error' => 'STUDIO_PASS 未配置',
+    'hint' => '请在 php-fpm pool / systemd 中设置 STUDIO_PASS，本地调试可设 STUDIO_ALLOW_INSECURE=1',
+  ], JSON_UNESCAPED_UNICODE);
+  exit;
+}
+
+studio_reject_unconfigured_auth();
+
+if (!studio_auth_unconfigured() && !($isIdentity && $isLocal)) {
   if (!isset($_SERVER['PHP_AUTH_USER']) || $_SERVER['PHP_AUTH_USER'] !== $USER || ($_SERVER['PHP_AUTH_PW'] ?? '') !== $PASS) {
     header('WWW-Authenticate: Basic realm="3D Studio"'); http_response_code(401); echo '需要登录'; exit;
   }
+} elseif (studio_auth_unconfigured() && studio_allow_insecure() && !($isIdentity && $isLocal)) {
+  error_log('WARN: STUDIO_PASS 未设置且 STUDIO_ALLOW_INSECURE=1，接口无鉴权');
 }
 header('Content-Type: application/json; charset=utf-8');
 

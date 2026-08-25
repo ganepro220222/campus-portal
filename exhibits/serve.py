@@ -153,7 +153,13 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _authed(self) -> bool:
         if not PASS:
-            return True
+            if os.environ.get('STUDIO_ALLOW_INSECURE') == '1':
+                return True
+            self._json(503, {
+                'error': 'STUDIO_PASS 未配置',
+                'hint': '请设置 STUDIO_PASS 或 STUDIO_ALLOW_INSECURE=1（仅本地）',
+            })
+            return False
         auth = self.headers.get('Authorization', '')
         if not auth.startswith('Basic '):
             self.send_response(401)
@@ -287,11 +293,15 @@ def _bind_error_hint(port: int, err: BaseException) -> None:
 
 if __name__ == '__main__':
     if not PASS:
-        print('WARN: STUDIO_PASS not set - no auth, local use only')
+        if os.environ.get('STUDIO_ALLOW_INSECURE') == '1':
+            print('WARN: STUDIO_PASS not set; STUDIO_ALLOW_INSECURE=1 — no auth, local use only')
+        else:
+            print('ERROR: STUDIO_PASS not set. Set STUDIO_PASS or STUDIO_ALLOW_INSECURE=1 for local dev.', file=sys.stderr)
+            raise SystemExit(1)
     try:
         with HTTPServer(('', PORT), Handler) as httpd:
             print('Exhibits server: http://127.0.0.1:%s/studio.html  %s' % (
-                PORT, '(auth on)' if PASS else '(no auth, local only)'))
+                PORT, '(auth on)' if PASS else '(insecure local)'))
             print('  rootHash: %s' % ROOT_HASH)
             httpd.serve_forever()
     except PermissionError as e:

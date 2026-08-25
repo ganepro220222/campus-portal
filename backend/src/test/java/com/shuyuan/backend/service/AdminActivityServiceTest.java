@@ -1,5 +1,7 @@
 package com.shuyuan.backend.service;
 
+import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.dto.ActivitySaveRequest;
 import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Enroll;
 import com.shuyuan.backend.mapper.ActivityMapper;
@@ -8,6 +10,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -40,6 +44,32 @@ class AdminActivityServiceTest {
 
         verify(activityMapper).updateById(any(Activity.class));
         verify(enrollService).onActivityCancelled(any(Activity.class));
+    }
+
+    @Test
+    void publish_requiresStartTime() {
+        Activity activity = new Activity();
+        activity.setId(8L);
+        activity.setTitle("讲座");
+        activity.setStatus("draft");
+        when(activityMapper.selectById(8L)).thenReturn(activity);
+
+        assertThrows(BusinessException.class, () -> adminActivityService.publish(8L));
+        verify(activityMapper, never()).updateById(any());
+    }
+
+    @Test
+    void publish_succeedsWhenStartTimePresent() {
+        Activity activity = new Activity();
+        activity.setId(9L);
+        activity.setTitle("讲座");
+        activity.setStatus("draft");
+        activity.setStartTime(LocalDateTime.of(2026, 7, 15, 10, 0));
+        when(activityMapper.selectById(9L)).thenReturn(activity, activity);
+
+        adminActivityService.publish(9L);
+
+        verify(activityMapper).updateById(any(Activity.class));
     }
 
     @Test

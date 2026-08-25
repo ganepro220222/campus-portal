@@ -33,13 +33,29 @@ DOCKER_ATTEMPTED=0
 BACKEND_ROLLBACK_TAG="shuyuan-backend-predeploy:staging"
 BACKEND_ROLLBACK_READY=0
 UPDATE_OK=0
+DEPLOY_BACKUP_KEEP="${DEPLOY_BACKUP_KEEP:-5}"
+
+prune_timestamped_backups() {
+  local parent="$1" keep="$2"
+  [ -d "$parent" ] || return 0
+  mapfile -t _backup_dirs < <(find "$parent" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+  local total="${#_backup_dirs[@]}"
+  if [ "$total" -le "$keep" ]; then
+    return 0
+  fi
+  local i remove=$((total - keep))
+  for ((i = 0; i < remove; i++)); do
+    rm -rf "${_backup_dirs[$i]}"
+    echo "  清理旧备份: ${_backup_dirs[$i]}"
+  done
+}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=staging-backend-health.sh
 source "$SCRIPT_DIR/staging-backend-health.sh"
 
 backup_craft_configs() {
-  BACKUP="exhibits/_content_backup/$(date +%Y%m%d_%H%M%S)"
+  BACKUP="_deploy_backup/exhibits_content/$(date +%Y%m%d_%H%M%S)"
   mkdir -p "$BACKUP"
   for cfg in exhibits/craft-*/config.json; do
     [ -f "$cfg" ] || continue
@@ -48,6 +64,7 @@ backup_craft_configs() {
     cp "$cfg" "$BACKUP/$rel"
   done
   echo "已备份 craft config → $BACKUP"
+  prune_timestamped_backups "_deploy_backup/exhibits_content" "$DEPLOY_BACKUP_KEEP"
 }
 
 restore_craft_configs() {
@@ -104,7 +121,7 @@ manifest_record() {
 
 backup_code_paths() {
   local p rel
-  CODE_BACKUP="exhibits/_code_backup/$(date +%Y%m%d_%H%M%S)"
+  CODE_BACKUP="_deploy_backup/exhibits_code/$(date +%Y%m%d_%H%M%S)"
   CODE_MANIFEST="$CODE_BACKUP/manifest.tsv"
   mkdir -p "$CODE_BACKUP"
   : > "$CODE_MANIFEST"
@@ -122,6 +139,7 @@ backup_code_paths() {
     fi
   done
   echo "已备份 exhibits 代码 → $CODE_BACKUP"
+  prune_timestamped_backups "_deploy_backup/exhibits_code" "$DEPLOY_BACKUP_KEEP"
 }
 
 backup_path_into_code_backup() {
@@ -202,6 +220,7 @@ backup_backend_paths() {
     fi
   done
   echo "已备份 backend/sql/compose → $BACKEND_BACKUP"
+  prune_timestamped_backups "_deploy_backup/backend" "$DEPLOY_BACKUP_KEEP"
 }
 
 restore_backend_paths() {

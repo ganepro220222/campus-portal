@@ -28,6 +28,6 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/studio.html`,
     reuseExistingServer: !isCI,
     timeout: 30_000,
-    env: { ...process.env, PORT: String(PORT) },
+    env: { ...process.env, PORT: String(PORT), STUDIO_PASS: 'playwright-test', STUDIO_USER: 'admin' },
   },
 })

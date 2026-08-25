@@ -77,6 +77,9 @@ public class AdminActivityService {
         if (activity.getTitle() == null || activity.getTitle().isBlank()) {
             throw new BusinessException(400, "请填写活动标题");
         }
+        if (activity.getStartTime() == null) {
+            throw new BusinessException(400, "请填写活动开始时间后再发布");
+        }
         activity.setStatus("published");
         activityMapper.updateById(activity);
         return toVo(activityMapper.selectById(id));

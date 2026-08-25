@@ -20,7 +20,8 @@ function Assert-LastExitCode {
 
 function Quote-BashSingle {
   param([string]$Value)
-  return "'" + ($Value -replace "'", "'\\''") + "'"
+  $escaped = $Value.Replace("'", "'\''")
+  return "'$escaped'"
 }
 
 function Assert-AdminDistAssets {

@@ -53,6 +53,17 @@ shuyuan:
     outbox-max-attempts: ${SUBSCRIBE_OUTBOX_MAX_ATTEMPTS:10}
     outbox-stale-minutes: ${SUBSCRIBE_OUTBOX_STALE_MINUTES:5}
     outbox-retry-base-seconds: ${SUBSCRIBE_OUTBOX_RETRY_BASE_SECONDS:30}
+    enroll-success-fields:
+      title: thing1
+      start-time: time3
+    enroll-approved-fields:
+      phrase: phrase1
+      title: thing8
+      start-time: time11
+    activity-remind-fields:
+      title: thing1
+      phrase: phrase2
+      start-time: time4
   alert:
     enabled: ${ALERT_ENABLED:false}
     webhook-url: ${ALERT_WEBHOOK_URL:}

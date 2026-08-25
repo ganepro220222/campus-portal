@@ -146,6 +146,27 @@ probe_api_list_required() {
   esac
 }
 
+probe_api_list_requires_unauth() {
+  local url="$1" code
+  code="$(curl -sS -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
+  printf '%-55s ' "(no auth) $url"
+  if [ -n "$STUDIO_PASS" ]; then
+    case "$code" in
+      401|403)
+        echo "OK  HTTP/1.1 ${code} blocked without credentials"
+        return 0
+        ;;
+      *)
+        echo "FAIL HTTP/${code} (未带凭据应 401/403，表示接口可能未鉴权)"
+        PROBE_FAIL=1
+        return 1
+        ;;
+    esac
+  fi
+  echo "SKIP (未设 STUDIO_PASS)"
+  return 0
+}
+
 echo ""
 echo "=== HTTP 探测（本机 Nginx，编辑器入口 ${STUDIO_PREFIX}/）==="
 if [ -n "$STUDIO_PASS" ]; then
@@ -156,6 +177,7 @@ fi
 probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/studio.html" "${STUDIO_PREFIX}/studio.html" "3D 鉴赏工作台" && STUDIO_HTML_OK=1 || true
 probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/player.html" "${STUDIO_PREFIX}/player.html" "window.__SY_PLAYER" && PLAYER_HTML_OK=1 || true
 probe_api_list_required "http://127.0.0.1/studio-api/list" && API_OK=1 || true
+probe_api_list_requires_unauth "http://127.0.0.1/studio-api/list" || true
 echo ""
 echo "=== 参考（/exhibits/ 未配置 alias 时 404 属正常）==="
 probe_optional "http://127.0.0.1/exhibits/studio.html"

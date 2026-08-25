@@ -38,6 +38,15 @@ class AdminSaveRequestValidationTest {
     }
 
     @Test
+    void activityCreate_requiresStartTime() {
+        ActivitySaveRequest req = new ActivitySaveRequest();
+        req.setTitle("讲座");
+        Set<ConstraintViolation<ActivitySaveRequest>> violations = validator.validate(req, ValidationGroups.Create.class);
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("startTime")));
+    }
+
+    @Test
     void courseCreate_requiresName() {
         CourseSaveRequest req = new CourseSaveRequest();
         Set<ConstraintViolation<CourseSaveRequest>> violations = validator.validate(req, ValidationGroups.Create.class);

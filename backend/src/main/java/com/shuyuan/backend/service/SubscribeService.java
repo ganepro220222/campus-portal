@@ -103,8 +103,22 @@ public class SubscribeService {
         if (memberId == null || payload == null || payload.getActivityId() == null) {
             return SubscribeSendOutcome.PERMANENT_FAILURE;
         }
+        if (requiresActivityStartTime(scene) && isBlank(payload.getActivityStartTime())) {
+            log.warn("[subscribe] 跳过发送：活动开始时间为空 memberId={} scene={} activityId={}",
+                    memberId, scene, payload.getActivityId());
+            return SubscribeSendOutcome.SKIPPED_INVALID_PAYLOAD;
+        }
         String page = "packageC/activity/detail?id=" + payload.getActivityId();
         return deliver(memberId, scene, page, buildKeywordData(scene, payload));
+    }
+
+    private boolean requiresActivityStartTime(String scene) {
+        return SCENE_ENROLL_SUCCESS.equals(scene) || SCENE_ENROLL_APPROVED.equals(scene)
+                || SCENE_ACTIVITY_REMIND.equals(scene);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private SubscribeOutboxPayload toPayload(Activity activity, Enroll enroll) {
@@ -129,22 +143,32 @@ public class SubscribeService {
         Map<String, String> data = new HashMap<>();
         String title = trim(payload.getActivityTitle(), 20);
         String startTime = payload.getActivityStartTime() != null ? payload.getActivityStartTime() : "";
+        ShuyuanProperties.Subscribe sub = properties.getSubscribe();
         if (SCENE_ENROLL_APPROVED.equals(scene)) {
-            data.put("phrase1", trim(resolvePhrase2(scene, payload), 5));
-            data.put("thing8", title);
-            data.put("time11", startTime);
+            ShuyuanProperties.SubscribeTemplateFields fields = sub.getEnrollApprovedFields();
+            putKeyword(data, fields.getPhrase(), trim(resolvePhrase2(scene, payload), 5));
+            putKeyword(data, fields.getTitle(), title);
+            putKeyword(data, fields.getStartTime(), startTime);
             return data;
         }
         if (SCENE_ENROLL_SUCCESS.equals(scene)) {
-            data.put("thing1", title);
-            data.put("time3", startTime);
+            ShuyuanProperties.SubscribeTemplateFields fields = sub.getEnrollSuccessFields();
+            putKeyword(data, fields.getTitle(), title);
+            putKeyword(data, fields.getStartTime(), startTime);
             return data;
         }
-        // activity_remind 等未配置公库模板时保留旧占位 key，便于后续替换
-        data.put("thing1", title);
-        data.put("phrase2", trim(resolvePhrase2(scene, payload), 5));
-        data.put("time4", startTime);
+        ShuyuanProperties.SubscribeTemplateFields fields = sub.getActivityRemindFields();
+        putKeyword(data, fields.getTitle(), title);
+        putKeyword(data, fields.getPhrase(), trim(resolvePhrase2(scene, payload), 5));
+        putKeyword(data, fields.getStartTime(), startTime);
         return data;
+    }
+
+    private void putKeyword(Map<String, String> data, String key, String value) {
+        if (key == null || key.isBlank() || value == null || value.isBlank()) {
+            return;
+        }
+        data.put(key, value);
     }
 
     private String resolvePhrase2(String scene, SubscribeOutboxPayload payload) {
@@ -243,7 +267,7 @@ public class SubscribeService {
         body.put("lang", "zh_CN");
         ObjectNode data = body.putObject("data");
         for (Map.Entry<String, String> e : keywordData.entrySet()) {
-            if (e.getValue() == null) {
+            if (e.getValue() == null || e.getValue().isBlank()) {
                 continue;
             }
             ObjectNode item = data.putObject(e.getKey());

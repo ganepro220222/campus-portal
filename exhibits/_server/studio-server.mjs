@@ -36,10 +36,25 @@ const MIME = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; chars
   '.json':'application/json; charset=utf-8', '.css':'text/css; charset=utf-8', '.glb':'model/gltf-binary', '.gltf':'model/gltf+json',
   '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.webp':'image/webp', '.wav':'audio/wav', '.mp3':'audio/mpeg', '.m4a':'audio/mp4' }
 
-if (!PASS) console.warn('⚠  未设 STUDIO_PASS：无鉴权，请勿暴露到公网！生产请  STUDIO_PASS=… node …')
+if (!PASS) {
+  if (process.env.STUDIO_ALLOW_INSECURE === '1') {
+    console.warn('⚠  未设 STUDIO_PASS 且 STUDIO_ALLOW_INSECURE=1：无鉴权，仅限本地调试')
+  } else {
+    console.error('✖ 未设 STUDIO_PASS：拒绝启动。生产请 STUDIO_PASS=… node …；本地调试可设 STUDIO_ALLOW_INSECURE=1')
+    process.exit(1)
+  }
+}
+
+function authDisabled() {
+  return !PASS && process.env.STUDIO_ALLOW_INSECURE === '1'
+}
 
 function authed(req, res) {
-  if (!PASS) return true
+  if (authDisabled()) return true
+  if (!PASS) {
+    json(res, 503, { error: 'STUDIO_PASS 未配置', hint: '请设置 STUDIO_PASS 或 STUDIO_ALLOW_INSECURE=1（仅本地）' })
+    return false
+  }
   const h = req.headers.authorization || ''
   const [, b64] = h.split(' ')
   const [u, p] = Buffer.from(b64 || '', 'base64').toString().split(':')

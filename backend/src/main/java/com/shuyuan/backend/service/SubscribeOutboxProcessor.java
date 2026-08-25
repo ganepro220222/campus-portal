@@ -53,7 +53,7 @@ public class SubscribeOutboxProcessor {
                 row.getMemberId(), row.getScene(), payload);
         switch (outcome) {
             case SENT -> markSent(row);
-            case SKIPPED_NO_AUTH, SKIPPED_NO_OPENID, SKIPPED_NO_TEMPLATE -> markSkipped(row, outcome.name());
+            case SKIPPED_NO_AUTH, SKIPPED_NO_OPENID, SKIPPED_NO_TEMPLATE, SKIPPED_INVALID_PAYLOAD -> markSkipped(row, outcome.name());
             case PERMANENT_FAILURE -> markFailed(row, "微信返回不可重试错误");
             case RETRYABLE_FAILURE -> scheduleRetry(row, "发送失败，等待重试");
             default -> scheduleRetry(row, "未知投递结果");

@@ -8,10 +8,12 @@ public enum SubscribeSendOutcome {
     SKIPPED_NO_AUTH,
     SKIPPED_NO_OPENID,
     SKIPPED_NO_TEMPLATE,
+    SKIPPED_INVALID_PAYLOAD,
     RETRYABLE_FAILURE,
     PERMANENT_FAILURE;
 
     public boolean isSkipped() {
-        return this == SKIPPED_NO_AUTH || this == SKIPPED_NO_OPENID || this == SKIPPED_NO_TEMPLATE;
+        return this == SKIPPED_NO_AUTH || this == SKIPPED_NO_OPENID || this == SKIPPED_NO_TEMPLATE
+                || this == SKIPPED_INVALID_PAYLOAD;
     }
 }

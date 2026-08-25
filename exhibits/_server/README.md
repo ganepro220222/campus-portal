@@ -48,7 +48,9 @@ STUDIO_PASS=你的密码 node _server/studio-server.mjs
 # 浏览器打开 http://127.0.0.1:8888/studio.html
 ```
 
-未设置 `STUDIO_PASS` 时不启用鉴权，仅限本机调试，勿暴露到公网。
+未设置 `STUDIO_PASS` 时：
+- **生产/staging**：Node 拒绝启动；PHP 返回 503（除非本机 identity 探测）。
+- **本地调试**：可设 `STUDIO_ALLOW_INSECURE=1`（`_dev/start.sh` 默认开启）或设置 `STUDIO_PASS`。
 
 ## 生产环境
 

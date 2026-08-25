@@ -91,6 +91,10 @@ public class ShuyuanProperties {
         private String enrollSuccessTemplateId = "";
         private String enrollApprovedTemplateId = "";
         private String activityRemindTemplateId = "";
+        /** 公众平台模板关键词 field 名（因选用关键词不同须与后台「我的模板」一致） */
+        private SubscribeTemplateFields enrollSuccessFields = SubscribeTemplateFields.enrollSuccessDefaults();
+        private SubscribeTemplateFields enrollApprovedFields = SubscribeTemplateFields.enrollApprovedDefaults();
+        private SubscribeTemplateFields activityRemindFields = SubscribeTemplateFields.activityRemindDefaults();
         /** 发件箱每轮最大处理条数 */
         private int outboxBatchSize = 50;
         /** 发件箱最大重试次数 */
@@ -99,6 +103,37 @@ public class ShuyuanProperties {
         private int outboxStaleMinutes = 5;
         /** 重试退避基数（秒） */
         private int outboxRetryBaseSeconds = 30;
+    }
+
+    /** 订阅消息模板字段 key（对应微信 data 里的 key） */
+    @Data
+    public static class SubscribeTemplateFields {
+        private String title = "thing1";
+        private String startTime = "time3";
+        private String phrase = "";
+
+        static SubscribeTemplateFields enrollSuccessDefaults() {
+            SubscribeTemplateFields f = new SubscribeTemplateFields();
+            f.setTitle("thing1");
+            f.setStartTime("time3");
+            return f;
+        }
+
+        static SubscribeTemplateFields enrollApprovedDefaults() {
+            SubscribeTemplateFields f = new SubscribeTemplateFields();
+            f.setPhrase("phrase1");
+            f.setTitle("thing8");
+            f.setStartTime("time11");
+            return f;
+        }
+
+        static SubscribeTemplateFields activityRemindDefaults() {
+            SubscribeTemplateFields f = new SubscribeTemplateFields();
+            f.setTitle("thing1");
+            f.setPhrase("phrase2");
+            f.setStartTime("time4");
+            return f;
+        }
     }
 
     /** E2-1 低成本告警：钉钉 / 企业微信 Webhook */

@@ -39,6 +39,8 @@ assert.match(sh, /manifest\.tsv/, 'must track path manifest for rollback')
 assert.match(sh, /restore_backend_paths/, 'must restore backend on failure')
 assert.match(sh, /deploy_backend_with_health/, 'must wrap docker deploy with health check')
 assert.match(sh, /staging-backend-health\.sh/, 'must source backend health helpers')
+assert.match(sh, /_deploy_backup\/exhibits_code/, 'code backup must live outside web root')
+assert.match(sh, /prune_timestamped_backups/, 'must prune old deploy backups')
 
 const healthSh = fs.readFileSync(path.join(ROOT, 'scripts/staging-backend-health.sh'), 'utf8')
 assert.match(healthSh, /rollback_backend_container/, 'must rollback backend container on health fail')

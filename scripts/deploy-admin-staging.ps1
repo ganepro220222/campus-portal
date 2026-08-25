@@ -17,12 +17,17 @@ function Assert-LastExitCode {
   }
 }
 
+function Quote-BashSingle {
+  param([string]$Value)
+  return "'" + ($Value -replace "'", "'\\''") + "'"
+}
+
 function Assert-AdminDistAssets {
   param([string]$DistRoot)
   $indexHtml = Join-Path $DistRoot 'index.html'
   $content = Get-Content -LiteralPath $indexHtml -Raw -Encoding UTF8
-  $matches = [regex]::Matches($content, '/admin/assets/[^"''\s>]+')
-  foreach ($m in $matches) {
+  $assetMatches = [regex]::Matches($content, '/admin/assets/[^"''\s>]+')
+  foreach ($m in $assetMatches) {
     $rel = $m.Value.Substring('/admin/'.Length) -replace '/', [IO.Path]::DirectorySeparatorChar
     $path = Join-Path $DistRoot $rel
     if (-not (Test-Path -LiteralPath $path)) {
@@ -58,26 +63,25 @@ if (-not (Test-Path -LiteralPath $indexHtml)) {
 
 Assert-AdminDistAssets -DistRoot $Dist
 
-$RemoteStaging = $RemoteDir + '.staging'
+$RemoteStaging = "${RemoteDir}.staging"
+$RemoteOld = "${RemoteDir}.old"
+$qDir = Quote-BashSingle $RemoteDir
+$qStaging = Quote-BashSingle $RemoteStaging
+$qOld = Quote-BashSingle $RemoteOld
+$SshTarget = $User + '@' + $ServerHost
 $TargetStaging = '{0}@{1}:{2}/' -f $User, $ServerHost, $RemoteStaging
+
 Write-Host ('=== upload admin/dist -> ' + $TargetStaging + ' ===')
 
-& ssh ($User + '@' + $ServerHost) ('mkdir -p ' + $RemoteStaging + ' && rm -rf ' + $RemoteStaging + '/*')
+$mkdirCmd = 'set -e; mkdir -p ' + $qStaging + '; rm -rf ' + $qStaging + '/*'
+& ssh $SshTarget $mkdirCmd
 Assert-LastExitCode 'ssh mkdir staging'
 
 & scp -r (Join-Path $Dist '.') $TargetStaging
 Assert-LastExitCode 'scp upload'
 
-$swapCmd = @(
-  'set -e',
-  'test -f ' + $RemoteStaging + '/index.html',
-  'rm -rf ' + $RemoteDir + '.old',
-  'if [ -d ' + $RemoteDir + ' ]; then mv ' + $RemoteDir + ' ' + $RemoteDir + '.old; fi',
-  'mv ' + $RemoteStaging + ' ' + $RemoteDir,
-  'rm -rf ' + $RemoteDir + '.old'
-) -join ' && '
-
-& ssh ($User + '@' + $ServerHost) $swapCmd
+$swapCmd = 'set -e; test -f ' + $qStaging + '/index.html; rm -rf ' + $qOld + '; if [ -d ' + $qDir + ' ]; then mv ' + $qDir + ' ' + $qOld + '; fi; mv ' + $qStaging + ' ' + $qDir + '; rm -rf ' + $qOld
+& ssh $SshTarget $swapCmd
 Assert-LastExitCode 'ssh swap dist'
 
 Write-Host ''

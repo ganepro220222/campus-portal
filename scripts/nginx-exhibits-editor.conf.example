@@ -1,0 +1,35 @@
+# Nginx 片段：/exhibits/ 子路径下的在线编辑器
+# 合并进 sites-enabled 里 shuyuan 站点配置后 nginx -t && systemctl reload nginx
+#
+# 前提：PHP-FPM 已启用；STUDIO_PASS / STUDIO_USER 已在 php-fpm pool 或 systemd 环境中设置。
+# exhibits 物理路径示例：/opt/shuyuan/exhibits
+
+# 1) 保存 API（站点根，已有则跳过）
+# location ~ ^/studio-api/(list|save|create|identity|check-panorama)$ {
+#     include snippets/fastcgi-php.conf;
+#     fastcgi_param SCRIPT_FILENAME /opt/shuyuan/exhibits/_server/api.php;
+#     fastcgi_param QUERY_STRING action=$1;
+#     ...
+# }
+
+# 2) 工作台在 /exhibits/studio.html 时用相对 URL studio-api/* → 需要这条
+location ~ ^/exhibits/studio-api/(list|save|create|identity|check-panorama)$ {
+    include snippets/fastcgi-php.conf;
+    fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+    fastcgi_param SCRIPT_FILENAME /opt/shuyuan/exhibits/_server/api.php;
+    fastcgi_param QUERY_STRING action=$1&$query_string;
+}
+
+# 3) player.html 保存地址注入（若 restore 脚本已 sed 注入可省略）
+# location = /exhibits/player.html {
+#     sub_filter '</head>' '<script>window.__SAVE_API__="/studio-api/save"</script></head>';
+#     sub_filter_once on;
+#     alias /opt/shuyuan/exhibits/player.html;
+# }
+
+# 4) 编辑入口 Basic Auth（与 studio-api 同一 htpasswd 即可）
+# location ~ ^/exhibits/(studio\.html|player\.html)$ {
+#     auth_basic "3D Studio";
+#     auth_basic_user_file /etc/nginx/.htpasswd-studio;
+#     try_files $uri =404;
+# }

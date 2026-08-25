@@ -70,7 +70,7 @@ export function bundleViewerScript(viewerSrc, outFile) {
       platform: 'browser',
       target: ['ios15', 'safari15', 'chrome80'],
       sourcemap: false,
-      minify: false,
+      minify: true,
       logLevel: 'warning',
       absWorkingDir: ROOT,
       alias: {

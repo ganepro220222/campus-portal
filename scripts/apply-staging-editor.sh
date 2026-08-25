@@ -167,6 +167,24 @@ probe_api_list_requires_unauth() {
   return 0
 }
 
+probe_module_required() {
+  local url="$1" name="$2"
+  local code
+  code="$(curl -sS -L "${CURL_AUTH[@]}" -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
+  printf '%-55s ' "$url"
+  case "$code" in
+    200)
+      echo "OK  HTTP/1.1 200 module (${name})"
+      return 0
+      ;;
+    *)
+      echo "FAIL HTTP/${code} (${name} 须 200；若 404 检查 Nginx location ^~ /studio/ 与 proxy_pass 尾斜杠)"
+      PROBE_FAIL=1
+      return 1
+      ;;
+  esac
+}
+
 echo ""
 echo "=== HTTP 探测（本机 Nginx，编辑器入口 ${STUDIO_PREFIX}/）==="
 if [ -n "$STUDIO_PASS" ]; then
@@ -175,6 +193,7 @@ elif [ "${ALLOW_AUTH_ONLY_PROBE:-0}" = "1" ]; then
   echo "ALLOW_AUTH_ONLY_PROBE=1：仅验证 401，不验证页面内容与 API JSON"
 fi
 probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/studio.html" "${STUDIO_PREFIX}/studio.html" "3D 鉴赏工作台" && STUDIO_HTML_OK=1 || true
+probe_module_required "http://127.0.0.1${STUDIO_PREFIX}/light-rig.mjs" "light-rig" || true
 probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/player.html" "${STUDIO_PREFIX}/player.html" "window.__SY_PLAYER" && PLAYER_HTML_OK=1 || true
 probe_api_list_required "http://127.0.0.1/studio-api/list" && API_OK=1 || true
 probe_api_list_requires_unauth "http://127.0.0.1/studio-api/list" || true

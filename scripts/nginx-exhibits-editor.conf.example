@@ -5,6 +5,9 @@
 #   - studio-server systemd 已设置 STUDIO_USER / STUDIO_PASS（见 exhibits/_server/README.md）
 #   - 或使用下方 auth_basic + htpasswd（与 studio-server 二选一，勿重复）
 #   - PHP 路径须 php-fpm pool 注入 STUDIO_PASS（clear_env=no 或 env[STUDIO_PASS]=...）
+#
+# 重要：location /studio/ 必须用 ^~，且 proxy_pass 带尾斜杠以剥离 /studio/ 前缀。
+#       勿再为 *.js 单独写 regex location（会抢占前缀并把 /studio/foo.mjs 原样转发 upstream → 404）。
 
 gzip on;
 gzip_types text/plain text/css application/javascript application/json image/svg+xml;
@@ -20,13 +23,14 @@ location /studio-api/ {
     proxy_set_header X-Real-IP $remote_addr;
 }
 
-location /studio/ {
+location ^~ /studio/ {
     auth_basic "3D Studio";
     auth_basic_user_file /etc/nginx/.htpasswd-studio;
     proxy_pass http://127.0.0.1:8200/;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
+    add_header Cache-Control "no-cache";
 }
 
 # 2) PHP 版 studio-api（/exhibits/ 子路径部署时用；须 php-fpm 注入 STUDIO_PASS）
@@ -45,12 +49,3 @@ location /studio/ {
 #     auth_basic_user_file /etc/nginx/.htpasswd-studio;
 #     try_files $uri =404;
 # }
-
-# 4) 编辑器静态资源缓存（vendor/*.js 等大文件）
-location ~ ^/studio/.+\.(js|mjs|css|wasm)$ {
-    auth_basic "3D Studio";
-    auth_basic_user_file /etc/nginx/.htpasswd-studio;
-    proxy_pass http://127.0.0.1:8200;
-    expires 7d;
-    add_header Cache-Control "public, max-age=604800";
-}

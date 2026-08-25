@@ -287,6 +287,26 @@ test('launcher bat files avoid parenthetical if blocks', () => {
   }
 })
 
+test('start-bg.bat enables local insecure mode when STUDIO_PASS unset', () => {
+  const bat = fs.readFileSync(path.join(LAUNCH, 'start-bg.bat'), 'utf8')
+  assert.match(bat, /if not defined STUDIO_PASS set "STUDIO_ALLOW_INSECURE=1"/i)
+})
+
+test('staging deploy scripts do not enable STUDIO_ALLOW_INSECURE', () => {
+  const apply = fs.readFileSync(path.join(ROOT, '..', 'scripts', 'apply-staging-editor.sh'), 'utf8')
+  assert.doesNotMatch(apply, /STUDIO_ALLOW_INSECURE/)
+})
+
+test('serve.py binds loopback in insecure local mode', () => {
+  const py = fs.readFileSync(path.join(ROOT, 'serve.py'), 'utf8')
+  assert.match(py, /bind_host = '127\.0\.0\.1' if \(not PASS and os\.environ\.get\('STUDIO_ALLOW_INSECURE'\) == '1'\)/)
+})
+
+test('studio-server binds loopback in insecure local mode', () => {
+  const node = fs.readFileSync(path.join(ROOT, '_server', 'studio-server.mjs'), 'utf8')
+  assert.match(node, /STUDIO_ALLOW_INSECURE === '1'\) \? '127\.0\.0\.1'/)
+})
+
 test('ensure-server.bat avoids trailing-backslash cd paths', () => {
   const bat = fs.readFileSync(path.join(LAUNCH, 'ensure-server.bat'), 'utf8')
   assert.doesNotMatch(bat, /cd \/d \\"%ROOT%\\"/, 'trailing backslash breaks quoted cd on Windows')

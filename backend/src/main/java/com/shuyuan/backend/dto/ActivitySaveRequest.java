@@ -28,7 +28,7 @@ public class ActivitySaveRequest {
     private String location;
 
     @Size(max = 32, groups = {Create.class, Update.class}, message = "开始时间格式无效")
-    @NotBlank(groups = Create.class, message = "活动开始时间不能为空")
+    @NotBlank(groups = { Create.class, Update.class }, message = "活动开始时间不能为空")
     private String startTime;
 
     @Size(max = 32, groups = {Create.class, Update.class}, message = "结束时间格式无效")

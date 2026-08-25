@@ -56,6 +56,7 @@ assert.match(
   'player expect_path must follow STUDIO_HTTP_PREFIX',
 )
 assert.match(sh, /probe_api_list_requires_unauth/, 'must verify API blocks unauthenticated access')
+assert.match(sh, /probe_module_required.*light-rig\.mjs/, 'must verify studio module path via nginx')
 assert.equal(
   htmlProbeOk(200, 'http://127.0.0.1/exhibits/studio.html', '/exhibits/studio.html', '3D 鉴赏工作台', '3D 鉴赏工作台', true),
   true,

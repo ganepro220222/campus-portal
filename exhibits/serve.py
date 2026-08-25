@@ -298,10 +298,12 @@ if __name__ == '__main__':
         else:
             print('ERROR: STUDIO_PASS not set. Set STUDIO_PASS or STUDIO_ALLOW_INSECURE=1 for local dev.', file=sys.stderr)
             raise SystemExit(1)
+    bind_host = '127.0.0.1' if (not PASS and os.environ.get('STUDIO_ALLOW_INSECURE') == '1') else ''
     try:
-        with HTTPServer(('', PORT), Handler) as httpd:
-            print('Exhibits server: http://127.0.0.1:%s/studio.html  %s' % (
-                PORT, '(auth on)' if PASS else '(insecure local)'))
+        with HTTPServer((bind_host, PORT), Handler) as httpd:
+            host_label = bind_host or '0.0.0.0'
+            print('Exhibits server: http://127.0.0.1:%s/studio.html  %s  (bind %s)' % (
+                PORT, '(auth on)' if PASS else '(insecure local)', host_label))
             print('  rootHash: %s' % ROOT_HASH)
             httpd.serve_forever()
     except PermissionError as e:

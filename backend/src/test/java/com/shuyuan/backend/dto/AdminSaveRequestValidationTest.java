@@ -47,6 +47,25 @@ class AdminSaveRequestValidationTest {
     }
 
     @Test
+    void activityUpdate_rejectsBlankStartTime() {
+        ActivitySaveRequest req = new ActivitySaveRequest();
+        req.setTitle("讲座");
+        req.setStartTime("");
+        Set<ConstraintViolation<ActivitySaveRequest>> violations = validator.validate(req, ValidationGroups.Update.class);
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("startTime")));
+    }
+
+    @Test
+    void activityUpdate_allowsValidStartTime() {
+        ActivitySaveRequest req = new ActivitySaveRequest();
+        req.setTitle("讲座");
+        req.setStartTime("2026-07-15 10:00");
+        Set<ConstraintViolation<ActivitySaveRequest>> violations = validator.validate(req, ValidationGroups.Update.class);
+        assertTrue(violations.isEmpty());
+    }
+
+    @Test
     void courseCreate_requiresName() {
         CourseSaveRequest req = new CourseSaveRequest();
         Set<ConstraintViolation<CourseSaveRequest>> violations = validator.validate(req, ValidationGroups.Create.class);

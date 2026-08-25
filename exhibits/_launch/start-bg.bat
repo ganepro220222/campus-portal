@@ -2,6 +2,8 @@
 cd /d "%~dp0.."
 if errorlevel 1 exit /b 1
 if "%PORT%"=="" set "PORT=8888"
+rem 便携工作台：无 STUDIO_PASS 时仅本机无鉴权（与 _dev/start.sh 一致；在线部署勿设此变量）
+if not defined STUDIO_PASS set "STUDIO_ALLOW_INSECURE=1"
 set "RUNTIME=%~dp0..\_runtime"
 if exist "%RUNTIME%\python\python.exe" goto run_py_portable
 where python >nul 2>&1

@@ -105,7 +105,7 @@
           <el-input v-model="form.location" maxlength="100" />
           <FieldHint :text="FIELD_HINTS.activityLocation" />
         </el-form-item>
-        <el-form-item label="活动时间" required>
+        <el-form-item label="活动时间" prop="startTime" required>
           <div class="time-row">
             <el-date-picker
               v-model="form.startTime"
@@ -217,7 +217,8 @@ const form = reactive({
 })
 
 const rules: FormRules = {
-  title: [{ required: true, message: '请输入活动名称', trigger: 'blur' }]
+  title: [{ required: true, message: '请输入活动名称', trigger: 'blur' }],
+  startTime: [{ required: true, message: '请选择活动开始时间', trigger: 'change' }]
 }
 
 function statusLabel(status: string) {

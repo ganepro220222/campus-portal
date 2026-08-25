@@ -138,7 +138,8 @@ function serveStatic(req, res, urlPath) {
   })
 }
 
-http.createServer((req, res) => {
+const BIND_HOST = (!PASS && process.env.STUDIO_ALLOW_INSECURE === '1') ? '127.0.0.1' : undefined
+const server = http.createServer((req, res) => {
   const u = req.url || '/'
   if (u.startsWith('/studio-api/identity')) {
     if (isLocalhost(req)) return json(res, 200, getIdentityPayload(ROOT))
@@ -178,8 +179,10 @@ http.createServer((req, res) => {
     return
   }
   serveStatic(req, res, u)
-}).listen(PORT, () => {
-  console.log(`▶ 3D 鉴赏工作台服务：http://127.0.0.1:${PORT}/studio.html   ${PASS ? '(Basic Auth 已启用)' : '(无鉴权·仅本机)'}`)
+})
+server.listen(PORT, BIND_HOST, () => {
+  const bindLabel = BIND_HOST || '0.0.0.0'
+  console.log(`▶ 3D 鉴赏工作台服务：http://127.0.0.1:${PORT}/studio.html   ${PASS ? '(Basic Auth 已启用)' : '(无鉴权·仅本机)'}  bind ${bindLabel}`)
   console.log(`   rootHash：${ROOT_HASH}`)
 }).on('error', (e) => {
   console.error(`ERROR: 无法绑定端口 ${PORT} — ${e.message}`)

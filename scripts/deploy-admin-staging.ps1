@@ -1,7 +1,6 @@
-# 将 admin/dist 完整同步到 staging ECS（保留 assets 子目录结构）
-# 用法（在仓库根目录）：
+# Deploy admin/dist to staging ECS (keeps assets/ subdirectory).
+# Usage:
 #   powershell -File scripts/deploy-admin-staging.ps1
-#   powershell -File scripts/deploy-admin-staging.ps1 -ServerHost 47.109.0.192 -User root
 
 param(
   [string]$ServerHost = '47.109.0.192',
@@ -24,19 +23,18 @@ try {
   Pop-Location
 }
 
-if (-not (Test-Path (Join-Path $Dist 'index.html'))) {
-  throw 'build 失败：缺少 admin/dist/index.html'
+$indexHtml = Join-Path $Dist 'index.html'
+if (-not (Test-Path $indexHtml)) {
+  throw 'build failed: admin/dist/index.html missing'
 }
 
-$Target = "${User}@${ServerHost}:${RemoteDir}/"
-Write-Host "=== 上传 admin/dist -> $Target ==="
-Write-Host '（使用 dist/. 保留 assets/ 目录，勿用 dist/*）'
+$Target = '{0}@{1}:{2}/' -f $User, $ServerHost, $RemoteDir
+Write-Host ('=== upload admin/dist -> ' + $Target + ' ===')
+Write-Host 'Use dist/. so assets/ subdirectory is preserved.'
 
-& ssh "${User}@${ServerHost}" "mkdir -p '$RemoteDir'"
+& ssh ($User + '@' + $ServerHost) ('mkdir -p ' + $RemoteDir)
 & scp -r (Join-Path $Dist '.') $Target
 
 Write-Host ''
-Write-Host "完成。请访问: http://${ServerHost}/admin/"
-Write-Host '若仍白屏，在 ECS 上执行:'
-Write-Host '  curl -sI http://127.0.0.1/admin/assets/ | head -3'
-Write-Host "  grep src= $RemoteDir/index.html | head -3"
+Write-Host ('Done. Open http://{0}/admin/' -f $ServerHost)
+Write-Host 'Hard-refresh (Ctrl+F5) if the page is blank.'

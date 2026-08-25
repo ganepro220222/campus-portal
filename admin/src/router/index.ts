@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, Operation, List, Reading, Connection, Grid, PriceTag, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets, DeleteFilled } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, Operation, List, Reading, Connection, Grid, PriceTag, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets, DeleteFilled, Message } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 
@@ -259,7 +259,7 @@ export const menuItems: MenuNode[] = [
       { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
       { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] },
       { path: '/content-docs', title: '内容配置', icon: Tickets, permissions: ['admin:super'] },
-      { path: '/subscribe-outbox', title: '订阅发件箱', icon: Bell, permissions: ['admin:super'] },
+      { path: '/subscribe-outbox', title: '订阅发件箱', icon: Message, permissions: ['admin:super'] },
       { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] }
     ]
   }

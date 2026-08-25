@@ -1,4 +1,4 @@
-import request from './request'
+import { get } from './request'
 import type { PageResult } from '@/types/api'
 
 export interface SubscribeOutboxItem {
@@ -19,5 +19,5 @@ export function fetchSubscribeOutbox(params: {
   size?: number
   status?: string
 }) {
-  return request.get<PageResult<SubscribeOutboxItem>>('/admin/subscribe-outbox', { params })
+  return get<PageResult<SubscribeOutboxItem>>('/admin/subscribe-outbox', params as Record<string, unknown>)
 }

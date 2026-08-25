@@ -67,6 +67,37 @@ verify_craft_configs_unchanged() {
   fi
 }
 
+# 仅 checkout Git 中存在的路径（staging compose 等可能只在服务器本地维护）
+checkout_ref_paths() {
+  local ref="$1"
+  shift
+  local path existing=()
+  for path in "$@"; do
+    if git cat-file -e "$ref:$path" 2>/dev/null; then
+      existing+=("$path")
+    else
+      echo "跳过（Git 中无此路径，保留服务器本地文件）: $path"
+    fi
+  done
+  if [ "${#existing[@]}" -gt 0 ]; then
+    git checkout "$ref" -- "${existing[@]}"
+  fi
+}
+
+resolve_compose_file() {
+  if [ -n "${DOCKER_COMPOSE_FILE:-}" ] && [ -f "$DOCKER_COMPOSE_FILE" ]; then
+    echo "$DOCKER_COMPOSE_FILE"
+    return 0
+  fi
+  for f in docker-compose.staging.yml docker-compose.yml docker-compose.dev.yml; do
+    if [ -f "$f" ]; then
+      echo "$f"
+      return 0
+    fi
+  done
+  return 1
+}
+
 echo "=== update-staging-from-github @ $ROOT ==="
 echo "拉取: $REF"
 echo ""
@@ -97,10 +128,7 @@ git checkout "$REF" -- \
 
 echo ""
 echo "=== checkout 运行路径（不含 miniapp/design/test/admin 源码）==="
-git checkout "$REF" -- \
-  backend \
-  sql \
-  docker-compose.staging.yml
+checkout_ref_paths "$REF" backend sql docker-compose.staging.yml docker-compose.yml
 
 echo ""
 echo "=== checkout exhibits 代码路径（保留 craft-* 在线内容）==="
@@ -124,11 +152,15 @@ fi
 
 echo ""
 if [ "${SKIP_DOCKER:-0}" != "1" ]; then
-  echo "=== 重建 backend 容器 ==="
-  docker compose -f docker-compose.staging.yml up -d --build backend
-  echo ""
-  echo "=== health ==="
-  curl -s http://127.0.0.1:8080/api/v1/health | python3 -m json.tool | head -12
+  if compose_file="$(resolve_compose_file)"; then
+    echo "=== 重建 backend 容器 ($compose_file) ==="
+    docker compose -f "$compose_file" up -d --build backend
+    echo ""
+    echo "=== health ==="
+    curl -s http://127.0.0.1:8080/api/v1/health | python3 -m json.tool | head -12
+  else
+    echo "跳过 Docker：未找到 compose 文件（可设 DOCKER_COMPOSE_FILE=...）" >&2
+  fi
 else
   echo "SKIP_DOCKER=1，跳过 Docker"
 fi

@@ -27,6 +27,8 @@ assert.ok(verifyCall > collect, 'config verify must run after exhibits checkout'
 
 assert.doesNotMatch(sh, /REPLACE_CONTENT_FROM_GIT/, 'misleading REPLACE_CONTENT_FROM_GIT removed')
 assert.doesNotMatch(sh, /拒绝 git checkout 覆盖/, 'must not block on dirty craft config')
+assert.match(sh, /checkout_ref_paths/, 'must skip paths missing from git')
+assert.match(sh, /resolve_compose_file/, 'must resolve compose file on server')
 
 const ps1 = fs.readFileSync(path.join(ROOT, 'scripts/push-staging-editor.ps1'), 'utf8')
 assert.doesNotMatch(ps1, /Inject-SaveApi|Set-Content.*player\.html/, 'push must not mutate player.html on disk')

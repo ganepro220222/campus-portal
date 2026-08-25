@@ -9,31 +9,76 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Assert-LastExitCode {
+  param([string]$Step)
+  if ($LASTEXITCODE -ne 0) {
+    throw ($Step + ' failed with exit code ' + $LASTEXITCODE)
+  }
+}
+
+function Assert-AdminDistAssets {
+  param([string]$DistRoot)
+  $indexHtml = Join-Path $DistRoot 'index.html'
+  $content = Get-Content -LiteralPath $indexHtml -Raw -Encoding UTF8
+  $matches = [regex]::Matches($content, '/admin/assets/[^"''\s>]+')
+  foreach ($m in $matches) {
+    $rel = $m.Value.Substring('/admin/'.Length) -replace '/', [IO.Path]::DirectorySeparatorChar
+    $path = Join-Path $DistRoot $rel
+    if (-not (Test-Path -LiteralPath $path)) {
+      throw ('missing built asset referenced by index.html: ' + $path)
+    }
+  }
+}
+
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $Admin = Join-Path $Root 'admin'
 $Dist = Join-Path $Admin 'dist'
+
+if (Test-Path -LiteralPath $Dist) {
+  Remove-Item -LiteralPath $Dist -Recurse -Force
+}
 
 Push-Location $Admin
 try {
   if (-not (Test-Path 'node_modules')) {
     npm ci
+    Assert-LastExitCode 'npm ci'
   }
   npm run build
+  Assert-LastExitCode 'npm run build'
 } finally {
   Pop-Location
 }
 
 $indexHtml = Join-Path $Dist 'index.html'
-if (-not (Test-Path $indexHtml)) {
+if (-not (Test-Path -LiteralPath $indexHtml)) {
   throw 'build failed: admin/dist/index.html missing'
 }
 
-$Target = '{0}@{1}:{2}/' -f $User, $ServerHost, $RemoteDir
-Write-Host ('=== upload admin/dist -> ' + $Target + ' ===')
-Write-Host 'Use dist/. so assets/ subdirectory is preserved.'
+Assert-AdminDistAssets -DistRoot $Dist
 
-& ssh ($User + '@' + $ServerHost) ('mkdir -p ' + $RemoteDir)
-& scp -r (Join-Path $Dist '.') $Target
+$RemoteStaging = $RemoteDir + '.staging'
+$TargetStaging = '{0}@{1}:{2}/' -f $User, $ServerHost, $RemoteStaging
+Write-Host ('=== upload admin/dist -> ' + $TargetStaging + ' ===')
+
+& ssh ($User + '@' + $ServerHost) ('mkdir -p ' + $RemoteStaging + ' && rm -rf ' + $RemoteStaging + '/*')
+Assert-LastExitCode 'ssh mkdir staging'
+
+& scp -r (Join-Path $Dist '.') $TargetStaging
+Assert-LastExitCode 'scp upload'
+
+$swapCmd = @(
+  'set -e',
+  'test -f ' + $RemoteStaging + '/index.html',
+  'rm -rf ' + $RemoteDir + '.old',
+  'if [ -d ' + $RemoteDir + ' ]; then mv ' + $RemoteDir + ' ' + $RemoteDir + '.old; fi',
+  'mv ' + $RemoteStaging + ' ' + $RemoteDir,
+  'rm -rf ' + $RemoteDir + '.old'
+) -join ' && '
+
+& ssh ($User + '@' + $ServerHost) $swapCmd
+Assert-LastExitCode 'ssh swap dist'
 
 Write-Host ''
 Write-Host ('Done. Open http://{0}/admin/' -f $ServerHost)

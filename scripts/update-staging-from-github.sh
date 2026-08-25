@@ -30,6 +30,7 @@ BACKEND_BACKUP=""
 BACKEND_MANIFEST=""
 BACKEND_CHECKED_OUT=0
 DOCKER_ATTEMPTED=0
+BACKEND_ROLLBACK_TAG="shuyuan-backend-predeploy:staging"
 UPDATE_OK=0
 
 backup_craft_configs() {
@@ -237,7 +238,7 @@ on_update_err() {
     restore_backend_paths || true
     echo "注意: backend 源码已尝试回滚。" >&2
     if [ "$DOCKER_ATTEMPTED" -eq 1 ]; then
-      echo "      Docker 容器/image 不会自动恢复，请检查:" >&2
+      echo "      若 health 阶段已尝试容器回滚仍失败，请检查:" >&2
       echo "        docker compose ps && docker compose logs backend --tail 80" >&2
     fi
   fi
@@ -288,6 +289,60 @@ run_exhibits_post_checks() {
   else
     echo "跳过 build-viewer --check（ECS 无 node_modules/esbuild）"
   fi
+}
+
+tag_predeploy_backend_image() {
+  local compose_file="$1" cid image
+  cid="$(docker compose -f "$compose_file" ps -q backend 2>/dev/null | head -1 || true)"
+  [ -n "$cid" ] || return 0
+  image="$(docker inspect --format='{{.Image}}' "$cid")"
+  docker tag "$image" "$BACKEND_ROLLBACK_TAG" 2>/dev/null || true
+  echo "已标记部署前 backend image: $BACKEND_ROLLBACK_TAG"
+}
+
+verify_backend_health() {
+  curl -sf http://127.0.0.1:8080/api/v1/health | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert d.get("code") == 200, d
+assert d.get("data", {}).get("status") == "UP", d
+'
+}
+
+rollback_backend_container() {
+  local compose_file="$1" override
+  if ! docker image inspect "$BACKEND_ROLLBACK_TAG" >/dev/null 2>&1; then
+    echo "无部署前 backend image，无法自动回滚容器" >&2
+    return 1
+  fi
+  override="$(mktemp /tmp/shuyuan-backend-rollback.XXXXXX.yml)"
+  printf 'services:\n  backend:\n    image: %s\n' "$BACKEND_ROLLBACK_TAG" > "$override"
+  docker compose -f "$compose_file" -f "$override" up -d --no-build backend
+  rm -f "$override"
+  echo "已用部署前 image 重建 backend 容器"
+}
+
+deploy_backend_with_health() {
+  local compose_file="$1"
+  tag_predeploy_backend_image "$compose_file"
+  docker compose -f "$compose_file" up -d --build backend
+  echo ""
+  echo "=== health ==="
+  if verify_backend_health; then
+    curl -s http://127.0.0.1:8080/api/v1/health | python3 -m json.tool | head -12
+    return 0
+  fi
+  echo "backend health 检查失败" >&2
+  if docker image inspect "$BACKEND_ROLLBACK_TAG" >/dev/null 2>&1; then
+    echo "尝试回滚 backend 容器..." >&2
+    rollback_backend_container "$compose_file" || true
+    if verify_backend_health; then
+      echo "backend 容器已回滚，health 恢复" >&2
+    else
+      echo "P0: backend 容器回滚后 health 仍失败，请人工检查 docker compose logs backend" >&2
+    fi
+  fi
+  return 1
 }
 
 trap on_update_err ERR
@@ -373,10 +428,7 @@ if [ "${SKIP_DOCKER:-0}" != "1" ]; then
   if compose_file="$(resolve_compose_file)"; then
     echo "=== 重建 backend 容器 ($compose_file) ==="
     DOCKER_ATTEMPTED=1
-    docker compose -f "$compose_file" up -d --build backend
-    echo ""
-    echo "=== health ==="
-    curl -s http://127.0.0.1:8080/api/v1/health | python3 -m json.tool | head -12
+    deploy_backend_with_health "$compose_file"
   else
     echo "跳过 Docker：未找到 compose 文件（可设 DOCKER_COMPOSE_FILE=...）" >&2
   fi

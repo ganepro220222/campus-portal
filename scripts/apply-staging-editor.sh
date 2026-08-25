@@ -7,6 +7,7 @@
 #   STUDIO_HTTP_PREFIX=/studio  bash scripts/apply-staging-editor.sh
 #
 # 若设置了 STUDIO_PASS，会用 Basic Auth 拉取页面正文并校验 marker / JSON。
+# 正式验收须设置 STUDIO_PASS；仅测 auth 时可设 ALLOW_AUTH_ONLY_PROBE=1。
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,6 +25,9 @@ API_OK=0
 CURL_AUTH=()
 if [ -n "$STUDIO_PASS" ]; then
   CURL_AUTH=(-u "${STUDIO_USER}:${STUDIO_PASS}")
+elif [ "${ALLOW_AUTH_ONLY_PROBE:-0}" != "1" ]; then
+  echo "错误: 正式验收须设置 STUDIO_PASS（仅测 Basic Auth 可用 ALLOW_AUTH_ONLY_PROBE=1）" >&2
+  exit 1
 fi
 
 echo "=== apply-staging-editor @ $ROOT ==="
@@ -95,7 +99,7 @@ probe_html_required() {
         rm -f "$tmp"
         return 1
       fi
-      echo "OK  HTTP/1.1 401 Unauthorized"
+      echo "WARN HTTP/1.1 401 auth-only (未验证 marker)"
       rm -f "$tmp"
       return 0
       ;;
@@ -131,7 +135,7 @@ probe_api_list_required() {
         PROBE_FAIL=1
         return 1
       fi
-      echo "OK  HTTP/1.1 401 Unauthorized"
+      echo "WARN HTTP/1.1 401 auth-only (未验证 JSON)"
       return 0
       ;;
     *)
@@ -145,9 +149,9 @@ probe_api_list_required() {
 echo ""
 echo "=== HTTP 探测（本机 Nginx，编辑器入口 ${STUDIO_PREFIX}/）==="
 if [ -n "$STUDIO_PASS" ]; then
-  echo "使用 STUDIO_USER/STUDIO_PASS 进行认证探测"
-else
-  echo "未设 STUDIO_PASS：仅验证 401；设后可校验页面 marker 与 API JSON"
+  echo "使用 STUDIO_USER/STUDIO_PASS 进行完整验收（marker + JSON）"
+elif [ "${ALLOW_AUTH_ONLY_PROBE:-0}" = "1" ]; then
+  echo "ALLOW_AUTH_ONLY_PROBE=1：仅验证 401，不验证页面内容与 API JSON"
 fi
 probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/studio.html" "/studio/studio.html" "3D 鉴赏工作台" && STUDIO_HTML_OK=1 || true
 probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/player.html" "/studio/player.html" "window.__SY_PLAYER" && PLAYER_HTML_OK=1 || true
@@ -164,6 +168,11 @@ if [ "$PROBE_FAIL" -ne 0 ]; then
   echo "  player.html: $([ "$PLAYER_HTML_OK" -eq 1 ] && echo OK || echo FAIL)" >&2
   echo "  studio-api:  $([ "$API_OK" -eq 1 ] && echo OK || echo FAIL)" >&2
   exit 1
+fi
+
+if [ -z "$STUDIO_PASS" ] && [ "${ALLOW_AUTH_ONLY_PROBE:-0}" = "1" ]; then
+  echo "警告: 仅完成 auth 探测，未验证 marker 与 API JSON（退出码 2）" >&2
+  exit 2
 fi
 
 echo "外网：http://${PUBLIC_HOST}${STUDIO_PREFIX}/studio.html"

@@ -37,7 +37,10 @@ assert.match(sh, /assert_exhibits_paths_safe/, 'must reject craft paths in colle
 assert.match(sh, /trap on_update_err ERR/, 'must rollback on failure')
 assert.match(sh, /manifest\.tsv/, 'must track path manifest for rollback')
 assert.match(sh, /restore_backend_paths/, 'must restore backend on failure')
-assert.match(sh, /Docker 容器\/image 不会自动恢复/, 'must warn docker not rolled back')
+assert.match(sh, /rollback_backend_container/, 'must rollback backend container on health fail')
+assert.match(sh, /deploy_backend_with_health/, 'must wrap docker deploy with health check')
+assert.match(sh, /verify_backend_health/, 'must verify backend health JSON')
+assert.doesNotMatch(sh, /Docker 容器\/image 不会自动恢复/, 'should attempt container rollback')
 assert.match(sh, /check-static-deps/, 'must run static deps after update')
 assert.doesNotMatch(sh, /docker-compose\.dev\.yml/, 'must not fall back to dev compose')
 

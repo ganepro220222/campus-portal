@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { buildViewerSrc, compareViewerArtifacts } from './build-viewer.mjs'
+import { buildViewerSrc, compareViewerArtifacts, collectStagingEditorRelPaths } from './build-viewer.mjs'
 import {
   buildBundledViewer,
   buildBundledViewerHtml,
@@ -28,6 +28,14 @@ function test(name, fn) {
   }
 }
 
+test('collectStagingEditorRelPaths includes editor and server deps', () => {
+  const paths = collectStagingEditorRelPaths()
+  for (const need of ['player.html', 'studio.html', 'pano-check.mjs', 'exhibit-create.mjs', 'leader-geom.js']) {
+    assert.ok(paths.includes(need), `missing ${need}`)
+  }
+  assert.ok(!paths.some(p => /^craft-/.test(p)), 'must not include exhibit content dirs')
+})
+
 test('buildBundledViewerHtml removes import map and inline module', () => {
   const src = buildViewerSrc()
   const html = buildBundledViewerHtml(src)
@@ -50,7 +58,7 @@ test('esbuild bundle is self-contained for iOS 15 Safari', () => {
     const text = fs.readFileSync(bundlePath, 'utf8')
     assert.ok(text.length > 100_000, 'bundle should include three.js graph')
     assertBundleSelfContained(text)
-    assert.match(text, /ensureHotspotIds/)
+    assert.match(text, /__SY_PLAYER/)
     assert.match(text, /strictWebKitPanoramaMaxWidth/)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })

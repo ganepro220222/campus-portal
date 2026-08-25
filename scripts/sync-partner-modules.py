@@ -106,7 +106,7 @@ def write_editor_readme() -> None:
 
 【首次】
   1. 双击「安装便携环境.bat」（需联网，约 12MB）
-  2. 双击「打开工作台.bat」→ http://127.0.0.1:8200/studio.html
+  2. 双击「打开工作台.bat」→ http://127.0.0.1:8888/studio.html
 
 【上传】
   服务器 FileBrowser：http://47.109.0.192/fm/

@@ -13,6 +13,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 EXHIBITS="${EXHIBITS:-$ROOT/exhibits}"
 REF="${GIT_REF:-origin/main}"
+MISS=0
 
 echo "=== restore-staging-editor @ $ROOT ==="
 echo "exhibits: $EXHIBITS"
@@ -26,22 +27,16 @@ fi
 
 git fetch "${REF%%/*}" "${REF#*/}" 2>/dev/null || git fetch origin main
 
-git checkout "$REF" -- \
-  exhibits/player.html \
-  exhibits/studio.html \
-  exhibits/_server/api.php \
-  exhibits/_server/studio-identity.mjs \
-  exhibits/pano-check.mjs \
-  exhibits/pano-check.py \
-  exhibits/exhibit-create.mjs \
-  exhibits/exhibit_create.py \
-  exhibits/_template
+mapfile -t EXHIBITS_PATHS < <(node scripts/collect-staging-editor-files.mjs --repo)
+if [ "${#EXHIBITS_PATHS[@]}" -eq 0 ]; then
+  echo "错误: collect-staging-editor-files.mjs 未输出路径" >&2
+  exit 1
+fi
+git checkout "$REF" -- "${EXHIBITS_PATHS[@]}"
 
 PLAYER="$EXHIBITS/player.html"
-if [ -f "$PLAYER" ] && ! grep -q '__SAVE_API__' "$PLAYER"; then
-  # Nginx 子路径 /exhibits/ 下须用根绝对路径
-  sed -i 's|</head>|<script>window.__SAVE_API__="/studio-api/save"</script>\n</head>|' "$PLAYER"
-  echo "已注入 __SAVE_API__ → /studio-api/save"
+if [ -f "$PLAYER" ]; then
+  bash "$ROOT/scripts/staging-save-api.sh" "$PLAYER"
 fi
 
 echo ""
@@ -50,9 +45,16 @@ for f in \
   exhibits/player.html \
   exhibits/studio.html \
   exhibits/_server/api.php \
+  exhibits/pano-check.mjs \
+  exhibits/exhibit-create.mjs \
   exhibits/studio-batch.mjs \
   exhibits/leader-geom.js; do
-  if [ -e "$f" ]; then echo "OK  $f"; else echo "MISS $f" >&2; fi
+  if [ -e "$f" ]; then
+    echo "OK  $f"
+  else
+    echo "MISS $f" >&2
+    MISS=1
+  fi
 done
 
 echo ""
@@ -79,3 +81,8 @@ echo ""
 echo "完成。浏览器访问（需 Basic Auth）："
 echo "  http://47.109.0.192/exhibits/studio.html"
 echo "  http://47.109.0.192/exhibits/player.html?ex=craft-001&mode=edit"
+
+if [ "$MISS" -ne 0 ]; then
+  echo "文件抽查有缺失项" >&2
+  exit 1
+fi

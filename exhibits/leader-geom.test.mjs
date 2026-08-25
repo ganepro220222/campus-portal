@@ -607,18 +607,14 @@ test('build-viewer: player.view.html is byte-identical to generator output', () 
 })
 
 test('export viewer strips editMode and buildEditor', () => {
-  let src = fs.readFileSync(path.join(ROOT, 'player.html'), 'utf8')
-  src = src.replace(/[ \t]*\/\* EDITOR-CSS-START[\s\S]*?\/\* EDITOR-CSS-END \*\/\n?/, '')
-           .replace(/[ \t]*<!-- EDITOR-HTML-START[\s\S]*?<!-- EDITOR-HTML-END -->\n?/, '')
-           .replace(/[ \t]*\/\* EDITOR-JS-START[\s\S]*?\/\* EDITOR-JS-END \*\/\n?/, '')
-           .replace(/const editMode = params\.get\('mode'\) === 'edit'/, "const editMode = false /* viewer-only */")
-           .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
-  assert.match(src, /const editMode = false \/\* viewer-only \*\//)
+  const src = buildViewerSrc()
+  const sem = validateViewerSemantics(src)
+  assert.equal(sem.ok, true, sem.reason || 'viewer semantics failed')
   assert.doesNotMatch(src, /buildEditor\(\)/)
   const view = fs.readFileSync(path.join(ROOT, 'player.view.html'), 'utf8')
   assert.match(view, /src="\.\/player\.bundle\.js"/)
   const bundle = fs.readFileSync(path.join(ROOT, VIEWER_BUNDLE_FILE), 'utf8')
-  assert.match(bundle, /\beditMode = false\b/)
+  assert.match(bundle, /__SY_PLAYER/)
   assert.doesNotMatch(bundle, /buildEditor\(\)/)
 })
 
@@ -635,7 +631,8 @@ test('production viewer is bundled without import map', () => {
   assert.doesNotMatch(html, /<script type="importmap">/)
   assert.match(html, /src="\.\/player\.bundle\.js"/)
   const bundle = fs.readFileSync(path.join(ROOT, VIEWER_BUNDLE_FILE), 'utf8')
-  assert.ok(bundle.includes('ensureHotspotIds'), 'bundle must include viewer boot logic')
+  assert.ok(bundle.includes('__SY_PLAYER'), 'bundle must include viewer boot logic')
+  assert.ok(bundle.includes('strictWebKitPanoramaMaxWidth'), 'bundle must include viewer runtime helpers')
 })
 
 test('upload pack includes player.bundle.js and resolves viewer deps', () => {

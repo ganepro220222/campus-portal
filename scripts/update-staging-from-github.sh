@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # staging ECS：从 GitHub 更新「运行相关」路径，避免整仓 reset 拉回 miniapp/design/test 等。
+# exhibits 只 checkout 代码路径，不覆盖 craft-*/config.json 等在线编辑内容。
 #
 # 用法（SSH 登录 ECS 后）：
 #   cd /opt/shuyuan
@@ -12,6 +13,7 @@
 #   GIT_REMOTE=origin   GIT_BRANCH=main
 #   SKIP_DOCKER=1       只拉代码不重建容器
 #   SKIP_SLIM=1         跳过瘦身（一般不要设）
+#   REPLACE_CONTENT_FROM_GIT=1  允许覆盖 exhibits/craft-*/config.json（默认拒绝）
 
 set -euo pipefail
 
@@ -33,13 +35,51 @@ fi
 
 git fetch "$REMOTE" "$BRANCH"
 
-# 只 checkout 服务器需要的路径（勿加 design / test / miniapp / docs / admin）
+if [ "${REPLACE_CONTENT_FROM_GIT:-0}" != "1" ]; then
+  dirty="$(git status --porcelain -- exhibits/craft-*/config.json 2>/dev/null || true)"
+  if [ -n "$dirty" ]; then
+    echo "错误: 展品 config.json 有本地修改，拒绝 git checkout 覆盖：" >&2
+    echo "$dirty" >&2
+    echo "若确要从 Git 覆盖，请设 REPLACE_CONTENT_FROM_GIT=1" >&2
+    exit 1
+  fi
+fi
+
+BACKUP="exhibits/_content_backup/$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$BACKUP"
+for cfg in exhibits/craft-*/config.json; do
+  [ -f "$cfg" ] || continue
+  rel="${cfg#exhibits/}"
+  mkdir -p "$BACKUP/$(dirname "$rel")"
+  cp "$cfg" "$BACKUP/$rel"
+done
+echo "已备份 craft config → $BACKUP"
+
+echo ""
+echo "=== checkout 运行路径（不含 miniapp/design/test/admin 源码）==="
 git checkout "$REF" -- \
   backend \
   sql \
   scripts \
-  docker-compose.staging.yml \
-  exhibits
+  docker-compose.staging.yml
+
+echo ""
+echo "=== checkout exhibits 代码路径（保留 craft-* 在线内容）==="
+mapfile -t EXHIBITS_PATHS < <(node scripts/collect-staging-editor-files.mjs --repo)
+if [ "${#EXHIBITS_PATHS[@]}" -eq 0 ]; then
+  echo "错误: collect-staging-editor-files.mjs 未输出路径" >&2
+  exit 1
+fi
+git checkout "$REF" -- "${EXHIBITS_PATHS[@]}"
+
+for cfg in exhibits/craft-*/config.json; do
+  [ -f "$cfg" ] || continue
+  rel="${cfg#exhibits/}"
+  if [ -f "$BACKUP/$rel" ]; then
+    cp "$BACKUP/$rel" "$cfg"
+  fi
+done
+echo "已恢复 craft config 自备份"
 
 echo ""
 echo "=== 瘦身（移回 _slim_archive，exhibits 里被拉回的测试目录也会被清掉）==="

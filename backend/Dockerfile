@@ -3,6 +3,11 @@
 FROM docker.m.daocloud.io/library/eclipse-temurin:17-jdk-jammy AS build
 WORKDIR /app
 
+# mvnw 无 unzip 时会改拉 *-bin.tar.gz；国内 apache 镜像通常只有 .zip
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends unzip \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY pom.xml .
 COPY mvnw .
 COPY .mvn .mvn

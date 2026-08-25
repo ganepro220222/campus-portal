@@ -55,7 +55,7 @@ class AdminActivityServiceTest {
         when(activityMapper.selectById(8L)).thenReturn(activity);
 
         assertThrows(BusinessException.class, () -> adminActivityService.publish(8L));
-        verify(activityMapper, never()).updateById(any());
+        verify(activityMapper, never()).updateById(any(Activity.class));
     }
 
     @Test

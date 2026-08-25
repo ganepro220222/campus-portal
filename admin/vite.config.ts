@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
+  // 生产环境挂在 Nginx /admin/ 子路径，资源须为 /admin/assets/…
+  base: process.env.VITE_BASE || '/admin/',
   plugins: [vue()],
   resolve: {
     alias: {

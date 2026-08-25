@@ -5,7 +5,8 @@
 param(
   [string]$ServerHost = '47.109.0.192',
   [string]$User = 'root',
-  [string]$RemoteDir = '/opt/shuyuan/admin/dist'
+  [string]$RemoteDir = '/opt/shuyuan/admin/dist',
+  [string]$AdminProbeUrl = 'http://127.0.0.1/admin/'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,6 +35,17 @@ function Assert-AdminDistAssets {
       throw ('missing built asset referenced by index.html: ' + $path)
     }
   }
+}
+
+function Assert-AdminHttpLive {
+  param(
+    [string]$SshTarget,
+    [string]$ProbeUrl
+  )
+  $qUrl = Quote-BashSingle $ProbeUrl
+  $probeCmd = 'set -e; html=$(mktemp); trap ''rm -f "$html"'' EXIT; code=$(curl -fsSL -o "$html" -w ''%{http_code}'' ' + $qUrl + '); test "$code" = ''200''; grep -q ''/admin/assets/'' "$html"; js=$(grep -oE ''/admin/assets/[^"'"'"' ]+\.js'' "$html" | head -1); test -n "$js"; curl -fsS "http://127.0.0.1${js}" >/dev/null'
+  & ssh $SshTarget $probeCmd
+  Assert-LastExitCode 'ssh probe admin http'
 }
 
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -83,6 +95,10 @@ Assert-LastExitCode 'scp upload'
 $swapCmd = 'set -e; test -f ' + $qStaging + '/index.html; rm -rf ' + $qOld + '; if [ -d ' + $qDir + ' ]; then mv ' + $qDir + ' ' + $qOld + '; fi; if ! mv ' + $qStaging + ' ' + $qDir + '; then if [ -d ' + $qOld + ' ]; then mv ' + $qOld + ' ' + $qDir + '; fi; exit 1; fi; rm -rf ' + $qOld
 & ssh $SshTarget $swapCmd
 Assert-LastExitCode 'ssh swap dist'
+
+Write-Host ''
+Write-Host ('=== probe admin via nginx @ ' + $AdminProbeUrl + ' ===')
+Assert-AdminHttpLive -SshTarget $SshTarget -ProbeUrl $AdminProbeUrl
 
 Write-Host ''
 Write-Host ('Done. Open http://{0}/admin/' -f $ServerHost)

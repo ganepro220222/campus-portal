@@ -83,13 +83,6 @@ class SubscribeServiceDeliverTest {
 
     @Test
     void deliverForScene_skipsWhenActivityStartTimeMissing() {
-        MemberSubscribeRecord record = authRecord();
-        record.setId(10L);
-        Member member = new Member();
-        member.setOpenid("openid_test");
-        when(subscribeRecordMapper.selectOne(any())).thenReturn(record);
-        when(memberMapper.selectById(5L)).thenReturn(member);
-
         SubscribeOutboxPayload payload = payload();
         payload.setActivityStartTime("");
 
@@ -97,6 +90,7 @@ class SubscribeServiceDeliverTest {
                 5L, SubscribeService.SCENE_ENROLL_SUCCESS, payload);
 
         assertEquals(SubscribeSendOutcome.SKIPPED_INVALID_PAYLOAD, outcome);
+        verify(subscribeRecordMapper, never()).selectOne(any());
         verify(subscribeRecordMapper, never()).decrAvailable(anyLong());
     }
 

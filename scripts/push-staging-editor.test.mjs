@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { collectStagingEditorRelPaths } from '../exhibits/build-viewer.mjs'
+import { collectStagingEditorRelPaths } from '../exhibits/staging-editor-paths.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const player = fs.readFileSync(path.join(ROOT, 'exhibits/player.html'), 'utf8')

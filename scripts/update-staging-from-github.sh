@@ -121,6 +121,7 @@ echo ""
 echo "=== bootstrap collector 依赖（跨版本升级必须先于 collect）==="
 git checkout "$REF" -- \
   scripts \
+  exhibits/staging-editor-paths.mjs \
   exhibits/build-viewer.mjs \
   exhibits/build-viewer-bundle.mjs \
   exhibits/player.html \

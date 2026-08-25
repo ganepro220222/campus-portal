@@ -183,54 +183,17 @@ export function listModuleGraphFiles(htmlPath, rootDir) {
     .sort()
 }
 
+/** staging 编辑器路径清单（无 esbuild 依赖，ECS collector 用） */
+export {
+  collectStagingEditorRelPaths,
+  collectStagingExhibitsCheckoutPaths,
+  STAGING_EXHIBITS_CODE_EXTRA,
+  STAGING_EDITOR_STATIC_DIRS,
+} from './staging-editor-paths.mjs'
+
 /** 从 player HTML 内联 module + 递归 JS import 收集缺失模块；bundled viewer 只校验 bundle 文件。 */
 export function collectModuleGraph(htmlPath, uploadDir) {
   return walkModuleGraph(htmlPath, uploadDir).missing
-}
-
-/** staging 编辑器 / viewer 运行时须同步的 exhibits 相对路径（不含 craft-* 展品内容）。 */
-export const STAGING_EXHIBITS_CODE_EXTRA = [
-  'player.view.html',
-  'player.bundle.js',
-  'build-viewer.mjs',
-  'build-viewer-bundle.mjs',
-  'check-static-deps.mjs',
-  'serve.py',
-  'manifest.json',
-  'pano-check.mjs',
-  'pano-check.py',
-  'exhibit-create.mjs',
-  'exhibit_create.py',
-  'new-exhibit.mjs',
-]
-
-export const STAGING_EDITOR_STATIC_DIRS = ['_template', '_server']
-
-export function collectStagingEditorRelPaths(root = ROOT) {
-  const rels = new Set(['player.html', 'studio.html'])
-  for (const html of ['player.html', 'studio.html']) {
-    const htmlPath = path.join(root, html)
-    if (!fs.existsSync(htmlPath)) continue
-    for (const rel of listModuleGraphFiles(htmlPath, root)) rels.add(rel)
-  }
-  const playerPath = path.join(root, 'player.html')
-  if (fs.existsSync(playerPath)) {
-    for (const spec of importMapRelativeSpecs(fs.readFileSync(playerPath, 'utf8'))) {
-      rels.add(spec.replace(/^\.\//, ''))
-    }
-  }
-  for (const rel of UPLOAD_VENDOR_REQUIRED) rels.add(rel)
-  for (const rel of STAGING_EXHIBITS_CODE_EXTRA) {
-    if (fs.existsSync(path.join(root, rel))) rels.add(rel)
-  }
-  for (const dir of STAGING_EDITOR_STATIC_DIRS) {
-    if (fs.existsSync(path.join(root, dir))) rels.add(dir)
-  }
-  return [...rels].sort()
-}
-
-export function collectStagingExhibitsCheckoutPaths(root = ROOT) {
-  return collectStagingEditorRelPaths(root).map(p => `exhibits/${p}`)
 }
 
 /** 校验 upload 目录具备 viewer 运行时依赖（vendor + 模块依赖图） */

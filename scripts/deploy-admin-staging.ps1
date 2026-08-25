@@ -44,7 +44,7 @@ function Assert-AdminHttpLive {
     [string]$ProbeUrl
   )
   $qUrl = Quote-BashSingle $ProbeUrl
-  $probeCmd = 'set -e; html=$(mktemp); trap ''rm -f "$html"'' EXIT; code=$(curl -fsSL -o "$html" -w ''%{http_code}'' ' + $qUrl + '); test "$code" = ''200''; grep -q ''/admin/assets/'' "$html"; js=$(grep -oE ''/admin/assets/[^"'"'"' ]+\.js'' "$html" | head -1); test -n "$js"; curl -fsS "http://127.0.0.1${js}" >/dev/null'
+  $probeCmd = 'set -e; html=$(mktemp); trap ''rm -f "$html"'' EXIT; code=$(curl -fsSL -o "$html" -w ''%{http_code}'' ' + $qUrl + '); test "$code" = ''200''; grep -q ''/admin/assets/'' "$html"; js=$(grep -oE ''/admin/assets/[^" ]+\.js'' "$html" | head -1); test -n "$js"; curl -fsS "http://127.0.0.1${js}" >/dev/null'
   & ssh $SshTarget $probeCmd
   Assert-LastExitCode 'ssh probe admin http'
 }

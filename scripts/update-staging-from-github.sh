@@ -13,7 +13,8 @@
 #   GIT_REMOTE=origin   GIT_BRANCH=main
 #   SKIP_DOCKER=1       只拉代码不重建容器
 #   SKIP_SLIM=1         跳过瘦身（一般不要设）
-#   REPLACE_CONTENT_FROM_GIT=1  允许覆盖 exhibits/craft-*/config.json（默认拒绝）
+#
+# 若要从 Git 恢复展品 config（覆盖在线编辑），见 scripts/restore-exhibit-content-from-git.sh
 
 set -euo pipefail
 
@@ -23,6 +24,48 @@ cd "$ROOT"
 REMOTE="${GIT_REMOTE:-origin}"
 BRANCH="${GIT_BRANCH:-main}"
 REF="$REMOTE/$BRANCH"
+BACKUP=""
+
+backup_craft_configs() {
+  BACKUP="exhibits/_content_backup/$(date +%Y%m%d_%H%M%S)"
+  mkdir -p "$BACKUP"
+  for cfg in exhibits/craft-*/config.json; do
+    [ -f "$cfg" ] || continue
+    rel="${cfg#exhibits/}"
+    mkdir -p "$BACKUP/$(dirname "$rel")"
+    cp "$cfg" "$BACKUP/$rel"
+  done
+  echo "已备份 craft config → $BACKUP"
+}
+
+restore_craft_configs() {
+  for cfg in exhibits/craft-*/config.json; do
+    [ -f "$cfg" ] || continue
+    rel="${cfg#exhibits/}"
+    if [ -f "$BACKUP/$rel" ]; then
+      cp "$BACKUP/$rel" "$cfg"
+    fi
+  done
+  echo "已恢复 craft config 自备份"
+}
+
+verify_craft_configs_unchanged() {
+  local cfg rel changed=0
+  for cfg in exhibits/craft-*/config.json; do
+    [ -f "$cfg" ] || continue
+    rel="${cfg#exhibits/}"
+    [ -f "$BACKUP/$rel" ] || continue
+    if ! cmp -s "$cfg" "$BACKUP/$rel"; then
+      echo "错误: $cfg 在代码更新后被改动，已从备份恢复" >&2
+      cp "$BACKUP/$rel" "$cfg"
+      changed=1
+    fi
+  done
+  if [ "$changed" -ne 0 ]; then
+    echo "craft config 已与备份对齐；请检查 checkout 清单是否误含 craft-* 内容路径" >&2
+    exit 1
+  fi
+}
 
 echo "=== update-staging-from-github @ $ROOT ==="
 echo "拉取: $REF"
@@ -35,32 +78,28 @@ fi
 
 git fetch "$REMOTE" "$BRANCH"
 
-if [ "${REPLACE_CONTENT_FROM_GIT:-0}" != "1" ]; then
-  dirty="$(git status --porcelain -- exhibits/craft-*/config.json 2>/dev/null || true)"
-  if [ -n "$dirty" ]; then
-    echo "错误: 展品 config.json 有本地修改，拒绝 git checkout 覆盖：" >&2
-    echo "$dirty" >&2
-    echo "若确要从 Git 覆盖，请设 REPLACE_CONTENT_FROM_GIT=1" >&2
-    exit 1
-  fi
+dirty="$(git status --porcelain -- exhibits/craft-*/config.json 2>/dev/null || true)"
+if [ -n "$dirty" ]; then
+  echo "注意: 以下 craft config 相对 Git 有本地修改（在线编辑正常现象），更新后会保留：" >&2
+  echo "$dirty" >&2
 fi
 
-BACKUP="exhibits/_content_backup/$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$BACKUP"
-for cfg in exhibits/craft-*/config.json; do
-  [ -f "$cfg" ] || continue
-  rel="${cfg#exhibits/}"
-  mkdir -p "$BACKUP/$(dirname "$rel")"
-  cp "$cfg" "$BACKUP/$rel"
-done
-echo "已备份 craft config → $BACKUP"
+backup_craft_configs
+
+echo ""
+echo "=== bootstrap collector 依赖（跨版本升级必须先于 collect）==="
+git checkout "$REF" -- \
+  scripts \
+  exhibits/build-viewer.mjs \
+  exhibits/build-viewer-bundle.mjs \
+  exhibits/player.html \
+  exhibits/studio.html
 
 echo ""
 echo "=== checkout 运行路径（不含 miniapp/design/test/admin 源码）==="
 git checkout "$REF" -- \
   backend \
   sql \
-  scripts \
   docker-compose.staging.yml
 
 echo ""
@@ -72,14 +111,8 @@ if [ "${#EXHIBITS_PATHS[@]}" -eq 0 ]; then
 fi
 git checkout "$REF" -- "${EXHIBITS_PATHS[@]}"
 
-for cfg in exhibits/craft-*/config.json; do
-  [ -f "$cfg" ] || continue
-  rel="${cfg#exhibits/}"
-  if [ -f "$BACKUP/$rel" ]; then
-    cp "$BACKUP/$rel" "$cfg"
-  fi
-done
-echo "已恢复 craft config 自备份"
+restore_craft_configs
+verify_craft_configs_unchanged
 
 echo ""
 echo "=== 瘦身（移回 _slim_archive，exhibits 里被拉回的测试目录也会被清掉）==="

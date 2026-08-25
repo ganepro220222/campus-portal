@@ -34,5 +34,6 @@ assert.strictEqual(hasActiveEnroll({ enrollStatus: 'none' }), false)
 assert.strictEqual(hasActiveEnroll(null), false)
 
 assert.strictEqual(enrollStatusLabel('approved'), '已通过')
+assert.strictEqual(enrollStatusLabel('none'), '')
 
 console.log('[activity.test] PASS')

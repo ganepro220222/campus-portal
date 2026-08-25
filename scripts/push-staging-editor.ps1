@@ -6,7 +6,9 @@
 param(
     [string]$Server = '47.109.0.192',
     [string]$User = 'root',
-    [string]$RemoteRoot = '/opt/shuyuan/exhibits'
+    [string]$RemoteRoot = '/opt/shuyuan/exhibits',
+    [string]$RemoteRepo = '/opt/shuyuan',
+    [string]$StudioPrefix = '/studio'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,13 +21,7 @@ function Test-SaveApiAssigned([string]$Path) {
         -or [bool](Select-String -Path $Path -Pattern 'STUDIO-SAVE-ENDPOINT' -Quiet)
 }
 
-function Inject-SaveApi([string]$Path) {
-    $p = Get-Content $Path -Raw
-    if (-not (Test-SaveApiAssigned $Path)) {
-        $p = $p -replace '</head>', '<!-- STUDIO-SAVE-ENDPOINT --><script>window.__SAVE_API__="/studio-api/save"</script>`n</head>'
-        Set-Content -Path $Path -Value $p -NoNewline
-    }
-}
+# player.html 由 ECS 上 studio-server 在响应时注入 __SAVE_API__，打包阶段勿改文件（避免 PowerShell 编码/换行破坏 HTML）
 
 $listScript = Join-Path $Repo 'scripts\collect-staging-editor-files.mjs'
 if (-not (Test-Path $listScript)) { throw "missing $listScript" }
@@ -54,9 +50,28 @@ foreach ($rel in $relPaths) {
 
 $packedPlayer = Join-Path $Pack 'player.html'
 if (-not (Test-Path $packedPlayer)) { throw 'pack missing player.html' }
-Inject-SaveApi $packedPlayer
+$packedText = [System.IO.File]::ReadAllText($packedPlayer)
+if ($packedText -match '`n') {
+    throw 'pack player.html contains corrupted literal `n (re-copy from git source)'
+}
+if (Test-SaveApiAssigned $packedPlayer) {
+    Write-Warning 'pack player.html already has SAVE_API marker (should be clean source); studio-server will inject at serve time'
+}
 
 Write-Host "Pack $($relPaths.Count) paths -> $Pack"
+
+$scriptFiles = @(
+    'apply-staging-editor.sh',
+    'staging-save-api.sh',
+    'collect-staging-editor-files.mjs'
+)
+Write-Host "Upload scripts -> ${User}@${Server}:${RemoteRepo}/scripts/"
+foreach ($name in $scriptFiles) {
+    $local = Join-Path $Repo "scripts\$name"
+    if (-not (Test-Path $local)) { throw "missing $local" }
+    scp $local "${User}@${Server}:${RemoteRepo}/scripts/"
+    if ($LASTEXITCODE -ne 0) { throw "scp scripts failed for $name (exit $LASTEXITCODE)" }
+}
 
 $dest = "${User}@${Server}:${RemoteRoot}/"
 Write-Host "Upload -> $dest"
@@ -64,6 +79,6 @@ scp -r "$Pack\*" $dest
 if ($LASTEXITCODE -ne 0) { throw "scp failed (exit $LASTEXITCODE)" }
 
 Write-Host "Remote apply..."
-ssh "${User}@${Server}" "bash /opt/shuyuan/scripts/apply-staging-editor.sh"
+ssh "${User}@${Server}" "bash ${RemoteRepo}/scripts/apply-staging-editor.sh"
 if ($LASTEXITCODE -ne 0) { throw "remote apply failed (exit $LASTEXITCODE)" }
-Write-Host "Done. Open http://${Server}/exhibits/studio.html"
+Write-Host "Done. Open http://${Server}${StudioPrefix}/studio.html"

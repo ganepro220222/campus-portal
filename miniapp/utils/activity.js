@@ -54,7 +54,9 @@ function mergeEnrollResult(raw) {
     id: raw.id,
     activityId: raw.activityId,
     status: raw.status,
-    statusLabel: ENROLL_STATUS[raw.status] || raw.status,
+    statusLabel: Object.prototype.hasOwnProperty.call(ENROLL_STATUS, raw.status)
+      ? ENROLL_STATUS[raw.status]
+      : (raw.status || ''),
     voucherCode: raw.voucherCode,
     qrCodeUrl: raw.qrCodeUrl || '',
     createTime: raw.createTime,
@@ -63,7 +65,8 @@ function mergeEnrollResult(raw) {
 }
 
 function enrollStatusLabel(status) {
-  return ENROLL_STATUS[status] || status || ''
+  if (Object.prototype.hasOwnProperty.call(ENROLL_STATUS, status)) return ENROLL_STATUS[status]
+  return status || ''
 }
 
 /** 是否已有有效报名（待审/已通过） */

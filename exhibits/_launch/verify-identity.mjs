@@ -7,7 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { computeRootHash } from '../_server/studio-identity.mjs'
 
-const port = Number(process.argv[2] || 8200)
+const port = Number(process.argv[2] || 8888)
 const root = path.resolve(process.argv[3] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'))
 const url = `http://127.0.0.1:${port}/studio-api/identity`
 

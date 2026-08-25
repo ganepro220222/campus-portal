@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 if errorlevel 1 goto cd_fail
 
-set "PORT=8200"
+set "PORT=8888"
 if not "%~1"=="" set "PORT=%~1"
 set "URL=http://127.0.0.1:%PORT%/studio.html"
 

@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0.."
 if errorlevel 1 exit /b 1
-if "%PORT%"=="" set "PORT=8200"
+if "%PORT%"=="" set "PORT=8888"
 set "RUNTIME=%~dp0..\_runtime"
 if exist "%RUNTIME%\python\python.exe" goto run_py_portable
 where python >nul 2>&1

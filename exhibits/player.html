@@ -385,7 +385,7 @@ window.__SY_PLAYER = Object.assign(
 )
 function syPlayerBootFailureMessage() {
   if (location.protocol === 'file:') {
-    return '播放器模块加载失败。请在 exhibits 目录运行：python serve.py 8200  或  node _server/studio-server.mjs（不要用 python -m http.server）'
+    return '播放器模块加载失败。请在 exhibits 目录运行：python serve.py 8888  或  node _server/studio-server.mjs（不要用 python -m http.server）'
   }
   if (document.querySelector('script[type="importmap"]')) {
     var supportsImportMap = typeof HTMLScriptElement !== 'undefined' && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap')

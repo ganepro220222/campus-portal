@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 NO_STORE = 'no-store, no-cache, must-revalidate'
-DEFAULT_PORT = 8200  # 8199 在部分 Windows（Hyper-V/WSL）上被系统保留，无法绑定
+DEFAULT_PORT = 8888  # 固定工作台端口；避开 Win/Hyper-V 常见保留段 8100-8699、8901-9000
 PORT = int(os.environ.get('PORT') or (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_PORT))
 USER = os.environ.get('STUDIO_USER', 'admin')
 PASS = os.environ.get('STUDIO_PASS', '')
@@ -277,13 +277,12 @@ class Handler(SimpleHTTPRequestHandler):
 
 def _bind_error_hint(port: int, err: BaseException) -> None:
     winerr = getattr(err, 'winerror', None)
-    if os.name == 'nt' and winerr == 10013 and port in range(8100, 8200):
-        print('ERROR: 无法绑定端口 %s — Windows 已保留 8100–8199 段（常见于 Hyper-V / WSL / Docker）。' % port, file=sys.stderr)
-        print('  请改用：python serve.py %s  或  打开工作台.bat %s' % (DEFAULT_PORT, DEFAULT_PORT), file=sys.stderr)
-        return
     print('ERROR: 无法绑定端口 %s — %s' % (port, err), file=sys.stderr)
     if os.name == 'nt' and winerr == 10013:
-        print('  端口可能被系统保留或被其他程序占用。可尝试：打开工作台.bat %s' % DEFAULT_PORT, file=sys.stderr)
+        print('  Windows 可能已将此端口列入系统保留段（Hyper-V/WSL/Docker 常见）。', file=sys.stderr)
+        print('  请右键管理员运行：_dev\\释放系统保留端口.bat', file=sys.stderr)
+        print('  查看保留段：netsh interface ipv4 show excludedportrange protocol=tcp', file=sys.stderr)
+        return
 
 
 if __name__ == '__main__':

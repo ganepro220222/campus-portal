@@ -3,7 +3,7 @@ chcp 65001 >nul 2>&1
 cd /d "%~dp0"
 if errorlevel 1 goto cd_fail
 
-set "PORT=8200"
+set "PORT=8888"
 if not "%~1"=="" set "PORT=%~1"
 set "URL=http://127.0.0.1:%PORT%/studio.html"
 
@@ -43,7 +43,7 @@ goto end
 
 :err_port
 echo [ERROR] 端口 %PORT% 已被占用或无法绑定，请先「停止服务.bat」
-echo         若仍失败，Windows 可能保留了 8100-8199 段；默认已改用 8200
+echo         若仍失败，请右键管理员运行 _dev\释放系统保留端口.bat
 goto end
 
 :err_unknown

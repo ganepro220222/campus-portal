@@ -24,7 +24,7 @@ def compute_root_hash(root: Path) -> str:
 
 
 def main() -> int:
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8200
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8888
     root = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else Path(__file__).resolve().parent.parent
     url = f'http://127.0.0.1:{port}/studio-api/identity'
     headers = {'Cache-Control': 'no-store'}

@@ -147,11 +147,27 @@ if [ -d "$EX/共享背景" ]; then
   echo "OK  内容 共享背景"
 fi
 
-# 可选：default ACL 让 www-data 对新上传文件保持可读（需 setfacl；见 SET_CONTENT_ACL=1）
+# File Browser 常见 umask 027 → 新文件 640，www-data 不在写组时会 403
+repair_content_other_read() {
+  local d n=0 f
+  for d in "$EX"/craft-* "$EX/共享背景"; do
+    [ -d "$d" ] || continue
+    while IFS= read -r -d '' f; do
+      chmod o+r "$f"
+      n=$((n + 1))
+    done < <(find "$d" -type f ! -perm -004 -print0 2>/dev/null)
+  done
+  if [ "$n" -gt 0 ]; then
+    echo "OK  已为 $n 个内容文件补上 other 读（修复 umask 导致的 640/600）"
+  fi
+}
+repair_content_other_read
+
+# default ACL：新上传即时可读（不依赖 File Browser umask）；SET_CONTENT_ACL=0 可关
 maybe_apply_nginx_read_acl() {
-  [ "${SET_CONTENT_ACL:-0}" = "1" ] || return 0
+  [ "${SET_CONTENT_ACL:-1}" = "1" ] || return 0
   if ! command -v setfacl >/dev/null; then
-    echo "警告: SET_CONTENT_ACL=1 但系统无 setfacl，跳过 ACL" >&2
+    echo "警告: 无 setfacl，跳过 ACL（请 apt install acl；或修 File Browser UMask=0022）" >&2
     return 0
   fi
   if ! id "$NGX" &>/dev/null; then
@@ -216,5 +232,5 @@ echo ""
 echo "完成。请验证："
 echo "  curl -sI http://127.0.0.1/exhibits/craft-001/ | head -1"
 echo "  ls -la $EX/_server | head -3   # 应为 root root drwxr-xr-x"
-echo "  （File Browser 新上传后请验证 mode：stat -c '%a %U:%G' <新文件>；须 ≤664 且 other 可读）"
-echo "  （若 umask 过严致 640/600，请为 File Browser 设 UMask=0022，或 SET_CONTENT_ACL=1 重跑本脚本）"
+echo "  （File Browser 上传后 Nginx 应 200；若 403 请确认 setfacl/acl 已装且本脚本已跑）"
+echo "  （File Browser systemd 建议 UMask=0022，见 scripts/filebrowser.service.example）"

@@ -20,6 +20,8 @@ assert.match(sh, /gpasswd -d|deluser/)
 assert.match(sh, /chmod 2775/)
 assert.match(sh, /craft-\*/)
 assert.match(sh, /shuyuan-exhibits/)
+assert.match(sh, /repair_content_other_read/)
+assert.match(sh, /SET_CONTENT_ACL:-1/)
 assert.match(sh, /verify_studio_gate/)
 assert.match(sh, /as_studio/)
 

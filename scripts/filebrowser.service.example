@@ -1,0 +1,27 @@
+# File Browser systemd 示例（staging 上传 exhibits 内容）
+#
+#   apt install acl    # fix-exhibits-permissions 的 default ACL 依赖 setfacl
+#   cp scripts/filebrowser.service.example /etc/systemd/system/filebrowser.service
+#   # 按实际路径改 WorkingDirectory / 启动命令
+#   systemctl daemon-reload && systemctl enable --now filebrowser
+#
+# 关键：UMask=0022 使新文件为 644（other 可读），Nginx(www-data) 不在写组也能读静态文件。
+# 即使 umask 未设，update-staging 跑的 fix-exhibits-permissions 也会：
+#   - 对已有 640/600 文件 chmod o+r
+#   - 对 craft-* / 共享背景 设 default ACL 给 www-data 只读
+
+[Unit]
+Description=File Browser (exhibits upload)
+After=network.target
+
+[Service]
+Type=simple
+# 示例：官方二进制；Docker 部署请在 compose 里设 umask 022 等等价配置
+ExecStart=/usr/local/bin/filebrowser -r /opt/shuyuan/exhibits -d /var/lib/filebrowser/filebrowser.db
+WorkingDirectory=/opt/shuyuan/exhibits
+Restart=on-failure
+RestartSec=3
+UMask=0022
+
+[Install]
+WantedBy=multi-user.target

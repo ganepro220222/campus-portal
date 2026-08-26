@@ -55,6 +55,51 @@ mysql -uroot -p shuyuan < sql/seed-dev.sql
 | 15 | `patch-subtitle-asr-poll.sql` | 课程 ASR 轮询元数据字段（`subtitle_asr_*`） | ✅ 已并入 init.sql；**可重复执行** |
 | 16 | `patch-subject-neutral-config.sql` | **主体归属对齐**：把库里随 init.sql 写入的旧默认文案与机构占位串换成中性表述 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
 | 17 | `patch-college-app-demo.sql` | **首页关联应用**：`college_app` 从旧版 11 条学院名收敛为通途星 + 2 条示例 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
+| 18 | `seed-dev-cleanup.sql` | **交付前清场**：反向删除 `seed-dev.sql` 灌入的全部演示数据 | 非日常；两道护栏，见下 |
+
+#### 按 id 区间删数据的两个脚本（务必先读）
+
+`seed-dev-cleanup.sql` 与 `patch-loadtest-cleanup.sql` 都是**按 id 区间**删数据的：
+前者删 `news` 1–6、`category` 1–19 这类演示行，后者删 `member` 101–150 与 `activity` 99。
+这些 id 在演示 / 压测库里是演示数据，**在生产库里就是真实内容和 50 个真实师生**。
+
+两个脚本都带护栏，认错库就中止、一行不删：
+
+| 脚本 | 护栏 |
+|------|------|
+| `seed-dev-cleanup.sql` | ① 必须显式 `SET @wipe_demo='YES'`；② 库里必须还有 seed 标记行（`member` id=1 / `acct:2021001` / 昵称「测试学员」） |
+| `patch-loadtest-cleanup.sql` | ① `member` 101–150 必须全是 `loadtest_` 开头的 openid；② `activity` 99 的标题必须是压测活动 |
+
+护栏用存储过程 + `SIGNAL` 实现（`SIGNAL` 只能在存储程序里用）。执行账号需要
+`CREATE ROUTINE` 权限；没有权限时脚本停在 `CREATE PROCEDURE`，同样是「什么都没删」的安全失败。
+
+清场用法（**务必先备份**）：
+
+```bash
+bash scripts/backup-staging-mysql.sh
+{ echo "SET @wipe_demo='YES';"; cat sql/seed-dev-cleanup.sql; } \
+  | docker compose -f docker-compose.staging.yml exec -T mysql \
+      mysql -u"$DB_USERNAME" -p"$DB_PASSWORD" shuyuan
+```
+
+`seed-dev-cleanup.sql` **不动** `sys_user` / `sys_role`：这两张表的行来自 `init.sql`，
+`seed-dev.sql` 只是改了名称和密码，删掉就没人能登录后台了。清场后请在后台重设超管密码。
+
+`npm run check:seed-cleanup` 会校验清理脚本覆盖了 `seed-dev.sql` 插入的每一张表——
+往 seed 里加演示数据却忘了补清理，交付前清场就会剩几条演示数据留在列表里。
+
+#### 日常删除请走后台，别写 SQL
+
+后台「回收站」已覆盖新闻 / 展馆 / 文创 / 课程 / 资源 / 活动 / 公告 / 轮播图 / 分类 /
+书院应用 / 导航项 / 管理角色 / 管理员账号共 13 类，逐条彻底删除时会先算清影响面：
+没有关联数据的直接删，连着报名收藏的会列清单并要求重输管理员密码，
+分类下还挂着内容的会告诉你先改哪些内容。师生账号在「师生账号」页删。
+
+上服务器手写 DELETE 是最后手段：那里没有确认框、没有权限校验、也没有操作记录。
+
+**唯一不提供逐条删除的是日志**（`event_log` / `sys_log` / `subscribe_outbox`）——
+可以挑着删的日志就不再是证据。它们按 `shuyuan.retention.*` 的保留策略整批过期，
+默认行为日志 90 天、系统日志 365 天、发件箱已发送 30 天 / 失败 180 天。
 
 #### `patch-subject-neutral-config.sql`（旧库必读）
 

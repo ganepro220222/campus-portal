@@ -37,7 +37,19 @@ resolve_exhibits_gid() {
     fi
     return
   fi
-  stat -c %g "$EX"
+  # 脚本会把 exhibits 根设为 root:root，不能再靠 stat 推断写组
+  local name="${EXHIBITS_GROUP_NAME:-shuyuan-exhibits}"
+  if getent group "$name" >/dev/null; then
+    getent group "$name" | cut -d: -f3
+    return
+  fi
+  local g
+  g="$(stat -c %g "$EX")"
+  if [ "$g" != "0" ]; then
+    echo "$g"
+    return
+  fi
+  echo "1000"
 }
 
 ensure_group_registered() {

@@ -19,7 +19,8 @@ assert.match(sh, /remove_nginx_from_write_group/)
 assert.match(sh, /gpasswd -d|deluser/)
 assert.match(sh, /chmod 2775/)
 assert.match(sh, /craft-\*/)
-assert.match(sh, /systemctl reload nginx/)
+assert.match(sh, /shuyuan-exhibits/)
+assert.match(sh, /echo "1000"/)
 
 function bashAvailable() {
   const r = spawnSync('bash', ['--version'], { encoding: 'utf8' })

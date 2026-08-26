@@ -36,6 +36,11 @@ function runIntegration() {
     console.log('fix-exhibits-permissions.test: integration skip (no bash)')
     return
   }
+  // 脚本会 usermod/gpasswd/chgrp，GitHub Actions 等非 root 环境必失败
+  if (typeof process.getuid === 'function' && process.getuid() !== 0) {
+    console.log('fix-exhibits-permissions.test: integration skip (requires root)')
+    return
+  }
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-perms-'))
   const ex = path.join(tmp, 'exhibits')

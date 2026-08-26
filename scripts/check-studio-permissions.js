@@ -10,6 +10,7 @@ const errs = []
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8')
 
 const unit = read('scripts/studio-server.service.example')
+const fb = read('scripts/filebrowser.service.example')
 const perms = read('scripts/fix-exhibits-permissions.sh')
 
 if (/^Group=shuyuan-exhibits/m.test(unit)) {
@@ -24,11 +25,38 @@ if (!/^Group=studio/m.test(unit)) {
 if (!/groupadd --system studio/.test(unit)) {
   errs.push('studio-server.service.example 应说明 groupadd --system studio')
 }
+if (!/^User=filebrowser/m.test(fb)) {
+  errs.push('filebrowser.service.example 必须以非 root 用户运行 (User=filebrowser)')
+}
+if (!/^Group=filebrowser/m.test(fb)) {
+  errs.push('filebrowser.service.example 应使用 Group=filebrowser')
+}
+if (!/UMask=0022/m.test(fb)) {
+  errs.push('filebrowser.service.example 应设置 UMask=0022')
+}
 if (!/verify_studio_gate/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh 缺少 verify_studio_gate 部署门禁')
 }
+if (!/verify_studio_process_groups/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 应在附加组变更后验证/重启 studio-server')
+}
 if (!/as_studio/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh 缺少 as_studio 辅助函数')
+}
+if (!/缺少 runuser 或 sudo/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh as_studio 应在无工具时准确失败')
+}
+if (!/setfacl -R -d -m "u:\$\{NGX\}:rX"/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh default ACL 应为 rX（新目录需 traverse）')
+}
+if (/repair_content_other_read/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 不应保留 dead repair_content_other_read')
+}
+if (!/FILEBROWSER_USER/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 应支持 FILEBROWSER_USER 加入写组')
+}
+if (!/EXHIBITS_GROUP 不能为 0/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 应拒绝 EXHIBITS_GROUP=0')
 }
 
 if (errs.length) {

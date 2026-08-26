@@ -1,14 +1,19 @@
 # File Browser systemd 示例（staging 上传 exhibits 内容）
 #
-#   apt install acl    # fix-exhibits-permissions 的 default ACL 依赖 setfacl
+#   apt install acl util-linux
+#   groupadd --system filebrowser
+#   useradd --system --gid filebrowser --shell /usr/sbin/nologin \
+#     --home-dir /opt/shuyuan/exhibits --no-create-home filebrowser
 #   cp scripts/filebrowser.service.example /etc/systemd/system/filebrowser.service
-#   # 按实际路径改 WorkingDirectory / 启动命令
+#   # 按实际路径改 WorkingDirectory / ExecStart
+#   EXHIBITS_GROUP=1000 FILEBROWSER_USER=filebrowser bash scripts/fix-exhibits-permissions.sh
 #   systemctl daemon-reload && systemctl enable --now filebrowser
 #
-# 关键：UMask=0022 使新文件为 644（other 可读），Nginx(www-data) 不在写组也能读静态文件。
-# 即使 umask 未设，update-staging 跑的 fix-exhibits-permissions 也会：
-#   - 对已有 640/600 文件 chmod o+r
-#   - 对 craft-* / 共享背景 设 default ACL 给 www-data 只读
+# 关键：
+#   - User=filebrowser（禁止 root，否则可绕过代码 644/755 改写 _server）
+#   - UMask=0022 使新文件为 644（other 可读），Nginx(www-data) 不在写组也能读
+#   - fix-exhibits-permissions 把 filebrowser 加入内容写组；default ACL 给 www-data 只读
+#   - File Browser 规则应禁止访问 _server、_launch、vendor 等代码路径（见 Web UI Rules）
 
 [Unit]
 Description=File Browser (exhibits upload)
@@ -16,7 +21,9 @@ After=network.target
 
 [Service]
 Type=simple
-# 示例：官方二进制；Docker 部署请在 compose 里设 umask 022 等等价配置
+User=filebrowser
+Group=filebrowser
+# 示例：官方二进制；Docker 部署请在 compose 里设 user + umask 022
 ExecStart=/usr/local/bin/filebrowser -r /opt/shuyuan/exhibits -d /var/lib/filebrowser/filebrowser.db
 WorkingDirectory=/opt/shuyuan/exhibits
 Restart=on-failure

@@ -56,6 +56,15 @@ while IFS= read -r -d '' t; do
   echo "已归档: $t"
 done < <(find exhibits -maxdepth 1 \( -name '*.test.mjs' -o -name '*.test.py' \) -print0 2>/dev/null || true)
 
+# 迁移前的备份目录：曾经建在 exhibits/ 下，也就是公网托管的目录里，且没有保留策略。
+# 现在备份统一写到仓库根的 _deploy_backup/（不对外），这里把历史遗留的清掉。
+for legacy in exhibits/_code_backup exhibits/_content_backup; do
+  if [ -d "$legacy" ]; then
+    mv_if_exists "$legacy" "$ARCHIVE/$(basename "$legacy")"
+    echo "已归档历史备份（原先位于公网目录下）: $legacy"
+  fi
+done
+
 echo ""
 echo "=== 保留项抽查 ==="
 for f in .env docker-compose.staging.yml admin/dist/index.html backend/Dockerfile \

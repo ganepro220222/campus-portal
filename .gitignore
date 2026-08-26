@@ -76,6 +76,10 @@ exhibits/模型转换/*.spec
 # build-viewer.mjs --upload 输出（服务器已直接用 exhibits/，本地按需生成即可）
 /exhibits-upload/
 
+# 部署脚本的备份（保留 5 份轮转）与工作台实际端口，都是运行期产物
+/_deploy_backup/
+exhibits/_runtime/studio-port.txt
+
 # build-viewer.mjs --upload 临时目录（进程号后缀，成功后会自动删）
 /exhibits-upload.staging-*/
 /exhibits-upload.backup-*/

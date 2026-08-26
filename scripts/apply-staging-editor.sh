@@ -40,8 +40,30 @@ for f in player.html studio.html; do
   echo "OK  exhibits/$f"
 done
 
+wait_studio_upstream() {
+  local url="$1"
+  local timeout="${STUDIO_READY_TIMEOUT:-30}"
+  local interval=1 elapsed=0 code=000
+  while [ "$elapsed" -lt "$timeout" ]; do
+    code="$(curl -sS -o /dev/null -w '%{http_code}' "${CURL_AUTH[@]}" "$url" 2>/dev/null || echo "000")"
+    case "$code" in
+      200|401)
+        echo "studio 上游就绪（${url} → HTTP/${code}，${elapsed}s）"
+        return 0
+        ;;
+    esac
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+  echo "警告: studio 上游 ${timeout}s 内未就绪（${url} 最后 HTTP/${code}）" >&2
+  return 1
+}
+
 if systemctl is-active --quiet studio-server 2>/dev/null; then
   echo "studio-server 运行中：__SAVE_API__ 由服务响应时注入，跳过磁盘 sed"
+  echo ""
+  echo "=== 等待 studio 上游就绪（避免 restart 后立即探测 502）==="
+  wait_studio_upstream "http://127.0.0.1/studio-api/list" || true
 else
   bash "$ROOT/scripts/staging-save-api.sh" "$PLAYER"
 fi

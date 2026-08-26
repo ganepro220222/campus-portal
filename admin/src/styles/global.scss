@@ -139,7 +139,9 @@ body,
   border-radius: 6px;
   font-weight: 600;
 }
-.el-button--primary {
+/* 投影只给实心主按钮。链接型（link / text）按钮没有底色，投影会在文字下方
+   糊出一道脏影子——表格「操作」列里那一排链接按钮尤其明显。 */
+.el-button--primary:not(.is-link):not(.is-text) {
   box-shadow: 0 6px 16px rgba(43, 53, 110, 0.16);
 }
 

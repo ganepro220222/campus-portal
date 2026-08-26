@@ -100,7 +100,7 @@ const router = createRouter({
           path: 'subscribe-outbox',
           name: 'SubscribeOutbox',
           component: () => import('@/views/subscribe/SubscribeOutboxListView.vue'),
-          meta: { title: '订阅发件箱', permission: 'admin:super' }
+          meta: { title: '通知发送记录', permission: 'admin:super' }
         },
         {
           path: 'content-docs',
@@ -259,7 +259,7 @@ export const menuItems: MenuNode[] = [
       { path: '/admin-users', title: '账号管理', icon: User, permissions: ['admin:super'] },
       { path: '/admin-roles', title: '角色权限', icon: Key, permissions: ['admin:super'] },
       { path: '/content-docs', title: '内容配置', icon: Tickets, permissions: ['admin:super'] },
-      { path: '/subscribe-outbox', title: '订阅发件箱', icon: Message, permissions: ['admin:super'] },
+      { path: '/subscribe-outbox', title: '通知发送记录', icon: Message, permissions: ['admin:super'] },
       { path: '/sys-logs', title: '操作日志', icon: List, permissions: ['admin:super'] }
     ]
   }

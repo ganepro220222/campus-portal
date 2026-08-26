@@ -54,7 +54,7 @@ export function isPortUnavailableError(err) {
   return err != null && (err.code === 'EADDRINUSE' || err.code === 'EACCES')
 }
 
-/** 记下实际端口供启动器读取；写不进去不影响服务运行（服务器瘦身后没有 _runtime/） */
+/** 记下实际端口供启动器读取；写不进去不影响服务运行（systemd 固定 PORT 时不写，属预期） */
 export function writePortFile(root, port) {
   try {
     const file = path.join(root, PORT_FILE_REL)

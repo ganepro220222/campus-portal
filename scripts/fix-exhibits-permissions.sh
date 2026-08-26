@@ -147,10 +147,74 @@ if [ -d "$EX/共享背景" ]; then
   echo "OK  内容 共享背景"
 fi
 
+# 可选：default ACL 让 www-data 对新上传文件保持可读（需 setfacl；见 SET_CONTENT_ACL=1）
+maybe_apply_nginx_read_acl() {
+  [ "${SET_CONTENT_ACL:-0}" = "1" ] || return 0
+  if ! command -v setfacl >/dev/null; then
+    echo "警告: SET_CONTENT_ACL=1 但系统无 setfacl，跳过 ACL" >&2
+    return 0
+  fi
+  if ! id "$NGX" &>/dev/null; then
+    return 0
+  fi
+  local d
+  for d in "$EX"/craft-* "$EX/共享背景"; do
+    [ -e "$d" ] || continue
+    setfacl -R -m "u:${NGX}:r-X" "$d" 2>/dev/null || true
+    setfacl -R -d -m "u:${NGX}:r" "$d" 2>/dev/null || true
+    echo "OK  ACL 只读 $NGX → $(basename "$d")"
+  done
+}
+maybe_apply_nginx_read_acl
+
+as_studio() {
+  if command -v runuser >/dev/null; then
+    runuser -u "$STUDIO_USER" -- "$@"
+  else
+    sudo -u "$STUDIO_USER" -- "$@"
+  fi
+}
+
+verify_studio_gate() {
+  if ! id "$STUDIO_USER" &>/dev/null; then
+    echo "提示: 跳过 studio 权限门禁（$STUDIO_USER 不存在）"
+    return 0
+  fi
+  local craft_sample="$EX/_server/studio-server.mjs"
+  local content_cfg=""
+  local d
+  for d in "$EX"/craft-*; do
+    [ -d "$d" ] || continue
+    if [ -f "$d/config.json" ]; then
+      content_cfg="$d/config.json"
+      break
+    fi
+  done
+  if [ -n "$content_cfg" ]; then
+    if ! as_studio test -w "$content_cfg" 2>/dev/null; then
+      echo "错误: $STUDIO_USER 无法写入 $content_cfg" >&2
+      echo "  请确认已执行 usermod -aG $GNAME $STUDIO_USER" >&2
+      exit 1
+    fi
+    echo "OK  $STUDIO_USER 可写内容 $(basename "$(dirname "$content_cfg")")/config.json"
+  else
+    echo "警告: 无 craft-*/config.json，跳过 studio 写内容抽样" >&2
+  fi
+  if [ -f "$craft_sample" ]; then
+    if as_studio test -w "$craft_sample" 2>/dev/null; then
+      echo "错误: $STUDIO_USER 不应能写 $craft_sample" >&2
+      exit 1
+    fi
+    echo "OK  $STUDIO_USER 不可写 _server 代码"
+  fi
+}
+verify_studio_gate
+
 systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null || true
 
 echo ""
 echo "完成。请验证："
 echo "  curl -sI http://127.0.0.1/exhibits/craft-001/ | head -1"
 echo "  ls -la $EX/_server | head -3   # 应为 root root drwxr-xr-x"
-echo "  （File Browser 新上传文件后，浏览器应能直接打开 /exhibits/... 下对应 URL）"
+echo "  （File Browser 新上传后请验证 mode：stat -c '%a %U:%G' <新文件>；须 ≤664 且 other 可读）"
+echo "  （若 umask 过严致 640/600，请为 File Browser 设 UMask=0022，或 SET_CONTENT_ACL=1 重跑本脚本）"

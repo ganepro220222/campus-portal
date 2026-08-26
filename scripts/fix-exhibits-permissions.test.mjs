@@ -20,7 +20,8 @@ assert.match(sh, /gpasswd -d|deluser/)
 assert.match(sh, /chmod 2775/)
 assert.match(sh, /craft-\*/)
 assert.match(sh, /shuyuan-exhibits/)
-assert.match(sh, /echo "1000"/)
+assert.match(sh, /verify_studio_gate/)
+assert.match(sh, /as_studio/)
 
 function bashAvailable() {
   const r = spawnSync('bash', ['--version'], { encoding: 'utf8' })

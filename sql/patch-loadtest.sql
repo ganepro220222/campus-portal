@@ -1,5 +1,6 @@
 -- 压测专用数据补丁（验收 §五：50 并发报名不超卖）
 -- 用法：mysql -uroot -pdev123456 shuyuan < sql/patch-loadtest.sql
+-- 清理：mysql ... shuyuan < sql/patch-loadtest-cleanup.sql
 -- 可重复执行：先清理 activity_id=99 的旧报名再重置名额
 
 USE shuyuan;

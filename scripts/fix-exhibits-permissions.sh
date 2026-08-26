@@ -66,6 +66,7 @@ ensure_group_registered() {
 harden_code_tree() {
   local dir="$1"
   chown -R root:root "$dir"
+  find "$dir" -type d -exec chmod g-s {} \;
   find "$dir" -type d -exec chmod 755 {} \;
   find "$dir" -type f -exec chmod 644 {} \;
 }
@@ -114,6 +115,7 @@ fi
 
 # exhibits 根：可遍历，不可被组内随意改
 chown root:root "$EX"
+chmod g-s "$EX" 2>/dev/null || true
 chmod 755 "$EX"
 
 echo "模式: 代码 root:root 755/644；内容 setgid 2775 + 664"

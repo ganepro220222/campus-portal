@@ -43,7 +43,7 @@ public class AdminSubscribeOutboxService {
 
     /** 单页上限：这张表可能很大，别让 ?size=99999 把库拖垮 */
     static final int MAX_PAGE_SIZE = 100;
-    /** 虚拟状态：失败 + 已跳过，页面默认视图 */
+    /** 虚拟状态：失败 + 需处理的 skipped（不含学生未授权），页面默认视图 */
     static final String FILTER_ATTENTION = "attention";
 
     private final SubscribeOutboxMapper outboxMapper;
@@ -72,9 +72,8 @@ public class AdminSubscribeOutboxService {
     /**
      * 状态筛选。
      *
-     * <p>额外支持一个虚拟值 {@value #FILTER_ATTENTION}：等价于「失败 + 已跳过」。
-     * 页面默认就用它——老师打开这个页面是因为「有人没收到通知」，
-     * 「已发送」那几千条对他没有任何信息量，混在一起反而把异常淹没了。
+     * <p>额外支持一个虚拟值 {@value #FILTER_ATTENTION}：失败 + 除「学生未授权」外的 skipped。
+     * 未授权是微信订阅的正常结果，不应与模板缺失、发送失败混在同一默认列表里。
      */
     static void applyStatusFilter(LambdaQueryWrapper<SubscribeOutbox> qw, String status) {
         if (status == null || status.isBlank()) {
@@ -82,11 +81,41 @@ public class AdminSubscribeOutboxService {
         }
         String s = status.trim();
         if (FILTER_ATTENTION.equals(s)) {
-            qw.in(SubscribeOutbox::getStatus,
-                    SubscribeOutboxService.STATUS_FAILED, SubscribeOutboxService.STATUS_SKIPPED);
+            qw.and(w -> w.eq(SubscribeOutbox::getStatus, SubscribeOutboxService.STATUS_FAILED)
+                    .or(w2 -> w2.eq(SubscribeOutbox::getStatus, SubscribeOutboxService.STATUS_SKIPPED)
+                            .ne(SubscribeOutbox::getLastError, SubscribeSendOutcome.SKIPPED_NO_AUTH.name())));
             return;
         }
         qw.eq(SubscribeOutbox::getStatus, s);
+    }
+
+    /**
+     * 「需要关注」是否包含该行；与 {@link #applyStatusFilter} 语义一致，供单测断言。
+     */
+    static boolean matchesAttentionFilter(String status, String lastError) {
+        if (SubscribeOutboxService.STATUS_FAILED.equals(status)) {
+            return true;
+        }
+        if (SubscribeOutboxService.STATUS_SKIPPED.equals(status)) {
+            return !SubscribeSendOutcome.SKIPPED_NO_AUTH.name().equals(lastError);
+        }
+        return false;
+    }
+
+    /** 后台/API 是否允许重发；与前端 {@code retryMakesSense} 对齐 */
+    static boolean canRetry(SubscribeOutbox row) {
+        if (!SubscribeOutboxService.STATUS_FAILED.equals(row.getStatus())
+                && !SubscribeOutboxService.STATUS_SKIPPED.equals(row.getStatus())) {
+            return false;
+        }
+        String code = reasonCode(row);
+        if (SubscribeSendOutcome.SKIPPED_NO_AUTH.name().equals(code)) {
+            return false;
+        }
+        if ("BAD_PAYLOAD".equals(code)) {
+            return false;
+        }
+        return true;
     }
 
     /** 重新入队一条失败/跳过的记录；worker 下一轮会重发 */
@@ -194,8 +223,7 @@ public class AdminSubscribeOutboxService {
         m.put("updateTime", FormatUtils.formatDateTime(row.getUpdateTime()));
         m.put("sentAt", FormatUtils.formatDateTime(row.getSentAt()));
         m.put("nextRetryAt", FormatUtils.formatDateTime(row.getNextRetryAt()));
-        m.put("canRetry", SubscribeOutboxService.STATUS_FAILED.equals(row.getStatus())
-                || SubscribeOutboxService.STATUS_SKIPPED.equals(row.getStatus()));
+        m.put("canRetry", canRetry(row));
         return m;
     }
 
@@ -236,6 +264,9 @@ public class AdminSubscribeOutboxService {
         }
         if (err.startsWith("微信返回不可重试错误")) {
             return "WX_REJECTED";
+        }
+        if (err.endsWith("(已达最大重试)")) {
+            return "MAX_ATTEMPTS";
         }
         return "OTHER";
     }

@@ -98,7 +98,25 @@ class SubscribeOutboxProcessorTest {
         ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
         verify(outboxMapper).updateById(cap.capture());
         assertEquals(SubscribeOutboxService.STATUS_FAILED, cap.getValue().getStatus());
+        assertTrue(cap.getValue().getLastError().startsWith("超过最大重试次数"));
         verify(subscribeService, never()).deliverForScene(anyLong(), anyString(), any());
+    }
+
+    @Test
+    void processOne_marksFailedWithMaxAttemptsPrefixWhenRetryableExhausted() {
+        SubscribeOutbox pending = pendingRow(7L, 88L, payloadJson());
+        pending.setAttemptCount(2);
+        when(outboxMapper.claimPending(7L)).thenReturn(1);
+        when(outboxMapper.selectById(7L)).thenReturn(claimedRow(pending));
+        when(subscribeService.deliverForScene(anyLong(), anyString(), any()))
+                .thenReturn(SubscribeSendOutcome.RETRYABLE_FAILURE);
+
+        processor.processOne(7L);
+
+        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
+        verify(outboxMapper).updateById(cap.capture());
+        assertEquals(SubscribeOutboxService.STATUS_FAILED, cap.getValue().getStatus());
+        assertEquals("超过最大重试次数: 发送失败，等待重试", cap.getValue().getLastError());
     }
 
     @Test

@@ -107,7 +107,7 @@ public class SubscribeOutboxProcessor {
         int attempt = row.getAttemptCount() != null ? row.getAttemptCount() : 1;
         int maxAttempts = Math.max(1, properties.getSubscribe().getOutboxMaxAttempts());
         if (attempt >= maxAttempts) {
-            markFailed(row, truncate(reason) + " (已达最大重试)");
+            markFailed(row, "超过最大重试次数: " + truncate(reason));
             return;
         }
         int baseSeconds = Math.max(5, properties.getSubscribe().getOutboxRetryBaseSeconds());

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AdminSubscribeOutboxServiceTest {
@@ -36,6 +37,42 @@ class AdminSubscribeOutboxServiceTest {
     void reasonCode_带后缀仍能识别() {
         // scheduleRetry 会把原因截断后拼上「(已达最大重试)」
         assertEquals("WX_REJECTED", AdminSubscribeOutboxService.reasonCode(withError("微信返回不可重试错误 (已达最大重试)")));
+        assertEquals("MAX_ATTEMPTS", AdminSubscribeOutboxService.reasonCode(withError("发送失败，等待重试 (已达最大重试)")));
+    }
+
+    @Test
+    void reasonCode_超过最大重试次数带详情前缀() {
+        assertEquals("MAX_ATTEMPTS", AdminSubscribeOutboxService.reasonCode(withError("超过最大重试次数: 发送失败，等待重试")));
+    }
+
+    @Test
+    void matchesAttentionFilter_排除未授权skipped() {
+        assertTrue(AdminSubscribeOutboxService.matchesAttentionFilter(SubscribeOutboxService.STATUS_FAILED, null));
+        assertTrue(AdminSubscribeOutboxService.matchesAttentionFilter(
+                SubscribeOutboxService.STATUS_SKIPPED, "SKIPPED_NO_TEMPLATE"));
+        assertTrue(AdminSubscribeOutboxService.matchesAttentionFilter(
+                SubscribeOutboxService.STATUS_SKIPPED, "SKIPPED_INVALID_PAYLOAD"));
+        assertFalse(AdminSubscribeOutboxService.matchesAttentionFilter(
+                SubscribeOutboxService.STATUS_SKIPPED, "SKIPPED_NO_AUTH"));
+        assertFalse(AdminSubscribeOutboxService.matchesAttentionFilter(SubscribeOutboxService.STATUS_SENT, null));
+    }
+
+    @Test
+    void canRetry_排除未授权与坏payload() {
+        SubscribeOutbox noAuth = rowWith(SubscribeOutboxService.STATUS_SKIPPED, "SKIPPED_NO_AUTH");
+        SubscribeOutbox badPayload = rowWith(SubscribeOutboxService.STATUS_FAILED, "payload 解析失败");
+        SubscribeOutbox fixable = rowWith(SubscribeOutboxService.STATUS_SKIPPED, "SKIPPED_INVALID_PAYLOAD");
+
+        assertFalse(AdminSubscribeOutboxService.canRetry(noAuth));
+        assertFalse(AdminSubscribeOutboxService.canRetry(badPayload));
+        assertTrue(AdminSubscribeOutboxService.canRetry(fixable));
+    }
+
+    private static SubscribeOutbox rowWith(String status, String lastError) {
+        SubscribeOutbox row = new SubscribeOutbox();
+        row.setStatus(status);
+        row.setLastError(lastError);
+        return row;
     }
 
     @Test

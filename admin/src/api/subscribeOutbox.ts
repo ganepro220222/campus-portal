@@ -22,7 +22,7 @@ export interface SubscribeOutboxItem {
   nextRetryAt: string
 }
 
-/** status 传 'attention' 表示「失败 + 已跳过」，是页面默认视图 */
+/** status 传 'attention' 表示「失败 + 需处理的 skipped（不含学生未授权）」，是页面默认视图 */
 export function fetchSubscribeOutbox(params: {
   page?: number
   size?: number

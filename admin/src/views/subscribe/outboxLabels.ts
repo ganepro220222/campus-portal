@@ -90,11 +90,11 @@ export interface ReasonView {
  * 重发对这条记录有没有意义。
  *
  * 微信的订阅授权是「一次授权一条」，学生当初没点「允许」，这条授权就不存在了——
- * 再发一次仍然会被跳过。给一个点了必然无效的按钮，比不给更让人困惑。
+ * 再发一次仍然会被跳过。数据损坏（BAD_PAYLOAD）也无法靠重发自愈。
  * 其余原因（模板没配、活动缺时间、微信临时拒收）都是可以先修好再重发的。
  */
 export function retryMakesSense(reasonCode: string): boolean {
-  return reasonCode !== 'SKIPPED_NO_AUTH'
+  return reasonCode !== 'SKIPPED_NO_AUTH' && reasonCode !== 'BAD_PAYLOAD'
 }
 
 /**

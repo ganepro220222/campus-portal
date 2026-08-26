@@ -103,17 +103,44 @@ class AdminSubscribeOutboxServiceRetryTest {
     }
 
     @Test
-    void retry_非终态记录requeue返回零() {
+    void retry_不可重试时拒绝() throws Exception {
+        SubscribeOutbox noAuth = new SubscribeOutbox();
+        noAuth.setId(3L);
+        noAuth.setStatus(SubscribeOutboxService.STATUS_SKIPPED);
+        noAuth.setLastError("SKIPPED_NO_AUTH");
+        noAuth.setPayloadJson("{}");
+
+        when(outboxMapper.selectById(3L)).thenReturn(noAuth);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.retry(3L));
+        assertEquals(400, ex.getCode());
+        verify(outboxMapper, never()).requeueForRetry(anyLong(), org.mockito.ArgumentMatchers.anyString());
+
+        SubscribeOutbox badPayload = new SubscribeOutbox();
+        badPayload.setId(4L);
+        badPayload.setStatus(SubscribeOutboxService.STATUS_FAILED);
+        badPayload.setLastError("payload 解析失败");
+        badPayload.setPayloadJson("{}");
+
+        when(outboxMapper.selectById(4L)).thenReturn(badPayload);
+
+        ex = assertThrows(BusinessException.class, () -> service.retry(4L));
+        assertEquals(400, ex.getCode());
+        verify(outboxMapper, never()).requeueForRetry(eq(4L), org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void retry_非终态不可重试() {
         SubscribeOutbox row = new SubscribeOutbox();
         row.setId(2L);
         row.setStatus(SubscribeOutboxService.STATUS_PENDING);
         row.setPayloadJson("{}");
 
         when(outboxMapper.selectById(2L)).thenReturn(row);
-        when(outboxMapper.requeueForRetry(eq(2L), eq("{}"))).thenReturn(0);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.retry(2L));
         assertEquals(400, ex.getCode());
+        verify(outboxMapper, never()).requeueForRetry(anyLong(), org.mockito.ArgumentMatchers.anyString());
     }
 
     private static SubscribeOutboxPayload payloadWithStaleTime() {

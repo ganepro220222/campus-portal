@@ -11,8 +11,12 @@ call "_launch\ensure-server.bat" "%~1"
 set "RC=%ERRORLEVEL%"
 
 set "PORT=8888"
+if not "%~1"=="" goto url_port_explicit
 if exist "_runtime\studio-port.txt" set /p PORT=<"_runtime\studio-port.txt"
-if not "%~1"=="" set "PORT=%~1"
+goto url_port_done
+:url_port_explicit
+set "PORT=%~1"
+:url_port_done
 set "URL=http://127.0.0.1:%PORT%/studio.html"
 
 if not "%RC%"=="0" goto err_dispatch

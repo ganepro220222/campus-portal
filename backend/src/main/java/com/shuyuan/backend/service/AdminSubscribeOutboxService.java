@@ -83,7 +83,9 @@ public class AdminSubscribeOutboxService {
         if (FILTER_ATTENTION.equals(s)) {
             qw.and(w -> w.eq(SubscribeOutbox::getStatus, SubscribeOutboxService.STATUS_FAILED)
                     .or(w2 -> w2.eq(SubscribeOutbox::getStatus, SubscribeOutboxService.STATUS_SKIPPED)
-                            .ne(SubscribeOutbox::getLastError, SubscribeSendOutcome.SKIPPED_NO_AUTH.name())));
+                            .and(w3 -> w3.isNull(SubscribeOutbox::getLastError)
+                                    .or()
+                                    .ne(SubscribeOutbox::getLastError, SubscribeSendOutcome.SKIPPED_NO_AUTH.name()))));
             return;
         }
         qw.eq(SubscribeOutbox::getStatus, s);
@@ -97,6 +99,9 @@ public class AdminSubscribeOutboxService {
             return true;
         }
         if (SubscribeOutboxService.STATUS_SKIPPED.equals(status)) {
+            if (lastError == null || lastError.isBlank()) {
+                return true;
+            }
             return !SubscribeSendOutcome.SKIPPED_NO_AUTH.name().equals(lastError);
         }
         return false;
@@ -127,6 +132,9 @@ public class AdminSubscribeOutboxService {
         SubscribeOutbox row = outboxMapper.selectById(id);
         if (row == null) {
             throw new BusinessException(404, "记录不存在");
+        }
+        if (!canRetry(row)) {
+            throw new BusinessException(400, "该记录当前不可重新发送");
         }
         String payloadJson = refreshPayloadJsonForRetry(row);
         if (outboxMapper.requeueForRetry(id, payloadJson) == 0) {

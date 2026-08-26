@@ -66,11 +66,17 @@ if (/^Environment=STUDIO_PORT_FALLBACK/m.test(unit)) {
     '悄悄换端口会让 Nginx 反代到空处')
 }
 
-/* ---------- 4) 启动器必须开回退，否则本地又会被系统保留端口卡住 ---------- */
+/* ---------- 4) 启动器：无显式端口时开回退，否则端口必须确定 ---------- */
 const startBg = read('exhibits/_launch/start-bg.bat')
-if (!/set "STUDIO_PORT_FALLBACK=1"/.test(startBg)) {
-  errs.push('exhibits/_launch/start-bg.bat 缺少 STUDIO_PORT_FALLBACK=1：' +
-    '首选端口被 Windows 保留时本地工作台会起不来')
+const ensureBat = read('exhibits/_launch/ensure-server.bat')
+if (!/if defined PORT_EXPLICIT goto port_no_fallback/i.test(startBg)) {
+  errs.push('exhibits/_launch/start-bg.bat 须在设置 STUDIO_PORT_FALLBACK 前检查 PORT_EXPLICIT')
+}
+if (!/set "STUDIO_PORT_FALLBACK=1"/i.test(startBg)) {
+  errs.push('exhibits/_launch/start-bg.bat 在无 PORT_EXPLICIT 时应设置 STUDIO_PORT_FALLBACK=1')
+}
+if (!/PORT_EXPLICIT/i.test(ensureBat)) {
+  errs.push('exhibits/_launch/ensure-server.bat 须向 start-server 传递 PORT_EXPLICIT')
 }
 
 if (errs.length) {

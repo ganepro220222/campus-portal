@@ -287,6 +287,26 @@ test('launcher bat files avoid parenthetical if blocks', () => {
   }
 })
 
+test('start-bg.bat enables fallback only without PORT_EXPLICIT', () => {
+  const bat = fs.readFileSync(path.join(LAUNCH, 'start-bg.bat'), 'utf8')
+  assert.match(bat, /if defined PORT_EXPLICIT goto port_no_fallback/i)
+  assert.match(bat, /set "STUDIO_PORT_FALLBACK=1"/i)
+})
+
+test('open launcher uses explicit CLI port without overwriting studio-port.txt', () => {
+  for (const rel of ['打开工作台.bat', '_launch/open.bat']) {
+    const bat = fs.readFileSync(path.join(ROOT, rel), 'utf8')
+    assert.match(bat, /:url_port_explicit/i, `${rel} must branch URL port on explicit arg`)
+    assert.doesNotMatch(bat, /if not "%~1"=="" set "PORT=%~1"/i,
+      `${rel} must not overwrite PORT after reading studio-port.txt`)
+  }
+})
+
+test('ensure-server.bat passes PORT_EXPLICIT to start-server', () => {
+  const bat = fs.readFileSync(path.join(LAUNCH, 'ensure-server.bat'), 'utf8')
+  assert.match(bat, /set PORT_EXPLICIT=%PORT_EXPLICIT%/i)
+})
+
 test('start-bg.bat enables local insecure mode when STUDIO_PASS unset', () => {
   const bat = fs.readFileSync(path.join(LAUNCH, 'start-bg.bat'), 'utf8')
   assert.match(bat, /if not defined STUDIO_PASS set "STUDIO_ALLOW_INSECURE=1"/i)

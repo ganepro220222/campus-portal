@@ -24,7 +24,7 @@ exit /b %errorlevel%
 :start_server
 rem 端口文件是上一次的结果，先删掉，免得等待时读到过期值
 del /q "_runtime\studio-port.txt" >nul 2>&1
-for %%I in ("%~dp0..") do start "ExhibitsServer" /min /D "%%~fI" cmd /k "set PORT=%PORT%&& call _launch\start-server.bat"
+for %%I in ("%~dp0..") do start "ExhibitsServer" /min /D "%%~fI" cmd /k "set PORT=%PORT%&& set PORT_EXPLICIT=%PORT_EXPLICIT%&& call _launch\start-server.bat"
 call "%~dp0runtime.bat" wait_port_file 45
 if errorlevel 1 exit /b 3
 set /p PORT=<"_runtime\studio-port.txt"

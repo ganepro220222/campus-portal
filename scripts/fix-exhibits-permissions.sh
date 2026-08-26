@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# staging ECS：exhibits 目录权限一次性修复，避免 File Browser 上传后 Nginx 403、或目录 750 打不开。
+# staging ECS：exhibits 目录权限修复（代码只读 + 展品内容可协作编辑）。
 #
-# 原理：
-#   - 展品与共享背景由 File Browser（常见 uid/gid 1000）上传，默认 umask 常得到 640/750
-#   - Nginx 以 www-data 提供 /exhibits/ 静态访问；www-data 须能读（进组 + setgid 目录）
-#   - 父目录设 setgid(2775) 后，新建文件/夹继承组，组内可读可写
+# 原则：
+#   - Nginx (www-data) 只读：不进写组，靠目录 755 / 文件 644 的 other 位读静态展品
+#   - 代码树 root:root 755/644，防止 Web/上传误改 _server、vendor 等
+#   - 仅 craft-*、共享背景等内容目录 setgid 2775 + 664，组内（File Browser / studio）可写
 #
 # 用法（SSH root）：
 #   bash scripts/fix-exhibits-permissions.sh
@@ -13,19 +13,21 @@
 #   EXHIBITS_ROOT=/opt/shuyuan/exhibits
 #   EXHIBITS_GROUP=1000          # File Browser / 部署用户常见 gid
 #   NGINX_USER=www-data
-#   STAGING_INSECURE=1           # 极端宽松：目录 777、文件 666（仅 staging，勿用于生产）
+#   STUDIO_USER=studio           # systemd 工作台进程用户（存在则加入写组）
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EX="${EXHIBITS_ROOT:-$ROOT/exhibits}"
 NGX="${NGINX_USER:-www-data}"
+STUDIO_USER="${STUDIO_USER:-studio}"
+
+CODE_DIRS=(_server _launch _dev vendor _staging-editor-pack deploy-test-server e2e _template _runtime _code_backup _content_backup)
 
 if [ ! -d "$EX" ]; then
   echo "错误: 目录不存在 $EX" >&2
   exit 1
 fi
 
-# 从目录属组或 EXHIBITS_GROUP 解析 gid；若无 /etc/group 条目则创建（File Browser 常见 1000 只有数字无组名）
 resolve_exhibits_gid() {
   if [ -n "${EXHIBITS_GROUP:-}" ]; then
     if [[ "${EXHIBITS_GROUP}" =~ ^[0-9]+$ ]]; then
@@ -49,44 +51,92 @@ ensure_group_registered() {
   echo "$name"
 }
 
+harden_code_tree() {
+  local dir="$1"
+  chown -R root:root "$dir"
+  find "$dir" -type d -exec chmod 755 {} \;
+  find "$dir" -type f -exec chmod 644 {} \;
+}
+
+apply_content_tree() {
+  local dir="$1"
+  chgrp -R "$GID" "$dir"
+  find "$dir" -type d -exec chmod 2775 {} \;
+  find "$dir" -type f -exec chmod 664 {} \;
+}
+
+remove_nginx_from_write_group() {
+  if ! id "$NGX" &>/dev/null; then
+    echo "警告: 系统用户 $NGX 不存在，跳过组调整" >&2
+    return
+  fi
+  if id -G "$NGX" 2>/dev/null | tr ' ' '\n' | grep -qx "$GID"; then
+    gpasswd -d "$NGX" "$GNAME" 2>/dev/null || deluser "$NGX" "$GNAME" 2>/dev/null || true
+    echo "OK  已将 $NGX 移出 $GNAME（Nginx 只读，不走组写权限）"
+  else
+    echo "OK  $NGX 不在写组 $GNAME"
+  fi
+}
+
 GID="$(resolve_exhibits_gid)"
 GNAME="$(ensure_group_registered "$GID")"
 
 echo "=== fix-exhibits-permissions ==="
 echo "exhibits: $EX"
 echo "group:    $GNAME (gid $GID)"
-echo "nginx:    $NGX"
+echo "nginx:    $NGX (只读)"
+echo "studio:   $STUDIO_USER"
 
-if id "$NGX" &>/dev/null; then
-  if id -G "$NGX" 2>/dev/null | tr ' ' '\n' | grep -qx "$GID"; then
-    echo "OK  $NGX 已在 gid $GID ($GNAME)"
+remove_nginx_from_write_group
+
+if id "$STUDIO_USER" &>/dev/null; then
+  if id -G "$STUDIO_USER" 2>/dev/null | tr ' ' '\n' | grep -qx "$GID"; then
+    echo "OK  $STUDIO_USER 已在 gid $GID ($GNAME)"
   else
-    usermod -aG "$GNAME" "$NGX"
-    echo "OK  已将 $NGX 加入组 $GNAME（gid $GID）"
+    usermod -aG "$GNAME" "$STUDIO_USER"
+    echo "OK  已将 $STUDIO_USER 加入组 $GNAME"
   fi
 else
-  echo "警告: 系统用户 $NGX 不存在，跳过 usermod" >&2
+  echo "提示: 用户 $STUDIO_USER 不存在，跳过（见 studio-server.service.example 创建说明）"
 fi
 
-if [ "${STAGING_INSECURE:-0}" = "1" ]; then
-  echo "模式: STAGING_INSECURE（目录 777 / 文件 666）"
-  find "$EX" -type d -exec chmod 777 {} \;
-  find "$EX" -type f -exec chmod 666 {} \;
-else
-  echo "模式: setgid 2775 + 文件 664 + 组 $GNAME"
-  chgrp -R "$GID" "$EX"
-  find "$EX" -type d -exec chmod 2775 {} \;
-  find "$EX" -type f -exec chmod 664 {} \;
-fi
+# exhibits 根：可遍历，不可被组内随意改
+chown root:root "$EX"
+chmod 755 "$EX"
 
-# 仍禁止通过 Web 访问的开发路径保持 nginx 404 即可；权限与公网展品一致
-for blocked in _server _launch _dev _runtime _code_backup _content_backup; do
-  [ -d "$EX/$blocked" ] && chmod 2775 "$EX/$blocked" 2>/dev/null || true
+echo "模式: 代码 root:root 755/644；内容 setgid 2775 + 664"
+
+for d in "${CODE_DIRS[@]}"; do
+  if [ -d "$EX/$d" ]; then
+    harden_code_tree "$EX/$d"
+    echo "OK  代码 $d"
+  fi
 done
+
+# 根目录代码文件（html/js/mjs/json/py/bat 等），不含子目录
+find "$EX" -maxdepth 1 -type f \( \
+  -name '*.html' -o -name '*.js' -o -name '*.mjs' -o -name '*.json' -o \
+  -name '*.py' -o -name '*.bat' -o -name '*.css' -o -name '*.md' -o -name '*.php' \
+  \) -exec chown root:root {} \; -exec chmod 644 {} \;
+
+shopt -s nullglob
+for d in "$EX"/craft-*; do
+  if [ -d "$d" ]; then
+    apply_content_tree "$d"
+    echo "OK  内容 $(basename "$d")"
+  fi
+done
+shopt -u nullglob
+
+if [ -d "$EX/共享背景" ]; then
+  apply_content_tree "$EX/共享背景"
+  echo "OK  内容 共享背景"
+fi
 
 systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null || true
 
 echo ""
 echo "完成。请验证："
 echo "  curl -sI http://127.0.0.1/exhibits/craft-001/ | head -1"
+echo "  ls -la $EX/_server | head -3   # 应为 root root drwxr-xr-x"
 echo "  （File Browser 新上传文件后，浏览器应能直接打开 /exhibits/... 下对应 URL）"

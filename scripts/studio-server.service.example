@@ -1,9 +1,11 @@
 # systemd unit：staging/生产的在线编辑器服务
 #
+#   sudo useradd -r -s /usr/sbin/nologin -d /opt/shuyuan/exhibits -M studio
 #   sudo cp scripts/studio-server.service.example /etc/systemd/system/studio-server.service
 #   sudo mkdir -p /etc/shuyuan && sudo chmod 700 /etc/shuyuan
 #   printf 'STUDIO_USER=admin\nSTUDIO_PASS=换成真实口令\n' | sudo tee /etc/shuyuan/studio.env
 #   sudo chmod 600 /etc/shuyuan/studio.env
+#   sudo bash scripts/fix-exhibits-permissions.sh   # studio 进写组，www-data 只读
 #   sudo systemctl daemon-reload && sudo systemctl enable --now studio-server
 #
 # 为什么端口写死在这里：服务端的端口必须确定，Nginx 才知道往哪反代。
@@ -20,6 +22,8 @@ After=network.target
 
 [Service]
 Type=simple
+User=studio
+Group=shuyuan-exhibits
 WorkingDirectory=/opt/shuyuan/exhibits
 ExecStart=/usr/bin/node /opt/shuyuan/exhibits/_server/studio-server.mjs
 Environment=PORT=8200
@@ -29,6 +33,9 @@ Restart=on-failure
 RestartSec=3
 # 只监听回环：公网访问一律经 Nginx，避免有人直连 :8200 绕过反代层
 Environment=STUDIO_BIND=127.0.0.1
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/shuyuan/exhibits
 
 [Install]
 WantedBy=multi-user.target

@@ -49,6 +49,8 @@ class AdminSubscribeOutboxServiceTest {
     void matchesAttentionFilter_排除未授权skipped() {
         assertTrue(AdminSubscribeOutboxService.matchesAttentionFilter(SubscribeOutboxService.STATUS_FAILED, null));
         assertTrue(AdminSubscribeOutboxService.matchesAttentionFilter(
+                SubscribeOutboxService.STATUS_SKIPPED, null));
+        assertTrue(AdminSubscribeOutboxService.matchesAttentionFilter(
                 SubscribeOutboxService.STATUS_SKIPPED, "SKIPPED_NO_TEMPLATE"));
         assertTrue(AdminSubscribeOutboxService.matchesAttentionFilter(
                 SubscribeOutboxService.STATUS_SKIPPED, "SKIPPED_INVALID_PAYLOAD"));

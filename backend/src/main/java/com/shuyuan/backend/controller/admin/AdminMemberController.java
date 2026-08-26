@@ -2,6 +2,8 @@ package com.shuyuan.backend.controller.admin;
 
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.Result;
+import com.shuyuan.backend.dto.MemberCreateRequest;
+import com.shuyuan.backend.dto.PurgeRequest;
 import com.shuyuan.backend.service.AdminMemberService;
 import com.shuyuan.backend.vo.MemberImportErrorRow;
 import com.shuyuan.backend.vo.MemberImportResult;
@@ -32,6 +34,12 @@ public class AdminMemberController {
         return Result.ok(adminMemberService.list(keyword, status, page, size));
     }
 
+    /** 单个新增：只有一两个人要建号时，不必走「下载模板→填→上传」一整圈 */
+    @PostMapping
+    public Result<Map<String, Object>> create(@RequestBody MemberCreateRequest req) {
+        return Result.ok(adminMemberService.create(req));
+    }
+
     @GetMapping("/import-template")
     public void importTemplate(HttpServletResponse response) throws IOException {
         adminMemberService.writeImportTemplate(response);
@@ -57,5 +65,23 @@ public class AdminMemberController {
     @PutMapping("/{id}/anonymize")
     public Result<Map<String, Object>> anonymize(@PathVariable Long id) {
         return Result.ok(adminMemberService.anonymize(id));
+    }
+
+    /** 删除前的影响预览：留下过什么、能不能真删、还是只能清退 */
+    @GetMapping("/{id}/delete-impact")
+    public Result<Map<String, Object>> deleteImpact(@PathVariable Long id) {
+        return Result.ok(adminMemberService.deleteImpact(id));
+    }
+
+    /**
+     * 物理删除：仅限没留下任何业务记录的账号（导错的、测试的、演示的）。
+     *
+     * <p>密码走请求体，不进查询串——那会落进 Nginx access log 和浏览器历史。
+     */
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id,
+                               @RequestBody(required = false) PurgeRequest body) {
+        adminMemberService.delete(id, body != null ? body.getPassword() : null);
+        return Result.ok();
     }
 }

@@ -406,6 +406,14 @@ else
   echo "SKIP_DOCKER=1，跳过 Docker"
 fi
 
+echo ""
+echo "=== exhibits 权限（File Browser 上传 + Nginx /exhibits/ 可读）==="
+if [ "${SKIP_EXHIBITS_PERMS:-0}" != "1" ]; then
+  bash scripts/fix-exhibits-permissions.sh
+else
+  echo "SKIP_EXHIBITS_PERMS=1，跳过"
+fi
+
 UPDATE_OK=1
 trap - ERR
 

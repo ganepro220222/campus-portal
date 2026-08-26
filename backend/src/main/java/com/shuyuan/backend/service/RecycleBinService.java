@@ -59,33 +59,45 @@ public class RecycleBinService {
         }
     }
 
+    /**
+     * 界面上的分组：13 个类型平铺一排读不过来，按来源分三组。
+     *
+     * <p>放在外层类而不是枚举内部——Java 不允许枚举常量的初始化引用本枚举的静态字段。
+     */
+    private static final String GROUP_CONTENT = "内容";
+    private static final String GROUP_SETTING = "站点配置";
+    private static final String GROUP_SYSTEM = "系统";
+
     /** 每种内容类型的表结构元信息与所属子表配置。 */
     private enum ContentType {
-        news("news", "title", "新闻", List.of(), true),
-        hall("hall", "name", "展馆", List.<String[]>of(child("hall_section", "hall_id"), child("hall_media", "hall_id")), true),
-        craft("craft", "name", "文创", List.<String[]>of(child("craft_image", "craft_id"), child("craft_contact", "craft_id")), true),
-        course("course", "name", "课程", List.<String[]>of(child("course_resource", "course_id")), true),
-        resource("resource", "name", "资源", List.<String[]>of(child("course_resource", "resource_id")), true),
-        activity("activity", "title", "活动", List.of(), true),
-        announcement("announcement", "content", "公告", List.of(), false),
-        banner("banner", "title", "轮播图", List.of(), false),
-        category("category", "name", "分类", List.of(), false),
-        college_app("college_app", "name", "书院应用", List.of(), false),
-        nav_item("nav_item", "label", "导航项", List.of(), false),
-        sys_role("sys_role", "role_name", "管理角色", List.of(), false),
-        sys_user("sys_user", "username", "管理员账号", List.of(), false);
+        news("news", "title", "新闻", GROUP_CONTENT, List.of(), true),
+        hall("hall", "name", "展馆", GROUP_CONTENT, List.<String[]>of(child("hall_section", "hall_id"), child("hall_media", "hall_id")), true),
+        craft("craft", "name", "文创", GROUP_CONTENT, List.<String[]>of(child("craft_image", "craft_id"), child("craft_contact", "craft_id")), true),
+        course("course", "name", "课程", GROUP_CONTENT, List.<String[]>of(child("course_resource", "course_id")), true),
+        resource("resource", "name", "资源", GROUP_CONTENT, List.<String[]>of(child("course_resource", "resource_id")), true),
+        activity("activity", "title", "活动", GROUP_CONTENT, List.of(), true),
+        announcement("announcement", "content", "公告", GROUP_SETTING, List.of(), false),
+        banner("banner", "title", "轮播图", GROUP_SETTING, List.of(), false),
+        category("category", "name", "分类", GROUP_SETTING, List.of(), false),
+        college_app("college_app", "name", "书院应用", GROUP_SETTING, List.of(), false),
+        nav_item("nav_item", "label", "导航项", GROUP_SETTING, List.of(), false),
+        sys_role("sys_role", "role_name", "管理角色", GROUP_SYSTEM, List.of(), false),
+        sys_user("sys_user", "username", "管理员账号", GROUP_SYSTEM, List.of(), false);
 
         final String table;
         final String nameCol;
         final String label;
+        final String group;
         final List<String[]> children;
         /** 小程序端可收藏 / 点赞的内容类型；其余类型查 favorite / like 纯属白跑 */
         final boolean interactive;
 
-        ContentType(String table, String nameCol, String label, List<String[]> children, boolean interactive) {
+        ContentType(String table, String nameCol, String label, String group,
+                    List<String[]> children, boolean interactive) {
             this.table = table;
             this.nameCol = nameCol;
             this.label = label;
+            this.group = group;
             this.children = children;
             this.interactive = interactive;
         }
@@ -122,6 +134,7 @@ public class RecycleBinService {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("type", t.name());
             m.put("label", t.label);
+            m.put("group", t.group);
             m.put("count", recycleBinMapper.countDeleted(t.table));
             list.add(m);
         }

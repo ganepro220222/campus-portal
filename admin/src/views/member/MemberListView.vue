@@ -3,6 +3,7 @@
     <div class="page-header">
       <h2>师生账号</h2>
       <div class="header-actions">
+        <el-button type="primary" :icon="Plus" @click="openCreate">新增账号</el-button>
         <el-button @click="onDownloadTemplate">下载导入模板</el-button>
         <el-button
           v-if="lastImportErrors.length"
@@ -20,7 +21,8 @@
     </div>
 
     <p class="text-muted">
-      由校方导入学号账号，初始密码默认身份证后 6 位（无身份证则取学号后 6 位）。学生首次登录须修改初始密码；微信登录须绑定学号。
+      零星一两个人用「新增账号」，整批入学用「Excel 批量导入」——两条路建出来的账号完全一致。
+      初始密码默认身份证后 6 位（无身份证则取学号后 6 位）。学生首次登录须修改初始密码；微信登录须绑定学号。
     </p>
 
     <el-alert type="info" :closable="false" show-icon class="import-hint">
@@ -57,27 +59,32 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="170" />
-      <el-table-column label="操作" width="170" fixed="right" align="center">
+      <el-table-column label="操作" width="220" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button
-            v-if="row.status === 1"
-            link
-            type="warning"
-            @click="onToggleStatus(row, 0)"
-          >禁用</el-button>
-          <el-button
-            v-else
-            link
-            type="primary"
-            @click="onToggleStatus(row, 1)"
-          >启用</el-button>
-          <el-button
-            v-if="row.studentNo"
-            link
-            type="danger"
-            @click="onAnonymize(row)"
-          >清退</el-button>
-          <el-tag v-else type="info" size="small" effect="plain">已清退</el-tag>
+          <!-- el-tag 不带 el-button 之间的默认间距，混排时「已清退」会贴死「删除」，
+               统一用 flex 排一行，间距由容器给 -->
+          <div class="row-ops">
+            <el-button
+              v-if="row.status === 1"
+              link
+              type="warning"
+              @click="onToggleStatus(row, 0)"
+            >禁用</el-button>
+            <el-button
+              v-else
+              link
+              type="primary"
+              @click="onToggleStatus(row, 1)"
+            >启用</el-button>
+            <el-button
+              v-if="!row.anonymized"
+              link
+              type="danger"
+              @click="onAnonymize(row)"
+            >清退</el-button>
+            <el-tag v-else type="info" size="small" effect="plain">已清退</el-tag>
+            <el-button link type="danger" @click="onDelete(row)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -92,19 +99,69 @@
       />
     </div>
   </div>
+
+    <el-drawer v-model="createVisible" title="新增师生账号" size="440px" destroy-on-close>
+      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="76px">
+        <el-form-item label="学号" prop="studentNo">
+          <el-input v-model="createForm.studentNo" placeholder="全库唯一，登录用" />
+        </el-form-item>
+        <el-form-item label="姓名" prop="realName">
+          <el-input v-model="createForm.realName" placeholder="真实姓名" />
+        </el-form-item>
+        <el-form-item label="学院">
+          <el-input v-model="createForm.college" placeholder="选填" />
+        </el-form-item>
+        <el-form-item label="年级">
+          <el-input v-model="createForm.grade" placeholder="选填，如 2024" />
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input v-model="createForm.phone" placeholder="选填" />
+        </el-form-item>
+        <el-form-item label="身份证">
+          <el-input v-model="createForm.idCard" placeholder="选填，仅用于取后 6 位作初始密码" />
+          <FieldHint text="不填则取学号后 6 位作初始密码。身份证号不入库。" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createVisible = false">取消</el-button>
+        <el-button type="primary" :loading="creating" @click="onCreate">创建账号</el-button>
+      </template>
+    </el-drawer>
+
+    <DangerDeleteDialog
+      v-model="deleteVisible"
+      title="删除师生账号"
+      subject-label="师生账号"
+      :name="deleteImpact?.name ?? pendingName"
+      :risk="deleteRisk"
+      :references="deleteRefs"
+      :requires-password="deleteImpact?.requiresPassword ?? false"
+      :can-proceed="deleteImpact?.canDelete ?? false"
+      :loading-impact="deleteImpactLoading"
+      :submitting="deleting"
+      confirm-text="彻底删除账号"
+      @confirm="onDeleteConfirm"
+    />
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import type { UploadRequestOptions } from 'element-plus'
+import { computed, onMounted, reactive, ref } from 'vue'
+import type { FormInstance, FormRules, UploadRequestOptions } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
+import DangerDeleteDialog, { type DangerReference } from '@/components/DangerDeleteDialog.vue'
+import FieldHint from '@/components/FieldHint.vue'
 import {
   downloadMemberImportErrors,
   downloadMemberImportTemplate,
   anonymizeMember,
+  createMember,
+  deleteMember,
+  fetchMemberDeleteImpact,
   fetchMembers,
   importMembers,
   updateMemberStatus,
+  type MemberDeleteImpact,
   type MemberImportErrorRow,
   type MemberItem
 } from '@/api/member'
@@ -117,6 +174,43 @@ const pageSize = ref(20)
 const keyword = ref('')
 const statusFilter = ref<number | undefined>()
 const lastImportErrors = ref<MemberImportErrorRow[]>([])
+
+const createVisible = ref(false)
+const creating = ref(false)
+const createFormRef = ref<FormInstance>()
+const createForm = reactive({
+  studentNo: '',
+  realName: '',
+  college: '',
+  grade: '',
+  phone: '',
+  idCard: ''
+})
+const createRules: FormRules = {
+  studentNo: [{ required: true, message: '请输入学号', trigger: 'blur' }],
+  realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }]
+}
+
+const deleteVisible = ref(false)
+const deleting = ref(false)
+const deleteImpactLoading = ref(false)
+const deleteImpact = ref<MemberDeleteImpact | null>(null)
+const pendingId = ref<number | null>(null)
+const pendingName = ref('')
+
+/** 账号只有两档：干净的能真删（LOW），留下记录的删不了（BLOCKED，去清退） */
+const deleteRisk = computed<'LOW' | 'BLOCKED'>(() =>
+  deleteImpact.value?.canDelete === false ? 'BLOCKED' : 'LOW'
+)
+
+const deleteRefs = computed<DangerReference[]>(() =>
+  (deleteImpact.value?.references ?? []).map((r) => ({
+    label: r.label,
+    count: r.count,
+    blocking: true,
+    hint: '这些记录要留着支撑历史统计。请改用「清退」——姓名、学号、手机号会被抹掉且无法再登录。'
+  }))
+)
 
 async function loadData() {
   loading.value = true
@@ -168,8 +262,8 @@ async function onToggleStatus(row: MemberItem, status: number) {
 
 async function onAnonymize(row: MemberItem) {
   await ElMessageBox.confirm(
-    `清退将脱敏「${row.realName}（${row.studentNo}）」的姓名、学号、手机号并禁止其登录；` +
-      `报名、积分、学习等历史记录会保留用于统计，但账号信息不可再恢复。确定清退吗？`,
+    `清退会抹掉「${row.realName}（${row.studentNo}）」的姓名、学号、手机号，并禁止其再登录；` +
+      `报名、积分、学习等记录保留用于统计。学号会被释放，之后可以重新导入。此操作不可撤销，确定清退吗？`,
     '清退确认',
     { type: 'warning', confirmButtonText: '确定清退', confirmButtonClass: 'el-button--danger' }
   )
@@ -178,10 +272,89 @@ async function onAnonymize(row: MemberItem) {
   await loadData()
 }
 
+function openCreate() {
+  createFormRef.value?.resetFields()
+  Object.assign(createForm, {
+    studentNo: '',
+    realName: '',
+    college: '',
+    grade: '',
+    phone: '',
+    idCard: ''
+  })
+  createVisible.value = true
+}
+
+async function onCreate() {
+  const form = createFormRef.value
+  if (!form) {
+    return
+  }
+  await form.validate()
+  creating.value = true
+  try {
+    await createMember({
+      studentNo: createForm.studentNo.trim(),
+      realName: createForm.realName.trim(),
+      college: createForm.college.trim() || undefined,
+      grade: createForm.grade.trim() || undefined,
+      phone: createForm.phone.trim() || undefined,
+      idCard: createForm.idCard.trim() || undefined
+    })
+    createVisible.value = false
+    ElMessage.success('账号已创建，初始密码见页面说明')
+    await loadData()
+  } finally {
+    creating.value = false
+  }
+}
+
+async function onDelete(row: MemberItem) {
+  pendingId.value = row.id
+  pendingName.value = row.realName || row.studentNo || `账号 ${row.id}`
+  deleteImpact.value = null
+  deleteImpactLoading.value = true
+  deleteVisible.value = true
+  try {
+    deleteImpact.value = await fetchMemberDeleteImpact(row.id)
+  } catch (e) {
+    // 算不出影响面就别让人往下点
+    deleteVisible.value = false
+    throw e
+  } finally {
+    deleteImpactLoading.value = false
+  }
+}
+
+async function onDeleteConfirm(password: string) {
+  if (pendingId.value == null) {
+    return
+  }
+  deleting.value = true
+  try {
+    await deleteMember(pendingId.value, password)
+    deleteVisible.value = false
+    ElMessage.success('账号已彻底删除')
+    await loadData()
+  } finally {
+    deleting.value = false
+  }
+}
+
 onMounted(loadData)
 </script>
 
 <style scoped>
+.row-ops {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+/* flex 容器已统一给间距，去掉 Element 给相邻按钮的默认左边距，免得叠加 */
+.row-ops .el-button + .el-button {
+  margin-left: 0;
+}
 .header-actions {
   display: flex;
   gap: 8px;

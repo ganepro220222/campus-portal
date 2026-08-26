@@ -242,6 +242,13 @@ class RecycleBinServiceTest {
             assertTrue(types.contains(expected), "概览缺少类型 " + expected);
         }
         assertEquals(13, types.size());
+
+        // 分组必须齐全：前端按 group 分栏渲染，漏了就会掉进「其他」
+        for (Map<String, Object> row : summary) {
+            String group = String.valueOf(row.get("group"));
+            assertTrue(List.of("内容", "站点配置", "系统").contains(group),
+                    row.get("type") + " 的分组不合法：" + group);
+        }
         assertFalse(types.contains("event_log"), "日志不该出现在回收站：可挑着删的日志就不是证据");
     }
 }

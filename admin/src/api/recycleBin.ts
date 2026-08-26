@@ -3,6 +3,8 @@ import { get, put, del } from './request'
 export interface RecycleSummary {
   type: string
   label: string
+  /** 界面分组：内容 / 站点配置 / 系统。13 个类型平铺一排读不过来 */
+  group: string
   count: number
 }
 

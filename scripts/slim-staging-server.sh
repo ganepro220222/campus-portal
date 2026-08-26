@@ -56,6 +56,18 @@ while IFS= read -r -d '' t; do
   echo "已归档: $t"
 done < <(find exhibits -maxdepth 1 \( -name '*.test.mjs' -o -name '*.test.py' \) -print0 2>/dev/null || true)
 
+# exhibits 根目录：Git / npm / 测试配置 / 重复脚本 / 本地说明（公网 /exhibits/ 可读，运行不需要）
+mkdir -p "$ARCHIVE/exhibits/root_clutter"
+for f in .gitattributes .gitignore .studio-instance-id \
+  _normalize_bats.py pack-delivery.py pano_check.py \
+  playwright.config.mjs package.json package-lock.json \
+  README.md 使用说明.txt; do
+  mv_if_exists "exhibits/$f" "$ARCHIVE/exhibits/root_clutter/$(basename "$f")"
+done
+for d in _staging-editor-pack; do
+  mv_if_exists "exhibits/$d" "$ARCHIVE/exhibits/$d"
+done
+
 # 迁移前的备份目录：曾经建在 exhibits/ 下，也就是公网托管的目录里，且没有保留策略。
 # 现在备份统一写到仓库根的 _deploy_backup/（不对外），这里把历史遗留的清掉。
 for legacy in exhibits/_code_backup exhibits/_content_backup; do
@@ -69,7 +81,7 @@ echo ""
 echo "=== 保留项抽查 ==="
 for f in .env docker-compose.staging.yml admin/dist/index.html backend/Dockerfile \
   exhibits/studio.html exhibits/player.html exhibits/_server/studio-server.mjs \
-  exhibits/craft-001/config.json; do
+  exhibits/craft-001/config.json exhibits/check-static-deps.mjs; do
   if [ -e "$f" ]; then
     echo "OK  $f"
   else

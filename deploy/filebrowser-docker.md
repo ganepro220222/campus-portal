@@ -133,6 +133,40 @@ curl -sI http://127.0.0.1/exhibits/craft-001/<新文件名> | head -3
 
 ---
 
+## File Browser 访问规则（建议）
+
+合伙人账号只需读写 `craft-*` 与 `共享背景`，**不应**通过 FM 改代码树。登录 `http://<ECS-IP>/fm/` → **Settings → Global Settings → Rules**。
+
+**推荐：路径 Deny（不要勾选 Regex）** — UI 输入框较窄，正则易被截断成非法表达式（如 `^/_server(/` 缺 `|$)`），会导致列表 API **500 服务器内部错误**。
+
+对每条规则：**Regex 不勾**、**Allow 不勾**、路径填：
+
+| 路径（Path） |
+|--------------|
+| `/_server` |
+| `/_launch` |
+| `/_dev` |
+| `/vendor` |
+| `/_template` |
+| `/_runtime` |
+
+保存后刷新；应仍能看到 `craft-*`，进入 `_server` 应被拒绝。
+
+**若已 500：** Settings → Rules → 用右侧 **−** 删掉全部规则 → 保存 → 再按上表用**路径模式**重建。
+
+**CLI 备选（容器内，路径 Deny）：**
+
+```bash
+for p in /_server /_launch /_dev /vendor /_template /_runtime; do
+  docker exec filebrowser filebrowser rules add "$p" -d /database/filebrowser.db
+done
+docker logs filebrowser 2>&1 | tail -20
+```
+
+宿主机 `fix-exhibits-permissions.sh` 已用 root:root 755 保护代码；Rules 为 UI 层双保险。
+
+---
+
 ## 常见问题
 
 | 现象 | 原因 | 处理 |
@@ -141,6 +175,7 @@ curl -sI http://127.0.0.1/exhibits/craft-001/<新文件名> | head -3
 | `curl -I /fm/` 404 | HEAD 不支持 | 改用 GET 验收 |
 | systemd `203/EXEC` | 误装了 native unit，host 无二进制 | `rm /etc/systemd/system/filebrowser.service && systemctl daemon-reload` |
 | 新上传 Nginx 403 | umask 过严或 ACL 未刷 | 跑 `fix-exhibits-permissions.sh`；确认 `apt install acl` |
+| FM「服务器内部错误」 | Rules 正则被 UI 截断（非法 regex） | 删光 Rules 后改用**路径 Deny**（见上文） |
 
 ---
 

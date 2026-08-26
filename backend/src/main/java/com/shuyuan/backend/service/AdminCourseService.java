@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.exception.BusinessException;
@@ -137,15 +138,16 @@ public class AdminCourseService {
         }
         String mediaUrl = ossService.signTrustedVideoUrlForAsr(course.getVideoUrl());
         String taskId = asrService.submit(mediaUrl);
-        Course update = new Course();
-        update.setId(id);
-        update.setSubtitleStatus("processing");
-        update.setSubtitleTaskId(taskId);
-        update.setSubtitleAsrStartedAt(java.time.LocalDateTime.now());
-        update.setSubtitleAsrLastPollAt(null);
-        update.setSubtitleAsrAttemptCount(0);
-        update.setSubtitleAsrLastError(null);
-        courseMapper.updateById(update);
+        // 上一轮的 lastPollAt / lastError 必须真清掉，否则新任务一开始就带着旧报错。
+        // updateById 会跳过 null 字段（updateStrategy 默认 NOT_NULL），只能用 LambdaUpdateWrapper。
+        courseMapper.update(null, new LambdaUpdateWrapper<Course>()
+                .eq(Course::getId, id)
+                .set(Course::getSubtitleStatus, "processing")
+                .set(Course::getSubtitleTaskId, taskId)
+                .set(Course::getSubtitleAsrStartedAt, java.time.LocalDateTime.now())
+                .set(Course::getSubtitleAsrLastPollAt, null)
+                .set(Course::getSubtitleAsrAttemptCount, 0)
+                .set(Course::getSubtitleAsrLastError, null));
         return subtitleStatus(id);
     }
 

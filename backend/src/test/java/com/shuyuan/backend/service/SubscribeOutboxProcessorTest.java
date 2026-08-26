@@ -1,10 +1,12 @@
 package com.shuyuan.backend.service;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.dto.SubscribeOutboxPayload;
 import com.shuyuan.backend.entity.SubscribeOutbox;
 import com.shuyuan.backend.mapper.SubscribeOutboxMapper;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,12 +16,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsColumn;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsNonNullColumn;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.boundValue;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.initEntityCache;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.updateCaptor;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SubscribeOutboxProcessorTest {
+
+    /** 状态流转全部走 LambdaUpdateWrapper（last_error / locked_at 要能真写 NULL），需初始化实体缓存 */
+    @BeforeAll
+    static void initMybatisPlusEntityCache() {
+        initEntityCache(SubscribeOutbox.class);
+    }
 
     @Mock
     private SubscribeOutboxMapper outboxMapper;
@@ -48,10 +61,13 @@ class SubscribeOutboxProcessorTest {
 
         processor.processOne(1L);
 
-        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
-        verify(outboxMapper).updateById(cap.capture());
-        assertEquals(SubscribeOutboxService.STATUS_SENT, cap.getValue().getStatus());
-        assertNotNull(cap.getValue().getSentAt());
+        ArgumentCaptor<LambdaUpdateWrapper<SubscribeOutbox>> cap = updateCaptor();
+        verify(outboxMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "status", SubscribeOutboxService.STATUS_SENT);
+        assertSetsNonNullColumn(cap.getValue(), "sent_at");
+        // 发成功必须抹掉上一轮的失败原因，否则「已发送」的记录还挂着失败提示
+        assertSetsColumn(cap.getValue(), "last_error", null);
+        assertSetsColumn(cap.getValue(), "locked_at", null);
     }
 
     @Test
@@ -64,9 +80,10 @@ class SubscribeOutboxProcessorTest {
 
         processor.processOne(2L);
 
-        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
-        verify(outboxMapper).updateById(cap.capture());
-        assertEquals(SubscribeOutboxService.STATUS_SKIPPED, cap.getValue().getStatus());
+        ArgumentCaptor<LambdaUpdateWrapper<SubscribeOutbox>> cap = updateCaptor();
+        verify(outboxMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "status", SubscribeOutboxService.STATUS_SKIPPED);
+        assertSetsColumn(cap.getValue(), "locked_at", null);
     }
 
     @Test
@@ -79,11 +96,13 @@ class SubscribeOutboxProcessorTest {
 
         processor.processOne(3L);
 
-        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
-        verify(outboxMapper).updateById(cap.capture());
-        assertEquals(SubscribeOutboxService.STATUS_PENDING, cap.getValue().getStatus());
-        assertNotNull(cap.getValue().getNextRetryAt());
-        assertTrue(cap.getValue().getNextRetryAt().isAfter(LocalDateTime.now()));
+        ArgumentCaptor<LambdaUpdateWrapper<SubscribeOutbox>> cap = updateCaptor();
+        verify(outboxMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "status", SubscribeOutboxService.STATUS_PENDING);
+        assertSetsColumn(cap.getValue(), "locked_at", null);
+        Object nextRetry = boundValue(cap.getValue(), "next_retry_at");
+        assertNotNull(nextRetry);
+        assertTrue(((LocalDateTime) nextRetry).isAfter(LocalDateTime.now()));
     }
 
     @Test
@@ -95,10 +114,10 @@ class SubscribeOutboxProcessorTest {
 
         processor.processOne(4L);
 
-        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
-        verify(outboxMapper).updateById(cap.capture());
-        assertEquals(SubscribeOutboxService.STATUS_FAILED, cap.getValue().getStatus());
-        assertTrue(cap.getValue().getLastError().startsWith("超过最大重试次数"));
+        ArgumentCaptor<LambdaUpdateWrapper<SubscribeOutbox>> cap = updateCaptor();
+        verify(outboxMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "status", SubscribeOutboxService.STATUS_FAILED);
+        assertTrue(String.valueOf(boundValue(cap.getValue(), "last_error")).startsWith("超过最大重试次数"));
         verify(subscribeService, never()).deliverForScene(anyLong(), anyString(), any());
     }
 
@@ -113,10 +132,10 @@ class SubscribeOutboxProcessorTest {
 
         processor.processOne(7L);
 
-        ArgumentCaptor<SubscribeOutbox> cap = ArgumentCaptor.forClass(SubscribeOutbox.class);
-        verify(outboxMapper).updateById(cap.capture());
-        assertEquals(SubscribeOutboxService.STATUS_FAILED, cap.getValue().getStatus());
-        assertEquals("超过最大重试次数: 发送失败，等待重试", cap.getValue().getLastError());
+        ArgumentCaptor<LambdaUpdateWrapper<SubscribeOutbox>> cap = updateCaptor();
+        verify(outboxMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "status", SubscribeOutboxService.STATUS_FAILED);
+        assertSetsColumn(cap.getValue(), "last_error", "超过最大重试次数: 发送失败，等待重试");
     }
 
     @Test
@@ -125,7 +144,7 @@ class SubscribeOutboxProcessorTest {
 
         processor.processOne(5L);
 
-        verify(outboxMapper, never()).updateById(any(SubscribeOutbox.class));
+        verify(outboxMapper, never()).update(isNull(), any(LambdaUpdateWrapper.class));
         verify(subscribeService, never()).deliverForScene(anyLong(), anyString(), any());
     }
 

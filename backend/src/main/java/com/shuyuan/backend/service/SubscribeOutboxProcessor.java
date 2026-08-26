@@ -1,5 +1,6 @@
 package com.shuyuan.backend.service;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuyuan.backend.config.ShuyuanProperties;
@@ -72,33 +73,38 @@ public class SubscribeOutboxProcessor {
         }
     }
 
+    /**
+     * 标记发送成功。
+     *
+     * <p>last_error / locked_at 必须走 LambdaUpdateWrapper：MyBatis-Plus 的 updateStrategy
+     * 默认 NOT_NULL，{@code setXxx(null)} + updateById 压根不会把这两列写进 SET。
+     * 先失败重试、后来发成功的记录会一直带着旧的失败原因，
+     * 后台「通知发送记录」页就会显示成「已发送」却挂着一条失败原因与处置建议。
+     */
     private void markSent(SubscribeOutbox row) {
-        SubscribeOutbox update = new SubscribeOutbox();
-        update.setId(row.getId());
-        update.setStatus(SubscribeOutboxService.STATUS_SENT);
-        update.setSentAt(LocalDateTime.now());
-        update.setLockedAt(null);
-        update.setLastError(null);
-        outboxMapper.updateById(update);
+        outboxMapper.update(null, new LambdaUpdateWrapper<SubscribeOutbox>()
+                .eq(SubscribeOutbox::getId, row.getId())
+                .set(SubscribeOutbox::getStatus, SubscribeOutboxService.STATUS_SENT)
+                .set(SubscribeOutbox::getSentAt, LocalDateTime.now())
+                .set(SubscribeOutbox::getLockedAt, null)
+                .set(SubscribeOutbox::getLastError, null));
     }
 
     private void markSkipped(SubscribeOutbox row, String reason) {
-        SubscribeOutbox update = new SubscribeOutbox();
-        update.setId(row.getId());
-        update.setStatus(SubscribeOutboxService.STATUS_SKIPPED);
-        update.setLastError(truncate(reason));
-        update.setLockedAt(null);
-        outboxMapper.updateById(update);
+        outboxMapper.update(null, new LambdaUpdateWrapper<SubscribeOutbox>()
+                .eq(SubscribeOutbox::getId, row.getId())
+                .set(SubscribeOutbox::getStatus, SubscribeOutboxService.STATUS_SKIPPED)
+                .set(SubscribeOutbox::getLastError, truncate(reason))
+                .set(SubscribeOutbox::getLockedAt, null));
         log.debug("[subscribe-outbox] skipped id={} reason={}", row.getId(), reason);
     }
 
     private void markFailed(SubscribeOutbox row, String reason) {
-        SubscribeOutbox update = new SubscribeOutbox();
-        update.setId(row.getId());
-        update.setStatus(SubscribeOutboxService.STATUS_FAILED);
-        update.setLastError(truncate(reason));
-        update.setLockedAt(null);
-        outboxMapper.updateById(update);
+        outboxMapper.update(null, new LambdaUpdateWrapper<SubscribeOutbox>()
+                .eq(SubscribeOutbox::getId, row.getId())
+                .set(SubscribeOutbox::getStatus, SubscribeOutboxService.STATUS_FAILED)
+                .set(SubscribeOutbox::getLastError, truncate(reason))
+                .set(SubscribeOutbox::getLockedAt, null));
         log.warn("[subscribe-outbox] failed id={} memberId={} scene={} reason={}",
                 row.getId(), row.getMemberId(), row.getScene(), reason);
     }
@@ -113,13 +119,12 @@ public class SubscribeOutboxProcessor {
         int baseSeconds = Math.max(5, properties.getSubscribe().getOutboxRetryBaseSeconds());
         long delaySeconds = Math.min(3600L, (long) baseSeconds * (1L << Math.min(attempt - 1, 10)));
 
-        SubscribeOutbox update = new SubscribeOutbox();
-        update.setId(row.getId());
-        update.setStatus(SubscribeOutboxService.STATUS_PENDING);
-        update.setLastError(truncate(reason));
-        update.setNextRetryAt(LocalDateTime.now().plusSeconds(delaySeconds));
-        update.setLockedAt(null);
-        outboxMapper.updateById(update);
+        outboxMapper.update(null, new LambdaUpdateWrapper<SubscribeOutbox>()
+                .eq(SubscribeOutbox::getId, row.getId())
+                .set(SubscribeOutbox::getStatus, SubscribeOutboxService.STATUS_PENDING)
+                .set(SubscribeOutbox::getLastError, truncate(reason))
+                .set(SubscribeOutbox::getNextRetryAt, LocalDateTime.now().plusSeconds(delaySeconds))
+                .set(SubscribeOutbox::getLockedAt, null));
         log.debug("[subscribe-outbox] retry scheduled id={} attempt={} delaySec={}",
                 row.getId(), attempt, delaySeconds);
     }

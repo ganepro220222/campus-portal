@@ -1,5 +1,6 @@
 package com.shuyuan.backend.service;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.EnrollRequest;
@@ -8,15 +9,20 @@ import com.shuyuan.backend.entity.Enroll;
 import com.shuyuan.backend.entity.MemberProfile;
 import com.shuyuan.backend.mapper.*;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsColumn;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.initEntityCache;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.updateCaptor;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -26,6 +32,12 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 class EnrollServiceTest {
+
+    /** 重新报名要把 reject_reason 写成 NULL，走 LambdaUpdateWrapper，需实体缓存 */
+    @BeforeAll
+    static void initMybatisPlusEntityCache() {
+        initEntityCache(Enroll.class);
+    }
 
     @Mock
     private ActivityMapper activityMapper;
@@ -95,6 +107,29 @@ class EnrollServiceTest {
 
         verify(subscribeOutboxService).enqueueEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
         verifyNoMoreInteractions(subscribeOutboxService);
+    }
+
+    @Test
+    void 被拒后重新报名会清掉上一次的拒绝理由() {
+        Activity activity = publishedActivity(10, 3);
+        Enroll rejected = new Enroll();
+        rejected.setId(21L);
+        rejected.setStatus("rejected");
+        rejected.setRejectReason("材料不全");
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(rejected);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
+        when(enrollMapper.selectById(21L)).thenReturn(rejected);
+        when(activityMapper.incrEnrolledCount(ACTIVITY_ID)).thenReturn(1);
+
+        enrollService.enroll(ACTIVITY_ID, enrollRequest());
+
+        ArgumentCaptor<LambdaUpdateWrapper<Enroll>> cap = updateCaptor();
+        verify(enrollMapper).update(isNull(), cap.capture());
+        // 不清的话，后台报名列表里「待审核」旁边会一直挂着上次的拒绝理由
+        assertSetsColumn(cap.getValue(), "reject_reason", null);
+        assertSetsColumn(cap.getValue(), "status", "approved");
     }
 
     @Test

@@ -4,22 +4,36 @@ import com.shuyuan.backend.asr.AsrJobResult;
 import com.shuyuan.backend.asr.AsrJobState;
 import com.shuyuan.backend.asr.AsrProvider;
 import com.shuyuan.backend.asr.DisabledAsrProvider;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.Course;
 import com.shuyuan.backend.mapper.CourseMapper;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsColumn;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsNonNullColumn;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.initEntityCache;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.updateCaptor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AdminCourseServiceSubtitleTest {
+
+    /** triggerSubtitle 要把 last_poll_at / last_error 写成 NULL，走 LambdaUpdateWrapper */
+    @BeforeAll
+    static void initMybatisPlusEntityCache() {
+        initEntityCache(Course.class);
+    }
 
     @Mock
     private CourseMapper courseMapper;
@@ -54,7 +68,7 @@ class AdminCourseServiceSubtitleTest {
                 () -> adminCourseService.triggerSubtitle(9L));
 
         assertEquals(503, ex.getCode());
-        verify(courseMapper, never()).updateById(any(Course.class));
+        verify(courseMapper, never()).update(isNull(), any(LambdaUpdateWrapper.class));
     }
 
     @Test
@@ -71,11 +85,15 @@ class AdminCourseServiceSubtitleTest {
 
         adminCourseService.triggerSubtitle(10L);
 
-        verify(courseMapper).updateById(org.mockito.ArgumentMatchers.argThat((Course u) ->
-                "processing".equals(u.getSubtitleStatus())
-                        && "task-abc".equals(u.getSubtitleTaskId())
-                        && u.getSubtitleAsrStartedAt() != null
-                        && Integer.valueOf(0).equals(u.getSubtitleAsrAttemptCount())));
+        ArgumentCaptor<LambdaUpdateWrapper<Course>> cap = updateCaptor();
+        verify(courseMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "subtitle_status", "processing");
+        assertSetsColumn(cap.getValue(), "subtitle_task_id", "task-abc");
+        assertSetsColumn(cap.getValue(), "subtitle_asr_attempt_count", 0);
+        assertSetsNonNullColumn(cap.getValue(), "subtitle_asr_started_at");
+        // 重新发起转写要清掉上一轮的轮询时间与报错，否则新任务一开始就带着旧错误
+        assertSetsColumn(cap.getValue(), "subtitle_asr_last_poll_at", null);
+        assertSetsColumn(cap.getValue(), "subtitle_asr_last_error", null);
     }
 
     @Test
@@ -94,7 +112,7 @@ class AdminCourseServiceSubtitleTest {
 
         assertEquals(400, ex.getCode());
         verify(asrService, never()).submit(any());
-        verify(courseMapper, never()).updateById(any(Course.class));
+        verify(courseMapper, never()).update(isNull(), any(LambdaUpdateWrapper.class));
     }
 
     @Test

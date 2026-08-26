@@ -1,13 +1,16 @@
 package com.shuyuan.backend.service;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shuyuan.backend.asr.AsrJobResult;
 import com.shuyuan.backend.asr.AsrJobState;
 import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.entity.Course;
 import com.shuyuan.backend.mapper.CourseMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,12 +19,22 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsColumn;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.initEntityCache;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.updateCaptor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SubtitleAsrServiceTest {
+
+    /** 字幕就绪要把 subtitle_asr_last_error 写成 NULL，走 LambdaUpdateWrapper，需实体缓存 */
+    @BeforeAll
+    static void initMybatisPlusEntityCache() {
+        initEntityCache(Course.class);
+    }
 
     @Mock
     private CourseMapper courseMapper;
@@ -113,8 +126,12 @@ class SubtitleAsrServiceTest {
 
         verify(asrService).query("task-bad");
         verify(asrService).query("task-ok");
-        verify(courseMapper).updateById(argThat((Course u) ->
-                u.getId().equals(5L) && "ready".equals(u.getSubtitleStatus())));
+        ArgumentCaptor<LambdaUpdateWrapper<Course>> cap = updateCaptor();
+        verify(courseMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "subtitle_status", "ready");
+        assertSetsColumn(cap.getValue(), "subtitle_url", "subtitles/a.vtt");
+        // 就绪时必须抹掉上一轮的失败原因，否则「已就绪」还挂着旧报错
+        assertSetsColumn(cap.getValue(), "subtitle_asr_last_error", null);
     }
 
     @Test

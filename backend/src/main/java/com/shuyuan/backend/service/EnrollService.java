@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.EnrollRequest;
@@ -62,16 +63,18 @@ public class EnrollService {
 
         try {
             if (existing != null && ("cancelled".equals(existing.getStatus()) || "rejected".equals(existing.getStatus()))) {
-                Enroll update = new Enroll();
-                update.setId(existing.getId());
-                update.setName(name);
-                update.setPhone(phone);
-                update.setCollege(college);
-                update.setGrade(grade);
-                update.setStatus(status);
-                update.setVoucherCode(voucherCode);
-                update.setRejectReason(null);
-                enrollMapper.updateById(update);
+                // reject_reason 必须走 LambdaUpdateWrapper 才能真正置空：
+                // MyBatis-Plus 的 updateStrategy 默认 NOT_NULL，updateById 会跳过 null 字段，
+                // 否则重新报名后「待审核」旁边还挂着上次的拒绝理由
+                enrollMapper.update(null, new LambdaUpdateWrapper<Enroll>()
+                        .eq(Enroll::getId, existing.getId())
+                        .set(Enroll::getName, name)
+                        .set(Enroll::getPhone, phone)
+                        .set(Enroll::getCollege, college)
+                        .set(Enroll::getGrade, grade)
+                        .set(Enroll::getStatus, status)
+                        .set(Enroll::getVoucherCode, voucherCode)
+                        .set(Enroll::getRejectReason, null));
                 existing = enrollMapper.selectById(existing.getId());
             } else {
                 Enroll enroll = new Enroll();

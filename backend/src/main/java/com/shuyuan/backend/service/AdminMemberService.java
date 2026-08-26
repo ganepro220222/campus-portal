@@ -2,6 +2,7 @@ package com.shuyuan.backend.service;
 
 import com.alibaba.excel.EasyExcel;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.exception.BusinessException;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /** 小程序师生账号：列表、Excel 导入、启用/禁用 */
 @Service
@@ -38,6 +40,11 @@ public class AdminMemberService {
 
     private static final int MAX_IMPORT_ROWS = 5000;
     private static final int MAX_ERROR_LINES = 50;
+
+    static final String ANONYMIZED_NICKNAME = "已清退用户";
+    static final String ANONYMIZED_REAL_NAME = "已清退";
+    /** 清退占位 openid 前缀；与 StudentPasswordPolicy 的 "acct:" 区分开，便于识别与排查 */
+    static final String ANONYMIZED_OPENID_PREFIX = "anon:";
 
     private final MemberMapper memberMapper;
     private final MemberAccountMapper memberAccountMapper;
@@ -200,6 +207,12 @@ public class AdminMemberService {
     /**
      * 清退（匿名化）：脱敏账号 PII 并禁用登录，但保留 member / 各业务外键行，
      * 以维护报名、积分、浏览等历史统计的完整性——不做物理删除。
+     *
+     * <p>置空一律走 LambdaUpdateWrapper。MyBatis-Plus 的 updateStrategy 默认 NOT_NULL，
+     * {@code setXxx(null)} + updateById 根本不会把该列写进 SET 子句，学号和手机号会原样留在库里。
+     *
+     * <p>openid 不能置空（NOT NULL + uk_openid），但导入账号的 openid 是 {@code acct:<学号>}，
+     * 本身就带身份信息，且不换掉的话同一学号重新导入会撞唯一键。这里换成与学号无关的匿名值。
      */
     @Transactional
     public Map<String, Object> anonymize(Long memberId) {
@@ -207,34 +220,50 @@ public class AdminMemberService {
         Member member = requireMember(memberId);
 
         // 主账号脱敏 + 禁用 + 递增 tokenVersion 使旧 JWT 立即失效
-        member.setNickname("已清退用户");
-        member.setAvatar(null);
-        member.setStatus(0);
-        member.setTokenVersion((member.getTokenVersion() == null ? 0 : member.getTokenVersion()) + 1);
-        memberMapper.updateById(member);
+        memberMapper.update(null, new LambdaUpdateWrapper<Member>()
+                .eq(Member::getId, memberId)
+                .set(Member::getOpenid, anonymizedOpenid(memberId))
+                .set(Member::getNickname, ANONYMIZED_NICKNAME)
+                .set(Member::getAvatar, null)
+                .set(Member::getStatus, 0)
+                .set(Member::getTokenVersion,
+                        (member.getTokenVersion() == null ? 0 : member.getTokenVersion()) + 1));
 
         // 登录账号：清空学号 / 用户名（释放学号可再次导入），随机化密码彻底锁定
         MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
                 .eq(MemberAccount::getMemberId, memberId)
                 .last("LIMIT 1"));
         if (account != null) {
-            account.setStudentNo(null);
-            account.setUsername(null);
-            account.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
-            account.setStatus(0);
-            account.setMustChangePassword(0);
-            memberAccountMapper.updateById(account);
+            memberAccountMapper.update(null, new LambdaUpdateWrapper<MemberAccount>()
+                    .eq(MemberAccount::getId, account.getId())
+                    .set(MemberAccount::getStudentNo, null)
+                    .set(MemberAccount::getUsername, null)
+                    .set(MemberAccount::getPasswordHash,
+                            passwordEncoder.encode(UUID.randomUUID().toString()))
+                    .set(MemberAccount::getStatus, 0)
+                    .set(MemberAccount::getMustChangePassword, 0));
         }
 
         // 资料表：脱敏姓名 / 手机号，保留学院、年级等非直接身份字段用于聚合统计
         MemberProfile profile = memberProfileMapper.selectById(memberId);
         if (profile != null) {
-            profile.setRealName("已清退");
-            profile.setPhone(null);
-            memberProfileMapper.updateById(profile);
+            memberProfileMapper.update(null, new LambdaUpdateWrapper<MemberProfile>()
+                    .eq(MemberProfile::getMemberId, memberId)
+                    .set(MemberProfile::getRealName, ANONYMIZED_REAL_NAME)
+                    .set(MemberProfile::getPhone, null));
         }
 
         return toVo(memberMapper.selectById(memberId));
+    }
+
+    /** 清退后的占位 openid：只含 member 主键，不含学号，且天然唯一。 */
+    static String anonymizedOpenid(Long memberId) {
+        return ANONYMIZED_OPENID_PREFIX + memberId;
+    }
+
+    /** 该 openid 是否属于已清退账号。 */
+    public static boolean isAnonymizedOpenid(String openid) {
+        return openid != null && openid.startsWith(ANONYMIZED_OPENID_PREFIX);
     }
 
     private void processRow(MemberImportRow row, int rowNum, ImportAccumulator acc) {
@@ -297,14 +326,19 @@ public class AdminMemberService {
         MemberProfile profile = memberProfileMapper.selectById(member.getId());
         Map<String, Object> m = new HashMap<>();
         m.put("id", member.getId());
-        m.put("studentNo", account != null ? account.getStudentNo() : "");
+        m.put("studentNo", account != null && account.getStudentNo() != null ? account.getStudentNo() : "");
         m.put("realName", profile != null ? profile.getRealName() : member.getNickname());
         m.put("college", profile != null ? profile.getCollege() : "");
         m.put("grade", profile != null ? profile.getGrade() : "");
-        m.put("phone", profile != null ? profile.getPhone() : "");
+        m.put("phone", profile != null && profile.getPhone() != null ? profile.getPhone() : "");
         m.put("points", member.getPoints() != null ? member.getPoints() : 0);
         m.put("status", member.getStatus());
-        m.put("wxBound", account != null && !StudentPasswordPolicy.isPlaceholderOpenid(member.getOpenid()));
+        m.put("anonymized", isAnonymizedOpenid(member.getOpenid()));
+        // 清退后 openid 换成了 anon:<id>，既不是占位 openid 也不是真实微信 openid，
+        // 不排除的话会被当成「已绑定微信」显示
+        m.put("wxBound", account != null
+                && !isAnonymizedOpenid(member.getOpenid())
+                && !StudentPasswordPolicy.isPlaceholderOpenid(member.getOpenid()));
         m.put("createTime", FormatUtils.formatDateTime(member.getCreateTime()));
         return m;
     }

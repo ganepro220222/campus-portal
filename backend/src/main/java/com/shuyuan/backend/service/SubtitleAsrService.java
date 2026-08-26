@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shuyuan.backend.asr.AsrJobResult;
 import com.shuyuan.backend.asr.AsrJobState;
 import com.shuyuan.backend.asr.SubtitleAsrPollPolicy;
@@ -63,26 +64,22 @@ public class SubtitleAsrService {
         if (result.state() == AsrJobState.PROCESSING) {
             return;
         }
-        Course update = new Course();
-        update.setId(course.getId());
         if (result.state() == AsrJobState.FAILED) {
-            update.setSubtitleStatus("failed");
-            update.setSubtitleAsrLastError(truncateError(result.errorMessage()));
-            courseMapper.updateById(update);
+            markFailed(course.getId(), result.errorMessage());
             return;
         }
         String vtt = result.vttContent();
         if (!StringUtils.hasText(vtt)) {
-            update.setSubtitleStatus("failed");
-            update.setSubtitleAsrLastError("ASR 结果为空");
-            courseMapper.updateById(update);
+            markFailed(course.getId(), "ASR 结果为空");
             return;
         }
         var uploaded = ossService.uploadText("subtitle", "vtt", vtt, "text/vtt; charset=utf-8");
-        update.setSubtitleUrl(uploaded.get("url"));
-        update.setSubtitleStatus("ready");
-        update.setSubtitleAsrLastError(null);
-        courseMapper.updateById(update);
+        // 就绪时要抹掉上一轮的失败原因；updateById 跳过 null 字段，只能显式 set
+        courseMapper.update(null, new LambdaUpdateWrapper<Course>()
+                .eq(Course::getId, course.getId())
+                .set(Course::getSubtitleUrl, uploaded.get("url"))
+                .set(Course::getSubtitleStatus, "ready")
+                .set(Course::getSubtitleAsrLastError, null));
         log.info("[subtitle-asr] 课程 {} 字幕已就绪", course.getId());
     }
 

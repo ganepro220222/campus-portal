@@ -250,15 +250,9 @@ restore_backend_paths() {
   echo "已恢复 backend/sql/compose 自备份"
 }
 
-restart_studio_after_rollback() {
-  command -v systemctl >/dev/null 2>&1 || return 0
-  systemctl is-active --quiet studio-server 2>/dev/null || return 0
-  echo "回滚后重启 studio-server，使其加载回滚代码..." >&2
-  systemctl restart studio-server || {
-    echo "警告: 回滚代码已恢复，但 studio-server 重启失败" >&2
-    return 0
-  }
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=staging-studio-rollback.sh
+source "$SCRIPT_DIR/staging-studio-rollback.sh"
 
 on_update_err() {
   local ec=$?
@@ -268,7 +262,9 @@ on_update_err() {
   echo "更新失败 (exit $ec)，回滚 craft config 与 exhibits 代码..." >&2
   restore_craft_configs || true
   restore_code_paths || true
-  restart_studio_after_rollback || true
+  if ! restart_studio_after_rollback; then
+    echo "警告: 旧代码已恢复，studio-server 自动恢复启动失败，请手动 systemctl restart studio-server" >&2
+  fi
   if [ "$BACKEND_CHECKED_OUT" -eq 1 ]; then
     restore_backend_paths || true
     echo "注意: backend 源码已尝试回滚。" >&2
@@ -326,6 +322,7 @@ run_exhibits_post_checks() {
   fi
 }
 
+record_studio_was_active
 trap on_update_err ERR
 
 echo "=== update-staging-from-github @ $ROOT ==="

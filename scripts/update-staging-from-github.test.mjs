@@ -34,6 +34,17 @@ assert.doesNotMatch(sh, /REPLACE_CONTENT_FROM_GIT/, 'misleading REPLACE_CONTENT_
 assert.doesNotMatch(sh, /拒绝 git checkout 覆盖/, 'must not block on dirty craft config')
 assert.doesNotMatch(sh, /verify_craft_configs_unchanged/, 'post-restore verify removed')
 assert.match(sh, /assert_exhibits_paths_safe/, 'must reject craft paths in collector list')
+assert.match(sh, /record_studio_was_active/, 'must record studio-server active state before update')
+assert.match(sh, /source "\$SCRIPT_DIR\/staging-studio-rollback.sh"/, 'must source studio rollback helpers')
+
+const rollbackSh = fs.readFileSync(path.join(ROOT, 'scripts/staging-studio-rollback.sh'), 'utf8')
+assert.match(rollbackSh, /STUDIO_WAS_ACTIVE/)
+assert.doesNotMatch(
+  rollbackSh,
+  /restart_studio_after_rollback[\s\S]*is-active/,
+  'rollback restart must use STUDIO_WAS_ACTIVE not current is-active',
+)
+
 assert.match(sh, /restart_studio_after_rollback/, 'must restart studio-server after code rollback')
 assert.match(sh, /trap on_update_err ERR/, 'must rollback on failure')
 assert.match(sh, /manifest\.tsv/, 'must track path manifest for rollback')

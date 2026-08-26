@@ -250,6 +250,16 @@ restore_backend_paths() {
   echo "已恢复 backend/sql/compose 自备份"
 }
 
+restart_studio_after_rollback() {
+  command -v systemctl >/dev/null 2>&1 || return 0
+  systemctl is-active --quiet studio-server 2>/dev/null || return 0
+  echo "回滚后重启 studio-server，使其加载回滚代码..." >&2
+  systemctl restart studio-server || {
+    echo "警告: 回滚代码已恢复，但 studio-server 重启失败" >&2
+    return 0
+  }
+}
+
 on_update_err() {
   local ec=$?
   if [ "$UPDATE_OK" -eq 1 ]; then
@@ -258,6 +268,7 @@ on_update_err() {
   echo "更新失败 (exit $ec)，回滚 craft config 与 exhibits 代码..." >&2
   restore_craft_configs || true
   restore_code_paths || true
+  restart_studio_after_rollback || true
   if [ "$BACKEND_CHECKED_OUT" -eq 1 ]; then
     restore_backend_paths || true
     echo "注意: backend 源码已尝试回滚。" >&2

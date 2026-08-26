@@ -50,6 +50,15 @@ if (!/verify_studio_gate/.test(perms)) {
 if (!/verify_studio_process_groups/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh 应在附加组变更后验证/重启 studio-server')
 }
+if (!/as_studio_available/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 缺少 as_studio_available 前置检查')
+}
+if (/if ! as_studio[\s\S]{0,160}rc=\$\?/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 不得在 if ! as_studio 后用 rc=$? 取退出码')
+}
+if (/setfacl[^\n]*\|\| true/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh setfacl 不得 || true（ACL 失败会假 OK）')
+}
 if (!/as_studio/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh 缺少 as_studio 辅助函数')
 }

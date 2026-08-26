@@ -177,12 +177,19 @@ maybe_apply_nginx_read_acl() {
   local d
   for d in "$EX"/craft-* "$EX/共享背景"; do
     [ -e "$d" ] || continue
-    setfacl -R -m "u:${NGX}:r-X" "$d" 2>/dev/null || true
-    setfacl -R -d -m "u:${NGX}:rX" "$d" 2>/dev/null || true
-    echo "OK  ACL 只读 $NGX → $(basename "$d")"
+    if setfacl -R -m "u:${NGX}:r-X" "$d" && setfacl -R -d -m "u:${NGX}:rX" "$d"; then
+      echo "OK  ACL 只读 $NGX → $(basename "$d")"
+    else
+      echo "错误: 无法对 $(basename "$d") 应用 ACL（请确认文件系统支持 ACL 且已 apt install acl）" >&2
+      return 1
+    fi
   done
 }
 maybe_apply_nginx_read_acl
+
+as_studio_available() {
+  command -v runuser >/dev/null || command -v sudo >/dev/null
+}
 
 as_studio() {
   if command -v runuser >/dev/null; then
@@ -200,9 +207,13 @@ verify_studio_gate() {
     echo "提示: 跳过 studio 权限门禁（$STUDIO_USER 不存在）"
     return 0
   fi
+  if ! as_studio_available; then
+    echo "错误: 缺少 runuser 或 sudo，无法验证 studio 实际权限（Debian: apt install util-linux）" >&2
+    exit 127
+  fi
   local craft_sample="$EX/_server/studio-server.mjs"
   local content_cfg=""
-  local d rc
+  local d
   for d in "$EX"/craft-*; do
     [ -d "$d" ] || continue
     if [ -f "$d/config.json" ]; then
@@ -211,11 +222,7 @@ verify_studio_gate() {
     fi
   done
   if [ -n "$content_cfg" ]; then
-    if ! as_studio test -w "$content_cfg" 2>/dev/null; then
-      rc=$?
-      if [ "$rc" = "127" ]; then
-        exit 127
-      fi
+    if ! as_studio test -w "$content_cfg"; then
       echo "错误: $STUDIO_USER 无法写入 $content_cfg" >&2
       echo "  请确认已执行 usermod -aG $GNAME $STUDIO_USER" >&2
       exit 1
@@ -225,7 +232,7 @@ verify_studio_gate() {
     echo "警告: 无 craft-*/config.json，跳过 studio 写内容抽样" >&2
   fi
   if [ -f "$craft_sample" ]; then
-    if as_studio test -w "$craft_sample" 2>/dev/null; then
+    if as_studio test -w "$craft_sample"; then
       echo "错误: $STUDIO_USER 不应能写 $craft_sample" >&2
       exit 1
     fi

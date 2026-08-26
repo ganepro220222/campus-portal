@@ -47,4 +47,34 @@ runuser -u www-data -- test -x "$NEST" || { echo "FAIL: www-data cannot traverse
 runuser -u www-data -- test -r "$NEST/file.txt" || { echo "FAIL: www-data cannot read file in new subdir"; exit 1; }
 
 rm -rf "$TMP"
+
+# 无 runuser/sudo 时必须 exit 127，且不得出现假 OK（无 craft 样本场景）
+rm -f /usr/sbin/runuser /usr/bin/sudo
+NO_TOOLS_TMP="$(mktemp -d)"
+chmod 755 "$NO_TOOLS_TMP"
+NO_EX="$NO_TOOLS_TMP/exhibits"
+mkdir -p "$NO_EX/_server"
+printf '// code\n' >"$NO_EX/_server/studio-server.mjs"
+NO_OUT="$(mktemp)"
+NO_EC=0
+EXHIBITS_ROOT="$NO_EX" EXHIBITS_GROUP=10001 EXHIBITS_GROUP_NAME=syperm-exhibits \
+  NGINX_USER=www-data STUDIO_USER=studio SET_CONTENT_ACL=0 \
+  bash /repo/scripts/fix-exhibits-permissions.sh >"$NO_OUT" 2>&1 || NO_EC=$?
+grep -q '缺少 runuser 或 sudo' "$NO_OUT" || {
+  echo "FAIL: no-tools run must mention missing runuser/sudo"
+  cat "$NO_OUT"
+  exit 1
+}
+grep -q '不可写 _server' "$NO_OUT" && {
+  echo "FAIL: no-tools run must not print fake OK for _server gate"
+  cat "$NO_OUT"
+  exit 1
+}
+[ "$NO_EC" -eq 127 ] || {
+  echo "FAIL: no-tools run expected exit 127, got $NO_EC"
+  cat "$NO_OUT"
+  exit 1
+}
+rm -rf "$NO_TOOLS_TMP" "$NO_OUT"
+
 echo "fix-exhibits-permissions.integration: OK"

@@ -19,6 +19,7 @@ public class ShuyuanProperties {
     private Cors cors = new Cors();
     private Security security = new Security();
     private Asr asr = new Asr();
+    private Retention retention = new Retention();
 
     @Data
     public static class Login {
@@ -184,5 +185,32 @@ public class ShuyuanProperties {
         private int pollBatchSize = 50;
         /** processing 超时（小时）后自动 failed */
         private int pollTimeoutHours = 24;
+    }
+
+    /**
+     * 日志类数据保留策略。
+     *
+     * <p>这三张表此前只写不删，会一直长到把库撑满；其中 event_log 是学生端每次浏览/点赞/
+     * 收藏/分享/下载/报名/播放都写一行，是主要增长源。明细的统计价值在 StatsDailyJob
+     * 每日聚合进 stat_daily 之后就基本用尽了，超过保留期的行只占地方。
+     *
+     * <p>天数设 0 或负数 = 该表不清理（留给甲方按合规要求自行放开）。
+     */
+    @Data
+    public static class Retention {
+        /** 总开关：关掉后清理任务只记日志不删数据 */
+        private boolean enabled = true;
+        /** 行为事件日志保留天数；明细已聚合进 stat_daily，季度环比够用 */
+        private int eventLogDays = 90;
+        /** 后台操作日志保留天数；有审计属性且量小，默认留一年 */
+        private int sysLogDays = 365;
+        /** 发件箱已发送成功记录保留天数；成功的没有排查价值 */
+        private int outboxSentDays = 30;
+        /** 发件箱失败/跳过记录保留天数；要留着追溯「为什么没收到通知」 */
+        private int outboxFailedDays = 180;
+        /** 单条 DELETE 的行数上限，避免长事务锁表 */
+        private int batchSize = 1000;
+        /** 单表单轮最多删几批，防止一次运行无限占用数据库 */
+        private int maxBatchesPerRun = 200;
     }
 }

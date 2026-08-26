@@ -64,6 +64,17 @@ shuyuan:
       title: thing1
       phrase: phrase2
       start-time: time4
+  # 日志类数据保留期（天）。设 0 或负数 = 该表不清理。
+  # event_log 明细的统计价值在 StatsDailyJob 聚合进 stat_daily 之后就用尽了；
+  # sys_log 有审计属性，删除策略建议先与甲方确认后再调低。
+  retention:
+    enabled: ${RETENTION_ENABLED:true}
+    event-log-days: ${RETENTION_EVENT_LOG_DAYS:90}
+    sys-log-days: ${RETENTION_SYS_LOG_DAYS:365}
+    outbox-sent-days: ${RETENTION_OUTBOX_SENT_DAYS:30}
+    outbox-failed-days: ${RETENTION_OUTBOX_FAILED_DAYS:180}
+    batch-size: ${RETENTION_BATCH_SIZE:1000}
+    max-batches-per-run: ${RETENTION_MAX_BATCHES_PER_RUN:200}
   alert:
     enabled: ${ALERT_ENABLED:false}
     webhook-url: ${ALERT_WEBHOOK_URL:}

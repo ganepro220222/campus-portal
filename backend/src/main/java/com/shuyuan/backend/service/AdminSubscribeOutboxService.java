@@ -2,15 +2,20 @@ package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.dto.SubscribeOutboxPayload;
+import com.shuyuan.backend.entity.Activity;
+import com.shuyuan.backend.entity.Enroll;
 import com.shuyuan.backend.entity.MemberAccount;
 import com.shuyuan.backend.entity.MemberProfile;
 import com.shuyuan.backend.entity.SubscribeOutbox;
 import com.shuyuan.backend.mapper.MemberAccountMapper;
 import com.shuyuan.backend.mapper.MemberProfileMapper;
+import com.shuyuan.backend.mapper.ActivityMapper;
+import com.shuyuan.backend.mapper.EnrollMapper;
 import com.shuyuan.backend.mapper.SubscribeOutboxMapper;
 import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +47,8 @@ public class AdminSubscribeOutboxService {
     static final String FILTER_ATTENTION = "attention";
 
     private final SubscribeOutboxMapper outboxMapper;
+    private final ActivityMapper activityMapper;
+    private final EnrollMapper enrollMapper;
     private final MemberProfileMapper memberProfileMapper;
     private final MemberAccountMapper memberAccountMapper;
     private final AdminPermissionService adminPermissionService;
@@ -92,10 +99,44 @@ public class AdminSubscribeOutboxService {
         if (row == null) {
             throw new BusinessException(404, "记录不存在");
         }
-        if (outboxMapper.requeueForRetry(id) == 0) {
+        String payloadJson = refreshPayloadJsonForRetry(row);
+        if (outboxMapper.requeueForRetry(id, payloadJson) == 0) {
             throw new BusinessException(400, "只有「发送失败」和「已跳过」的记录可以重新发送");
         }
         log.info("[subscribe-outbox] 后台重新入队 id={} 原状态={}", id, row.getStatus());
+    }
+
+    /**
+     * 重试前用当前活动/报名数据刷新 payload，避免「补时间 → 重发」仍带着空的 activityStartTime。
+     * 解析失败或无 activityId 时保留原 JSON，其它终态错误仍可原样重试。
+     */
+    private String refreshPayloadJsonForRetry(SubscribeOutbox row) {
+        String original = row.getPayloadJson();
+        SubscribeOutboxPayload payload = parsePayload(original);
+        if (payload == null || payload.getActivityId() == null) {
+            return original;
+        }
+        Activity activity = activityMapper.selectById(payload.getActivityId());
+        if (activity == null) {
+            throw new BusinessException(400, "关联活动不存在，无法补全发送内容");
+        }
+        Enroll enroll = payload.getEnrollId() != null ? enrollMapper.selectById(payload.getEnrollId()) : null;
+        try {
+            return objectMapper.writeValueAsString(SubscribeOutboxService.buildPayload(activity, enroll));
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(500, "序列化发送内容失败");
+        }
+    }
+
+    private SubscribeOutboxPayload parsePayload(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, SubscribeOutboxPayload.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

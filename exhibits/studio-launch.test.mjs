@@ -315,6 +315,31 @@ test('ensure-server.bat avoids trailing-backslash cd paths', () => {
   assert.match(bat, /\/D "%%~fI"/, 'must use start /D for exhibits root')
 })
 
+test('open launcher calls ensure-server without default PORT when no CLI arg', () => {
+  for (const rel of ['打开工作台.bat', '_launch/open.bat']) {
+    const bat = fs.readFileSync(path.join(ROOT, rel), 'utf8')
+    assert.match(bat, /if not "%~1"=="" goto ensure_with_port/i,
+      `${rel} must branch on empty arg without passing default PORT`)
+    assert.match(bat, /goto ensure_done[\s\S]*:ensure_with_port[\s\S]*call "_launch\\ensure-server\.bat" "%~1"/i,
+      `${rel} must pass explicit port only in ensure_with_port branch`)
+    assert.doesNotMatch(bat, /call "_launch\\ensure-server\.bat"\s+%PORT%/i,
+      `${rel} must not pass default PORT to ensure-server (breaks studio-port.txt reuse)`)
+  }
+})
+
+test('subscribe_outbox retention index defined in init.sql', () => {
+  const sql = fs.readFileSync(path.join(ROOT, '..', 'sql', 'init.sql'), 'utf8')
+  assert.match(sql, /idx_status_created.*status.*create_time/i)
+})
+
+test('deleteByStatusBefore orders by create_time for stable retention batches', () => {
+  const java = fs.readFileSync(
+    path.join(ROOT, '..', 'backend', 'src', 'main', 'java', 'com', 'shuyuan', 'backend', 'mapper', 'SubscribeOutboxMapper.java'),
+    'utf8',
+  )
+  assert.match(java, /ORDER BY create_time/)
+})
+
 test('open launcher only opens browser on ensure-server RC 0', () => {
   for (const rel of ['打开工作台.bat', '_launch/open.bat']) {
     const bat = fs.readFileSync(path.join(ROOT, rel), 'utf8')

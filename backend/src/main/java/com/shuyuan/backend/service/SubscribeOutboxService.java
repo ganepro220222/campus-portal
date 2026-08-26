@@ -103,6 +103,11 @@ public class SubscribeOutboxService {
     }
 
     private SubscribeOutboxPayload toPayload(Activity activity, Enroll enroll) {
+        return buildPayload(activity, enroll);
+    }
+
+    /** 从当前活动/报名快照组装发件箱 payload；后台重试补时间也走这里 */
+    static SubscribeOutboxPayload buildPayload(Activity activity, Enroll enroll) {
         SubscribeOutboxPayload payload = new SubscribeOutboxPayload();
         payload.setActivityId(activity.getId());
         if (enroll != null) {

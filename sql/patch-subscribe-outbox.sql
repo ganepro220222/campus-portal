@@ -24,6 +24,7 @@ SET @sql := (
           `update_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           PRIMARY KEY (`id`),
           KEY `idx_status_retry` (`status`, `next_retry_at`),
+          KEY `idx_status_created` (`status`, `create_time`),
           KEY `idx_member_scene` (`member_id`, `scene`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT=''微信订阅消息发件箱'''
     )

@@ -64,11 +64,12 @@ public interface SubscribeOutboxMapper extends BaseMapper<SubscribeOutbox> {
                 locked_at = NULL,
                 last_error = NULL,
                 sent_at = NULL,
+                payload_json = #{payloadJson},
                 update_time = NOW()
             WHERE id = #{id}
               AND status IN ('failed', 'skipped')
             """)
-    int requeueForRetry(@Param("id") Long id);
+    int requeueForRetry(@Param("id") Long id, @Param("payloadJson") String payloadJson);
 
     /**
      * 按终态分批清理过期记录。
@@ -80,6 +81,7 @@ public interface SubscribeOutboxMapper extends BaseMapper<SubscribeOutbox> {
             DELETE FROM subscribe_outbox
             WHERE status = #{status}
               AND create_time < #{before}
+            ORDER BY create_time
             LIMIT #{limit}
             """)
     int deleteByStatusBefore(@Param("status") String status,

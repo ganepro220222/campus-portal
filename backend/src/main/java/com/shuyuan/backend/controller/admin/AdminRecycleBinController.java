@@ -1,6 +1,7 @@
 package com.shuyuan.backend.controller.admin;
 
 import com.shuyuan.backend.common.Result;
+import com.shuyuan.backend.dto.PurgeRequest;
 import com.shuyuan.backend.service.RecycleBinService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -36,10 +37,23 @@ public class AdminRecycleBinController {
         return Result.ok();
     }
 
-    /** 彻底删除（有业务引用则拦截） */
+    /** 彻底删除前的影响预览：连着什么、属于哪一档、要不要输密码 */
+    @GetMapping("/{type}/{id}/impact")
+    public Result<Map<String, Object>> impact(@PathVariable String type, @PathVariable Long id) {
+        return Result.ok(recycleBinService.impact(type, id));
+    }
+
+    /**
+     * 彻底删除。
+     *
+     * <p>密码走请求体而不是查询参数：查询串会进 Nginx access log 和浏览器历史。
+     * 无引用的低危项不带 body 也能删。
+     */
     @DeleteMapping("/{type}/{id}")
-    public Result<Void> purge(@PathVariable String type, @PathVariable Long id) {
-        recycleBinService.purge(type, id);
+    public Result<Void> purge(@PathVariable String type,
+                              @PathVariable Long id,
+                              @RequestBody(required = false) PurgeRequest body) {
+        recycleBinService.purge(type, id, body != null ? body.getPassword() : null);
         return Result.ok();
     }
 }

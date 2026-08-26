@@ -28,7 +28,13 @@ public interface RecycleBinMapper {
     @Select("SELECT COUNT(1) FROM ${table} WHERE is_deleted = 1")
     long countDeleted(@Param("table") String table);
 
-    @Select("SELECT ${nameCol} FROM ${table} WHERE id = #{id} AND is_deleted = 1")
+    /**
+     * 取已删除行的显示名；行不存在时返回 null。
+     *
+     * <p>COALESCE 不能省：banner.title 之类的名称列本身可空，直接 SELECT 出来
+     * 「有这行但没标题」和「压根没这行」都是 null，会把存在的记录误判成 404。
+     */
+    @Select("SELECT COALESCE(${nameCol}, '') FROM ${table} WHERE id = #{id} AND is_deleted = 1")
     String findDeletedName(@Param("table") String table, @Param("nameCol") String nameCol, @Param("id") Long id);
 
     @Update("UPDATE ${table} SET is_deleted = 0 WHERE id = #{id} AND is_deleted = 1")
@@ -57,4 +63,44 @@ public interface RecycleBinMapper {
 
     @Select("SELECT COUNT(1) FROM course_progress WHERE course_id = #{id}")
     long countCourseProgress(@Param("id") Long id);
+
+    // —— 结构性依赖（不是用户行为，删不掉、只能先把依赖迁走）——
+
+    /**
+     * 某分类下还挂着多少条内容。
+     *
+     * <p>{@code table} 由 RecycleBinService 的白名单常量传入，不接受外部输入。
+     * 这里刻意不看 is_deleted：已软删的内容仍可能被恢复，恢复回来分类却没了就成了孤儿。
+     */
+    @Select("SELECT COUNT(1) FROM ${table} WHERE category_id = #{id}")
+    long countByCategory(@Param("table") String table, @Param("id") Long id);
+
+    /** 某角色下还挂着多少个管理员账号（含已软删的：恢复回来角色不能是空的） */
+    @Select("SELECT COUNT(1) FROM sys_user WHERE role_id = #{id}")
+    long countAdminsWithRole(@Param("id") Long id);
+
+    /** 某管理员创建过多少个活动（activity.created_by 可空，属弱引用） */
+    @Select("SELECT COUNT(1) FROM activity WHERE created_by = #{id}")
+    long countActivitiesCreatedBy(@Param("id") Long id);
+
+    // —— 彻底删除时的级联清理（行为类引用，随内容一并消失）——
+
+    @Delete("DELETE FROM favorite WHERE target_type = #{type} AND target_id = #{id}")
+    int purgeFavorite(@Param("type") String type, @Param("id") Long id);
+
+    @Delete("DELETE FROM like_record WHERE target_type = #{type} AND target_id = #{id}")
+    int purgeLike(@Param("type") String type, @Param("id") Long id);
+
+    @Delete("DELETE FROM enroll WHERE activity_id = #{id}")
+    int purgeEnroll(@Param("id") Long id);
+
+    @Delete("DELETE FROM download_record WHERE resource_id = #{id}")
+    int purgeDownload(@Param("id") Long id);
+
+    @Delete("DELETE FROM course_progress WHERE course_id = #{id}")
+    int purgeCourseProgress(@Param("id") Long id);
+
+    /** 管理员被彻底删除后，其创建过的活动保留，仅解除署名 */
+    @Update("UPDATE activity SET created_by = NULL WHERE created_by = #{id}")
+    int detachActivityCreator(@Param("id") Long id);
 }

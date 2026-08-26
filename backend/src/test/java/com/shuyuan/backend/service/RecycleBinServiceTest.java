@@ -154,8 +154,8 @@ class RecycleBinServiceTest {
     @Test
     void 分类下还挂着内容时受阻并说清怎么处理() {
         deletedRow("category", "name", 20L, "非遗技艺");
-        when(recycleBinMapper.countByCategory("news", 20L)).thenReturn(3L);
-        when(recycleBinMapper.countByCategory("course", 20L)).thenReturn(1L);
+        when(recycleBinMapper.countByCategoryState("news", 20L, 0)).thenReturn(3L);
+        when(recycleBinMapper.countByCategoryState("course", 20L, 0)).thenReturn(1L);
 
         Map<String, Object> impact = recycleBinService.impact("category", 20L);
         assertEquals("BLOCKED", impact.get("risk"));
@@ -176,12 +176,52 @@ class RecycleBinServiceTest {
     @Test
     void 角色下还挂着管理员时受阻() {
         deletedRow("sys_role", "role_name", 21L, "内容审核员");
-        when(recycleBinMapper.countAdminsWithRole(21L)).thenReturn(2L);
+        when(recycleBinMapper.countAdminsWithRoleState(21L, 0)).thenReturn(2L);
 
         Map<String, Object> impact = recycleBinService.impact("sys_role", 21L);
 
         assertEquals("BLOCKED", impact.get("risk"));
         assertEquals(Boolean.FALSE, impact.get("canPurge"));
+    }
+
+    /**
+     * 挡住删除的内容如果本身也在回收站里，提示必须换一种说法。
+     *
+     * <p>回收站里的新闻不出现在新闻列表里，只说「请改到别的分类」老师翻遍后台也找不到它，
+     * 「先处理依赖再回来删」就成了死路。
+     */
+    @Test
+    void 挡路的内容在回收站里时提示要给出够得着的办法() {
+        deletedRow("category", "name", 23L, "旧分类");
+        when(recycleBinMapper.countByCategoryState("news", 23L, 1)).thenReturn(2L);
+
+        Map<String, Object> impact = recycleBinService.impact("category", 23L);
+
+        assertEquals("BLOCKED", impact.get("risk"));
+        List<?> refs = (List<?>) impact.get("references");
+        assertEquals(1, refs.size());
+        Map<?, ?> ref = (Map<?, ?>) refs.get(0);
+        assertEquals("新闻（在回收站）", ref.get("label"));
+        String hint = String.valueOf(ref.get("hint"));
+        assertTrue(hint.contains("回收站"), hint);
+        assertTrue(hint.contains("彻底删除"), hint);
+        // 不能只说「改到别的分类」——那几条根本不在列表里
+        assertFalse(hint.equals("请先把这些新闻改到别的分类"), hint);
+    }
+
+    @Test
+    void 在用与回收站里的挡路内容分开列() {
+        deletedRow("category", "name", 24L, "混合分类");
+        when(recycleBinMapper.countByCategoryState("news", 24L, 0)).thenReturn(1L);
+        when(recycleBinMapper.countByCategoryState("news", 24L, 1)).thenReturn(2L);
+
+        List<?> refs = (List<?>) recycleBinService.impact("category", 24L).get("references");
+
+        assertEquals(2, refs.size());
+        assertEquals("新闻", ((Map<?, ?>) refs.get(0)).get("label"));
+        assertEquals(1L, ((Map<?, ?>) refs.get(0)).get("count"));
+        assertEquals("新闻（在回收站）", ((Map<?, ?>) refs.get(1)).get("label"));
+        assertEquals(2L, ((Map<?, ?>) refs.get(1)).get("count"));
     }
 
     @Test

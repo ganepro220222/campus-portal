@@ -26,8 +26,15 @@ import java.util.Map;
  *       这一档不是「永远不能删」，是「先把依赖迁走」——照着提示处理完就能删。</li>
  * </ul>
  *
- * <p>唯一不提供逐条删除的是日志类（event_log / sys_log / subscribe_outbox）：
- * 可以挑着删的日志就不再是证据。它们按 DataRetentionService 的保留策略整批过期。
+ * <p>日志类不进回收站，但三张表性质不同，不能一概而论：
+ * <ul>
+ *   <li>{@code sys_log}（管理员操作审计）与 {@code subscribe_outbox}（通知投递记录）
+ *       是证据——能挑着删的日志就不再是证据。只按 DataRetentionService 的保留期整批过期，
+ *       任何业务删除都不碰它们。</li>
+ *   <li>{@code event_log}（用户行为分析）同样不提供后台逐条删除，但删除某个师生账号时
+ *       会连同其行为记录一并抹掉：那是在抹掉这个人本身，不是在销毁证据。
+ *       且能被物理删除的账号按定义没有业务记录，聚合快照不受影响。</li>
+ * </ul>
  */
 @Service
 @RequiredArgsConstructor
@@ -117,6 +124,10 @@ public class RecycleBinService {
             }
         }
     }
+
+    /** is_deleted 取值：查「在用」还是查「在回收站里」 */
+    private static final int IN_USE = 0;
+    private static final int IN_RECYCLE_BIN = 1;
 
     /** 引用了 category_id 的内容表；分类被彻底删除前必须先清空这些引用 */
     private static final List<String[]> CATEGORY_USERS = List.of(
@@ -271,12 +282,22 @@ public class RecycleBinService {
                     false, "含学员的学习进度；完课率已计入统计快照，不受影响");
             case category -> {
                 for (String[] user : CATEGORY_USERS) {
-                    addIfAny(refs, user[1], recycleBinMapper.countByCategory(user[0], id),
+                    addIfAny(refs, user[1], recycleBinMapper.countByCategoryState(user[0], id, IN_USE),
                             true, "请先把这些" + user[1] + "改到别的分类");
+                    // 回收站里的内容不在任何列表里，光说「改到别的分类」老师根本找不到它们
+                    addIfAny(refs, user[1] + "（在回收站）",
+                            recycleBinMapper.countByCategoryState(user[0], id, IN_RECYCLE_BIN),
+                            true, "先在回收站里彻底删除这些" + user[1]
+                                    + "，或恢复后改分类再删——恢复回来分类没了会成为孤儿");
                 }
             }
-            case sys_role -> addIfAny(refs, "管理员账号", recycleBinMapper.countAdminsWithRole(id),
-                    true, "请先把这些账号改到别的角色");
+            case sys_role -> {
+                addIfAny(refs, "管理员账号", recycleBinMapper.countAdminsWithRoleState(id, IN_USE),
+                        true, "请先把这些账号改到别的角色");
+                addIfAny(refs, "管理员账号（在回收站）",
+                        recycleBinMapper.countAdminsWithRoleState(id, IN_RECYCLE_BIN),
+                        true, "先在回收站里彻底删除这些账号，或恢复后改角色再删");
+            }
             case sys_user -> addIfAny(refs, "创建的活动", recycleBinMapper.countActivitiesCreatedBy(id),
                     false, "活动会保留，仅解除创建人署名");
             default -> {

@@ -184,6 +184,21 @@ function onConfirm() {
   emit('confirm', password.value)
 }
 
+/**
+ * 一次提交结束就清空密码框。
+ *
+ * <p>失败时留着那串错密码、确认键还亮着，很容易顺手再点几下——而连错到上限会锁 5 分钟。
+ * 清空后按钮自动置灰，逼着重新输一遍。成功时对话框本来就要关，清了也无妨。
+ */
+watch(
+  () => props.submitting,
+  (now, before) => {
+    if (before && !now) {
+      password.value = ''
+    }
+  }
+)
+
 /** 关闭后立刻丢掉密码，不在组件状态里留驻 */
 function onClosed() {
   password.value = ''

@@ -67,17 +67,27 @@ public interface RecycleBinMapper {
     // —— 结构性依赖（不是用户行为，删不掉、只能先把依赖迁走）——
 
     /**
-     * 某分类下还挂着多少条内容。
+     * 某分类下还挂着多少条内容，按「在用 / 在回收站」分开数。
      *
      * <p>{@code table} 由 RecycleBinService 的白名单常量传入，不接受外部输入。
-     * 这里刻意不看 is_deleted：已软删的内容仍可能被恢复，恢复回来分类却没了就成了孤儿。
+     *
+     * <p>为什么必须分开：两种都得挡住删除（回收站里的内容能被恢复，恢复回来分类没了就成了孤儿），
+     * 但处置办法完全不同。在用的去列表里改分类就行；在回收站里的**根本不在列表里**，
+     * 只提示「请改到别的分类」的话，老师翻遍后台也找不到那几条。
+     *
+     * @param deleted 0=在用，1=在回收站
      */
-    @Select("SELECT COUNT(1) FROM ${table} WHERE category_id = #{id}")
-    long countByCategory(@Param("table") String table, @Param("id") Long id);
+    @Select("SELECT COUNT(1) FROM ${table} WHERE category_id = #{id} AND is_deleted = #{deleted}")
+    long countByCategoryState(@Param("table") String table, @Param("id") Long id,
+                              @Param("deleted") int deleted);
 
-    /** 某角色下还挂着多少个管理员账号（含已软删的：恢复回来角色不能是空的） */
-    @Select("SELECT COUNT(1) FROM sys_user WHERE role_id = #{id}")
-    long countAdminsWithRole(@Param("id") Long id);
+    /**
+     * 某角色下还挂着多少个管理员账号。
+     *
+     * @param deleted 0=在用，1=在回收站（同样够不着，得单独给处置说明）
+     */
+    @Select("SELECT COUNT(1) FROM sys_user WHERE role_id = #{id} AND is_deleted = #{deleted}")
+    long countAdminsWithRoleState(@Param("id") Long id, @Param("deleted") int deleted);
 
     /** 某管理员创建过多少个活动（activity.created_by 可空，属弱引用） */
     @Select("SELECT COUNT(1) FROM activity WHERE created_by = #{id}")

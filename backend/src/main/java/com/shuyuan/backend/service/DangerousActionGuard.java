@@ -39,12 +39,23 @@ public class DangerousActionGuard {
         if (user == null || user.getStatus() == null || user.getStatus() != 1) {
             throw new BusinessException(403, "账号不可用");
         }
-        // 走和登录同一套锁定计数：高危口令同样不许被在线爆破
-        loginLockService.ensureNotLocked(LoginLockService.SCENE_ADMIN, user.getUsername());
+        // 单独一把锁：会话可能是别人捡到的，仍要防在线爆破，
+        // 但计数不能记在登录那把锁上，否则确认框里手滑几次会把后台登录一起锁掉
+        loginLockService.ensureNotLocked(LoginLockService.SCENE_ADMIN_DANGER, user.getUsername());
+
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            loginLockService.onFailure(LoginLockService.SCENE_ADMIN, user.getUsername());
-            throw new BusinessException(400, "管理员密码不正确");
+            LoginLockService.FailureState state = loginLockService.registerFailure(
+                    LoginLockService.SCENE_ADMIN_DANGER, user.getUsername());
+            if (state.locked()) {
+                throw new BusinessException(429,
+                        "密码错误次数过多，请" + state.lockMinutes() + "分钟后再试");
+            }
+            // 必须是 400：401 会被前端拦截器当成登录过期，清会话跳登录页——
+            // 在删除确认框里打错一次密码就被踢出后台
+            throw new BusinessException(400,
+                    "管理员密码不正确，还可尝试 " + state.remaining() + " 次");
         }
-        loginLockService.onSuccess(LoginLockService.SCENE_ADMIN, user.getUsername());
+
+        loginLockService.onSuccess(LoginLockService.SCENE_ADMIN_DANGER, user.getUsername());
     }
 }

@@ -18,7 +18,6 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EX="${EXHIBITS_ROOT:-$ROOT/exhibits}"
-GRP="${EXHIBITS_GROUP:-1000}"
 NGX="${NGINX_USER:-www-data}"
 
 if [ ! -d "$EX" ]; then
@@ -26,17 +25,44 @@ if [ ! -d "$EX" ]; then
   exit 1
 fi
 
+# 从目录属组或 EXHIBITS_GROUP 解析 gid；若无 /etc/group 条目则创建（File Browser 常见 1000 只有数字无组名）
+resolve_exhibits_gid() {
+  if [ -n "${EXHIBITS_GROUP:-}" ]; then
+    if [[ "${EXHIBITS_GROUP}" =~ ^[0-9]+$ ]]; then
+      echo "${EXHIBITS_GROUP}"
+    else
+      getent group "${EXHIBITS_GROUP}" | cut -d: -f3
+    fi
+    return
+  fi
+  stat -c %g "$EX"
+}
+
+ensure_group_registered() {
+  local gid="$1" name
+  if getent group "$gid" >/dev/null; then
+    getent group "$gid" | cut -d: -f1
+    return
+  fi
+  name="${EXHIBITS_GROUP_NAME:-shuyuan-exhibits}"
+  groupadd -g "$gid" "$name"
+  echo "$name"
+}
+
+GID="$(resolve_exhibits_gid)"
+GNAME="$(ensure_group_registered "$GID")"
+
 echo "=== fix-exhibits-permissions ==="
 echo "exhibits: $EX"
-echo "group:    $GRP"
+echo "group:    $GNAME (gid $GID)"
 echo "nginx:    $NGX"
 
 if id "$NGX" &>/dev/null; then
-  if id -nG "$NGX" 2>/dev/null | tr ' ' '\n' | grep -qx "$GRP"; then
-    echo "OK  $NGX 已在组 $GRP"
+  if id -G "$NGX" 2>/dev/null | tr ' ' '\n' | grep -qx "$GID"; then
+    echo "OK  $NGX 已在 gid $GID ($GNAME)"
   else
-    usermod -aG "$GRP" "$NGX"
-    echo "OK  已将 $NGX 加入组 $GRP（新组需已运行的 nginx worker 重载后生效）"
+    usermod -aG "$GNAME" "$NGX"
+    echo "OK  已将 $NGX 加入组 $GNAME（gid $GID）"
   fi
 else
   echo "警告: 系统用户 $NGX 不存在，跳过 usermod" >&2
@@ -47,8 +73,8 @@ if [ "${STAGING_INSECURE:-0}" = "1" ]; then
   find "$EX" -type d -exec chmod 777 {} \;
   find "$EX" -type f -exec chmod 666 {} \;
 else
-  echo "模式: setgid 2775 + 文件 664 + 组 $GRP"
-  chgrp -R "$GRP" "$EX"
+  echo "模式: setgid 2775 + 文件 664 + 组 $GNAME"
+  chgrp -R "$GID" "$EX"
   find "$EX" -type d -exec chmod 2775 {} \;
   find "$EX" -type f -exec chmod 664 {} \;
 fi

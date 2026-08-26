@@ -11,6 +11,7 @@ const sh = fs.readFileSync(
 )
 
 assert.match(sh, /usermod -aG/)
+assert.match(sh, /groupadd -g/)
 assert.match(sh, /chmod 2775/)
 assert.match(sh, /STAGING_INSECURE/)
 assert.match(sh, /systemctl reload nginx/)

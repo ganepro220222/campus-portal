@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url'
 import { computeRootHash, getIdentityPayload } from './studio-identity.mjs'
 import { createExhibit } from '../exhibit-create.mjs'
 import { assetFingerprint, hasAssetFile, listPanoramaCandidates, checkPanoramaPathAvailability } from '../pano-check.mjs'
+import { portAttempts, isFallbackEnabled, isPortUnavailableError, writePortFile, removePortFile } from '../studio-port.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
 const ROOT_HASH = computeRootHash(ROOT)
@@ -138,8 +139,15 @@ function serveStatic(req, res, urlPath) {
   })
 }
 
-const BIND_HOST = (!PASS && process.env.STUDIO_ALLOW_INSECURE === '1') ? '127.0.0.1' : undefined
-const server = http.createServer((req, res) => {
+/* 监听地址：
+   - 显式 STUDIO_BIND 优先（服务器上设 127.0.0.1，公网一律经 Nginx 反代，
+     避免有人直连 :8200 绕过反代层的限流/日志）；
+   - 无鉴权的本地调试模式强制回环，别让它意外暴露；
+   - 其余情况沿用 Node 默认（所有网卡）。 */
+const BIND_HOST = process.env.STUDIO_BIND
+  || ((!PASS && process.env.STUDIO_ALLOW_INSECURE === '1') ? '127.0.0.1' : undefined)
+/* 处理函数抽出来：每次绑定尝试都要新建 server 实例（见 listenOn 的注释） */
+const requestHandler = (req, res) => {
   const u = req.url || '/'
   if (u.startsWith('/studio-api/identity')) {
     if (isLocalhost(req)) return json(res, 200, getIdentityPayload(ROOT))
@@ -179,19 +187,49 @@ const server = http.createServer((req, res) => {
     return
   }
   serveStatic(req, res, u)
-})
-server.listen(PORT, BIND_HOST, () => {
-  const bindLabel = BIND_HOST || '0.0.0.0'
-  console.log(`▶ 3D 鉴赏工作台服务：http://127.0.0.1:${PORT}/studio.html   ${PASS ? '(Basic Auth 已启用)' : '(无鉴权·仅本机)'}  bind ${bindLabel}`)
-  console.log(`   rootHash：${ROOT_HASH}`)
-}).on('error', (e) => {
-  console.error(`ERROR: 无法绑定端口 ${PORT} — ${e.message}`)
-  if (e.code === 'EACCES' || e.code === 'EADDRINUSE') {
-    if (process.platform === 'win32' && (e.code === 'EACCES' || (e.errno === -4092))) {
-      console.error('  Windows 可能已将此端口列入系统保留段（Hyper-V/WSL/Docker 常见）。')
-      console.error('  请右键管理员运行：_dev\\释放系统保留端口.bat')
-      console.error('  查看保留段：netsh interface ipv4 show excludedportrange protocol=tcp')
+}
+/* 端口选择：默认不回退（服务器上 systemd 写死 PORT=8200，绑不上必须响亮地失败，
+   否则 Nginx 会反代到空处）；Windows 启动器设 STUDIO_PORT_FALLBACK=1 才逐个试候选端口。
+   实际用的端口写进 studio-port.txt，启动器据此拼 URL，不再靠猜。 */
+const ATTEMPTS = portAttempts(PORT, { fallback: isFallbackEnabled() })
+
+function listenOn(index) {
+  const port = ATTEMPTS[index]
+  /* 每次尝试都新建 server：Node 的 server.listen(port, cb) 把 cb 注册成一次性
+     'listening' 监听，绑定失败时它既不触发也不摘除；复用同一个实例再 listen 成功后，
+     上一轮残留的 cb 会跟着一起跑——实测会打出两条横幅并二次写端口文件，
+     顺序一翻启动器就读到一个没人监听的端口。 */
+  const server = http.createServer(requestHandler)
+  const onError = (e) => {
+    server.removeListener('error', onError)
+    server.close()
+    const next = index + 1
+    if (isPortUnavailableError(e) && next < ATTEMPTS.length) {
+      console.warn(`  端口 ${port} 不可用（${e.code}），改试 ${ATTEMPTS[next]}`)
+      listenOn(next)
+      return
     }
+    console.error(`ERROR: 无法绑定端口 ${port} — ${e.message}`)
+    if (e.code === 'EACCES' || e.code === 'EADDRINUSE') {
+      if (process.platform === 'win32' && (e.code === 'EACCES' || (e.errno === -4092))) {
+        console.error('  Windows 可能已将此端口列入系统保留段（Hyper-V/WSL/Docker 常见）。')
+        console.error('  请右键管理员运行：_dev\\释放系统保留端口.bat')
+        console.error('  查看保留段：netsh interface ipv4 show excludedportrange protocol=tcp')
+      }
+    }
+    process.exit(1)
   }
-  process.exit(1)
-})
+  server.once('error', onError)
+  server.listen(port, BIND_HOST, () => {
+    server.removeListener('error', onError)
+    const bindLabel = BIND_HOST || '0.0.0.0'
+    writePortFile(ROOT, port)
+    console.log(`▶ 3D 鉴赏工作台服务：http://127.0.0.1:${port}/studio.html   ${PASS ? '(Basic Auth 已启用)' : '(无鉴权·仅本机)'}  bind ${bindLabel}`)
+    console.log(`   rootHash：${ROOT_HASH}`)
+  })
+}
+listenOn(0)
+
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => { removePortFile(ROOT); process.exit(0) })
+}

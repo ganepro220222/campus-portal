@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import errno
 import os
 import re
 import shutil
@@ -28,6 +29,58 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 NO_STORE = 'no-store, no-cache, must-revalidate'
 DEFAULT_PORT = 8888  # 固定工作台端口；避开 Win/Hyper-V 常见保留段 8100-8699、8901-9000
+
+# 与 studio-port.mjs 保持同一张表：任何写死的端口都可能在某台 Windows 上被
+# Hyper-V/WSL/Docker 划进动态排除段，几档跨不同段位才不会一锅端。
+# 两份实现的候选表由 scripts/check-studio-port.js 校验一致。
+PORT_CANDIDATES = (8888, 8010, 7788, 9310, 8200)
+PORT_FILE_REL = '_runtime/studio-port.txt'
+
+
+def fallback_enabled() -> bool:
+    """默认不回退：服务器上端口必须确定，绑不上要响亮地失败。"""
+    return os.environ.get('STUDIO_PORT_FALLBACK') == '1'
+
+
+def port_attempts(preferred, fallback: bool):
+    try:
+        first = int(preferred)
+    except (TypeError, ValueError):
+        first = PORT_CANDIDATES[0]
+    if not (1 <= first <= 65535):
+        first = PORT_CANDIDATES[0]
+    if not fallback:
+        return [first]
+    out = [first]
+    for p in PORT_CANDIDATES:
+        if p not in out:
+            out.append(p)
+    return out
+
+
+def is_port_unavailable(err: BaseException) -> bool:
+    """只有「端口被占/被拒」才值得换一个再试，其它错误直接暴露。"""
+    if isinstance(err, PermissionError):
+        return True
+    return getattr(err, 'errno', None) in (errno.EADDRINUSE, errno.EACCES) or getattr(err, 'winerror', None) == 10013
+
+
+def write_port_file(root: Path, port: int) -> None:
+    """记下实际端口供启动器读取；写不进去不影响服务运行。"""
+    try:
+        f = root / PORT_FILE_REL
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(str(port), encoding='utf-8')
+    except OSError:
+        pass
+
+
+def remove_port_file(root: Path) -> None:
+    try:
+        (root / PORT_FILE_REL).unlink(missing_ok=True)
+    except OSError:
+        pass
+
 PORT = int(os.environ.get('PORT') or (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_PORT))
 USER = os.environ.get('STUDIO_USER', 'admin')
 PASS = os.environ.get('STUDIO_PASS', '')
@@ -299,16 +352,28 @@ if __name__ == '__main__':
             print('ERROR: STUDIO_PASS not set. Set STUDIO_PASS or STUDIO_ALLOW_INSECURE=1 for local dev.', file=sys.stderr)
             raise SystemExit(1)
     bind_host = '127.0.0.1' if (not PASS and os.environ.get('STUDIO_ALLOW_INSECURE') == '1') else ''
-    try:
-        with HTTPServer((bind_host, PORT), Handler) as httpd:
-            host_label = bind_host or '0.0.0.0'
-            print('Exhibits server: http://127.0.0.1:%s/studio.html  %s  (bind %s)' % (
-                PORT, '(auth on)' if PASS else '(insecure local)', host_label))
-            print('  rootHash: %s' % ROOT_HASH)
-            httpd.serve_forever()
-    except PermissionError as e:
-        _bind_error_hint(PORT, e)
-        raise SystemExit(1)
-    except OSError as e:
-        _bind_error_hint(PORT, e)
-        raise SystemExit(1)
+    attempts = port_attempts(PORT, fallback_enabled())
+    last_err = None
+    for i, port in enumerate(attempts):
+        try:
+            with HTTPServer((bind_host, port), Handler) as httpd:
+                host_label = bind_host or '0.0.0.0'
+                write_port_file(ROOT, port)
+                print('Exhibits server: http://127.0.0.1:%s/studio.html  %s  (bind %s)' % (
+                    port, '(auth on)' if PASS else '(insecure local)', host_label))
+                print('  rootHash: %s' % ROOT_HASH)
+                try:
+                    httpd.serve_forever()
+                finally:
+                    remove_port_file(ROOT)
+            raise SystemExit(0)
+        except (PermissionError, OSError) as e:
+            last_err = e
+            if is_port_unavailable(e) and i + 1 < len(attempts):
+                print('  port %s unavailable (%s), trying %s' % (port, getattr(e, 'errno', '?'), attempts[i + 1]),
+                      file=sys.stderr)
+                continue
+            _bind_error_hint(port, e)
+            raise SystemExit(1)
+    _bind_error_hint(attempts[-1], last_err)
+    raise SystemExit(1)

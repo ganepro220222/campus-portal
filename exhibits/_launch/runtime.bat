@@ -2,6 +2,7 @@
 if /i "%~1"=="find_runtime" goto find_runtime
 if /i "%~1"=="port_listening" goto port_listening
 if /i "%~1"=="wait_port" goto wait_port
+if /i "%~1"=="wait_port_file" goto wait_port_file
 if /i "%~1"=="verify_identity" goto verify_identity
 exit /b 1
 
@@ -65,6 +66,18 @@ ping -n 2 127.0.0.1 >nul
 set /a n-=1
 if !n! leq 0 exit /b 1
 goto wait_loop
+
+:wait_port_file
+rem 服务启动后会把实际端口写进 studio-port.txt（首选端口被系统保留时会换一个）
+setlocal EnableDelayedExpansion
+set /a n=%~2
+if "%n"=="" set /a n=45
+:wait_file_loop
+if exist "_runtime\studio-port.txt" endlocal & exit /b 0
+ping -n 2 127.0.0.1 >nul
+set /a n-=1
+if !n! leq 0 endlocal & exit /b 1
+goto wait_file_loop
 
 :verify_identity
 set "P=%~2"

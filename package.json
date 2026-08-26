@@ -13,6 +13,7 @@
     "check:rpx-scaling": "node scripts/check-rpx-scaling.js",
     "check:contrast": "node scripts/check-contrast.js",
     "check:touch-targets": "node scripts/check-touch-targets.js",
+    "check:studio-port": "node scripts/check-studio-port.js",
     "check:release-all": "node scripts/check-release-all.js",
     "test:deploy-env": "node scripts/test-deploy-env.js",
     "test:mock-guard": "node scripts/test-mock-guard.js",

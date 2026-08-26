@@ -4,6 +4,9 @@ if errorlevel 1 exit /b 1
 if "%PORT%"=="" set "PORT=8888"
 rem 便携工作台：无 STUDIO_PASS 时仅本机无鉴权（与 _dev/start.sh 一致；在线部署勿设此变量）
 if not defined STUDIO_PASS set "STUDIO_ALLOW_INSECURE=1"
+rem 本机允许换端口：Windows 会把一些端口划给 Hyper-V/WSL 做动态排除，绑不上就自动试下一个。
+rem 服务器不设这个变量——那里端口必须确定，否则 Nginx 会反代到空处。
+set "STUDIO_PORT_FALLBACK=1"
 set "RUNTIME=%~dp0..\_runtime"
 if exist "%RUNTIME%\python\python.exe" goto run_py_portable
 where python >nul 2>&1

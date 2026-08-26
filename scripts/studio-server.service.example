@@ -1,0 +1,34 @@
+# systemd unit：staging/生产的在线编辑器服务
+#
+#   sudo cp scripts/studio-server.service.example /etc/systemd/system/studio-server.service
+#   sudo mkdir -p /etc/shuyuan && sudo chmod 700 /etc/shuyuan
+#   printf 'STUDIO_USER=admin\nSTUDIO_PASS=换成真实口令\n' | sudo tee /etc/shuyuan/studio.env
+#   sudo chmod 600 /etc/shuyuan/studio.env
+#   sudo systemctl daemon-reload && sudo systemctl enable --now studio-server
+#
+# 为什么端口写死在这里：服务端的端口必须确定，Nginx 才知道往哪反代。
+# 本地 Windows 工作台是另一回事——那里首选端口可能被 Hyper-V/WSL 划进系统保留段，
+# 所以启动器会设 STUDIO_PORT_FALLBACK=1 让服务自动换端口。**服务器绝不设这个变量**，
+# 绑不上就该响亮地失败，而不是悄悄换个端口让 Nginx 打到空处。
+#
+# 端口值须与 scripts/nginx-exhibits-editor.conf.example 里的 proxy_pass 一致，
+# scripts/check-studio-port.js 会校验这一点。
+
+[Unit]
+Description=3D Studio (exhibits editor)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/shuyuan/exhibits
+ExecStart=/usr/bin/node /opt/shuyuan/exhibits/_server/studio-server.mjs
+Environment=PORT=8200
+# STUDIO_USER / STUDIO_PASS 放在 root-only 的 env 文件里，别写进 unit（unit 全局可读）
+EnvironmentFile=/etc/shuyuan/studio.env
+Restart=on-failure
+RestartSec=3
+# 只监听回环：公网访问一律经 Nginx，避免有人直连 :8200 绕过反代层
+Environment=STUDIO_BIND=127.0.0.1
+
+[Install]
+WantedBy=multi-user.target

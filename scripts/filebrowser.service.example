@@ -1,4 +1,10 @@
-# File Browser systemd 示例（staging 上传 exhibits 内容）
+# File Browser systemd 示例（host 原生二进制；与 Docker 二选一）
+#
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ staging ECS 用 Docker，不要用本文件！                                     │
+# │ 见 deploy/filebrowser-docker.md（/fm/、8081、filebrowser_db volume）      │
+# │ 勿 cp 到 /etc/systemd/system/ — host 无 /usr/local/bin/filebrowser       │
+# └──────────────────────────────────────────────────────────────────────────┘
 #
 #   apt install acl util-linux
 #   groupadd --system filebrowser

@@ -11,6 +11,7 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8')
 
 const unit = read('scripts/studio-server.service.example')
 const fb = read('scripts/filebrowser.service.example')
+const fbDocker = read('deploy/filebrowser-docker.md')
 const perms = read('scripts/fix-exhibits-permissions.sh')
 
 if (/^Group=shuyuan-exhibits/m.test(unit)) {
@@ -24,6 +25,15 @@ if (!/^Group=studio/m.test(unit)) {
 }
 if (!/groupadd --system studio/.test(unit)) {
   errs.push('studio-server.service.example 应说明 groupadd --system studio')
+}
+if (!/staging ECS 用 Docker/.test(fb)) {
+  errs.push('filebrowser.service.example 须注明 staging 用 Docker（勿误装 systemd unit）')
+}
+if (!/staging.*Docker|Docker.*staging/i.test(fbDocker)) {
+  errs.push('deploy/filebrowser-docker.md 应描述 staging Docker 部署')
+}
+if (!/proxy_pass http:\/\/127\.0\.0\.1:8081;/.test(fbDocker)) {
+  errs.push('deploy/filebrowser-docker.md 应含正确的 /fm/ Nginx proxy_pass')
 }
 if (!/^User=filebrowser/m.test(fb)) {
   errs.push('filebrowser.service.example 必须以非 root 用户运行 (User=filebrowser)')

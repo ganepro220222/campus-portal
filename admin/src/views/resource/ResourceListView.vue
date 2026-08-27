@@ -172,6 +172,7 @@ import OssUploadInput from '@/components/OssUploadInput.vue'
 import FieldHint from '@/components/FieldHint.vue'
 import type { CategoryOption, ResourceItem } from '@/types/api'
 import { FIELD_HINTS } from '@/utils/field-hints'
+import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('course:write'))
@@ -306,13 +307,9 @@ async function onUnpublish(row: ResourceItem) {
 }
 
 async function onDelete(row: ResourceItem) {
-  await ElMessageBox.confirm(
-    `删除「${row.name}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
-    '删除确认',
-    { type: 'warning' }
-  )
+  await ElMessageBox.confirm(softDeleteConfirm(`「${row.name}」`), '删除确认', { type: 'warning' })
   await removeResource(row.id)
-  ElMessage.success('已移入回收站')
+  ElMessage.success(MOVED_TO_RECYCLE_BIN)
   await loadData()
 }
 

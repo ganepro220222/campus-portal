@@ -122,6 +122,7 @@ import {
 } from '@/api/adminUser'
 import { useAuthStore } from '@/stores/auth'
 import { PASSWORD_HINT } from '@/utils/permissions'
+import { MOVED_TO_RECYCLE_BIN, adminUserDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const auth = useAuthStore()
 const loading = ref(false)
@@ -231,11 +232,11 @@ async function onResetPassword(row: AdminUserItem) {
 }
 
 async function onDelete(row: AdminUserItem) {
-  await ElMessageBox.confirm(`删除账号「${row.username}」？此操作不可恢复。`, '删除确认', {
+  await ElMessageBox.confirm(adminUserDeleteConfirm(row.username), '删除确认', {
     type: 'warning'
   })
   await removeAdminUser(row.id)
-  ElMessage.success('已删除')
+  ElMessage.success(MOVED_TO_RECYCLE_BIN)
   await loadData()
 }
 

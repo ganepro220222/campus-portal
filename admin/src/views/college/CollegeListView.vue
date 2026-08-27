@@ -124,6 +124,7 @@ import OssUploadInput from '@/components/OssUploadInput.vue'
 import FieldHint from '@/components/FieldHint.vue'
 import type { CollegeAppItem } from '@/api/college'
 import { FIELD_HINTS } from '@/utils/field-hints'
+import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -214,9 +215,9 @@ async function onSave() {
 }
 
 async function onDelete(row: CollegeAppItem) {
-  await ElMessageBox.confirm(`确定删除「${row.name}」？`, '删除确认', { type: 'warning' })
+  await ElMessageBox.confirm(softDeleteConfirm(`「${row.name}」`), '删除确认', { type: 'warning' })
   await deleteCollege(row.id)
-  ElMessage.success('已删除')
+  ElMessage.success(MOVED_TO_RECYCLE_BIN)
   await loadData()
 }
 

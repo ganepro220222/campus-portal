@@ -15,6 +15,7 @@ import type { CraftImagePayload } from '@/api/craft'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CraftItem } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
+import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 /** 文创列表页：筛选、分页、上下架与编辑弹窗状态 */
 export function useCraftList() {
@@ -174,13 +175,9 @@ export function useCraftList() {
   }
 
   async function onDelete(row: CraftItem) {
-    await ElMessageBox.confirm(
-      `删除「${row.name}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
-      '删除确认',
-      { type: 'warning' }
-    )
+    await ElMessageBox.confirm(softDeleteConfirm(`「${row.name}」`), '删除确认', { type: 'warning' })
     await removeCraft(row.id)
-    ElMessage.success('已移入回收站')
+    ElMessage.success(MOVED_TO_RECYCLE_BIN)
     await loadData()
   }
 

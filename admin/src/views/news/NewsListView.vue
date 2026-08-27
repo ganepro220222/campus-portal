@@ -165,6 +165,7 @@ import { isEditorContentEmpty } from '@/utils/editor'
 import { pickFirstTitleSuggestion, plainTextToHtml, stripHtml } from '@/utils/html'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, NewsItem } from '@/types/api'
+import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('news:write'))
@@ -313,13 +314,9 @@ async function onUnpublish(row: NewsItem) {
 }
 
 async function onDelete(row: NewsItem) {
-  await ElMessageBox.confirm(
-    `删除「${row.title}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
-    '删除确认',
-    { type: 'warning' }
-  )
+  await ElMessageBox.confirm(softDeleteConfirm(`「${row.title}」`), '删除确认', { type: 'warning' })
   await removeNews(row.id)
-  ElMessage.success('已移入回收站')
+  ElMessage.success(MOVED_TO_RECYCLE_BIN)
   await loadData()
 }
 

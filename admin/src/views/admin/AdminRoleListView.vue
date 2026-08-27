@@ -87,6 +87,7 @@ import {
   type AdminRoleItem
 } from '@/api/adminRole'
 import type { PermissionGroup, PermissionEntry } from '@/utils/permissions'
+import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -174,9 +175,9 @@ async function onSave() {
 }
 
 async function onDelete(row: AdminRoleItem) {
-  await ElMessageBox.confirm(`删除角色「${row.roleName}」？`, '删除确认', { type: 'warning' })
+  await ElMessageBox.confirm(softDeleteConfirm(`角色「${row.roleName}」`), '删除确认', { type: 'warning' })
   await removeAdminRole(row.id)
-  ElMessage.success('已删除')
+  ElMessage.success(MOVED_TO_RECYCLE_BIN)
   await loadData()
 }
 

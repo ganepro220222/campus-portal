@@ -117,6 +117,7 @@ import {
 import type { AnnouncementItem } from '@/types/api'
 import FieldHint from '@/components/FieldHint.vue'
 import { FIELD_HINTS } from '@/utils/field-hints'
+import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -208,9 +209,9 @@ async function onSave() {
 }
 
 async function onDelete(row: AnnouncementItem) {
-  await ElMessageBox.confirm(`确定删除该公告？`, '删除确认', { type: 'warning' })
+  await ElMessageBox.confirm(softDeleteConfirm('该公告'), '删除确认', { type: 'warning' })
   await removeAnnouncement(row.id)
-  ElMessage.success('已删除')
+  ElMessage.success(MOVED_TO_RECYCLE_BIN)
   await loadData()
 }
 

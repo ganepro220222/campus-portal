@@ -86,6 +86,7 @@ import { useAuthStore } from '@/stores/auth'
 import FieldHint from '@/components/FieldHint.vue'
 import type { CategoryItem } from '@/types/api'
 import { FIELD_HINTS } from '@/utils/field-hints'
+import { MOVED_TO_RECYCLE_BIN, categoryDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('category:write'))
@@ -164,13 +165,9 @@ async function onSave() {
 }
 
 async function onDelete(row: CategoryItem) {
-  await ElMessageBox.confirm(
-    `删除「${row.name}」？若该分类下仍有内容将无法删除。`,
-    '删除确认',
-    { type: 'warning' }
-  )
+  await ElMessageBox.confirm(categoryDeleteConfirm(row.name), '删除确认', { type: 'warning' })
   await removeCategory(row.id)
-  ElMessage.success('已删除')
+  ElMessage.success(MOVED_TO_RECYCLE_BIN)
   await loadData()
 }
 

@@ -157,6 +157,7 @@ import {
   type BannerLinkOption,
   type BannerLinkType
 } from '@/utils/banner-link'
+import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -301,9 +302,9 @@ async function onSave() {
 }
 
 async function onDelete(row: BannerItem) {
-  await ElMessageBox.confirm(`确定删除「${row.title}」？`, '删除确认', { type: 'warning' })
+  await ElMessageBox.confirm(softDeleteConfirm(`「${row.title}」`), '删除确认', { type: 'warning' })
   await removeBanner(row.id)
-  ElMessage.success('已删除')
+  ElMessage.success(MOVED_TO_RECYCLE_BIN)
   await loadData()
 }
 

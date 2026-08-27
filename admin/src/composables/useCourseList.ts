@@ -19,6 +19,7 @@ import { fetchResourceOptions } from '@/api/resource'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CourseItem, ResourceOption } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
+import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 /** 课程列表页：筛选、分页、上下架、字幕与编辑弹窗状态 */
 export function useCourseList() {
@@ -227,13 +228,9 @@ export function useCourseList() {
   }
 
   async function onDelete(row: CourseItem) {
-    await ElMessageBox.confirm(
-      `删除「${row.name}」？将移入回收站，可在「回收站」中恢复或彻底删除。`,
-      '删除确认',
-      { type: 'warning' }
-    )
+    await ElMessageBox.confirm(softDeleteConfirm(`「${row.name}」`), '删除确认', { type: 'warning' })
     await removeCourse(row.id)
-    ElMessage.success('已移入回收站')
+    ElMessage.success(MOVED_TO_RECYCLE_BIN)
     await loadData()
   }
 

@@ -84,6 +84,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createNavItem, fetchNavItems, removeNavItem, updateNavItem } from '@/api/navItem'
 import type { NavItemRecord } from '@/types/api'
+import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const ICON_OPTIONS = [
   { label: '书院动态', value: 'entry-news' },
@@ -180,9 +181,9 @@ async function onSave() {
 }
 
 async function onDelete(row: NavItemRecord) {
-  await ElMessageBox.confirm(`确定删除「${row.label}」？`, '删除确认', { type: 'warning' })
+  await ElMessageBox.confirm(softDeleteConfirm(`「${row.label}」`), '删除确认', { type: 'warning' })
   await removeNavItem(row.id)
-  ElMessage.success('已删除')
+  ElMessage.success(MOVED_TO_RECYCLE_BIN)
   await loadData()
 }
 

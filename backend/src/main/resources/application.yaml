@@ -47,8 +47,9 @@ shuyuan:
     model: ${AI_MODEL:glm-4-flash}
     # 后台 AI 文案辅助：每位管理员每自然日。润色/扩写/摘要/标题/英译共用这一个计数，
     # 而一篇动态的编辑器里就挂了标题、摘要、正文三处入口——按 20 算一天只够写四篇稿子。
-    # 管理员总共不到十个，用的又是免费档模型，这里卡紧没有任何控费价值。
-    daily-limit: ${AI_DAILY_LIMIT:60}
+    # 真正写稿的老师最多两三位，用的又是免费档模型，这里卡紧没有任何控费价值：
+    # 就算两个人各自打满 100 次，一天也就两百次，成本仍然可以忽略。
+    daily-limit: ${AI_DAILY_LIMIT:100}
     max-chunks: 5
   subscribe:
     enroll-success-template-id: ${WX_TMPL_ENROLL_SUCCESS:}

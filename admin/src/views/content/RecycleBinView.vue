@@ -5,31 +5,27 @@
     </div>
 
     <p class="text-muted">
-      内容与配置项删除后会先移入回收站，随时可以恢复。彻底删除会先算清这条记录连着什么：
-      没有关联数据的直接删；连着报名、收藏等记录的会列出清单并要求重输管理员密码；
-      分类下还挂着内容、角色下还挂着管理员的，会告诉你先处理什么。
+      删除的内容会先进回收站，随时可以恢复。彻底删除前会先算清这条记录连着什么，
+      并按影响大小要求不同的确认方式。
     </p>
 
-    <div class="rb-toolbar">
-      <div class="rb-groups">
-        <div v-for="group in groupedSummary" :key="group.name" class="rb-group">
-          <span class="rb-group-name">{{ group.name }}</span>
-          <div class="rb-chips">
-            <button
-              v-for="t in group.items"
-              :key="t.type"
-              type="button"
-              class="rb-chip"
-              :class="{ 'is-active': activeType === t.type }"
-              @click="onSelectType(t.type)"
-            >
-              {{ t.label }}
-              <span v-if="t.count > 0" class="rb-chip-count">{{ t.count > 99 ? '99+' : t.count }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      <el-button :icon="Refresh" @click="refresh">刷新</el-button>
+    <div class="toolbar rb-toolbar">
+      <!-- 13 个类型排一整条读不过来，按来源拆成三簇。
+           每簇各是一个 el-radio-group，共用同一个 v-model：选中项只会有一个，
+           视觉上却是三组独立的分段控件，和分类管理页的筛选是同一套组件。 -->
+      <el-radio-group
+        v-for="group in groupedSummary"
+        :key="group.name"
+        v-model="activeType"
+        class="rb-cluster"
+        @change="loadItems"
+      >
+        <el-radio-button v-for="t in group.items" :key="t.type" :value="t.type">
+          {{ t.label }}
+          <span v-if="t.count > 0" class="rb-count">{{ t.count > 99 ? '99+' : t.count }}</span>
+        </el-radio-button>
+      </el-radio-group>
+      <el-button class="rb-refresh" :icon="Refresh" @click="refresh">刷新</el-button>
     </div>
 
     <el-table v-loading="loading" :data="items" stripe border>
@@ -125,14 +121,6 @@ async function loadItems() {
   }
 }
 
-function onSelectType(type: string) {
-  if (activeType.value === type) {
-    return
-  }
-  activeType.value = type
-  loadItems()
-}
-
 async function refresh() {
   await loadSummary()
   await loadItems()
@@ -184,112 +172,40 @@ onMounted(refresh)
 </script>
 
 <style scoped lang="scss">
+/* 三簇分段控件之间留一口气，视觉上区分「内容 / 站点配置 / 系统」，
+   又不必再单起一列灰色分组名——那一列把工具栏撑成了三行，和别的页对不上 */
 .rb-toolbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 8px 0 18px;
+  gap: 10px 18px;
 }
 
-.rb-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  /* 分组区可以换行收缩，右侧刷新按钮不参与挤压 */
-  min-width: 0;
-  flex: 1;
+/* 刷新按钮推到最右，和分类管理页的工具栏一致 */
+.rb-refresh {
+  margin-left: auto;
 }
 
-.rb-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.rb-group-name {
-  flex: none;
-  width: 56px;
-  font-size: 12px;
-  color: var(--brand-muted);
-  text-align: right;
-}
-
-.rb-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-width: 0;
-}
-
-/* 用自绘 chip 而不是 el-radio-button：13 个按钮换行后，
-   radio-button 只给首尾加圆角的「连排」样式会在断行处露出直角豁口 */
-.rb-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--brand-line);
+/* 计数贴在类型名后面，不用 el-badge：那是绝对定位的角标，
+   在分段按钮里会顶出边框，且换行时位置会飘。
+   用中性灰而不是危险红——回收站里有几条是中性信息，不是告警，
+   一排红点会让整条工具栏看着像出了事。 */
+.rb-count {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 6px;
+  padding: 0 4px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--brand-line);
   color: var(--brand-sub);
-  font-size: 13px;
-  font-family: inherit;
-  line-height: 1;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-
-  &:hover {
-    border-color: var(--el-color-primary-light-5);
-    color: var(--brand-primary);
-  }
-
-  &.is-active {
-    border-color: var(--brand-primary);
-    background: var(--brand-primary);
-    color: #fff;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--el-color-primary-light-5);
-    outline-offset: 2px;
-  }
-}
-
-.rb-chip-count {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--el-color-danger);
-  color: #fff;
   font-size: 11px;
+  line-height: 16px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  vertical-align: 1px;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-/* 选中态下角标改用白底深字，避免红底压在深蓝底上糊成一团 */
-.rb-chip.is-active .rb-chip-count {
-  background: #fff;
-  color: var(--brand-primary);
-}
-
-@media (max-width: 900px) {
-  .rb-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .rb-group {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .rb-group-name {
-    width: auto;
-    text-align: left;
-  }
+/* 选中态底色是品牌深蓝，浅灰角标压上去几乎看不见，换成半透明白底白字 */
+.rb-cluster :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) .rb-count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
 }
 </style>

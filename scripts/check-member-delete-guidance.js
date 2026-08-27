@@ -8,13 +8,27 @@ const path = require('node:path')
 const root = path.resolve(__dirname, '..')
 const memberView = path.join(root, 'admin/src/views/member/MemberListView.vue')
 const guidanceTs = path.join(root, 'admin/src/utils/memberDeleteGuidance.ts')
+const guidanceJs = path.join(root, 'scripts/lib/memberDeleteGuidance.js')
 const dialogVue = path.join(root, 'admin/src/components/DangerDeleteDialog.vue')
 
 const errs = []
 
 const viewSrc = fs.readFileSync(memberView, 'utf8')
 const guidanceSrc = fs.readFileSync(guidanceTs, 'utf8')
+const guidanceJsSrc = fs.readFileSync(guidanceJs, 'utf8')
 const dialogSrc = fs.readFileSync(dialogVue, 'utf8')
+
+const SYNC_MARKERS = [
+  '暂时不能删除',
+  '账号已完成清退',
+  '请改用「清退」',
+  '无需继续操作',
+]
+for (const marker of SYNC_MARKERS) {
+  if (!guidanceSrc.includes(marker) || !guidanceJsSrc.includes(marker)) {
+    errs.push(`memberDeleteGuidance TS/JS 文案不同步：缺少「${marker}」`)
+  }
+}
 
 if (!/@\/utils\/memberDeleteGuidance/.test(viewSrc)) {
   errs.push('MemberListView 未 import memberDeleteGuidance')

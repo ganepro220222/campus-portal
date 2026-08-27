@@ -81,7 +81,7 @@ public class ShuyuanProperties {
         private String provider = "fallback";
         private String apiKey = "";
         private String baseUrl = "https://open.bigmodel.cn/api/paas/v4";
-        private String model = "glm-4-flash";
+        private String model = "glm-4.5-flash";
         private int dailyLimit = 20;
         private int maxChunks = 5;
     }

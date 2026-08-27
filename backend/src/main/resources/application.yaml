@@ -44,7 +44,7 @@ shuyuan:
     provider: ${AI_PROVIDER:fallback}
     api-key: ${AI_API_KEY:}
     base-url: ${AI_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
-    model: ${AI_MODEL:glm-4-flash}
+    model: ${AI_MODEL:glm-4.5-flash}
     # 后台 AI 文案辅助：每位管理员每自然日。润色/扩写/摘要/标题/英译共用这一个计数，
     # 而一篇动态的编辑器里就挂了标题、摘要、正文三处入口——按 20 算一天只够写四篇稿子。
     # 真正写稿的老师最多两三位，用的又是免费档模型，这里卡紧没有任何控费价值：

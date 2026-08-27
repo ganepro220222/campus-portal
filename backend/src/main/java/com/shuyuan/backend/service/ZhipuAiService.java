@@ -52,6 +52,8 @@ public class ZhipuAiService {
             ObjectNode user = messages.addObject();
             user.put("role", "user");
             user.put("content", userPrompt);
+            ObjectNode thinking = body.putObject("thinking");
+            thinking.put("type", "disabled");
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))

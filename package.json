@@ -17,6 +17,7 @@
     "check:null-update": "node scripts/check-null-update.js",
     "check:seed-cleanup": "node scripts/check-seed-cleanup.js",
     "check:subject-neutral": "node scripts/check-subject-neutral.js",
+    "check:view-single-root": "node scripts/check-view-single-root.js",
     "check:release-all": "node scripts/check-release-all.js",
     "test:deploy-env": "node scripts/test-deploy-env.js",
     "test:mock-guard": "node scripts/test-mock-guard.js",
@@ -24,7 +25,7 @@
     "test:release-gate": "node scripts/test-release-gate.js",
     "test:miniapp-utils": "node scripts/test-miniapp-utils.js",
     "smoke:api": "node scripts/api-smoke.mjs",
-    "preflight:local": "npm run test:deploy-env && npm run check:deploy-env && npm run check:wxml && npm run check:admin-menu-icons && npm run check:press-feedback && npm run check:tabbar-routes && npm run check:ui-copy && npm run check:rpx-scaling && npm run check:contrast && npm run check:touch-targets && npm run check:null-update && npm run check:seed-cleanup && npm run check:subject-neutral && npm run test:miniapp-utils && npm run test:mock-guard && npm run test:sync-navigate-appids && npm run test:release-gate",
+    "preflight:local": "npm run test:deploy-env && npm run check:deploy-env && npm run check:wxml && npm run check:admin-menu-icons && npm run check:press-feedback && npm run check:tabbar-routes && npm run check:ui-copy && npm run check:rpx-scaling && npm run check:contrast && npm run check:touch-targets && npm run check:null-update && npm run check:seed-cleanup && npm run check:subject-neutral && npm run check:view-single-root && npm run test:miniapp-utils && npm run test:mock-guard && npm run test:sync-navigate-appids && npm run test:release-gate",
     "load:enroll": "node scripts/load/enroll-concurrent.mjs",
     "load:browse": "node scripts/load/browse-load.mjs"
   }

@@ -98,7 +98,6 @@
         @current-change="loadData"
       />
     </div>
-  </div>
 
     <el-drawer v-model="createVisible" title="新增师生账号" size="440px" destroy-on-close>
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="76px">
@@ -142,6 +141,7 @@
       confirm-text="彻底删除账号"
       @confirm="onDeleteConfirm"
     />
+  </div>
 </template>
 
 <script setup lang="ts">

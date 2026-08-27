@@ -18,6 +18,7 @@
         :key="group.name"
         v-model="activeType"
         class="rb-cluster"
+        :disabled="typeSwitchLocked"
         @change="loadItems"
       >
         <el-radio-button v-for="t in group.items" :key="t.type" :value="t.type">
@@ -25,7 +26,7 @@
           <span v-if="t.count > 0" class="rb-count">{{ t.count > 99 ? '99+' : t.count }}</span>
         </el-radio-button>
       </el-radio-group>
-      <el-button class="rb-refresh" :icon="Refresh" @click="refresh">刷新</el-button>
+      <el-button class="rb-refresh" :icon="Refresh" :disabled="typeSwitchLocked" @click="refresh" />
     </div>
 
     <el-table v-loading="loading" :data="items" stripe border>
@@ -67,6 +68,7 @@ import { computed, onMounted, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DangerDeleteDialog from '@/components/DangerDeleteDialog.vue'
+import { shouldApplyRecycleListResult } from '@/utils/recycleBinListRequest'
 import {
   fetchRecycleImpact,
   fetchRecycleItems,
@@ -82,13 +84,18 @@ const loading = ref(false)
 const summary = ref<RecycleSummary[]>([])
 const items = ref<RecycleItem[]>([])
 const activeType = ref('news')
+let listRequestSeq = 0
 
 const purgeVisible = ref(false)
 const impactLoading = ref(false)
 const purging = ref(false)
 const impact = ref<DeleteImpact | null>(null)
 const pendingId = ref<number | null>(null)
+const pendingType = ref<string | null>(null)
 const pendingName = ref('')
+
+/** 彻底删除弹窗打开时锁定类型切换，避免 pending 目标与筛选栏漂移 */
+const typeSwitchLocked = computed(() => purgeVisible.value || impactLoading.value)
 
 /** 13 个类型平铺一排读不过来；分组由后端给，前端只负责保持顺序稳定 */
 const groupedSummary = computed(() => {
@@ -113,11 +120,19 @@ async function loadSummary() {
 }
 
 async function loadItems() {
+  const type = activeType.value
+  const seq = ++listRequestSeq
   loading.value = true
   try {
-    items.value = await fetchRecycleItems(activeType.value)
+    const result = await fetchRecycleItems(type)
+    if (!shouldApplyRecycleListResult(type, activeType.value, seq, listRequestSeq)) {
+      return
+    }
+    items.value = result
   } finally {
-    loading.value = false
+    if (seq === listRequestSeq) {
+      loading.value = false
+    }
   }
 }
 
@@ -146,26 +161,24 @@ function restoreConfirmMessage(type: string, name: string): string {
 }
 
 async function onRestore(row: RecycleItem) {
-  await ElMessageBox.confirm(
-    restoreConfirmMessage(activeType.value, row.name),
-    '恢复确认'
-  )
-  await restoreRecycleItem(activeType.value, row.id)
+  await ElMessageBox.confirm(restoreConfirmMessage(row.type, row.name), '恢复确认')
+  await restoreRecycleItem(row.type, row.id)
   ElMessage.success('已恢复')
   await refresh()
 }
 
 async function onPurge(row: RecycleItem) {
   pendingId.value = row.id
+  pendingType.value = row.type
   pendingName.value = row.name
   impact.value = null
   impactLoading.value = true
   purgeVisible.value = true
   try {
-    impact.value = await fetchRecycleImpact(activeType.value, row.id)
+    impact.value = await fetchRecycleImpact(row.type, row.id)
   } catch (e) {
-    // 影响面算不出来就别让人往下点——宁可关掉重来，也不能在不知情的前提下删
     purgeVisible.value = false
+    pendingType.value = null
     throw e
   } finally {
     impactLoading.value = false
@@ -173,13 +186,14 @@ async function onPurge(row: RecycleItem) {
 }
 
 async function onPurgeConfirm(password: string) {
-  if (pendingId.value == null) {
+  if (pendingId.value == null || pendingType.value == null) {
     return
   }
   purging.value = true
   try {
-    await purgeRecycleItem(activeType.value, pendingId.value, password || undefined)
+    await purgeRecycleItem(pendingType.value, pendingId.value, password || undefined)
     purgeVisible.value = false
+    pendingType.value = null
     ElMessage.success('已彻底删除')
     await refresh()
   } finally {

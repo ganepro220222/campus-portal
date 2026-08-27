@@ -55,6 +55,7 @@ public class AdminMemberService {
     private final MemberPurgeMapper memberPurgeMapper;
     private final DangerousActionGuard dangerousActionGuard;
     private final AdminPermissionService adminPermissionService;
+    private final MemberRowImportService memberRowImportService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public PageResult<Map<String, Object>> list(String keyword, Integer status, int page, int size) {
@@ -83,7 +84,6 @@ public class AdminMemberService {
         return new PageResult<>(records, p.getTotal(), page, size);
     }
 
-    @Transactional
     public MemberImportResult importExcel(MultipartFile file) {
         adminPermissionService.require("admin:super");
         if (file == null || file.isEmpty()) {
@@ -391,7 +391,7 @@ public class AdminMemberService {
      * 后台单个新增师生账号。
      *
      * <p>只有一两个人要建号时，「下载模板→填→上传」这一圈太重了。这里和 Excel 导入
-     * 共用同一段建号逻辑（{@link #insertMemberAccount}），初始密码规则、占位 openid、
+     * 共用同一段建号逻辑（{@link MemberRowImportService#insertRow}），初始密码规则、占位 openid、
      * 首登改密标记完全一致，不会出现两条路建出来的账号行为不同。
      */
     @Transactional
@@ -411,7 +411,7 @@ public class AdminMemberService {
         if (studentNoTaken(studentNo)) {
             throw new BusinessException(400, "学号 " + studentNo + " 已存在");
         }
-        Long memberId = insertMemberAccount(studentNo, realName, trim(req.getIdCard()),
+        Long memberId = memberRowImportService.insertRow(studentNo, realName, trim(req.getIdCard()),
                 trim(req.getCollege()), trim(req.getGrade()), trim(req.getPhone()));
         return toVo(memberMapper.selectById(memberId));
     }
@@ -423,41 +423,8 @@ public class AdminMemberService {
     }
 
     /**
-     * 建号三件套：member / member_account / member_profile。
-     *
-     * @return 新建的 memberId
-     * @throws BusinessException 初始密码算不出来（学号过短且无身份证）
+     * 建号三件套已迁至 {@link MemberRowImportService}，导入每行独立事务提交。
      */
-    private Long insertMemberAccount(String studentNo, String realName, String idCard,
-                                     String college, String grade, String phone) {
-        String plainPassword = StudentPasswordPolicy.resolveInitialPassword(studentNo, idCard);
-
-        Member member = new Member();
-        member.setOpenid(StudentPasswordPolicy.placeholderOpenid(studentNo));
-        member.setNickname(realName);
-        member.setPoints(0);
-        member.setStatus(1);
-        memberMapper.insert(member);
-
-        MemberAccount account = new MemberAccount();
-        account.setMemberId(member.getId());
-        account.setStudentNo(studentNo);
-        account.setUsername(studentNo);
-        account.setPasswordHash(passwordEncoder.encode(plainPassword));
-        account.setStatus(1);
-        account.setMustChangePassword(1);
-        memberAccountMapper.insert(account);
-
-        MemberProfile profile = new MemberProfile();
-        profile.setMemberId(member.getId());
-        profile.setRealName(realName);
-        profile.setCollege(college);
-        profile.setGrade(grade);
-        profile.setPhone(phone);
-        memberProfileMapper.insert(profile);
-
-        return member.getId();
-    }
 
     private void processRow(MemberImportRow row, int rowNum, ImportAccumulator acc) {
         String studentNo = trim(row.getStudentNo());
@@ -475,7 +442,7 @@ public class AdminMemberService {
             return;
         }
         try {
-            insertMemberAccount(studentNo, realName, row.getIdCard(),
+            memberRowImportService.insertRow(studentNo, realName, row.getIdCard(),
                     trim(row.getCollege()), trim(row.getGrade()), trim(row.getPhone()));
             acc.success();
         } catch (BusinessException e) {

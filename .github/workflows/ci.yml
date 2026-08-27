@@ -122,6 +122,12 @@ jobs:
       - name: Member delete guidance tests
         run: npm run test:member-delete-guidance
 
+      - name: Recycle bin view checks
+        run: npm run check:recycle-bin-view && npm run test:recycle-bin-list-request
+
+      - name: Member import transaction check
+        run: npm run check:member-import-transaction
+
       - name: Spring bean cycle gate test
         run: npm run test:spring-bean-cycles
 

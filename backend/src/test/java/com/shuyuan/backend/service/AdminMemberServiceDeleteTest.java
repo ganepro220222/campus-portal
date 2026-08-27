@@ -54,6 +54,8 @@ class AdminMemberServiceDeleteTest {
     private DangerousActionGuard dangerousActionGuard;
     @Mock
     private AdminPermissionService adminPermissionService;
+    @Mock
+    private MemberRowImportService memberRowImportService;
 
     @InjectMocks
     private AdminMemberService adminMemberService;
@@ -174,10 +176,13 @@ class AdminMemberServiceDeleteTest {
     @Test
     void 单个新增建齐账号三件套且与导入同规则() {
         when(memberAccountMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
-        when(memberMapper.insert(any(Member.class))).thenAnswer(inv -> {
-            inv.getArgument(0, Member.class).setId(77L);
-            return 1;
-        });
+        when(memberRowImportService.insertRow(
+                org.mockito.ArgumentMatchers.eq("2024099"),
+                org.mockito.ArgumentMatchers.eq("李四"),
+                org.mockito.ArgumentMatchers.eq("110101200001011234"),
+                org.mockito.ArgumentMatchers.eq("文学院"),
+                org.mockito.ArgumentMatchers.eq("2024"),
+                org.mockito.ArgumentMatchers.eq("13900000000"))).thenReturn(77L);
         Member saved = new Member();
         saved.setId(77L);
         saved.setOpenid("acct:2024099");
@@ -194,21 +199,8 @@ class AdminMemberServiceDeleteTest {
 
         adminMemberService.create(req);
 
-        ArgumentCaptor<Member> memberCap = ArgumentCaptor.forClass(Member.class);
-        verify(memberMapper).insert(memberCap.capture());
-        assertEquals("acct:2024099", memberCap.getValue().getOpenid());
-        assertEquals(1, memberCap.getValue().getStatus());
-
-        ArgumentCaptor<MemberAccount> accountCap = ArgumentCaptor.forClass(MemberAccount.class);
-        verify(memberAccountMapper).insert(accountCap.capture());
-        assertEquals("2024099", accountCap.getValue().getStudentNo());
-        // 与导入一致：首次登录必须改密
-        assertEquals(1, accountCap.getValue().getMustChangePassword());
-
-        ArgumentCaptor<MemberProfile> profileCap = ArgumentCaptor.forClass(MemberProfile.class);
-        verify(memberProfileMapper).insert(profileCap.capture());
-        assertEquals("文学院", profileCap.getValue().getCollege());
-        assertEquals("13900000000", profileCap.getValue().getPhone());
+        verify(memberRowImportService).insertRow(
+                "2024099", "李四", "110101200001011234", "文学院", "2024", "13900000000");
     }
 
     @Test

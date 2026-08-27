@@ -159,6 +159,7 @@ import { Plus } from '@element-plus/icons-vue'
 import DangerDeleteDialog, { type DangerReference } from '@/components/DangerDeleteDialog.vue'
 import FieldHint from '@/components/FieldHint.vue'
 import { memberDeleteGuidance } from '@/utils/memberDeleteGuidance'
+import { normalizeListPage } from '@/utils/listPageNormalize'
 import {
   downloadMemberImportErrors,
   downloadMemberImportTemplate,
@@ -228,6 +229,11 @@ async function loadData() {
   loading.value = true
   try {
     const res = await fetchMembers(keyword.value || undefined, statusFilter.value, page.value, pageSize.value)
+    const nextPage = normalizeListPage(page.value, res.total, pageSize.value)
+    if (nextPage !== page.value) {
+      page.value = nextPage
+      return loadData()
+    }
     list.value = res.records
     total.value = res.total
   } finally {

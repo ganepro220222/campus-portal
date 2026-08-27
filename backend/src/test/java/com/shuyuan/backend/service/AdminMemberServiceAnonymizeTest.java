@@ -50,6 +50,8 @@ class AdminMemberServiceAnonymizeTest {
     private MemberProfileMapper memberProfileMapper;
     @Mock
     private AdminPermissionService adminPermissionService;
+    @Mock
+    private MemberRowImportService memberRowImportService;
 
     @InjectMocks
     private AdminMemberService adminMemberService;

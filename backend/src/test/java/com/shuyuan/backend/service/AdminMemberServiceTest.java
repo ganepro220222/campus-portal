@@ -38,6 +38,8 @@ class AdminMemberServiceTest {
     private DangerousActionGuard dangerousActionGuard;
     @Mock
     private AdminPermissionService adminPermissionService;
+    @Mock
+    private MemberRowImportService memberRowImportService;
 
     @InjectMocks
     private AdminMemberService adminMemberService;

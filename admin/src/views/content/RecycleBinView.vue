@@ -126,9 +126,28 @@ async function refresh() {
   await loadItems()
 }
 
+/** 恢复确认文案须与后端 RestorePolicy 一致，避免「点恢复就立即上线」。 */
+function restoreConfirmMessage(type: string, name: string): string {
+  const subject = `恢复「${name}」？`
+  switch (type) {
+    case 'announcement':
+    case 'banner':
+    case 'nav_item':
+    case 'college_app':
+    case 'category':
+      return `${subject}恢复后为禁用状态，不会立即对外展示，需手动启用。`
+    case 'sys_user':
+      return `${subject}恢复后为禁用状态，旧登录会话已失效，需手动启用后方可登录。`
+    case 'sys_role':
+      return `${subject}恢复后可在角色管理中继续配置。`
+    default:
+      return `${subject}恢复后仍为下架 / 草稿状态，需另行上架方可对外展示。`
+  }
+}
+
 async function onRestore(row: RecycleItem) {
   await ElMessageBox.confirm(
-    `恢复「${row.name}」？恢复后仍为下架 / 草稿状态，需另行上架方可对外展示。`,
+    restoreConfirmMessage(activeType.value, row.name),
     '恢复确认'
   )
   await restoreRecycleItem(activeType.value, row.id)

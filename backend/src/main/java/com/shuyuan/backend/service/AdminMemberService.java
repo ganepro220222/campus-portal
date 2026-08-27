@@ -197,6 +197,10 @@ public class AdminMemberService {
             throw new BusinessException(400, "状态值无效");
         }
         Member member = requireMember(memberId);
+        if (status == 1 && isAnonymizedOpenid(member.getOpenid())) {
+            throw new BusinessException(400,
+                    "已清退账号不能重新启用；如需重新建号，请使用原学号新增或导入");
+        }
         member.setStatus(status);
         memberMapper.updateById(member);
         MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()

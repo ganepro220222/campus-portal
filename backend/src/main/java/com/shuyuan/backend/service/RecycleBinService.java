@@ -43,6 +43,7 @@ public class RecycleBinService {
     private final RecycleBinMapper recycleBinMapper;
     private final AdminPermissionService adminPermissionService;
     private final DangerousActionGuard dangerousActionGuard;
+    private final AdminAnnouncementService adminAnnouncementService;
 
     /** 彻底删除的风险档位 */
     public enum DeleteRisk {
@@ -75,21 +76,36 @@ public class RecycleBinService {
     private static final String GROUP_SETTING = "站点配置";
     private static final String GROUP_SYSTEM = "系统";
 
+    /**
+     * 恢复策略：不能对所有类型共用「只改 is_deleted」。
+     *
+     * <p>内容类删除前必须先下架/转草稿，恢复时保留原状态是安全的；
+     * 站点配置类和管理员账号删除时不改 status，恢复时必须强制禁用。
+     */
+    private enum RestorePolicy {
+        /** 仅清除 is_deleted（删除前已处于安全态） */
+        KEEP,
+        /** 恢复为 status=0，需手动启用 */
+        FORCE_DISABLED,
+        /** 管理员账号：禁用 + 递增 token_version */
+        ADMIN_DISABLED
+    }
+
     /** 每种内容类型的表结构元信息与所属子表配置。 */
     private enum ContentType {
-        news("news", "title", "动态", GROUP_CONTENT, List.of(), true),
-        hall("hall", "name", "展馆", GROUP_CONTENT, List.<String[]>of(child("hall_section", "hall_id"), child("hall_media", "hall_id")), true),
-        craft("craft", "name", "文创", GROUP_CONTENT, List.<String[]>of(child("craft_image", "craft_id"), child("craft_contact", "craft_id")), true),
-        course("course", "name", "课程", GROUP_CONTENT, List.<String[]>of(child("course_resource", "course_id")), true),
-        resource("resource", "name", "资源", GROUP_CONTENT, List.<String[]>of(child("course_resource", "resource_id")), true),
-        activity("activity", "title", "活动", GROUP_CONTENT, List.of(), true),
-        announcement("announcement", "content", "公告", GROUP_SETTING, List.of(), false),
-        banner("banner", "title", "轮播图", GROUP_SETTING, List.of(), false),
-        category("category", "name", "分类", GROUP_SETTING, List.of(), false),
-        college_app("college_app", "name", "书院应用", GROUP_SETTING, List.of(), false),
-        nav_item("nav_item", "label", "导航项", GROUP_SETTING, List.of(), false),
-        sys_role("sys_role", "role_name", "管理角色", GROUP_SYSTEM, List.of(), false),
-        sys_user("sys_user", "username", "管理员账号", GROUP_SYSTEM, List.of(), false);
+        news("news", "title", "动态", GROUP_CONTENT, List.of(), true, RestorePolicy.KEEP),
+        hall("hall", "name", "展馆", GROUP_CONTENT, List.<String[]>of(child("hall_section", "hall_id"), child("hall_media", "hall_id")), true, RestorePolicy.KEEP),
+        craft("craft", "name", "文创", GROUP_CONTENT, List.<String[]>of(child("craft_image", "craft_id"), child("craft_contact", "craft_id")), true, RestorePolicy.KEEP),
+        course("course", "name", "课程", GROUP_CONTENT, List.<String[]>of(child("course_resource", "course_id")), true, RestorePolicy.KEEP),
+        resource("resource", "name", "资源", GROUP_CONTENT, List.<String[]>of(child("course_resource", "resource_id")), true, RestorePolicy.KEEP),
+        activity("activity", "title", "活动", GROUP_CONTENT, List.of(), true, RestorePolicy.KEEP),
+        announcement("announcement", "content", "公告", GROUP_SETTING, List.of(), false, RestorePolicy.FORCE_DISABLED),
+        banner("banner", "title", "轮播图", GROUP_SETTING, List.of(), false, RestorePolicy.FORCE_DISABLED),
+        category("category", "name", "分类", GROUP_SETTING, List.of(), false, RestorePolicy.FORCE_DISABLED),
+        college_app("college_app", "name", "书院应用", GROUP_SETTING, List.of(), false, RestorePolicy.FORCE_DISABLED),
+        nav_item("nav_item", "label", "导航项", GROUP_SETTING, List.of(), false, RestorePolicy.FORCE_DISABLED),
+        sys_role("sys_role", "role_name", "管理角色", GROUP_SYSTEM, List.of(), false, RestorePolicy.KEEP),
+        sys_user("sys_user", "username", "管理员账号", GROUP_SYSTEM, List.of(), false, RestorePolicy.ADMIN_DISABLED);
 
         final String table;
         final String nameCol;
@@ -98,15 +114,17 @@ public class RecycleBinService {
         final List<String[]> children;
         /** 小程序端可收藏 / 点赞的内容类型；其余类型查 favorite / like 纯属白跑 */
         final boolean interactive;
+        final RestorePolicy restorePolicy;
 
         ContentType(String table, String nameCol, String label, String group,
-                    List<String[]> children, boolean interactive) {
+                    List<String[]> children, boolean interactive, RestorePolicy restorePolicy) {
             this.table = table;
             this.nameCol = nameCol;
             this.label = label;
             this.group = group;
             this.children = children;
             this.interactive = interactive;
+            this.restorePolicy = restorePolicy;
         }
 
         static String[] child(String table, String fkCol) {
@@ -164,14 +182,26 @@ public class RecycleBinService {
         return rows;
     }
 
-    /** 恢复：is_deleted 置 0。恢复后内容仍为下架/草稿态，需管理员另行上架。 */
+    /**
+     * 从回收站恢复。
+     *
+     * <p>内容类删除前须先下架/转草稿，恢复时保留原状态；站点配置与管理员账号恢复时强制禁用，
+     * 避免「点恢复」后立即重新对外展示或恢复登录能力。
+     */
     @Transactional
     public void restore(String type, Long id) {
         adminPermissionService.require("admin:super");
         ContentType t = ContentType.of(type);
-        int n = recycleBinMapper.restore(t.table, id);
+        int n = switch (t.restorePolicy) {
+            case KEEP -> recycleBinMapper.restore(t.table, id);
+            case FORCE_DISABLED -> recycleBinMapper.restoreDisabled(t.table, id);
+            case ADMIN_DISABLED -> recycleBinMapper.restoreSysUserDisabled(id);
+        };
         if (n == 0) {
             throw new BusinessException(404, "该内容不在回收站中，可能已被恢复或彻底删除");
+        }
+        if (t == ContentType.announcement) {
+            adminAnnouncementService.evictActiveCache();
         }
     }
 

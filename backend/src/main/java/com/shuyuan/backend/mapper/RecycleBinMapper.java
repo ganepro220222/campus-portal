@@ -40,6 +40,20 @@ public interface RecycleBinMapper {
     @Update("UPDATE ${table} SET is_deleted = 0 WHERE id = #{id} AND is_deleted = 1")
     int restore(@Param("table") String table, @Param("id") Long id);
 
+    /** 恢复并强制禁用（status=0），避免删除前仍为启用态的配置项恢复后立即对外展示。 */
+    @Update("UPDATE ${table} SET is_deleted = 0, status = 0 WHERE id = #{id} AND is_deleted = 1")
+    int restoreDisabled(@Param("table") String table, @Param("id") Long id);
+
+    /**
+     * 恢复管理员账号为禁用，并递增 token_version 使旧 JWT 失效。
+     *
+     * <p>不能沿用通用 restore：删除前可能是启用态，恢复后直接可登录与原承诺相反。
+     */
+    @Update("UPDATE sys_user SET is_deleted = 0, status = 0, "
+            + "token_version = COALESCE(token_version, 0) + 1 "
+            + "WHERE id = #{id} AND is_deleted = 1")
+    int restoreSysUserDisabled(@Param("id") Long id);
+
     @Delete("DELETE FROM ${table} WHERE id = #{id} AND is_deleted = 1")
     int purge(@Param("table") String table, @Param("id") Long id);
 

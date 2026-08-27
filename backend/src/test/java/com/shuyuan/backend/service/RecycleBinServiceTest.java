@@ -41,6 +41,8 @@ class RecycleBinServiceTest {
     private AdminPermissionService adminPermissionService;
     @Mock
     private DangerousActionGuard dangerousActionGuard;
+    @Mock
+    private AdminAnnouncementService adminAnnouncementService;
 
     @InjectMocks
     private RecycleBinService recycleBinService;
@@ -250,6 +252,59 @@ class RecycleBinServiceTest {
 
         verify(recycleBinMapper).detachActivityCreator(30L);
         verify(recycleBinMapper).purge("sys_user", 30L);
+    }
+
+    // ---------- 恢复：按类型强制安全态 ----------
+
+    @Test
+    void 恢复公告会禁用并清除小程序缓存() {
+        when(recycleBinMapper.restoreDisabled("announcement", 5L)).thenReturn(1);
+
+        recycleBinService.restore("announcement", 5L);
+
+        verify(recycleBinMapper).restoreDisabled("announcement", 5L);
+        verify(recycleBinMapper, never()).restore(anyString(), anyLong());
+        verify(adminAnnouncementService).evictActiveCache();
+    }
+
+    @Test
+    void 恢复轮播图会强制禁用() {
+        when(recycleBinMapper.restoreDisabled("banner", 6L)).thenReturn(1);
+
+        recycleBinService.restore("banner", 6L);
+
+        verify(recycleBinMapper).restoreDisabled("banner", 6L);
+        verify(adminAnnouncementService, never()).evictActiveCache();
+    }
+
+    @Test
+    void 恢复管理员账号会禁用并递增tokenVersion() {
+        when(recycleBinMapper.restoreSysUserDisabled(30L)).thenReturn(1);
+
+        recycleBinService.restore("sys_user", 30L);
+
+        verify(recycleBinMapper).restoreSysUserDisabled(30L);
+        verify(recycleBinMapper, never()).restore(anyString(), anyLong());
+        verify(recycleBinMapper, never()).restoreDisabled(anyString(), anyLong());
+    }
+
+    @Test
+    void 恢复动态保留原状态仅清除软删标记() {
+        when(recycleBinMapper.restore("news", 7L)).thenReturn(1);
+
+        recycleBinService.restore("news", 7L);
+
+        verify(recycleBinMapper).restore("news", 7L);
+        verify(recycleBinMapper, never()).restoreDisabled(anyString(), anyLong());
+    }
+
+    @Test
+    void 不在回收站的记录恢复时报404() {
+        when(recycleBinMapper.restoreDisabled("nav_item", 99L)).thenReturn(0);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> recycleBinService.restore("nav_item", 99L));
+        assertEquals(404, ex.getCode());
     }
 
     // ---------- 通用 ----------

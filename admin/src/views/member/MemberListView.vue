@@ -55,7 +55,10 @@
       </el-table-column>
       <el-table-column label="状态" width="90" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">{{ row.status === 1 ? '正常' : '禁用' }}</el-tag>
+          <el-tag v-if="row.anonymized" type="info" size="small">已清退</el-tag>
+          <el-tag v-else :type="row.status === 1 ? 'success' : 'danger'" size="small">
+            {{ row.status === 1 ? '正常' : '禁用' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="170" />
@@ -64,18 +67,20 @@
           <!-- el-tag 不带 el-button 之间的默认间距，混排时「已清退」会贴死「删除」，
                统一用 flex 排一行，间距由容器给 -->
           <div class="row-ops">
-            <el-button
-              v-if="row.status === 1"
-              link
-              type="warning"
-              @click="onToggleStatus(row, 0)"
-            >禁用</el-button>
-            <el-button
-              v-else
-              link
-              type="primary"
-              @click="onToggleStatus(row, 1)"
-            >启用</el-button>
+            <template v-if="!row.anonymized">
+              <el-button
+                v-if="row.status === 1"
+                link
+                type="warning"
+                @click="onToggleStatus(row, 0)"
+              >禁用</el-button>
+              <el-button
+                v-else
+                link
+                type="primary"
+                @click="onToggleStatus(row, 1)"
+              >启用</el-button>
+            </template>
             <el-button
               v-if="!row.anonymized"
               link

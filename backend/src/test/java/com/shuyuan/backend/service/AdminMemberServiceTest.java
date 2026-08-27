@@ -7,6 +7,7 @@ import com.shuyuan.backend.entity.MemberAccount;
 import com.shuyuan.backend.mapper.MemberAccountMapper;
 import com.shuyuan.backend.mapper.MemberMapper;
 import com.shuyuan.backend.mapper.MemberProfileMapper;
+import com.shuyuan.backend.mapper.MemberPurgeMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +17,7 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -30,6 +32,10 @@ class AdminMemberServiceTest {
     private MemberAccountMapper memberAccountMapper;
     @Mock
     private MemberProfileMapper memberProfileMapper;
+    @Mock
+    private MemberPurgeMapper memberPurgeMapper;
+    @Mock
+    private DangerousActionGuard dangerousActionGuard;
     @Mock
     private AdminPermissionService adminPermissionService;
 
@@ -57,6 +63,41 @@ class AdminMemberServiceTest {
         when(memberAccountMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(account);
 
         adminMemberService.updateStatus(3L, 0);
+
+        verify(memberMapper).updateById(any(Member.class));
+        verify(memberAccountMapper).updateById(any(MemberAccount.class));
+    }
+
+    @Test
+    void updateStatus_rejectsEnableForAnonymizedMember() {
+        Member member = new Member();
+        member.setId(8L);
+        member.setStatus(0);
+        member.setOpenid(AdminMemberService.anonymizedOpenid(8L));
+        when(memberMapper.selectById(8L)).thenReturn(member);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> adminMemberService.updateStatus(8L, 1));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("已清退"));
+        verify(memberMapper, never()).updateById(any(Member.class));
+        verify(memberAccountMapper, never()).updateById(any(MemberAccount.class));
+    }
+
+    @Test
+    void updateStatus_allowsDisableForAnonymizedMember() {
+        Member member = new Member();
+        member.setId(9L);
+        member.setStatus(0);
+        member.setOpenid(AdminMemberService.anonymizedOpenid(9L));
+        when(memberMapper.selectById(9L)).thenReturn(member, member);
+        MemberAccount account = new MemberAccount();
+        account.setId(11L);
+        account.setMemberId(9L);
+        account.setStatus(0);
+        when(memberAccountMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(account);
+
+        adminMemberService.updateStatus(9L, 0);
 
         verify(memberMapper).updateById(any(Member.class));
         verify(memberAccountMapper).updateById(any(MemberAccount.class));

@@ -23,7 +23,14 @@
           <span v-if="t.count > 0" class="rb-count">{{ t.count > 99 ? '99+' : t.count }}</span>
         </el-radio-button>
       </el-radio-group>
-      <el-button class="rb-refresh" :icon="Refresh" :disabled="typeSwitchLocked" @click="refresh" />
+      <el-button
+        class="rb-refresh"
+        :icon="Refresh"
+        :disabled="typeSwitchLocked"
+        aria-label="刷新回收站"
+        title="刷新"
+        @click="refresh"
+      >刷新</el-button>
     </div>
 
     <el-table v-loading="loading" :data="items" stripe border>

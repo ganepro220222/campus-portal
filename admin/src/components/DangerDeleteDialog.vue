@@ -6,9 +6,22 @@
     align-center
     destroy-on-close
     class="danger-delete-dialog"
+    :show-close="!submitting"
+    :close-on-click-modal="!submitting"
+    :close-on-press-escape="!submitting"
+    :before-close="beforeClose"
     @opened="onOpened"
     @closed="onClosed"
   >
+    <el-alert
+      v-if="submitting"
+      type="warning"
+      :closable="false"
+      show-icon
+      title="正在彻底删除，请勿关闭"
+      class="dd-submitting-hint"
+    />
+
     <div v-loading="loadingImpact" class="dd-body">
       <p class="dd-subject">
         即将彻底删除{{ subjectLabel }}
@@ -83,7 +96,7 @@
     </div>
 
     <template #footer>
-      <el-button @click="visible = false">{{ canProceed ? '取消' : '知道了' }}</el-button>
+      <el-button :disabled="submitting" @click="visible = false">{{ canProceed ? '取消' : '知道了' }}</el-button>
       <el-button
         v-if="canProceed"
         type="danger"
@@ -98,6 +111,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import type { InputInstance } from 'element-plus'
+import { shouldAllowDangerDeleteDialogClose } from '@/utils/dangerDeleteDialogSubmitLock'
 
 export interface DangerReference {
   label: string
@@ -184,10 +198,20 @@ watch(
 )
 
 function onConfirm() {
+  if (props.submitting) {
+    return
+  }
   if (props.requiresPassword && !password.value) {
     return
   }
   emit('confirm', password.value)
+}
+
+function beforeClose(done: () => void) {
+  if (!shouldAllowDangerDeleteDialogClose(props.submitting)) {
+    return
+  }
+  done()
 }
 
 /**
@@ -215,6 +239,10 @@ function onClosed() {
 <style scoped lang="scss">
 .dd-body {
   min-height: 96px;
+}
+
+.dd-submitting-hint {
+  margin-bottom: 12px;
 }
 
 .dd-subject {

@@ -128,6 +128,9 @@ jobs:
       - name: Delete impact request checks
         run: npm run check:delete-impact-request && npm run test:delete-impact-request
 
+      - name: Danger delete dialog checks
+        run: npm run check:danger-delete-dialog && npm run test:danger-delete-dialog-submit-lock
+
       - name: Member import transaction check
         run: npm run check:member-import-transaction
 

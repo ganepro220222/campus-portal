@@ -239,7 +239,7 @@ public class StatsAggregationService {
             return "";
         }
         return switch (type) {
-            case "news" -> "新闻";
+            case "news" -> "动态";
             case "hall" -> "展馆";
             case "craft" -> "文创";
             case "course" -> "课程";

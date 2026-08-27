@@ -14,7 +14,7 @@ public class FallbackAiService {
 
     public String chat(String systemPrompt, String userPrompt, List<KnowledgeChunk> chunks) {
         if (chunks == null || chunks.isEmpty()) {
-            return "暂未在书院知识库中找到相关资料，您可以换个问法，或通过「全局搜索」查询新闻、课程与展馆内容。";
+            return "暂未在书院知识库中找到相关资料，您可以换个问法，或通过「全局搜索」查询动态、课程与展馆内容。";
         }
         String refs = chunks.stream()
                 .map(KnowledgeChunk::getChunkText)

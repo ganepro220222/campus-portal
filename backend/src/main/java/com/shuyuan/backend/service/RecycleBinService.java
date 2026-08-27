@@ -77,7 +77,7 @@ public class RecycleBinService {
 
     /** 每种内容类型的表结构元信息与所属子表配置。 */
     private enum ContentType {
-        news("news", "title", "新闻", GROUP_CONTENT, List.of(), true),
+        news("news", "title", "动态", GROUP_CONTENT, List.of(), true),
         hall("hall", "name", "展馆", GROUP_CONTENT, List.<String[]>of(child("hall_section", "hall_id"), child("hall_media", "hall_id")), true),
         craft("craft", "name", "文创", GROUP_CONTENT, List.<String[]>of(child("craft_image", "craft_id"), child("craft_contact", "craft_id")), true),
         course("course", "name", "课程", GROUP_CONTENT, List.<String[]>of(child("course_resource", "course_id")), true),
@@ -131,7 +131,7 @@ public class RecycleBinService {
 
     /** 引用了 category_id 的内容表；分类被彻底删除前必须先清空这些引用 */
     private static final List<String[]> CATEGORY_USERS = List.of(
-            new String[]{"news", "新闻"},
+            new String[]{"news", "动态"},
             new String[]{"hall", "展馆"},
             new String[]{"craft", "文创"},
             new String[]{"course", "课程"},

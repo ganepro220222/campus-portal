@@ -166,7 +166,7 @@ class RecycleBinServiceTest {
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> recycleBinService.purge("category", 20L, "any"));
-        assertTrue(ex.getMessage().contains("新闻 3 条"), ex.getMessage());
+        assertTrue(ex.getMessage().contains("动态 3 条"), ex.getMessage());
         assertTrue(ex.getMessage().contains("课程 1 条"), ex.getMessage());
         verify(recycleBinMapper, never()).purge(anyString(), anyLong());
         // 受阻档不该先把密码收走——老师还没得选就被要密码是种误导
@@ -201,12 +201,12 @@ class RecycleBinServiceTest {
         List<?> refs = (List<?>) impact.get("references");
         assertEquals(1, refs.size());
         Map<?, ?> ref = (Map<?, ?>) refs.get(0);
-        assertEquals("新闻（在回收站）", ref.get("label"));
+        assertEquals("动态（在回收站）", ref.get("label"));
         String hint = String.valueOf(ref.get("hint"));
         assertTrue(hint.contains("回收站"), hint);
         assertTrue(hint.contains("彻底删除"), hint);
         // 不能只说「改到别的分类」——那几条根本不在列表里
-        assertFalse(hint.equals("请先把这些新闻改到别的分类"), hint);
+        assertFalse(hint.equals("请先把这些动态改到别的分类"), hint);
     }
 
     @Test
@@ -218,9 +218,9 @@ class RecycleBinServiceTest {
         List<?> refs = (List<?>) recycleBinService.impact("category", 24L).get("references");
 
         assertEquals(2, refs.size());
-        assertEquals("新闻", ((Map<?, ?>) refs.get(0)).get("label"));
+        assertEquals("动态", ((Map<?, ?>) refs.get(0)).get("label"));
         assertEquals(1L, ((Map<?, ?>) refs.get(0)).get("count"));
-        assertEquals("新闻（在回收站）", ((Map<?, ?>) refs.get(1)).get("label"));
+        assertEquals("动态（在回收站）", ((Map<?, ?>) refs.get(1)).get("label"));
         assertEquals(2L, ((Map<?, ?>) refs.get(1)).get("count"));
     }
 

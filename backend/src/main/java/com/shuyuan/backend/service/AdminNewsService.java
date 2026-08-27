@@ -77,7 +77,7 @@ public class AdminNewsService {
         adminPermissionService.require("news:publish");
         News news = requireNews(id);
         if ("published".equals(news.getStatus())) {
-            throw new BusinessException(400, "新闻已发布");
+            throw new BusinessException(400, "动态已发布");
         }
         news.setStatus("published");
         if (news.getPublishTime() == null) {
@@ -94,7 +94,7 @@ public class AdminNewsService {
         adminPermissionService.require("news:publish");
         News news = requireNews(id);
         if (!"published".equals(news.getStatus())) {
-            throw new BusinessException(400, "仅已发布新闻可下架");
+            throw new BusinessException(400, "仅已发布动态可下架");
         }
         news.setStatus("draft");
         newsMapper.updateById(news);
@@ -107,7 +107,7 @@ public class AdminNewsService {
         adminPermissionService.require("news:write");
         News news = requireNews(id);
         if ("published".equals(news.getStatus())) {
-            throw new BusinessException(400, "请先下架已发布新闻，再删除到回收站");
+            throw new BusinessException(400, "请先下架已发布动态，再删除到回收站");
         }
         newsMapper.deleteById(id);
         searchIndexSyncService.removeNews(id);
@@ -116,7 +116,7 @@ public class AdminNewsService {
     private News requireNews(Long id) {
         News news = newsMapper.selectById(id);
         if (news == null) {
-            throw new BusinessException(404, "新闻不存在");
+            throw new BusinessException(404, "动态不存在");
         }
         return news;
     }

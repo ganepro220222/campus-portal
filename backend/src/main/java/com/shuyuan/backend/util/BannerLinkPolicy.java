@@ -41,7 +41,7 @@ public class BannerLinkPolicy {
 
     private static final Map<String, String> FIXED_LABELS = Map.of(
             "home", "首页",
-            "news", "新闻频道",
+            "news", "动态频道",
             "hall", "展馆频道",
             "course", "课程频道",
             "activity", "活动报名");
@@ -51,7 +51,7 @@ public class BannerLinkPolicy {
             TYPE_URL, "外部网页",
             TYPE_PAGE, "自定义页面（旧）",
             TYPE_FIXED, "频道页面",
-            TYPE_NEWS, "新闻详情",
+            TYPE_NEWS, "动态详情",
             TYPE_COURSE, "课程详情",
             TYPE_HALL, "展馆详情",
             TYPE_ACTIVITY, "活动详情",
@@ -134,7 +134,7 @@ public class BannerLinkPolicy {
             case TYPE_NEWS -> {
                 News news = newsMapper.selectById(id);
                 if (news == null || !"published".equals(news.getStatus())) {
-                    throw new BusinessException(400, "请选择已发布的新闻");
+                    throw new BusinessException(400, "请选择已发布的动态");
                 }
             }
             case TYPE_COURSE -> {

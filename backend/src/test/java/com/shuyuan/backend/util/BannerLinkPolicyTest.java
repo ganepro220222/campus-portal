@@ -48,7 +48,7 @@ class BannerLinkPolicyTest {
 
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> bannerLinkPolicy.validate("news", "1"));
-        assertEquals("请选择已发布的新闻", ex.getMessage());
+        assertEquals("请选择已发布的动态", ex.getMessage());
     }
 
     @Test
@@ -59,6 +59,6 @@ class BannerLinkPolicyTest {
         news.setStatus("published");
         when(newsMapper.selectById(2L)).thenReturn(news);
 
-        assertEquals("新闻详情：阳明文化讲座", bannerLinkPolicy.resolveLabel("news", "2"));
+        assertEquals("动态详情：阳明文化讲座", bannerLinkPolicy.resolveLabel("news", "2"));
     }
 }

@@ -32,7 +32,7 @@ export function restoreRecycleItem(type: string, id: number) {
 export type DeleteRisk = 'LOW' | 'HIGH' | 'BLOCKED'
 
 export interface DeleteReference {
-  /** 影响项名称，如「报名记录」「新闻」 */
+  /** 影响项名称，如「报名记录」「动态」 */
   label: string
   count: number
   /** true = 结构性依赖，挡住删除；false = 行为数据，会随删除一并清理 */

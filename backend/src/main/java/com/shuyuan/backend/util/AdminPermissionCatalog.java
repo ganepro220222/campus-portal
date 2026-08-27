@@ -17,10 +17,10 @@ public final class AdminPermissionCatalog {
                 group("系统管理", List.of(
                         entry(SUPER, "超级管理员（全部权限）")
                 )),
-                group("新闻", List.of(
-                        entry("news:read", "查看新闻"),
-                        entry("news:write", "编辑新闻"),
-                        entry("news:publish", "发布/下架新闻")
+                group("动态", List.of(
+                        entry("news:read", "查看动态"),
+                        entry("news:write", "编辑动态"),
+                        entry("news:publish", "发布/下架动态")
                 )),
                 group("展馆与文创", List.of(
                         entry("hall:read", "查看展馆、文创"),

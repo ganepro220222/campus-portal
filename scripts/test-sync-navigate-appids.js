@@ -7,11 +7,13 @@ const { execFileSync } = require('child_process')
 const root = path.join(__dirname, '..')
 const appJsonPath = path.join(root, 'miniapp/app.json')
 const backupPath = appJsonPath + '.bak-test'
-const testConfig = path.join(root, 'miniapp/config/.navigate-appids.test.json')
+// 勿放在 miniapp/config/：preflight 会短暂创建后删除，微信开发者工具真机调试会缓存路径导致 ENOENT
+const testConfig = path.join(__dirname, 'fixtures/navigate-appids.test.json')
 
 function run() {
   const original = fs.readFileSync(appJsonPath, 'utf8')
   fs.writeFileSync(backupPath, original, 'utf8')
+  fs.mkdirSync(path.dirname(testConfig), { recursive: true })
   try {
     fs.writeFileSync(testConfig, JSON.stringify({
       appIds: [

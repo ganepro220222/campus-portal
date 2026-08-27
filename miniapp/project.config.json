@@ -38,7 +38,16 @@
   "condition": {},
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "file",
+        "value": "config/.navigate-appids.test.json"
+      },
+      {
+        "type": "suffix",
+        "value": ".test.json"
+      }
+    ],
     "include": []
   },
   "editorSetting": {}

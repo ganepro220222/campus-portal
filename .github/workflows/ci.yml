@@ -200,6 +200,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Pre-pull Debian image for permissions integration
+        run: |
+          for i in 1 2 3 4 5; do
+            docker pull debian:bookworm-slim && exit 0
+            docker pull public.ecr.aws/docker/library/debian:bookworm-slim && exit 0
+            echo "docker pull attempt $i failed, retrying in ${i}0s..."
+            sleep $((i * 10))
+          done
+          echo "Warning: could not pre-pull Debian image; integration test will retry with fallback"
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

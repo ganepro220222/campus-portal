@@ -21,6 +21,7 @@
     "check:recycle-delete-copy": "node scripts/check-recycle-delete-copy.js",
     "check:member-delete-guidance": "node scripts/check-member-delete-guidance.js",
     "check:recycle-bin-view": "node scripts/check-recycle-bin-view.js",
+    "check:delete-impact-request": "node scripts/check-delete-impact-request.js",
     "check:member-import-transaction": "node scripts/check-member-import-transaction.js",
     "check:spring-bean-cycles": "node scripts/check-spring-bean-cycles.js",
     "check:release-all": "node scripts/check-release-all.js",
@@ -29,12 +30,13 @@
     "test:sync-navigate-appids": "node scripts/test-sync-navigate-appids.js",
     "test:member-delete-guidance": "node scripts/test-member-delete-guidance.js",
     "test:recycle-bin-list-request": "node scripts/test-recycle-bin-list-request.js",
+    "test:delete-impact-request": "node scripts/test-delete-impact-request.js",
     "test:list-page-normalize": "node scripts/test-list-page-normalize.js",
     "test:spring-bean-cycles": "node scripts/test-spring-bean-cycles.js",
     "test:release-gate": "node scripts/test-release-gate.js",
     "test:miniapp-utils": "node scripts/test-miniapp-utils.js",
     "smoke:api": "node scripts/api-smoke.mjs",
-    "preflight:local": "npm run test:deploy-env && npm run check:deploy-env && npm run check:wxml && npm run check:admin-menu-icons && npm run check:press-feedback && npm run check:tabbar-routes && npm run check:ui-copy && npm run check:rpx-scaling && npm run check:contrast && npm run check:touch-targets && npm run check:null-update && npm run check:seed-cleanup && npm run check:subject-neutral && npm run check:view-single-root && npm run check:recycle-delete-copy && npm run check:member-delete-guidance && npm run check:recycle-bin-view && npm run check:member-import-transaction && npm run check:spring-bean-cycles && npm run test:miniapp-utils && npm run test:mock-guard && npm run test:sync-navigate-appids && npm run test:member-delete-guidance && npm run test:recycle-bin-list-request && npm run test:list-page-normalize && npm run test:spring-bean-cycles && npm run test:release-gate",
+    "preflight:local": "npm run test:deploy-env && npm run check:deploy-env && npm run check:wxml && npm run check:admin-menu-icons && npm run check:press-feedback && npm run check:tabbar-routes && npm run check:ui-copy && npm run check:rpx-scaling && npm run check:contrast && npm run check:touch-targets && npm run check:null-update && npm run check:seed-cleanup && npm run check:subject-neutral && npm run check:view-single-root && npm run check:recycle-delete-copy && npm run check:member-delete-guidance && npm run check:recycle-bin-view && npm run check:delete-impact-request && npm run check:member-import-transaction && npm run check:spring-bean-cycles && npm run test:miniapp-utils && npm run test:mock-guard && npm run test:sync-navigate-appids && npm run test:member-delete-guidance && npm run test:recycle-bin-list-request && npm run test:delete-impact-request && npm run test:list-page-normalize && npm run test:spring-bean-cycles && npm run test:release-gate",
     "load:enroll": "node scripts/load/enroll-concurrent.mjs",
     "load:browse": "node scripts/load/browse-load.mjs"
   }

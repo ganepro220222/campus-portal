@@ -125,6 +125,9 @@ jobs:
       - name: Recycle bin view checks
         run: npm run check:recycle-bin-view && npm run test:recycle-bin-list-request
 
+      - name: Delete impact request checks
+        run: npm run check:delete-impact-request && npm run test:delete-impact-request
+
       - name: Member import transaction check
         run: npm run check:member-import-transaction
 

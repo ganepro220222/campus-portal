@@ -10,9 +10,6 @@
     </p>
 
     <div class="toolbar rb-toolbar">
-      <!-- 13 个类型排一整条读不过来，按来源拆成三簇。
-           每簇各是一个 el-radio-group，共用同一个 v-model：选中项只会有一个，
-           视觉上却是三组独立的分段控件，和分类管理页的筛选是同一套组件。 -->
       <el-radio-group
         v-for="group in groupedSummary"
         :key="group.name"
@@ -55,7 +52,7 @@
       :risk="impact?.risk ?? 'LOW'"
       :references="impact?.references ?? []"
       :requires-password="impact?.requiresPassword ?? false"
-      :can-proceed="impact?.canPurge ?? false"
+      :can-proceed="purgeCanProceed"
       :loading-impact="impactLoading"
       :submitting="purging"
       @confirm="onPurgeConfirm"
@@ -64,10 +61,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DangerDeleteDialog from '@/components/DangerDeleteDialog.vue'
+import {
+  deleteImpactMatchesPending,
+  shouldApplyDeleteImpactResult
+} from '@/utils/deleteImpactRequest'
 import { shouldApplyRecycleListResult } from '@/utils/recycleBinListRequest'
 import {
   fetchRecycleImpact,
@@ -93,11 +94,16 @@ const impact = ref<DeleteImpact | null>(null)
 const pendingId = ref<number | null>(null)
 const pendingType = ref<string | null>(null)
 const pendingName = ref('')
+let impactRequestSeq = 0
 
-/** 彻底删除弹窗打开时锁定类型切换，避免 pending 目标与筛选栏漂移 */
 const typeSwitchLocked = computed(() => purgeVisible.value || impactLoading.value)
 
-/** 13 个类型平铺一排读不过来；分组由后端给，前端只负责保持顺序稳定 */
+const purgeCanProceed = computed(
+  () =>
+    (impact.value?.canPurge ?? false) &&
+    deleteImpactMatchesPending(impact.value, pendingId.value, pendingType.value)
+)
+
 const groupedSummary = computed(() => {
   const order: string[] = []
   const map = new Map<string, RecycleSummary[]>()
@@ -112,6 +118,21 @@ const groupedSummary = computed(() => {
   return order.map((name) => ({ name, items: map.get(name)! }))
 })
 
+function invalidatePurgeImpactRequest() {
+  impactRequestSeq++
+  pendingId.value = null
+  pendingType.value = null
+  pendingName.value = ''
+  impact.value = null
+  impactLoading.value = false
+}
+
+watch(purgeVisible, (visible) => {
+  if (!visible) {
+    invalidatePurgeImpactRequest()
+  }
+})
+
 async function loadSummary() {
   summary.value = await fetchRecycleSummary()
   if (!summary.value.some((t) => t.type === activeType.value) && summary.value.length) {
@@ -123,6 +144,7 @@ async function loadItems() {
   const type = activeType.value
   const seq = ++listRequestSeq
   loading.value = true
+  items.value = []
   try {
     const result = await fetchRecycleItems(type)
     if (!shouldApplyRecycleListResult(type, activeType.value, seq, listRequestSeq)) {
@@ -141,7 +163,6 @@ async function refresh() {
   await loadItems()
 }
 
-/** 恢复确认文案须与后端 RestorePolicy 一致，避免「点恢复就立即上线」。 */
 function restoreConfirmMessage(type: string, name: string): string {
   const subject = `恢复「${name}」？`
   switch (type) {
@@ -168,32 +189,67 @@ async function onRestore(row: RecycleItem) {
 }
 
 async function onPurge(row: RecycleItem) {
-  pendingId.value = row.id
-  pendingType.value = row.type
+  const type = row.type
+  const id = row.id
+  const seq = ++impactRequestSeq
+
+  pendingId.value = id
+  pendingType.value = type
   pendingName.value = row.name
   impact.value = null
   impactLoading.value = true
   purgeVisible.value = true
+
   try {
-    impact.value = await fetchRecycleImpact(row.type, row.id)
+    const result = await fetchRecycleImpact(type, id)
+    if (
+      !shouldApplyDeleteImpactResult({
+        requestedId: id,
+        requestedType: type,
+        currentId: pendingId.value,
+        currentType: pendingType.value,
+        seq,
+        latestSeq: impactRequestSeq,
+        dialogVisible: purgeVisible.value
+      })
+    ) {
+      return
+    }
+    impact.value = result
   } catch (e) {
-    purgeVisible.value = false
-    pendingType.value = null
+    if (
+      shouldApplyDeleteImpactResult({
+        requestedId: id,
+        requestedType: type,
+        currentId: pendingId.value,
+        currentType: pendingType.value,
+        seq,
+        latestSeq: impactRequestSeq,
+        dialogVisible: purgeVisible.value
+      })
+    ) {
+      purgeVisible.value = false
+    }
     throw e
   } finally {
-    impactLoading.value = false
+    if (seq === impactRequestSeq) {
+      impactLoading.value = false
+    }
   }
 }
 
 async function onPurgeConfirm(password: string) {
-  if (pendingId.value == null || pendingType.value == null) {
+  if (
+    pendingId.value == null ||
+    pendingType.value == null ||
+    !deleteImpactMatchesPending(impact.value, pendingId.value, pendingType.value)
+  ) {
     return
   }
   purging.value = true
   try {
     await purgeRecycleItem(pendingType.value, pendingId.value, password || undefined)
     purgeVisible.value = false
-    pendingType.value = null
     ElMessage.success('已彻底删除')
     await refresh()
   } finally {
@@ -205,21 +261,14 @@ onMounted(refresh)
 </script>
 
 <style scoped lang="scss">
-/* 三簇分段控件之间留一口气，视觉上区分「内容 / 站点配置 / 系统」，
-   又不必再单起一列灰色分组名——那一列把工具栏撑成了三行，和别的页对不上 */
 .rb-toolbar {
   gap: 10px 18px;
 }
 
-/* 刷新按钮推到最右，和分类管理页的工具栏一致 */
 .rb-refresh {
   margin-left: auto;
 }
 
-/* 计数贴在类型名后面，不用 el-badge：那是绝对定位的角标，
-   在分段按钮里会顶出边框，且换行时位置会飘。
-   用中性灰而不是危险红——回收站里有几条是中性信息，不是告警，
-   一排红点会让整条工具栏看着像出了事。 */
 .rb-count {
   display: inline-block;
   min-width: 16px;
@@ -236,7 +285,6 @@ onMounted(refresh)
   transition: background-color 0.2s, color 0.2s;
 }
 
-/* 选中态底色是品牌深蓝，浅灰角标压上去几乎看不见，换成半透明白底白字 */
 .rb-cluster :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) .rb-count {
   background: rgba(255, 255, 255, 0.22);
   color: #fff;

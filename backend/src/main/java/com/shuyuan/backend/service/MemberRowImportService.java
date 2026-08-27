@@ -1,6 +1,5 @@
 package com.shuyuan.backend.service;
 
-import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.Member;
 import com.shuyuan.backend.entity.MemberAccount;
 import com.shuyuan.backend.entity.MemberProfile;
@@ -15,9 +14,12 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 师生账号三表建号：Excel 导入时每行独立事务，单行失败只回滚该行。
+ * 师生账号三表建号。
  *
- * <p>须为独立 Bean：同类内部 {@code @Transactional(REQUIRES_NEW)} 不经过 Spring 代理不会生效。
+ * <ul>
+ *   <li>{@link #insertSingle} — 单个新增，与外层 API 同事务提交；</li>
+ *   <li>{@link #insertImportRow} — Excel 逐行，每行独立 REQUIRES_NEW。</li>
+ * </ul>
  */
 @Service
 @RequiredArgsConstructor
@@ -28,12 +30,22 @@ public class MemberRowImportService {
     private final MemberProfileMapper memberProfileMapper;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    /**
-     * member → member_account → member_profile，任一步失败则本行全部回滚。
-     */
+    /** 单个新增：与 AdminMemberService.create 同一事务，响应失败时可整体回滚 */
+    @Transactional(rollbackFor = Exception.class)
+    public Long insertSingle(String studentNo, String realName, String idCard,
+                             String college, String grade, String phone) {
+        return insertCore(studentNo, realName, idCard, college, grade, phone);
+    }
+
+    /** Excel 导入：每行独立提交，失败只回滚该行 */
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    public Long insertRow(String studentNo, String realName, String idCard,
-                          String college, String grade, String phone) {
+    public Long insertImportRow(String studentNo, String realName, String idCard,
+                              String college, String grade, String phone) {
+        return insertCore(studentNo, realName, idCard, college, grade, phone);
+    }
+
+    private Long insertCore(String studentNo, String realName, String idCard,
+                            String college, String grade, String phone) {
         String plainPassword = StudentPasswordPolicy.resolveInitialPassword(studentNo, idCard);
 
         Member member = new Member();

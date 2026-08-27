@@ -176,7 +176,7 @@ class AdminMemberServiceDeleteTest {
     @Test
     void 单个新增建齐账号三件套且与导入同规则() {
         when(memberAccountMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
-        when(memberRowImportService.insertRow(
+        when(memberRowImportService.insertSingle(
                 org.mockito.ArgumentMatchers.eq("2024099"),
                 org.mockito.ArgumentMatchers.eq("李四"),
                 org.mockito.ArgumentMatchers.eq("110101200001011234"),
@@ -199,7 +199,7 @@ class AdminMemberServiceDeleteTest {
 
         adminMemberService.create(req);
 
-        verify(memberRowImportService).insertRow(
+        verify(memberRowImportService).insertSingle(
                 "2024099", "李四", "110101200001011234", "文学院", "2024", "13900000000");
     }
 

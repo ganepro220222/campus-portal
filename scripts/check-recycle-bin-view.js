@@ -22,7 +22,7 @@ if (!/listRequestSeq/.test(src)) {
 if (!/restoreRecycleItem\(row\.type/.test(src)) {
   errs.push('RecycleBinView 恢复须使用 row.type')
 }
-if (!/fetchRecycleImpact\(row\.type/.test(src)) {
+if (!/fetchRecycleImpact\((row\.type|type)/.test(src)) {
   errs.push('RecycleBinView 影响预览须使用 row.type')
 }
 if (!/pendingType/.test(src) || !/purgeRecycleItem\(pendingType/.test(src)) {
@@ -35,6 +35,12 @@ if (!/restoreRecycleItem\(activeType/.test(src)) {
 }
 if (/fetchRecycleImpact\(activeType/.test(src)) {
   errs.push('RecycleBinView 影响预览仍使用 activeType')
+}
+if (!/purgeCanProceed/.test(src) || !/deleteImpactMatchesPending/.test(src)) {
+  errs.push('RecycleBinView 确认删除须校验 impact 与 pending 一致')
+}
+if (!/items\.value = \[\]/.test(src)) {
+  errs.push('RecycleBinView 切换类型时应清空 items')
 }
 
 for (const marker of ['shouldApplyRecycleListResult', 'requestedType === currentType']) {

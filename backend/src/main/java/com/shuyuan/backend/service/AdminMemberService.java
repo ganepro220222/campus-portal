@@ -391,7 +391,7 @@ public class AdminMemberService {
      * 后台单个新增师生账号。
      *
      * <p>只有一两个人要建号时，「下载模板→填→上传」这一圈太重了。这里和 Excel 导入
-     * 共用同一段建号逻辑（{@link MemberRowImportService#insertRow}），初始密码规则、占位 openid、
+     * 共用同一段建号逻辑（{@link MemberRowImportService#insertSingle}），初始密码规则、占位 openid、
      * 首登改密标记完全一致，不会出现两条路建出来的账号行为不同。
      */
     @Transactional
@@ -411,7 +411,7 @@ public class AdminMemberService {
         if (studentNoTaken(studentNo)) {
             throw new BusinessException(400, "学号 " + studentNo + " 已存在");
         }
-        Long memberId = memberRowImportService.insertRow(studentNo, realName, trim(req.getIdCard()),
+        Long memberId = memberRowImportService.insertSingle(studentNo, realName, trim(req.getIdCard()),
                 trim(req.getCollege()), trim(req.getGrade()), trim(req.getPhone()));
         return toVo(memberMapper.selectById(memberId));
     }
@@ -442,7 +442,7 @@ public class AdminMemberService {
             return;
         }
         try {
-            memberRowImportService.insertRow(studentNo, realName, row.getIdCard(),
+            memberRowImportService.insertImportRow(studentNo, realName, row.getIdCard(),
                     trim(row.getCollege()), trim(row.getGrade()), trim(row.getPhone()));
             acc.success();
         } catch (BusinessException e) {

@@ -142,7 +142,7 @@
       :blocked-title="deleteGuidance?.blockedTitle"
       :blocked-description="deleteGuidance?.blockedDescription"
       :requires-password="deleteImpact?.requiresPassword ?? false"
-      :can-proceed="deleteImpact?.canDelete ?? false"
+      :can-proceed="deleteCanProceed"
       :loading-impact="deleteImpactLoading"
       :submitting="deleting"
       confirm-text="彻底删除账号"
@@ -152,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import type { FormInstance, FormRules, UploadRequestOptions } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -160,6 +160,10 @@ import DangerDeleteDialog, { type DangerReference } from '@/components/DangerDel
 import FieldHint from '@/components/FieldHint.vue'
 import { memberDeleteGuidance } from '@/utils/memberDeleteGuidance'
 import { normalizeListPage } from '@/utils/listPageNormalize'
+import {
+  deleteImpactMatchesPending,
+  shouldApplyDeleteImpactResult
+} from '@/utils/deleteImpactRequest'
 import {
   downloadMemberImportErrors,
   downloadMemberImportTemplate,
@@ -206,11 +210,32 @@ const deleteImpactLoading = ref(false)
 const deleteImpact = ref<MemberDeleteImpact | null>(null)
 const pendingId = ref<number | null>(null)
 const pendingName = ref('')
+let deleteImpactRequestSeq = 0
+
+function invalidateDeleteImpactRequest() {
+  deleteImpactRequestSeq++
+  pendingId.value = null
+  pendingName.value = ''
+  deleteImpact.value = null
+  deleteImpactLoading.value = false
+}
+
+watch(deleteVisible, (visible) => {
+  if (!visible) {
+    invalidateDeleteImpactRequest()
+  }
+})
 
 /** 账号只有两档：干净的能真删（LOW），留下记录的删不了（BLOCKED） */
 const deleteGuidance = computed(() => memberDeleteGuidance(deleteImpact.value))
 
 const deleteRisk = computed<'LOW' | 'BLOCKED'>(() => deleteGuidance.value?.risk ?? 'LOW')
+
+const deleteCanProceed = computed(
+  () =>
+    (deleteImpact.value?.canDelete ?? false) &&
+    deleteImpactMatchesPending(deleteImpact.value, pendingId.value)
+)
 
 const deleteRefs = computed<DangerReference[]>(() => {
   const guidance = deleteGuidance.value
@@ -328,24 +353,54 @@ async function onCreate() {
 }
 
 async function onDelete(row: MemberItem) {
-  pendingId.value = row.id
+  const id = row.id
+  const seq = ++deleteImpactRequestSeq
+
+  pendingId.value = id
   pendingName.value = row.realName || row.studentNo || `账号 ${row.id}`
   deleteImpact.value = null
   deleteImpactLoading.value = true
   deleteVisible.value = true
+
   try {
-    deleteImpact.value = await fetchMemberDeleteImpact(row.id)
+    const result = await fetchMemberDeleteImpact(id)
+    if (
+      !shouldApplyDeleteImpactResult({
+        requestedId: id,
+        currentId: pendingId.value,
+        seq,
+        latestSeq: deleteImpactRequestSeq,
+        dialogVisible: deleteVisible.value
+      })
+    ) {
+      return
+    }
+    deleteImpact.value = result
   } catch (e) {
-    // 算不出影响面就别让人往下点
-    deleteVisible.value = false
+    if (
+      shouldApplyDeleteImpactResult({
+        requestedId: id,
+        currentId: pendingId.value,
+        seq,
+        latestSeq: deleteImpactRequestSeq,
+        dialogVisible: deleteVisible.value
+      })
+    ) {
+      deleteVisible.value = false
+    }
     throw e
   } finally {
-    deleteImpactLoading.value = false
+    if (seq === deleteImpactRequestSeq) {
+      deleteImpactLoading.value = false
+    }
   }
 }
 
 async function onDeleteConfirm(password: string) {
-  if (pendingId.value == null) {
+  if (
+    pendingId.value == null ||
+    !deleteImpactMatchesPending(deleteImpact.value, pendingId.value)
+  ) {
     return
   }
   deleting.value = true

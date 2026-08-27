@@ -37,10 +37,24 @@ function logoutIfNeeded(url) {
 }
 
 /*
+ * 默认超时。绝大多数接口是一次查库，10 秒绰绰有余。
+ * 但 AI 问答要先检索知识库再等大模型生成，10 秒经常不够——超时的时候服务端多半已经
+ * 成功、答案也写进库了，用户却看到失败还被扣掉一次次数。这类接口需要单独放宽，
+ * 所以这里允许按次覆盖，而不是把默认值整体调大（调大会让普通接口的卡顿被拖长）。
+ */
+const DEFAULT_TIMEOUT = 10000
+
+function resolveTimeout(options) {
+  const custom = options && options.timeout
+  return typeof custom === 'number' && custom > 0 ? custom : DEFAULT_TIMEOUT
+}
+
+/*
  * 核心请求函数
  * 参数 url    接口路径（不含 baseUrl 前缀）
  * 参数 method HTTP 方法，默认 GET
  * 参数 data   请求体或查询参数对象
+ * 参数 options { silent, timeout }
  */
 const request = (url, method = 'GET', data = {}, options = {}) => {
   const silent = options.silent === true
@@ -51,7 +65,7 @@ const request = (url, method = 'GET', data = {}, options = {}) => {
       url: resolveBaseUrl() + url,
       method,
       data,
-      timeout: 10000,
+      timeout: resolveTimeout(options),
       header: {
         'Content-Type': 'application/json',
         'Authorization': token ? ('Bearer ' + token) : ''
@@ -145,5 +159,7 @@ module.exports = {
   // 供单测校验：不在模块顶层缓存 getApp()
   _getRuntimeApp: getRuntimeApp,
   _resolveBaseUrl: resolveBaseUrl,
-  _resolveToken: resolveToken
+  _resolveToken: resolveToken,
+  _resolveTimeout: resolveTimeout,
+  DEFAULT_TIMEOUT
 }

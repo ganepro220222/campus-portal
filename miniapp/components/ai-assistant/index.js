@@ -5,7 +5,8 @@ const {
   sendQuestion,
   quotaSubtitle,
   applyQuotaFromMessage,
-  resolveErrorAnswer
+  resolveErrorAnswer,
+  exhaustedQuota
 } = require('../../utils/aiChat')
 const { loadMiniappConfig, DEFAULT_MINIAPP_CONFIG } = require('../../utils/miniappConfig')
 const { isOnTabBarPage } = require('../../utils/tabRoutes')
@@ -137,7 +138,7 @@ Component({
         const list = this.data.messages.slice()
         list[idx] = { role: 'ai', text: resolveErrorAnswer(e, shown) }
         if (e && e.code === 429) {
-          this._setQuota({ needLogin: false, dailyLimit: 20, used: 20, remaining: 0 })
+          this._setQuota(exhaustedQuota(this.data.quota))
         }
         this.setData({ messages: list, scrollTo: 'm' + idx, loading: false })
       }

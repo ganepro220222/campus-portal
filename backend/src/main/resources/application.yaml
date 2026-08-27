@@ -36,14 +36,19 @@ shuyuan:
     wx-login-per-minute: 20
     admin-login-per-minute: 10
     enroll-per-minute: 5
-    ai-per-day: 20
+    # 小程序 AI 问答：每位学生每自然日。人数多少不改变个人体验（这是每人上限，不是共享池），
+    # 20 次相当于一天完整用三轮，够用；数值同时写在交付与测试文档里，调整需一并更新。
+    ai-per-day: ${AI_PER_DAY:20}
     wxacode-per-minute: 30
   ai:
     provider: ${AI_PROVIDER:fallback}
     api-key: ${AI_API_KEY:}
     base-url: ${AI_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
     model: ${AI_MODEL:glm-4-flash}
-    daily-limit: 20
+    # 后台 AI 文案辅助：每位管理员每自然日。润色/扩写/摘要/标题/英译共用这一个计数，
+    # 而一篇动态的编辑器里就挂了标题、摘要、正文三处入口——按 20 算一天只够写四篇稿子。
+    # 管理员总共不到十个，用的又是免费档模型，这里卡紧没有任何控费价值。
+    daily-limit: ${AI_DAILY_LIMIT:60}
     max-chunks: 5
   subscribe:
     enroll-success-template-id: ${WX_TMPL_ENROLL_SUCCESS:}

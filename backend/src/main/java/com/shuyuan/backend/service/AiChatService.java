@@ -45,7 +45,7 @@ public class AiChatService {
             m.put("remaining", 0);
             return m;
         }
-        int used = rateLimitService.getUserCalendarDayUsage("ai", memberId);
+        int used = rateLimitService.getUserCalendarDayUsage(RateLimitService.SCENE_AI, memberId);
         m.put("needLogin", false);
         m.put("used", used);
         m.put("remaining", Math.max(0, dailyLimit - used));

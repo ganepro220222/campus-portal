@@ -12,6 +12,9 @@
       >
         {{ labels[action] }}
       </el-button>
+      <span v-if="quotaText" class="ai-quota" :class="{ 'is-exhausted': remainingToday === 0 }">
+        {{ quotaText }}
+      </span>
     </div>
 
     <el-dialog
@@ -88,6 +91,17 @@ const usedFallback = ref(false)
 const canRun = computed(() => (props.sourceText || '').trim().length >= props.minLength)
 const dialogTitle = computed(() => dialogTitles[currentAction.value])
 
+/**
+ * 剩余次数：只有真正调用过一次才知道，所以先不显示，拿到结果或撞上限后再常驻。
+ * 不为它单开一个接口——编辑用一次刷新一次已经够用。
+ */
+const remainingToday = ref<number | null>(null)
+
+const quotaText = computed(() => {
+  if (remainingToday.value === null) return ''
+  return remainingToday.value > 0 ? `今日剩余 ${remainingToday.value} 次` : '今日次数已用完'
+})
+
 async function run(action: AiPolishAction) {
   const content = (props.sourceText || '').trim()
   if (content.length < props.minLength) {
@@ -100,7 +114,16 @@ async function run(action: AiPolishAction) {
     const res = await polishContent(action, content)
     resultText.value = res.content || ''
     usedFallback.value = !!res.fallback
+    if (typeof res.remainingToday === 'number') {
+      remainingToday.value = res.remainingToday
+    }
     dialogVisible.value = true
+  } catch (e) {
+    // 提示已由 request 拦截器统一弹出，这里只负责把余额同步成 0，
+    // 顺便兜住这个 rejection——不接的话会变成一条 unhandled rejection
+    if ((e as { code?: number } | null)?.code === 429) {
+      remainingToday.value = 0
+    }
   } finally {
     loading.value = false
   }
@@ -131,6 +154,19 @@ function onAdopt() {
   font-size: 12px;
   color: var(--el-color-primary);
   font-weight: 600;
+}
+
+/* 余额是提示不是操作，压在按钮右侧、弱化处理；用完才提到警示色 */
+.ai-quota {
+  margin-left: 2px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-muted);
+
+  &.is-exhausted {
+    color: var(--el-color-warning);
+    font-weight: 600;
+  }
 }
 
 .ai-fallback-tip {

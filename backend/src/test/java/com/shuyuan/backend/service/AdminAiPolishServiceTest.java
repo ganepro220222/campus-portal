@@ -1,10 +1,11 @@
 package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.dto.AiPolishRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -27,9 +28,51 @@ class AdminAiPolishServiceTest {
     private AiCopyAssistFallbackService fallbackService;
     @Mock
     private ContentSafetyService contentSafetyService;
+    @Mock
+    private RateLimitService rateLimitService;
 
-    @InjectMocks
+    private ShuyuanProperties properties;
     private AdminAiPolishService adminAiPolishService;
+
+    @BeforeEach
+    void setUp() {
+        // 用真的 ShuyuanProperties 而不是 mock：额度是个具体数字，测试里也该看得见
+        properties = new ShuyuanProperties();
+        properties.getAi().setDailyLimit(60);
+        adminAiPolishService = new AdminAiPolishService(
+                adminPermissionService, zhipuAiService, fallbackService,
+                contentSafetyService, rateLimitService, properties);
+    }
+
+    /** 撞到上限才第一次知道有上限，是最糟的交互；所以每次结果都要把余额带回去 */
+    @Test
+    void polish_returnsRemainingQuotaWithResult() {
+        AiPolishRequest req = request("书院举办文化讲座", "title");
+        when(adminPermissionService.requireAdminId()).thenReturn(7L);
+        when(contentSafetyService.checkText(any())).thenReturn(true);
+        when(zhipuAiService.canUse()).thenReturn(true);
+        when(zhipuAiService.chat(any(), any())).thenReturn("三个标题建议");
+        when(rateLimitService.getUserCalendarDayUsage(RateLimitService.SCENE_AI_POLISH, 7L))
+                .thenReturn(4);
+
+        var vo = adminAiPolishService.polish(req);
+
+        assertEquals(60, vo.get("dailyLimit"));
+        assertEquals(56, vo.get("remainingToday"));
+    }
+
+    @Test
+    void polish_remainingNeverGoesNegative() {
+        AiPolishRequest req = request("正文", "polish");
+        when(adminPermissionService.requireAdminId()).thenReturn(7L);
+        when(contentSafetyService.checkText(any())).thenReturn(true);
+        when(zhipuAiService.canUse()).thenReturn(false);
+        when(fallbackService.transform(any(), any())).thenReturn("润色结果");
+        when(rateLimitService.getUserCalendarDayUsage(RateLimitService.SCENE_AI_POLISH, 7L))
+                .thenReturn(99);
+
+        assertEquals(0, adminAiPolishService.polish(req).get("remainingToday"));
+    }
 
     @Test
     void polish_usesZhipuWhenConfigured() {

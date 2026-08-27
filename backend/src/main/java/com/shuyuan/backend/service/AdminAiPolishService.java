@@ -1,11 +1,11 @@
 package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.dto.AiPolishRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -33,10 +33,12 @@ public class AdminAiPolishService {
     private final ZhipuAiService zhipuAiService;
     private final AiCopyAssistFallbackService fallbackService;
     private final ContentSafetyService contentSafetyService;
+    private final RateLimitService rateLimitService;
+    private final ShuyuanProperties properties;
 
     public Map<String, Object> polish(AiPolishRequest req) {
         adminPermissionService.require("news:write");
-        adminPermissionService.requireAdminId();
+        Long adminId = adminPermissionService.requireAdminId();
 
         String action = normalizeAction(req.getAction());
         String content = req.getContent() == null ? "" : req.getContent().trim();
@@ -64,7 +66,23 @@ public class AdminAiPolishService {
         vo.put("action", action);
         vo.put("content", result);
         vo.put("fallback", fallback);
+        vo.putAll(quotaFields(adminId));
         return vo;
+    }
+
+    /**
+     * 把剩余额度随结果一起带回去，让工具条能常驻显示「今日剩余 N 次」。
+     *
+     * <p>不给它单开一个 quota 接口：编辑用一次就刷新一次，够用了；而撞到上限才第一次
+     * 知道有上限，是最糟的一种交互。计数在拦截器里已经扣过，所以这里读到的用量含本次。
+     */
+    private Map<String, Object> quotaFields(Long adminId) {
+        int dailyLimit = properties.getAi().getDailyLimit();
+        int used = rateLimitService.getUserCalendarDayUsage(RateLimitService.SCENE_AI_POLISH, adminId);
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("dailyLimit", dailyLimit);
+        fields.put("remainingToday", Math.max(0, dailyLimit - used));
+        return fields;
     }
 
     private String normalizeAction(String action) {

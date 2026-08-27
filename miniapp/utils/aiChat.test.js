@@ -27,4 +27,39 @@ assert.strictEqual(ui[0].text, '你好')
 assert.strictEqual(ui[1].role, 'ai')
 assert.strictEqual(ui[1].text, '您好，我是书院助手。')
 
+// ---------- 超时：服务端多半已经答完并存好了 ----------
+const { resolveErrorAnswer, isTimeoutError, exhaustedQuota, ASK_TIMEOUT } = require('./aiChat')
+const { _resolveTimeout, DEFAULT_TIMEOUT } = require('./request')
+
+assert.ok(isTimeoutError({ errMsg: 'request:fail timeout' }))
+assert.ok(isTimeoutError({ errMsg: 'request:fail TIMEOUT' }))
+assert.ok(!isTimeoutError({ errMsg: 'request:fail net::ERR_CONNECTION_REFUSED' }))
+assert.ok(!isTimeoutError({ code: 429 }))
+assert.ok(!isTimeoutError(null))
+
+// 超时不能再让用户去「确认登录、录入知识库」——那和真实原因南辕北辙
+const timeoutAnswer = resolveErrorAnswer({ errMsg: 'request:fail timeout' })
+assert.ok(timeoutAnswer.includes('重新进入本次会话'), timeoutAnswer)
+assert.ok(!timeoutAnswer.includes('知识库'), timeoutAnswer)
+
+// 有 body.code 的业务错误优先按业务处理，不能被超时分支抢走
+assert.strictEqual(resolveErrorAnswer({ code: 429, message: '今日问答次数已用完，请明天再来' }),
+  '今日问答次数已用完，请明天再来')
+assert.strictEqual(resolveErrorAnswer({ code: 401 }), '请先登录后再使用书院助手。')
+assert.ok(resolveErrorAnswer({}).includes('知识库'))
+
+// AI 提问必须比默认超时宽：10 秒不够走完「检索 + 大模型生成」
+assert.ok(ASK_TIMEOUT > DEFAULT_TIMEOUT, `ASK_TIMEOUT=${ASK_TIMEOUT} 必须大于默认 ${DEFAULT_TIMEOUT}`)
+assert.strictEqual(_resolveTimeout({ timeout: ASK_TIMEOUT }), ASK_TIMEOUT)
+assert.strictEqual(_resolveTimeout({}), DEFAULT_TIMEOUT)
+assert.strictEqual(_resolveTimeout(undefined), DEFAULT_TIMEOUT)
+assert.strictEqual(_resolveTimeout({ timeout: 0 }), DEFAULT_TIMEOUT)
+assert.strictEqual(_resolveTimeout({ timeout: '30000' }), DEFAULT_TIMEOUT)
+
+// ---------- 429 置零时沿用服务端下发的上限，不各写一遍 20 ----------
+assert.deepStrictEqual(exhaustedQuota({ dailyLimit: 60, remaining: 3 }),
+  { needLogin: false, dailyLimit: 60, used: 60, remaining: 0 })
+assert.strictEqual(exhaustedQuota(null).dailyLimit, 20)
+assert.strictEqual(exhaustedQuota({}).remaining, 0)
+
 console.log('[aiChat.test] PASS')

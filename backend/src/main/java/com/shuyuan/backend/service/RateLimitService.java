@@ -103,6 +103,14 @@ public class RateLimitService {
         redis.execute(REFUND_SCRIPT, List.of(redisKey));
     }
 
+    /** 退还该用户今天在某场景下的一次占用（自然日键，与 checkUserCalendarDay 同一把键） */
+    public void refundUserCalendarDay(String scene, Long userId) {
+        if (userId == null) {
+            return;
+        }
+        refundKey(PREFIX + scene + ":" + calendarDayKeySuffix(userId, LocalDate.now()));
+    }
+
     String check(String scene, String keySuffix, int limit, Duration window) {
         if (!properties.getRateLimit().isEnabled() || limit <= 0) {
             return null;

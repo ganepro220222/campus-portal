@@ -84,6 +84,11 @@ public class ShuyuanProperties {
         private String model = "glm-4.5-flash";
         private int dailyLimit = 20;
         private int maxChunks = 5;
+        /**
+         * 判定「这次检索到的资料够不够回答」的加权分下限，只影响要不要扣用户次数，
+         * 不影响是否回答与回答内容。取值依据见 BuiltinKnowledgeRetrievalTest 导出的分数分布。
+         */
+        private int minRelevanceScore = 4;
     }
 
     /** 微信订阅消息模板（生产环境在公众平台申请后填入） */

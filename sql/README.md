@@ -13,7 +13,37 @@ mysql -uroot -p shuyuan < sql/init.sql
 mysql -uroot -p shuyuan < sql/seed-dev.sql
 ```
 
-**全新库无需再跑 `patch-*.sql`**，除非下文标注为「仅旧库升级」。
+3. `patch-builtin-knowledge.sql` — **内置知识库（正式内容，任何环境都要跑）**
+
+```bash
+mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
+```
+
+**全新库无需再跑其余 `patch-*.sql`**，除非下文标注为「仅旧库升级」。
+
+### `patch-builtin-knowledge.sql`（所有环境都要执行）
+
+写入 8 篇「云端书院小程序使用指南」——登录、报名、积分、课程、书院助手等自身功能说明。
+
+**为什么必须跑：** 「书院助手」是先检索知识库、再据此作答。知识库空着的时候它检索不到
+任何片段，只会反复回一句「没有找到相关资料」，而学生每问一次仍然要消耗当天 20 次额度中的
+一次——助手看起来什么都不会，次数还在掉。校方与学院的文化资料我们无从代劳，但「这个小程序
+怎么用」是我们自己的交付物，本来就该随系统一起给出。
+
+| 特性 | 说明 |
+|------|------|
+| 可重复执行 | 按标题判重，已存在则跳过，不会插出重复文档 |
+| 后台可管 | `source_type=manual`，与手工录入的资料同一套增删改查，可改可停用可删 |
+| 不是演示数据 | `file_url` 前缀为 `builtin://`；`seed-dev-cleanup.sql` **不会**清除它 |
+| 由脚本生成 | 源文件在 `sql/knowledge/*.md`，改完执行 `npm run build:builtin-knowledge` 重新生成 |
+
+> **不要手改这个 .sql**：分段规则必须与后端 `TextChunker` 一致（500 字一段、50 字重叠）。
+> 手写对不齐不会报错，但后台里编辑一次这篇文档，分段就会和内置的不一样，
+> 同一份资料在检索时前后表现不一致，且没有任何提示。
+> `npm run check:builtin-knowledge` 会拦住「源文件改了却没重新生成」。
+
+> **执行顺序**：dev 环境请在 `seed-dev.sql` **之后**执行本脚本。`seed-dev.sql` 用的是显式
+> id（`knowledge_doc` 1、2），先跑本脚本会占掉这两个 id，导致演示数据被 `INSERT IGNORE` 静默跳过。
 
 ---
 
@@ -218,4 +248,6 @@ sudo systemctl restart shuyuan-backend
 |------|------|
 | `init.sql` | 建表 + 初始角色 |
 | `seed-dev.sql` | 开发演示数据 |
+| `knowledge/*.md` | 内置知识库源文件（改这里，不要改生成的 .sql） |
+| `patch-builtin-knowledge.sql` | 内置知识库（**正式内容**，由上面的源文件生成，所有环境都要跑） |
 | `patch-*.sql` | 旧库增量升级或数据修正 |

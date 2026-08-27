@@ -51,6 +51,10 @@ shuyuan:
     # 就算两个人各自打满 100 次，一天也就两百次，成本仍然可以忽略。
     daily-limit: ${AI_DAILY_LIMIT:100}
     max-chunks: 5
+    # 「这次检索到的资料够不够回答」的加权分下限。只决定要不要扣用户当天的问答次数，
+    # 不决定是否回答——所以两个方向的误判都是温和的：判高了是少扣一次，判低了是维持现状。
+    # 数值取自 BuiltinKnowledgeRetrievalTest 导出的实测分布（无关问题实测最高 3 分）。
+    min-relevance-score: ${AI_MIN_RELEVANCE_SCORE:4}
   subscribe:
     enroll-success-template-id: ${WX_TMPL_ENROLL_SUCCESS:}
     enroll-approved-template-id: ${WX_TMPL_ENROLL_APPROVED:}

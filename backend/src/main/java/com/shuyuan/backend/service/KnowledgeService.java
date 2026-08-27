@@ -238,6 +238,72 @@ public class KnowledgeService {
                 .toList();
     }
 
+    /**
+     * 本次检索是否真的捞到了能用来回答的资料。
+     *
+     * <p>为什么不能直接用 {@code chunks.isEmpty()} 判断：打分是 2–4 字字符 n-gram 的重合数，
+     * 只要有一个 gram 重合分数就大于 0。实测「比利时的首都在哪」「明天天气怎么样」这类
+     * 完全无关的问题也能命中 5 段（靠的是「怎么」「么样」这种到处都有的短词），
+     * 所以 isEmpty 几乎永远不成立，据此做判断等于没做。
+     *
+     * <p>这里换一套只用于「够不够格」判断的加权分：命中越长的 gram 权重越高
+     * （4 字的「报名活动」显然比 2 字的「怎么」有说服力，权重 3 : 1）。
+     * <b>不动 retrieve 的排序与返回</b>——回答质量不受影响，这里只决定要不要走短路。
+     *
+     * @param minScore 加权分下限，低于它视为没有实质资料
+     */
+    public boolean hasSubstantialMatch(String question, List<KnowledgeChunk> chunks, int minScore) {
+        if (chunks == null || chunks.isEmpty() || question == null || question.isBlank()) {
+            return false;
+        }
+        Set<String> queryTokens = tokenize(question);
+        if (queryTokens.isEmpty()) {
+            return false;
+        }
+        for (KnowledgeChunk chunk : chunks) {
+            if (weightedScore(chunk, queryTokens) >= minScore) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 疑问词与功能词：出现在任何一句中文提问里，和问的是什么毫无关系。
+     *
+     * <p>实测「我心情不好怎么办」能拿到 5 分、「附近有什么好吃的」4 分，靠的全是
+     * 「怎么办」「有什么」这种词——分数比真问题「手机上怎么把资料保存下来」（3 分）还高，
+     * 光调阈值永远分不开。计「够不够格」时把这些词剔掉，剩下的才是话题信号。
+     *
+     * <p>只用于 {@link #hasSubstantialMatch}，不影响 {@link #retrieve} 的排序与返回。
+     */
+    private static final Set<String> QUESTION_STOP_GRAMS = Set.of(
+            "怎么", "怎样", "么样", "怎么样", "怎么办", "么办", "如何",
+            "什么", "为什", "什么的", "为什么", "是什", "什么时",
+            "哪里", "在哪", "哪儿", "哪个", "在哪里",
+            "可以", "能不", "不能", "能不能", "是不", "不是", "是不是",
+            "有没", "没有", "有没有", "多少", "几个", "一下", "一点",
+            "我想", "帮我", "请问", "麻烦", "谢谢",
+            "这个", "那个", "这些", "那些", "怎么才", "才能");
+
+    /** 命中 gram 越长权重越高：2 字记 1 分、3 字记 2 分、4 字记 3 分；疑问词不计分 */
+    int weightedScore(KnowledgeChunk chunk, Set<String> queryTokens) {
+        Set<String> hay = tokenize(chunk.getChunkText());
+        if (chunk.getKeywords() != null) {
+            hay.addAll(tokenize(chunk.getKeywords()));
+        }
+        int score = 0;
+        for (String token : queryTokens) {
+            if (QUESTION_STOP_GRAMS.contains(token)) {
+                continue;
+            }
+            if (hay.contains(token)) {
+                score += token.length() - 1;
+            }
+        }
+        return score;
+    }
+
     private int clampTopK(int topK) {
         return topK <= 0 ? DEFAULT_RETRIEVE_TOP_K : Math.min(topK, MAX_RETRIEVE_TOP_K);
     }

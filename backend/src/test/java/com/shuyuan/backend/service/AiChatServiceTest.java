@@ -72,6 +72,8 @@ class AiChatServiceTest {
         chunk.setDocId(2L);
         chunk.setChunkText("阳明心学强调知行合一。");
         when(knowledgeService.retrieve("阳明文化", 5)).thenReturn(List.of(chunk));
+        // 检索到了对得上的资料，这一次应正常计费
+        when(knowledgeService.hasSubstantialMatch(eq("阳明文化"), anyList(), anyInt())).thenReturn(true);
         when(aiClientService.chat(any(), any())).thenAnswer(invocation -> {
             assertFalse(TransactionSynchronizationManager.isActualTransactionActive(),
                     "外部 AI 调用不应处于数据库事务中");
@@ -93,6 +95,88 @@ class AiChatServiceTest {
         assertEquals(17, result.get("remainingToday"));
         verify(aiChatPersistenceService).saveChatTurn(eq(9L), eq("阳明文化"), anyString(), anyList(), eq("pass"));
         verify(aiMessageMapper, never()).insert(any(AiMessage.class));
+        verify(rateLimitService, never()).refundUserCalendarDay(anyString(), anyLong());
+        com.shuyuan.backend.common.context.MemberContext.clear();
+    }
+
+    // ---------- 知识库答不上来时不该扣用户次数 ----------
+
+    private AiSession openSession(long sessionId, long memberId) {
+        com.shuyuan.backend.common.context.MemberContext.setMemberId(memberId);
+        AiSession session = new AiSession();
+        session.setId(sessionId);
+        session.setMemberId(memberId);
+        when(aiSessionMapper.selectById(sessionId)).thenReturn(session);
+        when(contentSafetyService.checkText(any())).thenReturn(true);
+        when(aiChatPersistenceService.saveChatTurn(anyLong(), anyString(), anyString(), anyList(), anyString()))
+                .thenAnswer(inv -> {
+                    Map<String, Object> vo = new HashMap<>();
+                    vo.put("content", inv.getArgument(2));
+                    return vo;
+                });
+        return session;
+    }
+
+    private Map<String, Object> ask(long sessionId, String question) {
+        AiChatRequest req = new AiChatRequest();
+        req.setQuestion(question);
+        return aiChatService.chat(sessionId, req);
+    }
+
+    /**
+     * 一段资料都没检索到时不要再问模型。
+     *
+     * <p>它拿到的上下文只有「（无匹配资料）」，只会回一句「没有找到相关资料」——
+     * 同样的话我们自己说得更快、更准，还省一次调用。
+     */
+    @Test
+    void 检索为空时不调用模型且不扣次数() {
+        openSession(11L, 5L);
+        when(knowledgeService.retrieve(anyString(), anyInt())).thenReturn(List.of());
+        when(rateLimitService.getUserCalendarDayUsage("ai", 5L)).thenReturn(0);
+
+        Map<String, Object> vo = ask(11L, "比利时的首都在哪");
+
+        verify(aiClientService, never()).chat(anyList(), anyString());
+        verify(rateLimitService).refundUserCalendarDay(RateLimitService.SCENE_AI, 5L);
+        assertEquals(AiChatService.NO_MATERIAL_ANSWER, vo.get("content"));
+        com.shuyuan.backend.common.context.MemberContext.clear();
+    }
+
+    /**
+     * 检索到了片段、但都对不上题：照常交给模型作答（该由模型说的话仍由模型说），
+     * 但这一次不计入用户的每日次数——他没得到有用的东西。
+     */
+    @Test
+    void 检索到片段但不算实质命中时照常作答却不扣次数() {
+        openSession(12L, 6L);
+        KnowledgeChunk noise = new KnowledgeChunk();
+        noise.setChunkText("怎么报名活动……");
+        when(knowledgeService.retrieve(anyString(), anyInt())).thenReturn(List.of(noise));
+        when(knowledgeService.hasSubstantialMatch(anyString(), anyList(), anyInt())).thenReturn(false);
+        when(aiClientService.chat(anyList(), anyString())).thenReturn("很抱歉，我没有找到相关信息。");
+        when(rateLimitService.getUserCalendarDayUsage("ai", 6L)).thenReturn(0);
+
+        Map<String, Object> vo = ask(12L, "我心情不好怎么办");
+
+        verify(aiClientService).chat(anyList(), anyString());
+        verify(rateLimitService).refundUserCalendarDay(RateLimitService.SCENE_AI, 6L);
+        assertEquals("很抱歉，我没有找到相关信息。", vo.get("content"));
+        com.shuyuan.backend.common.context.MemberContext.clear();
+    }
+
+    /** 退还必须发生在读余额之前，否则前端拿到的是一个马上又会变回来的数 */
+    @Test
+    void 余额在退还之后再读() {
+        openSession(13L, 7L);
+        when(knowledgeService.retrieve(anyString(), anyInt())).thenReturn(List.of());
+        when(rateLimitService.getUserCalendarDayUsage("ai", 7L)).thenReturn(0);
+
+        ask(13L, "今天星期几");
+
+        var order = inOrder(rateLimitService);
+        order.verify(rateLimitService).refundUserCalendarDay(RateLimitService.SCENE_AI, 7L);
+        order.verify(rateLimitService).getUserCalendarDayUsage("ai", 7L);
         com.shuyuan.backend.common.context.MemberContext.clear();
     }
 

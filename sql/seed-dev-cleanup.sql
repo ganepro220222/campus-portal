@@ -74,10 +74,16 @@ DELETE FROM `hall_section`     WHERE `hall_id` BETWEEN 1 AND 11;
 DELETE FROM `hall_media`       WHERE `hall_id` BETWEEN 1 AND 11;
 DELETE FROM `craft_image`      WHERE `craft_id` BETWEEN 1 AND 3;
 DELETE FROM `craft_contact`    WHERE `craft_id` BETWEEN 1 AND 3;
-DELETE FROM `knowledge_chunk`  WHERE `doc_id` BETWEEN 1 AND 2;
+-- 知识库按「来源」删，不按 id 区间：内置知识库（patch-builtin-knowledge.sql，file_url 为
+-- builtin://）用的是自增 id，在没跑过 seed-dev 的库上正好会落到 1、2，
+-- 按区间删会把随系统交付的使用指南一起清掉——那不是演示数据。
+DELETE FROM `knowledge_chunk`  WHERE `doc_id` IN (
+  SELECT `id` FROM `knowledge_doc`
+   WHERE `file_url` IN ('manual://平台功能说明', 'manual://云端书院简介'));
 
 -- 4) 内容主表
-DELETE FROM `knowledge_doc`    WHERE `id` BETWEEN 1 AND 2;
+DELETE FROM `knowledge_doc`
+      WHERE `file_url` IN ('manual://平台功能说明', 'manual://云端书院简介');
 DELETE FROM `resource`         WHERE `id` BETWEEN 1 AND 4;
 DELETE FROM `activity`         WHERE `id` BETWEEN 1 AND 4;
 DELETE FROM `course`           WHERE `id` BETWEEN 1 AND 5;

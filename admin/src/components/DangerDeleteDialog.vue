@@ -21,9 +21,9 @@
         type="error"
         :closable="false"
         show-icon
-        title="暂时不能删除"
+        :title="blockedTitle || '暂时不能删除'"
       >
-        <span>下面这些内容还指着它。请先按提示处理，处理完再回来删除。</span>
+        <span>{{ blockedDescription || '下面这些内容还指着它。请先按提示处理，处理完再回来删除。' }}</span>
       </el-alert>
 
       <!-- 高危：连带删除，明示清单 -->
@@ -121,6 +121,10 @@ const props = withDefaults(
     confirmText?: string
     loadingImpact?: boolean
     submitting?: boolean
+    /** BLOCKED 时弹窗顶部标题，默认「暂时不能删除」 */
+    blockedTitle?: string
+    /** BLOCKED 时弹窗顶部说明，默认可操作阻断文案 */
+    blockedDescription?: string
   }>(),
   {
     title: '彻底删除',
@@ -132,7 +136,9 @@ const props = withDefaults(
     canProceed: true,
     confirmText: '彻底删除',
     loadingImpact: false,
-    submitting: false
+    submitting: false,
+    blockedTitle: '',
+    blockedDescription: ''
   }
 )
 

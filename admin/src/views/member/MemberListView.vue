@@ -139,6 +139,8 @@
       :name="deleteImpact?.name ?? pendingName"
       :risk="deleteRisk"
       :references="deleteRefs"
+      :blocked-title="deleteGuidance?.blockedTitle"
+      :blocked-description="deleteGuidance?.blockedDescription"
       :requires-password="deleteImpact?.requiresPassword ?? false"
       :can-proceed="deleteImpact?.canDelete ?? false"
       :loading-impact="deleteImpactLoading"
@@ -156,6 +158,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import DangerDeleteDialog, { type DangerReference } from '@/components/DangerDeleteDialog.vue'
 import FieldHint from '@/components/FieldHint.vue'
+import { memberDeleteGuidance } from '@/utils/memberDeleteGuidance'
 import {
   downloadMemberImportErrors,
   downloadMemberImportTemplate,
@@ -203,19 +206,23 @@ const deleteImpact = ref<MemberDeleteImpact | null>(null)
 const pendingId = ref<number | null>(null)
 const pendingName = ref('')
 
-/** 账号只有两档：干净的能真删（LOW），留下记录的删不了（BLOCKED，去清退） */
-const deleteRisk = computed<'LOW' | 'BLOCKED'>(() =>
-  deleteImpact.value?.canDelete === false ? 'BLOCKED' : 'LOW'
-)
+/** 账号只有两档：干净的能真删（LOW），留下记录的删不了（BLOCKED） */
+const deleteGuidance = computed(() => memberDeleteGuidance(deleteImpact.value))
 
-const deleteRefs = computed<DangerReference[]>(() =>
-  (deleteImpact.value?.references ?? []).map((r) => ({
+const deleteRisk = computed<'LOW' | 'BLOCKED'>(() => deleteGuidance.value?.risk ?? 'LOW')
+
+const deleteRefs = computed<DangerReference[]>(() => {
+  const guidance = deleteGuidance.value
+  if (!guidance?.referenceHint) {
+    return []
+  }
+  return (deleteImpact.value?.references ?? []).map((r) => ({
     label: r.label,
     count: r.count,
     blocking: true,
-    hint: '这些记录要留着支撑历史统计。请改用「清退」——姓名、学号、手机号会被抹掉且无法再登录。'
+    hint: guidance.referenceHint
   }))
-)
+})
 
 async function loadData() {
   loading.value = true

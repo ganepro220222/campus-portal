@@ -19,6 +19,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Spring bean constructor cycle check
+        run: npm run check:spring-bean-cycles
+
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -107,6 +115,15 @@ jobs:
 
       - name: Release gate regression test
         run: npm run test:release-gate
+
+      - name: Member delete guidance check
+        run: npm run check:member-delete-guidance
+
+      - name: Member delete guidance tests
+        run: npm run test:member-delete-guidance
+
+      - name: Spring bean cycle gate test
+        run: npm run test:spring-bean-cycles
 
   admin:
     name: Admin

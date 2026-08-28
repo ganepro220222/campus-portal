@@ -49,6 +49,17 @@ function isTimeoutError(err) {
   return !!(err && typeof err.errMsg === 'string' && /timeout/i.test(err.errMsg))
 }
 
+/** wx.request fail 且非业务 code：断网、DNS、连接拒绝等（timeout 单独处理） */
+function isNetworkError(err) {
+  return !!(
+    err &&
+    err.code == null &&
+    typeof err.errMsg === 'string' &&
+    /^request:fail/i.test(err.errMsg) &&
+    !/timeout/i.test(err.errMsg)
+  )
+}
+
 async function fetchSessions(options = {}) {
   const list = await get('/ai/chat/sessions', {}, options)
   return Array.isArray(list) ? list : []
@@ -124,7 +135,13 @@ function resolveErrorAnswer(err, question) {
   if (isTimeoutError(err)) {
     return '回答用时较长，可能已经生成。请稍后退出并重新进入本次会话查看。'
   }
-  return '暂时无法回答，请确认已登录，或在管理后台录入知识库资料后重试。'
+  if (isNetworkError(err)) {
+    return '网络连接失败，请检查网络后重试。'
+  }
+  if (err && err.message) {
+    return err.message
+  }
+  return '服务暂时不可用，请稍后重试。'
 }
 
 module.exports = {
@@ -140,6 +157,7 @@ module.exports = {
   resolveErrorAnswer,
   exhaustedQuota,
   isTimeoutError,
+  isNetworkError,
   ASK_TIMEOUT,
   DEFAULT_DAILY_LIMIT
 }

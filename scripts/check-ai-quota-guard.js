@@ -81,6 +81,12 @@ if (!/sendQuestion[\s\S]{0,280}?timeout:\s*ASK_TIMEOUT/.test(aiChat)) {
 if (!/async function sendQuestion[\s\S]{0,220}?silent:\s*true/.test(aiChat)) {
   errs.push('sendQuestion 未设 silent:true，超时后通用 toast 会与 AI 页专用提示冲突')
 }
+if (!/function isNetworkError/.test(aiChat)) {
+  errs.push('aiChat.js 缺少 isNetworkError，silent 后断网无法给出专用提示')
+}
+if (!/isNetworkError\(err\)[\s\S]{0,120}?网络连接失败/.test(aiChat)) {
+  errs.push('resolveErrorAnswer 未对普通 request:fail 给出网络专用文案')
+}
 
 // ---------- 4) 按天额度的文案 ----------
 for (const scene of ['SCENE_AI', 'SCENE_AI_POLISH']) {

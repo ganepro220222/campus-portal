@@ -111,6 +111,9 @@ expectCaught('sendQuestion 去掉 silent', FILES[3],
     '{ timeout: ASK_TIMEOUT, silent: false }'
   ))
 
+expectCaught('去掉网络错误专用文案', FILES[3],
+  (s) => s.replace("'网络连接失败，请检查网络后重试。'", "'请确认已登录'"))
+
 expectCaught('问答页写死 dailyLimit', FILES[4],
   (s) => s.replace('exhaustedQuota(this.data.quota)',
     '{ needLogin: false, dailyLimit: 20, used: 20, remaining: 0 }'))

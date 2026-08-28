@@ -42,7 +42,7 @@ function isMustChangePasswordRequired() {
   return wx.getStorageSync(MUST_CHANGE_PWD_KEY) === true
 }
 
-const CHANGE_PASSWORD_PAGE = '/pages/change-password/index'
+const CHANGE_PASSWORD_PAGE = '/packageC/profile/change-password/index'
 let redirectingToChangePassword = false
 
 function redirectToChangePassword() {
@@ -50,7 +50,7 @@ function redirectToChangePassword() {
   if (typeof getCurrentPages === 'function') {
     const pages = getCurrentPages()
     const current = pages.length ? pages[pages.length - 1].route : ''
-    if (current === 'pages/change-password/index') return
+    if (current === 'packageC/profile/change-password/index') return
   }
   redirectingToChangePassword = true
   wx.reLaunch({

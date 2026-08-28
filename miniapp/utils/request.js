@@ -1,7 +1,6 @@
 // utils/request.js — 统一 HTTP 请求封装
 
 const { baseUrl: configBaseUrl } = require('../config/env')
-const { redirectToChangePassword, setMustChangePasswordFlag } = require('./auth')
 
 const PASSWORD_CHANGE_REQUIRED = 'MEMBER_PASSWORD_CHANGE_REQUIRED'
 
@@ -53,6 +52,7 @@ function resolveTimeout(options) {
 }
 
 function handlePasswordChangeRequired(body, silent) {
+  const { redirectToChangePassword, setMustChangePasswordFlag } = require('./auth')
   setMustChangePasswordFlag(true)
   if (!silent) {
     wx.showToast({ title: body.message || '请先修改初始密码', icon: 'none', duration: 2500 })

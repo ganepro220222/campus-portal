@@ -1,7 +1,6 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/change-password/index",
     "pages/news/index",
     "pages/hall/index",
     "pages/course/index",
@@ -41,6 +40,7 @@
         "college/webview",
         "profile/list",
         "profile/edit",
+        "profile/change-password",
         "message/index",
         "feedback/index",
         "about/index",

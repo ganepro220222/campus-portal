@@ -1,6 +1,6 @@
 // pages/change-password/index.js
-const { applyLoginData, getToken, clearMustChangePasswordFlag, setMustChangePasswordFlag } = require('../../utils/auth')
-const { post } = require('../../utils/request')
+const { applyLoginData, getToken, clearMustChangePasswordFlag } = require('../../../utils/auth')
+const { post } = require('../../../utils/request')
 
 Page({
   data: {

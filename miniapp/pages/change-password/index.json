@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "修改初始密码",
-  "navigationStyle": "custom",
-  "usingComponents": {
-    "icon": "/components/icon/index"
-  }
-}

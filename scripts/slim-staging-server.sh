@@ -63,8 +63,13 @@ prune_old_slim_runs() {
 }
 
 SLIM_ROOT="$(resolve_slim_root)"
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+# 秒级时间戳在 CI 连续两次执行时会撞车，追加 PID 保证每次 run 目录唯一
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 ARCHIVE="${SLIM_ROOT}/runs/${RUN_ID}"
+while [ -e "$ARCHIVE" ]; do
+  RUN_ID="${RUN_ID}-dup"
+  ARCHIVE="${SLIM_ROOT}/runs/${RUN_ID}"
+done
 mkdir -p "$ARCHIVE/admin" "$ARCHIVE/exhibits/win_and_tests"
 
 mv_if_exists() {

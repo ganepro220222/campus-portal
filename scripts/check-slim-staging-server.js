@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const sh = fs.readFileSync(path.join(ROOT, 'scripts/slim-staging-server.sh'), 'utf8')
 
-assert.match(sh, /runs\/\$\{RUN_ID\}/, 'must use versioned run directory')
+assert.match(sh, /RUN_ID=.*\$\$/, 'run id must include pid to avoid same-second collisions')
 assert.match(sh, /resolve_slim_root|SLIM_ARCHIVE 必须在仓库根内/, 'must validate archive path under repo root')
 assert.match(sh, /prune_old_slim_runs/, 'must prune old runs with explicit retention')
 assert.doesNotMatch(

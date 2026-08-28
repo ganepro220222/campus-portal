@@ -23,6 +23,7 @@
     <p class="text-muted">
       零星一两个人用「新增账号」，整批入学用「Excel 批量导入」——两条路建出来的账号完全一致。
       初始密码默认身份证后 6 位（无身份证则取学号后 6 位）。学生首次登录须修改初始密码；微信登录须绑定学号。
+      本人忘记密码时，用该行的「重置密码」生成一个临时密码转告即可，不必找技术人员。
     </p>
 
     <el-alert type="info" :closable="false" show-icon class="import-hint">
@@ -62,7 +63,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="170" />
-      <el-table-column label="操作" width="220" fixed="right" align="center">
+      <el-table-column label="操作" width="290" fixed="right" align="center">
         <template #default="{ row }">
           <!-- el-tag 不带 el-button 之间的默认间距，混排时「已清退」会贴死「删除」，
                统一用 flex 排一行，间距由容器给 -->
@@ -81,6 +82,12 @@
                 @click="onToggleStatus(row, 1)"
               >启用</el-button>
             </template>
+            <el-button
+              v-if="!row.anonymized"
+              link
+              type="primary"
+              @click="onResetPassword(row)"
+            >重置密码</el-button>
             <el-button
               v-if="!row.anonymized"
               link
@@ -172,6 +179,7 @@ import {
   deleteMember,
   fetchMemberDeleteImpact,
   fetchMembers,
+  resetMemberPassword,
   importMembers,
   updateMemberStatus,
   type MemberDeleteImpact,
@@ -301,6 +309,26 @@ async function onToggleStatus(row: MemberItem, status: number) {
   await updateMemberStatus(row.id, status)
   ElMessage.success(`${action}成功`)
   await loadData()
+}
+
+/**
+ * 重置密码。临时密码只在这一次响应里出现，服务端不再保存，所以必须让管理员当场记下。
+ * 用 alert 而不是 message：message 会自动消失，错过就再也拿不到，只能再重置一次。
+ */
+async function onResetPassword(row: MemberItem) {
+  await ElMessageBox.confirm(
+    `将为「${row.realName}（${row.studentNo}）」生成一个新的临时密码，` +
+      `其本人须在下次登录时自行修改；该账号在其他设备上的登录状态会立即失效。确定重置吗？`,
+    '重置密码',
+    { type: 'warning', confirmButtonText: '确定重置' }
+  )
+  const res = await resetMemberPassword(row.id)
+  await ElMessageBox.alert(
+    `请当面或电话告知本人，此密码仅显示这一次：\n\n${res.temporaryPassword}\n\n` +
+      `对应学号：${res.studentNo}。TA 登录后会被要求立即修改。`,
+    '临时密码已生成',
+    { type: 'warning', confirmButtonText: '我已记录' }
+  )
 }
 
 async function onAnonymize(row: MemberItem) {

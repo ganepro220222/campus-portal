@@ -24,5 +24,7 @@ export const FIELD_HINTS = {
   collegeName: '关联小程序卡片名，建议 8–16 字。',
   collegeDesc: '卡片简介，建议 30–60 字。',
   resourceName: '资源列表展示，建议 12–30 字。',
-  editorBody: '正文在详情页完整展示；列表仅显示标题。'
+  // 一个字段只挂一条提示：这里原来另有一条手写的 .form-tip 与之并列，
+  // 两条会被 el-form-item 的 flex 布局挤在同一行，读起来错位
+  editorBody: '正文支持图文排版，在详情页完整展示，列表仅显示标题；AI 润色、扩写的结果需确认采纳后才会写入。'
 } as const

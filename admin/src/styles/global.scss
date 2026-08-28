@@ -104,11 +104,24 @@ body,
   font-size: 13px;
 }
 
+/*
+ * 表单字段下方的说明文字。
+ *
+ * <p>必须独占一行：Element Plus 的 .el-form-item__content 是
+ * `display:flex; flex-wrap:wrap; align-items:center`，提示作为 flex item 默认会和
+ * 兄弟节点并排——同一个字段挂两条提示时，两句话会挤在一行里。
+ *
+ * <p>margin 也要写全，不能只写 margin-top：FieldHint 渲染的是 <p>，浏览器默认给它
+ * `margin: 1em 0`；只覆盖 margin-top 的话，<p> 还留着 1em 的下外边距，与同排的 <div>
+ * 外边距盒高度不同，在 align-items:center 下中线就错开了——实测差 6px，
+ * 表现为两句提示一高一低的错位。
+ */
 .form-tip {
+  flex: 0 0 100%;
   font-size: 12px;
   color: var(--brand-muted);
   line-height: 1.5;
-  margin-top: 4px;
+  margin: 4px 0 0;
 }
 
 /* Element Plus 细节微调 */

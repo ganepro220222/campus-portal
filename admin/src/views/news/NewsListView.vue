@@ -132,7 +132,6 @@
             placeholder="撰写动态正文，可插入图片与排版"
             @change="onContentChange"
           />
-          <div class="form-tip">正文支持图文排版；AI 润色/扩写结果需确认采纳后才会写入</div>
           <FieldHint :text="FIELD_HINTS.editorBody" />
         </el-form-item>
         <el-form-item label="置顶">

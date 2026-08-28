@@ -2,7 +2,10 @@ package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shuyuan.backend.dto.MemberCreateRequest;
+import com.shuyuan.backend.dto.MemberResetPasswordRequest;
+import com.shuyuan.backend.util.MemberPasswordPolicy;
 import com.shuyuan.backend.entity.Member;
 import com.shuyuan.backend.entity.MemberAccount;
 import com.shuyuan.backend.entity.MemberProfile;
@@ -23,10 +26,13 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -59,6 +65,12 @@ class AdminMemberServiceDeleteTest {
 
     @InjectMocks
     private AdminMemberService adminMemberService;
+
+    /** 重置密码走 LambdaUpdateWrapper，需要 MyBatis-Plus 的实体元数据缓存 */
+    @org.junit.jupiter.api.BeforeAll
+    static void initMybatisPlusEntityCache() {
+        UpdateWrapperAssertions.initEntityCache(Member.class, MemberAccount.class, MemberProfile.class);
+    }
 
     private Member existingMember(long id) {
         Member m = new Member();
@@ -169,6 +181,99 @@ class AdminMemberServiceDeleteTest {
         verify(memberPurgeMapper, never()).purgeMember(anyLong());
         verify(memberPurgeMapper, never()).purgeAccount(anyLong());
         verify(memberPurgeMapper, never()).purgeEventLog(anyLong());
+    }
+
+    // ---------- 重置密码 ----------
+
+    private MemberAccount accountOf(long memberId, String studentNo) {
+        MemberAccount account = new MemberAccount();
+        account.setId(memberId * 10);
+        account.setMemberId(memberId);
+        account.setStudentNo(studentNo);
+        when(memberAccountMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(account);
+        return account;
+    }
+
+    /**
+     * 学生忘记密码后，此前只能连数据库改 password_hash——后台没有入口，小程序也没有自助找回。
+     */
+    @Test
+    void 重置密码返回一次性明文并强制下次改密() {
+        Member m = existingMember(20L);
+        m.setTokenVersion(4);
+        accountOf(20L, "2024001");
+
+        Map<String, Object> vo = adminMemberService.resetPassword(20L, null);
+
+        String plain = (String) vo.get("temporaryPassword");
+        assertEquals(Boolean.TRUE, vo.get("generated"));
+        assertEquals("2024001", vo.get("studentNo"));
+        assertNotNull(plain);
+        // 生成的临时密码本身必须过得了师生密码策略，否则学生下次改密时无从对照
+        MemberPasswordPolicy.validate(plain);
+        // 电话口述用，剔除易混字符
+        assertFalse(plain.matches(".*[0O1lI].*"), "临时密码不应包含易混字符：" + plain);
+
+        ArgumentCaptor<LambdaUpdateWrapper<MemberAccount>> accountCap = UpdateWrapperAssertions.updateCaptor();
+        verify(memberAccountMapper).update(isNull(), accountCap.capture());
+        UpdateWrapperAssertions.assertSetsColumn(accountCap.getValue(), "must_change_password", 1);
+        UpdateWrapperAssertions.assertSetsNonNullColumn(accountCap.getValue(), "password_hash");
+
+        // 旧登录态必须立即失效，否则「重置密码」挡不住已经登进去的人
+        ArgumentCaptor<LambdaUpdateWrapper<Member>> memberCap = UpdateWrapperAssertions.updateCaptor();
+        verify(memberMapper).update(isNull(), memberCap.capture());
+        UpdateWrapperAssertions.assertSetsColumn(memberCap.getValue(), "token_version", 5);
+    }
+
+    @Test
+    void 重置密码可指定但要满足师生密码策略() {
+        existingMember(21L);
+        accountOf(21L, "2024002");
+
+        MemberResetPasswordRequest ok = new MemberResetPasswordRequest();
+        ok.setNewPassword("shuyuan2026");
+        Map<String, Object> vo = adminMemberService.resetPassword(21L, ok);
+        assertEquals("shuyuan2026", vo.get("temporaryPassword"));
+        assertEquals(Boolean.FALSE, vo.get("generated"));
+
+        MemberResetPasswordRequest tooWeak = new MemberResetPasswordRequest();
+        tooWeak.setNewPassword("123456");
+        assertEquals(400,
+                assertThrows(BusinessException.class,
+                        () -> adminMemberService.resetPassword(21L, tooWeak)).getCode());
+    }
+
+    @Test
+    void 已清退账号不能重置密码() {
+        Member m = existingMember(22L);
+        m.setOpenid(AdminMemberService.anonymizedOpenid(22L));
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> adminMemberService.resetPassword(22L, null));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("已清退"), ex.getMessage());
+        verify(memberAccountMapper, never()).update(any(), any());
+    }
+
+    @Test
+    void 没有学号账号时拒绝重置() {
+        existingMember(23L);
+        when(memberAccountMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> adminMemberService.resetPassword(23L, null));
+        assertEquals(400, ex.getCode());
+        verify(memberMapper, never()).update(any(), any());
+    }
+
+    @Test
+    void 每次重置的临时密码都不同() {
+        existingMember(24L);
+        accountOf(24L, "2024003");
+
+        String a = (String) adminMemberService.resetPassword(24L, null).get("temporaryPassword");
+        String b = (String) adminMemberService.resetPassword(24L, null).get("temporaryPassword");
+        assertTrue(!a.equals(b), "临时密码必须是随机的，不能可预测");
     }
 
     // ---------- 单个新增 ----------

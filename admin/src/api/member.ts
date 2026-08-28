@@ -99,6 +99,23 @@ export function anonymizeMember(id: number) {
   return put<MemberItem>(`/admin/members/${id}/anonymize`)
 }
 
+export interface MemberResetPasswordResult {
+  memberId: number
+  studentNo: string
+  /** 一次性明文，仅本次响应返回，服务端不再保存 */
+  temporaryPassword: string
+  /** true = 系统生成的临时密码 */
+  generated: boolean
+}
+
+/**
+ * 重置师生密码。留空 newPassword 由系统生成临时密码（推荐）。
+ * 重置后该账号须在下次登录时自行改密，其他设备上的登录态立即失效。
+ */
+export function resetMemberPassword(id: number, newPassword?: string) {
+  return put<MemberResetPasswordResult>(`/admin/members/${id}/reset-password`, { newPassword })
+}
+
 export async function downloadMemberImportTemplate() {
   const auth = useAuthStore()
   const res = await axios.get('/api/v1/admin/members/import-template', {

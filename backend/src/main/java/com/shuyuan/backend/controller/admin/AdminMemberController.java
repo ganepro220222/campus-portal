@@ -3,6 +3,7 @@ package com.shuyuan.backend.controller.admin;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.dto.MemberCreateRequest;
+import com.shuyuan.backend.dto.MemberResetPasswordRequest;
 import com.shuyuan.backend.dto.PurgeRequest;
 import com.shuyuan.backend.service.AdminMemberService;
 import com.shuyuan.backend.vo.MemberImportErrorRow;
@@ -59,6 +60,17 @@ public class AdminMemberController {
     @PutMapping("/{id}/status")
     public Result<Map<String, Object>> updateStatus(@PathVariable Long id, @RequestParam int status) {
         return Result.ok(adminMemberService.updateStatus(id, status));
+    }
+
+    /**
+     * 重置密码：返回一次性明文供管理员转告本人，并强制其下次登录再改一次。
+     *
+     * <p>小程序没有自助找回密码（不接短信），此前学生忘记密码只能连数据库改。
+     */
+    @PutMapping("/{id}/reset-password")
+    public Result<Map<String, Object>> resetPassword(@PathVariable Long id,
+                                                     @RequestBody(required = false) MemberResetPasswordRequest req) {
+        return Result.ok(adminMemberService.resetPassword(id, req));
     }
 
     /** 清退：脱敏并禁用账号，保留历史统计外键，不物理删除 */

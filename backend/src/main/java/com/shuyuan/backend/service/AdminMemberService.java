@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.MemberCreateRequest;
+import com.shuyuan.backend.dto.MemberResetPasswordRequest;
 import com.shuyuan.backend.entity.Member;
 import com.shuyuan.backend.entity.MemberAccount;
 import com.shuyuan.backend.entity.MemberProfile;
@@ -15,6 +16,7 @@ import com.shuyuan.backend.mapper.MemberMapper;
 import com.shuyuan.backend.mapper.MemberProfileMapper;
 import com.shuyuan.backend.mapper.MemberPurgeMapper;
 import com.shuyuan.backend.util.FormatUtils;
+import com.shuyuan.backend.util.MemberPasswordPolicy;
 import com.shuyuan.backend.util.StudentPasswordPolicy;
 import com.shuyuan.backend.vo.MemberImportErrorRow;
 import com.shuyuan.backend.vo.MemberImportResult;
@@ -211,6 +213,60 @@ public class AdminMemberService {
             memberAccountMapper.updateById(account);
         }
         return toVo(memberMapper.selectById(memberId));
+    }
+
+    /**
+     * 重置师生账号密码，返回一次性明文供管理员转告本人。
+     *
+     * <p>在此之前，学生首次登录改完密码后一旦忘记就没有任何出路：小程序没有自助找回
+     * （不接短信，也不该为此付费），后台也没有入口，只能连数据库改 password_hash。
+     * 一个只能上服务器执行命令才能做的事，不该出现在日常运维里。
+     *
+     * <p>默认发随机临时密码，而不是回到「学号后 6 位」那条初始密码规则：一个学院三四百人，
+     * 学号在同学之间是公开的，用它做重置密码，等于在本人登录之前把账号敞开给所有认识他的人。
+     */
+    @Transactional
+    public Map<String, Object> resetPassword(Long memberId, MemberResetPasswordRequest req) {
+        adminPermissionService.require("admin:super");
+        Member member = requireMember(memberId);
+        if (isAnonymizedOpenid(member.getOpenid())) {
+            throw new BusinessException(400,
+                    "已清退账号不能重置密码；如需重新建号，请使用原学号新增或导入");
+        }
+        MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
+                .eq(MemberAccount::getMemberId, memberId)
+                .last("LIMIT 1"));
+        if (account == null) {
+            throw new BusinessException(400, "该用户没有学号账号，无法重置密码");
+        }
+
+        String plain = req == null ? null : trim(req.getNewPassword());
+        boolean generated = plain == null || plain.isBlank();
+        if (generated) {
+            plain = MemberPasswordPolicy.generateTemporary();
+        } else {
+            MemberPasswordPolicy.validate(plain);
+        }
+
+        memberAccountMapper.update(null, new LambdaUpdateWrapper<MemberAccount>()
+                .eq(MemberAccount::getId, account.getId())
+                .set(MemberAccount::getPasswordHash, passwordEncoder.encode(plain))
+                // 拿临时密码进来的人必须自己改一次，管理员不该长期知道学生的密码
+                .set(MemberAccount::getMustChangePassword, 1));
+
+        // 递增 tokenVersion：别的设备上还开着的登录态立刻失效，
+        // 否则「重置密码」挡不住已经把账号登进去的人
+        memberMapper.update(null, new LambdaUpdateWrapper<Member>()
+                .eq(Member::getId, memberId)
+                .set(Member::getTokenVersion,
+                        (member.getTokenVersion() == null ? 0 : member.getTokenVersion()) + 1));
+
+        Map<String, Object> vo = new HashMap<>();
+        vo.put("memberId", memberId);
+        vo.put("studentNo", account.getStudentNo());
+        vo.put("temporaryPassword", plain);
+        vo.put("generated", generated);
+        return vo;
     }
 
     /**

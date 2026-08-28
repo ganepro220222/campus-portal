@@ -1,1 +1,1 @@
-@import "../../../styles/login-page.wxss";
+@import "../../../pages/login/index.wxss";

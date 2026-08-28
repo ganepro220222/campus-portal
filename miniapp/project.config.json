@@ -46,6 +46,10 @@
       {
         "type": "suffix",
         "value": ".test.json"
+      },
+      {
+        "type": "suffix",
+        "value": ".test.js"
       }
     ],
     "include": []

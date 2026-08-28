@@ -40,7 +40,7 @@
         "college/webview",
         "profile/list",
         "profile/edit",
-        "profile/change-password",
+        "profile/change-password/index",
         "message/index",
         "feedback/index",
         "about/index",

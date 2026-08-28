@@ -1,1 +1,351 @@
-@import "../../styles/login-page.wxss";
+/* pages/login/index.wxss — 登录页 */
+
+.login-page {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(120% 88% at 50% 12%,
+    #233362 0%, #273667 42%, #2B356E 80%, #36427C 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 返回 / 关闭 */
+.login-back {
+  position: absolute;
+  left: 32rpx;
+  z-index: 6;
+  width: 66rpx;
+  height: 66rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1rpx solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(12rpx);
+  -webkit-backdrop-filter: blur(12rpx);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 4rpx;
+  box-sizing: border-box;
+}
+.login-back-hover { background: rgba(255, 255, 255, 0.24); }
+
+/* 星光 */
+.stars {
+  position: fixed;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background-image:
+    radial-gradient(2rpx 2rpx at 20% 22%, rgba(255,255,255,.55), transparent),
+    radial-gradient(1.6rpx 1.6rpx at 70% 16%, rgba(255,255,255,.45), transparent),
+    radial-gradient(2rpx 2rpx at 84% 30%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1.4rpx 1.4rpx at 35% 12%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1.2rpx 1.2rpx at 55% 8%, rgba(255,255,255,.35), transparent),
+    radial-gradient(1.8rpx 1.8rpx at 90% 45%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1.2rpx 1.2rpx at 10% 60%, rgba(255,255,255,.3), transparent);
+  opacity: .7;
+  pointer-events: none;
+}
+
+/* 顶部光晕 */
+.glow {
+  position: absolute;
+  top: 120rpx; left: 50%;
+  transform: translateX(-50%);
+  width: 620rpx; height: 620rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(208,231,247,.22) 0%, rgba(208,231,247,0) 66%);
+  filter: blur(8rpx);
+  pointer-events: none;
+}
+
+/* 底部波浪 */
+.wave-deco {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 320rpx;
+  opacity: .16;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-position: bottom;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 392 160' preserveAspectRatio='none'%3E%3Cpath d='M0 90 Q60 60 120 86 T240 86 T392 70 V160 H0 Z' fill='%23D0E7F7'/%3E%3Cpath d='M0 116 Q70 92 150 112 T300 110 T392 100 V160 H0 Z' fill='%239CB6E8' opacity='.7'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* padding-top 由 60rpx 提到 108rpx，把原来 .seal 的 48rpx 并进来——
+   剩余空间改由隔条分配后需要一个保底值，否则小屏（剩余空间为 0）时印章会贴住状态栏。
+   并进来之后：空间不足时印章距顶 108+statusBar，与改前的 60+statusBar+48 逐像素一致。 */
+.login-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 左右由 60rpx 收到 76rpx：表单宽度从 630rpx（占屏宽 84%）收到 598rpx（80%）。
+     84% 时表单几乎顶到屏幕两边，而上方印章 248rpx、主标题墨迹约 312rpx，
+     横向重心明显不在一条轴上；收到 80% 后表单是主标题的 1.81 倍，
+     竖排的印章—标题—表单三段才连成一根中轴。
+     按钮仍有 311pt 宽（iPhone 13），触控尺寸绰绰有余。 */
+  padding: 108rpx 76rpx 40rpx;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* ── 剩余空间的分配 ──────────────────────────────────────
+   高屏上 .login-inner 的内容撑不满一屏，多出来的空白得有个去处。
+   先前用两个 margin-top:auto（印章上方 / 表单上方）对半分，但 auto 只会均分，
+   中间那段仍留 70~130rpx（随屏高涨），整屏被切成「品牌」「表单」两半，
+   正是截图里圈出来的那块空。改成三根弹性隔条按 3 : 1 : 3 分配：
+   中间只拿七分之一，其余落到顶部光晕与底部波浪上——那两处本就是留白区。
+   空间不足时三根全部塌成 0，各处间距回到固定值，与改前逐像素一致。 */
+.lg-sp { width: 100%; }
+.lg-sp-top { flex-grow: 3; }
+.lg-sp-mid { flex-grow: 1; }
+.lg-sp-bot { flex-grow: 3; }
+
+/* ── 书院篆印 ──────────────────────────────────────────
+   印面是方的，就不该再套圆环——旧版把方印塞进 300rpx 的圆里，四角空荡、
+   两种形状互相打架。改用管理后台登录页那套语言：圆角方框 + 金边 + 内发光，
+   两端视觉统一，也贴合「印匣」的意象。
+
+   尺寸不照搬后台的 68px：方形的视觉重量比同尺寸圆大约 1.27 倍，
+   等尺寸换过来会压住下面的「云端书院」，故由 300rpx 收到 248rpx。
+   印面占比 0.70 —— 后台在 68px 的小尺寸下 0.647 显紧凑，放大四倍后同比例会显空，
+   渲染比对后 0.70 最饱满；0.74 就贴到内框了。
+   外框（::after）延续旧版双环的层次语言，只是跟着改成圆角方形。 */
+.seal {
+  width: 248rpx; height: 248rpx;
+  border-radius: 56rpx;
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  /* 165deg 顶光：与页面 170deg 的深蓝渐变同向，光感才连得上 */
+  background: linear-gradient(165deg, rgba(255,255,255,.11), rgba(255,255,255,.035) 58%, rgba(255,255,255,.02));
+  border: 2rpx solid rgba(201,162,39,.78);
+  box-shadow:
+    0 0 60rpx rgba(201,162,39,.30),
+    0 0 40rpx rgba(150,180,235,.26);
+}
+.seal::after {
+  content: "";
+  position: absolute;
+  left: -22rpx; top: -22rpx; right: -22rpx; bottom: -22rpx;
+  border-radius: 78rpx;
+  border: 1rpx solid rgba(201,162,39,.55);
+}
+/* 印面 560×499（1.122）：174 / 1.122 = 155，给准比例，aspectFit 才既不留空也不变形 */
+.seal-img { width: 174rpx; height: 155rpx; }
+
+/* ── 校名 ── */
+.brand { margin-top: 44rpx; text-align: center; }
+.brand-zh {
+  color: #fff;
+  font-size: 60rpx;
+  font-weight: 700;
+  letter-spacing: 18rpx;
+  text-indent: 18rpx;
+  text-shadow: 0 4rpx 28rpx rgba(0,0,0,.35);
+}
+/* 「书」字：金色镶边（呼应管理后台印章书字）*/
+.brand-zh-gold {
+  color: #ECCF82;
+  -webkit-text-stroke: 0.6rpx rgba(122, 90, 28, 0.55);
+  text-shadow:
+    0 1rpx 0 rgba(255, 247, 219, 0.45),
+    0 2rpx 16rpx rgba(190, 156, 68, 0.42),
+    0 4rpx 28rpx rgba(0, 0, 0, 0.35);
+}
+
+/* 分隔：线 — ❖ — 线（呼应管理后台登录）*/
+.brand-div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+  margin: 28rpx auto 34rpx;
+}
+.brand-div-line {
+  width: 92rpx;
+  height: 1rpx;
+  background: linear-gradient(90deg, transparent, rgba(190,156,68,.85));
+}
+.brand-div-line-r {
+  background: linear-gradient(90deg, rgba(190,156,68,.85), transparent);
+}
+.brand-div-orn {
+  color: #BE9C44;
+  font-size: 22rpx;
+  line-height: 1;
+}
+.brand-sub {
+  color: rgba(214,224,248,.92);
+  font-size: 26rpx;
+  letter-spacing: 5rpx;
+}
+.brand-en {
+  color: rgba(170,184,224,.85);
+  font-size: 20rpx;
+  margin-top: 10rpx;
+  letter-spacing: 1rpx;
+}
+
+/* ── 表单 ── */
+.login-form {
+  width: 100%;
+  padding-top: 44rpx;
+}
+.field {
+  position: relative;
+  margin-bottom: 26rpx;
+}
+.field-ic {
+  position: absolute;
+  left: 30rpx; top: 50%;
+  transform: translateY(-50%);
+  width: 40rpx; height: 40rpx;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2;
+}
+.field-input {
+  width: 100%;
+  height: 104rpx;
+  background: rgba(255,255,255,.10);
+  border: 1rpx solid rgba(255,255,255,.18);
+  border-radius: 30rpx;
+  padding: 0 32rpx 0 92rpx;
+  color: #fff;
+  font-size: 30rpx;
+  box-sizing: border-box;
+}
+/* 密码框右侧要给眼睛键让位，左右内边距对称 */
+.field-input.has-eye { padding-right: 92rpx; }
+
+/* 眼睛键：与左侧图标镜像对称，图标中心仍距右 50rpx。
+   热区 88rpx（44pt）——图标本身还是 18，靠留白撑开可点范围，观感不变。
+   几何：right:22 + margin-right:-16 → 右缘 6rpx，中心 6+44=50。 */
+.field-eye {
+  position: absolute;
+  right: 22rpx; top: 50%;
+  transform: translateY(-50%);
+  width: 88rpx; height: 88rpx;
+  margin-right: -16rpx;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 3;
+}
+.field-eye-hover { opacity: .6; }
+/* 深蓝底上的弱化文字，之前一律用 .55~.7 的透明度，量下来对比度只有 3.1~3.8，
+   低于 WCAG AA 的 4.5。这几处只调透明度、不动色相，版面一点不变：
+   占位 .55→.70（5.12）、分隔文字 .55→.70、英文名 .7→.85（4.65）、页脚次行 .6→.85。 */
+.field-ph { color: rgba(214,224,248,.70); }
+
+/* 聚焦态。深色表单上两个输入框长得一模一样，点进去只有一个光标，
+   很容易忘了自己在填哪一格。描边换成印章那支金色并加一层内发光，
+   与页面既有的金色语言一致，不引入新颜色。 */
+.field-input.on {
+  border-color: rgba(201,162,39,.62);
+  background: rgba(255,255,255,.14);
+  box-shadow: 0 0 0 2rpx rgba(201,162,39,.18);
+}
+
+/* 按钮 */
+.lbtn {
+  width: 100%;
+  height: 104rpx;
+  border-radius: 30rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14rpx;
+}
+.lbtn::after { border: none; }
+.lbtn-tx { line-height: 1; white-space: nowrap; flex-shrink: 0; }
+.lbtn-primary {
+  background: linear-gradient(135deg, #ffffff, #F3F6FF);
+  color: #2B356E;
+  box-shadow: 0 16rpx 40rpx rgba(255,255,255,.16);
+  margin-top: 8rpx;
+}
+.lbtn-ghost {
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  border: 1rpx solid rgba(255,255,255,.28);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin: 40rpx 4rpx;
+  color: rgba(214,224,248,.70);
+  font-size: 24rpx;
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  height: 1rpx;
+  background: rgba(255,255,255,.16);
+}
+
+/* 40rpx 是隔条塌成 0 时的保底间距；flex 里外边距不会合并，
+   有剩余空间时它与上面那根隔条相加。 */
+.foot {
+  margin-top: 40rpx;
+  text-align: center;
+  line-height: 1.8;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+}
+.foot-b {
+  display: block;
+  color: rgba(214,224,248,.85);
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+.foot-s {
+  display: block;
+  color: rgba(170,184,224,.85);
+  font-size: 21rpx;
+  letter-spacing: 1rpx;
+  margin-top: 6rpx;
+}
+
+.bind-tip {
+  margin-top: 16rpx;
+  text-align: center;
+  color: rgba(255, 220, 160, .9);
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+.bind-tip.muted {
+  color: rgba(214, 224, 248, 0.75);
+}
+/* 改密模式：徽记 + 标题 + 表单整体垂直居中（上下 auto 外边距成组居中） */
+.cp-badge {
+  margin-top: auto;
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1rpx solid rgba(255, 255, 255, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12rpx 34rpx rgba(8, 12, 30, 0.35);
+}
+.brand.compact {
+  margin-top: 30rpx;
+  margin-bottom: 44rpx;
+}
+.login-form.cp-form {
+  margin-top: 0;
+  margin-bottom: auto;
+}
+.cp-policy {
+  margin: 2rpx 6rpx 20rpx;
+  color: rgba(214, 224, 248, 0.62);
+  font-size: 22rpx;
+  letter-spacing: 0.5rpx;
+}

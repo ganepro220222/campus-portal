@@ -1,12 +1,5 @@
 // app.js
-const {
-  getToken,
-  clearToken,
-  isMustChangePasswordRequired,
-  redirectToChangePassword,
-  setMustChangePasswordFlag,
-  clearMustChangePasswordFlag
-} = require('./utils/auth')
+const { getToken, clearToken } = require('./utils/auth')
 const { baseUrl } = require('./config/env')
 
 App({
@@ -23,9 +16,11 @@ App({
   },
 
   onShow() {
-    if (this.globalData.token && !isMustChangePasswordRequired()) {
-      this._trackActive()
-    }
+    // DAU 统计埋点（每次前台展示时触发）
+    if (!this.globalData.token) return
+    const auth = require('./utils/auth')
+    if (auth.isMustChangePasswordRequired()) return
+    this._trackActive()
   },
 
   // 判断是否已登录
@@ -62,20 +57,22 @@ App({
     post('/stats/active').catch(() => {})
   },
 
+  // 冷启动：本地标记或服务端 session 均须改密时跳转改密页（auth/request 延迟 require，避免主包循环依赖）
   _ensurePasswordChanged() {
     if (!this.globalData.token) return
-    if (isMustChangePasswordRequired()) {
-      redirectToChangePassword()
+    const auth = require('./utils/auth')
+    if (auth.isMustChangePasswordRequired()) {
+      auth.redirectToChangePassword()
       return
     }
     const { get } = require('./utils/request')
     get('/auth/session', {}, { silent: true })
       .then((data) => {
         if (data && data.mustChangePassword) {
-          setMustChangePasswordFlag(true)
-          redirectToChangePassword()
+          auth.setMustChangePasswordFlag(true)
+          auth.redirectToChangePassword()
         } else {
-          clearMustChangePasswordFlag()
+          auth.clearMustChangePasswordFlag()
         }
       })
       .catch(() => {})

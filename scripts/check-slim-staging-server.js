@@ -9,6 +9,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const sh = fs.readFileSync(path.join(ROOT, 'scripts/slim-staging-server.sh'), 'utf8')
 
 assert.match(sh, /mktemp -d.*runs\/\$\{RUN_PREFIX\}\.XXXXXX/, 'must allocate unique run dir via mktemp')
+assert.match(sh, /RUN_PREFIX=.*\$\$/, 'run prefix must include pid for same-second serial runs')
 assert.match(sh, /validate_slim_runs_keep|SLIM_RUNS_KEEP 必须是大于等于 1/, 'must validate SLIM_RUNS_KEEP before moves')
 assert.match(sh, /resolve_slim_root|SLIM_ARCHIVE 必须在仓库根内/, 'must validate archive path under repo root')
 assert.match(sh, /prune_old_slim_runs/, 'must prune old runs with explicit retention')

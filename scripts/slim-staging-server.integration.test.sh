@@ -16,6 +16,17 @@ setup_sandbox() {
   touch "$dir/exhibits/check-static-deps.mjs"
 }
 
+count_runs() {
+  find _slim_archive/runs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
+}
+
+slim_once() {
+  local archive_line
+  archive_line="$(bash scripts/slim-staging-server.sh 2>&1 | sed -n 's/^本次 run: //p' | tail -1)"
+  [ -n "$archive_line" ] || { echo "missing archive line from slim script" >&2; return 1; }
+  printf '%s\n' "$archive_line"
+}
+
 # --- 非法 SLIM_RUNS_KEEP 必须在移动前拒绝 ---
 for bad in 0 -1 abc 1.5; do
   sb="$TMP/keep-$bad"
@@ -38,17 +49,20 @@ cd "$sandbox"
 mkdir -p miniapp
 echo old > miniapp/version
 
-bash scripts/slim-staging-server.sh >/dev/null
-run1="$(find _slim_archive/runs -mindepth 1 -maxdepth 1 -type d | sort | head -1)"
-[ -n "$run1" ] || { echo "missing first run dir" >&2; exit 1; }
+run1="$(slim_once)"
+[ "$(count_runs)" = "1" ] || { echo "expected 1 run after first slim, got $(count_runs)" >&2; exit 1; }
 echo local-only > "$run1/miniapp/local-only"
 
 mkdir -p miniapp
 echo new > miniapp/version
 
-bash scripts/slim-staging-server.sh >/dev/null
-
-run2="$(find _slim_archive/runs -mindepth 1 -maxdepth 1 -type d | sort | tail -1)"
+run2="$(slim_once)"
+run_count="$(count_runs)"
+[ "$run_count" -ge 2 ] || {
+  echo "expected >=2 runs after second slim, got $run_count (run1=$run1 run2=$run2)" >&2
+  find _slim_archive/runs -mindepth 1 -maxdepth 1 -type d >&2 || true
+  exit 1
+}
 [ "$run1" != "$run2" ] || { echo "sequential runs must use different directories: $run1" >&2; exit 1; }
 [ -f "$run1/miniapp/local-only" ] || { echo "first run local-only file was deleted" >&2; exit 1; }
 grep -q '^new$' "$run2/miniapp/version" || { echo "second run did not archive new miniapp" >&2; exit 1; }

@@ -72,7 +72,7 @@ prune_old_slim_runs() {
 }
 
 SLIM_ROOT="$(resolve_slim_root)"
-RUN_PREFIX="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_PREFIX="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 mkdir -p "${SLIM_ROOT}/runs"
 ARCHIVE="$(mktemp -d "${SLIM_ROOT}/runs/${RUN_PREFIX}.XXXXXX")"
 RUN_ID="$(basename "$ARCHIVE")"

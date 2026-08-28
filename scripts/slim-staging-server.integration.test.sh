@@ -1,20 +1,39 @@
 #!/usr/bin/env bash
-# 验证 slim-staging-server 重复执行不会删除上一轮 run 中的独有文件。
+# 验证 slim-staging-server 重复执行、run 唯一性与 SLIM_RUNS_KEEP 参数校验。
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-sandbox="$TMP/repo"
-mkdir -p "$sandbox/scripts" "$sandbox/admin/dist" "$sandbox/backend" "$sandbox/exhibits/craft-001"
-cp "$REPO_ROOT/scripts/slim-staging-server.sh" "$sandbox/scripts/"
-touch "$sandbox/.env" "$sandbox/docker-compose.staging.yml" "$sandbox/admin/dist/index.html"
-touch "$sandbox/backend/Dockerfile" "$sandbox/exhibits/studio.html" "$sandbox/exhibits/player.html"
-mkdir -p "$sandbox/exhibits/_server" "$sandbox/exhibits/craft-001"
-touch "$sandbox/exhibits/_server/studio-server.mjs" "$sandbox/exhibits/craft-001/config.json"
-touch "$sandbox/exhibits/check-static-deps.mjs"
+setup_sandbox() {
+  local dir="$1"
+  mkdir -p "$dir/scripts" "$dir/admin/dist" "$dir/backend" "$dir/exhibits/craft-001" "$dir/exhibits/_server"
+  cp "$REPO_ROOT/scripts/slim-staging-server.sh" "$dir/scripts/"
+  touch "$dir/.env" "$dir/docker-compose.staging.yml" "$dir/admin/dist/index.html"
+  touch "$dir/backend/Dockerfile" "$dir/exhibits/studio.html" "$dir/exhibits/player.html"
+  touch "$dir/exhibits/_server/studio-server.mjs" "$dir/exhibits/craft-001/config.json"
+  touch "$dir/exhibits/check-static-deps.mjs"
+}
 
+# --- 非法 SLIM_RUNS_KEEP 必须在移动前拒绝 ---
+for bad in 0 -1 abc 1.5; do
+  sb="$TMP/keep-$bad"
+  setup_sandbox "$sb"
+  cd "$sb"
+  mkdir -p miniapp docs
+  echo keep-test > miniapp/version
+  if SLIM_RUNS_KEEP="$bad" bash scripts/slim-staging-server.sh >/dev/null 2>&1; then
+    echo "expected failure for SLIM_RUNS_KEEP=$bad" >&2
+    exit 1
+  fi
+  [ -d miniapp ] || { echo "miniapp moved despite invalid SLIM_RUNS_KEEP=$bad" >&2; exit 1; }
+  [ -d docs ] || { echo "docs moved despite invalid SLIM_RUNS_KEEP=$bad" >&2; exit 1; }
+done
+
+# --- 同秒连续两次执行：run 不同，第一轮独有文件保留 ---
+sandbox="$TMP/repo-seq"
+setup_sandbox "$sandbox"
 cd "$sandbox"
 mkdir -p miniapp
 echo old > miniapp/version
@@ -29,8 +48,41 @@ echo new > miniapp/version
 
 bash scripts/slim-staging-server.sh >/dev/null
 
-[ -f "$run1/miniapp/local-only" ] || { echo "first run local-only file was deleted" >&2; exit 1; }
 run2="$(find _slim_archive/runs -mindepth 1 -maxdepth 1 -type d | sort | tail -1)"
+[ "$run1" != "$run2" ] || { echo "sequential runs must use different directories: $run1" >&2; exit 1; }
+[ -f "$run1/miniapp/local-only" ] || { echo "first run local-only file was deleted" >&2; exit 1; }
 grep -q '^new$' "$run2/miniapp/version" || { echo "second run did not archive new miniapp" >&2; exit 1; }
+
+# --- 并发两次执行：run 目录仍应唯一 ---
+run_dirs="$TMP/run_dirs.txt"
+: > "$run_dirs"
+for i in 1 2; do
+  (
+    sb="$TMP/repo-par-$i"
+    setup_sandbox "$sb"
+    cd "$sb"
+    mkdir -p miniapp
+    echo "parallel-$i" > miniapp/version
+    bash scripts/slim-staging-server.sh >/dev/null
+    find _slim_archive/runs -mindepth 1 -maxdepth 1 -type d
+  ) >> "$run_dirs" &
+done
+wait
+unique_count="$(sort -u "$run_dirs" | wc -l | tr -d ' ')"
+[ "$unique_count" = "2" ] || { echo "parallel runs must produce two unique run dirs, got $unique_count" >&2; cat "$run_dirs" >&2; exit 1; }
+
+# --- SLIM_RUNS_KEEP=1 只保留最近一次 run ---
+sandbox="$TMP/repo-keep1"
+setup_sandbox "$sandbox"
+cd "$sandbox"
+for pass in 1 2 3; do
+  mkdir -p miniapp
+  echo "keep-$pass" > miniapp/version
+  SLIM_RUNS_KEEP=1 bash scripts/slim-staging-server.sh >/dev/null
+done
+keep_count="$(find _slim_archive/runs -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+[ "$keep_count" = "1" ] || { echo "SLIM_RUNS_KEEP=1 should leave one run, got $keep_count" >&2; exit 1; }
+latest="$(find _slim_archive/runs -mindepth 1 -maxdepth 1 -type d | sort | tail -1)"
+grep -q '^keep-3$' "$latest/miniapp/version" || { echo "SLIM_RUNS_KEEP=1 did not keep latest run" >&2; exit 1; }
 
 echo "slim-staging-server.integration.test: PASS"

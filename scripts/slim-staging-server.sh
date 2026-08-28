@@ -5,7 +5,7 @@
 # 用法（在 /opt/shuyuan 下）：
 #   bash scripts/slim-staging-server.sh
 #   SLIM_ARCHIVE=_slim_archive_custom bash scripts/slim-staging-server.sh
-#   SLIM_RUNS_KEEP=3 bash scripts/slim-staging-server.sh
+#   SLIM_RUNS_KEEP=3 bash scripts/slim-staging-server.sh   # 必须 >= 1 的整数
 #
 # 勿在本地开发机随意执行（会移动 miniapp/、design/ 等）。
 
@@ -15,6 +15,15 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 SLIM_RUNS_KEEP="${SLIM_RUNS_KEEP:-5}"
+
+validate_slim_runs_keep() {
+  if ! [[ "$SLIM_RUNS_KEEP" =~ ^[1-9][0-9]*$ ]]; then
+    echo "SLIM_RUNS_KEEP 必须是大于等于 1 的整数，当前: ${SLIM_RUNS_KEEP}" >&2
+    exit 1
+  fi
+}
+
+validate_slim_runs_keep
 
 resolve_slim_root() {
   local raw="${SLIM_ARCHIVE:-_slim_archive}"
@@ -63,13 +72,10 @@ prune_old_slim_runs() {
 }
 
 SLIM_ROOT="$(resolve_slim_root)"
-# 秒级时间戳在 CI 连续两次执行时会撞车，追加 PID 保证每次 run 目录唯一
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
-ARCHIVE="${SLIM_ROOT}/runs/${RUN_ID}"
-while [ -e "$ARCHIVE" ]; do
-  RUN_ID="${RUN_ID}-dup"
-  ARCHIVE="${SLIM_ROOT}/runs/${RUN_ID}"
-done
+RUN_PREFIX="$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p "${SLIM_ROOT}/runs"
+ARCHIVE="$(mktemp -d "${SLIM_ROOT}/runs/${RUN_PREFIX}.XXXXXX")"
+RUN_ID="$(basename "$ARCHIVE")"
 mkdir -p "$ARCHIVE/admin" "$ARCHIVE/exhibits/win_and_tests"
 
 mv_if_exists() {

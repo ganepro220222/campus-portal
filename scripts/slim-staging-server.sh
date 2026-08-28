@@ -20,6 +20,10 @@ mv_if_exists() {
   local src="$1"
   local dest="$2"
   if [ -e "$src" ]; then
+    # git pull 后 src 会再次出现；dest 若已存在，直接 mv 会变成 dest/miniapp 并报 Directory not empty
+    if [ -e "$dest" ]; then
+      rm -rf "$dest"
+    fi
     mkdir -p "$(dirname "$dest")"
     mv "$src" "$dest"
     echo "已归档: $src"

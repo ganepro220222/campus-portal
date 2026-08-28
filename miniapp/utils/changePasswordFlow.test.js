@@ -3,11 +3,25 @@
  * 运行：node miniapp/utils/changePasswordFlow.test.js
  */
 const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 const {
   shouldApplyChangePasswordSuccess,
   changePassword401PageAction,
   canLogoutDuringChangePassword
 } = require('./changePasswordFlow')
+
+const pageJs = fs.readFileSync(
+  path.join(__dirname, '../packageC/profile/change-password/index.js'),
+  'utf8'
+)
+assert.match(pageJs, /require\(['"]\.\.\/\.\.\/\.\.\/utils\/changePasswordFlow['"]\)/,
+  '改密页须 require changePasswordFlow')
+for (const fn of ['shouldApplyChangePasswordSuccess', 'changePassword401PageAction', 'canLogoutDuringChangePassword']) {
+  assert.match(pageJs, new RegExp(fn), `改密页须调用 ${fn}`)
+}
+assert.doesNotMatch(pageJs, /setTimeout\(\(\) => getApp\(\)\.logout\(\)/,
+  '改密页不应 setTimeout 二次 logout')
 
 assert.strictEqual(shouldApplyChangePasswordSuccess(1, 1), true)
 assert.strictEqual(shouldApplyChangePasswordSuccess(1, 2), false)

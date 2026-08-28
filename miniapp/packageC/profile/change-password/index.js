@@ -1,6 +1,11 @@
 // pages/change-password/index.js
 const { applyLoginData, getToken, clearMustChangePasswordFlag } = require('../../../utils/auth')
 const { post } = require('../../../utils/request')
+const {
+  shouldApplyChangePasswordSuccess,
+  changePassword401PageAction,
+  canLogoutDuringChangePassword
+} = require('../../../utils/changePasswordFlow')
 
 Page({
   data: {
@@ -63,28 +68,28 @@ Page({
     this.setData({ loading: true })
     try {
       const data = await post('/auth/change-password', { oldPassword, newPassword }, { silent: true })
-      if (seq !== this._submitSeq) return
+      if (!shouldApplyChangePasswordSuccess(seq, this._submitSeq)) return
       applyLoginData(data)
       clearMustChangePasswordFlag()
       wx.showToast({ title: '修改成功', icon: 'success' })
       setTimeout(() => wx.reLaunch({ url: '/pages/index/index' }), 500)
     } catch (err) {
-      if (seq !== this._submitSeq) return
-      if (err && err.code === 401) {
-        // request.js 已 logout + reLaunch，此处只提示，避免二次清理
-        wx.showToast({ title: '登录已失效，请重新登录', icon: 'none', duration: 2500 })
+      if (!shouldApplyChangePasswordSuccess(seq, this._submitSeq)) return
+      const action401 = changePassword401PageAction(err, true)
+      if (action401.toast) {
+        wx.showToast({ title: action401.toast, icon: 'none', duration: 2500 })
         return
       }
       wx.showToast({ title: (err && err.message) || '修改失败', icon: 'none' })
     } finally {
-      if (seq === this._submitSeq) {
+      if (shouldApplyChangePasswordSuccess(seq, this._submitSeq)) {
         this.setData({ loading: false })
       }
     }
   },
 
   onLogout() {
-    if (this.data.loading) return
+    if (!canLogoutDuringChangePassword(this.data.loading)) return
     this._submitSeq += 1
     getApp().logout()
   }

@@ -94,7 +94,7 @@ class AdminUserServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> adminUserService.create(req));
         assertEquals(409, ex.getCode());
         assertEquals("登录账号已存在", ex.getMessage());
-        verify(sysUserMapper, never()).insert(any());
+        verify(sysUserMapper, never()).insert(any(SysUser.class));
     }
 
     @Test
@@ -112,7 +112,7 @@ class AdminUserServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> adminUserService.create(req));
         assertEquals(409, ex.getCode());
         assertTrue(ex.getMessage().contains("回收站"));
-        verify(sysUserMapper, never()).insert(any());
+        verify(sysUserMapper, never()).insert(any(SysUser.class));
     }
 
     @Test
@@ -173,7 +173,7 @@ class AdminUserServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> adminUserService.update(8L, req));
         assertEquals(409, ex.getCode());
         assertTrue(ex.getMessage().contains("回收站"));
-        verify(sysUserMapper, never()).updateById(any());
+        verify(sysUserMapper, never()).updateById(any(SysUser.class));
     }
 
     @Test

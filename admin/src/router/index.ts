@@ -3,6 +3,7 @@ import type { Component } from 'vue'
 import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, Operation, List, Reading, Connection, Grid, PriceTag, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets, DeleteFilled, Message } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
+import { resolveAdminRouteRedirect } from './guard'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,6 +13,12 @@ const router = createRouter({
       name: 'Login',
       component: () => import('@/views/LoginView.vue'),
       meta: { public: true, title: '登录' }
+    },
+    {
+      path: '/change-password',
+      name: 'AdminChangePassword',
+      component: () => import('@/views/AdminChangePasswordView.vue'),
+      meta: { title: '修改密码' }
     },
     {
       path: '/',
@@ -164,15 +171,15 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  if (to.meta.public) {
-    if (auth.isLoggedIn && to.name === 'Login') return { name: 'Dashboard' }
-    return true
-  }
-  if (!auth.isLoggedIn) {
-    return { name: 'Login', query: { redirect: to.fullPath } }
-  }
-  if (auth.mustChangePassword && to.name !== 'Login') {
-    return { name: 'Login' }
+  const decision = resolveAdminRouteRedirect(
+    { name: to.name, meta: to.meta as { public?: boolean } },
+    { isLoggedIn: auth.isLoggedIn, mustChangePassword: auth.mustChangePassword },
+  )
+  if (decision !== true) {
+    if (decision.name === 'Login') {
+      return { name: 'Login', query: { redirect: to.fullPath } }
+    }
+    return decision
   }
   const perm = to.meta.permission as string | undefined
   if (perm && !auth.can(perm)) {

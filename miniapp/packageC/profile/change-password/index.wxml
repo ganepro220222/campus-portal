@@ -78,6 +78,7 @@
       </button>
 
       <view class="bind-tip muted">修改完成后即可正常使用小程序</view>
+      <view class="bind-tip muted cp-logout" bindtap="onLogout">退出并切换账号</view>
     </view>
   </view>
 </view>

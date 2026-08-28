@@ -92,6 +92,10 @@ async function onSubmit() {
   try {
     await auth.login(form.username.trim(), form.password)
     ElMessage.success('登录成功')
+    if (auth.mustChangePassword) {
+      router.replace({ name: 'AdminChangePassword' })
+      return
+    }
     const redirect = (route.query.redirect as string) || '/dashboard'
     router.replace(redirect)
   } finally {

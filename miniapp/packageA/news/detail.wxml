@@ -46,10 +46,10 @@
               <text>👁 阅读 {{article.read}}</text>
               <text class="pill">{{article.category}}</text>
             </view>
-            <view wx:if="{{article.lead && !article.useRichText}}" class="art-p">
+            <view wx:if="{{article.showLead && article.lead && !article.useRichText}}" class="art-p">
               <text class="drop serif">{{article.drop}}</text>{{article.leadRest}}
             </view>
-            <view wx:elif="{{article.lead && article.useRichText}}" class="art-lead">{{article.lead}}</view>
+            <view wx:elif="{{article.showLead && article.lead && article.useRichText}}" class="art-lead">{{article.lead}}</view>
             <view wx:if="{{article.useRichText}}" class="art-rich">
               <rich-text nodes="{{article.contentHtml}}" />
             </view>

@@ -50,6 +50,28 @@ assert.strictEqual(mergeNewsArticle({ coverFitMode: 'fit' }, {}).coverImageMode,
 assert.strictEqual(mergeNewsArticle({ coverFitMode: 'fill' }, {}).coverImageMode, 'aspectFill')
 assert.strictEqual(mergeNewsArticle({}, {}).coverImageMode, 'aspectFill')
 
+// ---------- 摘要：仅显式 summary 才单独展示 lead，避免与正文首段重复 ----------
+{
+  const a = mergeNewsArticle({
+    content: '第一段正文\n第二段正文',
+    paras: ['第一段正文', '第二段正文'],
+    lead: '第一段正文',
+  }, {})
+  assert.strictEqual(a.showLead, false)
+  assert.strictEqual(a.lead, '')
+  assert.strictEqual(a.paras.length, 2)
+}
+{
+  const a = mergeNewsArticle({
+    summary: '这是摘要',
+    content: '第一段正文\n第二段正文',
+    paras: ['第一段正文', '第二段正文'],
+  }, {})
+  assert.strictEqual(a.showLead, true)
+  assert.strictEqual(a.lead, '这是摘要')
+  assert.strictEqual(a.drop + a.leadRest, '这是摘要')
+}
+
 const news = mergeNewsArticle({ id: 1, title: '标题', content: '正文\n第二段' }, {})
 assert.strictEqual(news.id, 1)
 assert.strictEqual(news.title, '标题')

@@ -39,7 +39,9 @@ function resolveEmptyContentObject(fallback, useMockFlag = useMock) {
 function mergeNewsArticle(raw, fallback) {
   const base = fallback || (useMock ? mock.newsDetail.article : {})
   if (!raw) return resolveEmptyContentObject(base)
-  const lead = raw.lead || raw.summary || base.lead
+  const explicitSummary = String(raw.summary ?? '').trim()
+  const showLead = !!explicitSummary
+  const lead = showLead ? explicitSummary : ''
   const contentHtml = isHtmlContent(raw.content) ? stripUnsafeHtml(raw.content) : ''
   const useRichText = !!contentHtml
   const paras = useRichText
@@ -52,6 +54,7 @@ function mergeNewsArticle(raw, fallback) {
     category: raw.category || raw.categoryName || base.category,
     date: raw.date || formatDate(raw.publishTime),
     read: raw.read || formatCount(raw.viewCount || raw.readCount || 0),
+    showLead,
     lead,
     /*
      * 首字下沉的契约：drop 是首字，leadRest 是**去掉首字之后**的剩余部分，

@@ -45,6 +45,13 @@ if (/drop:\s*raw\.drop/.test(content)) {
 if (!/class="art-lead">\{\{article\.lead\}\}/.test(wxml)) {
   errs.push('富文本分支必须渲染完整 article.lead，改成 leadRest 会吃掉首字')
 }
+// 摘要区仅在管理员填写 summary 时显示，避免自动 lead 与正文首段重复
+if (!/article\.showLead/.test(wxml)) {
+  errs.push('detail.wxml 未使用 showLead —— 无摘要时正文首段会与 lead 重复显示')
+}
+if (!/showLead/.test(content)) {
+  errs.push('content.js 未产出 showLead，无法区分「真实摘要」与「正文首段推导 lead」')
+}
 // 先剥注释：解释「早先这里是 drop:'六'」的那段注释本身就含这个写法，
 // 连注释一起扫会把说明文字判成违规
 const mockCode = mock.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')

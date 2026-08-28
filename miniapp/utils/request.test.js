@@ -1,0 +1,47 @@
+/**
+ * request.js 401 退出策略单测
+ * 运行：node miniapp/utils/request.test.js
+ */
+const assert = require('assert')
+
+let logoutCalls = 0
+const mockApp = { logout() { logoutCalls += 1 } }
+
+const request = require('./request')
+
+const origGetApp = global.getApp
+global.getApp = () => mockApp
+
+try {
+  logoutCalls = 0
+  request._logoutIfNeeded('/auth/account-login')
+  assert.strictEqual(logoutCalls, 0, 'account-login 401 不应 logout')
+
+  logoutCalls = 0
+  request._logoutIfNeeded('/auth/wx-login')
+  assert.strictEqual(logoutCalls, 0)
+
+  logoutCalls = 0
+  request._logoutIfNeeded('/auth/wx-bind')
+  assert.strictEqual(logoutCalls, 0)
+
+  logoutCalls = 0
+  request._logoutIfNeeded('/auth/change-password')
+  assert.strictEqual(logoutCalls, 1, 'change-password 401 应 logout')
+
+  logoutCalls = 0
+  request._logoutIfNeeded('/auth/session')
+  assert.strictEqual(logoutCalls, 1, 'session 401 应 logout')
+
+  logoutCalls = 0
+  request._logoutIfNeeded('/auth/wx-bind-authenticated')
+  assert.strictEqual(logoutCalls, 1)
+
+  logoutCalls = 0
+  request._logoutIfNeeded('/news/1')
+  assert.strictEqual(logoutCalls, 1, '普通接口 401 应 logout')
+
+  console.log('[request.test] PASS')
+} finally {
+  global.getApp = origGetApp
+}

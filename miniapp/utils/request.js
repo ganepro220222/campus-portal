@@ -28,10 +28,19 @@ function resolveToken() {
   return wx.getStorageSync('token') || ''
 }
 
+function authPath(url) {
+  return String(url).split('?')[0]
+}
+
 function logoutIfNeeded(url) {
-  if (String(url).includes('/auth/')) {
-    return
-  }
+  const path = authPath(url)
+  // 公开登录接口的 401 是「账号密码错」，不是 session 过期，不能清 token
+  const credentialOnly = [
+    '/auth/account-login',
+    '/auth/wx-login',
+    '/auth/wx-bind',
+  ]
+  if (credentialOnly.includes(path)) return
   const app = getRuntimeApp()
   if (app && typeof app.logout === 'function') {
     app.logout()
@@ -176,6 +185,7 @@ module.exports = {
   _resolveBaseUrl: resolveBaseUrl,
   _resolveToken: resolveToken,
   _resolveTimeout: resolveTimeout,
+  _logoutIfNeeded: logoutIfNeeded,
   DEFAULT_TIMEOUT,
   PASSWORD_CHANGE_REQUIRED,
   _handlePasswordChangeRequired: handlePasswordChangeRequired

@@ -32,8 +32,8 @@ function rejectApiBody(body: ApiResult, config?: AxiosRequestConfig): Promise<ne
   if (body.code === 403 && body.errorKey === 'ADMIN_PASSWORD_CHANGE_REQUIRED') {
     const auth = useAuthStore()
     auth.markMustChangePassword()
-    if (router.currentRoute.value.name !== 'Login') {
-      router.push({ name: 'Login' })
+    if (router.currentRoute.value.name !== 'AdminChangePassword') {
+      router.push({ name: 'AdminChangePassword' })
     }
     ElMessage.warning(body.message || '请先修改初始密码')
     return Promise.reject(body)

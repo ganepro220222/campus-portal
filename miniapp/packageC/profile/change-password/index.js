@@ -65,9 +65,18 @@ Page({
       wx.showToast({ title: '修改成功', icon: 'success' })
       setTimeout(() => wx.reLaunch({ url: '/pages/index/index' }), 500)
     } catch (err) {
+      if (err && err.code === 401) {
+        wx.showToast({ title: '登录已失效，请重新登录', icon: 'none', duration: 2500 })
+        setTimeout(() => getApp().logout(), 600)
+        return
+      }
       wx.showToast({ title: (err && err.message) || '修改失败', icon: 'none' })
     } finally {
       this.setData({ loading: false })
     }
+  },
+
+  onLogout() {
+    getApp().logout()
   }
 })

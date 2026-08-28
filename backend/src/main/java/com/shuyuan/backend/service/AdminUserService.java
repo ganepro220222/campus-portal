@@ -6,6 +6,7 @@ import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.context.AdminContext;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.AdminResetPasswordRequest;
+import com.shuyuan.backend.dto.AdminUsernameOccupancy;
 import com.shuyuan.backend.dto.AdminUserSaveRequest;
 import com.shuyuan.backend.entity.SysRole;
 import com.shuyuan.backend.entity.SysUser;
@@ -15,6 +16,7 @@ import com.shuyuan.backend.util.AdminPasswordPolicy;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.util.TokenVersionSupport;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,12 @@ import java.util.stream.Collectors;
 public class AdminUserService {
 
     private static final long SUPER_ROLE_ID = 1L;
+    private static final int USERNAME_CONFLICT = 409;
+    private static final String MSG_USERNAME_ACTIVE = "登录账号已存在";
+    private static final String MSG_USERNAME_RECYCLE =
+            "登录账号「%s」已存在于回收站。若要继续使用原账号，请前往回收站恢复；"
+                    + "若要创建全新账号，请先彻底删除回收站中的旧账号。";
+    private static final String MSG_USERNAME_CONFLICT_FALLBACK = "登录账号已存在，请更换后重试";
 
     private final SysUserMapper sysUserMapper;
     private final SysRoleMapper sysRoleMapper;
@@ -89,7 +97,7 @@ public class AdminUserService {
         user.setRealName(trim(req.getRealName()));
         user.setStatus(req.getStatus() != null ? req.getStatus() : 1);
         user.setMustChangePassword(1);
-        sysUserMapper.insert(user);
+        insertUser(user);
 
         Map<String, Object> vo = toVo(sysUserMapper.selectById(user.getId()),
                 sysRoleMapper.selectById(user.getRoleId()));
@@ -134,7 +142,7 @@ public class AdminUserService {
             }
             user.setStatus(req.getStatus());
         }
-        sysUserMapper.updateById(user);
+        updateUser(user);
         return toVo(sysUserMapper.selectById(id), sysRoleMapper.selectById(user.getRoleId()));
     }
 
@@ -203,14 +211,38 @@ public class AdminUserService {
     }
 
     private void ensureUsernameUnique(String username, Long excludeId) {
-        LambdaQueryWrapper<SysUser> qw = new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getUsername, username);
-        if (excludeId != null) {
-            qw.ne(SysUser::getId, excludeId);
+        AdminUsernameOccupancy occupied = sysUserMapper.findUsernameOccupancy(username);
+        if (occupied == null) {
+            return;
         }
-        if (sysUserMapper.selectCount(qw) > 0) {
-            throw new BusinessException(400, "登录账号已存在");
+        if (excludeId != null && excludeId.equals(occupied.getId())) {
+            return;
         }
+        if (occupied.recycled()) {
+            throw new BusinessException(USERNAME_CONFLICT,
+                    String.format(MSG_USERNAME_RECYCLE, username));
+        }
+        throw new BusinessException(USERNAME_CONFLICT, MSG_USERNAME_ACTIVE);
+    }
+
+    private void insertUser(SysUser user) {
+        try {
+            sysUserMapper.insert(user);
+        } catch (DuplicateKeyException e) {
+            throw usernameConflictFallback();
+        }
+    }
+
+    private void updateUser(SysUser user) {
+        try {
+            sysUserMapper.updateById(user);
+        } catch (DuplicateKeyException e) {
+            throw usernameConflictFallback();
+        }
+    }
+
+    private BusinessException usernameConflictFallback() {
+        return new BusinessException(USERNAME_CONFLICT, MSG_USERNAME_CONFLICT_FALLBACK);
     }
 
     private boolean isSuperAdmin(SysUser user) {

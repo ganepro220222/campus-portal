@@ -29,7 +29,15 @@
         <!-- 文章 -->
         <view class="article">
           <view class="art-hero {{article.colorClass}}">
-            <view class="art-hero-deco"></view>
+            <image
+              wx:if="{{article.cover}}"
+              class="art-hero-img"
+              src="{{article.cover}}"
+              mode="{{article.coverImageMode}}"
+              lazy-load
+            />
+            <view wx:if="{{article.cover}}" class="art-hero-scrim"></view>
+            <view wx:else class="art-hero-deco"></view>
             <view class="art-hero-title serif">{{article.title}}</view>
           </view>
           <view class="art-body">
@@ -39,7 +47,7 @@
               <text class="pill">{{article.category}}</text>
             </view>
             <view wx:if="{{article.lead && !article.useRichText}}" class="art-p">
-              <text class="drop serif">{{article.drop}}</text>{{article.lead}}
+              <text class="drop serif">{{article.drop}}</text>{{article.leadRest}}
             </view>
             <view wx:elif="{{article.lead && article.useRichText}}" class="art-lead">{{article.lead}}</view>
             <view wx:if="{{article.useRichText}}" class="art-rich">

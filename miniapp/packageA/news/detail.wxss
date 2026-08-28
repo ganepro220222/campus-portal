@@ -13,6 +13,13 @@
   box-shadow: var(--shadow-sm);
   margin-bottom: 24rpx;
 }
+/*
+ * 头图区。标题是白字，所以这块**必须**始终有深色底，否则白字压白底就消失了。
+ *
+ * 底色不能指望 colorClass：那是列表页装饰用的，详情接口根本不下发它，
+ * 真实数据里 class 是空的——于是没有封面时整块是纯白，标题只剩一点 text-shadow
+ * 的影子。这里给 .art-hero 自身一个兜底深色渐变，colorClass 有值时再覆盖。
+ */
 .art-hero {
   height: 320rpx;
   position: relative;
@@ -20,6 +27,25 @@
   align-items: flex-end;
   padding: 28rpx;
   overflow: hidden;
+  background: linear-gradient(120deg, #1E2654, #3F57B5);
+}
+/* 封面铺满整块，压在装饰层与标题之下 */
+.art-hero-img {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+}
+/*
+ * 有封面时的压暗层：封面可能是浅色照片，白色标题照样会糊在上面。
+ * 只压底部，保留上半部分的画面。
+ */
+.art-hero-scrim {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 70%;
+  z-index: 1;
+  background: linear-gradient(to bottom, rgba(15, 20, 45, 0), rgba(15, 20, 45, 0.68));
 }
 .art-hero-deco {
   position: absolute;

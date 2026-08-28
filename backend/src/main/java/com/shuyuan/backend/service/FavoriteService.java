@@ -49,9 +49,11 @@ public class FavoriteService {
 
         boolean collected;
         if (existing != null) {
-            favoriteMapper.deleteById(existing.getId());
+            favoriteMapper.physicalDeleteById(existing.getId());
             collected = false;
         } else {
+            // 清掉历史软删残留，避免 uk_member_target 冲突导致 500
+            favoriteMapper.physicalDeleteByTarget(memberId, type, targetId);
             Favorite record = new Favorite();
             record.setMemberId(memberId);
             record.setTargetType(type);

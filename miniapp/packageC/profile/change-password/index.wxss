@@ -5,3 +5,8 @@
   color: rgba(214, 224, 248, 0.72);
   text-decoration: underline;
 }
+
+.cp-logout-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}

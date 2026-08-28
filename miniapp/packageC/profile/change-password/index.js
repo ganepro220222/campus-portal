@@ -17,6 +17,8 @@ Page({
     }
   },
 
+  _submitSeq: 0,
+
   onLoad() {
     const sys = wx.getSystemInfoSync()
     this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
@@ -57,26 +59,33 @@ Page({
       return wx.showToast({ title: '两次输入不一致', icon: 'none' })
     }
     if (this.data.loading) return
+    const seq = ++this._submitSeq
     this.setData({ loading: true })
     try {
       const data = await post('/auth/change-password', { oldPassword, newPassword }, { silent: true })
+      if (seq !== this._submitSeq) return
       applyLoginData(data)
       clearMustChangePasswordFlag()
       wx.showToast({ title: '修改成功', icon: 'success' })
       setTimeout(() => wx.reLaunch({ url: '/pages/index/index' }), 500)
     } catch (err) {
+      if (seq !== this._submitSeq) return
       if (err && err.code === 401) {
+        // request.js 已 logout + reLaunch，此处只提示，避免二次清理
         wx.showToast({ title: '登录已失效，请重新登录', icon: 'none', duration: 2500 })
-        setTimeout(() => getApp().logout(), 600)
         return
       }
       wx.showToast({ title: (err && err.message) || '修改失败', icon: 'none' })
     } finally {
-      this.setData({ loading: false })
+      if (seq === this._submitSeq) {
+        this.setData({ loading: false })
+      }
     }
   },
 
   onLogout() {
+    if (this.data.loading) return
+    this._submitSeq += 1
     getApp().logout()
   }
 })

@@ -78,4 +78,41 @@ class FavoriteServiceTest {
         assertEquals(false, items.get(0).get("collected"));
         assertEquals(true, items.get(1).get("collected"));
     }
+
+    @Test
+    void toggle_news_reFavoriteAfterUnlike_physicallyClearsTargetBeforeInsert() {
+        News news = new News();
+        news.setId(4L);
+        news.setStatus("published");
+        news.setFavoriteCount(2);
+        when(newsMapper.selectById(4L)).thenReturn(news);
+        when(favoriteMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        Map<String, Object> result = favoriteService.toggle("news", 4L);
+
+        assertTrue((Boolean) result.get("collected"));
+        verify(favoriteMapper).physicalDeleteByTarget(9L, "news", 4L);
+        verify(favoriteMapper).insert(any(Favorite.class));
+        verify(newsMapper).updateById(any(News.class));
+    }
+
+    @Test
+    void toggle_news_unfavorite_physicallyDeletesActiveRow() {
+        News news = new News();
+        news.setId(4L);
+        news.setStatus("published");
+        news.setFavoriteCount(3);
+
+        Favorite existing = new Favorite();
+        existing.setId(88L);
+
+        when(newsMapper.selectById(4L)).thenReturn(news);
+        when(favoriteMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+
+        Map<String, Object> result = favoriteService.toggle("news", 4L);
+
+        assertFalse((Boolean) result.get("collected"));
+        verify(favoriteMapper).physicalDeleteById(88L);
+        verify(newsMapper).updateById(any(News.class));
+    }
 }

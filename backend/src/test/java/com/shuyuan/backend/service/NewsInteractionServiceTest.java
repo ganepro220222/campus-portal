@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +39,8 @@ class NewsInteractionServiceTest {
     private EventLogService eventLogService;
     @Mock
     private PointService pointService;
+    @Mock
+    private FavoriteService favoriteService;
 
     @InjectMocks
     private NewsInteractionService newsInteractionService;
@@ -83,5 +86,47 @@ class NewsInteractionServiceTest {
         assertEquals(0, detail.get("favoriteCount"));
         assertTrue((Boolean) detail.get("liked"));
         assertFalse((Boolean) detail.get("collected"));
+    }
+
+    @Test
+    void toggleLike_reLikeAfterUnlike_physicallyClearsTargetBeforeInsert() {
+        MemberContext.setMemberId(100L);
+
+        News news = new News();
+        news.setId(9L);
+        news.setStatus("published");
+        news.setLikeCount(1);
+
+        when(newsMapper.selectById(9L)).thenReturn(news);
+        when(likeRecordMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        Map<String, Object> result = newsInteractionService.toggleLike(9L);
+
+        assertTrue((Boolean) result.get("liked"));
+        assertEquals(2, result.get("likeCount"));
+        verify(likeRecordMapper).physicalDeleteByTarget(100L, "news", 9L);
+        verify(likeRecordMapper).insert(any(LikeRecord.class));
+    }
+
+    @Test
+    void toggleLike_unlike_physicallyDeletesActiveRow() {
+        MemberContext.setMemberId(100L);
+
+        News news = new News();
+        news.setId(9L);
+        news.setStatus("published");
+        news.setLikeCount(3);
+
+        LikeRecord existing = new LikeRecord();
+        existing.setId(55L);
+
+        when(newsMapper.selectById(9L)).thenReturn(news);
+        when(likeRecordMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+
+        Map<String, Object> result = newsInteractionService.toggleLike(9L);
+
+        assertFalse((Boolean) result.get("liked"));
+        assertEquals(2, result.get("likeCount"));
+        verify(likeRecordMapper).physicalDeleteById(55L);
     }
 }

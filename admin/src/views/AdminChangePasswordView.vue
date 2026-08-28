@@ -20,7 +20,7 @@
       </el-form>
       <p class="foot-hint">
         若不清楚当前密码（例如管理员刚重置过），可
-        <el-button link type="primary" @click="onLogout">退出并切换账号</el-button>
+        <el-button link type="primary" :disabled="saving" @click="onLogout">退出并切换账号</el-button>
       </p>
     </div>
   </div>
@@ -37,6 +37,7 @@ import { PASSWORD_HINT } from '@/utils/permissions'
 const router = useRouter()
 const auth = useAuthStore()
 const saving = ref(false)
+const submitSeq = ref(0)
 const formRef = ref<FormInstance>()
 
 const form = reactive({
@@ -76,17 +77,23 @@ const rules: FormRules = {
 async function onSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  const seq = ++submitSeq.value
   saving.value = true
   try {
     await auth.changePassword(form.oldPassword, form.newPassword)
+    if (seq !== submitSeq.value) return
     ElMessage.success('密码已更新')
     router.replace({ name: 'Dashboard' })
   } finally {
-    saving.value = false
+    if (seq === submitSeq.value) {
+      saving.value = false
+    }
   }
 }
 
 function onLogout() {
+  if (saving.value) return
+  submitSeq.value += 1
   auth.logout()
   router.replace({ name: 'Login' })
 }

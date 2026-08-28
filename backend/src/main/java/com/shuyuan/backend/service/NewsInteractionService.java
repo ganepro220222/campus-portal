@@ -42,10 +42,12 @@ public class NewsInteractionService {
         int likeCount = news.getLikeCount() != null ? news.getLikeCount() : 0;
         boolean liked;
         if (existing != null) {
-            likeRecordMapper.deleteById(existing.getId());
+            likeRecordMapper.physicalDeleteById(existing.getId());
             likeCount = Math.max(0, likeCount - 1);
             liked = false;
         } else {
+            // 清掉历史软删残留，避免 uk_member_target 冲突导致 500
+            likeRecordMapper.physicalDeleteByTarget(memberId, "news", newsId);
             LikeRecord record = new LikeRecord();
             record.setMemberId(memberId);
             record.setTargetType("news");

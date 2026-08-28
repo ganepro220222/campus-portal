@@ -38,6 +38,63 @@ jobs:
       - name: Compile, test and package
         run: mvn -B test
 
+  backend-mysql-it:
+    name: Backend MySQL IT
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: dev123456
+          MYSQL_DATABASE: shuyuan_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -pdev123456"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      RUN_MYSQL_IT: "1"
+      TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/shuyuan_test?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      TEST_DB_USERNAME: root
+      TEST_DB_PASSWORD: dev123456
+      TEST_REDIS_HOST: 127.0.0.1
+      TEST_REDIS_PORT: 6379
+      TEST_REDIS_PASSWORD: ""
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Install MySQL client
+        run: sudo apt-get update && sudo apt-get install -y mysql-client
+
+      - name: Initialize test schema
+        working-directory: .
+        run: mysql -h 127.0.0.1 -uroot -pdev123456 shuyuan_test < sql/init.sql
+
+      - name: MySQL integration tests
+        run: mvn -B test -Dtest='*IntegrationTest'
+
   miniapp-guard:
     name: Miniapp Mock Guard
     runs-on: ubuntu-latest
@@ -136,6 +193,9 @@ jobs:
 
       - name: Spring bean cycle gate test
         run: npm run test:spring-bean-cycles
+
+      - name: Slim staging archive checks
+        run: npm run check:slim-staging-server && npm run test:slim-staging-server
 
   admin:
     name: Admin

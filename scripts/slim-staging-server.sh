@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # staging ECS 瘦身：移走 Git 里有、但服务器运行不需要的目录/文件。
-# 只「移动」到归档目录，不永久删除。可重复执行（git pull 后又出现的会被再次归档）。
+# 每次执行写入 _slim_archive/runs/<时间戳>/，只移动、不覆盖历史 run；默认保留最近 5 次 run。
 #
 # 用法（在 /opt/shuyuan 下）：
 #   bash scripts/slim-staging-server.sh
-#   SLIM_ARCHIVE=_slim_archive_20260824 bash scripts/slim-staging-server.sh
+#   SLIM_ARCHIVE=_slim_archive_custom bash scripts/slim-staging-server.sh
+#   SLIM_RUNS_KEEP=3 bash scripts/slim-staging-server.sh
 #
 # 勿在本地开发机随意执行（会移动 miniapp/、design/ 等）。
 
@@ -13,16 +14,66 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-ARCHIVE="${SLIM_ARCHIVE:-_slim_archive}"
+SLIM_RUNS_KEEP="${SLIM_RUNS_KEEP:-5}"
+
+resolve_slim_root() {
+  local raw="${SLIM_ARCHIVE:-_slim_archive}"
+  if [[ -z "$raw" || "$raw" == "." || "$raw" == ".." ]]; then
+    echo "SLIM_ARCHIVE 无效: ${raw:-<empty>}" >&2
+    exit 1
+  fi
+  if [[ "$raw" == /* ]]; then
+    echo "SLIM_ARCHIVE 必须是相对仓库根的路径: $raw" >&2
+    exit 1
+  fi
+  if [[ "$raw" == *"/.."* || "$raw" == "../"* ]]; then
+    echo "SLIM_ARCHIVE 不能含 .. : $raw" >&2
+    exit 1
+  fi
+  local root_resolved slim_resolved
+  root_resolved="$(cd "$ROOT" && pwd)"
+  mkdir -p "$ROOT/$raw"
+  slim_resolved="$(cd "$ROOT/$raw" && pwd)"
+  case "$slim_resolved" in
+    "$root_resolved"/*) ;;
+    *)
+      echo "SLIM_ARCHIVE 必须在仓库根内: $raw" >&2
+      exit 1
+      ;;
+  esac
+  printf '%s\n' "$slim_resolved"
+}
+
+prune_old_slim_runs() {
+  local runs_dir="$1"
+  local keep="$2"
+  local -a runs=()
+  [ -d "$runs_dir" ] || return 0
+  while IFS= read -r -d '' run; do
+    runs+=("$run")
+  done < <(find "$runs_dir" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z -r)
+  if ((${#runs[@]} <= keep)); then
+    return 0
+  fi
+  local i
+  for ((i = keep; i < ${#runs[@]}; i++)); do
+    echo "清理旧归档 run（保留最近 ${keep} 次）: ${runs[$i]}"
+    rm -rf "${runs[$i]}"
+  done
+}
+
+SLIM_ROOT="$(resolve_slim_root)"
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+ARCHIVE="${SLIM_ROOT}/runs/${RUN_ID}"
 mkdir -p "$ARCHIVE/admin" "$ARCHIVE/exhibits/win_and_tests"
 
 mv_if_exists() {
   local src="$1"
   local dest="$2"
   if [ -e "$src" ]; then
-    # git pull 后 src 会再次出现；dest 若已存在，直接 mv 会变成 dest/miniapp 并报 Directory not empty
     if [ -e "$dest" ]; then
-      rm -rf "$dest"
+      echo "归档目标已存在（同一 run 内不应重复）: $dest" >&2
+      exit 1
     fi
     mkdir -p "$(dirname "$dest")"
     mv "$src" "$dest"
@@ -31,7 +82,8 @@ mv_if_exists() {
 }
 
 echo "=== slim-staging-server @ $ROOT ==="
-echo "归档目录: $ARCHIVE"
+echo "归档根: $SLIM_ROOT"
+echo "本次 run: $ARCHIVE"
 echo ""
 
 # 根目录：设计与测试、小程序源码、文档、本地 dev compose
@@ -80,6 +132,8 @@ for legacy in exhibits/_code_backup exhibits/_content_backup; do
     echo "已归档历史备份（原先位于公网目录下）: $legacy"
   fi
 done
+
+prune_old_slim_runs "${SLIM_ROOT}/runs" "$SLIM_RUNS_KEEP"
 
 echo ""
 echo "=== 保留项抽查 ==="

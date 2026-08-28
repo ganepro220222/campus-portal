@@ -1,5 +1,12 @@
 // app.js
-const { getToken, clearToken } = require('./utils/auth')
+const {
+  getToken,
+  clearToken,
+  isMustChangePasswordRequired,
+  redirectToChangePassword,
+  setMustChangePasswordFlag,
+  clearMustChangePasswordFlag
+} = require('./utils/auth')
 const { baseUrl } = require('./config/env')
 
 App({
@@ -12,11 +19,11 @@ App({
   onLaunch() {
     this.globalData.token = getToken()
     this._checkUpdate()
+    this._ensurePasswordChanged()
   },
 
   onShow() {
-    // DAU 统计埋点（每次前台展示时触发）
-    if (this.globalData.token) {
+    if (this.globalData.token && !isMustChangePasswordRequired()) {
       this._trackActive()
     }
   },
@@ -53,5 +60,24 @@ App({
   _trackActive() {
     const { post } = require('./utils/request')
     post('/stats/active').catch(() => {})
+  },
+
+  _ensurePasswordChanged() {
+    if (!this.globalData.token) return
+    if (isMustChangePasswordRequired()) {
+      redirectToChangePassword()
+      return
+    }
+    const { get } = require('./utils/request')
+    get('/auth/session', {}, { silent: true })
+      .then((data) => {
+        if (data && data.mustChangePassword) {
+          setMustChangePasswordFlag(true)
+          redirectToChangePassword()
+        } else {
+          clearMustChangePasswordFlag()
+        }
+      })
+      .catch(() => {})
   }
 })

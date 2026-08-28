@@ -1,6 +1,9 @@
 // utils/request.js — 统一 HTTP 请求封装
 
 const { baseUrl: configBaseUrl } = require('../config/env')
+const { redirectToChangePassword, setMustChangePasswordFlag } = require('./auth')
+
+const PASSWORD_CHANGE_REQUIRED = 'MEMBER_PASSWORD_CHANGE_REQUIRED'
 
 function getRuntimeApp() {
   try {
@@ -49,6 +52,14 @@ function resolveTimeout(options) {
   return typeof custom === 'number' && custom > 0 ? custom : DEFAULT_TIMEOUT
 }
 
+function handlePasswordChangeRequired(body, silent) {
+  setMustChangePasswordFlag(true)
+  if (!silent) {
+    wx.showToast({ title: body.message || '请先修改初始密码', icon: 'none', duration: 2500 })
+  }
+  redirectToChangePassword()
+}
+
 /*
  * 核心请求函数
  * 参数 url    接口路径（不含 baseUrl 前缀）
@@ -81,6 +92,10 @@ const request = (url, method = 'GET', data = {}, options = {}) => {
           if (!silent) {
             wx.showToast({ title: body.message || '请先登录', icon: 'none', duration: 2500 })
           }
+          return reject(body)
+        }
+        if (body.code === 403 && body.errorKey === PASSWORD_CHANGE_REQUIRED) {
+          handlePasswordChangeRequired(body, silent)
           return reject(body)
         }
         const duration = body.code === 429 ? 3500 : 2500
@@ -161,5 +176,7 @@ module.exports = {
   _resolveBaseUrl: resolveBaseUrl,
   _resolveToken: resolveToken,
   _resolveTimeout: resolveTimeout,
-  DEFAULT_TIMEOUT
+  DEFAULT_TIMEOUT,
+  PASSWORD_CHANGE_REQUIRED,
+  _handlePasswordChangeRequired: handlePasswordChangeRequired
 }

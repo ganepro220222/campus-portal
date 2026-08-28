@@ -34,6 +34,10 @@ public final class ApiHttpStatus {
     }
 
     public static <T> ResponseEntity<Result<T>> fail(int code, String message) {
-        return ResponseEntity.status(fromBusinessCode(code)).body(Result.fail(code, message));
+        return fail(code, message, null);
+    }
+
+    public static <T> ResponseEntity<Result<T>> fail(int code, String message, String errorKey) {
+        return ResponseEntity.status(fromBusinessCode(code)).body(Result.fail(code, message, errorKey));
     }
 }

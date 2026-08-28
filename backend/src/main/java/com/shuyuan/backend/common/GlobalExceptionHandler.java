@@ -25,7 +25,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Result<Void>> handleBusinessException(BusinessException e) {
         recordApiCode(e.getCode());
-        return ApiHttpStatus.fail(e.getCode(), e.getMessage());
+        return ApiHttpStatus.fail(e.getCode(), e.getMessage(), e.getErrorKey());
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})

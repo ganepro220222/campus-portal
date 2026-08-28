@@ -6,14 +6,18 @@ import com.shuyuan.backend.dto.MemberChangePasswordRequest;
 import com.shuyuan.backend.dto.WxBindRequest;
 import com.shuyuan.backend.dto.WxLoginRequest;
 import com.shuyuan.backend.service.AuthService;
+import com.shuyuan.backend.service.MemberAuthGate;
 import com.shuyuan.backend.vo.LoginVO;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import io.swagger.v3.oas.annotations.tags.Tag;
+
+import java.util.Map;
 
 @Tag(name = "登录认证")
 @RestController
@@ -22,6 +26,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AuthController {
 
     private final AuthService authService;
+    private final MemberAuthGate memberAuthGate;
+
+    @GetMapping("/session")
+    public Result<Map<String, Object>> session() {
+        return Result.ok(memberAuthGate.buildSessionSnapshot());
+    }
 
     @PostMapping("/wx-login")
     public Result<LoginVO> wxLogin(@Valid @RequestBody WxLoginRequest req) {

@@ -113,4 +113,11 @@ public class AdminAuthService {
                 .mustChangePassword(false)
                 .build();
     }
+
+    public boolean mustChangePassword(Long adminId) {
+        SysUser user = sysUserMapper.selectById(adminId);
+        return user != null
+                && user.getMustChangePassword() != null
+                && user.getMustChangePassword() == 1;
+    }
 }

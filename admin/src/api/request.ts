@@ -29,6 +29,15 @@ function rejectApiBody(body: ApiResult, config?: AxiosRequestConfig): Promise<ne
     ElMessage.error(body.message || '登录已过期')
     return Promise.reject(body)
   }
+  if (body.code === 403 && body.errorKey === 'ADMIN_PASSWORD_CHANGE_REQUIRED') {
+    const auth = useAuthStore()
+    auth.markMustChangePassword()
+    if (router.currentRoute.value.name !== 'Login') {
+      router.push({ name: 'Login' })
+    }
+    ElMessage.warning(body.message || '请先修改初始密码')
+    return Promise.reject(body)
+  }
   if (body.code === 429) {
     ElMessage.warning({ message: body.message || '操作过于频繁', duration: 4000 })
     return Promise.reject(body)

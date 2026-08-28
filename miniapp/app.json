@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/change-password/index",
     "pages/news/index",
     "pages/hall/index",
     "pages/course/index",

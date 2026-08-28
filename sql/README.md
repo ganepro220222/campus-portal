@@ -2,20 +2,33 @@
 
 ## 全新环境（推荐）
 
-Docker 开发环境会在 MySQL 首次启动时自动执行：
+### Docker 开发环境自动初始化
+
+`docker-compose.dev.yml` 在 **MySQL 数据卷首次创建** 时会依次自动执行：
 
 1. `init.sql` — 建表 + 基础角色/规则
 2. `seed-dev.sql` — 演示数据（新闻、展馆、课程等）
-
-```bash
-# 手动导入（非 Docker 时）
-mysql -uroot -p shuyuan < sql/init.sql
-mysql -uroot -p shuyuan < sql/seed-dev.sql
-```
-
 3. `patch-builtin-knowledge.sql` — **内置知识库（正式内容，任何环境都要跑）**
 
+> 已有 `mysql_data` 卷不会因 `docker compose up` 或重启自动补跑第 3 步。
+> 保留现有开发数据时请手动执行 builtin patch；或 `docker compose -f docker-compose.dev.yml down -v` 后重建。
+
+机器可读清单见 `sql/sql-init-manifest.json`（由 `npm run check:sql-init` 校验）。
+
+### 非 Docker 手动初始化
+
+#### 生产新库
+
 ```bash
+mysql -uroot -p shuyuan < sql/init.sql
+mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
+```
+
+#### 开发 / 演示新库
+
+```bash
+mysql -uroot -p shuyuan < sql/init.sql
+mysql -uroot -p shuyuan < sql/seed-dev.sql
 mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 ```
 

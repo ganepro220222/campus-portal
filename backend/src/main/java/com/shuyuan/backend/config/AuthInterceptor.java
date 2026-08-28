@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * 解析会员 JWT，校验账号状态 / token 版本 / 强制改密写拦截，写入 {@link MemberContext}。
+ * 解析会员 JWT，校验账号状态 / token 版本 / 强制改密端点白名单，写入 {@link MemberContext}。
  */
 @Component
 @RequiredArgsConstructor
@@ -33,9 +33,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             MemberSession session = memberAuthGate.resolveMemberSession(token);
             if (session != null) {
                 MemberContext.set(session);
-                if (memberAuthGate.blocksWriteForMustChangePassword(request, session)) {
-                    throw new BusinessException(403, "请先修改密码后再操作");
-                }
+                memberAuthGate.ensureAllowedOrThrow(request, session);
             }
         } catch (BusinessException e) {
             throw e;

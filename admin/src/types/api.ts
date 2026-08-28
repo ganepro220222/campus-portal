@@ -2,6 +2,7 @@
 export interface ApiResult<T = unknown> {
   code: number
   message: string
+  errorKey?: string
   data: T
 }
 

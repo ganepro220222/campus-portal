@@ -172,7 +172,7 @@ router.beforeEach((to) => {
     return { name: 'Login', query: { redirect: to.fullPath } }
   }
   if (auth.mustChangePassword && to.name !== 'Login') {
-    return true
+    return { name: 'Login' }
   }
   const perm = to.meta.permission as string | undefined
   if (perm && !auth.can(perm)) {

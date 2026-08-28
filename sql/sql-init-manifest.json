@@ -1,0 +1,19 @@
+{
+  "devFreshDb": [
+    "sql/init.sql",
+    "sql/seed-dev.sql",
+    "sql/patch-builtin-knowledge.sql"
+  ],
+  "prodFreshDb": [
+    "sql/init.sql",
+    "sql/patch-builtin-knowledge.sql"
+  ],
+  "requiredAllEnv": [
+    "sql/patch-builtin-knowledge.sql"
+  ],
+  "dockerComposeDevMounts": [
+    "./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql",
+    "./sql/seed-dev.sql:/docker-entrypoint-initdb.d/02-seed-dev.sql",
+    "./sql/patch-builtin-knowledge.sql:/docker-entrypoint-initdb.d/03-builtin-knowledge.sql"
+  ]
+}

@@ -15,6 +15,9 @@ public class Result<T> {
     /** 提示信息 */
     private String message;
 
+    /** 稳定错误键（可选） */
+    private String errorKey;
+
     /** 响应数据 */
     private T data;
 
@@ -34,9 +37,15 @@ public class Result<T> {
 
     /** 失败 */
     public static <T> Result<T> fail(int code, String message) {
+        return fail(code, message, null);
+    }
+
+    /** 失败，带稳定错误键 */
+    public static <T> Result<T> fail(int code, String message, String errorKey) {
         Result<T> result = new Result<>();
         result.code = code;
         result.message = message;
+        result.errorKey = errorKey;
         return result;
     }
 

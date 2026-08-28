@@ -2,6 +2,7 @@
 
 const TOKEN_KEY = 'token'
 const USER_KEY  = 'userInfo'
+const MUST_CHANGE_PWD_KEY = 'mustChangePassword'
 
 /** 获取本地 token */
 const getToken = () => wx.getStorageSync(TOKEN_KEY) || ''
@@ -13,6 +14,7 @@ const setToken = (token) => wx.setStorageSync(TOKEN_KEY, token)
 const clearToken = () => {
   wx.removeStorageSync(TOKEN_KEY)
   wx.removeStorageSync(USER_KEY)
+  clearMustChangePasswordFlag()
 }
 
 /** 保存用户信息 */
@@ -28,6 +30,37 @@ const getUserInfo = () => {
   return app.globalData.userInfo || wx.getStorageSync(USER_KEY) || null
 }
 
+function setMustChangePasswordFlag(required) {
+  wx.setStorageSync(MUST_CHANGE_PWD_KEY, required === true)
+}
+
+function clearMustChangePasswordFlag() {
+  wx.removeStorageSync(MUST_CHANGE_PWD_KEY)
+}
+
+function isMustChangePasswordRequired() {
+  return wx.getStorageSync(MUST_CHANGE_PWD_KEY) === true
+}
+
+const CHANGE_PASSWORD_PAGE = '/pages/change-password/index'
+let redirectingToChangePassword = false
+
+function redirectToChangePassword() {
+  if (redirectingToChangePassword) return
+  if (typeof getCurrentPages === 'function') {
+    const pages = getCurrentPages()
+    const current = pages.length ? pages[pages.length - 1].route : ''
+    if (current === 'pages/change-password/index') return
+  }
+  redirectingToChangePassword = true
+  wx.reLaunch({
+    url: CHANGE_PASSWORD_PAGE,
+    complete() {
+      redirectingToChangePassword = false
+    }
+  })
+}
+
 function applyLoginData(data) {
   if (data && data.token) {
     setToken(data.token)
@@ -35,11 +68,18 @@ function applyLoginData(data) {
     const app = getApp()
     app.globalData.token = data.token
   }
+  if (data && data.mustChangePassword) {
+    setMustChangePasswordFlag(true)
+  } else if (data && data.token) {
+    clearMustChangePasswordFlag()
+  }
 }
 
-/** 登录成功后：若须改密由当前页切换模式（不跳转新页面） */
+/** 登录成功后：若须改密由调用方跳转独立改密页 */
 function handlePostLogin(data, onDone) {
   if (data && data.mustChangePassword) {
+    setMustChangePasswordFlag(true)
+    redirectToChangePassword()
     return true
   }
   onDone && onDone()
@@ -104,6 +144,10 @@ const bindWxAuthenticated = () => {
  * 未登录则弹窗引导跳转登录页，已登录执行回调
  */
 const requireLogin = (callback) => {
+  if (isMustChangePasswordRequired()) {
+    redirectToChangePassword()
+    return
+  }
   const token = getToken()
   if (token) {
     callback && callback()
@@ -124,5 +168,8 @@ const requireLogin = (callback) => {
 module.exports = {
   getToken, setToken, clearToken, setUserInfo, getUserInfo,
   wxLogin, bindWxAccount, bindWxAuthenticated, requireLogin,
-  applyLoginData, handlePostLogin
+  applyLoginData, handlePostLogin,
+  setMustChangePasswordFlag, clearMustChangePasswordFlag,
+  isMustChangePasswordRequired, redirectToChangePassword,
+  MUST_CHANGE_PWD_KEY, CHANGE_PASSWORD_PAGE
 }

@@ -1,5 +1,6 @@
 package com.shuyuan.backend.config;
 
+import com.shuyuan.backend.common.ApiErrorKeys;
 import com.shuyuan.backend.common.context.AdminContext;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.SysRole;
@@ -61,7 +62,10 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
             AdminContext.set(adminId, roleId,
                     adminPermissionService.parsePermissions(role.getPermissions()));
             if (mustChangePassword(user) && !isAllowedWhenMustChangePassword(request)) {
-                throw new BusinessException(403, "请先修改密码后再操作");
+                throw new BusinessException(
+                        403,
+                        "请先修改初始密码",
+                        ApiErrorKeys.ADMIN_PASSWORD_CHANGE_REQUIRED);
             }
         } catch (BusinessException e) {
             throw e;
@@ -81,15 +85,17 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         return user.getMustChangePassword() != null && user.getMustChangePassword() == 1;
     }
 
-    /** 须改密账号仅允许读操作与改密接口 */
+    /** 须改密期间仅允许会话查询与改密 */
     private boolean isAllowedWhenMustChangePassword(HttpServletRequest request) {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
         String method = request.getMethod();
-        if ("GET".equalsIgnoreCase(method)
-                || "HEAD".equalsIgnoreCase(method)
-                || "OPTIONS".equalsIgnoreCase(method)) {
+        String uri = request.getRequestURI();
+        if ("GET".equalsIgnoreCase(method) && "/api/v1/admin/auth/session".equals(uri)) {
             return true;
         }
         return "PUT".equalsIgnoreCase(method)
-                && "/api/v1/admin/auth/change-password".equals(request.getRequestURI());
+                && "/api/v1/admin/auth/change-password".equals(uri);
     }
 }

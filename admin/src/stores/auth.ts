@@ -80,6 +80,12 @@ export const useAuthStore = defineStore('auth', () => {
     persist()
   }
 
+  function markMustChangePassword() {
+    if (!profile.value) return
+    profile.value = { ...profile.value, mustChangePassword: true }
+    persist()
+  }
+
   function can(permission: string) {
     return hasPermission(profile.value?.permissions || [], permission)
   }
@@ -94,6 +100,7 @@ export const useAuthStore = defineStore('auth', () => {
     changePassword,
     applyLogin,
     logout,
+    markMustChangePassword,
     can
   }
 })

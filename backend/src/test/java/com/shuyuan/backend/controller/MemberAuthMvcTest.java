@@ -4,6 +4,7 @@ import com.shuyuan.backend.common.GlobalExceptionHandler;
 import com.shuyuan.backend.config.AuthInterceptor;
 import com.shuyuan.backend.controller.api.ActivityController;
 import com.shuyuan.backend.controller.api.AuthController;
+import com.shuyuan.backend.controller.api.ProfileController;
 import com.shuyuan.backend.entity.Member;
 import com.shuyuan.backend.entity.MemberAccount;
 import com.shuyuan.backend.mapper.MemberAccountMapper;
@@ -13,6 +14,7 @@ import com.shuyuan.backend.service.ApiErrorMetrics;
 import com.shuyuan.backend.service.AuthService;
 import com.shuyuan.backend.service.EnrollService;
 import com.shuyuan.backend.service.MemberAuthGate;
+import com.shuyuan.backend.service.ProfileService;
 import com.shuyuan.backend.util.JwtUtils;
 import com.shuyuan.backend.vo.LoginVO;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,17 +34,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 小程序会员鉴权：强制改密写拦截、禁用账号、token 版本。
+ * 小程序会员鉴权：强制改密端点白名单、禁用账号、token 版本。
  */
 @ExtendWith(MockitoExtension.class)
 class MemberAuthMvcTest {
 
     private MockMvc activityMockMvc;
     private MockMvc authMockMvc;
+    private MockMvc profileMockMvc;
 
     @Mock
     private JwtUtils jwtUtils;
@@ -56,6 +60,8 @@ class MemberAuthMvcTest {
     private EnrollService enrollService;
     @Mock
     private AuthService authService;
+    @Mock
+    private ProfileService profileService;
 
     private MemberAuthGate memberAuthGate;
     private AuthInterceptor authInterceptor;
@@ -71,8 +77,14 @@ class MemberAuthMvcTest {
                 .addInterceptors(authInterceptor)
                 .build();
 
-        AuthController authController = new AuthController(authService);
+        AuthController authController = new AuthController(authService, memberAuthGate);
         authMockMvc = MockMvcBuilders.standaloneSetup(authController)
+                .setControllerAdvice(new GlobalExceptionHandler(new ApiErrorMetrics()))
+                .addInterceptors(authInterceptor)
+                .build();
+
+        ProfileController profileController = new ProfileController(profileService);
+        profileMockMvc = MockMvcBuilders.standaloneSetup(profileController)
                 .setControllerAdvice(new GlobalExceptionHandler(new ApiErrorMetrics()))
                 .addInterceptors(authInterceptor)
                 .build();
@@ -88,7 +100,7 @@ class MemberAuthMvcTest {
                         .content("{}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(403))
-                .andExpect(jsonPath("$.message").value("请先修改密码后再操作"));
+                .andExpect(jsonPath("$.errorKey").value("MEMBER_PASSWORD_CHANGE_REQUIRED"));
 
         verify(enrollService, never()).enroll(anyLong(), any());
     }
@@ -108,15 +120,38 @@ class MemberAuthMvcTest {
     }
 
     @Test
-    void mustChangePassword_allowsRead() throws Exception {
+    void mustChangePassword_blocksProfileRead() throws Exception {
         stubActiveMemberWithMustChange(9L);
-        when(activityService.list(1, 20)).thenReturn(
-                new com.shuyuan.backend.common.PageResult<>(java.util.List.of(), 0, 1, 20));
 
-        activityMockMvc.perform(get("/api/v1/activities")
+        profileMockMvc.perform(get("/api/v1/profile")
+                        .header("Authorization", "Bearer token"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorKey").value("MEMBER_PASSWORD_CHANGE_REQUIRED"));
+
+        verify(profileService, never()).profile();
+    }
+
+    @Test
+    void mustChangePassword_blocksProfileUpdate() throws Exception {
+        stubActiveMemberWithMustChange(9L);
+
+        profileMockMvc.perform(put("/api/v1/profile")
+                        .header("Authorization", "Bearer token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"realName\":\"x\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorKey").value("MEMBER_PASSWORD_CHANGE_REQUIRED"));
+    }
+
+    @Test
+    void mustChangePassword_allowsSession() throws Exception {
+        stubActiveMemberWithMustChange(9L);
+
+        authMockMvc.perform(get("/api/v1/auth/session")
                         .header("Authorization", "Bearer token"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.mustChangePassword").value(true));
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.shuyuan.backend.common.ApiErrorKeys;
+import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.context.MemberSession;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.Member;
@@ -13,8 +15,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
- * 小程序会员 token 请求期校验：账号状态、token 版本、强制改密写操作拦截。
+ * 小程序会员 token 请求期校验：账号状态、token 版本、强制改密端点白名单。
  */
 @Service
 @RequiredArgsConstructor
@@ -55,34 +60,61 @@ public class MemberAuthGate {
         return new MemberSession(memberId, mustChange);
     }
 
-    public boolean blocksWriteForMustChangePassword(HttpServletRequest request, MemberSession session) {
+    /** 须改密账号：除白名单端点外一律拒绝 */
+    public boolean blocksForMustChangePassword(HttpServletRequest request, MemberSession session) {
         if (session == null || !session.mustChangePassword()) {
             return false;
         }
-        return isWriteMethod(request) && !isAllowedWhenMustChangePassword(request);
+        if (isPreflight(request)) {
+            return false;
+        }
+        return !isAllowedWhenMustChangePassword(request);
     }
 
-    static boolean isWriteMethod(HttpServletRequest request) {
-        String method = request.getMethod();
-        return "POST".equalsIgnoreCase(method)
-                || "PUT".equalsIgnoreCase(method)
-                || "DELETE".equalsIgnoreCase(method)
-                || "PATCH".equalsIgnoreCase(method);
+    public void ensureAllowedOrThrow(HttpServletRequest request, MemberSession session) {
+        if (blocksForMustChangePassword(request, session)) {
+            throw new BusinessException(
+                    403,
+                    "请先修改初始密码",
+                    ApiErrorKeys.MEMBER_PASSWORD_CHANGE_REQUIRED);
+        }
     }
 
-    /** 须改密账号仅允许读操作与改密接口 */
+    public Map<String, Object> buildSessionSnapshot() {
+        Long memberId = MemberContext.getMemberId();
+        if (memberId == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+        MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
+                .eq(MemberAccount::getMemberId, memberId)
+                .last("LIMIT 1"));
+        boolean mustChange = account != null
+                && account.getMustChangePassword() != null
+                && account.getMustChangePassword() == 1;
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("loggedIn", true);
+        body.put("memberId", memberId);
+        body.put("mustChangePassword", mustChange);
+        return body;
+    }
+
+    static boolean isPreflight(HttpServletRequest request) {
+        return "OPTIONS".equalsIgnoreCase(request.getMethod());
+    }
+
+    /** 须改密期间仅允许会话查询、改密与重新登录 */
     static boolean isAllowedWhenMustChangePassword(HttpServletRequest request) {
         String method = request.getMethod();
-        if ("GET".equalsIgnoreCase(method)
-                || "HEAD".equalsIgnoreCase(method)
-                || "OPTIONS".equalsIgnoreCase(method)) {
-            return true;
-        }
         String uri = request.getRequestURI();
-        if ("POST".equalsIgnoreCase(method) && "/api/v1/auth/change-password".equals(uri)) {
+        if ("GET".equalsIgnoreCase(method) && "/api/v1/auth/session".equals(uri)) {
             return true;
         }
-        // 首次登录须改密期间仍允许完善个人资料（报名预填依赖 member_profile）
-        return "PUT".equalsIgnoreCase(method) && "/api/v1/profile".equals(uri);
+        if (!"POST".equalsIgnoreCase(method)) {
+            return false;
+        }
+        return "/api/v1/auth/change-password".equals(uri)
+                || "/api/v1/auth/account-login".equals(uri)
+                || "/api/v1/auth/wx-login".equals(uri)
+                || "/api/v1/auth/wx-bind".equals(uri);
     }
 }

@@ -63,7 +63,10 @@ class AuthSecurityMvcTest {
 
     @BeforeEach
     void setUp() {
-        AuthController authController = new AuthController(authService);
+        AuthController authController = new AuthController(authService, new com.shuyuan.backend.service.MemberAuthGate(
+                jwtUtils,
+                org.mockito.Mockito.mock(com.shuyuan.backend.mapper.MemberMapper.class),
+                org.mockito.Mockito.mock(com.shuyuan.backend.mapper.MemberAccountMapper.class)));
         authMockMvc = MockMvcBuilders.standaloneSetup(authController)
                 .setControllerAdvice(new GlobalExceptionHandler(new ApiErrorMetrics()))
                 .build();
@@ -146,7 +149,7 @@ class AuthSecurityMvcTest {
     }
 
     @Test
-    void adminApi_mustChangePassword_blocksWriteButAllowsRead() throws Exception {
+    void adminApi_mustChangePassword_blocksReadAndWrite() throws Exception {
         when(jwtUtils.getAdminId("token")).thenReturn(1L);
         when(jwtUtils.getAdminRoleId("token")).thenReturn(2L);
         SysUser user = activeUserWithMustChangePassword();
@@ -157,8 +160,9 @@ class AuthSecurityMvcTest {
 
         adminMockMvc.perform(get("/api/v1/admin/banners")
                         .header("Authorization", "Bearer token"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403))
+                .andExpect(jsonPath("$.errorKey").value("ADMIN_PASSWORD_CHANGE_REQUIRED"));
 
         adminMockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .post("/api/v1/admin/banners")
@@ -167,7 +171,7 @@ class AuthSecurityMvcTest {
                         .content("{\"title\":\"t\",\"imageUrl\":\"u\",\"linkType\":\"none\",\"sortOrder\":1}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(403))
-                .andExpect(jsonPath("$.message").value("请先修改密码后再操作"));
+                .andExpect(jsonPath("$.errorKey").value("ADMIN_PASSWORD_CHANGE_REQUIRED"));
     }
 
     @Test

@@ -30,8 +30,11 @@ Page({
   onLoad(options) {
     const sys = wx.getSystemInfoSync()
     this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
-    if (options.mode === 'changePassword' && getToken()) {
-      this.setData({ changePasswordMode: true })
+    if (options.mode === 'changePassword') {
+      const { getToken, redirectToChangePassword } = require('../../utils/auth')
+      if (getToken()) {
+        redirectToChangePassword()
+      }
     }
   },
 
@@ -126,7 +129,8 @@ Page({
       const data = await post('/auth/account-login', { studentNo: studentNo.trim(), password })
       applyLoginData(data)
       if (data.mustChangePassword) {
-        this._enterChangePasswordMode()
+        const { redirectToChangePassword } = require('../../utils/auth')
+        redirectToChangePassword()
         return
       }
       if (data.wxBound === false) {
@@ -199,7 +203,7 @@ Page({
 
   _afterLogin(data) {
     if (handlePostLogin(data, () => this._loginSuccess())) {
-      this._enterChangePasswordMode()
+      return
     }
   },
 

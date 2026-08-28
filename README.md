@@ -35,7 +35,13 @@ docs/        Internal specs
 
 3. Open `miniapp/` in WeChat DevTools (`baseUrl` is already `http://localhost:8080/api/v1`).
 
-**Fresh DB:** `init.sql` + `seed-dev.sql` run automatically on first `mysql_data` volume creation.
+**Fresh DB:** `init.sql` + `seed-dev.sql` + `patch-builtin-knowledge.sql` run automatically on first `mysql_data` volume creation.
+
+**Existing dev volume missing builtin knowledge:**
+
+```bash
+cat sql/patch-builtin-knowledge.sql | docker compose -f docker-compose.dev.yml exec -T mysql mysql -uroot -pdev123456 shuyuan
+```
 
 **Reset DB (re-run seed):**
 

@@ -44,8 +44,8 @@ if (!/refundKey/.test(interceptor)) {
 }
 
 // ---------- 2) 退还的原子性 ----------
-if (!/EXISTS/.test(service) || !/DECR/.test(service)) {
-  errs.push('RateLimitService 缺少 EXISTS 守卫的退还脚本')
+if (!/DECR/.test(service) || !/GET/.test(service)) {
+  errs.push('RateLimitService 退还脚本缺少「读计数再减」的 Lua 守卫')
 }
 if (/opsForValue\(\)\.decrement\(/.test(service)) {
   errs.push('RateLimitService 仍有裸 DECR：键过期后会造出无 TTL 的负数键')
@@ -75,8 +75,11 @@ if (!askTimeout) {
 } else if (Number(askTimeout[1]) <= 10000) {
   errs.push(`ASK_TIMEOUT=${askTimeout[1]} 不比默认的 10000 宽，等于没放宽`)
 }
-if (!/sendQuestion[\s\S]{0,220}?timeout:\s*ASK_TIMEOUT/.test(aiChat)) {
+if (!/sendQuestion[\s\S]{0,280}?timeout:\s*ASK_TIMEOUT/.test(aiChat)) {
   errs.push('sendQuestion 没有把 ASK_TIMEOUT 传下去')
+}
+if (!/async function sendQuestion[\s\S]{0,220}?silent:\s*true/.test(aiChat)) {
+  errs.push('sendQuestion 未设 silent:true，超时后通用 toast 会与 AI 页专用提示冲突')
 }
 
 // ---------- 4) 按天额度的文案 ----------

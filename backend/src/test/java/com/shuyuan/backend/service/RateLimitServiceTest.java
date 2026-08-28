@@ -10,6 +10,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.RedisScript;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.Duration;
 import java.util.List;
@@ -122,8 +125,8 @@ class RateLimitServiceTest {
     // ---------- 失败退还 ----------
 
     /**
-     * 裸 DECR 对不存在的键会新建 -1 且不带 TTL；请求跨过窗口边界时就会凭空造出永不过期的负数键。
-     * 所以退还必须走「存在才减」的 Lua，而不是 opsForValue().decrement()。
+     * 裸 DECR 对不存在的键会新建 -1 且不带 TTL；计数已为 0 时不应再减成负数。
+     * 所以退还必须走 Lua「仅当计数 &gt; 0 才 DECR」，而不是 opsForValue().decrement()。
      */
     @Test
     void refundKey_usesExistsGuardedScriptNotRawDecrement() {
@@ -141,6 +144,19 @@ class RateLimitServiceTest {
         rateLimitService.refundKey("ratelimit:ai:u:5");
 
         verify(redis, never()).execute(any(RedisScript.class), anyList());
+    }
+
+    @Test
+    void refundKey_sameRequestSameKeyOnlyExecutesOnce() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+        try {
+            rateLimitService.refundKey("ratelimit:ai:u:5:2026-08-27");
+            rateLimitService.refundKey("ratelimit:ai:u:5:2026-08-27");
+            verify(redis, org.mockito.Mockito.times(1)).execute(any(RedisScript.class), anyList());
+        } finally {
+            RequestContextHolder.resetRequestAttributes();
+        }
     }
 
     /** 退还要拿到「本次占用的那把键」，所以计数方法必须把键回传出来 */

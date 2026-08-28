@@ -119,13 +119,18 @@ public class AiChatService {
          * 该由模型说的话仍然由模型说。这样判定偏高只是少扣一次（对用户宽容），
          * 偏低也只是维持现状（照扣），两个方向都不会误伤到回答本身。
          */
+        Map<String, Object> vo = aiChatPersistenceService.saveChatTurn(
+                sessionId, question, answer, chunks, safetyStatus);
+
+        /*
+         * 退还必须发生在保存成功之后：若 save 失败走 5xx，拦截器会退还这一次占用；
+         * 若在这里先退、save 再失败，拦截器会再退一次，同一次提问会被退两遍。
+         * 读余额仍放在退还之后，前端才能拿到「不计数」后的剩余次数。
+         */
         if (!substantial) {
             rateLimitService.refundUserCalendarDay(RateLimitService.SCENE_AI, memberId);
         }
 
-        Map<String, Object> vo = aiChatPersistenceService.saveChatTurn(
-                sessionId, question, answer, chunks, safetyStatus);
-        // 放在退还之后：余额要把这次「不计数」算进去，否则前端会显示一个马上又变回来的数
         vo.putAll(quotaFields());
         return vo;
     }

@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.config.RateLimitRequestLedger;
 import com.shuyuan.backend.config.ShuyuanProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -37,7 +38,13 @@ public class RateLimitService {
      * 用 Lua 把「存在才减」做成一步原子操作，从根上消掉这一类。
      */
     private static final RedisScript<Long> REFUND_SCRIPT = new DefaultRedisScript<>(
-            "if redis.call('EXISTS', KEYS[1]) == 1 then return redis.call('DECR', KEYS[1]) end return -1",
+            """
+                    local v = redis.call('GET', KEYS[1])
+                    if not v then return -1 end
+                    local n = tonumber(v)
+                    if n and n > 0 then return redis.call('DECR', KEYS[1]) end
+                    return n or -1
+                    """,
             Long.class);
 
     private final StringRedisTemplate redis;
@@ -100,7 +107,11 @@ public class RateLimitService {
         if (redisKey == null || redisKey.isBlank() || !properties.getRateLimit().isEnabled()) {
             return;
         }
+        if (RateLimitRequestLedger.wasRefunded(redisKey)) {
+            return;
+        }
         redis.execute(REFUND_SCRIPT, List.of(redisKey));
+        RateLimitRequestLedger.markRefunded(redisKey);
     }
 
     /** 退还该用户今天在某场景下的一次占用（自然日键，与 checkUserCalendarDay 同一把键） */
@@ -165,7 +176,7 @@ public class RateLimitService {
             return 0;
         }
         try {
-            return Integer.parseInt(val.trim());
+            return Math.max(0, Integer.parseInt(val.trim()));
         } catch (NumberFormatException e) {
             return 0;
         }

@@ -137,7 +137,11 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return;
         }
         for (Object key : keys) {
-            rateLimitService.refundKey((String) key);
+            String redisKey = (String) key;
+            if (RateLimitRequestLedger.wasRefunded(request, redisKey)) {
+                continue;
+            }
+            rateLimitService.refundKey(redisKey);
         }
     }
 

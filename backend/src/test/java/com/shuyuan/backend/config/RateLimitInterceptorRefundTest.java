@@ -165,6 +165,15 @@ class RateLimitInterceptorRefundTest {
         verify(rateLimitService, org.mockito.Mockito.times(1)).refundKey(AI_KEY);
     }
 
+    /** 业务层已对该键退还时，拦截器 5xx 路径不得再退一次 */
+    @Test
+    void 业务已退还的键拦截器不再重复退() {
+        MockHttpServletRequest request = aiRequest();
+        RateLimitRequestLedger.markRefunded(request, AI_KEY);
+        complete(request, 500, null);
+        verify(rateLimitService, never()).refundKey(anyString());
+    }
+
     // ---------- 后台 AI 辅助按自然日 ----------
 
     /**

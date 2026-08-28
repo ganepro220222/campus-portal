@@ -103,7 +103,13 @@ expectCaught('AI 提问超时缩回默认值', FILES[3],
   (s) => s.replace(/const ASK_TIMEOUT = \d+/, 'const ASK_TIMEOUT = 10000'))
 
 expectCaught('sendQuestion 不再传超时', FILES[3],
-  (s) => s.replace(', { timeout: ASK_TIMEOUT }', ''))
+  (s) => s.replace(', { timeout: ASK_TIMEOUT, silent: true }', ''))
+
+expectCaught('sendQuestion 去掉 silent', FILES[3],
+  (s) => s.replace(
+    '{ timeout: ASK_TIMEOUT, silent: true }',
+    '{ timeout: ASK_TIMEOUT, silent: false }'
+  ))
 
 expectCaught('问答页写死 dailyLimit', FILES[4],
   (s) => s.replace('exhaustedQuota(this.data.quota)',

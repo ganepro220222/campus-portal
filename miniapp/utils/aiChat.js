@@ -40,7 +40,8 @@ async function fetchQuota() {
 const ASK_TIMEOUT = 30000
 
 async function sendQuestion(sessionId, question) {
-  return post(`/ai/chat/sessions/${sessionId}/messages`, { question }, { timeout: ASK_TIMEOUT })
+  // silent: 超时/断网等由本页 resolveErrorAnswer 统一提示，避免通用层 toast 与聊天气泡矛盾
+  return post(`/ai/chat/sessions/${sessionId}/messages`, { question }, { timeout: ASK_TIMEOUT, silent: true })
 }
 
 /** 网络层失败（wx.request 的 fail 回调）没有 body.code，只能看 errMsg */

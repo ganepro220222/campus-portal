@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -165,7 +166,7 @@ class AiChatServiceTest {
         com.shuyuan.backend.common.context.MemberContext.clear();
     }
 
-    /** 退还必须发生在读余额之前，否则前端拿到的是一个马上又会变回来的数 */
+    /** 退还必须发生在保存成功之后，读余额仍须在退还之后 */
     @Test
     void 余额在退还之后再读() {
         openSession(13L, 7L);
@@ -174,9 +175,23 @@ class AiChatServiceTest {
 
         ask(13L, "今天星期几");
 
-        var order = inOrder(rateLimitService);
+        var order = inOrder(aiChatPersistenceService, rateLimitService);
+        order.verify(aiChatPersistenceService).saveChatTurn(eq(13L), eq("今天星期几"), anyString(), anyList(), eq("pass"));
         order.verify(rateLimitService).refundUserCalendarDay(RateLimitService.SCENE_AI, 7L);
         order.verify(rateLimitService).getUserCalendarDayUsage("ai", 7L);
+        com.shuyuan.backend.common.context.MemberContext.clear();
+    }
+
+    /** save 失败时不业务退还，避免与拦截器 5xx 退还叠成两次 */
+    @Test
+    void 无实质命中但保存失败时不业务退还() {
+        openSession(14L, 8L);
+        when(knowledgeService.retrieve(anyString(), anyInt())).thenReturn(List.of());
+        when(aiChatPersistenceService.saveChatTurn(anyLong(), anyString(), anyString(), anyList(), anyString()))
+                .thenThrow(new RuntimeException("db down"));
+
+        assertThrows(RuntimeException.class, () -> ask(14L, "今天星期几"));
+        verify(rateLimitService, never()).refundUserCalendarDay(anyString(), anyLong());
         com.shuyuan.backend.common.context.MemberContext.clear();
     }
 

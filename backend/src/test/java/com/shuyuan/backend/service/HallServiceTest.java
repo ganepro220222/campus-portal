@@ -124,6 +124,36 @@ class HallServiceTest {
     }
 
     @Test
+    void list_returnsEmptyWhenCategoryNotFound() {
+        when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of());
+        when(categoryService.findIdByName("hall", "不存在的分类")).thenReturn(null);
+
+        var result = hallService.list("不存在的分类");
+
+        assertTrue(result.isEmpty(), "分类查不到时应 fail-closed 返回空列表，而非放开过滤返回全部展馆");
+        org.mockito.Mockito.verifyNoInteractions(hallMapper);
+    }
+
+    @Test
+    void list_filtersByCategoryWhenFound() {
+        Hall hall = new Hall();
+        hall.setId(8L);
+        hall.setName("校园安全教育馆");
+        hall.setCategoryId(17L);
+        hall.setStatus(1);
+
+        when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of(17L, "安全教育"));
+        when(categoryService.findIdByName("hall", "安全教育")).thenReturn(17L);
+        when(categoryService.getName(17L, java.util.Map.of(17L, "安全教育"))).thenReturn("安全教育");
+        when(hallMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(hall));
+
+        var result = hallService.list("安全教育");
+
+        assertEquals(1, result.size());
+        assertEquals("校园安全教育馆", result.get(0).get("name"));
+    }
+
+    @Test
     void detail_throwsWhenHallOffline() {
         Hall hall = new Hall();
         hall.setId(2L);

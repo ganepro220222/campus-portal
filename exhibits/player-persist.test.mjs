@@ -10,6 +10,7 @@ import {
   configExportFilename,
   strictWebKitPanoramaMaxWidth,
   DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH,
+  resolveRendererQuality,
   panoramaRevealTimeoutMs,
   fitCameraDistance,
   portraitFillTarget,
@@ -60,6 +61,60 @@ test('strictWebKitPanoramaMaxWidth defaults to 2048 on strict hosts only', () =>
   assert.equal(strictWebKitPanoramaMaxWidth(null, false, 0), 0)
   assert.equal(strictWebKitPanoramaMaxWidth({ performance: { strictWebKitPanoramaMaxWidth: 1024 } }, true, 0), 1024)
   assert.equal(strictWebKitPanoramaMaxWidth(null, true, 4096), 4096)
+})
+
+const craftLikeCfg = { performance: { mobilePixelRatio: 1.5, desktopPixelRatio: 2 }, renderer: { maxPixelRatio: 2 } }
+
+test('resolveRendererQuality: strict mobile default is DPR 1.5 with MSAA off (was 1)', () => {
+  const q = resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 3, cfg: craftLikeCfg })
+  assert.equal(q.pixelRatio, 1.5)
+  assert.equal(q.antialias, false)
+})
+
+test('resolveRendererQuality: strictWebKitPixelRatio can raise DPR above mobilePixelRatio', () => {
+  const cfg = { ...craftLikeCfg, performance: { ...craftLikeCfg.performance, strictWebKitPixelRatio: 2 } }
+  const q = resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 3, cfg })
+  assert.equal(q.pixelRatio, 2, 'old Math.min(mobile, strict) clamped this to 1.5')
+})
+
+test('resolveRendererQuality: strict DPR hard-capped by renderer.maxPixelRatio and 2', () => {
+  const over = { performance: { strictWebKitPixelRatio: 4 }, renderer: { maxPixelRatio: 2 } }
+  assert.equal(resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 4, cfg: over }).pixelRatio, 2)
+  const lowMax = { performance: { strictWebKitPixelRatio: 2 }, renderer: { maxPixelRatio: 1.5 } }
+  assert.equal(resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 3, cfg: lowMax }).pixelRatio, 1.5)
+  const noRendererCfg = { performance: { strictWebKitPixelRatio: 3 } }
+  assert.equal(resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 4, cfg: noRendererCfg }).pixelRatio, 2)
+})
+
+test('resolveRendererQuality: device DPR below cap wins', () => {
+  const q = resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 1, cfg: craftLikeCfg })
+  assert.equal(q.pixelRatio, 1)
+})
+
+test('resolveRendererQuality: strictWebKitAntialias opt-in enables MSAA on strict mobile', () => {
+  const cfg = { performance: { strictWebKitAntialias: true } }
+  assert.equal(resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 2, cfg }).antialias, true)
+  const offCfg = { performance: { strictWebKitAntialias: false } }
+  assert.equal(resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 2, cfg: offCfg }).antialias, false)
+})
+
+test('resolveRendererQuality: non-strict and desktop paths unchanged', () => {
+  const android = resolveRendererQuality({ isMobile: true, strictWebKit: false, devicePixelRatio: 3, cfg: craftLikeCfg })
+  assert.equal(android.pixelRatio, 1.5)
+  assert.equal(android.antialias, true)
+  const desktop = resolveRendererQuality({ isMobile: false, strictWebKit: false, devicePixelRatio: 2, cfg: craftLikeCfg })
+  assert.equal(desktop.pixelRatio, 2)
+  assert.equal(desktop.antialias, true)
+  // 桌面 Safari：默认仍为 1.5（与旧 min(desktop, 1.5) 结果一致），MSAA 保持开启
+  const desktopSafari = resolveRendererQuality({ isMobile: false, strictWebKit: true, devicePixelRatio: 2, cfg: craftLikeCfg })
+  assert.equal(desktopSafari.pixelRatio, 1.5)
+  assert.equal(desktopSafari.antialias, true)
+})
+
+test('resolveRendererQuality: missing config falls back to safe defaults', () => {
+  const q = resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 3, cfg: null })
+  assert.equal(q.pixelRatio, 1.5)
+  assert.equal(q.antialias, false)
 })
 
 test('camera round-trip with zero pivot', () => {

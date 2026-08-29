@@ -128,6 +128,42 @@ export function strictWebKitPanoramaMaxWidth(cfg, strictWebKit, urlOverride = 0)
   return DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH
 }
 
+/** strict WebKit 移动端默认 DPR。旧值 1 是微信/iOS 端锯齿主因（画布像素只有 CSS 视口大小）。 */
+export const STRICT_WEBKIT_DEFAULT_PIXEL_RATIO = 1.5
+/** strict WebKit 的 DPR 硬上限：防止单件展品误配 3/4 后在高 DPR 设备上创建超大画布。 */
+export const STRICT_WEBKIT_PIXEL_RATIO_LIMIT = 2
+
+/**
+ * 画布质量（DPR / MSAA）与全景安全解耦：
+ * strictWebKit 继续控制全景延迟与 PMREM 降采样（那是 WebContent 被杀的主因），
+ * 画布 DPR / antialias 由本函数独立决定，不再被同一个开关隐式压到最低。
+ *
+ * strictWebKitPixelRatio 语义为「strict 环境专用 DPR」独立覆盖——旧实现是
+ * Math.min(mobilePixelRatio, strictWebKitPixelRatio)，配置成 3 也会被 1.5 压回，
+ * 字段只能压低、无法提高清晰度；现在覆盖生效，但受 renderer.maxPixelRatio 与
+ * 硬上限 2 双重封顶。
+ *
+ * strictWebKitAntialias 默认 false：WebGL antialias 只能在创建 context 时决定
+ * （改配置后需刷新页面），且 MSAA 在低端微信 WebView 上有掉帧/发热风险，
+ * 需真机验证后按展品显式开启。
+ */
+export function resolveRendererQuality({ isMobile, strictWebKit, devicePixelRatio, cfg }) {
+  const n = (v, d) => (typeof v === 'number' && isFinite(v) && v > 0) ? v : d
+  const perf = cfg?.performance
+  const rendererMax = n(cfg?.renderer?.maxPixelRatio, 2)
+  let cap = isMobile ? n(perf?.mobilePixelRatio, 1.5) : n(perf?.desktopPixelRatio, rendererMax)
+  let antialias = true
+  if (strictWebKit) {
+    const requested = n(perf?.strictWebKitPixelRatio, STRICT_WEBKIT_DEFAULT_PIXEL_RATIO)
+    cap = Math.min(requested, rendererMax, STRICT_WEBKIT_PIXEL_RATIO_LIMIT)
+    if (isMobile) {
+      antialias = perf?.strictWebKitAntialias === true
+    }
+  }
+  const pixelRatio = Math.min(n(devicePixelRatio, 1), cap)
+  return { pixelRatio, antialias }
+}
+
 /** Idle timer resets on download progress; cleared once loaded >= total. Total caps entire load. */
 export function createModelLoadTimers({ idleMs, totalMs, onIdle, onTotal, onDownloadComplete }) {
   let idleTimer = 0

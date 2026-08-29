@@ -206,7 +206,14 @@ Page({
       this._videoUrlReloadTotal += 1
       this._pendingVideoResume = { position: resumePosition, playing: wasPlaying }
       this._videoRecoveryStartPosition = resumePosition > 0 ? resumePosition : null
-      this.setData({ videoUrl: play.videoUrl })
+      if (play.videoUrl === this.data.videoUrl) {
+        // 签名未变（有效期内的瞬时错误）：同字符串不会触发 <video> 重新加载，
+        // loadedmetadata 不会再次派发，pending resume 会滞留。先卸载（wx:if）再挂载强制重建组件。
+        this.setData({ videoUrl: '' })
+        wx.nextTick(() => this.setData({ videoUrl: play.videoUrl }))
+      } else {
+        this.setData({ videoUrl: play.videoUrl })
+      }
       if (!silent) {
         wx.showToast({ title: '已刷新视频地址', icon: 'none' })
       }

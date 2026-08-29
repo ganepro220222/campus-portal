@@ -100,6 +100,8 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 17 | `patch-college-app-demo.sql` | **首页关联应用**：`college_app` 从旧版 11 条学院名收敛为通途星 + 2 条示例 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
 | 18 | `seed-dev-cleanup.sql` | **交付前清场**：反向删除 `seed-dev.sql` 灌入的全部演示数据 | 非日常；两道护栏，见下 |
 | 19 | `patch-course-progress-watched-seconds.sql` | 课程进度累计观看 + 上次上报位置；旧库高进度回填 | ✅ 已并入 init.sql；**可重复执行** |
+| 20 | `patch-hall-vr-720-subdomains-20260829.sql` | 展馆 VR 链接切换到 720 云可校验子域名 + 11 号馆牙舟陶上线 | 仅数据；seed 已同步 |
+| 21 | `patch-hall-vr-visibility-20260829.sql` | 条件关闭空「待上线」页签 + 8/9 号馆第三方 VR 入口暂下线（展馆保留） | 仅数据；seed 已同步；**可重复执行** |
 
 #### 按 id 区间删数据的两个脚本（务必先读）
 

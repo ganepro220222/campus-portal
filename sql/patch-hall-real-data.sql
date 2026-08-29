@@ -20,7 +20,7 @@ INSERT IGNORE INTO `category` (`id`, `type`, `name`, `sort`, `status`) VALUES
 (16, 'hall', '文化艺术', 5, 1),
 (17, 'hall', '安全教育', 6, 1),
 (18, 'hall', '主题宣教', 7, 1),
-(19, 'hall', '待上线', 8, 1);
+(19, 'hall', '待上线', 8, 0);  -- 暂无上线展馆，启用会出现空页签
 
 -- 3) 11 馆数据（按 id 覆盖更新，保留原主键以兼容 home_recommend / favorite 等引用）
 UPDATE `hall` SET
@@ -93,11 +93,13 @@ UPDATE `hall` SET
   `status` = 1
 WHERE `id` = 7;
 
+-- 8/9 号馆 VR 暂缺：第三方域名无法完成微信业务域名校验（原链接见 patch-hall-vr-visibility-20260829.sql），
+-- 合伙人迁移到 720yun 后再回填；展馆本体保留上线（展馆达人徽章要求 11 馆齐全）
 UPDATE `hall` SET
   `name` = '校园安全教育馆',
   `short_name` = '校园安全教育馆',
   `intro` = '校园安全常识、应急演练与警示教育，支持 VR 全景漫游。',
-  `vr_url` = 'https://www.bafang720.com/tour/4220d0a68856dcb9',
+  `vr_url` = NULL,
   `category_id` = 17,
   `sort` = 8,
   `status` = 1
@@ -107,7 +109,7 @@ UPDATE `hall` SET
   `name` = '西部山区道路运输安全警示教育基地',
   `short_name` = '西部山区安全基地',
   `intro` = '面向山区道路运输场景的典型案例与安全警示教育，支持 VR 全景漫游。',
-  `vr_url` = 'https://eqvrar.com/hcvr/692/?t=1567242165',
+  `vr_url` = NULL,
   `category_id` = 17,
   `sort` = 9,
   `status` = 1

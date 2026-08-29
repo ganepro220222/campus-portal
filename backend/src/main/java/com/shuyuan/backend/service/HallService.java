@@ -36,9 +36,12 @@ public class HallService {
                 .orderByAsc(Hall::getSort);
         if (category != null && !category.isBlank() && !"全部".equals(category)) {
             Long cid = categoryService.findIdByName("hall", category);
-            if (cid != null) {
-                qw.eq(Hall::getCategoryId, cid);
+            if (cid == null) {
+                // 分类不存在或已停用（页签缓存过期、旧版本小程序传旧名称等）：
+                // 返回空列表而非放开过滤展示全部展馆（fail closed）
+                return List.of();
             }
+            qw.eq(Hall::getCategoryId, cid);
         }
         return hallMapper.selectList(qw).stream()
                 .map(h -> toListItem(h, catMap))

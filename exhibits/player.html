@@ -422,7 +422,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, PREVIEW_DEVICES, DEFAULT_PREVIEW_DEVICE, previewDevice, framingCoverage, devicePreviewFit, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'
+import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, PREVIEW_DEVICES, DEFAULT_PREVIEW_DEVICE, previewDevice, framingCoverage, devicePreviewFit, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, resolveRendererQuality } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 
@@ -631,29 +631,32 @@ async function fetchWithTimeout(url, ms) {
 
 function initRenderer() {
   const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 768
+  // 画质（DPR/MSAA）与全景安全解耦：strictWebKit 仍控制全景延迟 + PMREM 2048，
+  // 画布清晰度由 resolveRendererQuality 独立决定（strict 移动端默认 DPR 1.5，可配到 2）
+  const quality = resolveRendererQuality({
+    isMobile,
+    strictWebKit,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    cfg,
+  })
   try {
     renderer = new THREE.WebGLRenderer({
       canvas: $('scene'),
-      antialias: !(strictWebKit && isMobile),
+      antialias: quality.antialias,
       powerPreference: strictWebKit ? 'default' : 'high-performance',
       preserveDrawingBuffer: editMode,
     })
   } catch(e){ return false }
-  // 移动端像素比自适应：手机限流以省 GPU/发热，桌面放开到高清
-  let cap = isMobile ? num(cfg.performance?.mobilePixelRatio, 1.5)
-                     : num(cfg.performance?.desktopPixelRatio, cfg.renderer?.maxPixelRatio || 2)
-  if (strictWebKit) cap = Math.min(cap, num(cfg.performance?.strictWebKitPixelRatio, isMobile ? 1 : 1.5))
-  const dpr = Math.min(window.devicePixelRatio||1, cap)
-  renderer.setPixelRatio(dpr)
+  renderer.setPixelRatio(quality.pixelRatio)
   renderer.setSize(innerWidth, innerHeight)
   if (panoDiag.enabled) {
     const cap = renderer.capabilities
     panoDiagEvent('webgl:capabilities', {
       maxTextureSize: cap.maxTextureSize,
       maxCubemapSize: cap.maxCubemapSize,
-      dpr,
+      dpr: quality.pixelRatio,
       isMobile,
-      antialias: !(strictWebKit && isMobile),
+      antialias: quality.antialias,
     })
     renderer.domElement.addEventListener('webglcontextlost', ev => {
       panoDiagEvent('webgl:context-lost', { type: ev.type })

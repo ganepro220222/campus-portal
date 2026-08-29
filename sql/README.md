@@ -102,6 +102,9 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 19 | `patch-course-progress-watched-seconds.sql` | 课程进度累计观看 + 上次上报位置；旧库高进度回填 | ✅ 已并入 init.sql；**可重复执行** |
 | 20 | `patch-hall-vr-720-subdomains-20260829.sql` | 展馆 VR 链接切换到 720 云可校验子域名 + 11 号馆牙舟陶上线 | 仅数据；seed 已同步 |
 | 21 | `patch-hall-vr-visibility-20260829.sql` | 条件关闭空「待上线」页签 + 8/9 号馆第三方 VR 入口暂下线（展馆保留） | 仅数据；seed 已同步；**可重复执行** |
+| 22 | `patch-hall-vr-copy-20260830.sql` | 8/9 号馆简介去掉「支持 VR」承诺，与「VR 链接筹备中」对齐 | 仅数据；seed 已同步；**可重复执行** |
+
+`patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 
 #### 按 id 区间删数据的两个脚本（务必先读）
 

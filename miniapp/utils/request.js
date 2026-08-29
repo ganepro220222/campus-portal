@@ -65,6 +65,16 @@ function sanitizeRequestData(data) {
   return out
 }
 
+/** GET/HEAD/DELETE 走 query，必须清洗；POST/PUT 保留显式 null（表示清空字段） */
+function isQueryMethod(method) {
+  const m = String(method || 'GET').toUpperCase()
+  return m === 'GET' || m === 'HEAD' || m === 'DELETE'
+}
+
+function resolveRequestData(method, data) {
+  return isQueryMethod(method) ? sanitizeRequestData(data) : data
+}
+
 function resolveTimeout(options) {
   const custom = options && options.timeout
   return typeof custom === 'number' && custom > 0 ? custom : DEFAULT_TIMEOUT
@@ -94,7 +104,7 @@ const request = (url, method = 'GET', data = {}, options = {}) => {
     wx.request({
       url: resolveBaseUrl() + url,
       method,
-      data: sanitizeRequestData(data),
+      data: resolveRequestData(method, data),
       timeout: resolveTimeout(options),
       header: {
         'Content-Type': 'application/json',
@@ -199,5 +209,7 @@ module.exports = {
   DEFAULT_TIMEOUT,
   PASSWORD_CHANGE_REQUIRED,
   _handlePasswordChangeRequired: handlePasswordChangeRequired,
-  _sanitizeRequestData: sanitizeRequestData
+  _sanitizeRequestData: sanitizeRequestData,
+  _resolveRequestData: resolveRequestData,
+  _isQueryMethod: isQueryMethod
 }

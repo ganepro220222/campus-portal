@@ -94,12 +94,20 @@ UPDATE `hall` SET
 WHERE `id` = 7;
 
 -- 8/9 号馆 VR 暂缺：第三方域名无法完成微信业务域名校验（原链接见 patch-hall-vr-visibility-20260829.sql），
--- 合伙人迁移到 720yun 后再回填；展馆本体保留上线（展馆达人徽章要求 11 馆齐全）
+-- 合伙人迁移到 720yun 后再回填；展馆本体保留上线（展馆达人徽章要求 11 馆齐全）。
+-- vr_url 带域名防护：已换成 720yun 的不要被本初始化补丁覆盖成 NULL。
 UPDATE `hall` SET
   `name` = '校园安全教育馆',
   `short_name` = '校园安全教育馆',
-  `intro` = '校园安全常识、应急演练与警示教育，支持 VR 全景漫游。',
-  `vr_url` = NULL,
+  `intro` = CASE
+    WHEN `vr_url` IS NULL OR `vr_url` LIKE '%bafang720.com%'
+      THEN '校园安全常识、应急演练与警示教育，VR 全景漫游正在筹备中。'
+    ELSE `intro`
+  END,
+  `vr_url` = CASE
+    WHEN `vr_url` IS NULL OR `vr_url` LIKE '%bafang720.com%' THEN NULL
+    ELSE `vr_url`
+  END,
   `category_id` = 17,
   `sort` = 8,
   `status` = 1
@@ -108,8 +116,15 @@ WHERE `id` = 8;
 UPDATE `hall` SET
   `name` = '西部山区道路运输安全警示教育基地',
   `short_name` = '西部山区安全基地',
-  `intro` = '面向山区道路运输场景的典型案例与安全警示教育，支持 VR 全景漫游。',
-  `vr_url` = NULL,
+  `intro` = CASE
+    WHEN `vr_url` IS NULL OR `vr_url` LIKE '%eqvrar.com%'
+      THEN '面向山区道路运输场景的典型案例与安全警示教育，VR 全景漫游正在筹备中。'
+    ELSE `intro`
+  END,
+  `vr_url` = CASE
+    WHEN `vr_url` IS NULL OR `vr_url` LIKE '%eqvrar.com%' THEN NULL
+    ELSE `vr_url`
+  END,
   `category_id` = 17,
   `sort` = 9,
   `status` = 1

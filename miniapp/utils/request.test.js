@@ -46,6 +46,16 @@ try {
   assert.strictEqual(request._sanitizeRequestData(undefined), undefined)
   assert.deepStrictEqual(request._sanitizeRequestData({ category: '博物馆与校史' }), { category: '博物馆与校史' })
 
+  assert.strictEqual(request._isQueryMethod('GET'), true)
+  assert.strictEqual(request._isQueryMethod('delete'), true)
+  assert.strictEqual(request._isQueryMethod('POST'), false)
+  assert.strictEqual(request._isQueryMethod('PUT'), false)
+  const query = request._resolveRequestData('GET', { category: undefined, page: 1, avatar: null })
+  assert.deepStrictEqual(query, { page: 1 }, 'GET/DELETE 仍清洗 undefined/null')
+  const body = { avatar: null, nickname: '张三', skip: undefined }
+  assert.strictEqual(request._resolveRequestData('PUT', body), body, 'PUT 不得剥掉显式 null')
+  assert.strictEqual(request._resolveRequestData('POST', body), body, 'POST 不得剥掉显式 null')
+
   console.log('[request.test] PASS')
 } finally {
   global.getApp = origGetApp

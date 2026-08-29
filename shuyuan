@@ -1,0 +1,150 @@
+# Nginx site: api.yunmanvr.com（预发 ECS）— 第二步：证书签发完成后使用
+# 部署路径: /etc/nginx/sites-enabled/shuyuan
+#
+# 用法:
+#   sudo cp shuyuan.full /etc/nginx/sites-enabled/shuyuan
+#   sudo nginx -t && sudo systemctl reload nginx
+#   curl -s https://api.yunmanvr.com/api/v1/health
+#   sudo certbot renew --dry-run
+
+# HTTP → HTTPS（保留 ACME 验证路径供 certbot 自动续签）
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name api.yunmanvr.com 47.109.0.192 _;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://api.yunmanvr.com$request_uri;
+    }
+}
+
+# HTTPS 主站
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name api.yunmanvr.com;
+
+    ssl_certificate     /etc/letsencrypt/live/api.yunmanvr.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.yunmanvr.com/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    client_max_body_size 2100m;
+
+    sendfile on;
+    tcp_nopush on;
+    gzip on;
+    gzip_comp_level 6;
+    gzip_min_length 1024;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_types
+        text/plain
+        text/css
+        text/javascript
+        application/javascript
+        application/json
+        application/manifest+json
+        image/svg+xml
+        application/wasm;
+
+    location = /admin {
+        return 301 /admin/;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 120s;
+    }
+
+    location /admin/ {
+        alias /opt/shuyuan/admin/dist/;
+        try_files $uri $uri/ /admin/index.html;
+    }
+
+    location = /fm {
+        return 301 /fm/;
+    }
+
+    location /fm/ {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_request_buffering off;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
+    location = /exhibits {
+        return 301 /exhibits/;
+    }
+
+    location ~ ^/exhibits/(craft-[^/]+)/config\.json$ {
+        alias /opt/shuyuan/exhibits/$1/config.json;
+        default_type application/json;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    location = /exhibits/studio.html { return 404; }
+    location = /exhibits/player.html { return 404; }
+    location ^~ /exhibits/_server/ { return 404; }
+    location ^~ /exhibits/_launch/ { return 404; }
+    location ^~ /exhibits/_dev/ { return 404; }
+
+    location /exhibits/ {
+        alias /opt/shuyuan/exhibits/;
+        index index.html;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800, must-revalidate";
+        types {
+            text/html                             html;
+            application/javascript                js mjs;
+            application/json                      json;
+            application/wasm                      wasm;
+            model/gltf-binary                     glb;
+            image/jpeg                            jpg jpeg;
+            image/png                             png;
+            image/webp                            webp;
+            audio/wav                             wav;
+            audio/mpeg                            mp3;
+        }
+    }
+
+    location = /studio {
+        return 301 /studio/;
+    }
+
+    location /studio-api/ {
+        proxy_pass http://127.0.0.1:8200/studio-api/;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization $http_authorization;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+        client_max_body_size 20m;
+    }
+
+    location /studio/ {
+        proxy_pass http://127.0.0.1:8200/;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization $http_authorization;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+}

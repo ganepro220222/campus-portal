@@ -21,7 +21,7 @@ import { buildViewerSrc, buildProductionViewer, syncUploadModules, syncUploadExh
   initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
   collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack,
   prepareUploadStaging, promoteUploadStaging, uploadSiblingStagingPath, uploadSiblingBackupPath,
-  orphanUploadExhibits, pruneUploadExhibits, listUploadExhibits, listSourceCraftDirs, auditSourceExhibits, validateSourceExhibitConfig, buildExhibitIndexHtml, UPLOAD_JS_COPIES, VIEWER_BUNDLE_FILE } from './build-viewer.mjs'
+  orphanUploadExhibits, pruneUploadExhibits, pruneUploadToPlayerOnly, listUploadExhibits, listSourceCraftDirs, auditSourceExhibits, validateSourceExhibitConfig, buildExhibitIndexHtml, UPLOAD_JS_COPIES, VIEWER_BUNDLE_FILE, PLAYER_ONLY_UPLOAD_FILES } from './build-viewer.mjs'
 import { configTimeoutMs, modelIdleTimeoutMs, createModelLoadTimers } from './player-persist.mjs'
 import { anglesToPosition, positionToAngles } from './light-rig.mjs'
 
@@ -1110,6 +1110,48 @@ test('deployUploadPack with uploadPrune removes orphaned craft dirs', () => {
     assert.equal(fs.existsSync(path.join(uploadDir, 'craft-999')), false)
     assert.deepEqual(dep.pruned, ['craft-999'])
     assert.deepEqual(orphanUploadExhibits(uploadDir), [])
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('deployUploadPack uploadPlayerOnly keeps viewer files only', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    fs.mkdirSync(uploadDir, { recursive: true })
+    writeBundledUploadViewer(uploadDir)
+    initUploadVendor(uploadDir)
+    fs.mkdirSync(path.join(uploadDir, 'craft-001'), { recursive: true })
+    fs.writeFileSync(path.join(uploadDir, '上传说明.txt'), 'internal', 'utf8')
+    fs.writeFileSync(path.join(uploadDir, 'hotspot-id.js'), '// legacy', 'utf8')
+    const { html: uploadHtml, bundlePath } = buildProductionViewer(buildViewerSrc())
+    const dep = deployUploadPack(uploadDir, uploadHtml, { uploadPlayerOnly: true, bundlePath })
+    assert.equal(dep.ok, true)
+    assert.equal(fs.existsSync(path.join(uploadDir, 'player.view.html')), true)
+    assert.equal(fs.existsSync(path.join(uploadDir, VIEWER_BUNDLE_FILE)), true)
+    assert.equal(fs.existsSync(path.join(uploadDir, 'vendor')), true)
+    assert.equal(fs.existsSync(path.join(uploadDir, 'craft-001')), false)
+    assert.equal(fs.existsSync(path.join(uploadDir, '上传说明.txt')), false)
+    assert.equal(fs.existsSync(path.join(uploadDir, 'hotspot-id.js')), false)
+    assert.deepEqual(fs.readdirSync(uploadDir).sort(), ['player.view.html', VIEWER_BUNDLE_FILE, 'vendor'].sort())
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('pruneUploadToPlayerOnly removes everything except player + vendor', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-upload-'))
+  try {
+    const uploadDir = path.join(tmp, 'exhibits-upload')
+    fs.mkdirSync(uploadDir, { recursive: true })
+    for (const name of PLAYER_ONLY_UPLOAD_FILES) fs.writeFileSync(path.join(uploadDir, name), name, 'utf8')
+    fs.mkdirSync(path.join(uploadDir, 'vendor'), { recursive: true })
+    fs.mkdirSync(path.join(uploadDir, 'craft-001'), { recursive: true })
+    fs.writeFileSync(path.join(uploadDir, 'notes.txt'), 'x', 'utf8')
+    const removed = pruneUploadToPlayerOnly(uploadDir)
+    assert.deepEqual(removed.sort(), ['craft-001', 'notes.txt'].sort())
+    assert.deepEqual(fs.readdirSync(uploadDir).sort(), [...PLAYER_ONLY_UPLOAD_FILES, 'vendor'].sort())
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
   }

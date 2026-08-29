@@ -2,7 +2,7 @@
  * 小程序运行环境配置
  * 发布前请将 ENV 改为 staging / prod，并替换 baseUrl 为真实域名
  */
-const ENV = 'dev' // dev | staging | prod
+const ENV = 'staging' // dev | staging | prod — 真机调试连 staging 时用 staging；提交前改回 dev
 
 const configMap = {
   dev: {
@@ -10,7 +10,7 @@ const configMap = {
     useMock: true
   },
   staging: {
-    baseUrl: 'https://staging.example.edu.cn/api/v1',
+    baseUrl: 'https://api.yunmanvr.com/api/v1',
     useMock: false
   },
   prod: {

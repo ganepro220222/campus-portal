@@ -54,6 +54,12 @@ export const UPLOAD_VENDOR_REQUIRED = [
   'vendor/basis/basis_transcoder.wasm',
 ]
 
+/** 合伙人站点（仅文件管理器）上传包：只保留观看端播放器，不含 craft / 说明 txt */
+export const PLAYER_ONLY_UPLOAD_FILES = [
+  'player.view.html',
+  VIEWER_BUNDLE_FILE,
+]
+
 const VIEWER_FORBIDDEN = [
   'bootstrapHotspotIds',
   'hotspotIdBootAudit',
@@ -338,6 +344,24 @@ export function pruneUploadExhibits(uploadDir, sourceCraftDirs = listSourceCraft
   return removed
 }
 
+/** 仅文件管理器上传：删掉 craft-*、共享资源、说明文档等，只留 player + vendor */
+export function pruneUploadToPlayerOnly(uploadDir) {
+  const removed = []
+  if (!fs.existsSync(uploadDir)) return removed
+  for (const name of fs.readdirSync(uploadDir)) {
+    if (name === 'vendor') continue
+    if (PLAYER_ONLY_UPLOAD_FILES.includes(name)) continue
+    if (isUploadScratchName(name)) {
+      fs.rmSync(path.join(uploadDir, name), { recursive: true, force: true })
+      removed.push(name)
+      continue
+    }
+    fs.rmSync(path.join(uploadDir, name), { recursive: true, force: true })
+    removed.push(name)
+  }
+  return removed
+}
+
 /** 校验 upload 中 config 引用的本地资源：model 缺失/过期阻断，poster/panorama 仅 warning */
 export function verifyUploadAssets(uploadDir = UPLOAD_DIR, sourceExhibits = null) {
   const present = []
@@ -389,12 +413,14 @@ export function viewerUsesBundle(html) {
 }
 
 /** 写入 upload 前的预检：可选先同步资产/模块，再校验资源与运行时依赖（不写 viewer/config） */
-export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAssets = false, syncModules: doModules = null, sourceExhibits = null } = {}) {
+export function runUploadPreflight(uploadDir, uploadHtml, { uploadAssets: doAssets = false, syncModules: doModules = null, sourceExhibits = null, skipAssetVerify = false } = {}) {
   if (doAssets) syncUploadAssets(uploadDir, sourceExhibits)
   const useBundle = viewerUsesBundle(uploadHtml)
   if (doModules === null) doModules = !useBundle
   if (doModules) syncUploadModules(uploadDir)
-  const assets = verifyUploadAssets(uploadDir, sourceExhibits)
+  const assets = skipAssetVerify
+    ? { ok: true, present: [], errors: [], warnings: [] }
+    : verifyUploadAssets(uploadDir, sourceExhibits)
   if (!assets.ok) return { ok: false, stage: 'assets', assets }
   const tmpHtml = path.join(uploadDir, '.preflight-player.view.html.tmp')
   fs.writeFileSync(tmpHtml, uploadHtml, 'utf8')
@@ -522,7 +548,7 @@ export function prepareUploadStaging(uploadDir) {
 }
 
 /** Full staged deploy: preflight in sibling staging, atomic swap only on success. */
-export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false, uploadPrune = false, hooks = {}, bundlePath = path.join(ROOT, VIEWER_BUNDLE_FILE) } = {}) {
+export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, uploadAssets = false, uploadPrune = false, uploadPlayerOnly = false, hooks = {}, bundlePath = path.join(ROOT, VIEWER_BUNDLE_FILE) } = {}) {
   fs.mkdirSync(path.dirname(uploadDir), { recursive: true })
   const source = auditSourceExhibits()
   if (!source.ok) return { ok: false, stage: 'source', errors: source.errors }
@@ -534,25 +560,37 @@ export function deployUploadPack(uploadDir, uploadHtml, { uploadInit = false, up
   }
   const staging = prepareUploadStaging(uploadDir)
   try {
-    if (uploadInit) initUploadVendor(staging)
-    if (uploadAssets) syncUploadAssets(staging, source.exhibits)
-    const orphansBefore = orphanUploadExhibits(staging, source.craftDirs)
-    const pruned = uploadPrune && orphansBefore.length ? pruneUploadExhibits(staging, source.craftDirs) : []
+    let playerOnlyRemoved = []
+    if (uploadPlayerOnly) {
+      playerOnlyRemoved = pruneUploadToPlayerOnly(staging)
+      initUploadVendor(staging)
+    } else {
+      if (uploadInit) initUploadVendor(staging)
+      if (uploadAssets) syncUploadAssets(staging, source.exhibits)
+    }
+    const orphansBefore = uploadPlayerOnly ? [] : orphanUploadExhibits(staging, source.craftDirs)
+    const pruned = !uploadPlayerOnly && uploadPrune && orphansBefore.length ? pruneUploadExhibits(staging, source.craftDirs) : []
     if (useBundle) fs.copyFileSync(bundlePath, path.join(staging, VIEWER_BUNDLE_FILE))
-    const pre = runUploadPreflight(staging, uploadHtml, { uploadAssets: false, syncModules: !useBundle, sourceExhibits: source.exhibits })
+    const pre = runUploadPreflight(staging, uploadHtml, {
+      uploadAssets: false,
+      syncModules: !useBundle && !uploadPlayerOnly,
+      sourceExhibits: source.exhibits,
+      skipAssetVerify: uploadPlayerOnly,
+    })
     if (!pre.ok) {
       discardUploadStaging(staging)
       return { ok: false, ...pre }
     }
     fs.writeFileSync(path.join(staging, 'player.view.html'), uploadHtml, 'utf8')
-    if (!useBundle) syncUploadModules(staging)
-    const exhibitFiles = syncUploadExhibits(staging, source.exhibits)
+    if (!useBundle && !uploadPlayerOnly) syncUploadModules(staging)
+    const exhibitFiles = uploadPlayerOnly ? [] : syncUploadExhibits(staging, source.exhibits)
     const promoted = promoteUploadStaging(staging, uploadDir, hooks)
     return {
       ok: true,
       assets: pre.assets,
       exhibitFiles,
       pruned,
+      playerOnlyRemoved,
       orphanExhibits: uploadPrune ? [] : orphansBefore,
       cleanupWarning: promoted.cleanupWarning || null,
       backupPreserved: promoted.backupPreserved || null,
@@ -666,7 +704,9 @@ export function initUploadVendor(uploadDir = UPLOAD_DIR) {
   const src = path.join(ROOT, 'vendor')
   if (!fs.existsSync(src)) throw new Error('exhibits/vendor missing; cannot init upload directory')
   fs.mkdirSync(uploadDir, { recursive: true })
-  fs.cpSync(src, path.join(uploadDir, 'vendor'), { recursive: true })
+  const dst = path.join(uploadDir, 'vendor')
+  fs.rmSync(dst, { recursive: true, force: true })
+  fs.cpSync(src, dst, { recursive: true })
 }
 
 /** 同步 craft-XXX/config.json（及 index.html 壳页），不复制 assets/ */
@@ -748,7 +788,7 @@ export function compareViewerArtifacts(viewerSrc = assertViewerBuild(buildViewer
 }
 
 function usage() {
-  console.log(`Usage: node build-viewer.mjs [--check] [--upload] [--upload-init] [--upload-assets] [--upload-prune]
+  console.log(`Usage: node build-viewer.mjs [--check] [--upload] [--upload-init] [--upload-assets] [--upload-prune] [--upload-player-only]
 
   (default)       Write player.view.html from player.html (+ semantic validation)
   --check         Exit 1 if player.view.html differs or fails semantic validation
@@ -758,12 +798,17 @@ function usage() {
   --upload        Incremental update of a prepared upload directory:
                   player.view.html, module .js copies, craft config/index,
                   then verify module graph + vendor + asset consistency
+  --upload-player-only  Partner file-manager pack: latest player.view.html + player.bundle.js + vendor/ only
+                        (removes craft-*, shared assets, txt docs from exhibits-upload/)
 
   First full deploy:
     node build-viewer.mjs --upload-init --upload-assets --upload
 
   Code/config only (assets already on server):
     node build-viewer.mjs --upload
+
+  Partner server (viewer only, no shell):
+    node build-viewer.mjs --upload-player-only
 
   Retire deleted exhibits from upload pack:
     node build-viewer.mjs --upload --upload-prune
@@ -780,7 +825,8 @@ const DEPLOY_PLAYER_DIR = path.join(ROOT, 'deploy-test-server')
 
 const check = process.argv.includes('--check')
 const deployPlayer = process.argv.includes('--deploy-player')
-const upload = process.argv.includes('--upload')
+const uploadPlayerOnly = process.argv.includes('--upload-player-only')
+const upload = process.argv.includes('--upload') || uploadPlayerOnly
 const uploadInit = process.argv.includes('--upload-init')
 const uploadAssets = process.argv.includes('--upload-assets')
 const uploadPrune = process.argv.includes('--upload-prune')
@@ -799,6 +845,11 @@ if (uploadInit && !upload && !uploadAssets && !check) {
 if (uploadAssets && !upload) {
   console.error('--upload-assets requires --upload (assets copy runs inside staged deploy)')
   console.error('Run: node build-viewer.mjs --upload-assets --upload')
+  process.exit(1)
+}
+
+if (uploadPlayerOnly && (uploadAssets || uploadPrune || uploadInit)) {
+  console.error('--upload-player-only cannot combine with --upload-init, --upload-assets, or --upload-prune')
   process.exit(1)
 }
 
@@ -857,7 +908,13 @@ if (upload) {
     process.exit(1)
   }
   try {
-    const dep = deployUploadPack(UPLOAD_DIR, bundledHtml, { uploadInit, uploadAssets, uploadPrune, bundlePath })
+    const dep = deployUploadPack(UPLOAD_DIR, bundledHtml, {
+      uploadInit,
+      uploadAssets,
+      uploadPrune,
+      uploadPlayerOnly,
+      bundlePath,
+    })
     if (!dep.ok) {
       if (dep.stage === 'source') {
         console.error('exhibits source config errors (upload directory unchanged):')
@@ -875,7 +932,12 @@ if (upload) {
       process.exit(1)
     }
     console.log(`exhibits-upload/player.view.html + ${VIEWER_BUNDLE_FILE} written`)
-    if (dep.exhibitFiles?.length) console.log('exhibits-upload exhibit files synced:', dep.exhibitFiles.join(', '))
+    if (uploadPlayerOnly) {
+      console.log('exhibits-upload: player-only pack (player.view.html, player.bundle.js, vendor/)')
+      if (dep.playerOnlyRemoved?.length) {
+        console.log('exhibits-upload removed non-player files:', dep.playerOnlyRemoved.join(', '))
+      }
+    } else if (dep.exhibitFiles?.length) console.log('exhibits-upload exhibit files synced:', dep.exhibitFiles.join(', '))
     else console.log('exhibits-upload: no craft-XXX/config.json to sync')
     if (dep.pruned?.length) console.log('exhibits-upload pruned retired crafts:', dep.pruned.join(', '))
     else if (dep.orphanExhibits?.length) {

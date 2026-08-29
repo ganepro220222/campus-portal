@@ -76,8 +76,28 @@ class CourseProgressGuardTest {
     }
 
     @Test
-    void nextWatchedSeconds_firstReportCreditsPosition() {
-        assertEquals(20, CourseProgressGuard.nextWatchedSeconds(null, 20, LocalDateTime.now()));
+    void nextWatchedSeconds_firstReportDoesNotCreditPosition() {
+        assertEquals(0, CourseProgressGuard.nextWatchedSeconds(null, 20, LocalDateTime.now()));
+        assertEquals(0, CourseProgressGuard.nextWatchedSeconds(null, 30, LocalDateTime.now()));
+    }
+
+    @Test
+    void nextWatchedSeconds_firstReportAtHalfThenSeekEndDoesNotCompleteOneMinuteCourse() {
+        Course course = courseWithDuration(1);
+        LocalDateTime t0 = LocalDateTime.now().minusSeconds(30);
+
+        assertEquals(0, CourseProgressGuard.nextWatchedSeconds(null, 30, t0));
+        CourseProgress row = new CourseProgress();
+        row.setWatchedSeconds(0);
+        row.setLastReportPositionSeconds(30);
+        row.setLastPositionSeconds(30);
+        row.setProgressPercent(new BigDecimal("50.00"));
+        row.setUpdatedAt(t0);
+
+        int watched = CourseProgressGuard.nextWatchedSeconds(row, 60, t0.plusSeconds(10));
+        assertEquals(30, watched);
+        assertFalse(CourseProgressGuard.eligibleForCompletion(
+                course, row, new BigDecimal("95.00"), 60, watched));
     }
 
     @Test
@@ -125,17 +145,31 @@ class CourseProgressGuardTest {
     @Test
     void nextWatchedSeconds_oneMinuteCourseCanReachCompletionThreshold() {
         Course course = courseWithDuration(1);
-        CourseProgress row = new CourseProgress();
-        row.setProgressPercent(new BigDecimal("50.00"));
-        row.setWatchedSeconds(20);
-        row.setLastPositionSeconds(20);
-        row.setLastReportPositionSeconds(20);
-        row.setUpdatedAt(LocalDateTime.now().minusSeconds(20));
+        LocalDateTime base = LocalDateTime.now().minusSeconds(120);
 
-        int watched = CourseProgressGuard.nextWatchedSeconds(row, 60, LocalDateTime.now());
-        assertEquals(60, watched);
+        assertEquals(0, CourseProgressGuard.nextWatchedSeconds(null, 0, base));
+        CourseProgress row = new CourseProgress();
+        row.setWatchedSeconds(0);
+        row.setLastReportPositionSeconds(0);
+        row.setLastPositionSeconds(0);
+        row.setProgressPercent(BigDecimal.ZERO);
+        row.setUpdatedAt(base);
+
+        int[] positions = { 20, 40, 60 };
+        for (int sec : positions) {
+            LocalDateTime now = base.plusSeconds(sec);
+            int watched = CourseProgressGuard.nextWatchedSeconds(row, sec, now);
+            row.setWatchedSeconds(watched);
+            row.setLastPositionSeconds(sec);
+            row.setLastReportPositionSeconds(sec);
+            row.setProgressPercent(CourseProgressGuard.calcPercent(sec, 60));
+            row.setUpdatedAt(now);
+        }
+
+        assertEquals(60, row.getWatchedSeconds());
+        row.setProgressPercent(new BigDecimal("50.00"));
         assertTrue(CourseProgressGuard.eligibleForCompletion(
-                course, row, new BigDecimal("95.00"), 60, watched));
+                course, row, new BigDecimal("95.00"), 60, row.getWatchedSeconds()));
     }
 
     private static Course courseWithDuration(int minutes) {

@@ -32,7 +32,7 @@ function mergeActivityDetail(raw, fallback) {
     title: raw.title || base.title,
     location: raw.location || base.location,
     startTime: raw.startTime || base.startTime,
-    endTime: raw.endTime || raw.endTime,
+    endTime: raw.endTime || base.endTime,
     enrollStartTime: raw.enrollStartTime || '',
     enrollEndTime: raw.enrollEndTime || '',
     intro: raw.intro || base.intro,
@@ -42,6 +42,8 @@ function mergeActivityDetail(raw, fallback) {
     full,
     needReview: !!raw.needReview,
     canEnroll: raw.canEnroll != null ? raw.canEnroll : base.canEnroll,
+    canCancel: raw.canCancel != null ? raw.canCancel : base.canCancel,
+    cancelHint: raw.cancelHint || base.cancelHint || '',
     enrollStatus: raw.enrollStatus || base.enrollStatus || 'none',
     enrollId: raw.enrollId || null,
     voucherCode: raw.voucherCode || ''
@@ -81,9 +83,18 @@ function resolveDetailAction(detail, isLoggedIn) {
   if (!isLoggedIn) return { actionType: 'login', hint: '登录后报名' }
 
   const st = detail.enrollStatus || 'none'
-  if (st === 'pending') return { actionType: 'pending', hint: '报名审核中' }
+  if (st === 'pending') {
+    if (detail.canCancel === false) {
+      return { actionType: 'disabled', hint: detail.cancelHint || '当前无法取消报名' }
+    }
+    return { actionType: 'pending', hint: '报名审核中' }
+  }
   if (st === 'approved') return { actionType: 'approved', hint: '报名成功' }
-  if (st === 'rejected') return { actionType: 'rejected', hint: '审核未通过，可重新报名' }
+  if (st === 'rejected') {
+    if (detail.full) return { actionType: 'disabled', hint: '名额已满' }
+    if (!detail.canEnroll) return { actionType: 'disabled', hint: '当前不在报名时间' }
+    return { actionType: 'rejected', hint: '审核未通过，可重新报名' }
+  }
 
   if (detail.full) return { actionType: 'disabled', hint: '名额已满' }
   if (!detail.canEnroll) return { actionType: 'disabled', hint: '当前不在报名时间' }

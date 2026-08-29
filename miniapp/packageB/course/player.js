@@ -6,7 +6,8 @@ const {
   resolveEndedReport,
   shouldReportByInterval,
   isVttHttpSuccess,
-  looksLikeVtt
+  looksLikeVtt,
+  isVideoPlaybackStable
 } = require('../../utils/coursePlayerProgress')
 
 const REPORT_INTERVAL_SEC = 20
@@ -36,6 +37,9 @@ Page({
     this._subtitleRetryCount = 0
     this._videoReloading = false
     this._subtitleReloading = false
+    this._videoRecoveryStartPosition = null
+    this._videoUrlReloadTotal = 0
+    this._progressBaselineSent = false
 
     requireLogin(() => {
       Promise.all([
@@ -88,8 +92,23 @@ Page({
     const total = Math.floor(e.detail.duration || 0)
     this._currentPosition = cur
     this._currentDuration = total
-    if (this._videoRetryCount > 0 && cur > 0) {
-      this._videoRetryCount = 0
+    if (!this._progressBaselineSent && total > 0 && this._courseId) {
+      this._progressBaselineSent = true
+      const baseline = this.data.initialTime || 0
+      this._lastReportSec = baseline
+      this._reportProgress(baseline, total).catch(() => {})
+    }
+    if (this._videoRetryCount > 0) {
+      if (this._videoRecoveryStartPosition == null && cur > 0) {
+        this._videoRecoveryStartPosition = cur
+      }
+      if (isVideoPlaybackStable({
+        recoveryStartPosition: this._videoRecoveryStartPosition,
+        currentSec: cur
+      })) {
+        this._videoRetryCount = 0
+        this._videoRecoveryStartPosition = null
+      }
     }
     if (this.data.cc && this._vttCues.length) {
       const cue = this._findCue(cur)
@@ -135,15 +154,20 @@ Page({
 
   onVideoError() {
     if (this._videoReloading) return
-    if (this._videoRetryCount < 2) {
-      this._videoRetryCount += 1
-      this._videoReloading = true
-      this._reloadVideoUrl(true).finally(() => {
-        this._videoReloading = false
-      })
+    if (this._videoUrlReloadTotal >= 3) {
+      wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
       return
     }
-    wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
+    if (this._videoRetryCount >= 2) {
+      wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
+      return
+    }
+    this._videoRetryCount += 1
+    this._videoRecoveryStartPosition = null
+    this._videoReloading = true
+    this._reloadVideoUrl(true).finally(() => {
+      this._videoReloading = false
+    })
   },
 
   async _reloadVideoUrl(silent) {
@@ -152,6 +176,8 @@ Page({
       if (!play || !play.videoUrl) {
         throw new Error('no-video')
       }
+      this._videoUrlReloadTotal += 1
+      this._videoRecoveryStartPosition = null
       this.setData({ videoUrl: play.videoUrl })
       if (!silent) {
         wx.showToast({ title: '已刷新视频地址', icon: 'none' })

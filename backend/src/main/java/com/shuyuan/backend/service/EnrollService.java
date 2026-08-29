@@ -108,6 +108,7 @@ public class EnrollService {
     public void cancelEnroll(Long activityId) {
         Long memberId = requireMemberId();
         Activity activity = requirePublishedActivity(activityId);
+        assertCanCancel(activity);
         Enroll enroll = findMemberEnroll(memberId, activityId);
         if (enroll == null || "cancelled".equals(enroll.getStatus())) {
             throw new BusinessException(404, "未找到有效报名记录");
@@ -214,6 +215,26 @@ public class EnrollService {
                 .last("LIMIT 1"));
     }
 
+    /** 用户是否仍可主动取消 pending/approved 报名 */
+    public boolean canMemberCancel(Activity activity) {
+        return cancelBlockReason(activity) == null;
+    }
+
+    /** 不可取消时的提示文案；可取消时返回 null */
+    public String cancelBlockReason(Activity activity) {
+        if (activity == null || !"published".equals(activity.getStatus())) {
+            return "活动已取消或不可用";
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (activity.getEnrollEndTime() != null && now.isAfter(activity.getEnrollEndTime())) {
+            return "报名已截止，无法自行取消，请联系活动负责人";
+        }
+        if (activity.getStartTime() != null && !now.isBefore(activity.getStartTime())) {
+            return "活动已经开始，无法取消报名";
+        }
+        return null;
+    }
+
     /** 判断活动当前是否开放报名 */
     public boolean isEnrollOpen(Activity activity) {
         if (activity == null || !"published".equals(activity.getStatus())) {
@@ -232,6 +253,13 @@ public class EnrollService {
             return false;
         }
         return true;
+    }
+
+    private void assertCanCancel(Activity activity) {
+        String reason = cancelBlockReason(activity);
+        if (reason != null) {
+            throw new BusinessException(409, reason);
+        }
     }
 
     private void assertCanEnroll(Activity activity) {

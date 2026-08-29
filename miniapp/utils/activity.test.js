@@ -7,7 +7,8 @@ const {
   resolveEmptyActivityDetail,
   mergeActivityDetail,
   hasActiveEnroll,
-  enrollStatusLabel
+  enrollStatusLabel,
+  resolveDetailAction
 } = require('./activity')
 
 assert.strictEqual(resolveEmptyActivityDetail(false), null)
@@ -19,6 +20,7 @@ const merged = mergeActivityDetail({
   title: '测试活动',
   location: '图书馆',
   startTime: '2026-08-01 09:00',
+  endTime: '2026-08-01 12:00',
   quota: 50,
   enrolledCount: 10,
   enrollStatus: 'none'
@@ -28,6 +30,9 @@ assert.strictEqual(merged.title, '测试活动')
 assert.strictEqual(merged.full, false)
 assert.strictEqual(merged.enrollStatus, 'none')
 
+const fallbackEnd = mergeActivityDetail({ id: 4, title: '无结束时间' }, { endTime: '2026-08-02 18:00' })
+assert.strictEqual(fallbackEnd.endTime, '2026-08-02 18:00')
+
 assert.strictEqual(hasActiveEnroll({ enrollStatus: 'pending' }), true)
 assert.strictEqual(hasActiveEnroll({ enrollStatus: 'approved' }), true)
 assert.strictEqual(hasActiveEnroll({ enrollStatus: 'none' }), false)
@@ -35,5 +40,19 @@ assert.strictEqual(hasActiveEnroll(null), false)
 
 assert.strictEqual(enrollStatusLabel('approved'), '已通过')
 assert.strictEqual(enrollStatusLabel('none'), '')
+
+function action(detail) {
+  return resolveDetailAction(detail, true)
+}
+
+assert.strictEqual(action({ enrollStatus: 'rejected', full: false, canEnroll: true }).actionType, 'rejected')
+assert.strictEqual(action({ enrollStatus: 'rejected', full: true, canEnroll: false }).actionType, 'disabled')
+assert.strictEqual(action({ enrollStatus: 'rejected', full: true, canEnroll: false }).hint, '名额已满')
+assert.strictEqual(action({ enrollStatus: 'rejected', full: false, canEnroll: false }).actionType, 'disabled')
+assert.strictEqual(action({ enrollStatus: 'rejected', full: false, canEnroll: false }).hint, '当前不在报名时间')
+
+assert.strictEqual(action({ enrollStatus: 'pending', canCancel: false, cancelHint: '活动已经开始，无法取消报名' }).actionType, 'disabled')
+assert.strictEqual(action({ enrollStatus: 'pending', canCancel: true }).actionType, 'pending')
+assert.strictEqual(action({ enrollStatus: 'approved', canCancel: true }).actionType, 'approved')
 
 console.log('[activity.test] PASS')

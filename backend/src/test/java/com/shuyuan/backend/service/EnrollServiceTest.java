@@ -184,6 +184,34 @@ class EnrollServiceTest {
     }
 
     @Test
+    void cancelEnroll_rejectsAfterEnrollDeadline() {
+        Activity activity = publishedActivity(10, 5);
+        activity.setEnrollEndTime(LocalDateTime.now().minusHours(1));
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.cancelEnroll(ACTIVITY_ID));
+        assertEquals(409, ex.getCode());
+        assertTrue(ex.getMessage().contains("报名已截止"));
+        verify(activityMapper, never()).decrEnrolledCount(anyLong());
+    }
+
+    @Test
+    void cancelEnroll_rejectsAfterActivityStarted() {
+        Activity activity = publishedActivity(10, 5);
+        activity.setStartTime(LocalDateTime.now().minusMinutes(30));
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.cancelEnroll(ACTIVITY_ID));
+        assertEquals(409, ex.getCode());
+        assertTrue(ex.getMessage().contains("活动已经开始"));
+        verify(activityMapper, never()).decrEnrolledCount(anyLong());
+    }
+
+    @Test
     void enroll_requiresLogin() {
         MemberContext.clear();
         BusinessException ex = assertThrows(BusinessException.class,

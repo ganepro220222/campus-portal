@@ -69,6 +69,11 @@ public class ActivityService {
             if ("approved".equals(enroll.getStatus())) {
                 m.put("voucherCode", enroll.getVoucherCode());
             }
+            boolean activeEnroll = "pending".equals(enroll.getStatus()) || "approved".equals(enroll.getStatus());
+            m.put("canCancel", activeEnroll && enrollService.canMemberCancel(activity));
+            if (activeEnroll && !enrollService.canMemberCancel(activity)) {
+                m.put("cancelHint", enrollService.cancelBlockReason(activity));
+            }
         } else {
             m.put("enrollStatus", "none");
         }

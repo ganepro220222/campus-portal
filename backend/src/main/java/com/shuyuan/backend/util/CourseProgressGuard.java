@@ -76,7 +76,7 @@ public final class CourseProgressGuard {
      */
     public static int nextWatchedSeconds(CourseProgress existing, int incomingPosition, LocalDateTime now) {
         if (existing == null) {
-            return Math.max(0, incomingPosition);
+            return 0;
         }
         int prior = existing.getWatchedSeconds() != null ? existing.getWatchedSeconds() : 0;
         int lastReportPos = resolveLastReportPosition(existing);

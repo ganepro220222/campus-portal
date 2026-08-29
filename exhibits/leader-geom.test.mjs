@@ -1319,9 +1319,24 @@ test('viewer output imports boot timeouts from player-persist', () => {
   const view = buildViewerSrc()
   assert.match(view, /import \{[^}]+\} from '\.\/player-persist\.mjs'/)
   assert.match(view, /configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, createModelLoadTimers/)
-  assert.match(view, /strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH/)
+  assert.match(view, /strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, resolveRendererQuality/)
   assert.doesNotMatch(view, /applyExposureToCfg/)
   assert.doesNotMatch(view, /configExportFilename/)
+})
+
+test('viewer output imports every player-persist symbol it uses', () => {
+  const view = buildViewerSrc()
+  const imp = view.match(/import \{([^}]+)\} from '\.\/player-persist\.mjs'/)
+  assert.ok(imp, 'viewer must import player-persist.mjs')
+  const imported = new Set(imp[1].split(',').map(s => s.trim()))
+  const body = view.replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, '')
+  const persistSrc = fs.readFileSync(path.join(ROOT, 'player-persist.mjs'), 'utf8')
+  const exported = [...persistSrc.matchAll(/^export (?:const|function) (\w+)/gm)].map(m => m[1])
+  for (const sym of exported) {
+    if (new RegExp(`\\b${sym}\\b`).test(body)) {
+      assert.ok(imported.has(sym), `viewer uses ${sym} but import omits it`)
+    }
+  }
 })
 
 test('viewer output imports every light-rig symbol it uses', () => {

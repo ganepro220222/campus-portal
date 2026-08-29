@@ -41,6 +41,11 @@ try {
   request._logoutIfNeeded('/news/1')
   assert.strictEqual(logoutCalls, 1, '普通接口 401 应 logout')
 
+  const clean = request._sanitizeRequestData({ category: undefined, page: 1, q: null })
+  assert.deepStrictEqual(clean, { page: 1 }, 'GET 不得把 undefined/null 序列化进 query')
+  assert.strictEqual(request._sanitizeRequestData(undefined), undefined)
+  assert.deepStrictEqual(request._sanitizeRequestData({ category: '博物馆与校史' }), { category: '博物馆与校史' })
+
   console.log('[request.test] PASS')
 } finally {
   global.getApp = origGetApp

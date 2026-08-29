@@ -25,6 +25,22 @@ export const VIEWER_LIGHT_RIG_IMPORTS = [
   'createEnvLoadGuard',
 ]
 
+/** 观看版 player-persist 白名单。漏掉观看端实际调用的符号会在运行时变成 ReferenceError。 */
+export const VIEWER_PERSIST_IMPORTS = [
+  'configFetchUrl',
+  'configTimeoutMs',
+  'modelIdleTimeoutMs',
+  'modelTotalTimeoutMs',
+  'panoramaRevealTimeoutMs',
+  'fitCameraDistance',
+  'portraitFillTarget',
+  'shouldAutoFitCamera',
+  'createModelLoadTimers',
+  'strictWebKitPanoramaMaxWidth',
+  'DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH',
+  'resolveRendererQuality',
+]
+
 const UPLOAD_DIR = path.join(ROOT, '..', 'exhibits-upload')
 const UPLOAD_OUT = path.join(UPLOAD_DIR, 'player.view.html')
 const EXHIBIT_INDEX_TEMPLATE = path.join(ROOT, '_template/index.html')
@@ -667,7 +683,7 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
     .replace(/if \(editMode && typeof buildEditor === 'function'\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/if \(editMode\) buildEditor\(\)/, '/* viewer-only: no editor */')
     .replace(/import \{[^}]+\} from '\.\/hotspot-id\.mjs'/, "import { ensureHotspotIds } from './hotspot-id.mjs'")
-    .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, "import { configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH } from './player-persist.mjs'")
+    .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, `import { ${VIEWER_PERSIST_IMPORTS.join(', ')} } from './player-persist.mjs'`)
     .replace(/import \{[^}]+\} from '\.\/light-rig\.mjs'/, `import { ${VIEWER_LIGHT_RIG_IMPORTS.join(', ')} } from './light-rig.mjs'`)
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')

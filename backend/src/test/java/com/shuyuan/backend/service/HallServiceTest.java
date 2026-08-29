@@ -124,6 +124,36 @@ class HallServiceTest {
     }
 
     @Test
+    void isUnfilteredCategory_treatsWxUndefinedSentinelAsAll() {
+        assertTrue(HallService.isUnfilteredCategory(null));
+        assertTrue(HallService.isUnfilteredCategory(""));
+        assertTrue(HallService.isUnfilteredCategory("全部"));
+        assertTrue(HallService.isUnfilteredCategory("undefined"));
+        assertTrue(HallService.isUnfilteredCategory("null"));
+        assertFalse(HallService.isUnfilteredCategory("不存在的分类"));
+        assertFalse(HallService.isUnfilteredCategory("安全教育"));
+    }
+
+    @Test
+    void list_returnsAllWhenCategoryIsUndefinedSentinel() {
+        Hall hall = new Hall();
+        hall.setId(1L);
+        hall.setName("校史馆");
+        hall.setCategoryId(4L);
+        hall.setStatus(1);
+
+        when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of(4L, "博物馆与校史"));
+        when(categoryService.getName(4L, java.util.Map.of(4L, "博物馆与校史"))).thenReturn("博物馆与校史");
+        when(hallMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(hall));
+
+        var result = hallService.list("undefined");
+
+        assertEquals(1, result.size());
+        org.mockito.Mockito.verify(categoryService, org.mockito.Mockito.never())
+                .findIdByName("hall", "undefined");
+    }
+
+    @Test
     void list_returnsEmptyWhenCategoryNotFound() {
         when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of());
         when(categoryService.findIdByName("hall", "不存在的分类")).thenReturn(null);

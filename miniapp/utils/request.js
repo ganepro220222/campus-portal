@@ -55,6 +55,16 @@ function logoutIfNeeded(url) {
  */
 const DEFAULT_TIMEOUT = 10000
 
+/** 去掉 undefined/null，避免 GET 被序列化成 category=undefined 这种假分类名 */
+function sanitizeRequestData(data) {
+  if (data == null || typeof data !== 'object' || Array.isArray(data)) return data
+  const out = {}
+  for (const key of Object.keys(data)) {
+    if (data[key] !== undefined && data[key] !== null) out[key] = data[key]
+  }
+  return out
+}
+
 function resolveTimeout(options) {
   const custom = options && options.timeout
   return typeof custom === 'number' && custom > 0 ? custom : DEFAULT_TIMEOUT
@@ -84,7 +94,7 @@ const request = (url, method = 'GET', data = {}, options = {}) => {
     wx.request({
       url: resolveBaseUrl() + url,
       method,
-      data,
+      data: sanitizeRequestData(data),
       timeout: resolveTimeout(options),
       header: {
         'Content-Type': 'application/json',
@@ -188,5 +198,6 @@ module.exports = {
   _logoutIfNeeded: logoutIfNeeded,
   DEFAULT_TIMEOUT,
   PASSWORD_CHANGE_REQUIRED,
-  _handlePasswordChangeRequired: handlePasswordChangeRequired
+  _handlePasswordChangeRequired: handlePasswordChangeRequired,
+  _sanitizeRequestData: sanitizeRequestData
 }

@@ -34,7 +34,7 @@ public class HallService {
         LambdaQueryWrapper<Hall> qw = new LambdaQueryWrapper<Hall>()
                 .eq(Hall::getStatus, 1)
                 .orderByAsc(Hall::getSort);
-        if (category != null && !category.isBlank() && !"全部".equals(category)) {
+        if (!isUnfilteredCategory(category)) {
             Long cid = categoryService.findIdByName("hall", category);
             if (cid == null) {
                 // 分类不存在或已停用（页签缓存过期、旧版本小程序传旧名称等）：
@@ -152,6 +152,21 @@ public class HallService {
 
     static boolean isVrReady(String vrUrl) {
         return vrUrl != null && !vrUrl.isBlank() && vrUrl.trim().startsWith("https://");
+    }
+
+    /**
+     * 未带分类过滤：空值、「全部」，以及小程序 wx.request 把 undefined/null
+     * 序列化成的字面量 "undefined"/"null"（选「全部」时会传 category: undefined）。
+     */
+    static boolean isUnfilteredCategory(String category) {
+        if (category == null) {
+            return true;
+        }
+        String trimmed = category.trim();
+        return trimmed.isEmpty()
+                || "全部".equals(trimmed)
+                || "undefined".equalsIgnoreCase(trimmed)
+                || "null".equalsIgnoreCase(trimmed);
     }
 
     private Map<String, Object> toListItem(Hall h, Map<Long, String> catMap) {

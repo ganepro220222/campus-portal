@@ -91,7 +91,7 @@ function resolveModuleSpec(spec, fromFile, htmlDir, importMap) {
 
 function walkModuleGraph(htmlPath, rootDir) {
   const html = fs.readFileSync(htmlPath, 'utf8')
-  const bundleRef = html.match(/<script type="module"\s+src="\.\/([^"]+)"/)
+  const bundleRef = html.match(/<script type="module"\s+src="\.\/([^"?#]+)(?:[?#][^"]*)?"/)
   if (bundleRef) {
     const rel = bundleRef[1]
     const abs = path.join(rootDir, rel)

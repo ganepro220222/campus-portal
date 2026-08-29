@@ -41,10 +41,14 @@ WEB_PAGES = ('studio.html', 'player.html', 'player.view.html')
 WEB_REQUIRED = (*WEB_PAGES, 'manifest.json', '_server/studio-server.mjs')
 
 # import 'x' / import a from "x" / importmap 里的 "three": "./vendor/three.module.js"
-# script type=module src="./player.bundle.js"
+# script type=module src="./player.bundle.js" 或 "./player.bundle.js?v=<hash>"
 _IMPORT_RE = re.compile(r"""import\s+(?:[\w*{}\s,]+\s+from\s+)?['"]([^'"]+)['"]""")
 _IMPORTMAP_RE = re.compile(r"""["'](\.{1,2}/[^"']+\.(?:m?js))["']""")
-_MODULE_SRC_RE = re.compile(r"""<script\s+type=["']module["']\s+src=["'](\.{1,2}/[^"']+\.js)["']""", re.I)
+# 只捕获路径；?v= / #fragment 不进 ZIP 文件名
+_MODULE_SRC_RE = re.compile(
+    r"""<script\s+type=["']module["']\s+src=["'](\.{1,2}/[^"'?#]+\.js)(?:[?#][^"']*)?["']""",
+    re.I,
+)
 
 
 def iter_page_imports(page: str, text: str):
@@ -89,6 +93,19 @@ KEEP_CRAFT_ASSET_PATHS = (
     'craft-001/assets/dist/model.glb',
     'craft-002/build/panorama.jpg',
 )
+
+
+def test_iter_page_imports_accepts_bundle_cache_bust() -> None:
+    """player.view.html 用 ?v=hash 破缓存后，仍应解析出 ZIP 内的 player.bundle.js。"""
+    cases = (
+        '<script type="module" src="./player.bundle.js"></script>',
+        '<script type="module" src="./player.bundle.js?v=6ab35eb3"></script>',
+        '<script type="module" src="./player.bundle.js#frag"></script>',
+    )
+    for html in cases:
+        deps = list(iter_page_imports('player.view.html', html))
+        if deps != ['player.bundle.js']:
+            raise RuntimeError(f'expected [player.bundle.js] from {html!r}, got {deps}')
 
 
 def test_should_include_excludes_nested_build_artifacts() -> None:
@@ -171,6 +188,8 @@ def test_pack_delivery_zip() -> None:
 
 
 def main() -> int:
+    test_iter_page_imports_accepts_bundle_cache_bust()
+    print('ok iter_page_imports accepts bundle cache-bust query')
     test_should_include_excludes_nested_build_artifacts()
     print('ok should_include excludes nested build artifacts')
     test_pack_delivery_zip()

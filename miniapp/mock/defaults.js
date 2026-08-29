@@ -34,16 +34,17 @@ module.exports = {
   ],
 
   hallsFull: [
-    { id: 1,  name: '贵州交通博物馆·教育馆', shortName: '交通博物馆', cat: '博物馆与校史', desc: '交通发展历程与教育成果展陈', vrUrl: 'https://roma.720yun.com/vr/515a9635070ca212/', vrReady: true },
-    { id: 2,  name: '校史馆', shortName: '校史馆', cat: '博物馆与校史', desc: '办学历程与重要里程碑', vrUrl: 'https://roma.720yun.com/vr/b5b7196093f3c25a/', vrReady: true },
-    { id: 3,  name: '贵州交通红色教育基地', shortName: '红色教育基地', cat: '红色教育', desc: '交通行业发展史主题展陈', vrUrl: 'https://roma.720yun.com/vr/59e140eb05f9e134/', vrReady: true },
-    { id: 4,  name: '交旅融合研学服务中心', shortName: '交旅研学', cat: '研学服务', desc: '交旅融合主题研学服务', vrUrl: 'https://roma.720yun.com/vr/96cb6946cefd5b99/', vrReady: true },
-    { id: 5,  name: '学生素质发展中心', shortName: '素质发展中心', cat: '素质教育', desc: '学生综合素质培养成果展示', vrUrl: 'https://www.720yun.com/vr/374j5dyvrf2', vrReady: true },
-    { id: 6,  name: '学生科普体验中心', shortName: '科普体验中心', cat: '素质教育', desc: '交通科技与学生科普互动体验', vrUrl: 'https://www.720yun.com/vr/7a0j5dyksk9', vrReady: true },
-    { id: 7,  name: '文化千岛艺术馆', shortName: '千岛艺术馆', cat: '文化艺术', desc: '多元文化艺术作品线上展陈', vrUrl: 'https://www.720yun.com/vr/660j5dyvsv5', vrReady: true },
+    { id: 1,  name: '贵州交通博物馆·教育馆', shortName: '交通博物馆', cat: '博物馆与校史', desc: '交通发展历程与教育成果展陈', vrUrl: 'https://a28c11ea.720roma.com/vr/515a9635070ca212/', vrReady: true },
+    { id: 2,  name: '校史馆', shortName: '校史馆', cat: '博物馆与校史', desc: '办学历程与重要里程碑', vrUrl: 'https://a28c11ea.720roma.com/vr/b5b7196093f3c25a/', vrReady: true },
+    { id: 3,  name: '贵州交通红色教育基地', shortName: '红色教育基地', cat: '红色教育', desc: '交通行业发展史主题展陈', vrUrl: 'https://a28c11ea.720roma.com/vr/59e140eb05f9e134/', vrReady: true },
+    { id: 4,  name: '交旅融合研学服务中心', shortName: '交旅研学', cat: '研学服务', desc: '交旅融合主题研学服务', vrUrl: 'https://a28c11ea.720roma.com/vr/96cb6946cefd5b99/', vrReady: true },
+    { id: 5,  name: '学生素质发展中心', shortName: '素质发展中心', cat: '素质教育', desc: '学生综合素质培养成果展示', vrUrl: 'https://2e6zb07zn85.720yun.com/vr/374j5dyvrf2', vrReady: true },
+    { id: 6,  name: '学生科普体验中心', shortName: '科普体验中心', cat: '素质教育', desc: '交通科技与学生科普互动体验', vrUrl: 'https://2e6zb07zn85.720yun.com/vr/7a0j5dyksk9', vrReady: true },
+    { id: 7,  name: '文化千岛艺术馆', shortName: '千岛艺术馆', cat: '文化艺术', desc: '多元文化艺术作品线上展陈', vrUrl: 'https://2e6zb07zn85.720yun.com/vr/660j5dyvsv5', vrReady: true },
     { id: 8,  name: '校园安全教育馆', shortName: '校园安全教育馆', cat: '安全教育', desc: '校园安全常识与警示教育', vrUrl: 'https://www.bafang720.com/tour/4220d0a68856dcb9', vrReady: true },
     { id: 9,  name: '西部山区道路运输安全警示教育基地', shortName: '西部山区安全基地', cat: '安全教育', desc: '山区道路运输安全警示教育', vrUrl: 'https://eqvrar.com/hcvr/692/?t=1567242165', vrReady: true },
-    { id: 10, name: '节水宣传教育中心', shortName: '节水宣传中心', cat: '主题展馆', desc: '节水理念与宣传教育成果', vrUrl: 'https://www.720yun.com/vr/f7bj5pmOkO2', vrReady: true }
+    { id: 10, name: '节水宣传教育中心', shortName: '节水宣传中心', cat: '主题宣教', desc: '节水理念与宣传教育成果', vrUrl: 'https://2e6zb07zn85.720yun.com/vr/f7bj5pmOkO2', vrReady: true },
+    { id: 11, name: '牙舟陶数字展厅', shortName: '牙舟陶展厅', cat: '文化艺术', desc: '国家级非遗牙舟陶数字展陈', vrUrl: 'https://2e6zb07zn85.720yun.com/vr/e96je04kew9', vrReady: true }
   ],
 
   newsHome: [
@@ -164,7 +165,7 @@ module.exports = {
   hallDetail: {
     name: '校史馆',
     shortName: '校史馆',
-    vrUrl: 'https://roma.720yun.com/vr/b5b7196093f3c25a/',
+    vrUrl: 'https://a28c11ea.720roma.com/vr/b5b7196093f3c25a/',
     vrReady: true,
     slides: [
       { cls: 'gi1', icon: 'museum' },

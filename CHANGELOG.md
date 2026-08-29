@@ -4,10 +4,18 @@
 
 ## [未发布]
 
+### 已完成（文档此前仍标「计划中」，2026-08-30 更正）
+- staging 部署与压测终验（2026-08-27，`docs/perf/压测报告_20260827.md`；报名 PASS，浏览 P95 WARN）
+- 备份恢复演练记录（2026-08-27，`docs/运维/备份恢复说明_V1.0.md` §6.3）
+- 预发 HTTPS 过渡域 `https://api.yunmanvr.com`（ECS `47.109.0.192`，证书已配，health/admin 可访问）
+- 微信服务器域名：request/uploadFile → `api.yunmanvr.com`；downloadFile → 成都 OSS Bucket
+- 微信业务域名：`a28c11ea.720roma.com`、`2e6zb07zn85.720yun.com`、`www.yunmanvr.com`
+- 订阅模板 `WX_TMPL_ENROLL_SUCCESS` / `WX_TMPL_ENROLL_APPROVED` 已在预发生效（不含活动提醒）
+
 ### 计划中
-- staging 部署与压测终验
-- 真机双端测试报告
-- 备份恢复演练记录
+- 真机双端测试报告（体验版 + 4G；过渡域已可测）
+- 专用小程序域名 ICP 通过后切域（Nginx / 证书 / `env.js` prod / 合法域名 / CORS）
+- 切 prod profile 并跑 `check:release-all`
 
 ### 本地收尾（2026-07-11 续）
 - 运维手册 / Runbook（`docs/运维/运维手册_V1.0.md`）

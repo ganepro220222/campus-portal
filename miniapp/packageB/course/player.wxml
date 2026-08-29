@@ -19,6 +19,8 @@
       bindplay="onPlay"
       bindpause="onPause"
       binderror="onVideoError"
+      bindseekcomplete="onSeekComplete"
+      bindloadedmetadata="onVideoLoadedMetadata"
     />
     <view wx:else class="video-empty">
       <text class="video-empty-ic">▶</text>

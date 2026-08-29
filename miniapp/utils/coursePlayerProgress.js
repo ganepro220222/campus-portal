@@ -17,6 +17,17 @@ function shouldReportByInterval(currentSec, lastReportSec, intervalSec = 20) {
   return currentSec - lastReportSec >= intervalSec
 }
 
+/** 用户向后 seek 超过容差时，需立即上报以重置服务端位置基准 */
+function isSeekBackward(currentSec, lastReportSec, toleranceSec = 2) {
+  return currentSec + toleranceSec < lastReportSec
+}
+
+/** 刷新视频 URL 后应恢复的播放位置 */
+function resolveVideoResumePosition({ currentPosition, initialTime }) {
+  if (currentPosition != null && currentPosition > 0) return currentPosition
+  return initialTime || 0
+}
+
 function isVttHttpSuccess(statusCode) {
   return statusCode >= 200 && statusCode < 300
 }
@@ -52,5 +63,7 @@ module.exports = {
   VIDEO_MAX_CONSECUTIVE_RETRIES,
   VIDEO_MAX_LIFETIME_RELOADS,
   isVideoPlaybackStable,
-  shouldGiveUpVideoReload
+  shouldGiveUpVideoReload,
+  isSeekBackward,
+  resolveVideoResumePosition
 }

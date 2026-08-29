@@ -3,6 +3,8 @@ const assert = require('assert')
 const {
   resolveEndedReport,
   shouldReportByInterval,
+  isSeekBackward,
+  resolveVideoResumePosition,
   isVttHttpSuccess,
   looksLikeVtt,
   isVideoPlaybackStable,
@@ -23,6 +25,15 @@ const {
 
 assert.strictEqual(shouldReportByInterval(20, 0), true)
 assert.strictEqual(shouldReportByInterval(19, 0), false)
+assert.strictEqual(shouldReportByInterval(20, 480), false)
+
+assert.strictEqual(isSeekBackward(0, 480), true)
+assert.strictEqual(isSeekBackward(478, 480), false)
+assert.strictEqual(isSeekBackward(100, 480), true)
+
+assert.strictEqual(resolveVideoResumePosition({ currentPosition: 1080, initialTime: 480 }), 1080)
+assert.strictEqual(resolveVideoResumePosition({ currentPosition: 0, initialTime: 480 }), 480)
+assert.strictEqual(resolveVideoResumePosition({ currentPosition: null, initialTime: 0 }), 0)
 
 assert.strictEqual(isVttHttpSuccess(200), true)
 assert.strictEqual(isVttHttpSuccess(403), false)

@@ -5,6 +5,8 @@ const { mergeCourseDetail } = require('../../utils/content')
 const {
   resolveEndedReport,
   shouldReportByInterval,
+  isSeekBackward,
+  resolveVideoResumePosition,
   isVttHttpSuccess,
   looksLikeVtt,
   isVideoPlaybackStable
@@ -85,6 +87,26 @@ Page({
   onPause() {
     this.setData({ playing: false })
     this._flushProgress(true)
+  },
+
+  onSeekComplete(e) {
+    const cur = Math.floor(e.detail.currentTime || this._currentPosition || 0)
+    const total = Math.floor(this._currentDuration || 0)
+    this._currentPosition = cur
+    if (!this._courseId || total <= 0) {
+      this._lastReportSec = cur
+      return
+    }
+    if (isSeekBackward(cur, this._lastReportSec)) {
+      this._lastReportSec = cur
+      this._reportProgress(cur, total).catch(() => {})
+      return
+    }
+    this._lastReportSec = cur
+  },
+
+  onVideoLoadedMetadata() {
+    this._applyPendingVideoResume()
   },
 
   onTimeUpdate(e) {
@@ -176,14 +198,37 @@ Page({
       if (!play || !play.videoUrl) {
         throw new Error('no-video')
       }
+      const resumePosition = resolveVideoResumePosition({
+        currentPosition: this._currentPosition,
+        initialTime: this.data.initialTime
+      })
+      const wasPlaying = this.data.playing
       this._videoUrlReloadTotal += 1
-      this._videoRecoveryStartPosition = null
+      this._pendingVideoResume = { position: resumePosition, playing: wasPlaying }
+      this._videoRecoveryStartPosition = resumePosition > 0 ? resumePosition : null
       this.setData({ videoUrl: play.videoUrl })
       if (!silent) {
         wx.showToast({ title: '已刷新视频地址', icon: 'none' })
       }
     } catch (e) {
       wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
+    }
+  },
+
+  _applyPendingVideoResume() {
+    const pending = this._pendingVideoResume
+    if (!pending) return
+    this._pendingVideoResume = null
+    const ctx = wx.createVideoContext('courseVideo', this)
+    const pos = Math.floor(pending.position || 0)
+    if (pos > 0) {
+      ctx.seek(pos)
+      this._currentPosition = pos
+      this._lastReportSec = pos
+      this._videoRecoveryStartPosition = pos
+    }
+    if (pending.playing) {
+      ctx.play()
     }
   },
 

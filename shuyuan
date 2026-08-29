@@ -2,7 +2,7 @@
 # 部署路径: /etc/nginx/sites-enabled/shuyuan
 #
 # 用法:
-#   sudo cp shuyuan.full /etc/nginx/sites-enabled/shuyuan
+#   sudo cp shuyuan /etc/nginx/sites-enabled/shuyuan
 #   sudo nginx -t && sudo systemctl reload nginx
 #   curl -s https://api.yunmanvr.com/api/v1/health
 #   sudo certbot renew --dry-run
@@ -96,6 +96,28 @@ server {
         alias /opt/shuyuan/exhibits/$1/config.json;
         default_type application/json;
         add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    # 播放器入口 / 壳页：协商缓存，避免 7 天强缓存导致用户长期运行旧 bundle
+    location = /exhibits/player.view.html {
+        alias /opt/shuyuan/exhibits/player.view.html;
+        default_type text/html;
+        expires off;
+        add_header Cache-Control "no-cache, must-revalidate" always;
+    }
+
+    location = /exhibits/player.bundle.js {
+        alias /opt/shuyuan/exhibits/player.bundle.js;
+        default_type application/javascript;
+        expires off;
+        add_header Cache-Control "no-cache, must-revalidate" always;
+    }
+
+    location ~ ^/exhibits/(craft-[^/]+)/index\.html$ {
+        alias /opt/shuyuan/exhibits/$1/index.html;
+        default_type text/html;
+        expires off;
+        add_header Cache-Control "no-cache, must-revalidate" always;
     }
 
     location = /exhibits/studio.html { return 404; }

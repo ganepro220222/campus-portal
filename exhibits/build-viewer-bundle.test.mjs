@@ -53,8 +53,10 @@ test('validateBundledViewerHtml rejects import map', () => {
 test('esbuild bundle is self-contained for iOS 15 Safari', () => {
   const tmp = fs.mkdtempSync(path.join(ROOT, '.test-bundle-'))
   try {
-    const { html, bundlePath } = buildBundledViewer(buildViewerSrc(), { outDir: tmp, bundleName: VIEWER_BUNDLE_FILE })
+    const { html, bundlePath, cacheBust } = buildBundledViewer(buildViewerSrc(), { outDir: tmp, bundleName: VIEWER_BUNDLE_FILE })
     assert.equal(validateBundledViewerHtml(html).ok, true)
+    assert.match(cacheBust, /^[0-9a-f]{8}$/)
+    assert.match(html, new RegExp(`src="\\./player\\.bundle\\.js\\?v=${cacheBust}"`))
     const text = fs.readFileSync(bundlePath, 'utf8')
     assert.ok(text.length > 100_000, 'bundle should include three.js graph')
     assertBundleSelfContained(text)

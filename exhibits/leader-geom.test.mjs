@@ -612,7 +612,7 @@ test('export viewer strips editMode and buildEditor', () => {
   assert.equal(sem.ok, true, sem.reason || 'viewer semantics failed')
   assert.doesNotMatch(src, /buildEditor\(\)/)
   const view = fs.readFileSync(path.join(ROOT, 'player.view.html'), 'utf8')
-  assert.match(view, /src="\.\/player\.bundle\.js"/)
+  assert.match(view, /src="\.\/player\.bundle\.js(?:\?v=[0-9a-f]+)?"/)
   const bundle = fs.readFileSync(path.join(ROOT, VIEWER_BUNDLE_FILE), 'utf8')
   assert.match(bundle, /__SY_PLAYER/)
   assert.doesNotMatch(bundle, /buildEditor\(\)/)
@@ -629,7 +629,7 @@ test('viewer output omits editor hotspot boot diagnostics', () => {
 test('production viewer is bundled without import map', () => {
   const { html } = buildProductionViewer(buildViewerSrc())
   assert.doesNotMatch(html, /<script type="importmap">/)
-  assert.match(html, /src="\.\/player\.bundle\.js"/)
+  assert.match(html, /src="\.\/player\.bundle\.js(?:\?v=[0-9a-f]+)?"/)
   const bundle = fs.readFileSync(path.join(ROOT, VIEWER_BUNDLE_FILE), 'utf8')
   assert.ok(bundle.includes('__SY_PLAYER'), 'bundle must include viewer boot logic')
   assert.ok(bundle.includes('strictWebKitPanoramaMaxWidth'), 'bundle must include viewer runtime helpers')
@@ -873,7 +873,7 @@ test('deployUploadPack promotion failure preserves verified staging for retry', 
     assert.ok(thrown.recovery?.stagingDir)
     assert.ok(fs.existsSync(path.join(thrown.recovery.stagingDir, 'player.view.html')))
     const stagingHtml = fs.readFileSync(path.join(thrown.recovery.stagingDir, 'player.view.html'), 'utf8')
-    assert.match(stagingHtml, /src="\.\/player\.bundle\.js"/)
+    assert.match(stagingHtml, /src="\.\/player\.bundle\.js(?:\?v=[0-9a-f]+)?"/)
     assert.ok(fs.existsSync(path.join(thrown.recovery.stagingDir, VIEWER_BUNDLE_FILE)))
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })

@@ -158,7 +158,7 @@ export function resolveModuleSpec(spec, fromFile, htmlDir, importMap) {
 /** 从 player HTML 内联 module + 递归 JS import 遍历依赖图；bundled viewer 只校验 bundle 文件。 */
 function walkModuleGraph(htmlPath, rootDir) {
   const html = fs.readFileSync(htmlPath, 'utf8')
-  const bundleRef = html.match(/<script type="module"\s+src="\.\/([^"]+)"/)
+  const bundleRef = html.match(/<script type="module"\s+src="\.\/([^"?#]+)(?:[?#][^"]*)?"/)
   if (bundleRef) {
     const rel = bundleRef[1]
     const abs = path.join(rootDir, rel)
@@ -425,7 +425,7 @@ export function verifyUploadAssets(uploadDir = UPLOAD_DIR, sourceExhibits = null
 
 /** Bundled production viewer loads player.bundle.js instead of import map + inline module. */
 export function viewerUsesBundle(html) {
-  return html.includes(`src="./${VIEWER_BUNDLE_FILE}"`)
+  return new RegExp(`src="\\./${VIEWER_BUNDLE_FILE.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:[?#][^"]*)?"`).test(html)
 }
 
 /** 写入 upload 前的预检：可选先同步资产/模块，再校验资源与运行时依赖（不写 viewer/config） */

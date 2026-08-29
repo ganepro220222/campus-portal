@@ -770,7 +770,7 @@ test.describe('全景就绪超时', () => {
     })
     await stallPanorama(page)
     await page.goto('/player.view.html?ex=craft-001&syDiag=1', { waitUntil: 'domcontentloaded' })
-    expect(await page.evaluate(() => !!document.querySelector('script[src="./player.bundle.js"]'))).toBe(true)
+    expect(await page.evaluate(() => !!document.querySelector('script[type="module"][src*="player.bundle.js"]'))).toBe(true)
     await page.waitForFunction(() => window.__SY_PLAYER?.ready === true, null, { timeout: 60_000 })
     const tags = await page.evaluate(() => (window.__SY_PANO_DIAG__ || []).map(x => x.tag))
     // 走到超时分支才算数：只看「揭示了」会被外层 catch 的兜底揭示骗过去

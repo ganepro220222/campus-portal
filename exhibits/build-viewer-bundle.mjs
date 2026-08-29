@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import * as esbuild from 'esbuild'
 
@@ -14,11 +15,12 @@ export function extractModuleScript(html) {
 }
 
 /** Production viewer: drop import map + inline module, load bundled ESM instead. */
-export function buildBundledViewerHtml(viewerSrc, bundleName = VIEWER_BUNDLE_FILE) {
+export function buildBundledViewerHtml(viewerSrc, bundleName = VIEWER_BUNDLE_FILE, cacheBust = '') {
+  const src = cacheBust ? `./${bundleName}?v=${cacheBust}` : `./${bundleName}`
   let html = viewerSrc.replace(/<script type="importmap">[\s\S]*?<\/script>\s*/g, '')
   const replaced = html.replace(
     /<script type="module">[\s\S]*?<\/script>\s*/,
-    `<script type="module" src="./${bundleName}"></script>\n`,
+    `<script type="module" src="${src}"></script>\n`,
   )
   if (replaced === html) throw new Error('viewer HTML missing inline module script to replace')
   html = replaced
@@ -29,7 +31,7 @@ export function validateBundledViewerHtml(html, bundleName = VIEWER_BUNDLE_FILE)
   if (/<script type="importmap">/.test(html)) {
     return { ok: false, reason: 'bundled viewer must not contain import map' }
   }
-  if (!html.includes(`src="./${bundleName}"`)) {
+  if (!new RegExp(`src="\\./${bundleName.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:\\?[^"]*)?"`).test(html)) {
     return { ok: false, reason: `bundled viewer must load ./${bundleName}` }
   }
   if (/<script type="module">\s*import /.test(html)) {
@@ -89,8 +91,9 @@ export function bundleViewerScript(viewerSrc, outFile) {
 export function buildBundledViewer(viewerSrc, { outDir = ROOT, bundleName = VIEWER_BUNDLE_FILE } = {}) {
   const bundlePath = path.join(outDir, bundleName)
   bundleViewerScript(viewerSrc, bundlePath)
-  const html = buildBundledViewerHtml(viewerSrc, bundleName)
+  const cacheBust = createHash('sha256').update(fs.readFileSync(bundlePath)).digest('hex').slice(0, 8)
+  const html = buildBundledViewerHtml(viewerSrc, bundleName, cacheBust)
   const sem = validateBundledViewerHtml(html, bundleName)
   if (!sem.ok) throw new Error(sem.reason)
-  return { html, bundlePath, bundleName }
+  return { html, bundlePath, bundleName, cacheBust }
 }

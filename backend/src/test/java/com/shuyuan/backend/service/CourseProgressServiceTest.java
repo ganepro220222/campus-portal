@@ -85,6 +85,7 @@ class CourseProgressServiceTest {
         existing.setTotalDurationSeconds(600);
         existing.setProgressPercent(new BigDecimal("50.00"));
         existing.setCompleted(0);
+        existing.setWatchedSeconds(120);
         existing.setUpdatedAt(LocalDateTime.now().minusMinutes(3));
 
         when(courseProgressMapper.selectOne(any())).thenReturn(existing);
@@ -114,6 +115,7 @@ class CourseProgressServiceTest {
         existing.setTotalDurationSeconds(600);
         existing.setProgressPercent(new BigDecimal("50.00"));
         existing.setCompleted(0);
+        existing.setWatchedSeconds(120);
         existing.setUpdatedAt(LocalDateTime.now().minusMinutes(3));
 
         when(courseProgressMapper.selectOne(any())).thenReturn(existing);
@@ -254,6 +256,7 @@ class CourseProgressServiceTest {
         existing.setTotalDurationSeconds(600);
         existing.setProgressPercent(new BigDecimal("88.33"));
         existing.setCompleted(0);
+        existing.setWatchedSeconds(30);
         existing.setUpdatedAt(LocalDateTime.now().minusSeconds(30));
 
         when(courseProgressMapper.selectOne(any())).thenReturn(existing);
@@ -268,6 +271,36 @@ class CourseProgressServiceTest {
         assertEquals(new BigDecimal("90.00"), vo.get("progressPercent"));
         assertEquals(false, vo.get("completed"));
         verify(pointService, never()).awardCourseComplete(anyLong(), anyLong());
+    }
+
+    @Test
+    void reportProgress_completesAfterPeriodicTwentySecondReports() {
+        stubPublishedCourse(10);
+        CourseProgress existing = new CourseProgress();
+        existing.setId(1L);
+        existing.setMemberId(MEMBER_ID);
+        existing.setCourseId(COURSE_ID);
+        existing.setLastPositionSeconds(520);
+        existing.setTotalDurationSeconds(600);
+        existing.setProgressPercent(new BigDecimal("86.67"));
+        existing.setCompleted(0);
+        existing.setWatchedSeconds(100);
+        existing.setUpdatedAt(LocalDateTime.now().minusSeconds(20));
+
+        when(courseProgressMapper.selectOne(any())).thenReturn(existing);
+        doReturn(1).when(courseProgressMapper).updateById(any(CourseProgress.class));
+        when(rateLimitService.tryAcquireUser(eq("course-complete"), eq(MEMBER_ID), eq(5), eq(Duration.ofHours(1))))
+                .thenReturn(true);
+
+        CourseProgressRequest req = new CourseProgressRequest();
+        req.setLastPositionSeconds(540);
+        req.setTotalDurationSeconds(600);
+
+        Map<String, Object> vo = courseProgressService.reportProgress(COURSE_ID, req);
+
+        assertEquals(true, vo.get("completed"));
+        verify(pointService).awardCourseComplete(MEMBER_ID, COURSE_ID);
+        verify(eventLogService).record("complete", "course", COURSE_ID);
     }
 
     @Test

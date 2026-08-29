@@ -94,11 +94,15 @@ Page({
 
   _loadProgress(id) {
     get(`/courses/${id}/progress`).then(p => {
-      if (!p || !p.lastPositionSeconds) return
-      const hint = p.completed
-        ? '已完成学习'
-        : `上次学到 ${formatDuration(p.lastPositionSeconds)}，点击继续`
-      this.setData({ progressHint: hint })
+      if (!p) return
+      if (p.completed) {
+        this.setData({ progressHint: '已完成学习' })
+        return
+      }
+      if (!p.lastPositionSeconds) return
+      this.setData({
+        progressHint: `上次学到 ${formatDuration(p.lastPositionSeconds)}，点击继续`
+      })
     }).catch(() => {})
   },
 

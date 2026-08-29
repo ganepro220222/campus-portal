@@ -20,5 +20,7 @@ public class CourseProgress {
     private Integer totalDurationSeconds;
     private BigDecimal progressPercent;
     private Integer completed;
+    /** 累计有效观看秒数（完成判定依据，非 updated_at 间隔） */
+    private Integer watchedSeconds;
     private LocalDateTime updatedAt;
 }

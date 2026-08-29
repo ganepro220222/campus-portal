@@ -71,10 +71,29 @@ public final class CourseProgressGuard {
     }
 
     /**
+     * 根据本次上报位置与上次上报间隔，累计可信观看秒数。
+     * 后退播放不减少；大幅快进由 {@link #validatePositionReport} 先行拦截。
+     */
+    public static int nextWatchedSeconds(CourseProgress existing, int incomingPosition, LocalDateTime now) {
+        if (existing == null) {
+            return 0;
+        }
+        int prior = existing.getWatchedSeconds() != null ? existing.getWatchedSeconds() : 0;
+        int existingPos = existing.getLastPositionSeconds() != null ? existing.getLastPositionSeconds() : 0;
+        LocalDateTime lastAt = existing.getUpdatedAt() != null ? existing.getUpdatedAt() : now;
+        long elapsed = Math.max(0, Duration.between(lastAt, now).getSeconds());
+        int positionDelta = Math.max(0, incomingPosition - existingPos);
+        int maxByTime = (int) (elapsed * MAX_PLAYBACK_RATE) + JUMP_BUFFER_SECONDS;
+        int increment = Math.min(positionDelta, maxByTime);
+        return prior + increment;
+    }
+
+    /**
      * 是否允许将本次上报视为「完成」并触发积分（与续播进度存储分离）。
      */
     public static boolean eligibleForCompletion(Course course, CourseProgress existing,
-                                              BigDecimal mergedPercent, int mergedTotal, LocalDateTime now) {
+                                              BigDecimal mergedPercent, int mergedTotal,
+                                              int watchedSeconds) {
         if (existing == null || mergedPercent.compareTo(COMPLETE_THRESHOLD) < 0) {
             return false;
         }
@@ -85,9 +104,7 @@ public final class CourseProgressGuard {
         }
         int expectedTotal = resolveExpectedTotalSeconds(course, mergedTotal);
         int minWatch = Math.max(MIN_WATCH_SECONDS_FLOOR, (int) (expectedTotal * MIN_WATCH_RATIO));
-        LocalDateTime lastAt = existing.getUpdatedAt() != null ? existing.getUpdatedAt() : now;
-        long elapsed = Math.max(0, Duration.between(lastAt, now).getSeconds());
-        return elapsed >= minWatch;
+        return watchedSeconds >= minWatch;
     }
 
     public static int resolveExpectedTotalSeconds(Course course, int reportedTotal) {

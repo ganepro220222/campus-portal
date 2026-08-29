@@ -67,9 +67,15 @@ public class CourseProgressService {
         boolean wasCompleted = existing != null && existing.getCompleted() != null && existing.getCompleted() == 1;
         ProgressSnapshot snapshot = mergeProgress(existing, incomingPosition, incomingTotal);
 
+        int watchedSeconds = existing != null && existing.getWatchedSeconds() != null
+                ? existing.getWatchedSeconds() : 0;
+        if (incomingTotal > 0) {
+            watchedSeconds = CourseProgressGuard.nextWatchedSeconds(existing, incomingPosition, now);
+        }
+
         boolean reachedThreshold = snapshot.percent().compareTo(CourseProgressGuard.COMPLETE_THRESHOLD) >= 0;
         boolean canComplete = CourseProgressGuard.eligibleForCompletion(
-                course, existing, snapshot.percent(), snapshot.total(), now);
+                course, existing, snapshot.percent(), snapshot.total(), watchedSeconds);
         boolean completed = wasCompleted || (reachedThreshold && canComplete);
         boolean newlyCompleted = !wasCompleted && reachedThreshold && canComplete;
 
@@ -80,6 +86,7 @@ public class CourseProgressService {
         row.setTotalDurationSeconds(snapshot.total());
         row.setProgressPercent(snapshot.percent());
         row.setCompleted(completed ? 1 : 0);
+        row.setWatchedSeconds(watchedSeconds);
         row.setUpdatedAt(now);
 
         if (existing == null) {

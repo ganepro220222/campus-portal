@@ -2,6 +2,7 @@
 const { get, post } = require('../../utils/request')
 const { requireLogin } = require('../../utils/auth')
 const { mergeCourseDetail } = require('../../utils/content')
+const { resolveEndedReport, shouldReportByInterval } = require('../../utils/coursePlayerProgress')
 
 const REPORT_INTERVAL_SEC = 20
 
@@ -26,7 +27,8 @@ Page({
     this._courseId = id
     this._lastReportSec = 0
     this._vttCues = []
-    this._videoErrorRetries = 0
+    this._videoRetryCount = 0
+    this._subtitleRetryCount = 0
 
     requireLogin(() => {
       Promise.all([
@@ -85,42 +87,59 @@ Page({
         this.setData({ subtitleText: cue })
       }
     }
-    if (cur - this._lastReportSec >= REPORT_INTERVAL_SEC) {
+    if (shouldReportByInterval(cur, this._lastReportSec, REPORT_INTERVAL_SEC)) {
       this._lastReportSec = cur
-      this._reportProgress(cur, total)
+      this._reportProgress(cur, total).catch(() => {})
     }
   },
 
-  onEnded() {
-    const total = this._videoDuration()
-    this._reportProgress(total, total)
-    this.setData({ playing: false, completed: true, progressPercent: 100 })
-    wx.showToast({ title: '课程学习完成', icon: 'none' })
+  async onEnded(e) {
+    const { position, total } = resolveEndedReport({
+      detailDuration: e && e.detail && e.detail.duration,
+      cachedDuration: this._currentDuration,
+      cachedPosition: this._currentPosition
+    })
+    this.setData({ playing: false })
+    if (total <= 0) {
+      wx.showToast({ title: '进度保存失败，请稍后重试', icon: 'none' })
+      return
+    }
+    try {
+      const res = await this._reportProgress(position, total)
+      if (!res) {
+        wx.showToast({ title: '进度保存失败，请稍后重试', icon: 'none' })
+        return
+      }
+      this.setData({
+        progressPercent: res.progressPercent ? Number(res.progressPercent) : this.data.progressPercent,
+        completed: !!res.completed
+      })
+      if (res.completed) {
+        wx.showToast({ title: '课程学习完成', icon: 'none' })
+      }
+    } catch (err) {
+      console.warn('[course/player] 结束上报失败', err)
+      wx.showToast({ title: '进度保存失败，请稍后重试', icon: 'none' })
+    }
   },
 
   onVideoError() {
-    if (this._videoErrorRetries < 2) {
-      this._videoErrorRetries += 1
-      this._reloadSignedUrls(true)
+    if (this._videoRetryCount < 2) {
+      this._videoRetryCount += 1
+      this._reloadVideoUrl(true)
       return
     }
     wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
   },
 
-  async _reloadSignedUrls(silent) {
+  async _reloadVideoUrl(silent) {
     try {
       const play = await get(`/courses/${this._courseId}/play`)
       if (!play || !play.videoUrl) {
         throw new Error('no-video')
       }
-      this.setData({
-        videoUrl: play.videoUrl,
-        subtitleUrl: play.subtitleUrl || '',
-        hasSubtitle: !!play.hasSubtitle && !!play.subtitleUrl
-      })
-      if (play.subtitleUrl) {
-        this._loadVtt(play.subtitleUrl)
-      }
+      this._videoRetryCount = 0
+      this.setData({ videoUrl: play.videoUrl })
       if (!silent) {
         wx.showToast({ title: '已刷新视频地址', icon: 'none' })
       }
@@ -129,32 +148,48 @@ Page({
     }
   },
 
+  async _reloadSubtitleUrl(silent) {
+    try {
+      const play = await get(`/courses/${this._courseId}/play`)
+      if (!play || !play.subtitleUrl) {
+        this.setData({ hasSubtitle: false, subtitleUrl: '' })
+        return
+      }
+      this._subtitleRetryCount = 0
+      this.setData({
+        subtitleUrl: play.subtitleUrl,
+        hasSubtitle: !!play.hasSubtitle
+      })
+      this._loadVtt(play.subtitleUrl)
+      if (!silent) {
+        wx.showToast({ title: '已刷新字幕', icon: 'none' })
+      }
+    } catch (e) {
+      this.setData({ hasSubtitle: false, subtitleUrl: '' })
+    }
+  },
+
   onCC() {
     this.setData({ cc: !this.data.cc })
     wx.showToast({ title: this.data.cc ? 'AI 字幕已开启' : 'AI 字幕已关闭', icon: 'none' })
   },
 
-  _videoDuration() {
-    try {
-      const ctx = wx.createVideoContext('courseVideo', this)
-      return ctx && ctx.duration ? Math.floor(ctx.duration) : 0
-    } catch (e) {
-      return 0
-    }
-  },
-
   _reportProgress(position, total) {
-    requireLogin(() => {
-      post(`/courses/${this._courseId}/progress`, {
-        lastPositionSeconds: position,
-        totalDurationSeconds: total
-      }).then(res => {
-        if (!res) return
-        this.setData({
-          progressPercent: res.progressPercent ? Number(res.progressPercent) : this.data.progressPercent,
-          completed: !!res.completed
-        })
-      }).catch(() => {})
+    return new Promise((resolve, reject) => {
+      requireLogin(() => {
+        post(`/courses/${this._courseId}/progress`, {
+          lastPositionSeconds: position,
+          totalDurationSeconds: total
+        }).then(res => {
+          if (res) {
+            this.setData({
+              progressPercent: res.progressPercent ? Number(res.progressPercent) : this.data.progressPercent,
+              completed: !!res.completed
+            })
+          }
+          resolve(res)
+        }).catch(reject)
+      })
     })
   },
 
@@ -163,7 +198,7 @@ Page({
     const total = this._currentDuration || 0
     if (total <= 0) return
     const pos = this._currentPosition != null ? this._currentPosition : (this.data.initialTime || 0)
-    this._reportProgress(pos, total)
+    this._reportProgress(pos, total).catch(() => {})
   },
 
   _loadVtt(url) {
@@ -173,13 +208,17 @@ Page({
       success: (res) => {
         if (typeof res.data === 'string') {
           this._vttCues = this._parseVtt(res.data)
+          this._subtitleRetryCount = 0
         }
       },
       fail: () => {
-        if (this._videoErrorRetries < 2) {
-          this._videoErrorRetries += 1
-          this._reloadSignedUrls(true)
+        if (this._subtitleRetryCount < 2) {
+          this._subtitleRetryCount += 1
+          this._reloadSubtitleUrl(true)
+          return
         }
+        this.setData({ hasSubtitle: false, subtitleUrl: '' })
+        wx.showToast({ title: '字幕暂不可用', icon: 'none' })
       }
     })
   },

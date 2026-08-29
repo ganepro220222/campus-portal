@@ -362,6 +362,7 @@ CREATE TABLE IF NOT EXISTS `course_progress` (
   `total_duration_seconds` INT     NOT NULL DEFAULT 0 COMMENT '总时长（秒）',
   `progress_percent`       DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '完成百分比',
   `completed`              TINYINT NOT NULL DEFAULT 0 COMMENT '是否完成（≥90%）',
+  `watched_seconds`        INT     NOT NULL DEFAULT 0 COMMENT '累计有效观看秒数',
   `updated_at`             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_member_course` (`member_id`, `course_id`)

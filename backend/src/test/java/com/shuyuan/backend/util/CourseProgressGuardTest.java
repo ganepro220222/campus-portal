@@ -51,10 +51,9 @@ class CourseProgressGuardTest {
         Course course = courseWithDuration(10);
         CourseProgress existing = new CourseProgress();
         existing.setProgressPercent(new BigDecimal("60.00"));
-        existing.setUpdatedAt(LocalDateTime.now().minusSeconds(30));
 
         assertFalse(CourseProgressGuard.eligibleForCompletion(
-                course, existing, new BigDecimal("95.00"), 600, LocalDateTime.now()));
+                course, existing, new BigDecimal("95.00"), 600, 30));
     }
 
     @Test
@@ -62,10 +61,42 @@ class CourseProgressGuardTest {
         Course course = courseWithDuration(10);
         CourseProgress existing = new CourseProgress();
         existing.setProgressPercent(new BigDecimal("60.00"));
-        existing.setUpdatedAt(LocalDateTime.now().minusMinutes(3));
 
         assertTrue(CourseProgressGuard.eligibleForCompletion(
-                course, existing, new BigDecimal("95.00"), 600, LocalDateTime.now()));
+                course, existing, new BigDecimal("95.00"), 600, 120));
+    }
+
+    @Test
+    void nextWatchedSeconds_accumulatesWithTwentySecondReports() {
+        CourseProgress row = new CourseProgress();
+        row.setLastPositionSeconds(0);
+        row.setWatchedSeconds(0);
+        row.setUpdatedAt(LocalDateTime.now().minusSeconds(600));
+
+        LocalDateTime base = row.getUpdatedAt();
+        for (int sec = 20; sec <= 540; sec += 20) {
+            LocalDateTime now = base.plusSeconds(sec);
+            int watched = CourseProgressGuard.nextWatchedSeconds(row, sec, now);
+            row.setWatchedSeconds(watched);
+            row.setLastPositionSeconds(sec);
+            row.setUpdatedAt(now);
+        }
+
+        assertTrue(row.getWatchedSeconds() >= 120);
+        Course course = courseWithDuration(10);
+        assertTrue(CourseProgressGuard.eligibleForCompletion(
+                course, row, new BigDecimal("90.00"), 600, row.getWatchedSeconds()));
+    }
+
+    @Test
+    void nextWatchedSeconds_ignoresBackwardSeek() {
+        CourseProgress row = new CourseProgress();
+        row.setLastPositionSeconds(100);
+        row.setWatchedSeconds(80);
+        row.setUpdatedAt(LocalDateTime.now().minusSeconds(20));
+
+        int watched = CourseProgressGuard.nextWatchedSeconds(row, 50, LocalDateTime.now());
+        assertEquals(80, watched);
     }
 
     private static Course courseWithDuration(int minutes) {

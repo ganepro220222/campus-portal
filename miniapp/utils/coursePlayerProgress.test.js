@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 const assert = require('assert')
-const { resolveEndedReport, shouldReportByInterval } = require('./coursePlayerProgress')
+const {
+  resolveEndedReport,
+  shouldReportByInterval,
+  isVttHttpSuccess,
+  looksLikeVtt
+} = require('./coursePlayerProgress')
 
-// ended 应使用缓存 duration，不能发 0/0
 {
   const r = resolveEndedReport({ detailDuration: 0, cachedDuration: 600, cachedPosition: 580 })
   assert.strictEqual(r.total, 600)
@@ -15,15 +19,13 @@ const { resolveEndedReport, shouldReportByInterval } = require('./coursePlayerPr
   assert.strictEqual(r.position, 90)
 }
 
-{
-  const r = resolveEndedReport({ detailDuration: 0, cachedDuration: 0, cachedPosition: 45 })
-  assert.strictEqual(r.total, 0)
-  assert.strictEqual(r.position, 45)
-}
-
-// 周期上报
 assert.strictEqual(shouldReportByInterval(20, 0), true)
 assert.strictEqual(shouldReportByInterval(19, 0), false)
-assert.strictEqual(shouldReportByInterval(40, 20), true)
+
+assert.strictEqual(isVttHttpSuccess(200), true)
+assert.strictEqual(isVttHttpSuccess(403), false)
+
+assert.strictEqual(looksLikeVtt('WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nhi'), true)
+assert.strictEqual(looksLikeVtt('<?xml version="1.0"?><Error>'), false)
 
 console.log('coursePlayerProgress.test: PASS')

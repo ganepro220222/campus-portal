@@ -11,6 +11,9 @@
   "requiredAllEnv": [
     "sql/patch-builtin-knowledge.sql"
   ],
+  "upgradePatches": [
+    "sql/patch-course-progress-watched-seconds.sql"
+  ],
   "dockerComposeDevMounts": [
     "./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql",
     "./sql/seed-dev.sql:/docker-entrypoint-initdb.d/02-seed-dev.sql",

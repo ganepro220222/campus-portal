@@ -22,5 +22,7 @@ public class CourseProgress {
     private Integer completed;
     /** 累计有效观看秒数（完成判定依据，非 updated_at 间隔） */
     private Integer watchedSeconds;
+    /** 上次上报时的播放位置，用于累计观看增量（与续播最大位置分离） */
+    private Integer lastReportPositionSeconds;
     private LocalDateTime updatedAt;
 }

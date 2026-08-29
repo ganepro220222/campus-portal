@@ -59,6 +59,25 @@ for (const rel of manifest.requiredAllEnv) {
   }
 }
 
+const upgradePatches = manifest.upgradePatches || []
+for (const rel of upgradePatches) {
+  mustExist(rel)
+  const base = path.basename(rel)
+  if (!readme.includes(base)) {
+    errs.push(`sql/README.md 未提及升级补丁 ${base}`)
+  }
+  if (!deployManual.includes(base)) {
+    errs.push(`部署手册未提及升级补丁 ${base}`)
+  }
+  const checklistPath = path.join(root, 'docs/运维/上线分工checklist_V1.0.md')
+  if (fs.existsSync(checklistPath)) {
+    const checklist = fs.readFileSync(checklistPath, 'utf8')
+    if (!checklist.includes(base)) {
+      errs.push(`上线 checklist 未提及升级补丁 ${base}`)
+    }
+  }
+}
+
 if (!rootReadme.includes('patch-builtin-knowledge.sql')) {
   errs.push('根 README Fresh DB 说明未包含 patch-builtin-knowledge.sql')
 }

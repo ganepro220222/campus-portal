@@ -17,4 +17,19 @@ function shouldReportByInterval(currentSec, lastReportSec, intervalSec = 20) {
   return currentSec - lastReportSec >= intervalSec
 }
 
-module.exports = { resolveEndedReport, shouldReportByInterval }
+function isVttHttpSuccess(statusCode) {
+  return statusCode >= 200 && statusCode < 300
+}
+
+function looksLikeVtt(text) {
+  if (typeof text !== 'string' || !text.trim()) return false
+  const head = text.trimStart().slice(0, 64).toUpperCase()
+  return head.startsWith('WEBVTT') || text.includes('-->')
+}
+
+module.exports = {
+  resolveEndedReport,
+  shouldReportByInterval,
+  isVttHttpSuccess,
+  looksLikeVtt
+}

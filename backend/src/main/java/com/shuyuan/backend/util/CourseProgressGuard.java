@@ -72,20 +72,30 @@ public final class CourseProgressGuard {
 
     /**
      * 根据本次上报位置与上次上报间隔，累计可信观看秒数。
-     * 后退播放不减少；大幅快进由 {@link #validatePositionReport} 先行拦截。
+     * 使用 lastReportPositionSeconds 而非续播最大位置；回退重看会重置累计基准。
      */
     public static int nextWatchedSeconds(CourseProgress existing, int incomingPosition, LocalDateTime now) {
         if (existing == null) {
-            return 0;
+            return Math.max(0, incomingPosition);
         }
         int prior = existing.getWatchedSeconds() != null ? existing.getWatchedSeconds() : 0;
-        int existingPos = existing.getLastPositionSeconds() != null ? existing.getLastPositionSeconds() : 0;
+        int lastReportPos = resolveLastReportPosition(existing);
+        if (incomingPosition < lastReportPos) {
+            return prior;
+        }
         LocalDateTime lastAt = existing.getUpdatedAt() != null ? existing.getUpdatedAt() : now;
         long elapsed = Math.max(0, Duration.between(lastAt, now).getSeconds());
-        int positionDelta = Math.max(0, incomingPosition - existingPos);
+        int positionDelta = incomingPosition - lastReportPos;
         int maxByTime = (int) (elapsed * MAX_PLAYBACK_RATE) + JUMP_BUFFER_SECONDS;
         int increment = Math.min(positionDelta, maxByTime);
         return prior + increment;
+    }
+
+    static int resolveLastReportPosition(CourseProgress existing) {
+        if (existing.getLastReportPositionSeconds() != null && existing.getLastReportPositionSeconds() > 0) {
+            return existing.getLastReportPositionSeconds();
+        }
+        return existing.getLastPositionSeconds() != null ? existing.getLastPositionSeconds() : 0;
     }
 
     /**
@@ -102,9 +112,15 @@ public final class CourseProgressGuard {
         if (priorPercent.compareTo(PRIOR_PROGRESS_MIN_PERCENT) < 0) {
             return false;
         }
-        int expectedTotal = resolveExpectedTotalSeconds(course, mergedTotal);
-        int minWatch = Math.max(MIN_WATCH_SECONDS_FLOOR, (int) (expectedTotal * MIN_WATCH_RATIO));
-        return watchedSeconds >= minWatch;
+        return watchedSeconds >= resolveMinWatchSeconds(course, mergedTotal);
+    }
+
+    /** 完成所需最少观看秒数：不超过课程总时长，短课不强制 120 秒。 */
+    public static int resolveMinWatchSeconds(Course course, int reportedTotal) {
+        int expectedTotal = resolveExpectedTotalSeconds(course, reportedTotal);
+        int proportional = (int) (expectedTotal * MIN_WATCH_RATIO);
+        int effectiveFloor = Math.min(MIN_WATCH_SECONDS_FLOOR, expectedTotal);
+        return Math.min(expectedTotal, Math.max(effectiveFloor, proportional));
     }
 
     public static int resolveExpectedTotalSeconds(Course course, int reportedTotal) {

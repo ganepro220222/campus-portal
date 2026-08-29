@@ -99,6 +99,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 16 | `patch-subject-neutral-config.sql` | **主体归属对齐**：把库里随 init.sql 写入的旧默认文案与机构占位串换成中性表述 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
 | 17 | `patch-college-app-demo.sql` | **首页关联应用**：`college_app` 从旧版 11 条学院名收敛为通途星 + 2 条示例 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
 | 18 | `seed-dev-cleanup.sql` | **交付前清场**：反向删除 `seed-dev.sql` 灌入的全部演示数据 | 非日常；两道护栏，见下 |
+| 19 | `patch-course-progress-watched-seconds.sql` | 课程进度累计观看 + 上次上报位置；旧库高进度回填 | ✅ 已并入 init.sql；**可重复执行** |
 
 #### 按 id 区间删数据的两个脚本（务必先读）
 
@@ -181,6 +182,26 @@ bash scripts/backup-staging-mysql.sh
 
 与 `patch-subject-neutral-config.sql` 互补：后者不动 `college_app`；全新 Docker 库（`init.sql` +
 `seed-dev.sql`）已含新数据，**无需**再跑本 patch。
+
+#### `patch-course-progress-watched-seconds.sql`（旧库课程进度必读）
+
+**新库**：`init.sql` 已含 `watched_seconds`、`last_report_position_seconds`，**勿**再跑本 patch。
+
+**旧库升级**（自引入累计观看完成判定版本起）：
+
+1. 发布新版后端**前**执行本 patch（幂等，可重复执行）。
+2. 补丁会新增两列，并将 `progress_percent >= 90` 且未完成的旧记录回填可信 `watched_seconds`，避免升级后永久卡死。
+3. 验收 SQL（应返回 **2** 行）：
+
+```sql
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND table_name = 'course_progress'
+  AND column_name IN ('watched_seconds', 'last_report_position_seconds');
+```
+
+4. 重启后端后，打开课程详情 / 播放器，确认无 `Unknown column 'watched_seconds'` 报错。
 
 #### `patch-subtitle-asr-poll.sql`（旧库 ASR 字幕必读）
 

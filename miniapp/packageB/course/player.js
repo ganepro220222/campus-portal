@@ -2,7 +2,12 @@
 const { get, post } = require('../../utils/request')
 const { requireLogin } = require('../../utils/auth')
 const { mergeCourseDetail } = require('../../utils/content')
-const { resolveEndedReport, shouldReportByInterval } = require('../../utils/coursePlayerProgress')
+const {
+  resolveEndedReport,
+  shouldReportByInterval,
+  isVttHttpSuccess,
+  looksLikeVtt
+} = require('../../utils/coursePlayerProgress')
 
 const REPORT_INTERVAL_SEC = 20
 
@@ -29,6 +34,8 @@ Page({
     this._vttCues = []
     this._videoRetryCount = 0
     this._subtitleRetryCount = 0
+    this._videoReloading = false
+    this._subtitleReloading = false
 
     requireLogin(() => {
       Promise.all([
@@ -81,6 +88,9 @@ Page({
     const total = Math.floor(e.detail.duration || 0)
     this._currentPosition = cur
     this._currentDuration = total
+    if (this._videoRetryCount > 0 && cur > 0) {
+      this._videoRetryCount = 0
+    }
     if (this.data.cc && this._vttCues.length) {
       const cue = this._findCue(cur)
       if (cue !== this.data.subtitleText) {
@@ -124,9 +134,13 @@ Page({
   },
 
   onVideoError() {
+    if (this._videoReloading) return
     if (this._videoRetryCount < 2) {
       this._videoRetryCount += 1
-      this._reloadVideoUrl(true)
+      this._videoReloading = true
+      this._reloadVideoUrl(true).finally(() => {
+        this._videoReloading = false
+      })
       return
     }
     wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
@@ -138,7 +152,6 @@ Page({
       if (!play || !play.videoUrl) {
         throw new Error('no-video')
       }
-      this._videoRetryCount = 0
       this.setData({ videoUrl: play.videoUrl })
       if (!silent) {
         wx.showToast({ title: '已刷新视频地址', icon: 'none' })
@@ -155,7 +168,6 @@ Page({
         this.setData({ hasSubtitle: false, subtitleUrl: '' })
         return
       }
-      this._subtitleRetryCount = 0
       this.setData({
         subtitleUrl: play.subtitleUrl,
         hasSubtitle: !!play.hasSubtitle
@@ -201,24 +213,38 @@ Page({
     this._reportProgress(pos, total).catch(() => {})
   },
 
+  _handleSubtitleFailure() {
+    if (this._subtitleReloading) return
+    if (this._subtitleRetryCount < 2) {
+      this._subtitleRetryCount += 1
+      this._subtitleReloading = true
+      this._reloadSubtitleUrl(true).finally(() => {
+        this._subtitleReloading = false
+      })
+      return
+    }
+    this.setData({ hasSubtitle: false, subtitleUrl: '' })
+    wx.showToast({ title: '字幕暂不可用', icon: 'none' })
+  },
+
   _loadVtt(url) {
     wx.request({
       url,
       method: 'GET',
       success: (res) => {
-        if (typeof res.data === 'string') {
-          this._vttCues = this._parseVtt(res.data)
-          this._subtitleRetryCount = 0
-        }
-      },
-      fail: () => {
-        if (this._subtitleRetryCount < 2) {
-          this._subtitleRetryCount += 1
-          this._reloadSubtitleUrl(true)
+        if (!isVttHttpSuccess(res.statusCode)) {
+          this._handleSubtitleFailure()
           return
         }
-        this.setData({ hasSubtitle: false, subtitleUrl: '' })
-        wx.showToast({ title: '字幕暂不可用', icon: 'none' })
+        if (typeof res.data !== 'string' || !looksLikeVtt(res.data)) {
+          this._handleSubtitleFailure()
+          return
+        }
+        this._vttCues = this._parseVtt(res.data)
+        this._subtitleRetryCount = 0
+      },
+      fail: () => {
+        this._handleSubtitleFailure()
       }
     })
   },

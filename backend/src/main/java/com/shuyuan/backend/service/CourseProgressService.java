@@ -87,6 +87,13 @@ public class CourseProgressService {
         row.setProgressPercent(snapshot.percent());
         row.setCompleted(completed ? 1 : 0);
         row.setWatchedSeconds(watchedSeconds);
+        if (incomingTotal > 0) {
+            row.setLastReportPositionSeconds(incomingPosition);
+        } else if (existing != null && existing.getLastReportPositionSeconds() != null) {
+            row.setLastReportPositionSeconds(existing.getLastReportPositionSeconds());
+        } else {
+            row.setLastReportPositionSeconds(0);
+        }
         row.setUpdatedAt(now);
 
         if (existing == null) {

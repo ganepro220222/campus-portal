@@ -5,6 +5,7 @@
 # 用法（在 /opt/shuyuan 下）：
 #   bash scripts/slim-staging-server.sh
 #   SLIM_ARCHIVE=_slim_archive_custom bash scripts/slim-staging-server.sh
+#     # 必须是仓库根下的独立目录名，不可为 miniapp/docs/exhibits 等子路径或同名目录
 #   SLIM_RUNS_KEEP=3 bash scripts/slim-staging-server.sh   # 必须 >= 1 的整数
 #
 # 勿在本地开发机随意执行（会移动 miniapp/、design/ 等）。
@@ -39,6 +40,16 @@ resolve_slim_root() {
     echo "SLIM_ARCHIVE 不能含 .. : $raw" >&2
     exit 1
   fi
+  if [[ "$raw" == */* ]]; then
+    echo "SLIM_ARCHIVE 必须是仓库根下的独立目录名，不能放在 miniapp/docs/exhibits 等目录内: $raw" >&2
+    exit 1
+  fi
+  case "$raw" in
+    design|test|miniapp|docs|admin|exhibits|backend|scripts)
+      echo "SLIM_ARCHIVE 不能与待移动或运行目录同名: $raw" >&2
+      exit 1
+      ;;
+  esac
   local root_resolved slim_resolved
   root_resolved="$(cd "$ROOT" && pwd)"
   mkdir -p "$ROOT/$raw"

@@ -12,6 +12,12 @@ assert.match(sh, /mktemp -d.*runs\/\$\{RUN_PREFIX\}\.XXXXXX/, 'must allocate uni
 assert.match(sh, /RUN_PREFIX=.*\$\$/, 'run prefix must include pid for same-second serial runs')
 assert.match(sh, /validate_slim_runs_keep|SLIM_RUNS_KEEP 必须是大于等于 1/, 'must validate SLIM_RUNS_KEEP before moves')
 assert.match(sh, /resolve_slim_root|SLIM_ARCHIVE 必须在仓库根内/, 'must validate archive path under repo root')
+assert.match(
+  sh,
+  /SLIM_ARCHIVE 必须是仓库根下的独立目录名|不能放在 miniapp/,
+  'must reject nested SLIM_ARCHIVE under movable dirs',
+)
+assert.match(sh, /design\|test\|miniapp\|docs\|admin\|exhibits/, 'must reject SLIM_ARCHIVE same as movable top-level dirs')
 assert.match(sh, /prune_old_slim_runs/, 'must prune old runs with explicit retention')
 assert.doesNotMatch(
   sh,

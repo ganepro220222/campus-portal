@@ -16,6 +16,23 @@ setup_sandbox() {
   touch "$dir/exhibits/check-static-deps.mjs"
 }
 
+setup_sandbox_with_sources() {
+  local dir="$1"
+  setup_sandbox "$dir"
+  mkdir -p "$dir/design" "$dir/test" "$dir/miniapp" "$dir/docs"
+  echo design > "$dir/design/marker"
+  echo test > "$dir/test/marker"
+  echo miniapp > "$dir/miniapp/marker"
+  echo docs > "$dir/docs/marker"
+}
+
+assert_sources_unmoved() {
+  [ -d design ] && [ -f design/marker ] || { echo "design was moved unexpectedly" >&2; return 1; }
+  [ -d test ] && [ -f test/marker ] || { echo "test was moved unexpectedly" >&2; return 1; }
+  [ -d miniapp ] && [ -f miniapp/marker ] || { echo "miniapp was moved unexpectedly" >&2; return 1; }
+  [ -d docs ] && [ -f docs/marker ] || { echo "docs was moved unexpectedly" >&2; return 1; }
+}
+
 count_runs() {
   find _slim_archive/runs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
 }
@@ -40,6 +57,40 @@ for bad in 0 -1 abc 1.5; do
   fi
   [ -d miniapp ] || { echo "miniapp moved despite invalid SLIM_RUNS_KEEP=$bad" >&2; exit 1; }
   [ -d docs ] || { echo "docs moved despite invalid SLIM_RUNS_KEEP=$bad" >&2; exit 1; }
+done
+
+# --- 非法 SLIM_ARCHIVE 必须在移动前拒绝 ---
+for bad in miniapp/_archive docs/archive exhibits/archive admin/src/archive design ../archive; do
+  sb="$TMP/archive-$bad"
+  setup_sandbox_with_sources "$sb"
+  cd "$sb"
+  if SLIM_ARCHIVE="$bad" bash scripts/slim-staging-server.sh >/dev/null 2>&1; then
+    echo "expected failure for SLIM_ARCHIVE=$bad" >&2
+    exit 1
+  fi
+  assert_sources_unmoved
+done
+sb="$TMP/archive-abs"
+setup_sandbox_with_sources "$sb"
+cd "$sb"
+if SLIM_ARCHIVE=/tmp/archive bash scripts/slim-staging-server.sh >/dev/null 2>&1; then
+  echo "expected failure for SLIM_ARCHIVE=/tmp/archive" >&2
+  exit 1
+fi
+assert_sources_unmoved
+
+# --- 合法 SLIM_ARCHIVE 独立目录名 ---
+for good in _slim_archive _slim_archive_custom; do
+  sb="$TMP/archive-ok-$good"
+  setup_sandbox "$sb"
+  cd "$sb"
+  mkdir -p miniapp
+  echo "good-$good" > miniapp/version
+  archive_line="$(SLIM_ARCHIVE="$good" bash scripts/slim-staging-server.sh 2>&1 | sed -n 's/^本次 run: //p' | tail -1)"
+  [[ "$archive_line" == *"/$good/runs/"* ]] || {
+    echo "SLIM_ARCHIVE=$good did not archive under expected root: $archive_line" >&2
+    exit 1
+  }
 done
 
 # --- 同秒连续两次执行：run 不同，第一轮独有文件保留 ---
@@ -67,7 +118,7 @@ run_count="$(count_runs)"
 [ -f "$run1/miniapp/local-only" ] || { echo "first run local-only file was deleted" >&2; exit 1; }
 grep -q '^new$' "$run2/miniapp/version" || { echo "second run did not archive new miniapp" >&2; exit 1; }
 
-# --- 并发两次执行：run 目录仍应唯一 ---
+# --- 不同 sandbox 并发执行：各自生成的 run 目录名应唯一 ---
 run_dirs="$TMP/run_dirs.txt"
 : > "$run_dirs"
 for i in 1 2; do

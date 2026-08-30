@@ -95,6 +95,16 @@ public class CourseService {
         return m;
     }
 
+    /** 登录后由服务端读取 VTT，小程序走 API 合法域名，不直拉 CDN */
+    public String subtitleContent(Long id) {
+        requireMemberId();
+        Course course = requirePublishedCourse(id);
+        if (!"ready".equals(course.getSubtitleStatus()) || !StringUtils.hasText(course.getSubtitleUrl())) {
+            throw new BusinessException(404, "字幕暂不可用");
+        }
+        return ossService.readUtf8Object(course.getSubtitleUrl());
+    }
+
     /** 课程配套资源（供小程序详情页展示） */
     private List<Map<String, Object>> loadLinkedResources(Long courseId) {
         List<CourseResource> links = courseResourceMapper.selectList(

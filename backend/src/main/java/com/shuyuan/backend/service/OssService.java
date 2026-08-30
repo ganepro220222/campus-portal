@@ -2,6 +2,7 @@ package com.shuyuan.backend.service;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
+import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.OssProperties;
@@ -92,6 +93,34 @@ public class OssService {
     /** 视频/字幕/资料文件：使用较短有效期 */
     public String signMediaUrl(String stored) {
         return signUrl(stored, ossProperties.getMediaSignExpireSeconds());
+    }
+
+    /** 服务端读取私有对象文本（字幕走 API，避免小程序直拉 CDN 被域名/编码拦住） */
+    public String readUtf8Object(String stored) {
+        if (!StringUtils.hasText(stored)) {
+            throw new BusinessException(400, "字幕地址无效");
+        }
+        if (!isEnabled()) {
+            throw new BusinessException(503, "对象存储未配置，无法读取字幕");
+        }
+        String objectKey = resolveObjectKey(stored.trim());
+        if (!StringUtils.hasText(objectKey)) {
+            throw new BusinessException(400, "字幕地址无效");
+        }
+        OSS client = null;
+        try {
+            client = buildClient();
+            OSSObject object = client.getObject(ossProperties.getBucket(), objectKey);
+            try (InputStream in = object.getObjectContent()) {
+                return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(500, "读取字幕失败");
+        } finally {
+            shutdownQuietly(client);
+        }
     }
 
     private String signObjectKey(String objectKey) {

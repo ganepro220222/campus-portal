@@ -10,7 +10,6 @@ const {
   resolveResumeInitialTime,
   coerceVttText,
   withVideoReloadNonce,
-  isVttHttpSuccess,
   looksLikeVtt,
   isVideoPlaybackStable
 } = require('../../utils/coursePlayerProgress')
@@ -69,8 +68,8 @@ Page({
           progressPercent: progress && progress.progressPercent ? Number(progress.progressPercent) : 0,
           completed: !!(progress && progress.completed)
         })
-        if (media.subtitleUrl) {
-          this._loadVtt(media.subtitleUrl)
+        if (media.hasSubtitle || media.subtitleUrl) {
+          this._loadVtt()
         }
       }).catch(err => {
         console.warn('[course/player] 加载失败', err)
@@ -251,22 +250,9 @@ Page({
   },
 
   async _reloadSubtitleUrl(silent) {
-    try {
-      const play = await get(`/courses/${this._courseId}/play`)
-      if (!play || !play.subtitleUrl) {
-        this.setData({ hasSubtitle: false, subtitleUrl: '' })
-        return
-      }
-      this.setData({
-        subtitleUrl: play.subtitleUrl,
-        hasSubtitle: !!play.hasSubtitle
-      })
-      this._loadVtt(play.subtitleUrl)
-      if (!silent) {
-        wx.showToast({ title: '已刷新字幕', icon: 'none' })
-      }
-    } catch (e) {
-      this.setData({ hasSubtitle: false, subtitleUrl: '' })
+    this._loadVtt()
+    if (!silent) {
+      wx.showToast({ title: '已刷新字幕', icon: 'none' })
     }
   },
 
@@ -316,31 +302,18 @@ Page({
     wx.showToast({ title: '字幕暂不可用', icon: 'none' })
   },
 
-  _loadVtt(url) {
-    // 字幕在 CDN/OSS，微信 request 合法域名只有 API；必须走 downloadFile。
-    wx.downloadFile({
-      url,
-      success: (res) => {
-        if (!isVttHttpSuccess(res.statusCode) || !res.tempFilePath) {
-          this._handleSubtitleFailure()
-          return
-        }
-        wx.getFileSystemManager().readFile({
-          filePath: res.tempFilePath,
-          success: (file) => {
-            const text = coerceVttText(file.data)
-            if (!looksLikeVtt(text)) {
-              this._handleSubtitleFailure()
-              return
-            }
-            this._vttCues = this._parseVtt(text)
-            this._subtitleRetryCount = 0
-          },
-          fail: () => this._handleSubtitleFailure()
-        })
-      },
-      fail: () => this._handleSubtitleFailure()
-    })
+  _loadVtt() {
+    // 走 API（request 合法域名），不直拉 CDN，避免开发者工具/真机 downloadFile 读 VTT 失败。
+    get(`/courses/${this._courseId}/subtitle`, {}, { silent: true }).then((data) => {
+      const text = coerceVttText(typeof data === 'string' ? data : (data && data.vtt))
+      if (!looksLikeVtt(text)) {
+        this._handleSubtitleFailure()
+        return
+      }
+      this._vttCues = this._parseVtt(text)
+      this._subtitleRetryCount = 0
+      this.setData({ hasSubtitle: true })
+    }).catch(() => this._handleSubtitleFailure())
   },
 
   _parseVtt(text) {

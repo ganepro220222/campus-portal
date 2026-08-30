@@ -95,6 +95,26 @@ class CourseServiceTest {
         verify(ossService, never()).signUrl(anyString());
     }
 
+    @Test
+    void subtitleContent_requiresLogin() {
+        MemberContext.clear();
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> courseService.subtitleContent(COURSE_ID));
+        assertEquals(401, ex.getCode());
+    }
+
+    @Test
+    void subtitleContent_readsUtf8FromOss() {
+        Course course = publishedCourse();
+        when(courseMapper.selectById(COURSE_ID)).thenReturn(course);
+        when(ossService.readUtf8Object("subtitles/a.vtt")).thenReturn("WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nhi\n");
+
+        String vtt = courseService.subtitleContent(COURSE_ID);
+
+        assertTrue(vtt.startsWith("WEBVTT"));
+        verify(ossService, never()).signMediaUrl(anyString());
+    }
+
     private Course publishedCourse() {
         Course course = new Course();
         course.setId(COURSE_ID);

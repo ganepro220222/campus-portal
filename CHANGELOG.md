@@ -18,6 +18,7 @@
 - ASR 轮询 `GetTaskResult` 改为 GET（POST 会被 nls-filetrans 网关以 UnsupportedHTTPMethod 拒绝）
 - 小程序播放地址改为无 OSS 签名的 CDN URL（私有桶 STS 回源时带 Signature 会 400）；字幕改为 `downloadFile` 拉取
 - 课程完成改为「≥90% 且进入片尾余量」（15–30 秒按时长伸缩），避免长视频提前十几分钟标完成
+- 小程序字幕改为 `GET /courses/{id}/subtitle` 由后端读 OSS，不再直拉 CDN
 - 资源/课程表单收口：隐藏「在线预览」；资源大小与格式、课程时长在上传后自动带出（不改小程序、不改后端契约）
 
 ### 计划中

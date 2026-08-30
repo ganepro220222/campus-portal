@@ -55,6 +55,13 @@ class OssServiceTest {
     }
 
     @Test
+    void readUtf8Object_rejectsWhenDisabled() {
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.readUtf8Object("subtitles/a.vtt"));
+        assertEquals(503, ex.getCode());
+    }
+
+    @Test
     void signTrustedVideoUrlForAsr_rejectsWhenDisabled() {
         var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
                 () -> ossService.signTrustedVideoUrlForAsr("videos/demo.mp4"));

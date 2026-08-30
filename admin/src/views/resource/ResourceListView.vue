@@ -109,6 +109,7 @@
           <el-select v-model="form.fileType" placeholder="选择格式" style="width: 100%">
             <el-option v-for="t in FILE_TYPE_OPTIONS" :key="t.value" :label="t.label" :value="t.value" />
           </el-select>
+          <div class="form-tip">上传学习资料后按后缀自动带出，标错可改。</div>
         </el-form-item>
         <el-form-item label="学习资料" prop="fileUrl">
           <OssUploadInput
@@ -117,21 +118,13 @@
             accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mp3"
             upload-label="上传文件"
             done-text="文件已上传"
-            hint="支持 PDF、Word、PPT、音视频等格式"
+            hint="支持 PDF、Word、PPT、MP4、MP3；上传后自动识别格式和大小"
+            @uploaded="onResourceFileUploaded"
           />
         </el-form-item>
-        <el-form-item label="在线预览">
-          <OssUploadInput
-            v-model="form.previewUrl"
-            scene="resource_file"
-            accept=".pdf,.mp4"
-            upload-label="上传预览文件"
-            done-text="预览文件已上传"
-            hint="选填；可与学习资料相同，用于在线预览"
-          />
-        </el-form-item>
-        <el-form-item label="大小(KB)">
-          <el-input-number v-model="form.fileSizeKb" :min="1" :max="999999" />
+        <el-form-item label="大小">
+          <span v-if="form.fileSizeKb">{{ formatFileSizeKb(form.fileSizeKb) }}</span>
+          <span v-else class="text-muted">{{ form.fileUrl ? '未记录大小，重新上传后自动计算' : '上传学习资料后自动计算' }}</span>
         </el-form-item>
         <el-form-item label="上下架">
           <el-radio-group v-model="form.status">
@@ -173,6 +166,7 @@ import FieldHint from '@/components/FieldHint.vue'
 import type { CategoryOption, ResourceItem } from '@/types/api'
 import { FIELD_HINTS } from '@/utils/field-hints'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
+import { bytesToFileSizeKb, formatFileSizeKb, inferResourceFileType } from '@/utils/uploadMeta.mjs'
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('course:write'))
@@ -234,6 +228,17 @@ async function loadData() {
 function onFilter() {
   page.value = 1
   loadData()
+}
+
+function onResourceFileUploaded(payload: { fileName: string; sizeBytes: number }) {
+  const inferred = inferResourceFileType(payload.fileName)
+  if (inferred) {
+    form.fileType = inferred
+  }
+  const kb = bytesToFileSizeKb(payload.sizeBytes)
+  if (kb != null) {
+    form.fileSizeKb = kb
+  }
 }
 
 function resetForm() {

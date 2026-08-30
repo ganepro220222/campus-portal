@@ -29,6 +29,7 @@
       </el-form-item>
       <el-form-item label="时长(分钟)">
         <el-input-number v-model="form.durationMinutes" :min="1" :max="9999" />
+        <div class="form-tip">上传教学视频后按片长自动填写，一般不用改。</div>
       </el-form-item>
       <el-form-item label="开课时间">
         <el-date-picker
@@ -53,6 +54,7 @@
           upload-label="上传视频"
           done-text="视频已上传"
           hint="支持 MP4 格式，文件较大时请耐心等待"
+          @uploaded="onCourseVideoUploaded"
         />
       </el-form-item>
       <el-form-item label="配套资源">
@@ -139,6 +141,7 @@ import OssUploadInput from '@/components/OssUploadInput.vue'
 import type { CategoryOption, ResourceOption } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
 import { FIELD_HINTS } from '@/utils/field-hints'
+import { readVideoDurationSeconds, secondsToDurationMinutes } from '@/utils/uploadMeta.mjs'
 
 export interface CourseFormState {
   name: string
@@ -155,7 +158,7 @@ export interface CourseFormState {
   resourceIds: number[]
 }
 
-defineProps<{
+const props = defineProps<{
   visible: boolean
   editingId: number | null
   form: CourseFormState
@@ -180,6 +183,14 @@ const emit = defineEmits<{
 }>()
 
 const formRef = ref<FormInstance>()
+
+async function onCourseVideoUploaded(payload: { file: File }) {
+  const seconds = await readVideoDurationSeconds(payload.file)
+  const minutes = seconds == null ? undefined : secondsToDurationMinutes(seconds)
+  if (minutes != null) {
+    props.form.durationMinutes = minutes
+  }
+}
 
 async function handleSave() {
   const valid = await formRef.value?.validate().catch(() => false)

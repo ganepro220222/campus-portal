@@ -86,6 +86,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   'update:fitMode': [value: CoverFitMode]
+  uploaded: [payload: { url: string; sizeBytes: number; fileName: string; file: File }]
 }>()
 
 const inner = ref(props.modelValue || '')
@@ -139,6 +140,12 @@ async function handleUpload(options: UploadRequestOptions) {
     const res = await uploadFile(file, props.scene)
     inner.value = res.url
     emit('update:modelValue', res.url)
+    emit('uploaded', {
+      url: res.url,
+      sizeBytes: file.size,
+      fileName: file.name || '',
+      file
+    })
     ElMessage.success('上传成功')
     options.onSuccess?.(res)
   } catch {

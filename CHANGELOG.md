@@ -15,6 +15,7 @@
 - ECS 工作台 100 个展品资产同步至 OSS，`config.json` 模型/全景/海报改为 CDN 地址（合伙人 TinyManager 观看机不迁）
 - 工作台列表封面兼容 CDN 绝对 URL（避免拼成 `craft-001/https://…`）
 - ASR 字幕对接修正：SubmitTask 改为官方 `Task` JSON（filetrans 4.0）、查询结果兼容对象 `Result`、FileLink 用 OSS 签名原站（不改写 CDN）；管理端展示最近失败原因
+- 资源/课程表单收口：隐藏「在线预览」；资源大小与格式、课程时长在上传后自动带出（不改小程序、不改后端契约）
 
 ### 计划中
 - 真机双端测试报告（体验版 + 4G；过渡域已可测）

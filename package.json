@@ -33,6 +33,7 @@
     "check:change-password-flow": "node scripts/check-change-password-flow.js",
     "check:slim-staging-server": "node scripts/check-slim-staging-server.js",
     "test:admin-change-password-route": "node scripts/test-admin-change-password-route.js",
+    "test:admin-upload-meta": "node scripts/test-admin-upload-meta.mjs",
     "build:builtin-knowledge": "node scripts/build-builtin-knowledge.js",
     "check:danger-delete-dialog": "node scripts/check-danger-delete-dialog.js",
     "check:release-all": "node scripts/check-release-all.js",

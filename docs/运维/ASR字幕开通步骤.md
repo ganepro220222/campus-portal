@@ -54,7 +54,7 @@ docker compose -f docker-compose.staging.yml up -d --force-recreate backend
 `docker restart` **不会**重载 `.env`。改完必须 `--force-recreate`。  
 若 `OSS_AK` 为空，说明变量名不是 `OSS_ACCESS_KEY`，先 `grep -E 'OSS_.*KEY' .env` 看实际名字再改命令。
 
-后端镜像须包含本次 filetrans 接口修正（`Task` JSON + `filetrans.*.aliyuncs.com`）。旧镜像配了 Key 也会提交失败。
+后端镜像须包含 filetrans 接口修正（`Task` JSON + `filetrans.*.aliyuncs.com` + **GetTaskResult 用 GET**）。旧镜像配了 Key 也会提交失败或轮询报 `UnsupportedHTTPMethod`。
 
 ## 5. 管理端验收
 

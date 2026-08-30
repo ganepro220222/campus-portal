@@ -15,7 +15,7 @@ import java.time.Duration;
 import java.util.Map;
 
 /**
- * 阿里云录音文件识别（filetrans SubmitTask / GetTaskResult，2018-08-17）
+ * 阿里云录音文件识别（filetrans：SubmitTask POST / GetTaskResult GET，2018-08-17）
  */
 @Slf4j
 @Component
@@ -67,7 +67,7 @@ public class AliyunFileAsrProvider implements AsrProvider {
                         "Task", buildTaskJson(objectMapper, asr.getAppKey(), mediaUrl),
                         "RegionId", regionOrDefault(asr.getRegion())
                 ));
-        JsonNode root = postForm(signed);
+        JsonNode root = send(signed);
         if (root.hasNonNull("TaskId")) {
             return root.get("TaskId").asText();
         }
@@ -82,7 +82,7 @@ public class AliyunFileAsrProvider implements AsrProvider {
             return AsrJobResult.failed("ASR 未配置");
         }
         ShuyuanProperties.Asr asr = properties.getAsr();
-        AliyunRpcSigner.SignedRequest signed = AliyunRpcSigner.signPost(
+        AliyunRpcSigner.SignedRequest signed = AliyunRpcSigner.signGet(
                 filetransHost(asr.getRegion()),
                 asr.getAccessKeyId(),
                 asr.getAccessKeySecret(),
@@ -92,7 +92,7 @@ public class AliyunFileAsrProvider implements AsrProvider {
                         "TaskId", taskId,
                         "RegionId", regionOrDefault(asr.getRegion())
                 ));
-        return parseQueryResult(postForm(signed));
+        return parseQueryResult(send(signed));
     }
 
     static String filetransHost(String region) {
@@ -147,15 +147,18 @@ public class AliyunFileAsrProvider implements AsrProvider {
         return result.toString();
     }
 
-    private JsonNode postForm(AliyunRpcSigner.SignedRequest signed) {
+    private JsonNode send(AliyunRpcSigner.SignedRequest signed) {
         try {
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(signed.url()))
-                    .timeout(Duration.ofSeconds(20))
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .POST(HttpRequest.BodyPublishers.ofString(signed.body()))
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    .timeout(Duration.ofSeconds(20));
+            if ("GET".equals(signed.method())) {
+                builder.GET();
+            } else {
+                builder.header("Content-Type", "application/x-www-form-urlencoded")
+                        .POST(HttpRequest.BodyPublishers.ofString(signed.body()));
+            }
+            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 400) {
                 String body = response.body() == null ? "" : response.body();
                 String snippet = body.length() > 240 ? body.substring(0, 240) : body;

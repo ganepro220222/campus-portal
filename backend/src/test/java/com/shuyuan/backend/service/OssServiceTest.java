@@ -37,6 +37,24 @@ class OssServiceTest {
     }
 
     @Test
+    void signUrl_usesUnsignedCdn_whenPrivateOriginCdnConfigured() {
+        when(ossProperties.isEnabled()).thenReturn(true);
+        when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-chengdu.aliyuncs.com");
+        when(ossProperties.getBucket()).thenReturn("yunman-shuyuan");
+        when(ossProperties.getAccessKey()).thenReturn("ak");
+        when(ossProperties.getSecretKey()).thenReturn("sk");
+        when(ossProperties.getCdnDomain()).thenReturn("https://cdn.yunmanvr.com");
+
+        assertEquals(
+                "https://cdn.yunmanvr.com/videos/202608/abc.mp4",
+                ossService.signUrl("videos/202608/abc.mp4"));
+        assertEquals(
+                "https://cdn.yunmanvr.com/videos/202608/abc.mp4",
+                ossService.signMediaUrl("https://cdn.yunmanvr.com/videos/202608/abc.mp4"));
+        assertFalse(ossService.signMediaUrl("videos/202608/abc.mp4").contains("Signature"));
+    }
+
+    @Test
     void signTrustedVideoUrlForAsr_rejectsWhenDisabled() {
         var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
                 () -> ossService.signTrustedVideoUrlForAsr("videos/demo.mp4"));

@@ -306,24 +306,29 @@ Page({
   },
 
   _loadVtt(url) {
-    wx.request({
+    // 字幕在 CDN/OSS，微信 request 合法域名只有 API；必须走 downloadFile。
+    wx.downloadFile({
       url,
-      method: 'GET',
       success: (res) => {
-        if (!isVttHttpSuccess(res.statusCode)) {
+        if (!isVttHttpSuccess(res.statusCode) || !res.tempFilePath) {
           this._handleSubtitleFailure()
           return
         }
-        if (typeof res.data !== 'string' || !looksLikeVtt(res.data)) {
-          this._handleSubtitleFailure()
-          return
-        }
-        this._vttCues = this._parseVtt(res.data)
-        this._subtitleRetryCount = 0
+        wx.getFileSystemManager().readFile({
+          filePath: res.tempFilePath,
+          encoding: 'utf8',
+          success: (file) => {
+            if (typeof file.data !== 'string' || !looksLikeVtt(file.data)) {
+              this._handleSubtitleFailure()
+              return
+            }
+            this._vttCues = this._parseVtt(file.data)
+            this._subtitleRetryCount = 0
+          },
+          fail: () => this._handleSubtitleFailure()
+        })
       },
-      fail: () => {
-        this._handleSubtitleFailure()
-      }
+      fail: () => this._handleSubtitleFailure()
     })
   },
 

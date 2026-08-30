@@ -103,12 +103,16 @@ public class OssService {
     }
 
     private String signObjectKey(String objectKey, int expireSeconds, boolean rewriteCdn) {
+        // CDN 已开「OSS 私有 Bucket 回源 / STS」时，节点回源会自己带 Authorization。
+        // 客户端再拼 OSS 预签名（Expires/Signature）会双重鉴权，CDN/OSS 回 400。
+        if (rewriteCdn && StringUtils.hasText(ossProperties.getCdnDomain())) {
+            return buildPublicUrl(objectKey);
+        }
         OSS client = null;
         try {
             client = buildClient();
             Date expire = new Date(System.currentTimeMillis() + expireSeconds * 1000L);
-            String signed = client.generatePresignedUrl(ossProperties.getBucket(), objectKey, expire).toString();
-            return rewriteCdn ? rewriteCdnHost(signed) : signed;
+            return client.generatePresignedUrl(ossProperties.getBucket(), objectKey, expire).toString();
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
@@ -262,27 +266,6 @@ public class OssService {
             return path.startsWith("/") ? path.substring(1) : path;
         } catch (Exception e) {
             return "";
-        }
-    }
-
-    private String rewriteCdnHost(String signedUrl) {
-        if (!StringUtils.hasText(ossProperties.getCdnDomain())) {
-            return signedUrl;
-        }
-        try {
-            URI signed = URI.create(signedUrl);
-            URI cdn = URI.create(trimTrailingSlash(ossProperties.getCdnDomain()));
-            return new URI(
-                    cdn.getScheme(),
-                    signed.getUserInfo(),
-                    cdn.getHost(),
-                    cdn.getPort(),
-                    signed.getPath(),
-                    signed.getQuery(),
-                    signed.getFragment()
-            ).toString();
-        } catch (Exception e) {
-            return signedUrl;
         }
     }
 

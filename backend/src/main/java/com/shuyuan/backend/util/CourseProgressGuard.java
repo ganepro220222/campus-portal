@@ -18,6 +18,10 @@ public final class CourseProgressGuard {
     public static final int MAX_TOTAL_SECONDS = 8 * 3600;
     public static final BigDecimal FIRST_REPORT_MAX_PERCENT = new BigDecimal("50.00");
     public static final BigDecimal COMPLETE_THRESHOLD = new BigDecimal("90.00");
+    /** 短课至少看到最后 15 秒；长课按时长 2%、最多 30 秒，避免 2 小时课提前十几分钟完成 */
+    public static final int COMPLETE_SLACK_MIN_SECONDS = 15;
+    public static final int COMPLETE_SLACK_MAX_SECONDS = 30;
+    public static final double COMPLETE_SLACK_RATIO = 0.02;
     public static final BigDecimal PRIOR_PROGRESS_MIN_PERCENT = new BigDecimal("5.00");
     public static final double MAX_PLAYBACK_RATE = 2.0;
     public static final int JUMP_BUFFER_SECONDS = 10;
@@ -99,12 +103,40 @@ public final class CourseProgressGuard {
     }
 
     /**
+     * 完成所需片尾余量：15–30 秒。5 分钟课约最后 15 秒；1–2 小时课最多提前 30 秒。
+     */
+    public static int completeRemainingSlackSeconds(int totalSeconds) {
+        if (totalSeconds <= 0) {
+            return COMPLETE_SLACK_MIN_SECONDS;
+        }
+        int byRatio = (int) Math.round(totalSeconds * COMPLETE_SLACK_RATIO);
+        return Math.max(COMPLETE_SLACK_MIN_SECONDS, Math.min(COMPLETE_SLACK_MAX_SECONDS, byRatio));
+    }
+
+    /** 进度 ≥90% 且已进入片尾余量（随片长伸缩，不是固定提前 10%）。 */
+    public static boolean reachedCompletePosition(int positionSeconds, int totalSeconds) {
+        if (totalSeconds <= 0 || positionSeconds < 0) {
+            return false;
+        }
+        if (calcPercent(positionSeconds, totalSeconds).compareTo(COMPLETE_THRESHOLD) < 0) {
+            return false;
+        }
+        return positionSeconds >= totalSeconds - completeRemainingSlackSeconds(totalSeconds);
+    }
+
+    /**
      * 是否允许将本次上报视为「完成」并触发积分（与续播进度存储分离）。
      */
     public static boolean eligibleForCompletion(Course course, CourseProgress existing,
                                               BigDecimal mergedPercent, int mergedTotal,
                                               int watchedSeconds) {
         if (existing == null || mergedPercent.compareTo(COMPLETE_THRESHOLD) < 0) {
+            return false;
+        }
+        int impliedPosition = mergedTotal > 0
+                ? (int) Math.round(mergedPercent.doubleValue() / 100.0 * mergedTotal)
+                : 0;
+        if (!reachedCompletePosition(impliedPosition, mergedTotal)) {
             return false;
         }
         BigDecimal priorPercent = existing.getProgressPercent() != null

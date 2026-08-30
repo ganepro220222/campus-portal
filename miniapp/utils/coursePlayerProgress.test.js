@@ -5,6 +5,9 @@ const {
   shouldReportByInterval,
   isSeekBackward,
   resolveVideoResumePosition,
+  resolveResumeInitialTime,
+  coerceVttText,
+  withVideoReloadNonce,
   isVttHttpSuccess,
   looksLikeVtt,
   isVideoPlaybackStable,
@@ -30,6 +33,30 @@ assert.strictEqual(shouldReportByInterval(20, 480), false)
 assert.strictEqual(isSeekBackward(0, 480), true)
 assert.strictEqual(isSeekBackward(478, 480), false)
 assert.strictEqual(isSeekBackward(100, 480), true)
+
+assert.strictEqual(
+  withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4', 99),
+  'https://cdn.yunmanvr.com/videos/a.mp4?_r=99'
+)
+assert.strictEqual(
+  withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4?_r=1', 8),
+  'https://cdn.yunmanvr.com/videos/a.mp4?_r=8'
+)
+assert.strictEqual(withVideoReloadNonce(''), '')
+
+assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 303, completed: true, totalDurationSeconds: 303 }), 0)
+assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 280, completed: false, totalDurationSeconds: 303 }), 280)
+assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 80, completed: false, totalDurationSeconds: 303 }), 80)
+assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 302, completed: false, totalDurationSeconds: 303 }), 0)
+assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 0, completed: false, totalDurationSeconds: 0 }), 0)
+
+{
+  const vtt = 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\n你好\n'
+  assert.strictEqual(coerceVttText(vtt), vtt)
+  const bytes = new TextEncoder().encode(vtt)
+  assert.ok(looksLikeVtt(coerceVttText(bytes.buffer)))
+  assert.strictEqual(coerceVttText(''), '')
+}
 
 assert.strictEqual(resolveVideoResumePosition({ currentPosition: 1080, initialTime: 480 }), 1080)
 assert.strictEqual(resolveVideoResumePosition({ currentPosition: 0, initialTime: 480 }), 480)

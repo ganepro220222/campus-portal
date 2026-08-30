@@ -53,7 +53,7 @@ class CourseProgressGuardTest {
         existing.setProgressPercent(new BigDecimal("60.00"));
 
         assertFalse(CourseProgressGuard.eligibleForCompletion(
-                course, existing, new BigDecimal("95.00"), 600, 30));
+                course, existing, new BigDecimal("98.00"), 600, 30));
     }
 
     @Test
@@ -63,7 +63,7 @@ class CourseProgressGuardTest {
         existing.setProgressPercent(new BigDecimal("60.00"));
 
         assertTrue(CourseProgressGuard.eligibleForCompletion(
-                course, existing, new BigDecimal("95.00"), 600, 120));
+                course, existing, new BigDecimal("98.00"), 600, 120));
     }
 
     @Test
@@ -109,7 +109,7 @@ class CourseProgressGuardTest {
         row.setUpdatedAt(LocalDateTime.now().minusSeconds(600));
 
         LocalDateTime base = row.getUpdatedAt();
-        for (int sec = 20; sec <= 540; sec += 20) {
+        for (int sec = 20; sec <= 590; sec += 20) {
             LocalDateTime now = base.plusSeconds(sec);
             int watched = CourseProgressGuard.nextWatchedSeconds(row, sec, now);
             row.setWatchedSeconds(watched);
@@ -122,7 +122,7 @@ class CourseProgressGuardTest {
         assertTrue(row.getWatchedSeconds() >= 120);
         Course course = courseWithDuration(10);
         assertTrue(CourseProgressGuard.eligibleForCompletion(
-                course, row, new BigDecimal("90.00"), 600, row.getWatchedSeconds()));
+                course, row, new BigDecimal("98.33"), 600, row.getWatchedSeconds()));
     }
 
     @Test
@@ -170,6 +170,29 @@ class CourseProgressGuardTest {
         row.setProgressPercent(new BigDecimal("50.00"));
         assertTrue(CourseProgressGuard.eligibleForCompletion(
                 course, row, new BigDecimal("95.00"), 60, row.getWatchedSeconds()));
+    }
+
+    @Test
+    void completeRemainingSlack_scalesWithDurationButCaps() {
+        assertEquals(15, CourseProgressGuard.completeRemainingSlackSeconds(303));
+        assertEquals(15, CourseProgressGuard.completeRemainingSlackSeconds(600));
+        assertEquals(30, CourseProgressGuard.completeRemainingSlackSeconds(3600));
+        assertEquals(30, CourseProgressGuard.completeRemainingSlackSeconds(7200));
+    }
+
+    @Test
+    void reachedCompletePosition_shortVideoNeedsLastFifteenSeconds() {
+        assertFalse(CourseProgressGuard.reachedCompletePosition(272, 303));
+        assertTrue(CourseProgressGuard.reachedCompletePosition(288, 303));
+        assertTrue(CourseProgressGuard.reachedCompletePosition(303, 303));
+    }
+
+    @Test
+    void reachedCompletePosition_twoHourVideoDoesNotCompleteTwelveMinutesEarly() {
+        int twoHours = 7200;
+        assertFalse(CourseProgressGuard.reachedCompletePosition(6480, twoHours));
+        assertFalse(CourseProgressGuard.reachedCompletePosition(7100, twoHours));
+        assertTrue(CourseProgressGuard.reachedCompletePosition(7170, twoHours));
     }
 
     private static Course courseWithDuration(int minutes) {

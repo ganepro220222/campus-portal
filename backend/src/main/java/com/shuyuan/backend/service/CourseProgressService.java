@@ -73,7 +73,8 @@ public class CourseProgressService {
             watchedSeconds = CourseProgressGuard.nextWatchedSeconds(existing, incomingPosition, now);
         }
 
-        boolean reachedThreshold = snapshot.percent().compareTo(CourseProgressGuard.COMPLETE_THRESHOLD) >= 0;
+        boolean reachedThreshold = CourseProgressGuard.reachedCompletePosition(
+                snapshot.position(), snapshot.total());
         boolean canComplete = CourseProgressGuard.eligibleForCompletion(
                 course, existing, snapshot.percent(), snapshot.total(), watchedSeconds);
         boolean completed = wasCompleted || (reachedThreshold && canComplete);

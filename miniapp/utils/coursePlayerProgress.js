@@ -28,6 +28,71 @@ function resolveVideoResumePosition({ currentPosition, initialTime }) {
   return initialTime || 0
 }
 
+/**
+ * 续播起点：未完成用上次位置；已完成或已停在片尾则从头播。
+ * 库里的最高进度 / 完成态由服务端 merge，不会因为从头播被改小。
+ */
+function resolveResumeInitialTime({ lastPositionSeconds, completed, totalDurationSeconds }) {
+  if (completed) return 0
+  const pos = Math.floor(Number(lastPositionSeconds) || 0)
+  const total = Math.floor(Number(totalDurationSeconds) || 0)
+  // 未完成但停在最后 2 秒：再 initial-time 会立刻 ended；从头播不影响库里的最高进度。
+  if (total > 0 && pos >= Math.max(0, total - 2)) return 0
+  return pos > 0 ? pos : 0
+}
+
+function coerceVttText(data) {
+  if (typeof data === 'string') return data
+  if (!data) return ''
+  let bytes
+  if (data instanceof ArrayBuffer) {
+    bytes = new Uint8Array(data)
+  } else if (ArrayBuffer.isView(data)) {
+    bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+  } else {
+    return ''
+  }
+  if (typeof TextDecoder !== 'undefined') {
+    return new TextDecoder('utf-8').decode(bytes)
+  }
+  let out = ''
+  for (let i = 0; i < bytes.length;) {
+    const c = bytes[i]
+    if (c < 0x80) {
+      out += String.fromCharCode(c)
+      i += 1
+      continue
+    }
+    if ((c & 0xe0) === 0xc0 && i + 1 < bytes.length) {
+      out += String.fromCharCode(((c & 0x1f) << 6) | (bytes[i + 1] & 0x3f))
+      i += 2
+      continue
+    }
+    if ((c & 0xf0) === 0xe0 && i + 2 < bytes.length) {
+      out += String.fromCharCode(
+        ((c & 0x0f) << 12) | ((bytes[i + 1] & 0x3f) << 6) | (bytes[i + 2] & 0x3f)
+      )
+      i += 3
+      continue
+    }
+    i += 1
+  }
+  return out
+}
+
+/**
+ * 强制 <video> 重新加载时不要先把 src 置空（开发者工具会报 no supported source）。
+ * 加一次性查询参数即可让 src 字符串变化。
+ */
+function withVideoReloadNonce(url, nonce) {
+  if (!url) return ''
+  const token = nonce == null ? Date.now() : nonce
+  const stripped = String(url).replace(/([?&])_r=\d+/, '')
+  const base = stripped.endsWith('?') || stripped.endsWith('&') ? stripped.slice(0, -1) : stripped
+  const sep = base.includes('?') ? '&' : '?'
+  return base + sep + '_r=' + token
+}
+
 function isVttHttpSuccess(statusCode) {
   return statusCode >= 200 && statusCode < 300
 }
@@ -65,5 +130,8 @@ module.exports = {
   isVideoPlaybackStable,
   shouldGiveUpVideoReload,
   isSeekBackward,
-  resolveVideoResumePosition
+  resolveVideoResumePosition,
+  resolveResumeInitialTime,
+  coerceVttText,
+  withVideoReloadNonce
 }

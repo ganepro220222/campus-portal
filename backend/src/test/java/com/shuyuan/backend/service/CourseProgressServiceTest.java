@@ -95,7 +95,7 @@ class CourseProgressServiceTest {
                 .thenReturn(true);
 
         CourseProgressRequest req = new CourseProgressRequest();
-        req.setLastPositionSeconds(540);
+        req.setLastPositionSeconds(590);
         req.setTotalDurationSeconds(600);
 
         Map<String, Object> vo = courseProgressService.reportProgress(COURSE_ID, req);
@@ -126,7 +126,7 @@ class CourseProgressServiceTest {
                 .thenReturn(false);
 
         CourseProgressRequest req = new CourseProgressRequest();
-        req.setLastPositionSeconds(540);
+        req.setLastPositionSeconds(590);
         req.setTotalDurationSeconds(600);
 
         Map<String, Object> vo = courseProgressService.reportProgress(COURSE_ID, req);
@@ -297,7 +297,7 @@ class CourseProgressServiceTest {
                 .thenReturn(true);
 
         CourseProgressRequest req = new CourseProgressRequest();
-        req.setLastPositionSeconds(540);
+        req.setLastPositionSeconds(590);
         req.setTotalDurationSeconds(600);
 
         Map<String, Object> vo = courseProgressService.reportProgress(COURSE_ID, req);

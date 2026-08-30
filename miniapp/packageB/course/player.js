@@ -7,6 +7,9 @@ const {
   shouldReportByInterval,
   isSeekBackward,
   resolveVideoResumePosition,
+  resolveResumeInitialTime,
+  coerceVttText,
+  withVideoReloadNonce,
   isVttHttpSuccess,
   looksLikeVtt,
   isVideoPlaybackStable
@@ -50,7 +53,11 @@ Page({
         get(`/courses/${id}/progress`).catch(() => null)
       ]).then(([course, play, progress]) => {
         if (!course) return
-        const initialTime = progress && progress.lastPositionSeconds ? progress.lastPositionSeconds : 0
+        const initialTime = resolveResumeInitialTime({
+          lastPositionSeconds: progress && progress.lastPositionSeconds,
+          completed: !!(progress && progress.completed),
+          totalDurationSeconds: progress && progress.totalDurationSeconds
+        })
         const media = play || {}
         this.setData({
           course,
@@ -145,12 +152,20 @@ Page({
   },
 
   async onEnded(e) {
+    const alreadyCompleted = this.data.completed
     const { position, total } = resolveEndedReport({
       detailDuration: e && e.detail && e.detail.duration,
       cachedDuration: this._currentDuration,
       cachedPosition: this._currentPosition
     })
-    this.setData({ playing: false })
+    this.setData({ playing: false, initialTime: 0 })
+    if (alreadyCompleted) {
+      const ctx = wx.createVideoContext('courseVideo', this)
+      ctx.seek(0)
+      this._currentPosition = 0
+      this._lastReportSec = 0
+      return
+    }
     if (total <= 0) {
       wx.showToast({ title: '进度保存失败，请稍后重试', icon: 'none' })
       return
@@ -165,7 +180,7 @@ Page({
         progressPercent: res.progressPercent ? Number(res.progressPercent) : this.data.progressPercent,
         completed: !!res.completed
       })
-      if (res.completed) {
+      if (res.completed && !alreadyCompleted) {
         wx.showToast({ title: '课程学习完成', icon: 'none' })
       }
     } catch (err) {
@@ -206,14 +221,10 @@ Page({
       this._videoUrlReloadTotal += 1
       this._pendingVideoResume = { position: resumePosition, playing: wasPlaying }
       this._videoRecoveryStartPosition = resumePosition > 0 ? resumePosition : null
-      if (play.videoUrl === this.data.videoUrl) {
-        // 签名未变（有效期内的瞬时错误）：同字符串不会触发 <video> 重新加载，
-        // loadedmetadata 不会再次派发，pending resume 会滞留。先卸载（wx:if）再挂载强制重建组件。
-        this.setData({ videoUrl: '' })
-        wx.nextTick(() => this.setData({ videoUrl: play.videoUrl }))
-      } else {
-        this.setData({ videoUrl: play.videoUrl })
-      }
+      const nextUrl = play.videoUrl === this.data.videoUrl
+        ? withVideoReloadNonce(play.videoUrl)
+        : play.videoUrl
+      this.setData({ videoUrl: nextUrl })
       if (!silent) {
         wx.showToast({ title: '已刷新视频地址', icon: 'none' })
       }
@@ -316,13 +327,13 @@ Page({
         }
         wx.getFileSystemManager().readFile({
           filePath: res.tempFilePath,
-          encoding: 'utf8',
           success: (file) => {
-            if (typeof file.data !== 'string' || !looksLikeVtt(file.data)) {
+            const text = coerceVttText(file.data)
+            if (!looksLikeVtt(text)) {
               this._handleSubtitleFailure()
               return
             }
-            this._vttCues = this._parseVtt(file.data)
+            this._vttCues = this._parseVtt(text)
             this._subtitleRetryCount = 0
           },
           fail: () => this._handleSubtitleFailure()

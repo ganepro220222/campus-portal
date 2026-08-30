@@ -28,6 +28,7 @@ export interface SubtitleStatus {
   subtitleStatusLabel: string
   subtitleUrl: string | null
   subtitleTaskId: string | null
+  subtitleLastError?: string | null
   videoUrl: string | null
 }
 

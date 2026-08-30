@@ -160,6 +160,7 @@ public class AdminCourseService {
         m.put("subtitleStatusLabel", subtitleStatusLabel(course.getSubtitleStatus()));
         m.put("subtitleUrl", course.getSubtitleUrl());
         m.put("subtitleTaskId", course.getSubtitleTaskId());
+        m.put("subtitleLastError", course.getSubtitleAsrLastError());
         m.put("videoUrl", course.getVideoUrl());
         return m;
     }

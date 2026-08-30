@@ -61,7 +61,9 @@ public class OssService {
      */
     public String signTrustedVideoUrlForAsr(String stored) {
         String objectKey = CourseVideoUrlPolicy.resolveTrustedVideoObjectKey(stored, ossProperties, isEnabled());
-        return signObjectKey(objectKey);
+        // 阿里云 filetrans 要自己拉 FileLink；私有桶必须走 OSS 签名原站，不能改写成 CDN。
+        int ttl = Math.max(ossProperties.getSignExpireSeconds(), 4 * 3600);
+        return signObjectKey(objectKey, ttl, false);
     }
 
     /**
@@ -97,12 +99,16 @@ public class OssService {
     }
 
     private String signObjectKey(String objectKey, int expireSeconds) {
+        return signObjectKey(objectKey, expireSeconds, true);
+    }
+
+    private String signObjectKey(String objectKey, int expireSeconds, boolean rewriteCdn) {
         OSS client = null;
         try {
             client = buildClient();
             Date expire = new Date(System.currentTimeMillis() + expireSeconds * 1000L);
             String signed = client.generatePresignedUrl(ossProperties.getBucket(), objectKey, expire).toString();
-            return rewriteCdnHost(signed);
+            return rewriteCdn ? rewriteCdnHost(signed) : signed;
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {

@@ -87,6 +87,9 @@
           <span v-if="subtitleInfo.subtitleTaskId" class="inline-tip">
             任务 {{ subtitleInfo.subtitleTaskId }}
           </span>
+          <div v-if="subtitleInfo.subtitleLastError" class="form-tip" style="color: var(--el-color-danger)">
+            {{ subtitleInfo.subtitleLastError }}
+          </div>
         </el-form-item>
         <el-form-item label="字幕文件">
           <OssUploadInput
@@ -114,7 +117,7 @@
           >
             保存字幕地址
           </el-button>
-          <div class="form-tip">ASR 未配置时可手动上传 VTT/SRT 后保存；配置 ASR_* 环境变量后触发将自动轮询生成</div>
+            <div class="form-tip">先保存课程视频，再点「触发 ASR 生成」。未开通阿里云智能语音时可手动上传 VTT/SRT 后保存。生成约 2–10 分钟，状态会自动轮询。</div>
         </el-form-item>
       </template>
     </el-form>

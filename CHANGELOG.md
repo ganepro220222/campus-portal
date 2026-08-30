@@ -8,9 +8,13 @@
 - staging 部署与压测终验（2026-08-27，`docs/perf/压测报告_20260827.md`；报名 PASS，浏览 P95 WARN）
 - 备份恢复演练记录（2026-08-27，`docs/运维/备份恢复说明_V1.0.md` §6.3）
 - 预发 HTTPS 过渡域 `https://api.yunmanvr.com`（ECS `47.109.0.192`，证书已配，health/admin 可访问）
-- 微信服务器域名：request/uploadFile → `api.yunmanvr.com`；downloadFile → 成都 OSS Bucket
+- 微信服务器域名：request/uploadFile → `api.yunmanvr.com`；downloadFile → 成都 OSS 原站 + `cdn.yunmanvr.com`
 - 微信业务域名：`a28c11ea.720roma.com`、`2e6zb07zn85.720yun.com`、`www.yunmanvr.com`
 - 订阅模板 `WX_TMPL_ENROLL_SUCCESS` / `WX_TMPL_ENROLL_APPROVED` 已在预发生效（不含活动提醒）
+- OSS + CDN：`cdn.yunmanvr.com` 反代私有桶 `yunman-shuyuan`；后台 `OSS_CDN_DOMAIN` 已注入；微信 downloadFile 已加 CDN
+- ECS 工作台 100 个展品资产同步至 OSS，`config.json` 模型/全景/海报改为 CDN 地址（合伙人 TinyManager 观看机不迁）
+- 工作台列表封面兼容 CDN 绝对 URL（避免拼成 `craft-001/https://…`）
+- ASR 字幕对接修正：SubmitTask 改为官方 `Task` JSON（filetrans 4.0）、查询结果兼容对象 `Result`、FileLink 用 OSS 签名原站（不改写 CDN）；管理端展示最近失败原因
 
 ### 计划中
 - 真机双端测试报告（体验版 + 4G；过渡域已可测）

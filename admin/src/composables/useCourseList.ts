@@ -128,6 +128,7 @@ export function useCourseList() {
       subtitleStatusLabel: '未生成',
       subtitleUrl: null,
       subtitleTaskId: null,
+      subtitleLastError: null,
       videoUrl: null
     }
   }

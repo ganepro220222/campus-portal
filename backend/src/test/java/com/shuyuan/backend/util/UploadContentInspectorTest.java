@@ -34,4 +34,30 @@ class UploadContentInspectorTest {
                 () -> UploadContentInspector.inspect("pdf", html));
         assertEquals(400, ex.getCode());
     }
+
+    @Test
+    void inspect_acceptsLegacyAndOpenXmlExcelMagic() {
+        byte[] xls = new byte[]{
+                (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0,
+                (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1
+        };
+        byte[] xlsx = new byte[]{0x50, 0x4B, 0x03, 0x04, 0x14, 0x00};
+
+        assertEquals("application/vnd.ms-excel",
+                UploadContentInspector.inspect("xls", xls));
+        assertEquals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                UploadContentInspector.inspect("xlsx", xlsx));
+    }
+
+    @Test
+    void inspect_rejectsExcelExtensionWithWrongContainer() {
+        byte[] xls = new byte[]{
+                (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0,
+                (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1
+        };
+
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> UploadContentInspector.inspect("xlsx", xls));
+        assertEquals(400, ex.getCode());
+    }
 }

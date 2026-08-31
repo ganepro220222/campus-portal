@@ -18,6 +18,7 @@ const {
 
 assert.strictEqual(normalizeType('word'), 'doc')
 assert.strictEqual(normalizeType('PDF'), 'pdf')
+assert.strictEqual(normalizeType('XLSX'), 'xlsx')
 
 assert.strictEqual(extFromUrl('https://cdn.yunmanvr.com/files/202608/abc.docx'), 'docx')
 assert.strictEqual(extFromUrl('https://cdn.yunmanvr.com/files/a.pdf?x=1'), 'pdf')
@@ -38,6 +39,14 @@ assert.strictEqual(
 assert.strictEqual(
   documentOpenType('pdf', 'https://cdn.yunmanvr.com/files/202608/a.pdf'),
   'pdf'
+)
+assert.strictEqual(
+  documentOpenType('xls', 'https://cdn.yunmanvr.com/files/202608/table.xls'),
+  'xls'
+)
+assert.strictEqual(
+  documentOpenType('xlsx', 'https://cdn.yunmanvr.com/files/202608/table.xlsx'),
+  'xlsx'
 )
 assert.strictEqual(documentOpenType('word', ''), 'docx')
 

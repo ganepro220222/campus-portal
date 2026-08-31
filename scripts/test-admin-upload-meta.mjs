@@ -3,6 +3,7 @@
  * 用法：node scripts/test-admin-upload-meta.mjs
  */
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   inferResourceFileType,
   bytesToFileSizeKb,
@@ -22,10 +23,21 @@ assert.equal(inferResourceFileType('a.pdf'), 'pdf')
 assert.equal(inferResourceFileType('讲义.DOCX'), 'word')
 assert.equal(inferResourceFileType('slides.ppt'), 'ppt')
 assert.equal(inferResourceFileType('slides.pptx'), 'ppt')
+assert.equal(inferResourceFileType('报名表.XLS'), 'xls')
+assert.equal(inferResourceFileType('课程安排.xlsx'), 'xlsx')
 assert.equal(inferResourceFileType('demo.mp4'), 'mp4')
 assert.equal(inferResourceFileType('guide.mp3'), 'mp3')
 assert.equal(inferResourceFileType('readme.txt'), '')
 assert.equal(inferResourceFileType(''), '')
+
+const resourceApi = readFileSync(new URL('../admin/src/api/resource.ts', import.meta.url), 'utf8')
+const resourceView = readFileSync(
+  new URL('../admin/src/views/resource/ResourceListView.vue', import.meta.url),
+  'utf8'
+)
+assert.match(resourceApi, /\{\s*value:\s*'xls',\s*label:\s*'Excel XLS'\s*\}/)
+assert.match(resourceApi, /\{\s*value:\s*'xlsx',\s*label:\s*'Excel XLSX'\s*\}/)
+assert.match(resourceView, /accept="[^"]*\.xls,\.xlsx[^"]*"/)
 
 assert.equal(bytesToFileSizeKb(15674 * 1024), 15674)
 assert.equal(bytesToFileSizeKb(1024), 1)

@@ -2,7 +2,7 @@
 const { post, getArrayBufferChunk, getUrlArrayBufferChunk } = require('./request')
 const { requireLogin } = require('./auth')
 
-const DOC_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'word'])
+const DOC_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'word', 'xls', 'xlsx'])
 const VIDEO_TYPES = new Set(['mp4', 'mov'])
 const AUDIO_TYPES = new Set(['mp3', 'm4a', 'wav'])
 const OPEN_DOC_EXTS = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])

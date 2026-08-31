@@ -82,6 +82,22 @@ class SubscribeServiceDeliverTest {
     }
 
     @Test
+    void deliverForScene_sendsApprovedWhenAuthorizationExists() {
+        MemberSubscribeRecord record = authRecord();
+        record.setId(10L);
+        Member member = new Member();
+        member.setOpenid("openid_approved");
+        when(subscribeRecordMapper.selectOne(any())).thenReturn(record);
+        when(memberMapper.selectById(6L)).thenReturn(member);
+
+        SubscribeSendOutcome outcome = subscribeService.deliverForScene(
+                6L, SubscribeService.SCENE_ENROLL_APPROVED, payload());
+
+        assertEquals(SubscribeSendOutcome.SENT, outcome);
+        verify(subscribeRecordMapper).decrAvailable(10L);
+    }
+
+    @Test
     void deliverForScene_skipsWhenActivityStartTimeMissing() {
         SubscribeOutboxPayload payload = payload();
         payload.setActivityStartTime("");

@@ -6,6 +6,8 @@ const EXT_TO_RESOURCE_TYPE = {
   docx: 'word',
   ppt: 'ppt',
   pptx: 'ppt',
+  xls: 'xls',
+  xlsx: 'xlsx',
   mp4: 'mp4',
   mp3: 'mp3'
 }

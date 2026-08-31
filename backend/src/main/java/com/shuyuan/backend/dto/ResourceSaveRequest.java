@@ -22,7 +22,7 @@ public class ResourceSaveRequest {
     @Size(max = 500, groups = {Create.class, Update.class})
     private String previewUrl;
 
-    /** pdf / word / ppt / mp4 / mp3 */
+    /** pdf / word / ppt / xls / xlsx / mp4 / mp3 */
     @NotBlank(groups = Create.class, message = "请选择文件格式")
     @Size(max = 20, groups = {Create.class, Update.class})
     private String fileType;

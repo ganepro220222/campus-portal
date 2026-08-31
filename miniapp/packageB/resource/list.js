@@ -19,7 +19,7 @@ const FT = {
   doc:  { cls: 'ft-doc',  label: 'DOC', kind: '文档' },
   docx: { cls: 'ft-doc',  label: 'DOC', kind: '文档' },
   xls:  { cls: 'ft-xlsx', label: 'XLS', kind: '文档' },
-  xlsx: { cls: 'ft-xlsx', label: 'XLS', kind: '文档' },
+  xlsx: { cls: 'ft-xlsx', label: 'XLSX', kind: '文档' },
   mp4:  { cls: 'ft-mp4',  label: 'MP4', kind: '视频' },
   mp3:  { cls: 'ft-mp3',  label: 'MP3', kind: '音频' }
 }

@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.dto.ResourceSaveRequest;
 import com.shuyuan.backend.entity.Resource;
 import com.shuyuan.backend.mapper.ResourceMapper;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -78,5 +81,32 @@ class AdminResourceServiceTest {
 
         assertEquals(400, ex.getCode());
         verify(searchIndexSyncService, never()).removeResource(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"xls", "xlsx"})
+    void create_acceptsExcelResourceTypes(String fileType) {
+        java.util.concurrent.atomic.AtomicReference<Resource> inserted =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        doAnswer(invocation -> {
+            Resource resource = invocation.getArgument(0);
+            resource.setId(30L);
+            inserted.set(resource);
+            return 1;
+        }).when(resourceMapper).insert(any(Resource.class));
+        when(resourceMapper.selectById(30L)).thenAnswer(invocation -> inserted.get());
+        when(categoryService.nameMap("resource")).thenReturn(java.util.Map.of());
+
+        ResourceSaveRequest request = new ResourceSaveRequest();
+        request.setName("课程安排表");
+        request.setFileUrl("https://cdn.example.com/files/202609/schedule." + fileType);
+        request.setFileType(fileType);
+        request.setStatus(0);
+
+        var result = adminResourceService.create(request);
+
+        assertEquals(fileType, result.get("fileType"));
+        verify(resourceMapper).insert(argThat(
+                (Resource resource) -> fileType.equals(resource.getFileType())));
     }
 }

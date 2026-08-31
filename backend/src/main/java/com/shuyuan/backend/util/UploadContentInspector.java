@@ -27,6 +27,8 @@ public final class UploadContentInspector {
             Map.entry("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
             Map.entry("ppt", "application/vnd.ms-powerpoint"),
             Map.entry("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+            Map.entry("xls", "application/vnd.ms-excel"),
+            Map.entry("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             Map.entry("vtt", "text/vtt"),
             Map.entry("srt", "application/x-subrip"),
             Map.entry("glb", "model/gltf-binary"),
@@ -61,8 +63,9 @@ public final class UploadContentInspector {
             case "m4a" -> h.length >= 8 && h[4] == 'f' && h[5] == 't' && h[6] == 'y' && h[7] == 'p';
             case "wav" -> h.length >= 12 && startsWith(h, 'R', 'I', 'F', 'F')
                     && h[8] == 'W' && h[9] == 'A' && h[10] == 'V' && h[11] == 'E';
-            case "doc", "ppt" -> startsWith(h, (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0);
-            case "docx", "pptx" -> startsWith(h, 0x50, 0x4B, 0x03, 0x04);
+            case "doc", "ppt", "xls" -> startsWith(
+                    h, 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1);
+            case "docx", "pptx", "xlsx" -> startsWith(h, 0x50, 0x4B, 0x03, 0x04);
             case "glb" -> h.length >= 4 && h[0] == 'g' && h[1] == 'l' && h[2] == 'T' && h[3] == 'F';
             case "gltf" -> looksLikeJson(h);
             case "vtt" -> looksLikeTextSubtitle(h, "WEBVTT");

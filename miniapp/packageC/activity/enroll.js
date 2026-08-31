@@ -2,7 +2,7 @@
 const { get, post } = require('../../utils/request')
 const { mergeEnrollResult } = require('../../utils/activity')
 const { requireLogin } = require('../../utils/auth')
-const { requestSubscribe } = require('../../utils/subscribe')
+const { requestSubscribeMany, buildEnrollSubscribeRequests } = require('../../utils/subscribe')
 const { mapEnrollVoucherFields } = require('../../utils/enrollVoucher')
 const { validateEnrollForm } = require('../../utils/enrollForm')
 const { exportVoucherQr } = require('../../utils/voucherQrCanvas')
@@ -106,7 +106,7 @@ Page({
 
     this.setData({ submitting: true, fieldErrors: { name: '', phone: '', college: '', grade: '' } })
     try {
-      await requestSubscribe('enroll_success', 'enrollSuccess')
+      await requestSubscribeMany(buildEnrollSubscribeRequests(this.data.detail.needReview))
       const raw = await post(`/activities/${activityId}/enroll`, validation.payload)
       const result = mergeEnrollResult(raw)
       const resultHint = result.status === 'pending'

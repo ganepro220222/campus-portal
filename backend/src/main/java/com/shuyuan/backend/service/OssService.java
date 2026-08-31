@@ -64,8 +64,9 @@ public class OssService {
         map.put("feedback", Set.of("jpg", "jpeg", "png", "webp", "gif"));
         map.put("video", Set.of("mp4", "mov"));
         map.put("audio", Set.of("mp3", "m4a", "wav"));
-        map.put("document", Set.of("pdf", "doc", "docx", "ppt", "pptx"));
-        map.put("resource_file", Set.of("pdf", "doc", "docx", "ppt", "pptx", "mp4", "mp3"));
+        map.put("document", Set.of("pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx"));
+        map.put("resource_file", Set.of(
+                "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "mp4", "mp3"));
         map.put("subtitle", Set.of("vtt", "srt"));
         return Map.copyOf(map);
     }

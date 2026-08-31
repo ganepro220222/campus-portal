@@ -20,7 +20,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AdminResourceService {
 
-    private static final Set<String> ALLOWED_FILE_TYPES = Set.of("pdf", "word", "ppt", "mp4", "mp3");
+    private static final Set<String> ALLOWED_FILE_TYPES =
+            Set.of("pdf", "word", "ppt", "xls", "xlsx", "mp4", "mp3");
 
     private final ResourceMapper resourceMapper;
     private final CategoryService categoryService;
@@ -205,6 +206,8 @@ public class AdminResourceService {
             case "pdf" -> "PDF";
             case "word" -> "Word";
             case "ppt" -> "PPT";
+            case "xls" -> "Excel XLS";
+            case "xlsx" -> "Excel XLSX";
             case "mp4" -> "视频";
             case "mp3" -> "音频";
             default -> fileType.toUpperCase();

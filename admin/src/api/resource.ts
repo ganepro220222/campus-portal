@@ -24,6 +24,8 @@ export const FILE_TYPE_OPTIONS = [
   { value: 'pdf', label: 'PDF' },
   { value: 'word', label: 'Word' },
   { value: 'ppt', label: 'PPT' },
+  { value: 'xls', label: 'Excel XLS' },
+  { value: 'xlsx', label: 'Excel XLSX' },
   { value: 'mp4', label: '视频 MP4' },
   { value: 'mp3', label: '音频 MP3' }
 ]

@@ -21,6 +21,8 @@ mustInclude('resolveVoucherQrSrc', 'enroll.js must use resolveVoucherQrSrc')
 mustInclude("require('../../utils/enrollPageInit')", 'enroll.js must import enrollPageInit')
 mustInclude('buildEnrollLoadedView', 'enroll.js must use buildEnrollLoadedView')
 mustInclude('canSubmitEnroll', 'enroll.js must guard submit with canSubmitEnroll')
+mustInclude('requestSubscribeMany(buildEnrollSubscribeRequests(this.data.detail.needReview))',
+  'enroll.js must request approval subscription for activities requiring review')
 mustInclude('onRetry', 'enroll.js must expose onRetry')
 
 console.log('[enrollPageDeps.test] PASS')

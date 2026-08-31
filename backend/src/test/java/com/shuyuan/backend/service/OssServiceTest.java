@@ -1,5 +1,7 @@
 package com.shuyuan.backend.service;
 
+import com.aliyun.oss.OSS;
+import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.config.OssProperties;
 import com.shuyuan.backend.util.CdnUrlAuth;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,9 +12,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.io.InputStream;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 /**
  * OSS 白名单与未配置场景
@@ -227,6 +232,39 @@ class OssServiceTest {
         } catch (com.shuyuan.backend.common.exception.BusinessException ex) {
             assertNotEquals(400, ex.getCode(), "resource_file 场景应允许 mp4");
         }
+    }
+
+    @Test
+    void upload_acceptsExcelForResourceAndDocumentScenes() {
+        when(ossProperties.isEnabled()).thenReturn(true);
+        when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-chengdu.aliyuncs.com");
+        when(ossProperties.getBucket()).thenReturn("bucket");
+        when(ossProperties.getAccessKey()).thenReturn("ak");
+        when(ossProperties.getSecretKey()).thenReturn("sk");
+        when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
+
+        OssService service = spy(new OssService(ossProperties));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).buildTransferClient();
+        byte[] xlsHeader = new byte[]{
+                (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0,
+                (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1
+        };
+        byte[] xlsxHeader = new byte[]{0x50, 0x4B, 0x03, 0x04, 0x14, 0x00};
+
+        for (String scene : new String[]{"resource_file", "document"}) {
+            Map<String, String> xls = service.upload(scene,
+                    new MockMultipartFile("file", "schedule.xls", "application/octet-stream", xlsHeader));
+            Map<String, String> xlsx = service.upload(scene,
+                    new MockMultipartFile("file", "schedule.xlsx", "application/octet-stream", xlsxHeader));
+
+            assertTrue(xls.get("objectKey").startsWith("files/"));
+            assertTrue(xls.get("objectKey").endsWith(".xls"));
+            assertTrue(xlsx.get("objectKey").startsWith("files/"));
+            assertTrue(xlsx.get("objectKey").endsWith(".xlsx"));
+        }
+        verify(client, times(4)).putObject(
+                eq("bucket"), anyString(), any(InputStream.class), any(ObjectMetadata.class));
     }
 
     @Test

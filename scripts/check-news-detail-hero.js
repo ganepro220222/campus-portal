@@ -36,14 +36,39 @@ if (/\{\{article\.drop\}\}\s*<\/text>\s*\{\{article\.lead\}\}/.test(wxml)) {
 if (!/\{\{article\.drop\}\}<\/text>\{\{article\.leadRest\}\}/.test(wxml.replace(/\s+</g, '<'))) {
   errs.push('detail.wxml 的首字下沉分支未渲染 article.leadRest')
 }
-if (!/leadRest:\s*lead\s*\?\s*lead\.slice\(1\)/.test(content)) {
-  errs.push('content.js 的 leadRest 不是 lead.slice(1)，drop + leadRest 将无法还原 lead')
+if (!/leadChars\s*=\s*lead\s*\?\s*Array\.from\(lead\)/.test(content)) {
+  errs.push('content.js 未按码点拆 lead —— emoji 会被切成半个代理项')
+}
+if (!/leadRest:\s*leadChars\.slice\(1\)\.join\(/.test(content)) {
+  errs.push('content.js 的 leadRest 不是 leadChars.slice(1).join，drop + leadRest 将无法还原 lead')
 }
 if (/drop:\s*raw\.drop/.test(content)) {
   errs.push('content.js 又开始信任外部下发的 drop —— mock 与接口口径相反，会重复或吃字')
 }
 if (/class="art-lead">\{\{article\.lead\}\}/.test(wxml)) {
   errs.push('摘要区又改回整段 lead —— 正文一变成富文本，首字下沉就会消失')
+}
+/*
+ * 摘要短到只有一行时不做首字下沉：一行 28px 撑不住 36px 高的首字，
+ * 大字会孤零零杵在虚线上方。所以允许「整段 lead」存在，但**只能**在
+ * dropCap 为假的那条分支里；一旦它脱离 dropCap 判断，就又变回
+ * 「富文本一保存首字就消失」那个老毛病了。
+ */
+const plainLeadBranch = wxml.match(/<view[^>]*class="art-lead art-lead--plain"[^>]*>/)
+if (plainLeadBranch && !/article\.dropCap/.test(plainLeadBranch[0])) {
+  errs.push('整段 lead 的分支未挂在 !article.dropCap 上 —— 长摘要会丢掉首字下沉')
+}
+if (!/article\.dropCap/.test(wxml)) {
+  errs.push('detail.wxml 未使用 dropCap —— 短摘要会出现首字悬空、右侧大片留白')
+}
+if (!/dropCap:\s*shouldDropCap\(lead\)/.test(content)) {
+  errs.push('content.js 未按 shouldDropCap 产出 dropCap')
+}
+const leadRule = (wxss.replace(/\/\*[\s\S]*?\*\//g, '').match(/\.art-lead\s*\{[^}]*\}/) || [''])[0]
+if (!leadRule) {
+  errs.push('detail.wxss 里找不到 .art-lead 规则')
+} else if (!/overflow:\s*hidden|display:\s*flow-root/.test(leadRule)) {
+  errs.push('.art-lead 未建立 BFC —— float 的首字会横穿摘要区底部的虚线')
 }
 if (/useRichText/.test(wxml) && /showLead/.test(wxml) && /!article\.useRichText/.test(wxml)) {
   errs.push('首字下沉又只挂在纯文本分支 —— 后台保存后摘要首字会变回正常大小')

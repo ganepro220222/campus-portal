@@ -1,6 +1,6 @@
 <template>
   <div class="oss-upload">
-    <div class="oss-upload-body">
+    <div class="oss-upload-body" :class="{ 'oss-upload-body--audio': showAudioPreview }">
       <div
         v-if="showImagePreview"
         class="preview-wrap"
@@ -264,9 +264,24 @@ function clear() {
   background: #f0f2f5;
 }
 
+/* 200x112 时原生控件条几乎盖满画面，等于没有预览；16:9 放到 320x180 才看得见内容 */
 .preview-wrap--video {
-  width: 200px;
-  height: 112px;
+  width: 320px;
+  max-width: 100%;
+  height: 180px;
+}
+
+/*
+ * 语音播放器独占一行。与上传按钮横排时留给 <audio> 的净宽只有约 200px，
+ * Chromium 在这个宽度下会把总时长和时间轴一起裁掉。
+ * 铺满整行后不依赖魔法宽度，弹窗变窄也不会退化。
+ */
+.oss-upload-body--audio {
+  flex-wrap: wrap;
+}
+
+.oss-upload-body--audio .preview-wrap--audio {
+  width: 100%;
 }
 
 .preview-wrap--audio {
@@ -286,6 +301,11 @@ function clear() {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* .file-name 默认居中是给文件图标那版用的；铺满整行后居中会飘到播放器正中间 */
+.preview-wrap--audio .file-name {
+  text-align: left;
 }
 
 .preview-audio {

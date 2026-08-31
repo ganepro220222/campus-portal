@@ -72,7 +72,7 @@ async function fetchViaApi(resourceId, ext, fileSizeKb) {
   try {
     const tmp = await downloadToTempFile(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
     const named = namedTempPath(tmp, ext)
-    return copyToNamedPath(tmp, named)
+    return copyToNamedPath(tmp, named).catch(() => tmp)
   } catch (e) {
     if (classifyOpenError(errText(e)) === 'domain' && canUseArrayBufferFallback(fileSizeKb)) {
       const buffer = await getArrayBuffer(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
@@ -153,16 +153,15 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
   const openType = documentOpenType(fileType, url)
   wx.showLoading({ title: '下载中…', mask: true })
   try {
+    let path
     try {
-      const tmp = await wxDownloadTemp(url)
-      wx.hideLoading()
-      await tryOpenLocal(tmp, openType)
+      path = await wxDownloadTemp(url)
     } catch (cdnErr) {
       if (!resourceId) throw cdnErr
-      const path = await fetchViaApi(resourceId, openType, fileSizeKb)
-      wx.hideLoading()
-      await tryOpenLocal(path, openType)
+      path = await fetchViaApi(resourceId, openType, fileSizeKb)
     }
+    wx.hideLoading()
+    await tryOpenLocal(path, openType)
     wx.showToast({ title: '已打开', icon: 'success' })
   } catch (e) {
     wx.hideLoading()

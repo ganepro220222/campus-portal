@@ -3,7 +3,13 @@
  * 运行：node miniapp/utils/content.test.js
  */
 const assert = require('assert')
-const { resolveEmptyContentObject, mergeNewsArticle } = require('./content')
+const {
+  resolveEmptyContentObject,
+  mergeNewsArticle,
+  displayWidth,
+  shouldDropCap,
+  DROP_CAP_MIN_DISPLAY_WIDTH
+} = require('./content')
 
 assert.strictEqual(resolveEmptyContentObject({}, false), null)
 assert.ok(resolveEmptyContentObject({ title: 'mock' }, true).title)
@@ -33,6 +39,46 @@ if (!useMock) {
   assert.strictEqual(a.drop, '示')
   assert.strictEqual(a.leadRest, '例内容。常用资料已归类整理。')
   assert.strictEqual(a.drop + a.leadRest, a.lead)
+}
+
+// ---------- 首字下沉的开关：摘要不足两行就不下沉 ----------
+{
+  assert.strictEqual(DROP_CAP_MIN_DISPLAY_WIDTH, 22)
+  assert.strictEqual(displayWidth('书院'), 2)
+  assert.strictEqual(displayWidth('abcd'), 2)
+  assert.strictEqual(displayWidth('书院ab'), 3)
+  assert.strictEqual(displayWidth(''), 0)
+  assert.strictEqual(displayWidth(null), 0)
+  assert.strictEqual(displayWidth('😀'), 1)
+
+  assert.strictEqual(shouldDropCap('一'.repeat(21)), false)
+  assert.strictEqual(shouldDropCap('一'.repeat(22)), true)
+  assert.strictEqual(shouldDropCap('a'.repeat(22)), false)
+  assert.strictEqual(shouldDropCap('a'.repeat(44)), true)
+  assert.strictEqual(shouldDropCap(''), false)
+
+  const short = mergeNewsArticle({ summary: '书院春季开放。' }, {})
+  assert.strictEqual(short.dropCap, false, '短摘要不下沉，避免大字悬空')
+  assert.strictEqual(short.drop, '书', 'dropCap 为假时 drop/leadRest 仍照常产出')
+  assert.strictEqual(short.drop + short.leadRest, short.lead)
+
+  const long = mergeNewsArticle({
+    summary: '国家级非物质文化遗产牙舟陶数字展陈，汇集百余件 3D 数字化展品。'
+  }, {})
+  assert.strictEqual(long.dropCap, true)
+  assert.strictEqual(long.drop + long.leadRest, long.lead)
+}
+
+// emoji 按码点切开，不得留下孤立 UTF-16 代理项
+{
+  const emoji = '😀'
+  const a = mergeNewsArticle({
+    summary: emoji + '国家级非物质文化遗产牙舟陶数字展陈汇集百余件展品。'
+  }, {})
+  assert.strictEqual(a.drop, emoji)
+  assert.notStrictEqual(a.drop, a.lead.charAt(0), '不得按 UTF-16 码元切开 emoji')
+  assert.strictEqual(a.drop + a.leadRest, a.lead)
+  assert.ok(a.leadRest.charCodeAt(0) !== 0xDE00)
 }
 
 // 外部传来的 drop 一律忽略——mock 与接口曾用相反口径，信任它就会重复或吃字

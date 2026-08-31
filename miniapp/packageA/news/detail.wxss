@@ -89,6 +89,17 @@
   padding-bottom: 22rpx;
   border-bottom: 1rpx dashed var(--line);
   text-align: justify;
+  /*
+   * .drop 是 float:left，脱离普通流。这里建立 BFC 把它兜回来，
+   * 否则首字比绕排文字高时会越过下面那条虚线，虚线从大字腰上横穿过去。
+   * 用 overflow 而不是 display:flow-root，是因为老 iOS 的 WKWebView 不认后者。
+   */
+  overflow: hidden;
+}
+/* 摘要不足两行时不做首字下沉（见 content.js 的 shouldDropCap），
+   此时没有浮动元素，行高留白按常规正文走即可 */
+.art-lead--plain {
+  color: var(--sub);
 }
 .art-rich {
   font-size: 29rpx;

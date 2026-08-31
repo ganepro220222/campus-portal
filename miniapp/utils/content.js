@@ -29,6 +29,36 @@ function stripUnsafeHtml(html) {
     .replace(/\son\w+='[^']*'/gi, '')
 }
 
+/*
+ * 首字下沉需要文字绕排住那个大字，否则大字会孤零零杵在摘要区的虚线上方。
+ * 实测（375px 宽、正文 29rpx/1.9、首字 78rpx/0.92）：
+ *   摘要一行 = 28px，撑不住 36px 高的首字；两行 = 55px，才刚好盖住。
+ *   一行放得下约 21 个全角字符，所以摘要不足 22 个全角宽就不做下沉。
+ * 用显示宽度而不是 length：全角算 1、半角算 0.5，否则 22 个英文字母只占半行，
+ * 照样会触发下沉。for...of / Array.from 按码点遍历，emoji 不会被拆成两个半个。
+ */
+const DROP_CAP_MIN_DISPLAY_WIDTH = 22
+
+function displayWidth(text) {
+  let width = 0
+  for (const ch of String(text || '')) {
+    width += /[\x00-\xff]/.test(ch) ? 0.5 : 1
+  }
+  return width
+}
+
+function shouldDropCap(lead) {
+  return displayWidth(lead) >= DROP_CAP_MIN_DISPLAY_WIDTH
+}
+
+function splitLeadChars(lead) {
+  const leadChars = lead ? Array.from(lead) : []
+  return {
+    drop: leadChars[0] || '',
+    leadRest: leadChars.slice(1).join('')
+  }
+}
+
 function resolveEmptyContentObject(fallback, useMockFlag = useMock) {
   if (useMockFlag) {
     return fallback != null ? { ...fallback } : {}
@@ -57,8 +87,11 @@ function mergeNewsArticle(raw, fallback) {
     showLead,
     lead,
     /*
-     * 首字下沉的契约：drop 是首字，leadRest 是**去掉首字之后**的剩余部分，
+     * 首字下沉的契约：drop 是首字（一个 Unicode 码点），leadRest 是去掉它之后的剩余，
      * 两者拼起来才等于 lead；lead 本身保持完整原文不动。
+     *
+     * 必须用 Array.from 而不是 charAt(0)/slice(1)：后者按 UTF-16 码元切，emoji 会拆成
+     * 孤立代理项，页面上显示成 ▯，而 drop + leadRest === lead 仍然成立，护栏发现不了。
      *
      * 原来只给了 drop 却照样把整段 lead 渲染出去，于是「示例内容…」被渲染成
      * 「示」+「示例内容…」，首字凭空多出一个。mock 里当年是手写 drop:'六' 配
@@ -69,8 +102,8 @@ function mergeNewsArticle(raw, fallback) {
      * 正文是不是富文本都一样——后台 WangEditor 一保存，content 就是 HTML，
      * 若只在纯文本分支做首字下沉，编辑/扩写后摘要首字会突然变回正常大小。
      */
-    drop: lead ? lead.charAt(0) : '',
-    leadRest: lead ? lead.slice(1) : '',
+    ...splitLeadChars(lead),
+    dropCap: shouldDropCap(lead),
     coverImageMode: raw.coverFitMode === 'fit' ? 'aspectFit' : 'aspectFill',
     contentHtml,
     useRichText,
@@ -173,5 +206,9 @@ module.exports = {
   mergeHallDetail,
   mergeCourseDetail,
   mergeCraftDetail,
-  mergeResourceList
+  mergeResourceList,
+  displayWidth,
+  shouldDropCap,
+  splitLeadChars,
+  DROP_CAP_MIN_DISPLAY_WIDTH
 }

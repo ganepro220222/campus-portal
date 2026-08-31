@@ -46,9 +46,11 @@
               <text>👁 阅读 {{article.read}}</text>
               <text class="pill">{{article.category}}</text>
             </view>
-            <view wx:if="{{article.showLead && article.lead}}" class="art-lead">
+            <view wx:if="{{article.showLead && article.lead && article.dropCap}}" class="art-lead">
               <text class="drop serif">{{article.drop}}</text>{{article.leadRest}}
             </view>
+            <!-- 短摘要走这条：条件写全而不只靠 wx:elif，方便工程护栏静态识别 -->
+            <view wx:elif="{{article.showLead && article.lead && !article.dropCap}}" class="art-lead art-lead--plain">{{article.lead}}</view>
             <view wx:if="{{article.useRichText}}" class="art-rich">
               <rich-text nodes="{{article.contentHtml}}" />
             </view>

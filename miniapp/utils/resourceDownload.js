@@ -37,14 +37,6 @@ function documentOpenType(fileType, url) {
   return 'pdf'
 }
 
-function namedTempPath(tempPath, ext) {
-  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
-  const src = String(tempPath || '')
-  if (!src) return ''
-  if (src.toLowerCase().endsWith('.' + safeExt)) return src
-  return src + '.' + safeExt
-}
-
 function pickUrl(data) {
   if (!data) return ''
   return data.fileUrl || data.previewUrl || ''
@@ -59,6 +51,45 @@ function writeLocalFile(buffer, ext) {
       data: buffer,
       success: () => resolve(filePath),
       fail: reject
+    })
+  })
+}
+
+function isLegacyDocumentCacheFile(name) {
+  return /^(?:dl|cdn|res)_\d+\.[a-z0-9]+$/i.test(String(name || ''))
+}
+
+/**
+ * 旧版为补后缀把临时预览文件写进了 USER_DATA_PATH，且没有删除。
+ * 这里只清理由本模块命名的文件，避免误删头像等其他用户数据。
+ */
+function cleanupLegacyDocumentCache() {
+  const dirPath = wx.env && wx.env.USER_DATA_PATH
+  const fs = wx.getFileSystemManager()
+  if (!dirPath || !fs || typeof fs.readdir !== 'function' || typeof fs.unlink !== 'function') {
+    return Promise.resolve()
+  }
+  return new Promise((resolve) => {
+    fs.readdir({
+      dirPath,
+      success(res) {
+        const files = (res.files || []).filter(isLegacyDocumentCacheFile)
+        if (!files.length) {
+          resolve()
+          return
+        }
+        let pending = files.length
+        files.forEach((name) => {
+          fs.unlink({
+            filePath: `${dirPath}/${name}`,
+            complete() {
+              pending -= 1
+              if (pending === 0) resolve()
+            }
+          })
+        })
+      },
+      fail: resolve
     })
   })
 }
@@ -90,9 +121,7 @@ async function fetchViaApi(resourceId, ext, fileSizeKb) {
   let lastErr = null
   for (const attempt of attempts) {
     try {
-      const tmp = await attempt.run()
-      const named = namedTempPath(tmp, ext)
-      return await copyToNamedPath(tmp, named).catch(() => tmp)
+      return await attempt.run()
     } catch (e) {
       lastErr = e
       console.error('[resourceDownload]', attempt.label, 'failed:', errText(e))
@@ -105,17 +134,13 @@ async function fetchViaApi(resourceId, ext, fileSizeKb) {
   throw lastErr || new Error('download-failed')
 }
 
-function wxDownloadTemp(url, ext) {
-  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
-  const filePath = (wx.env && wx.env.USER_DATA_PATH)
-    ? `${wx.env.USER_DATA_PATH}/cdn_${Date.now()}.${safeExt}`
-    : ''
+function wxDownloadTemp(url) {
   return new Promise((resolve, reject) => {
     const payload = {
       url,
       timeout: 180000,
       success(res) {
-        const local = res.filePath || res.tempFilePath || filePath
+        const local = res.tempFilePath || res.filePath
         if (res.statusCode === 200 && local) {
           resolve(local)
         } else {
@@ -124,23 +149,7 @@ function wxDownloadTemp(url, ext) {
       },
       fail: reject
     }
-    if (filePath) payload.filePath = filePath
     wx.downloadFile(payload)
-  })
-}
-
-function copyToNamedPath(src, dest) {
-  return new Promise((resolve, reject) => {
-    if (!src || src === dest) {
-      resolve(src)
-      return
-    }
-    wx.getFileSystemManager().copyFile({
-      srcPath: src,
-      destPath: dest,
-      success: () => resolve(dest),
-      fail: reject
-    })
   })
 }
 
@@ -161,24 +170,38 @@ function errText(e) {
   return String((e && e.errMsg) || (e && e.message) || e || '')
 }
 
-/** download=没下下来；domain=微信未放行该域名；open=已下载但预览失败 */
+function urlHost(url) {
+  const match = String(url || '').match(/^https?:\/\/([^/?#]+)/i)
+  return match ? match[1] : ''
+}
+
+function combineDownloadErrors(apiError, sourceError, sourceUrl) {
+  const apiMessage = errText(apiError)
+  const sourceMessage = errText(sourceError)
+  const host = urlHost(sourceUrl) || '未知域名'
+  const combined = new Error(`API：${apiMessage}；文件源(${host})：${sourceMessage}`)
+  combined.errMsg = combined.message
+  combined.downloadKind = classifyOpenError(apiMessage)
+  combined.isDownloadChainError = true
+  return combined
+}
+
+/** download=没下下来；domain=微信拒绝 URL；storage=旧预览文件占满；open=已下载但预览失败 */
 function classifyOpenError(msg) {
   const s = String(msg || '')
   if (/url not in domain list/i.test(s)) return 'domain'
+  if (/maximum size.*storage|storage limit|no space|quota/i.test(s)) return 'storage'
   if (/download-failed|downloadFile:fail|timeout/i.test(s)) return 'download'
   return 'open'
 }
 
 async function tryOpenLocal(path, openType) {
-  // PDF 预览器强制看后缀；docx/ppt 往往靠 fileType 就能开。先补后缀再打开。
-  const named = namedTempPath(path, openType)
-  const local = named && named !== path
-    ? await copyToNamedPath(path, named).catch(() => path)
-    : path
+  // 官方支持用 fileType 指定文档类型，临时路径本身不需要带扩展名。
+  // 不再复制到 USER_DATA_PATH，避免 30MB+ PDF 占用持久存储配额。
   try {
-    await wxOpenDocument(local, openType)
+    await wxOpenDocument(path, openType)
   } catch (first) {
-    await wxOpenDocument(local).catch(() => wxOpenDocument(path, openType))
+    await wxOpenDocument(path)
   }
 }
 
@@ -186,6 +209,7 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
   const openType = documentOpenType(fileType, url)
   wx.showLoading({ title: '下载中…', mask: true })
   try {
+    await cleanupLegacyDocumentCache()
     let path
     if (resourceId) {
       // 文档优先走 API（路径以真实后缀结尾，如 /file/document.pdf），
@@ -194,10 +218,14 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
         path = await fetchViaApi(resourceId, openType, fileSizeKb)
       } catch (apiErr) {
         console.error('[resourceDownload] cdn-direct fallback, api error:', errText(apiErr))
-        path = await wxDownloadTemp(url, openType)
+        try {
+          path = await wxDownloadTemp(url)
+        } catch (sourceErr) {
+          throw combineDownloadErrors(apiErr, sourceErr, url)
+        }
       }
     } else {
-      path = await wxDownloadTemp(url, openType)
+      path = await wxDownloadTemp(url)
     }
     wx.hideLoading()
     await tryOpenLocal(path, openType)
@@ -205,18 +233,22 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
   } catch (e) {
     wx.hideLoading()
     const msg = errText(e)
-    const kind = classifyOpenError(msg)
+    const kind = e && e.downloadKind ? e.downloadKind : classifyOpenError(msg)
     console.error('[resourceDownload] openDocument failed:', msg)
-    if (kind === 'download') {
+    if (kind === 'download' && !(e && e.isDownloadChainError)) {
       wx.showToast({ title: '文件下载失败，请检查网络后重试', icon: 'none' })
     } else {
       // 弹窗里带上原始错误，方便远程排查（用户截图即可定位是哪一步、什么错）
-      const detail = msg ? '\n[' + msg.slice(0, 60) + ']' : ''
+      const detail = msg ? '\n[' + msg.slice(0, 140) + ']' : ''
       wx.showModal({
         title: '无法打开文件',
         content: (kind === 'domain'
-          ? '微信拦截了下载地址。若服务器域名刚调整过，请完全退出微信后重进小程序再试；仍不行可复制链接用浏览器打开。'
-          : '微信无法预览该文档。可复制链接到手机浏览器打开。') + detail,
+          ? '微信下载接口拒绝了文件地址，请截图下方两条线路的错误信息。'
+          : kind === 'storage'
+            ? '旧版残留的预览文件占用了存储空间，本次已自动清理；请重试一次。'
+            : kind === 'download'
+              ? '文件的两条下载线路都失败了，请截图下方错误信息。'
+            : '微信无法预览该文档。可复制链接到手机浏览器打开。') + detail,
         confirmText: '复制链接',
         success(res) {
           if (res.confirm) copyUrlFallback(url, '')
@@ -318,9 +350,10 @@ module.exports = {
   normalizeType,
   extFromUrl,
   documentOpenType,
-  namedTempPath,
   resourceFileDownloadPath,
   classifyOpenError,
   canUseArrayBufferFallback,
+  isLegacyDocumentCacheFile,
+  urlHost,
   ARRAYBUFFER_MAX_KB
 }

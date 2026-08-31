@@ -239,26 +239,23 @@ const getArrayBuffer = (url, options = {}) => {
 }
 
 /**
- * GET 文件落到微信临时路径，不经过 JS ArrayBuffer。downloadFile 合法域名须含 API 主机。
+ * GET 文件落到微信临时路径，不经过 JS ArrayBuffer。不要指定 USER_DATA_PATH：
+ * 资料仅用于本次预览，写入用户文件目录既会长期残留，也会让大文件受持久存储配额影响。
  * options.auth：'header'（默认，Authorization 头，URL 干净无 query）或
- * 'query'（?access_token=，作为个别客户端误报域名时的备选线路）。
+ * 'query'（?access_token=，作为个别客户端对自定义 header 兼容不佳时的备选线路）。
  */
 const downloadToTempFile = (url, options = {}) => {
   const silent = options.silent === true
   const useQueryAuth = options.auth === 'query'
   return new Promise((resolve, reject) => {
     const token = resolveToken()
-    const ext = String(options.ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
-    const filePath = (typeof wx !== 'undefined' && wx.env && wx.env.USER_DATA_PATH)
-      ? `${wx.env.USER_DATA_PATH}/dl_${Date.now()}.${ext}`
-      : ''
     const payload = {
       url: useQueryAuth
         ? withAccessTokenQuery(resolveBaseUrl() + url, token)
         : (resolveBaseUrl() + url),
       timeout: resolveTimeout({ timeout: options.timeout || 180000 }),
       success(res) {
-        const local = res.filePath || res.tempFilePath || filePath
+        const local = res.tempFilePath || res.filePath
         if (res.statusCode === 200 && local) {
           resolve(local)
           return
@@ -283,7 +280,6 @@ const downloadToTempFile = (url, options = {}) => {
     if (!useQueryAuth) {
       payload.header = { Authorization: token ? ('Bearer ' + token) : '' }
     }
-    if (filePath) payload.filePath = filePath
     wx.downloadFile(payload)
   })
 }

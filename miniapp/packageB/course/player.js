@@ -11,7 +11,8 @@ const {
   coerceVttText,
   withVideoReloadNonce,
   looksLikeVtt,
-  isVideoPlaybackStable
+  isVideoPlaybackStable,
+  shouldGiveUpVideoReload
 } = require('../../utils/coursePlayerProgress')
 
 const REPORT_INTERVAL_SEC = 20
@@ -42,7 +43,6 @@ Page({
     this._videoReloading = false
     this._subtitleReloading = false
     this._videoRecoveryStartPosition = null
-    this._videoUrlReloadTotal = 0
     this._progressBaselineSent = false
 
     requireLogin(() => {
@@ -190,11 +190,7 @@ Page({
 
   onVideoError() {
     if (this._videoReloading) return
-    if (this._videoUrlReloadTotal >= 3) {
-      wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
-      return
-    }
-    if (this._videoRetryCount >= 2) {
+    if (shouldGiveUpVideoReload({ consecutiveRetries: this._videoRetryCount })) {
       wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
       return
     }
@@ -217,7 +213,6 @@ Page({
         initialTime: this.data.initialTime
       })
       const wasPlaying = this.data.playing
-      this._videoUrlReloadTotal += 1
       this._pendingVideoResume = { position: resumePosition, playing: wasPlaying }
       this._videoRecoveryStartPosition = resumePosition > 0 ? resumePosition : null
       const nextUrl = play.videoUrl === this.data.videoUrl

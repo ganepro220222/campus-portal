@@ -12,8 +12,8 @@ import java.util.UUID;
  * 阿里云 CDN URL 鉴权（方式 A）。
  * {@code auth_key=timestamp-rand-uid-md5(URI-timestamp-rand-uid-key)}
  * <p>
- * 这里的 timestamp 按<strong>过期时刻</strong>写入。控制台「鉴权 URL 有效时长」须设为 0 秒，
- * 否则实际寿命会再叠加上控制台时长。
+ * 这里的 timestamp 按<strong>过期时刻</strong>写入。控制台「鉴权 URL 有效时长」
+ * 填当前界面允许的最小值 1 秒，实际寿命只会多这一秒。
  */
 public final class CdnUrlAuth {
 

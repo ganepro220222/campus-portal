@@ -39,8 +39,9 @@
         <view class="fav-icon {{item.collected ? 'fav-on' : ''}}" catchtap="onCollect" data-id="{{item.id}}">
           <icon name="bookmark" size="16" color="{{item.collected ? '#C0392B' : '#5A648A'}}" />
         </view>
-        <view class="res-dl" catchtap="onDownload" data-id="{{item.id}}" data-name="{{item.name}}" data-file-type="{{item.fileType}}">
-          <icon name="download" size="18" color="#2B356E" />
+        <view class="res-dl {{downloadingId === item.id ? 'is-loading' : ''}}" catchtap="onDownload" data-id="{{item.id}}" data-name="{{item.name}}" data-file-type="{{item.fileType}}">
+          <text wx:if="{{downloadingId === item.id}}" class="res-dl-loading">下载中</text>
+          <icon wx:else name="download" size="18" color="#2B356E" />
         </view>
       </view>
     </view>

@@ -81,13 +81,16 @@ assert.strictEqual(isVideoPlaybackStable({ recoveryStartPosition: 0, currentSec:
 assert.strictEqual(isVideoPlaybackStable({ recoveryStartPosition: 5, currentSec: 14 }), false)
 assert.strictEqual(isVideoPlaybackStable({ recoveryStartPosition: 5, currentSec: 15 }), true)
 
-assert.strictEqual(shouldGiveUpVideoReload({ consecutiveRetries: 2, lifetimeReloads: 1 }), true)
-assert.strictEqual(shouldGiveUpVideoReload({ consecutiveRetries: 1, lifetimeReloads: 3 }), true)
-assert.strictEqual(shouldGiveUpVideoReload({ consecutiveRetries: 1, lifetimeReloads: 2 }), false)
+assert.strictEqual(shouldGiveUpVideoReload({ consecutiveRetries: 2 }), true)
+assert.strictEqual(shouldGiveUpVideoReload({ consecutiveRetries: 1 }), false)
+assert.strictEqual(
+  shouldGiveUpVideoReload({ consecutiveRetries: 0, lifetimeReloads: 99 }),
+  false,
+  '历史上稳定成功的换签次数不应导致当前播放永久失败'
+)
 
 {
   let consecutiveRetries = 0
-  let lifetimeReloads = 0
   let recoveryStartPosition = null
   let playCalls = 0
   let failed = false
@@ -103,23 +106,30 @@ assert.strictEqual(shouldGiveUpVideoReload({ consecutiveRetries: 1, lifetimeRelo
   }
 
   function onVideoError() {
-    if (shouldGiveUpVideoReload({ consecutiveRetries, lifetimeReloads })) {
+    if (shouldGiveUpVideoReload({ consecutiveRetries })) {
       failed = true
       return
     }
     consecutiveRetries += 1
     recoveryStartPosition = null
-    lifetimeReloads += 1
     playCalls += 1
   }
 
-  for (let round = 0; round < 5 && !failed; round += 1) {
-    onTimeUpdate(1)
+  for (let round = 0; round < 6; round += 1) {
     onVideoError()
+    recoveryStartPosition = 100
+    onTimeUpdate(110)
   }
 
-  assert.strictEqual(failed, true)
-  assert.ok(playCalls >= 2 && playCalls <= 3)
+  assert.strictEqual(failed, false, '每次换签后稳定播放，长课可继续换取新地址')
+  assert.strictEqual(playCalls, 6)
+  assert.strictEqual(consecutiveRetries, 0)
+
+  onVideoError()
+  onVideoError()
+  onVideoError()
+  assert.strictEqual(failed, true, '连续两次恢复仍失败时应停止重试')
+  assert.strictEqual(playCalls, 8)
 }
 
 console.log('coursePlayerProgress.test: PASS')

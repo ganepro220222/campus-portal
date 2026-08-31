@@ -94,8 +94,10 @@ Page({
   onRedownload(e) {
     const id = e.currentTarget.dataset.id
     if (!id || this.data.redownloadingId) return
-    this.setData({ redownloadingId: id })
     downloadResource(id, {
+      onStart: () => {
+        this.setData({ redownloadingId: id })
+      },
       onRecorded: () => {
         if (this.data.type === 'downloads') {
           this._load('downloads', CONFIG.downloads.api)

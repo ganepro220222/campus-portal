@@ -89,5 +89,7 @@
   flex-shrink: 0;
 }
 .res-dl:active { background: var(--sky); }
+.res-dl.is-loading { background: var(--sky); }
+.res-dl-loading { font-size: 18rpx; color: var(--navy); }
 
 .list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

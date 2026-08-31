@@ -36,17 +36,17 @@ class OssServiceTest {
         String raw = "https://cdn.example.com/videos/demo.mp4";
         assertEquals(raw, ossService.signUrl(raw));
         assertEquals(raw, ossService.signMediaUrl(raw));
+        assertEquals(raw, ossService.signVideoUrl(raw));
     }
 
     @Test
-    void signUrl_usesUnsignedCdn_forPublicAssets_whenCdnAuthOff() {
+    void signUrl_usesUnsignedCdn_forPublicAssets() {
         when(ossProperties.isEnabled()).thenReturn(true);
         when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-chengdu.aliyuncs.com");
         when(ossProperties.getBucket()).thenReturn("yunman-shuyuan");
         when(ossProperties.getAccessKey()).thenReturn("ak");
         when(ossProperties.getSecretKey()).thenReturn("sk");
         when(ossProperties.getCdnDomain()).thenReturn("https://cdn.yunmanvr.com");
-        when(ossProperties.isCdnAuthEnabled()).thenReturn(false);
 
         assertEquals(
                 "https://cdn.yunmanvr.com/images/202608/cover.jpg",
@@ -80,6 +80,25 @@ class OssServiceTest {
     }
 
     @Test
+    void signUrl_usesOssPresign_forProtectedPath_whenCdnAuthIsIncomplete() {
+        when(ossProperties.isEnabled()).thenReturn(true);
+        when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-chengdu.aliyuncs.com");
+        when(ossProperties.getBucket()).thenReturn("yunman-shuyuan");
+        when(ossProperties.getAccessKey()).thenReturn("ak");
+        when(ossProperties.getSecretKey()).thenReturn("sk");
+        when(ossProperties.getCdnDomain()).thenReturn("https://cdn.yunmanvr.com");
+        when(ossProperties.isCdnAuthEnabled()).thenReturn(true);
+        when(ossProperties.getCdnAuthKey()).thenReturn("");
+        when(ossProperties.getSignExpireSeconds()).thenReturn(7200);
+
+        String preview = ossService.signUrl("videos/202608/abc.mp4");
+
+        assertTrue(preview.contains("oss-cn-chengdu.aliyuncs.com"), preview);
+        assertTrue(preview.contains("Signature="), preview);
+        assertFalse(preview.contains("cdn.yunmanvr.com"), preview);
+    }
+
+    @Test
     void signMediaUrl_usesCdnTypeA_whenAuthConfigured() {
         when(ossProperties.isEnabled()).thenReturn(true);
         when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-chengdu.aliyuncs.com");
@@ -91,6 +110,7 @@ class OssServiceTest {
         when(ossProperties.getCdnAuthType()).thenReturn("A");
         when(ossProperties.getCdnAuthKey()).thenReturn("aliyuncdnexp1234");
         when(ossProperties.getMediaSignExpireSeconds()).thenReturn(900);
+        when(ossProperties.getVideoSignExpireSeconds()).thenReturn(14_400);
         when(ossProperties.getSignExpireSeconds()).thenReturn(7200);
 
         String media = ossService.signMediaUrl("videos/202608/abc.mp4");
@@ -112,11 +132,20 @@ class OssServiceTest {
                         parts[2]),
                 media);
 
-        String cover = ossService.signUrl("images/202608/cover.jpg");
-        assertTrue(cover.startsWith("https://cdn.yunmanvr.com/images/202608/cover.jpg?auth_key="), cover);
-        String coverAuth = cover.substring(cover.indexOf("auth_key=") + "auth_key=".length());
-        long coverExp = Long.parseLong(coverAuth.split("-", 4)[0]);
-        assertTrue(coverExp >= now + 7190 && coverExp <= now + 7210, "coverExp=" + coverExp);
+        String video = ossService.signVideoUrl("videos/202608/abc.mp4");
+        String videoAuth = video.substring(video.indexOf("auth_key=") + "auth_key=".length());
+        long videoExp = Long.parseLong(videoAuth.split("-", 4)[0]);
+        assertTrue(videoExp >= now + 14_390 && videoExp <= now + 14_410, "videoExp=" + videoExp);
+
+        assertEquals(
+                "https://cdn.yunmanvr.com/images/202608/cover.jpg",
+                ossService.signUrl("images/202608/cover.jpg"));
+        assertTrue(OssService.isCdnAuthProtectedObjectKey("videos/a.mp4"));
+        assertTrue(OssService.isCdnAuthProtectedObjectKey("files/a.pdf"));
+        assertTrue(OssService.isCdnAuthProtectedObjectKey("audios/a.mp3"));
+        assertTrue(OssService.isCdnAuthProtectedObjectKey("subtitles/a.vtt"));
+        assertFalse(OssService.isCdnAuthProtectedObjectKey("images/a.jpg"));
+        assertFalse(OssService.isCdnAuthProtectedObjectKey("exhibits/a.glb"));
     }
 
     @Test

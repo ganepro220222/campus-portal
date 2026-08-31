@@ -34,7 +34,17 @@ function decorate(list) {
 }
 
 Page({
-  data: { all: [], resourceList: [], loading: true, error: false, refreshError: false, cats: CATS, activeCat: 0, keyword: '' },
+  data: {
+    all: [],
+    resourceList: [],
+    loading: true,
+    error: false,
+    refreshError: false,
+    cats: CATS,
+    activeCat: 0,
+    keyword: '',
+    downloadingId: null
+  },
 
   onLoad() { this._loadList(true) },
 
@@ -88,7 +98,9 @@ Page({
       return
     }
     downloadResource(id, {
-      onRecorded: () => this._bumpDownloadCount(id)
+      onStart: () => this.setData({ downloadingId: id }),
+      onRecorded: () => this._bumpDownloadCount(id),
+      onComplete: () => this.setData({ downloadingId: null })
     })
   },
 

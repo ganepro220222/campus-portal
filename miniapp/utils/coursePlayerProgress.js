@@ -108,7 +108,6 @@ function looksLikeVtt(text) {
 
 const VIDEO_STABLE_SECONDS = 10
 const VIDEO_MAX_CONSECUTIVE_RETRIES = 2
-const VIDEO_MAX_LIFETIME_RELOADS = 3
 
 /** 本次 URL 是否已稳定播放足够时长/进度，可重置连续失败计数 */
 function isVideoPlaybackStable({ recoveryStartPosition, currentSec, stableSeconds = VIDEO_STABLE_SECONDS }) {
@@ -116,10 +115,14 @@ function isVideoPlaybackStable({ recoveryStartPosition, currentSec, stableSecond
   return currentSec - recoveryStartPosition >= stableSeconds
 }
 
-function shouldGiveUpVideoReload({ consecutiveRetries, lifetimeReloads,
-  maxConsecutive = VIDEO_MAX_CONSECUTIVE_RETRIES,
-  maxLifetime = VIDEO_MAX_LIFETIME_RELOADS }) {
-  return lifetimeReloads >= maxLifetime || consecutiveRetries >= maxConsecutive
+/**
+ * 只限制连续失败。签名正常过期后若新地址已稳定播放，不应永久消耗页面生命周期额度。
+ */
+function shouldGiveUpVideoReload({
+  consecutiveRetries,
+  maxConsecutive = VIDEO_MAX_CONSECUTIVE_RETRIES
+}) {
+  return consecutiveRetries >= maxConsecutive
 }
 
 module.exports = {
@@ -129,7 +132,6 @@ module.exports = {
   looksLikeVtt,
   VIDEO_STABLE_SECONDS,
   VIDEO_MAX_CONSECUTIVE_RETRIES,
-  VIDEO_MAX_LIFETIME_RELOADS,
   isVideoPlaybackStable,
   shouldGiveUpVideoReload,
   isSeekBackward,

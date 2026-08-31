@@ -28,7 +28,8 @@ Page({
     course: null,
     progressHint: '',
     collected: false,
-    collectLabel: '收藏'
+    collectLabel: '收藏',
+    downloadingId: null
   },
 
   onLoad(opts) {
@@ -130,7 +131,10 @@ Page({
       wx.showToast({ title: '演示数据无法下载，请连接后端', icon: 'none' })
       return
     }
-    downloadResource(id)
+    downloadResource(id, {
+      onStart: () => this.setData({ downloadingId: id }),
+      onComplete: () => this.setData({ downloadingId: null })
+    })
   },
 
   onCollect() {

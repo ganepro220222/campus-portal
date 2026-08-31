@@ -86,7 +86,7 @@ public class CourseService {
         m.put("hasVideo", hasVideo);
         m.put("hasSubtitle", hasSubtitle);
         if (hasVideo) {
-            m.put("videoUrl", ossService.signMediaUrl(course.getVideoUrl()));
+            m.put("videoUrl", ossService.signVideoUrl(course.getVideoUrl()));
         }
         if (hasSubtitle && StringUtils.hasText(course.getSubtitleUrl())) {
             m.put("subtitleUrl", ossService.signMediaUrl(course.getSubtitleUrl()));

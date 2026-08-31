@@ -84,7 +84,7 @@ class CourseServiceTest {
     void play_returnsShortLivedMediaUrls() {
         Course course = publishedCourse();
         when(courseMapper.selectById(COURSE_ID)).thenReturn(course);
-        when(ossService.signMediaUrl("videos/a.mp4")).thenReturn("https://cdn/videos/a.mp4?sig=1");
+        when(ossService.signVideoUrl("videos/a.mp4")).thenReturn("https://cdn/videos/a.mp4?sig=1");
         when(ossService.signMediaUrl("subtitles/a.vtt")).thenReturn("https://cdn/subtitles/a.vtt?sig=2");
 
         Map<String, Object> result = courseService.play(COURSE_ID);
@@ -93,6 +93,7 @@ class CourseServiceTest {
         assertEquals("https://cdn/subtitles/a.vtt?sig=2", result.get("subtitleUrl"));
         verify(eventLogService).record("play", "course", COURSE_ID);
         verify(ossService, never()).signUrl(anyString());
+        verify(ossService).signVideoUrl("videos/a.mp4");
     }
 
     @Test

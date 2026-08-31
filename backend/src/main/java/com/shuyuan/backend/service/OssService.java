@@ -17,6 +17,7 @@ import com.shuyuan.backend.util.OssManagedObjectKey;
 import com.shuyuan.backend.util.UploadContentInspector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PreDestroy;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -37,6 +38,7 @@ import java.util.Map;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -50,6 +52,11 @@ public class OssService {
     public record ManagedObject(String key, Date lastModified) {}
 
     private static final Map<String, Set<String>> SCENE_EXTENSIONS = buildSceneExtensions();
+    /** 必须与 CDN 控制台 login-media 规则保持一致；images/exhibits 等公开素材不鉴权。 */
+    private static final Set<String> CDN_AUTH_PREFIXES =
+            Set.of("videos/", "files/", "audios/", "subtitles/");
+    private static final long RANGE_METADATA_TTL_MILLIS = 5 * 60 * 1000L;
+    private static final int RANGE_METADATA_CACHE_MAX = 2048;
 
     private static Map<String, Set<String>> buildSceneExtensions() {
         Map<String, Set<String>> map = new HashMap<>();
@@ -65,6 +72,11 @@ public class OssService {
 
     private final OssProperties ossProperties;
     private final AtomicBoolean cdnAuthIncompleteLogged = new AtomicBoolean();
+    private final Object rangeClientLock = new Object();
+    private final Map<String, RangeObjectMetadata> rangeMetadataCache = new ConcurrentHashMap<>();
+    private volatile OSS rangeTransferClient;
+
+    record RangeObjectMetadata(long contentLength, String contentType, long expiresAtMillis) {}
 
     public boolean isEnabled() {
         return ossProperties.isEnabled()
@@ -96,9 +108,14 @@ public class OssService {
         return signStored(stored, expireSeconds, true);
     }
 
-    /** 视频/字幕/资料：短时授权。未配 CDN 鉴权时走 OSS 预签名，绝不返回永久 CDN URL。 */
+    /** 字幕/资料：短时授权。未配 CDN 鉴权时走 OSS 预签名，绝不返回永久 CDN URL。 */
     public String signMediaUrl(String stored) {
         return signStored(stored, ossProperties.getMediaSignExpireSeconds(), false);
+    }
+
+    /** 课程视频使用独立的较长 TTL，避免长课、暂停和拖动周期性撞上 15 分钟过期。 */
+    public String signVideoUrl(String stored) {
+        return signStored(stored, ossProperties.getVideoSignExpireSeconds(), false);
     }
 
     private String signStored(String stored, int expireSeconds, boolean allowUnsignedCdn) {
@@ -203,11 +220,10 @@ public class OssService {
         if (!StringUtils.hasText(objectKey)) {
             throw new BusinessException(400, "文件地址无效");
         }
-        OSS client = null;
         try {
-            client = buildTransferClient();
-            ObjectMetadata metadata = client.getObjectMetadata(ossProperties.getBucket(), objectKey);
-            long total = metadata.getContentLength();
+            OSS client = getRangeTransferClient();
+            RangeObjectMetadata metadata = getRangeObjectMetadata(client, objectKey);
+            long total = metadata.contentLength();
             if (total <= 0 || offset >= total) {
                 response.setHeader("Content-Range", "bytes */" + Math.max(total, 0));
                 throw new BusinessException(416, "分块范围超出文件大小");
@@ -221,7 +237,7 @@ public class OssService {
             request.setRange(offset, end);
             OSSObject object = client.getObject(request);
 
-            String contentType = metadata.getContentType();
+            String contentType = metadata.contentType();
             response.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
             response.setContentType(StringUtils.hasText(contentType) ? contentType : "application/octet-stream");
             response.setContentLengthLong(length);
@@ -247,14 +263,13 @@ public class OssService {
             throw e;
         } catch (Exception e) {
             throw new BusinessException(500, "读取文件分块失败");
-        } finally {
-            shutdownQuietly(client);
         }
     }
 
     private String signObjectKey(
             String objectKey, int expireSeconds, boolean allowUnsignedCdn, boolean forceOssOrigin) {
-        if (!forceOssOrigin && cdnAuthReady()) {
+        boolean requiresCdnAuth = !allowUnsignedCdn || isCdnAuthProtectedObjectKey(objectKey);
+        if (!forceOssOrigin && requiresCdnAuth && cdnAuthReady()) {
             long expireAt = Instant.now().getEpochSecond() + Math.max(expireSeconds, 1);
             return CdnUrlAuth.signTypeA(
                     ossProperties.getCdnDomain(),
@@ -262,14 +277,18 @@ public class OssService {
                     ossProperties.getCdnAuthKey(),
                     expireAt);
         }
-        if (ossProperties.isCdnAuthEnabled()
+        if (requiresCdnAuth
+                && ossProperties.isCdnAuthEnabled()
                 && !cdnAuthReady()
                 && cdnAuthIncompleteLogged.compareAndSet(false, true)) {
             log.warn("[oss] OSS_CDN_AUTH_ENABLED=true 但域名/密钥/类型不完整，敏感媒体改走 OSS 预签名");
         }
         // 私有桶经 CDN 回源时，OSS 预签名参数挂在 CDN 上会双重鉴权 400。
         // 封面等公开元数据可以继续用未签名 CDN；登录课程/资料必须走 CDN 方式 A 或 OSS 原站预签名。
-        if (!forceOssOrigin && allowUnsignedCdn && StringUtils.hasText(ossProperties.getCdnDomain())) {
+        if (!forceOssOrigin
+                && allowUnsignedCdn
+                && StringUtils.hasText(ossProperties.getCdnDomain())
+                && (!requiresCdnAuth || !ossProperties.isCdnAuthEnabled())) {
             return buildPublicUrl(objectKey);
         }
         OSS client = null;
@@ -284,6 +303,11 @@ public class OssService {
         } finally {
             shutdownQuietly(client);
         }
+    }
+
+    static boolean isCdnAuthProtectedObjectKey(String objectKey) {
+        String key = StringUtils.hasText(objectKey) ? objectKey.trim() : "";
+        return CDN_AUTH_PREFIXES.stream().anyMatch(key::startsWith);
     }
 
     private boolean cdnAuthReady() {
@@ -388,6 +412,7 @@ public class OssService {
         try {
             client = buildTransferClient();
             client.deleteObject(ossProperties.getBucket(), objectKey);
+            rangeMetadataCache.remove(objectKey);
             return true;
         } catch (Exception e) {
             log.warn("[oss] delete failed key={}", objectKey, e);
@@ -512,13 +537,53 @@ public class OssService {
     }
 
     /** 上传 / 删除 / 读对象：有内网配置则走 VPC，不占用 ECS 5Mbps 公网。 */
-    private OSS buildTransferClient() {
+    OSS buildTransferClient() {
         return new OSSClientBuilder().build(
                 OssEndpointSupport.transferEndpoint(
                         ossProperties.getEndpoint(), ossProperties.getInternalEndpoint()),
                 ossProperties.getAccessKey(),
                 ossProperties.getSecretKey()
         );
+    }
+
+    OSS getRangeTransferClient() {
+        OSS current = rangeTransferClient;
+        if (current != null) {
+            return current;
+        }
+        synchronized (rangeClientLock) {
+            if (rangeTransferClient == null) {
+                rangeTransferClient = buildTransferClient();
+            }
+            return rangeTransferClient;
+        }
+    }
+
+    RangeObjectMetadata getRangeObjectMetadata(OSS client, String objectKey) {
+        long now = System.currentTimeMillis();
+        RangeObjectMetadata cached = rangeMetadataCache.get(objectKey);
+        if (cached != null && cached.expiresAtMillis() > now) {
+            return cached;
+        }
+        ObjectMetadata metadata = client.getObjectMetadata(ossProperties.getBucket(), objectKey);
+        RangeObjectMetadata fresh = new RangeObjectMetadata(
+                metadata.getContentLength(),
+                metadata.getContentType(),
+                now + RANGE_METADATA_TTL_MILLIS);
+        if (!rangeMetadataCache.containsKey(objectKey)
+                && rangeMetadataCache.size() >= RANGE_METADATA_CACHE_MAX) {
+            rangeMetadataCache.clear();
+        }
+        rangeMetadataCache.put(objectKey, fresh);
+        return fresh;
+    }
+
+    @PreDestroy
+    void shutdownRangeResources() {
+        OSS current = rangeTransferClient;
+        rangeTransferClient = null;
+        rangeMetadataCache.clear();
+        shutdownQuietly(current);
     }
 
     /** 预签名必须用外网 Endpoint，否则 ASR / 浏览器无法访问。 */

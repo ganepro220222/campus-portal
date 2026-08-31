@@ -117,6 +117,7 @@ shuyuan:
     cdn-auth-key: ${OSS_CDN_AUTH_KEY:}
     sign-expire-seconds: ${OSS_SIGN_EXPIRE_SECONDS:7200}
     media-sign-expire-seconds: ${OSS_MEDIA_SIGN_EXPIRE_SECONDS:900}
+    video-sign-expire-seconds: ${OSS_VIDEO_SIGN_EXPIRE_SECONDS:14400}
     max-upload-bytes: ${OSS_MAX_UPLOAD_BYTES:209715200}
     orphan-min-age-hours: ${OSS_ORPHAN_MIN_AGE_HOURS:48}
     # 默认关闭：一二期（换素材删旧、彻底删除清对象）在预发验证通过后，再设 true 开启每日孤儿扫描

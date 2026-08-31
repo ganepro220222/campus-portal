@@ -12,6 +12,8 @@ const FILE_CHUNK_BYTES = 4 * 1024 * 1024
 const MAX_CHUNK_FILE_BYTES = 180 * 1024 * 1024
 
 let _audioCtx = null
+// 下载流程共享 loading、缓存清理和 openDocument；同一时刻只能安全执行一个。
+let _activeDownloadId = null
 
 function normalizeType(fileType) {
   const t = String(fileType || '').toLowerCase()
@@ -421,11 +423,23 @@ async function openDownloadedResource(data) {
  * 登录后请求下载接口并打开文件
  * 口径：POST /download 成功即记下载记录；onRecorded 在客户端打开流程成功后触发（用于列表计数 UI）
  * @param {number|string} resourceId
- * @param {{ onRecorded?: Function }} options 下载记录成功后的回调（如刷新列表计数）
+ * @param {{ onStart?: Function, onRecorded?: Function, onComplete?: Function }} options
  */
 function downloadResource(resourceId, options = {}) {
   requireLogin(async () => {
+    const downloadKey = String(resourceId)
+    if (_activeDownloadId !== null) {
+      wx.showToast({
+        title: _activeDownloadId === downloadKey ? '该文件正在下载' : '已有文件正在下载',
+        icon: 'none'
+      })
+      return
+    }
+    _activeDownloadId = downloadKey
     try {
+      if (typeof options.onStart === 'function') {
+        options.onStart()
+      }
       const data = await post(`/resources/${resourceId}/download`, {})
       await openDownloadedResource({ ...data, id: resourceId })
       if (typeof options.onRecorded === 'function') {
@@ -434,6 +448,7 @@ function downloadResource(resourceId, options = {}) {
     } catch (e) {
       // 下载/打开流程已经向用户提示；此处仅吞掉未处理异常
     } finally {
+      _activeDownloadId = null
       if (typeof options.onComplete === 'function') {
         options.onComplete()
       }
@@ -452,6 +467,8 @@ module.exports = {
   responseHeader,
   parseContentRange,
   isSignedSourceUrl,
+  _getActiveDownloadId: () => _activeDownloadId,
+  _resetActiveDownloadState: () => { _activeDownloadId = null },
   _fetchViaChunkApi: fetchViaChunkApi,
   _fetchViaPreferredChunks: fetchViaPreferredChunks,
   FILE_CHUNK_BYTES,

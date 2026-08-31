@@ -27,17 +27,20 @@ public class OssProperties {
     private String cdnDomain = "";
     /**
      * 是否对 CDN URL 做方式 A 鉴权。开启后课程视频/资料可继续走 CDN，且带短时 token。
-     * 须与 CDN 控制台「URL 鉴权」主 KEY、类型 A、有效时长 0 秒同时配置，否则边缘会 403 或仍不校验。
+     * 控制台须仅绑定 login-media（videos/files/audios/subtitles），类型 A、同一 KEY、有效时长 1 秒；
+     * images/exhibits 保持公开，否则管理后台和 3D 的持久 URL 会 403。
      */
     private boolean cdnAuthEnabled = false;
     /** 阿里云 CDN 鉴权类型，当前只实现 A */
     private String cdnAuthType = "A";
     /** CDN 控制台主 KEY / 备 KEY */
     private String cdnAuthKey = "";
-    /** 封面等公开元数据签名 URL 有效期（秒），默认 2 小时 */
+    /** 通用 signUrl TTL（后台受保护媒体预览等）；公开 images/exhibits 返回持久 CDN URL */
     private int signExpireSeconds = 7200;
-    /** 视频/字幕/资料下载类签名 URL 有效期（秒），默认 15 分钟 */
+    /** 字幕/资料下载类签名 URL 有效期（秒），默认 15 分钟 */
     private int mediaSignExpireSeconds = 900;
+    /** 课程视频签名 URL 有效期（秒），默认 4 小时；长课仍可在连续故障保护下自动换签 */
+    private int videoSignExpireSeconds = 4 * 3600;
     /** 后台中转上传单文件上限（字节），默认 200MB */
     private long maxUploadBytes = 200L * 1024 * 1024;
     /** 孤儿对象最短存活小时数，避免删掉已上传尚未点保存的文件 */

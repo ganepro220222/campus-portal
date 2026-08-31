@@ -82,27 +82,18 @@ function coerceVttText(data) {
 
 /**
  * 强制 <video> 重新加载时不要先把 src 置空（开发者工具会报 no supported source）。
- * 加一次性查询参数即可让 src 字符串变化。
+ * 用 hash 改字符串，避免给 OSS/CDN 签名 query 再塞 `_r` 把签名算坏。
  */
 function withVideoReloadNonce(url, nonce) {
   if (!url) return ''
   const token = String(nonce == null ? Date.now() : nonce)
-  try {
-    const parsed = new URL(url)
-    parsed.searchParams.delete('_r')
-    parsed.searchParams.set('_r', token)
-    return parsed.href
-  } catch {
-    const hashIdx = String(url).indexOf('#')
-    const hash = hashIdx >= 0 ? String(url).slice(hashIdx) : ''
-    const withoutHash = hashIdx >= 0 ? String(url).slice(0, hashIdx) : String(url)
-    const qIdx = withoutHash.indexOf('?')
-    const path = qIdx >= 0 ? withoutHash.slice(0, qIdx) : withoutHash
-    const query = qIdx >= 0 ? withoutHash.slice(qIdx + 1) : ''
-    const params = query.split('&').filter(Boolean).filter((part) => !/^_r=\d+$/.test(part))
-    params.push('_r=' + token)
-    return path + '?' + params.join('&') + hash
-  }
+  const raw = String(url)
+  const hashIdx = raw.indexOf('#')
+  const base = hashIdx >= 0 ? raw.slice(0, hashIdx) : raw
+  const hash = hashIdx >= 0 ? raw.slice(hashIdx + 1) : ''
+  const parts = hash.split('&').filter(Boolean).filter((part) => !/^_r=/.test(part))
+  parts.push('_r=' + token)
+  return base + '#' + parts.join('&')
 }
 
 function isVttHttpSuccess(statusCode) {

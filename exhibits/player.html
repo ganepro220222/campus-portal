@@ -594,7 +594,7 @@ const initialCam = new THREE.Vector3()
 const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
 const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
-let auTracks = [], auIndex = -1, auPlaying = false   // 语音讲解播放器状态
+let auTracks = [], auIndex = -1, auPlaying = false, auWantPlay = false   // 语音讲解播放器状态
 /* VIEWER-HOTSPOT-DIAG-START — build-viewer 剔除 */
 let hotspotIdBootAudit = null, hotspotIdBootChanges = []   // editor：加载时 ID 诊断（boot 前 audit）
 /* VIEWER-HOTSPOT-DIAG-END */
@@ -1683,7 +1683,7 @@ function selectTrack(i, play){
   }
   const sel = $('au-sel'); if(!sel.hasAttribute('hidden')) sel.value = String(i)
   const name = $('au-name'); if(!name.hasAttribute('hidden')) name.textContent = tr.label || '语音讲解'
-  if (play){ el.play().catch(()=>{}) } else { auIcon(false); $('au-prog').style.width='0%'; $('au-time').textContent='0:00' }
+  if (play){ auWantPlay = true; el.play().catch(()=>{}) } else { auIcon(false); $('au-prog').style.width='0%'; $('au-time').textContent='0:00' }
 }
 function playTrackById(id){
   const i = auTracks.findIndex(a=>a.id===id); if(i<0) return
@@ -1722,17 +1722,21 @@ function wireAudio(){
     if(!auTracks.length) return
     if ($('audio').classList.contains('mini')) { setAudioMini(false); return }   // 折叠态：点＝展开
     if(auIndex<0) selectTrack(0,false)
-    el.paused ? el.play().catch(()=>{}) : el.pause()
+    if (el.paused) { auWantPlay = true; el.play().catch(()=>{}) }
+    else { auWantPlay = false; el.pause() }
   }
   $('au-collapse').onclick = () => setAudioMini(true)
-  el.onplay = ()=>auIcon(true); el.onpause = ()=>auIcon(false); el.onended = ()=>{ auIcon(false); $('au-prog').style.width='0%' }
+  el.onplay = ()=>auIcon(true); el.onpause = ()=>auIcon(false); el.onended = ()=>{ auWantPlay = false; auIcon(false); $('au-prog').style.width='0%' }
   el.onerror = () => {
     if (el.dataset.syFallback === '1') return
     const tr = auTracks[auIndex]
     const fallback = tr ? sameOriginFallbackUrl(tr.src) : ''
     if (!fallback) return
+    const shouldResume = auWantPlay
     el.dataset.syFallback = '1'
     el.src = fallback
+    if (!shouldResume) return
+    el.addEventListener('canplay', () => { el.play().catch(() => {}) }, { once: true })
   }
   el.ontimeupdate = ()=>{ const p = el.duration ? el.currentTime/el.duration*100 : 0; $('au-prog').style.width=p+'%'; $('au-time').textContent=auFmt(el.currentTime) }
   $('au-bar').onclick = e => { if(!el.duration) return; const r=$('au-bar').getBoundingClientRect(); el.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*el.duration }

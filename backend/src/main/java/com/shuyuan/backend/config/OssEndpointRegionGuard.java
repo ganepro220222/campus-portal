@@ -17,6 +17,9 @@ public class OssEndpointRegionGuard implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        if (!ossProperties.isEnabled()) {
+            return;
+        }
         OssEndpointSupport.assertSameRegion(
                 ossProperties.getEndpoint(), ossProperties.getInternalEndpoint());
     }

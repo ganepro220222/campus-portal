@@ -9,6 +9,7 @@ import com.aliyun.oss.model.ObjectListing;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.OssProperties;
+import com.shuyuan.backend.util.CdnUrlAuth;
 import com.shuyuan.backend.util.CourseVideoUrlPolicy;
 import com.shuyuan.backend.util.OssEndpointSupport;
 import com.shuyuan.backend.util.OssManagedObjectKey;
@@ -32,8 +33,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 对象存储：后台上传、签名 URL 下发（私有 Bucket + CDN）
@@ -60,6 +63,7 @@ public class OssService {
     }
 
     private final OssProperties ossProperties;
+    private final AtomicBoolean cdnAuthIncompleteLogged = new AtomicBoolean();
 
     public boolean isEnabled() {
         return ossProperties.isEnabled()
@@ -76,18 +80,27 @@ public class OssService {
         String objectKey = CourseVideoUrlPolicy.resolveTrustedVideoObjectKey(stored, ossProperties, isEnabled());
         // 阿里云 filetrans 要自己拉 FileLink；私有桶必须走 OSS 签名原站，不能改写成 CDN。
         int ttl = Math.max(ossProperties.getSignExpireSeconds(), 4 * 3600);
-        return signObjectKey(objectKey, ttl, false);
+        return signObjectKey(objectKey, ttl, false, true);
     }
 
     /**
      * 将库中存储的地址转为可访问 URL；OSS 未启用时原样返回（便于本地 dev 手填 CDN 地址）
      */
     public String signUrl(String stored) {
-        return signUrl(stored, ossProperties.getSignExpireSeconds());
+        return signStored(stored, ossProperties.getSignExpireSeconds(), true);
     }
 
-    /** 按场景指定签名有效期（秒），用于视频/资料等敏感媒体 */
+    /** 按场景指定签名有效期（秒）；允许未签名 CDN（封面等公开元数据） */
     public String signUrl(String stored, int expireSeconds) {
+        return signStored(stored, expireSeconds, true);
+    }
+
+    /** 视频/字幕/资料：短时授权。未配 CDN 鉴权时走 OSS 预签名，绝不返回永久 CDN URL。 */
+    public String signMediaUrl(String stored) {
+        return signStored(stored, ossProperties.getMediaSignExpireSeconds(), false);
+    }
+
+    private String signStored(String stored, int expireSeconds, boolean allowUnsignedCdn) {
         if (!StringUtils.hasText(stored)) {
             return stored;
         }
@@ -99,12 +112,7 @@ public class OssService {
             return stored;
         }
         int ttl = expireSeconds > 0 ? expireSeconds : ossProperties.getSignExpireSeconds();
-        return signObjectKey(objectKey, ttl);
-    }
-
-    /** 视频/字幕/资料文件：使用较短有效期 */
-    public String signMediaUrl(String stored) {
-        return signUrl(stored, ossProperties.getMediaSignExpireSeconds());
+        return signObjectKey(objectKey, ttl, allowUnsignedCdn, false);
     }
 
     /** 服务端读取私有对象文本（字幕走 API，避免小程序直拉 CDN 被域名/编码拦住） */
@@ -176,18 +184,24 @@ public class OssService {
         }
     }
 
-    private String signObjectKey(String objectKey) {
-        return signObjectKey(objectKey, ossProperties.getSignExpireSeconds());
-    }
-
-    private String signObjectKey(String objectKey, int expireSeconds) {
-        return signObjectKey(objectKey, expireSeconds, true);
-    }
-
-    private String signObjectKey(String objectKey, int expireSeconds, boolean rewriteCdn) {
-        // CDN 已开「OSS 私有 Bucket 回源 / STS」时，节点回源会自己带 Authorization。
-        // 客户端再拼 OSS 预签名（Expires/Signature）会双重鉴权，CDN/OSS 回 400。
-        if (rewriteCdn && StringUtils.hasText(ossProperties.getCdnDomain())) {
+    private String signObjectKey(
+            String objectKey, int expireSeconds, boolean allowUnsignedCdn, boolean forceOssOrigin) {
+        if (!forceOssOrigin && cdnAuthReady()) {
+            long expireAt = Instant.now().getEpochSecond() + Math.max(expireSeconds, 1);
+            return CdnUrlAuth.signTypeA(
+                    ossProperties.getCdnDomain(),
+                    objectKey,
+                    ossProperties.getCdnAuthKey(),
+                    expireAt);
+        }
+        if (ossProperties.isCdnAuthEnabled()
+                && !cdnAuthReady()
+                && cdnAuthIncompleteLogged.compareAndSet(false, true)) {
+            log.warn("[oss] OSS_CDN_AUTH_ENABLED=true 但域名/密钥/类型不完整，敏感媒体改走 OSS 预签名");
+        }
+        // 私有桶经 CDN 回源时，OSS 预签名参数挂在 CDN 上会双重鉴权 400。
+        // 封面等公开元数据可以继续用未签名 CDN；登录课程/资料必须走 CDN 方式 A 或 OSS 原站预签名。
+        if (!forceOssOrigin && allowUnsignedCdn && StringUtils.hasText(ossProperties.getCdnDomain())) {
             return buildPublicUrl(objectKey);
         }
         OSS client = null;
@@ -202,6 +216,16 @@ public class OssService {
         } finally {
             shutdownQuietly(client);
         }
+    }
+
+    private boolean cdnAuthReady() {
+        if (!ossProperties.isCdnAuthEnabled()
+                || !StringUtils.hasText(ossProperties.getCdnDomain())
+                || !StringUtils.hasText(ossProperties.getCdnAuthKey())) {
+            return false;
+        }
+        String type = ossProperties.getCdnAuthType();
+        return !StringUtils.hasText(type) || "A".equalsIgnoreCase(type.trim());
     }
 
     /** 管理端上传文件到 OSS，返回持久化 URL 与 objectKey */

@@ -36,19 +36,19 @@ assert.strictEqual(isSeekBackward(100, 480), true)
 
 assert.strictEqual(
   withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4', 99),
-  'https://cdn.yunmanvr.com/videos/a.mp4?_r=99'
+  'https://cdn.yunmanvr.com/videos/a.mp4#_r=99'
 )
 assert.strictEqual(
-  withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4?_r=1', 8),
-  'https://cdn.yunmanvr.com/videos/a.mp4?_r=8'
+  withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4#_r=1', 8),
+  'https://cdn.yunmanvr.com/videos/a.mp4#_r=8'
 )
 assert.strictEqual(
-  withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4?_r=1&token=2', 8),
-  'https://cdn.yunmanvr.com/videos/a.mp4?token=2&_r=8'
+  withVideoReloadNonce('https://bucket.oss-cn-chengdu.aliyuncs.com/videos/a.mp4?Expires=1&Signature=ab', 8),
+  'https://bucket.oss-cn-chengdu.aliyuncs.com/videos/a.mp4?Expires=1&Signature=ab#_r=8'
 )
 assert.strictEqual(
-  withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4?foo=1&_r=1', 8),
-  'https://cdn.yunmanvr.com/videos/a.mp4?foo=1&_r=8'
+  withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4?auth_key=1-0-0-abc#_r=1', 8),
+  'https://cdn.yunmanvr.com/videos/a.mp4?auth_key=1-0-0-abc#_r=8'
 )
 assert.strictEqual(withVideoReloadNonce(''), '')
 

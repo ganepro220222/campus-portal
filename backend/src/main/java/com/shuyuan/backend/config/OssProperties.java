@@ -25,6 +25,15 @@ public class OssProperties {
     private String secretKey = "";
     /** CDN 加速域名，用于拼接对外访问地址 */
     private String cdnDomain = "";
+    /**
+     * 是否对 CDN URL 做方式 A 鉴权。开启后课程视频/资料可继续走 CDN，且带短时 token。
+     * 须与 CDN 控制台「URL 鉴权」主 KEY、类型 A、有效时长 0 秒同时配置，否则边缘会 403 或仍不校验。
+     */
+    private boolean cdnAuthEnabled = false;
+    /** 阿里云 CDN 鉴权类型，当前只实现 A */
+    private String cdnAuthType = "A";
+    /** CDN 控制台主 KEY / 备 KEY */
+    private String cdnAuthKey = "";
     /** 封面等公开元数据签名 URL 有效期（秒），默认 2 小时 */
     private int signExpireSeconds = 7200;
     /** 视频/字幕/资料下载类签名 URL 有效期（秒），默认 15 分钟 */

@@ -46,6 +46,8 @@ curl -sI -X OPTIONS \
 
 应出现 `Access-Control-Allow-Origin: https://api.yunmanvr.com` 且 Methods 含 `POST`。若返回 403 且没有该头，说明当前来源匹配到了只允许 GET/HEAD 的旧规则。
 
+管理后台页面还有 CSP：`connect-src` 必须包含 `https://*.oss-cn-chengdu.aliyuncs.com`，否则浏览器会在发到 OSS 之前就拦请求（curl 测 CORS 是通的，后台仍红字）。改 CSP 后只需重新部署管理后台。
+
 ## 4. 打开直传
 
 1. ECS `.env` 增加 `OSS_DIRECT_UPLOAD_ENABLED=true`

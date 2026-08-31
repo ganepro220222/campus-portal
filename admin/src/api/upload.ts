@@ -81,8 +81,9 @@ export function postFileToOss(
     form.append('success_action_status', policy.successActionStatus || '204')
     form.append('file', file)
 
+    const host = policy.host.endsWith('/') ? policy.host : `${policy.host}/`
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', policy.host)
+    xhr.open('POST', host)
     xhr.timeout = DIRECT_UPLOAD_TIMEOUT_MS
     xhr.upload.onprogress = (event) => {
       if (!onProgress || !event.lengthComputable || event.total <= 0) {
@@ -96,10 +97,17 @@ export function postFileToOss(
         resolve()
         return
       }
-      reject(new Error('oss-direct-http-' + xhr.status))
+      const xml = String(xhr.responseText || '')
+      const code = xml.match(/<Code>([^<]+)<\/Code>/i)?.[1]
+      const message = xml.match(/<Message>([^<]+)<\/Message>/i)?.[1]
+      if (code || message) {
+        reject(new Error([code, message].filter(Boolean).join(': ')))
+        return
+      }
+      reject(new Error('直传到对象存储失败（HTTP ' + xhr.status + '）'))
     }
-    xhr.onerror = () => reject(new Error('oss-direct-network'))
-    xhr.ontimeout = () => reject(new Error('oss-direct-timeout'))
+    xhr.onerror = () => reject(new Error('浏览器拦截了到对象存储的请求，请检查控制台是否出现 CSP / CORS 报错'))
+    xhr.ontimeout = () => reject(new Error('直传到对象存储超时，请保持页面不要关闭后重试'))
     xhr.send(form)
   })
 }

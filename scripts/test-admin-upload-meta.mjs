@@ -95,5 +95,7 @@ assert.match(uploadInput, /completeDirectUpload/)
 const courseDialog = readFileSync(new URL('../admin/src/views/course/CourseEditDialog.vue', import.meta.url), 'utf8')
 assert.doesNotMatch(courseDialog, /不超过 200MB/)
 assert.match(resourceView, /\.mov/)
+const adminCsp = readFileSync(new URL('../admin/index.html', import.meta.url), 'utf8')
+assert.match(adminCsp, /connect-src[^"]*https:\/\/\*\.oss-cn-chengdu\.aliyuncs\.com/)
 
 console.log('test-admin-upload-meta: ok')

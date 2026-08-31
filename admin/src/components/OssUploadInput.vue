@@ -299,12 +299,13 @@ function shouldTryDirect(file: File): boolean {
   return isDirectUploadCandidate(props.scene, file.name) && !!capabilities.value?.directUploadEnabled
 }
 
-function throwIfTooLargeForProxy(file: File): void {
+function throwIfTooLargeForProxy(file: File, cause?: unknown): void {
   if (file.size <= proxyMaxBytes()) {
     return
   }
+  const detail = errorMessage(cause)
   throw new Error(
-    `直传未成功，该文件超过服务器中转上限（${formatByteLimit(proxyMaxBytes()) || '200MB'}）。请确认 OSS 跨域已配置后再试`
+    detail || `直传未成功，该文件超过服务器中转上限（${formatByteLimit(proxyMaxBytes()) || '200MB'}）。请确认 OSS 跨域已配置后再试`
   )
 }
 
@@ -327,7 +328,7 @@ async function uploadWithFallback(file: File): Promise<UploadResult> {
     if (isOversizeError(e)) {
       throw e
     }
-    throwIfTooLargeForProxy(file)
+    throwIfTooLargeForProxy(file, e)
     if (!isDirectUploadDisabledError(e)) {
       ElMessage.warning('直传未成功，已改为服务器中转')
     }
@@ -338,8 +339,8 @@ async function uploadWithFallback(file: File): Promise<UploadResult> {
     await postFileToOss(policy, file, (percent) => {
       uploadPercent.value = percent
     })
-  } catch {
-    throwIfTooLargeForProxy(file)
+  } catch (e) {
+    throwIfTooLargeForProxy(file, e)
     ElMessage.warning('直传未成功，已改为服务器中转')
     uploadPercent.value = null
     return uploadFile(file, props.scene)

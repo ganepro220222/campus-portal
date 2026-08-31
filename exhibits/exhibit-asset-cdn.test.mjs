@@ -57,7 +57,7 @@ assert.equal(
   `${CDN}/craft-002/assets/model.glb`,
 )
 assert.equal(localizeCdnAsset('assets/model.glb', 'craft-001'), 'assets/model.glb')
-// 在线编辑器：CDN 地址还原后由 player 拼成同源 /studio/craft-001/assets/model.glb
+// CDN 失败回退：还原后才能拼成同源 /studio/craft-001/assets/model.glb
 assert.equal(
   `craft-001/${localizeCdnAsset(`${CDN}/craft-001/assets/model.glb`, 'craft-001')}`,
   'craft-001/assets/model.glb',

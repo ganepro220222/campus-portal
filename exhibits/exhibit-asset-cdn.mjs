@@ -37,7 +37,7 @@ export function rewriteAssetValue(value, exhibitDir, cdnBase) {
 
 /**
  * CDN 绝对地址还原成展品内相对路径。不是本展品、也无法落到 exhibits 根下的，原样返回。
- * 在线编辑器把 CDN 地址还原成展品内相对路径，改为同源加载。
+ * 只给播放器在 CDN/CORS 失败时回退盘上文件用；正常加载应保留 CDN 地址。
  */
 export function localizeCdnAsset(value, exhibitDir, cdnBase = DEFAULT_CDN_BASE) {
   if (typeof value !== 'string' || !value) return value

@@ -436,8 +436,8 @@ const editMode = params.get('mode') === 'edit'
 const EX = (params.get('ex') || '').replace(/^\/+|\/+$/g, '')
 const BASE = EX ? EX + '/' : ''
 const asset = p => (!p || /^(https?:|data:|blob:|\/\/|\/)/.test(p)) ? p : BASE + p   // 相对路径补展品目录前缀
-/** config 被改成 CDN 绝对地址后，在线编辑器（api 域）拉 GLB 会撞 CORS；盘上文件还在就改回同源。 */
-function sameOriginAssetUrl(stored) {
+/** CDN 绝对地址优先直拉；只有 CDN/CORS 失败才还原成盘上同源路径（ECS 5Mbps）。 */
+function sameOriginFallbackUrl(stored) {
   const localized = localizeCdnAsset(stored, EX)
   if (!localized || localized === stored) return ''
   const next = asset(localized)
@@ -2072,7 +2072,8 @@ function start() {
   }
   buildLights() // 五光源灯组（叠加在 IBL 上，可编辑）
 
-  const modelUrl = sameOriginAssetUrl(cfg.assets.model) || asset(cfg.assets.model)
+  const modelUrl = asset(cfg.assets.model)
+  const fallbackUrl = sameOriginFallbackUrl(cfg.assets.model)
   if (!modelUrl) return failPlayer('模型地址无效', true)
 
   const modelTimers = createModelLoadTimers({
@@ -2097,7 +2098,7 @@ function start() {
   _bootModelTimers = modelTimers
   modelTimers.start()
 
-  makeLoader().load(modelUrl, gltf => {
+  const onModelLoaded = gltf => {
     modelTimers.clear()
     _bootModelTimers = null
     if (gen !== _startGeneration || window.__SY_PLAYER.ready) return
@@ -2112,18 +2113,30 @@ function start() {
       if (model) applyMaterial()
       finishPlayerReveal(gen)
     })()
-  }, evt => {
+  }
+  const onModelProgress = evt => {
     if (gen !== _startGeneration) return
     modelTimers.progress(evt.loaded, evt.total)
     if (modelTimers.isDownloadComplete()) return
     if (evt.total) { const p=Math.min(100,Math.round(evt.loaded/evt.total*100)); $('bar').style.width=p+'%'; $('load-text').textContent=`正在加载模型… ${p}%` }
     else if (typeof evt.loaded === 'number' && evt.loaded > 0) { $('load-text').textContent=`正在加载模型… ${evt.loaded} B` }
-  }, () => {
-    modelTimers.clear()
-    _bootModelTimers = null
-    if (gen !== _startGeneration) return
-    failPlayer('模型加载失败，请检查网络后重试', true)
-  })
+  }
+  const beginModelLoad = (url, canFallback) => {
+    makeLoader().load(url, onModelLoaded, onModelProgress, () => {
+      if (gen !== _startGeneration) return
+      if (canFallback && fallbackUrl && fallbackUrl !== url) {
+        $('bar').style.width = '0%'
+        $('load-text').textContent = 'CDN 未通，改走工作台模型…'
+        modelTimers.start()
+        beginModelLoad(fallbackUrl, false)
+        return
+      }
+      modelTimers.clear()
+      _bootModelTimers = null
+      failPlayer('模型加载失败，请检查网络后重试', true)
+    })
+  }
+  beginModelLoad(modelUrl, true)
 
   addEventListener('resize', onResize)
   // 退出全屏的路子不止按钮一条（Esc、系统手势、浏览器 UI），一律回来重画按钮状态

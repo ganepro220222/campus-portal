@@ -23,6 +23,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ResourceService {
 
+    static final int MAX_FILE_CHUNK_BYTES = 4 * 1024 * 1024;
+
     private final ResourceMapper resourceMapper;
     private final DownloadRecordMapper downloadRecordMapper;
     private final CategoryService categoryService;
@@ -99,6 +101,19 @@ public class ResourceService {
             throw new BusinessException(404, "文件不存在");
         }
         ossService.writeObject(resource.getFileUrl(), response);
+    }
+
+    /** 登录后分块读取资料，供小程序用 wx.request 低内存下载大文档。 */
+    public void writeFileChunk(Long id, long offset, int size, HttpServletResponse response) {
+        requireMemberId();
+        if (offset < 0 || size <= 0 || size > MAX_FILE_CHUNK_BYTES) {
+            throw new BusinessException(400, "分块参数无效");
+        }
+        Resource resource = requireResource(id);
+        if (!StringUtils.hasText(resource.getFileUrl())) {
+            throw new BusinessException(404, "文件不存在");
+        }
+        ossService.writeObjectRange(resource.getFileUrl(), offset, size, response);
     }
 
     private Resource requireResource(Long id) {

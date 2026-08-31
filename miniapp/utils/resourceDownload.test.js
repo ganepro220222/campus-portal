@@ -7,12 +7,13 @@ const {
   normalizeType,
   extFromUrl,
   documentOpenType,
-  resourceFileDownloadPath,
   classifyOpenError,
   canUseArrayBufferFallback,
   isLegacyDocumentCacheFile,
-  urlHost,
-  ARRAYBUFFER_MAX_KB
+  responseHeader,
+  ARRAYBUFFER_MAX_KB,
+  FILE_CHUNK_BYTES,
+  MAX_CHUNK_FILE_BYTES
 } = require('./resourceDownload')
 
 assert.strictEqual(normalizeType('word'), 'doc')
@@ -40,18 +41,10 @@ assert.strictEqual(
 )
 assert.strictEqual(documentOpenType('word', ''), 'docx')
 
-assert.strictEqual(
-  resourceFileDownloadPath(9, 'pdf'),
-  '/resources/9/file/document.pdf'
-)
-assert.strictEqual(
-  resourceFileDownloadPath('12', 'docx'),
-  '/resources/12/file/document.docx'
-)
-
 assert.strictEqual(classifyOpenError('downloadFile:fail url not in domain list'), 'domain')
 assert.strictEqual(classifyOpenError('the maximum size of the file storage limit is exceeded'), 'storage')
 assert.strictEqual(classifyOpenError('downloadFile:fail timeout'), 'download')
+assert.strictEqual(classifyOpenError('chunk-total-missing'), 'download')
 assert.strictEqual(classifyOpenError('openDocument:fail filetype not supported'), 'open')
 
 assert.strictEqual(canUseArrayBufferFallback(100), true)
@@ -68,8 +61,10 @@ assert.strictEqual(isLegacyDocumentCacheFile('res_1788190000000.PDF'), true)
 assert.strictEqual(isLegacyDocumentCacheFile('avatar.jpg'), false)
 assert.strictEqual(isLegacyDocumentCacheFile('dl_manual.pdf'), false)
 
-assert.strictEqual(urlHost('https://cdn.yunmanvr.com/files/a.pdf?auth_key=x'), 'cdn.yunmanvr.com')
-assert.strictEqual(urlHost('https://api.yunmanvr.com:443/api/v1/x'), 'api.yunmanvr.com:443')
-assert.strictEqual(urlHost('wxfile://tmp/a.pdf'), '')
+assert.strictEqual(responseHeader({ 'X-File-Size': '32356' }, 'x-file-size'), '32356')
+assert.strictEqual(responseHeader({ 'x-file-size': '32356' }, 'X-File-Size'), '32356')
+assert.strictEqual(responseHeader({}, 'X-File-Size'), '')
+assert.strictEqual(FILE_CHUNK_BYTES, 4 * 1024 * 1024)
+assert.ok(MAX_CHUNK_FILE_BYTES < 200 * 1024 * 1024)
 
 console.log('[resourceDownload.test] PASS')

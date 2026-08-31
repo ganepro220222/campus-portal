@@ -80,14 +80,6 @@ function resolveTimeout(options) {
   return typeof custom === 'number' && custom > 0 ? custom : DEFAULT_TIMEOUT
 }
 
-/** downloadFile 的备选鉴权：登录态放进 ?access_token=（个别客户端对带 header 的 downloadFile 误报域名时用）。 */
-function withAccessTokenQuery(url, token) {
-  if (!token) return String(url || '')
-  const base = String(url || '')
-  const sep = base.includes('?') ? '&' : '?'
-  return base + sep + 'access_token=' + encodeURIComponent(token)
-}
-
 function handlePasswordChangeRequired(body, silent) {
   const { redirectToChangePassword, setMustChangePasswordFlag } = require('./auth')
   setMustChangePasswordFlag(true)
@@ -239,25 +231,26 @@ const getArrayBuffer = (url, options = {}) => {
 }
 
 /**
- * GET 文件落到微信临时路径，不经过 JS ArrayBuffer。不要指定 USER_DATA_PATH：
- * 资料仅用于本次预览，写入用户文件目录既会长期残留，也会让大文件受持久存储配额影响。
- * options.auth：'header'（默认，Authorization 头，URL 干净无 query）或
- * 'query'（?access_token=，作为个别客户端对自定义 header 兼容不佳时的备选线路）。
+ * GET 单个二进制分块。只接受 206，避免旧后端把整个文件按 200 返回后再次塞满 JS 内存。
  */
-const downloadToTempFile = (url, options = {}) => {
+const getArrayBufferChunk = (url, data, options = {}) => {
   const silent = options.silent === true
-  const useQueryAuth = options.auth === 'query'
   return new Promise((resolve, reject) => {
     const token = resolveToken()
-    const payload = {
-      url: useQueryAuth
-        ? withAccessTokenQuery(resolveBaseUrl() + url, token)
-        : (resolveBaseUrl() + url),
+    wx.request({
+      url: resolveBaseUrl() + url,
+      method: 'GET',
+      data: sanitizeRequestData(data || {}),
+      responseType: 'arraybuffer',
       timeout: resolveTimeout({ timeout: options.timeout || 180000 }),
+      header: { Authorization: token ? ('Bearer ' + token) : '' },
       success(res) {
-        const local = res.tempFilePath || res.filePath
-        if (res.statusCode === 200 && local) {
-          resolve(local)
+        if (res.statusCode === 206 && res.data) {
+          resolve({
+            data: res.data,
+            header: res.header || {},
+            statusCode: res.statusCode
+          })
           return
         }
         if (res.statusCode === 401) {
@@ -266,9 +259,11 @@ const downloadToTempFile = (url, options = {}) => {
             wx.showToast({ title: '请先登录', icon: 'none', duration: 2500 })
           }
         } else if (!silent) {
-          wx.showToast({ title: '文件下载失败', icon: 'none' })
+          wx.showToast({ title: '文件分块下载失败', icon: 'none' })
         }
-        reject(new Error('download-failed'))
+        const error = new Error(`chunk-download-failed:${res.statusCode || 0}`)
+        error.statusCode = res.statusCode
+        reject(error)
       },
       fail(err) {
         if (!silent) {
@@ -276,11 +271,7 @@ const downloadToTempFile = (url, options = {}) => {
         }
         reject(err)
       }
-    }
-    if (!useQueryAuth) {
-      payload.header = { Authorization: token ? ('Bearer ' + token) : '' }
-    }
-    wx.downloadFile(payload)
+    })
   })
 }
 
@@ -291,7 +282,7 @@ module.exports = {
   del:    (url, options)       => request(url, 'DELETE', {}, options),
   upload: (url, fp, name, fd, options) => upload(url, fp, name, fd, options),
   getArrayBuffer,
-  downloadToTempFile,
+  getArrayBufferChunk,
   // 供单测校验：不在模块顶层缓存 getApp()
   _getRuntimeApp: getRuntimeApp,
   _resolveBaseUrl: resolveBaseUrl,
@@ -303,6 +294,5 @@ module.exports = {
   _handlePasswordChangeRequired: handlePasswordChangeRequired,
   _sanitizeRequestData: sanitizeRequestData,
   _resolveRequestData: resolveRequestData,
-  _isQueryMethod: isQueryMethod,
-  _withAccessTokenQuery: withAccessTokenQuery
+  _isQueryMethod: isQueryMethod
 }

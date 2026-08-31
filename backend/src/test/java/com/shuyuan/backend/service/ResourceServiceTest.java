@@ -109,6 +109,30 @@ class ResourceServiceTest {
     }
 
     @Test
+    void writeFileChunk_streamsRequestedRangeWithoutRecordingAgain() {
+        Resource resource = activeResource();
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(resource);
+
+        resourceService.writeFileChunk(RESOURCE_ID, 4_194_304L, 4_194_304, null);
+
+        verify(ossService).writeObjectRange(
+                resource.getFileUrl(), 4_194_304L, 4_194_304, null);
+        verify(downloadRecordMapper, never()).insert(any(DownloadRecord.class));
+    }
+
+    @Test
+    void writeFileChunk_rejectsChunkLargerThanFourMegabytes() {
+        var ex = assertThrows(
+                BusinessException.class,
+                () -> resourceService.writeFileChunk(
+                        RESOURCE_ID, 0, ResourceService.MAX_FILE_CHUNK_BYTES + 1, null));
+
+        assertEquals(400, ex.getCode());
+        verifyNoInteractions(ossService);
+        verifyNoInteractions(resourceMapper);
+    }
+
+    @Test
     void download_requiresLogin() {
         MemberContext.clear();
         var ex = assertThrows(BusinessException.class, () -> resourceService.download(RESOURCE_ID));

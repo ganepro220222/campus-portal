@@ -56,17 +56,8 @@ try {
   assert.strictEqual(request._resolveRequestData('PUT', body), body, 'PUT 不得剥掉显式 null')
   assert.strictEqual(request._resolveRequestData('POST', body), body, 'POST 不得剥掉显式 null')
 
-  assert.strictEqual(typeof request.downloadToTempFile, 'function')
   assert.strictEqual(typeof request.getArrayBuffer, 'function')
-  assert.strictEqual(
-    request._withAccessTokenQuery('https://api.yunmanvr.com/api/v1/resources/1/file', 'abc+d'),
-    'https://api.yunmanvr.com/api/v1/resources/1/file?access_token=abc%2Bd'
-  )
-  assert.strictEqual(
-    request._withAccessTokenQuery('https://api.example/x?y=1', 't'),
-    'https://api.example/x?y=1&access_token=t'
-  )
-  assert.strictEqual(request._withAccessTokenQuery('/resources/1/file', ''), '/resources/1/file')
+  assert.strictEqual(typeof request.getArrayBufferChunk, 'function')
 
   console.log('[request.test] PASS')
 } finally {

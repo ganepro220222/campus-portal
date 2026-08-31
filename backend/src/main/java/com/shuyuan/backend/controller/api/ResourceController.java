@@ -40,6 +40,15 @@ public class ResourceController {
         resourceService.writeFile(id, response);
     }
 
+    @GetMapping("/{id}/file-chunks")
+    public void fileChunk(
+            @PathVariable Long id,
+            @RequestParam long offset,
+            @RequestParam(defaultValue = "4194304") int size,
+            HttpServletResponse response) {
+        resourceService.writeFileChunk(id, offset, size, response);
+    }
+
     /**
      * 路径带真实后缀给微信 downloadFile 看。{@code document.pdf} 只用于客户端识别类型，不参与鉴权。
      */

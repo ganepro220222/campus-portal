@@ -2,6 +2,7 @@ package com.shuyuan.backend.service;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
+import com.aliyun.oss.model.GetObjectRequest;
 import com.aliyun.oss.model.ListObjectsRequest;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.OSSObjectSummary;
@@ -179,6 +180,73 @@ public class OssService {
             throw e;
         } catch (Exception e) {
             throw new BusinessException(500, "读取文件失败");
+        } finally {
+            shutdownQuietly(client);
+        }
+    }
+
+    /**
+     * 按固定范围读取私有对象。用于小程序通过 wx.request 分块下载大文档，
+     * 避开部分客户端即使域名已登记仍拒绝 wx.downloadFile 的问题。
+     */
+    public void writeObjectRange(String stored, long offset, int maxBytes, HttpServletResponse response) {
+        if (!StringUtils.hasText(stored)) {
+            throw new BusinessException(400, "文件地址无效");
+        }
+        if (!isEnabled()) {
+            throw new BusinessException(503, "对象存储未配置，无法读取文件");
+        }
+        if (offset < 0 || maxBytes <= 0) {
+            throw new BusinessException(400, "分块参数无效");
+        }
+        String objectKey = resolveObjectKey(stored.trim());
+        if (!StringUtils.hasText(objectKey)) {
+            throw new BusinessException(400, "文件地址无效");
+        }
+        OSS client = null;
+        try {
+            client = buildTransferClient();
+            ObjectMetadata metadata = client.getObjectMetadata(ossProperties.getBucket(), objectKey);
+            long total = metadata.getContentLength();
+            if (total <= 0 || offset >= total) {
+                response.setHeader("Content-Range", "bytes */" + Math.max(total, 0));
+                throw new BusinessException(416, "分块范围超出文件大小");
+            }
+            long end = offset > total - maxBytes
+                    ? total - 1
+                    : offset + maxBytes - 1L;
+            long length = end - offset + 1;
+
+            GetObjectRequest request = new GetObjectRequest(ossProperties.getBucket(), objectKey);
+            request.setRange(offset, end);
+            OSSObject object = client.getObject(request);
+
+            String contentType = metadata.getContentType();
+            response.setStatus(HttpServletResponse.SC_PARTIAL_CONTENT);
+            response.setContentType(StringUtils.hasText(contentType) ? contentType : "application/octet-stream");
+            response.setContentLengthLong(length);
+            response.setHeader("Accept-Ranges", "bytes");
+            response.setHeader("Content-Range", "bytes " + offset + "-" + end + "/" + total);
+            response.setHeader("X-File-Size", String.valueOf(total));
+            response.setHeader("Cache-Control", "no-store");
+            try (InputStream in = object.getObjectContent()) {
+                var out = response.getOutputStream();
+                byte[] buffer = new byte[64 * 1024];
+                long remaining = length;
+                while (remaining > 0) {
+                    int read = in.read(buffer, 0, (int) Math.min(buffer.length, remaining));
+                    if (read < 0) {
+                        throw new IOException("OSS range response ended early");
+                    }
+                    out.write(buffer, 0, read);
+                    remaining -= read;
+                }
+                response.flushBuffer();
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(500, "读取文件分块失败");
         } finally {
             shutdownQuietly(client);
         }

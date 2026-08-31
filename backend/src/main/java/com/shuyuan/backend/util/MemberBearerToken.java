@@ -5,8 +5,8 @@ import org.springframework.util.StringUtils;
 
 /**
  * 小程序会员 token：优先 Authorization Bearer。
- * {@code GET /resources/{id}/file} 允许 {@code access_token} 查询参数——
- * 微信 {@code wx.downloadFile} 带 header 时会误报「url not in domain list」。
+ * {@code GET /resources/{id}/file} 继续兼容旧版小程序曾使用的
+ * {@code access_token} 查询参数；新版分块下载使用标准 Authorization 头。
  */
 public final class MemberBearerToken {
 

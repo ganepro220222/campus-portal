@@ -1,13 +1,17 @@
 // utils/resourceDownload.js — 资源下载：调后端记录 + 按类型打开
-const { post, getArrayBuffer, downloadToTempFile } = require('./request')
+const { post, getArrayBuffer, getArrayBufferChunk } = require('./request')
 const { requireLogin } = require('./auth')
 
 const DOC_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'word'])
 const VIDEO_TYPES = new Set(['mp4', 'mov'])
 const AUDIO_TYPES = new Set(['mp3', 'm4a', 'wav'])
 const OPEN_DOC_EXTS = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])
-/** 仅当 downloadFile 域名未放行、且文件较小，才允许 ArrayBuffer 兜底，避免 50MB PDF 撑爆 JS 堆。 */
+/** 小文件可一次读取；超过此值必须分块，避免大 PDF 整份进入 JS 堆。 */
 const ARRAYBUFFER_MAX_KB = 8 * 1024
+/** 每次只把 4MB 放进 JS 内存；与后端 ResourceService 上限一致。 */
+const FILE_CHUNK_BYTES = 4 * 1024 * 1024
+/** USER_DATA_PATH 总配额 200MB，留出 20MB 给小程序其它用户文件。 */
+const MAX_CHUNK_FILE_BYTES = 180 * 1024 * 1024
 
 let _audioCtx = null
 
@@ -45,12 +49,31 @@ function pickUrl(data) {
 function writeLocalFile(buffer, ext) {
   const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
   const filePath = `${wx.env.USER_DATA_PATH}/res_${Date.now()}.${safeExt}`
+  return writeFileData(filePath, buffer, false).then(() => filePath)
+}
+
+function writeFileData(filePath, data, append) {
   return new Promise((resolve, reject) => {
-    wx.getFileSystemManager().writeFile({
+    const fs = wx.getFileSystemManager()
+    const method = append ? 'appendFile' : 'writeFile'
+    fs[method]({
       filePath,
-      data: buffer,
-      success: () => resolve(filePath),
+      data,
+      success: resolve,
       fail: reject
+    })
+  })
+}
+
+function unlinkLocalFile(filePath) {
+  return new Promise((resolve) => {
+    if (!filePath) {
+      resolve()
+      return
+    }
+    wx.getFileSystemManager().unlink({
+      filePath,
+      complete: resolve
     })
   })
 }
@@ -94,44 +117,90 @@ function cleanupLegacyDocumentCache() {
   })
 }
 
-function resourceFileDownloadPath(resourceId, ext) {
-  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
-  return `/resources/${resourceId}/file/document.${safeExt}`
-}
-
 function canUseArrayBufferFallback(fileSizeKb) {
   const n = Number(fileSizeKb)
   return Number.isFinite(n) && n > 0 && n <= ARRAYBUFFER_MAX_KB
 }
 
-/**
- * 经 API 拉文件，按成功率从高到低逐个尝试：
- * 1. downloadFile + Authorization 头（URL 干净、路径以真实后缀结尾）
- * 2. downloadFile + ?access_token=（防个别客户端对带 header 的 downloadFile 误报域名）
- * 3. 小文件 wx.request ArrayBuffer（完全绕开 downloadFile 的各种怪癖；走旧版 /file 路径，
- *    后端未更新到带文件名的新路由时也能成）
- * 域名误报是客户端本地立即失败，串行重试没有额外流量。
- */
-async function fetchViaApi(resourceId, ext, fileSizeKb) {
-  const apiPath = resourceFileDownloadPath(resourceId, ext)
-  const attempts = [
-    { label: 'api-header', run: () => downloadToTempFile(apiPath, { timeout: 180000, silent: true, ext }) },
-    { label: 'api-query', run: () => downloadToTempFile(apiPath, { timeout: 180000, silent: true, ext, auth: 'query' }) }
-  ]
-  let lastErr = null
-  for (const attempt of attempts) {
+function responseHeader(headers, name) {
+  const target = String(name || '').toLowerCase()
+  const source = headers || {}
+  const key = Object.keys(source).find((item) => item.toLowerCase() === target)
+  return key ? source[key] : ''
+}
+
+async function requestChunkWithRetry(resourceId, offset, downloader = getArrayBufferChunk) {
+  let lastError = null
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      return await attempt.run()
-    } catch (e) {
-      lastErr = e
-      console.error('[resourceDownload]', attempt.label, 'failed:', errText(e))
+      return await downloader(
+        `/resources/${resourceId}/file-chunks`,
+        { offset, size: FILE_CHUNK_BYTES },
+        { timeout: 180000, silent: true }
+      )
+    } catch (error) {
+      lastError = error
     }
   }
+  throw lastError || new Error('chunk-download-failed')
+}
+
+async function fetchViaChunkApi(resourceId, ext, downloader = getArrayBufferChunk) {
+  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
+  const filePath = `${wx.env.USER_DATA_PATH}/res_${Date.now()}.${safeExt}`
+  let offset = 0
+  let total = 0
+  try {
+    while (total === 0 || offset < total) {
+      const response = await requestChunkWithRetry(resourceId, offset, downloader)
+      const buffer = response && response.data
+      const length = buffer && Number(buffer.byteLength)
+      if (!Number.isFinite(length) || length <= 0 || length > FILE_CHUNK_BYTES) {
+        throw new Error('chunk-size-invalid')
+      }
+
+      const currentTotal = Number(responseHeader(response.header, 'x-file-size'))
+      if (!Number.isSafeInteger(currentTotal) || currentTotal <= 0) {
+        throw new Error('chunk-total-missing')
+      }
+      if (currentTotal > MAX_CHUNK_FILE_BYTES) {
+        throw new Error('chunk-file-too-large')
+      }
+      if (total > 0 && total !== currentTotal) {
+        throw new Error('chunk-file-changed')
+      }
+      total = currentTotal
+      if (offset + length > total) {
+        throw new Error('chunk-range-invalid')
+      }
+
+      await writeFileData(filePath, buffer, offset > 0)
+      offset += length
+      const percent = Math.min(100, Math.floor(offset * 100 / total))
+      wx.showLoading({ title: `下载 ${percent}%`, mask: true })
+    }
+    if (offset !== total) {
+      throw new Error('chunk-download-incomplete')
+    }
+    return filePath
+  } catch (error) {
+    await unlinkLocalFile(filePath)
+    throw error
+  }
+}
+
+/**
+ * 文档只走已经稳定工作的 wx.request：
+ * - <=8MB：一次 ArrayBuffer；
+ * - >8MB/大小未知：后端 OSS Range + 4MB 分块，避免整份大 PDF 进入 JS 堆。
+ * 不再调用该 AppID 下持续误报 domain list 的 wx.downloadFile。
+ */
+async function fetchViaApi(resourceId, ext, fileSizeKb) {
   if (canUseArrayBufferFallback(fileSizeKb)) {
     const buffer = await getArrayBuffer(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
     return writeLocalFile(buffer, ext)
   }
-  throw lastErr || new Error('download-failed')
+  return fetchViaChunkApi(resourceId, ext)
 }
 
 function wxDownloadTemp(url) {
@@ -170,34 +239,17 @@ function errText(e) {
   return String((e && e.errMsg) || (e && e.message) || e || '')
 }
 
-function urlHost(url) {
-  const match = String(url || '').match(/^https?:\/\/([^/?#]+)/i)
-  return match ? match[1] : ''
-}
-
-function combineDownloadErrors(apiError, sourceError, sourceUrl) {
-  const apiMessage = errText(apiError)
-  const sourceMessage = errText(sourceError)
-  const host = urlHost(sourceUrl) || '未知域名'
-  const combined = new Error(`API：${apiMessage}；文件源(${host})：${sourceMessage}`)
-  combined.errMsg = combined.message
-  combined.downloadKind = classifyOpenError(apiMessage)
-  combined.isDownloadChainError = true
-  return combined
-}
-
 /** download=没下下来；domain=微信拒绝 URL；storage=旧预览文件占满；open=已下载但预览失败 */
 function classifyOpenError(msg) {
   const s = String(msg || '')
   if (/url not in domain list/i.test(s)) return 'domain'
   if (/maximum size.*storage|storage limit|no space|quota/i.test(s)) return 'storage'
-  if (/download-failed|downloadFile:fail|timeout/i.test(s)) return 'download'
+  if (/download-failed|downloadFile:fail|timeout|chunk-/i.test(s)) return 'download'
   return 'open'
 }
 
 async function tryOpenLocal(path, openType) {
-  // 官方支持用 fileType 指定文档类型，临时路径本身不需要带扩展名。
-  // 不再复制到 USER_DATA_PATH，避免 30MB+ PDF 占用持久存储配额。
+  // 分块文件已经按真实后缀写入唯一的 USER_DATA_PATH 文件，不再额外复制第二份。
   try {
     await wxOpenDocument(path, openType)
   } catch (first) {
@@ -212,18 +264,7 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
     await cleanupLegacyDocumentCache()
     let path
     if (resourceId) {
-      // 文档优先走 API（路径以真实后缀结尾，如 /file/document.pdf），
-      // 全部失败再直拉 CDN（CDN 签名地址是 .pdf?auth_key=...，个别客户端会误报域名）。
-      try {
-        path = await fetchViaApi(resourceId, openType, fileSizeKb)
-      } catch (apiErr) {
-        console.error('[resourceDownload] cdn-direct fallback, api error:', errText(apiErr))
-        try {
-          path = await wxDownloadTemp(url)
-        } catch (sourceErr) {
-          throw combineDownloadErrors(apiErr, sourceErr, url)
-        }
-      }
+      path = await fetchViaApi(resourceId, openType, fileSizeKb)
     } else {
       path = await wxDownloadTemp(url)
     }
@@ -233,28 +274,24 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
   } catch (e) {
     wx.hideLoading()
     const msg = errText(e)
-    const kind = e && e.downloadKind ? e.downloadKind : classifyOpenError(msg)
+    const kind = classifyOpenError(msg)
     console.error('[resourceDownload] openDocument failed:', msg)
-    if (kind === 'download' && !(e && e.isDownloadChainError)) {
-      wx.showToast({ title: '文件下载失败，请检查网络后重试', icon: 'none' })
-    } else {
-      // 弹窗里带上原始错误，方便远程排查（用户截图即可定位是哪一步、什么错）
-      const detail = msg ? '\n[' + msg.slice(0, 140) + ']' : ''
-      wx.showModal({
-        title: '无法打开文件',
-        content: (kind === 'domain'
-          ? '微信下载接口拒绝了文件地址，请截图下方两条线路的错误信息。'
-          : kind === 'storage'
-            ? '旧版残留的预览文件占用了存储空间，本次已自动清理；请重试一次。'
-            : kind === 'download'
-              ? '文件的两条下载线路都失败了，请截图下方错误信息。'
+    // 弹窗里带上原始错误，方便远程排查（用户截图即可定位具体分块/打开阶段）
+    const detail = msg ? '\n[' + msg.slice(0, 140) + ']' : ''
+    wx.showModal({
+      title: '无法打开文件',
+      content: (kind === 'storage'
+        ? '旧版残留文件已自动清理，但可用存储空间仍不足，请释放微信存储后重试。'
+        : /chunk-file-too-large/i.test(msg)
+          ? '该文档超过小程序安全预览上限，请复制链接用浏览器打开。'
+          : kind === 'download'
+            ? '文件分块下载失败，请检查网络后重试。'
             : '微信无法预览该文档。可复制链接到手机浏览器打开。') + detail,
-        confirmText: '复制链接',
-        success(res) {
-          if (res.confirm) copyUrlFallback(url, '')
-        }
-      })
-    }
+      confirmText: '复制链接',
+      success(res) {
+        if (res.confirm) copyUrlFallback(url, '')
+      }
+    })
     throw e
   }
 }
@@ -335,7 +372,7 @@ function downloadResource(resourceId, options = {}) {
         options.onRecorded(data)
       }
     } catch (e) {
-      // request.js 已 toast；此处仅吞掉未处理异常
+      // 下载/打开流程已经向用户提示；此处仅吞掉未处理异常
     } finally {
       if (typeof options.onComplete === 'function') {
         options.onComplete()
@@ -350,10 +387,12 @@ module.exports = {
   normalizeType,
   extFromUrl,
   documentOpenType,
-  resourceFileDownloadPath,
   classifyOpenError,
   canUseArrayBufferFallback,
   isLegacyDocumentCacheFile,
-  urlHost,
-  ARRAYBUFFER_MAX_KB
+  responseHeader,
+  _fetchViaChunkApi: fetchViaChunkApi,
+  ARRAYBUFFER_MAX_KB,
+  FILE_CHUNK_BYTES,
+  MAX_CHUNK_FILE_BYTES
 }

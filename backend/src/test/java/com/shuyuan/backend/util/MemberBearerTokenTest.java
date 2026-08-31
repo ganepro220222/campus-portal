@@ -26,6 +26,15 @@ class MemberBearerTokenTest {
     }
 
     @Test
+    void acceptsAccessTokenQueryOnResourceFileWithExtension() {
+        MockHttpServletRequest req = new MockHttpServletRequest(
+                "GET", "/api/v1/resources/9/file/document.pdf");
+        req.setParameter("access_token", "query-token");
+        assertEquals("query-token", MemberBearerToken.from(req));
+        assertTrue(MemberBearerToken.isResourceFileGet(req));
+    }
+
+    @Test
     void ignoresAccessTokenQueryOnOtherApis() {
         MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/courses/1/play");
         req.setParameter("access_token", "query-token");

@@ -38,7 +38,9 @@ public final class MemberBearerToken {
             return false;
         }
         String uri = request.getRequestURI();
-        return uri != null && uri.contains("/resources/") && uri.endsWith("/file")
-                && !uri.contains("/admin/");
+        if (uri == null || uri.contains("/admin/") || !uri.contains("/resources/")) {
+            return false;
+        }
+        return uri.endsWith("/file") || uri.matches(".*/resources/[0-9]+/file/[^/]+$");
     }
 }

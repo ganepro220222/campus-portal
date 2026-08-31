@@ -63,6 +63,11 @@ function writeLocalFile(buffer, ext) {
   })
 }
 
+function resourceFileDownloadPath(resourceId, ext) {
+  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
+  return `/resources/${resourceId}/file/document.${safeExt}`
+}
+
 function canUseArrayBufferFallback(fileSizeKb) {
   const n = Number(fileSizeKb)
   return Number.isFinite(n) && n > 0 && n <= ARRAYBUFFER_MAX_KB
@@ -70,32 +75,43 @@ function canUseArrayBufferFallback(fileSizeKb) {
 
 async function fetchViaApi(resourceId, ext, fileSizeKb) {
   try {
-    const tmp = await downloadToTempFile(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
+    const tmp = await downloadToTempFile(resourceFileDownloadPath(resourceId, ext), {
+      timeout: 180000,
+      silent: true,
+      ext
+    })
     const named = namedTempPath(tmp, ext)
     return copyToNamedPath(tmp, named).catch(() => tmp)
   } catch (e) {
     if (classifyOpenError(errText(e)) === 'domain' && canUseArrayBufferFallback(fileSizeKb)) {
-      const buffer = await getArrayBuffer(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
+      const buffer = await getArrayBuffer(resourceFileDownloadPath(resourceId, ext), { timeout: 180000, silent: true })
       return writeLocalFile(buffer, ext)
     }
     throw e
   }
 }
 
-function wxDownloadTemp(url) {
+function wxDownloadTemp(url, ext) {
+  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
+  const filePath = (wx.env && wx.env.USER_DATA_PATH)
+    ? `${wx.env.USER_DATA_PATH}/cdn_${Date.now()}.${safeExt}`
+    : ''
   return new Promise((resolve, reject) => {
-    wx.downloadFile({
+    const payload = {
       url,
       timeout: 180000,
       success(res) {
-        if (res.statusCode === 200 && (res.tempFilePath || res.filePath)) {
-          resolve(res.tempFilePath || res.filePath)
+        const local = res.filePath || res.tempFilePath || filePath
+        if (res.statusCode === 200 && local) {
+          resolve(local)
         } else {
           reject(new Error('download-failed'))
         }
       },
       fail: reject
-    })
+    }
+    if (filePath) payload.filePath = filePath
+    wx.downloadFile(payload)
   })
 }
 
@@ -158,15 +174,16 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
   try {
     let path
     if (resourceId) {
-      // 文档走带登录态的 API。CDN 方式 A 的 auth_key 给 <video> 没问题，
-      // wx.downloadFile 直拉常被判域名失败或下到 403 页，再预览就会弹「复制链接」。
+      // 微信 downloadFile 对 PDF 会检查 URL 是否像「.pdf 结尾」。
+      // CDN 鉴权后变成 .pdf?auth_key=...，API 的 /file 又没有后缀，都会误报合法域名。
+      // 走 /file/document.pdf + 本地 filePath。
       try {
         path = await fetchViaApi(resourceId, openType, fileSizeKb)
       } catch (apiErr) {
-        path = await wxDownloadTemp(url)
+        path = await wxDownloadTemp(url, openType)
       }
     } else {
-      path = await wxDownloadTemp(url)
+      path = await wxDownloadTemp(url, openType)
     }
     wx.hideLoading()
     await tryOpenLocal(path, openType)
@@ -285,6 +302,7 @@ module.exports = {
   extFromUrl,
   documentOpenType,
   namedTempPath,
+  resourceFileDownloadPath,
   classifyOpenError,
   canUseArrayBufferFallback,
   ARRAYBUFFER_MAX_KB

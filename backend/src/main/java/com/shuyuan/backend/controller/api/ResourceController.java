@@ -39,4 +39,15 @@ public class ResourceController {
     public void file(@PathVariable Long id, HttpServletResponse response) {
         resourceService.writeFile(id, response);
     }
+
+    /**
+     * 路径带真实后缀给微信 downloadFile 看。{@code document.pdf} 只用于客户端识别类型，不参与鉴权。
+     */
+    @GetMapping("/{id}/file/{filename:.+}")
+    public void fileWithName(
+            @PathVariable Long id,
+            @PathVariable String filename,
+            HttpServletResponse response) {
+        resourceService.writeFile(id, response);
+    }
 }

@@ -8,6 +8,7 @@ const {
   extFromUrl,
   documentOpenType,
   namedTempPath,
+  resourceFileDownloadPath,
   classifyOpenError,
   canUseArrayBufferFallback,
   ARRAYBUFFER_MAX_KB
@@ -41,6 +42,15 @@ assert.strictEqual(documentOpenType('word', ''), 'docx')
 assert.strictEqual(namedTempPath('wxfile://tmp_abc', 'docx'), 'wxfile://tmp_abc.docx')
 assert.strictEqual(namedTempPath('wxfile://tmp_abc.pdf', 'pdf'), 'wxfile://tmp_abc.pdf')
 assert.strictEqual(namedTempPath('', 'pdf'), '')
+
+assert.strictEqual(
+  resourceFileDownloadPath(9, 'pdf'),
+  '/resources/9/file/document.pdf'
+)
+assert.strictEqual(
+  resourceFileDownloadPath('12', 'docx'),
+  '/resources/12/file/document.docx'
+)
 
 assert.strictEqual(classifyOpenError('downloadFile:fail url not in domain list'), 'domain')
 assert.strictEqual(classifyOpenError('downloadFile:fail timeout'), 'download')

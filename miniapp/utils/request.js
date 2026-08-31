@@ -243,12 +243,17 @@ const downloadToTempFile = (url, options = {}) => {
   const silent = options.silent === true
   return new Promise((resolve, reject) => {
     const token = resolveToken()
-    wx.downloadFile({
+    const ext = String(options.ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
+    const filePath = (typeof wx !== 'undefined' && wx.env && wx.env.USER_DATA_PATH)
+      ? `${wx.env.USER_DATA_PATH}/dl_${Date.now()}.${ext}`
+      : ''
+    const payload = {
       url: withAccessTokenQuery(resolveBaseUrl() + url, token),
       timeout: resolveTimeout({ timeout: options.timeout || 180000 }),
       success(res) {
-        if (res.statusCode === 200 && (res.tempFilePath || res.filePath)) {
-          resolve(res.tempFilePath || res.filePath)
+        const local = res.filePath || res.tempFilePath || filePath
+        if (res.statusCode === 200 && local) {
+          resolve(local)
           return
         }
         if (res.statusCode === 401) {
@@ -267,7 +272,9 @@ const downloadToTempFile = (url, options = {}) => {
         }
         reject(err)
       }
-    })
+    }
+    if (filePath) payload.filePath = filePath
+    wx.downloadFile(payload)
   })
 }
 

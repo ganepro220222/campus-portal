@@ -87,6 +87,7 @@ public class ResourceService {
         m.put("fileType", resource.getFileType());
         m.put("name", resource.getName());
         m.put("id", id);
+        m.put("fileSizeKb", resource.getFileSizeKb());
         return m;
     }
 

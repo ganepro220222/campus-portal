@@ -443,6 +443,29 @@ function sameOriginFallbackUrl(stored) {
   const next = asset(localized)
   return next && next !== stored ? next : ''
 }
+function loadTextureWithFallback(url, onOk, onErr) {
+  const fallback = sameOriginFallbackUrl(url)
+  const loader = new THREE.TextureLoader()
+  loader.load(url, onOk, undefined, () => {
+    if (fallback && fallback !== url) {
+      loader.load(fallback, onOk, undefined, onErr)
+      return
+    }
+    onErr()
+  })
+}
+function applyPoster(stored) {
+  const href = asset(stored)
+  if (!href) return
+  const el = $('poster')
+  el.style.backgroundImage = `url("${href}")`
+  el.classList.add('on')
+  const fallback = sameOriginFallbackUrl(stored)
+  if (!fallback || fallback === href) return
+  const img = new Image()
+  img.onerror = () => { el.style.backgroundImage = `url("${fallback}")` }
+  img.src = href
+}
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
 /** Safari / 微信 / iOS 全系 WebKit（含 Edge·Chrome·Telegram 内置）：延迟全景 PMREM，8042→2048。 */
 function isStrictWebKitHost() {
@@ -1105,12 +1128,12 @@ function prefetchPanoramaTexture(url) {
   if (envPanoPrefetch?.url === url) return envPanoPrefetch.promise
   panoDiagEvent('pano:prefetch-start', { url })
   const promise = new Promise((resolve, reject) => {
-    new THREE.TextureLoader().load(url, tex => {
+    loadTextureWithFallback(url, tex => {
       tex.mapping = THREE.EquirectangularReflectionMapping
       tex.colorSpace = THREE.SRGBColorSpace
       panoDiagEvent('pano:prefetch-done', { w: tex.image?.width, h: tex.image?.height })
       resolve(tex)
-    }, undefined, reject)
+    }, reject)
   })
   envPanoPrefetch = { url, promise }
   return promise
@@ -1159,7 +1182,7 @@ function panoramaIBL(url, opts = {}) {
       prefetched.promise.then(tex => finishOk(tex)).catch(finishErr)
       return
     }
-    new THREE.TextureLoader().load(url, finishOk, undefined, finishErr)
+    loadTextureWithFallback(url, finishOk, finishErr)
   })
   envPanoInflight = entry
   return entry.promise
@@ -1653,7 +1676,11 @@ function buildAudio(){
 }
 function selectTrack(i, play){
   const el = $('au-el'), tr = auTracks[i]; if(!tr) return
-  if (i !== auIndex){ el.src = asset(tr.src); auIndex = i }
+  if (i !== auIndex){
+    el.removeAttribute('data-sy-fallback')
+    el.src = asset(tr.src)
+    auIndex = i
+  }
   const sel = $('au-sel'); if(!sel.hasAttribute('hidden')) sel.value = String(i)
   const name = $('au-name'); if(!name.hasAttribute('hidden')) name.textContent = tr.label || '语音讲解'
   if (play){ el.play().catch(()=>{}) } else { auIcon(false); $('au-prog').style.width='0%'; $('au-time').textContent='0:00' }
@@ -1699,6 +1726,14 @@ function wireAudio(){
   }
   $('au-collapse').onclick = () => setAudioMini(true)
   el.onplay = ()=>auIcon(true); el.onpause = ()=>auIcon(false); el.onended = ()=>{ auIcon(false); $('au-prog').style.width='0%' }
+  el.onerror = () => {
+    if (el.dataset.syFallback === '1') return
+    const tr = auTracks[auIndex]
+    const fallback = tr ? sameOriginFallbackUrl(tr.src) : ''
+    if (!fallback) return
+    el.dataset.syFallback = '1'
+    el.src = fallback
+  }
   el.ontimeupdate = ()=>{ const p = el.duration ? el.currentTime/el.duration*100 : 0; $('au-prog').style.width=p+'%'; $('au-time').textContent=auFmt(el.currentTime) }
   $('au-bar').onclick = e => { if(!el.duration) return; const r=$('au-bar').getBoundingClientRect(); el.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*el.duration }
 }
@@ -2190,7 +2225,7 @@ async function boot() {
     if (!cfg?.assets?.model) { failPlayer('配置无效：缺少 assets.model（'+BASE+'config.json 未正确返回展品数据）', true); return }
     if (!initRenderer()) { failPlayer('当前浏览器不支持 3D 展示，请更换浏览器或升级微信', false); return }
     document.title = t(cfg.i18n).title || '立体鉴赏'
-    if (cfg.assets.poster) { $('poster').style.backgroundImage=`url("${asset(cfg.assets.poster)}")`; $('poster').classList.add('on') }
+    if (cfg.assets.poster) applyPoster(cfg.assets.poster)
     if (editMode) $('ed-badge').removeAttribute('hidden')
     start()
   }

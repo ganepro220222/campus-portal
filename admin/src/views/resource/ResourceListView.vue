@@ -120,7 +120,7 @@
             accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mp3"
             upload-label="上传文件"
             done-text="文件已上传"
-            hint="支持 PDF、Word、PPT、MP4、MP3；上传后自动识别格式和大小"
+            hint="支持 PDF、Word、PPT、MP4、MP3。小程序内打开建议 30MB 以内；更大文件请用外链。"
             @uploaded="onResourceFileUploaded"
           />
         </el-form-item>

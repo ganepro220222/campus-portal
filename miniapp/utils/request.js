@@ -230,6 +230,40 @@ const getArrayBuffer = (url, options = {}) => {
   })
 }
 
+/** GET 文件落到微信临时路径，不经过 JS ArrayBuffer。downloadFile 合法域名须含 API 主机。 */
+const downloadToTempFile = (url, options = {}) => {
+  const silent = options.silent === true
+  return new Promise((resolve, reject) => {
+    const token = resolveToken()
+    wx.downloadFile({
+      url: resolveBaseUrl() + url,
+      timeout: resolveTimeout({ timeout: options.timeout || 180000 }),
+      header: { Authorization: token ? ('Bearer ' + token) : '' },
+      success(res) {
+        if (res.statusCode === 200 && (res.tempFilePath || res.filePath)) {
+          resolve(res.tempFilePath || res.filePath)
+          return
+        }
+        if (res.statusCode === 401) {
+          logoutIfNeeded(url)
+          if (!silent) {
+            wx.showToast({ title: '请先登录', icon: 'none', duration: 2500 })
+          }
+        } else if (!silent) {
+          wx.showToast({ title: '文件下载失败', icon: 'none' })
+        }
+        reject(new Error('download-failed'))
+      },
+      fail(err) {
+        if (!silent) {
+          wx.showToast({ title: '网络异常，请检查连接', icon: 'none' })
+        }
+        reject(err)
+      }
+    })
+  })
+}
+
 module.exports = {
   get:    (url, data, options) => request(url, 'GET', data, options),
   post:   (url, data, options) => request(url, 'POST', data, options),
@@ -237,6 +271,7 @@ module.exports = {
   del:    (url, options)       => request(url, 'DELETE', {}, options),
   upload: (url, fp, name, fd, options) => upload(url, fp, name, fd, options),
   getArrayBuffer,
+  downloadToTempFile,
   // 供单测校验：不在模块顶层缓存 getApp()
   _getRuntimeApp: getRuntimeApp,
   _resolveBaseUrl: resolveBaseUrl,

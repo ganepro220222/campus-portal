@@ -56,6 +56,9 @@ try {
   assert.strictEqual(request._resolveRequestData('PUT', body), body, 'PUT 不得剥掉显式 null')
   assert.strictEqual(request._resolveRequestData('POST', body), body, 'POST 不得剥掉显式 null')
 
+  assert.strictEqual(typeof request.downloadToTempFile, 'function')
+  assert.strictEqual(typeof request.getArrayBuffer, 'function')
+
   console.log('[request.test] PASS')
 } finally {
   global.getApp = origGetApp

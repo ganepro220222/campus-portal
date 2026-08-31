@@ -1,11 +1,13 @@
 // utils/resourceDownload.js — 资源下载：调后端记录 + 按类型打开
-const { post, getArrayBuffer } = require('./request')
+const { post, getArrayBuffer, downloadToTempFile } = require('./request')
 const { requireLogin } = require('./auth')
 
 const DOC_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'word'])
 const VIDEO_TYPES = new Set(['mp4', 'mov'])
 const AUDIO_TYPES = new Set(['mp3', 'm4a', 'wav'])
 const OPEN_DOC_EXTS = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])
+/** 仅当 downloadFile 域名未放行、且文件较小，才允许 ArrayBuffer 兜底，避免 50MB PDF 撑爆 JS 堆。 */
+const ARRAYBUFFER_MAX_KB = 8 * 1024
 
 let _audioCtx = null
 
@@ -61,9 +63,23 @@ function writeLocalFile(buffer, ext) {
   })
 }
 
-async function fetchViaApi(resourceId, ext) {
-  const buffer = await getArrayBuffer(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
-  return writeLocalFile(buffer, ext)
+function canUseArrayBufferFallback(fileSizeKb) {
+  const n = Number(fileSizeKb)
+  return Number.isFinite(n) && n > 0 && n <= ARRAYBUFFER_MAX_KB
+}
+
+async function fetchViaApi(resourceId, ext, fileSizeKb) {
+  try {
+    const tmp = await downloadToTempFile(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
+    const named = namedTempPath(tmp, ext)
+    return copyToNamedPath(tmp, named)
+  } catch (e) {
+    if (classifyOpenError(errText(e)) === 'domain' && canUseArrayBufferFallback(fileSizeKb)) {
+      const buffer = await getArrayBuffer(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
+      return writeLocalFile(buffer, ext)
+    }
+    throw e
+  }
 }
 
 function wxDownloadTemp(url) {
@@ -133,7 +149,7 @@ async function tryOpenLocal(path, openType) {
   }
 }
 
-async function openDocument(url, fileType, resourceId) {
+async function openDocument(url, fileType, resourceId, fileSizeKb) {
   const openType = documentOpenType(fileType, url)
   wx.showLoading({ title: '下载中…', mask: true })
   try {
@@ -143,7 +159,7 @@ async function openDocument(url, fileType, resourceId) {
       await tryOpenLocal(tmp, openType)
     } catch (cdnErr) {
       if (!resourceId) throw cdnErr
-      const path = await fetchViaApi(resourceId, openType)
+      const path = await fetchViaApi(resourceId, openType, fileSizeKb)
       wx.hideLoading()
       await tryOpenLocal(path, openType)
     }
@@ -221,13 +237,13 @@ async function openDownloadedResource(data) {
   const rawType = String(data.fileType || '').toLowerCase()
   const fileType = normalizeType(rawType)
   if (DOC_TYPES.has(fileType) || DOC_TYPES.has(rawType)) {
-    await openDocument(url, data.fileType, data.id)
+    await openDocument(url, data.fileType, data.id, data.fileSizeKb)
   } else if (VIDEO_TYPES.has(fileType)) {
     playVideo(url, data.name)
   } else if (AUDIO_TYPES.has(fileType)) {
     playAudio(url, data.name)
   } else {
-    await openDocument(url, data.fileType, data.id)
+    await openDocument(url, data.fileType, data.id, data.fileSizeKb)
   }
 }
 
@@ -262,5 +278,7 @@ module.exports = {
   extFromUrl,
   documentOpenType,
   namedTempPath,
-  classifyOpenError
+  classifyOpenError,
+  canUseArrayBufferFallback,
+  ARRAYBUFFER_MAX_KB
 }

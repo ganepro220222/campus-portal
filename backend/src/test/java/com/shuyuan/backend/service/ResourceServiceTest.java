@@ -81,6 +81,7 @@ class ResourceServiceTest {
 
         assertEquals("pdf", result.get("fileType"));
         assertEquals(RESOURCE_ID, result.get("id"));
+        assertEquals(12, result.get("fileSizeKb"));
         verify(downloadRecordMapper).insert(any(DownloadRecord.class));
         verify(eventLogService).record("download", "resource", RESOURCE_ID);
         verify(pointService).award(MEMBER_ID, "download_resource");
@@ -137,6 +138,7 @@ class ResourceServiceTest {
         resource.setFileUrl("https://cdn.example.com/test.pdf");
         resource.setPreviewUrl("https://cdn.example.com/test.pdf");
         resource.setFileType("pdf");
+        resource.setFileSizeKb(12);
         resource.setStatus(1);
         resource.setDownloadCount(10);
         return resource;

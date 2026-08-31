@@ -8,7 +8,9 @@ const {
   extFromUrl,
   documentOpenType,
   namedTempPath,
-  classifyOpenError
+  classifyOpenError,
+  canUseArrayBufferFallback,
+  ARRAYBUFFER_MAX_KB
 } = require('./resourceDownload')
 
 assert.strictEqual(normalizeType('word'), 'doc')
@@ -43,5 +45,13 @@ assert.strictEqual(namedTempPath('', 'pdf'), '')
 assert.strictEqual(classifyOpenError('downloadFile:fail url not in domain list'), 'domain')
 assert.strictEqual(classifyOpenError('downloadFile:fail timeout'), 'download')
 assert.strictEqual(classifyOpenError('openDocument:fail filetype not supported'), 'open')
+
+assert.strictEqual(canUseArrayBufferFallback(100), true)
+assert.strictEqual(canUseArrayBufferFallback(8 * 1024), true)
+assert.strictEqual(canUseArrayBufferFallback(8 * 1024 + 1), false)
+assert.strictEqual(canUseArrayBufferFallback(50 * 1024), false)
+assert.strictEqual(canUseArrayBufferFallback(0), false)
+assert.strictEqual(canUseArrayBufferFallback(undefined), false)
+assert.ok(ARRAYBUFFER_MAX_KB <= 8 * 1024)
 
 console.log('[resourceDownload.test] PASS')

@@ -62,6 +62,13 @@ class OssServiceTest {
     }
 
     @Test
+    void writeObject_rejectsWhenDisabled() {
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.writeObject("files/a.pdf", null));
+        assertEquals(503, ex.getCode());
+    }
+
+    @Test
     void signTrustedVideoUrlForAsr_rejectsWhenDisabled() {
         var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
                 () -> ossService.signTrustedVideoUrlForAsr("videos/demo.mp4"));

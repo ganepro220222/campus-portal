@@ -2,6 +2,7 @@ package com.shuyuan.backend.controller.api;
 
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.service.ResourceService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,5 +33,10 @@ public class ResourceController {
     @PostMapping("/{id}/download")
     public Result<Map<String, Object>> download(@PathVariable Long id) {
         return Result.ok(resourceService.download(id));
+    }
+
+    @GetMapping("/{id}/file")
+    public void file(@PathVariable Long id, HttpServletResponse response) {
+        resourceService.writeFile(id, response);
     }
 }

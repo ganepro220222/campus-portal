@@ -15,6 +15,7 @@ import com.shuyuan.backend.util.OssManagedObjectKey;
 import com.shuyuan.backend.util.UploadContentInspector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -129,6 +130,47 @@ public class OssService {
             throw e;
         } catch (Exception e) {
             throw new BusinessException(500, "读取字幕失败");
+        } finally {
+            shutdownQuietly(client);
+        }
+    }
+
+    /**
+     * 把私有对象写到 HTTP 响应。小程序 downloadFile 直拉 CDN 会被客户端误报域名未配置，资料改走 API。
+     */
+    public void writeObject(String stored, HttpServletResponse response) {
+        if (!StringUtils.hasText(stored)) {
+            throw new BusinessException(400, "文件地址无效");
+        }
+        if (!isEnabled()) {
+            throw new BusinessException(503, "对象存储未配置，无法读取文件");
+        }
+        String objectKey = resolveObjectKey(stored.trim());
+        if (!StringUtils.hasText(objectKey)) {
+            throw new BusinessException(400, "文件地址无效");
+        }
+        OSS client = null;
+        try {
+            client = buildTransferClient();
+            OSSObject object = client.getObject(ossProperties.getBucket(), objectKey);
+            var meta = object.getObjectMetadata();
+            String contentType = meta != null ? meta.getContentType() : null;
+            response.setContentType(StringUtils.hasText(contentType) ? contentType : "application/octet-stream");
+            if (meta != null && meta.getContentLength() > 0) {
+                response.setContentLengthLong(meta.getContentLength());
+            }
+            String name = objectKey.contains("/")
+                    ? objectKey.substring(objectKey.lastIndexOf('/') + 1)
+                    : objectKey;
+            response.setHeader("Content-Disposition", "inline; filename=\"" + name + "\"");
+            try (InputStream in = object.getObjectContent()) {
+                in.transferTo(response.getOutputStream());
+                response.flushBuffer();
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(500, "读取文件失败");
         } finally {
             shutdownQuietly(client);
         }

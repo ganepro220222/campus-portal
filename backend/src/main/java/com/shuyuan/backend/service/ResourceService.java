@@ -8,6 +8,7 @@ import com.shuyuan.backend.entity.Resource;
 import com.shuyuan.backend.mapper.DownloadRecordMapper;
 import com.shuyuan.backend.mapper.ResourceMapper;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -85,7 +86,18 @@ public class ResourceService {
         m.put("previewUrl", ossService.signMediaUrl(resource.getPreviewUrl()));
         m.put("fileType", resource.getFileType());
         m.put("name", resource.getName());
+        m.put("id", id);
         return m;
+    }
+
+    /** 登录后按资源 ID 读文件字节（不重复记下载次数） */
+    public void writeFile(Long id, HttpServletResponse response) {
+        requireMemberId();
+        Resource resource = requireResource(id);
+        if (!StringUtils.hasText(resource.getFileUrl())) {
+            throw new BusinessException(404, "文件不存在");
+        }
+        ossService.writeObject(resource.getFileUrl(), response);
     }
 
     private Resource requireResource(Long id) {

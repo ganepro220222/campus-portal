@@ -80,11 +80,31 @@ class ResourceServiceTest {
         Map<String, Object> result = resourceService.download(RESOURCE_ID);
 
         assertEquals("pdf", result.get("fileType"));
+        assertEquals(RESOURCE_ID, result.get("id"));
         verify(downloadRecordMapper).insert(any(DownloadRecord.class));
         verify(eventLogService).record("download", "resource", RESOURCE_ID);
         verify(pointService).award(MEMBER_ID, "download_resource");
         verify(resourceMapper).incrDownloadCount(RESOURCE_ID);
         verify(resourceMapper, never()).updateById(any(Resource.class));
+    }
+
+    @Test
+    void writeFile_requiresLogin() {
+        MemberContext.clear();
+        var ex = assertThrows(BusinessException.class, () -> resourceService.writeFile(RESOURCE_ID, null));
+        assertEquals(401, ex.getCode());
+        verifyNoInteractions(ossService);
+    }
+
+    @Test
+    void writeFile_streamsPublishedResource() {
+        Resource resource = activeResource();
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(resource);
+
+        resourceService.writeFile(RESOURCE_ID, null);
+
+        verify(ossService).writeObject(resource.getFileUrl(), null);
+        verify(downloadRecordMapper, never()).insert(any(DownloadRecord.class));
     }
 
     @Test

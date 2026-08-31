@@ -1,5 +1,5 @@
 // utils/resourceDownload.js — 资源下载：调后端记录 + 按类型打开
-const { post } = require('./request')
+const { post, getArrayBuffer } = require('./request')
 const { requireLogin } = require('./auth')
 
 const DOC_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'word'])
@@ -46,6 +46,24 @@ function namedTempPath(tempPath, ext) {
 function pickUrl(data) {
   if (!data) return ''
   return data.fileUrl || data.previewUrl || ''
+}
+
+function writeLocalFile(buffer, ext) {
+  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
+  const filePath = `${wx.env.USER_DATA_PATH}/res_${Date.now()}.${safeExt}`
+  return new Promise((resolve, reject) => {
+    wx.getFileSystemManager().writeFile({
+      filePath,
+      data: buffer,
+      success: () => resolve(filePath),
+      fail: reject
+    })
+  })
+}
+
+async function fetchViaApi(resourceId, ext) {
+  const buffer = await getArrayBuffer(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
+  return writeLocalFile(buffer, ext)
 }
 
 function wxDownloadTemp(url) {
@@ -105,19 +123,29 @@ function classifyOpenError(msg) {
   return 'open'
 }
 
-async function openDocument(url, fileType) {
+async function tryOpenLocal(path, openType) {
+  try {
+    await wxOpenDocument(path, openType)
+  } catch (first) {
+    const named = namedTempPath(path, openType)
+    const copied = await copyToNamedPath(path, named).catch(() => path)
+    await wxOpenDocument(copied, openType).catch(() => wxOpenDocument(copied))
+  }
+}
+
+async function openDocument(url, fileType, resourceId) {
   const openType = documentOpenType(fileType, url)
   wx.showLoading({ title: '下载中…', mask: true })
   try {
-    // iOS：openDocument 只认 downloadFile 的临时路径，指定 USER_DATA_PATH 会失败。
-    const tmp = await wxDownloadTemp(url)
-    wx.hideLoading()
     try {
-      await wxOpenDocument(tmp, openType)
-    } catch (first) {
-      const named = namedTempPath(tmp, openType)
-      const path = await copyToNamedPath(tmp, named).catch(() => tmp)
-      await wxOpenDocument(path, openType).catch(() => wxOpenDocument(path))
+      const tmp = await wxDownloadTemp(url)
+      wx.hideLoading()
+      await tryOpenLocal(tmp, openType)
+    } catch (cdnErr) {
+      if (!resourceId) throw cdnErr
+      const path = await fetchViaApi(resourceId, openType)
+      wx.hideLoading()
+      await tryOpenLocal(path, openType)
     }
     wx.showToast({ title: '已打开', icon: 'success' })
   } catch (e) {
@@ -126,19 +154,12 @@ async function openDocument(url, fileType) {
     const kind = classifyOpenError(msg)
     if (kind === 'download') {
       wx.showToast({ title: '文件下载失败，请检查网络后重试', icon: 'none' })
-    } else if (kind === 'domain') {
-      wx.showModal({
-        title: '无法打开文件',
-        content: '微信未允许小程序直接下载该文件。可先复制链接，用手机浏览器打开。',
-        confirmText: '复制链接',
-        success(res) {
-          if (res.confirm) copyUrlFallback(url, '')
-        }
-      })
     } else {
       wx.showModal({
         title: '无法打开文件',
-        content: '微信无法预览该文档。可复制链接到手机浏览器打开。',
+        content: kind === 'domain'
+          ? '微信未能直接下载该文件。可先复制链接，用手机浏览器打开。'
+          : '微信无法预览该文档。可复制链接到手机浏览器打开。',
         confirmText: '复制链接',
         success(res) {
           if (res.confirm) copyUrlFallback(url, '')
@@ -200,13 +221,13 @@ async function openDownloadedResource(data) {
   const rawType = String(data.fileType || '').toLowerCase()
   const fileType = normalizeType(rawType)
   if (DOC_TYPES.has(fileType) || DOC_TYPES.has(rawType)) {
-    await openDocument(url, data.fileType)
+    await openDocument(url, data.fileType, data.id)
   } else if (VIDEO_TYPES.has(fileType)) {
     playVideo(url, data.name)
   } else if (AUDIO_TYPES.has(fileType)) {
     playAudio(url, data.name)
   } else {
-    await openDocument(url, data.fileType)
+    await openDocument(url, data.fileType, data.id)
   }
 }
 
@@ -220,7 +241,7 @@ function downloadResource(resourceId, options = {}) {
   requireLogin(async () => {
     try {
       const data = await post(`/resources/${resourceId}/download`, {})
-      await openDownloadedResource(data)
+      await openDownloadedResource({ ...data, id: resourceId })
       if (typeof options.onRecorded === 'function') {
         options.onRecorded(data)
       }

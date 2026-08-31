@@ -3,7 +3,12 @@
  * 运行：node miniapp/utils/resourceDownload.test.js
  */
 const assert = require('assert')
-const { normalizeType, extFromUrl, documentOpenType } = require('./resourceDownload')
+const {
+  normalizeType,
+  extFromUrl,
+  documentOpenType,
+  namedTempPath
+} = require('./resourceDownload')
 
 assert.strictEqual(normalizeType('word'), 'doc')
 assert.strictEqual(normalizeType('PDF'), 'pdf')
@@ -29,5 +34,9 @@ assert.strictEqual(
   'pdf'
 )
 assert.strictEqual(documentOpenType('word', ''), 'docx')
+
+assert.strictEqual(namedTempPath('wxfile://tmp_abc', 'docx'), 'wxfile://tmp_abc.docx')
+assert.strictEqual(namedTempPath('wxfile://tmp_abc.pdf', 'pdf'), 'wxfile://tmp_abc.pdf')
+assert.strictEqual(namedTempPath('', 'pdf'), '')
 
 console.log('[resourceDownload.test] PASS')

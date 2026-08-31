@@ -35,22 +35,27 @@ function documentOpenType(fileType, url) {
   return 'pdf'
 }
 
+function namedTempPath(tempPath, ext) {
+  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
+  const src = String(tempPath || '')
+  if (!src) return ''
+  if (src.toLowerCase().endsWith('.' + safeExt)) return src
+  return src + '.' + safeExt
+}
+
 function pickUrl(data) {
   if (!data) return ''
   return data.fileUrl || data.previewUrl || ''
 }
 
-function wxDownload(url, ext) {
-  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
-  const filePath = `${wx.env.USER_DATA_PATH}/res_${Date.now()}.${safeExt}`
+function wxDownloadTemp(url) {
   return new Promise((resolve, reject) => {
     wx.downloadFile({
       url,
-      filePath,
       timeout: 180000,
       success(res) {
-        if (res.statusCode === 200) {
-          resolve(res.filePath || filePath)
+        if (res.statusCode === 200 && (res.tempFilePath || res.filePath)) {
+          resolve(res.tempFilePath || res.filePath)
         } else {
           reject(new Error('download-failed'))
         }
@@ -60,29 +65,67 @@ function wxDownload(url, ext) {
   })
 }
 
+function copyToNamedPath(src, dest) {
+  return new Promise((resolve, reject) => {
+    if (!src || src === dest) {
+      resolve(src)
+      return
+    }
+    wx.getFileSystemManager().copyFile({
+      srcPath: src,
+      destPath: dest,
+      success: () => resolve(dest),
+      fail: reject
+    })
+  })
+}
+
+function wxOpenDocument(filePath, fileType) {
+  return new Promise((resolve, reject) => {
+    const payload = {
+      filePath,
+      showMenu: true,
+      success: resolve,
+      fail: reject
+    }
+    if (fileType) payload.fileType = fileType
+    wx.openDocument(payload)
+  })
+}
+
+function errText(e) {
+  return String((e && e.errMsg) || (e && e.message) || e || '')
+}
+
 async function openDocument(url, fileType) {
   const openType = documentOpenType(fileType, url)
   wx.showLoading({ title: '下载中…', mask: true })
   try {
-    const path = await wxDownload(url, openType)
+    // iOS：openDocument 只认 downloadFile 的临时路径，指定 USER_DATA_PATH 会失败。
+    const tmp = await wxDownloadTemp(url)
     wx.hideLoading()
-    await new Promise((resolve, reject) => {
-      wx.openDocument({
-        filePath: path,
-        fileType: openType,
-        showMenu: true,
-        success: resolve,
-        fail: reject
-      })
-    })
+    try {
+      await wxOpenDocument(tmp, openType)
+    } catch (first) {
+      const named = namedTempPath(tmp, openType)
+      const path = await copyToNamedPath(tmp, named).catch(() => tmp)
+      await wxOpenDocument(path, openType).catch(() => wxOpenDocument(path))
+    }
     wx.showToast({ title: '已打开', icon: 'success' })
   } catch (e) {
     wx.hideLoading()
-    const msg = String((e && e.errMsg) || e.message || '')
+    const msg = errText(e)
     if (/download-failed|fail.*download|timeout/i.test(msg)) {
       wx.showToast({ title: '文件下载失败，请检查网络后重试', icon: 'none' })
     } else {
-      wx.showToast({ title: '无法打开文件，请用手机打开', icon: 'none' })
+      wx.showModal({
+        title: '无法打开文件',
+        content: '文件已下载，但微信预览失败。可复制链接到手机浏览器打开。\n' + (msg || ''),
+        confirmText: '复制链接',
+        success(res) {
+          if (res.confirm) copyUrlFallback(url, '')
+        }
+      })
     }
     throw e
   }
@@ -178,5 +221,6 @@ module.exports = {
   openDownloadedResource,
   normalizeType,
   extFromUrl,
-  documentOpenType
+  documentOpenType,
+  namedTempPath
 }

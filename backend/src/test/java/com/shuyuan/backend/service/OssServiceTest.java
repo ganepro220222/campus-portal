@@ -146,6 +146,13 @@ class OssServiceTest {
     }
 
     @Test
+    void deleteObjectQuietly_skipsWhenDisabledOrUnmanaged() {
+        assertFalse(ossService.deleteObjectQuietly("videos/202608/a.mp4"));
+        assertFalse(ossService.deleteObjectQuietly("craft-demo/model.glb"));
+        assertFalse(ossService.deleteObjectQuietly("exhibits/hall/a.jpg"));
+    }
+
+    @Test
     void upload_rejectsResourceFilePhp_whenEnabled() {
         when(ossProperties.isEnabled()).thenReturn(true);
         when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-test.aliyuncs.com");

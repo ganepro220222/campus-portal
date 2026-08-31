@@ -21,6 +21,8 @@ class AdminCollegeAppServiceTest {
     private CollegeAppMapper collegeAppMapper;
     @Mock
     private AdminPermissionService adminPermissionService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     @InjectMocks
     private AdminCollegeAppService adminCollegeAppService;

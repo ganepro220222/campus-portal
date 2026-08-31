@@ -43,6 +43,8 @@ class KnowledgeServiceTest {
     private KnowledgeChunkMapper knowledgeChunkMapper;
     @Mock
     private AdminPermissionService adminPermissionService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     private KnowledgeService knowledgeService;
 
@@ -50,7 +52,7 @@ class KnowledgeServiceTest {
     void setUp() {
         lenient().doNothing().when(adminPermissionService).require("admin:super");
         knowledgeService = new KnowledgeService(
-                knowledgeDocMapper, knowledgeChunkMapper, adminPermissionService);
+                knowledgeDocMapper, knowledgeChunkMapper, adminPermissionService, ossMediaCleanupService);
     }
 
     @Test

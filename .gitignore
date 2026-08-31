@@ -79,6 +79,8 @@ exhibits/模型转换/*.spec
 # 部署脚本的备份（保留 5 份轮转）与工作台实际端口，都是运行期产物
 /_deploy_backup/
 exhibits/_runtime/studio-port.txt
+# push-staging-editor 每次现打的包，勿入库，免得旧包盖掉线上修复
+exhibits/_staging-editor-pack/
 
 # build-viewer.mjs --upload 临时目录（进程号后缀，成功后会自动删）
 /exhibits-upload.staging-*/

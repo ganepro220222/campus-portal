@@ -24,6 +24,7 @@ public class AdminActivityService {
     private final ActivityMapper activityMapper;
     private final AdminPermissionService adminPermissionService;
     private final EnrollService enrollService;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public PageResult<Map<String, Object>> list(String status, int page, int size) {
         adminPermissionService.require("enroll:read");
@@ -59,9 +60,12 @@ public class AdminActivityService {
         if ("cancelled".equals(activity.getStatus())) {
             throw new BusinessException(400, "已取消的活动不可编辑");
         }
+        String oldCover = activity.getCover();
         fromRequest(activity, req);
         activityMapper.updateById(activity);
-        return toVo(activityMapper.selectById(id));
+        Activity saved = activityMapper.selectById(id);
+        ossMediaCleanupService.afterReplace(oldCover, saved.getCover());
+        return toVo(saved);
     }
 
     @Transactional

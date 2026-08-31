@@ -36,6 +36,7 @@ public class AdminCourseService {
     private final SearchIndexSyncService searchIndexSyncService;
     private final AsrService asrService;
     private final OssService ossService;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public PageResult<Map<String, Object>> list(Long categoryId, Integer status, int page, int size) {
         adminPermissionService.require("course:read");
@@ -85,6 +86,9 @@ public class AdminCourseService {
     public Map<String, Object> update(Long id, CourseSaveRequest req) {
         adminPermissionService.require("course:write");
         Course course = requireCourse(id);
+        String oldCover = course.getCover();
+        String oldVideo = course.getVideoUrl();
+        String oldSubtitle = course.getSubtitleUrl();
         fromRequest(course, req);
         if (course.getSubtitleUrl() != null && !course.getSubtitleUrl().isBlank()) {
             course.setSubtitleStatus("ready");
@@ -93,6 +97,9 @@ public class AdminCourseService {
         syncResources(id, req.getResourceIds());
         Course saved = courseMapper.selectById(id);
         syncSearchIfOnline(saved);
+        ossMediaCleanupService.afterReplace(oldCover, saved.getCover());
+        ossMediaCleanupService.afterReplace(oldVideo, saved.getVideoUrl());
+        ossMediaCleanupService.afterReplace(oldSubtitle, saved.getSubtitleUrl());
         return detail(id);
     }
 
@@ -168,15 +175,17 @@ public class AdminCourseService {
     @Transactional
     public Map<String, Object> updateSubtitle(Long id, SubtitleUpdateRequest req) {
         adminPermissionService.require("course:write");
-        requireCourse(id);
+        Course existing = requireCourse(id);
         if (req == null || req.getSubtitleUrl() == null || req.getSubtitleUrl().isBlank()) {
             throw new BusinessException(400, "字幕地址不能为空");
         }
+        String newUrl = req.getSubtitleUrl().trim();
         Course update = new Course();
         update.setId(id);
-        update.setSubtitleUrl(req.getSubtitleUrl().trim());
+        update.setSubtitleUrl(newUrl);
         update.setSubtitleStatus("ready");
         courseMapper.updateById(update);
+        ossMediaCleanupService.afterReplace(existing.getSubtitleUrl(), newUrl);
         return subtitleStatus(id);
     }
 

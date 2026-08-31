@@ -26,4 +26,15 @@ public class OssProperties {
     private int mediaSignExpireSeconds = 900;
     /** 后台中转上传单文件上限（字节），默认 200MB */
     private long maxUploadBytes = 200L * 1024 * 1024;
+    /** 孤儿对象最短存活小时数，避免删掉已上传尚未点保存的文件 */
+    private int orphanMinAgeHours = 48;
+    /**
+     * 是否启用每日孤儿扫描。默认关闭：扫桶是唯一「主动找对象删」的路径，
+     * 引用扫描若漏了某张新表就会误删在用素材，须在预发验证一二期后再显式开启。
+     */
+    private boolean orphanSweepEnabled = false;
+    /**
+     * 单轮最多删除的孤儿数。超过则整轮中止并打 error，防止引用扫描异常时误清桶。
+     */
+    private int orphanSweepMaxDeletes = 80;
 }

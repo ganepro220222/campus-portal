@@ -51,6 +51,8 @@ class AdminCourseServiceSubtitleTest {
     private AsrService asrService;
     @Mock
     private OssService ossService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     @InjectMocks
     private AdminCourseService adminCourseService;

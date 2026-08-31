@@ -43,12 +43,15 @@ class RecycleBinServiceTest {
     private DangerousActionGuard dangerousActionGuard;
     @Mock
     private AdminAnnouncementService adminAnnouncementService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     @InjectMocks
     private RecycleBinService recycleBinService;
 
     private void deletedRow(String table, String nameCol, long id, String name) {
         when(recycleBinMapper.findDeletedName(eq(table), eq(nameCol), eq(id))).thenReturn(name);
+        when(ossMediaCleanupService.collectStoredFor(anyString(), anyLong())).thenReturn(List.of());
     }
 
     // ---------- LOW：无引用，二次确认即可 ----------
@@ -74,6 +77,8 @@ class RecycleBinServiceTest {
 
         verify(dangerousActionGuard, never()).verifyCurrentAdminPassword(any());
         verify(recycleBinMapper).purge("nav_item", 2L);
+        verify(ossMediaCleanupService).collectStoredFor("nav_item", 2L);
+        verify(ossMediaCleanupService).releaseStored(any());
     }
 
     /** 公告 / Banner 这类配置项在小程序端不可收藏点赞，不该白跑两条 count */
@@ -136,6 +141,8 @@ class RecycleBinServiceTest {
         verify(recycleBinMapper).purgeFavorite("activity", 10L);
         verify(recycleBinMapper).purgeLike("activity", 10L);
         verify(recycleBinMapper).purge("activity", 10L);
+        verify(ossMediaCleanupService).collectStoredFor("activity", 10L);
+        verify(ossMediaCleanupService).releaseStored(any());
     }
 
     @Test
@@ -149,6 +156,7 @@ class RecycleBinServiceTest {
 
         verify(recycleBinMapper, never()).purge(anyString(), anyLong());
         verify(recycleBinMapper, never()).purgeCourseProgress(anyLong());
+        verify(ossMediaCleanupService, never()).releaseStored(any());
     }
 
     // ---------- BLOCKED：结构性依赖，先迁走再删 ----------

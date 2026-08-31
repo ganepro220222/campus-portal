@@ -28,6 +28,8 @@ class AdminActivityServiceTest {
     private AdminPermissionService adminPermissionService;
     @Mock
     private EnrollService enrollService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     @InjectMocks
     private AdminActivityService adminActivityService;

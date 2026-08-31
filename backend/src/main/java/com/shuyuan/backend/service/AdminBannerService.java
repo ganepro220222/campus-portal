@@ -22,6 +22,7 @@ public class AdminBannerService {
     private final BannerMapper bannerMapper;
     private final AdminPermissionService adminPermissionService;
     private final BannerLinkPolicy bannerLinkPolicy;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public PageResult<Map<String, Object>> list(int page, int size) {
         adminPermissionService.require("admin:super");
@@ -43,9 +44,12 @@ public class AdminBannerService {
         adminPermissionService.require("admin:super");
         bannerLinkPolicy.validate(req.getLinkType(), req.getLinkValue());
         Banner existing = requireBanner(id);
+        String oldImage = existing.getImageUrl();
         applyRequest(existing, req);
         bannerMapper.updateById(existing);
-        return toVo(bannerMapper.selectById(id));
+        Banner saved = bannerMapper.selectById(id);
+        ossMediaCleanupService.afterReplace(oldImage, saved.getImageUrl());
+        return toVo(saved);
     }
 
     public void delete(Long id) {

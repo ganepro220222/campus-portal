@@ -31,6 +31,8 @@ class AdminNewsServiceTest {
     private AdminPermissionService adminPermissionService;
     @Mock
     private SearchIndexSyncService searchIndexSyncService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     @InjectMocks
     private AdminNewsService adminNewsService;

@@ -36,6 +36,7 @@ public class KnowledgeService {
     private final KnowledgeDocMapper knowledgeDocMapper;
     private final KnowledgeChunkMapper knowledgeChunkMapper;
     private final AdminPermissionService adminPermissionService;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public PageResult<Map<String, Object>> listDocs(int page, int size) {
         adminPermissionService.require("admin:super");
@@ -202,9 +203,17 @@ public class KnowledgeService {
     @Transactional
     public void deleteDoc(Long id) {
         adminPermissionService.require("admin:super");
-        requireDoc(id);
+        KnowledgeDoc doc = requireDoc(id);
+        List<String> media = new ArrayList<>();
+        if (doc.getFileUrl() != null) {
+            media.add(doc.getFileUrl());
+        }
+        if (doc.getContent() != null) {
+            media.add(doc.getContent());
+        }
         knowledgeChunkMapper.delete(new LambdaQueryWrapper<KnowledgeChunk>().eq(KnowledgeChunk::getDocId, id));
         knowledgeDocMapper.deleteById(id);
+        ossMediaCleanupService.releaseStored(media);
     }
 
     /** 检索知识片段：关键词匹配打分，取 topK */

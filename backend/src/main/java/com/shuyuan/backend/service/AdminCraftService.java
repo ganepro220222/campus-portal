@@ -34,6 +34,7 @@ public class AdminCraftService {
     private final CategoryService categoryService;
     private final AdminPermissionService adminPermissionService;
     private final SearchIndexSyncService searchIndexSyncService;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public PageResult<Map<String, Object>> list(Long categoryId, Integer status, int page, int size) {
         adminPermissionService.require("hall:read");
@@ -85,6 +86,8 @@ public class AdminCraftService {
     public Map<String, Object> update(Long id, CraftSaveRequest req) {
         adminPermissionService.require("hall:write");
         Craft craft = requireCraft(id);
+        String oldCover = craft.getCover();
+        List<String> oldImages = req.getImages() != null ? listImageUrls(id) : List.of();
         validateRequest(req);
         fromRequest(craft, req);
         craftMapper.updateById(craft);
@@ -92,6 +95,8 @@ public class AdminCraftService {
         syncContact(id, req.getContact());
         Craft saved = craftMapper.selectById(id);
         syncSearchIfOnline(saved);
+        ossMediaCleanupService.afterReplace(oldCover, saved.getCover());
+        ossMediaCleanupService.releaseStored(oldImages);
         return detail(id);
     }
 
@@ -212,6 +217,15 @@ public class AdminCraftService {
         } else {
             craftContactMapper.insert(contact);
         }
+    }
+
+    private List<String> listImageUrls(Long craftId) {
+        return craftImageMapper.selectList(new LambdaQueryWrapper<CraftImage>()
+                        .eq(CraftImage::getCraftId, craftId))
+                .stream()
+                .map(CraftImage::getImageUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .toList();
     }
 
     private List<Map<String, Object>> listImages(Long craftId) {

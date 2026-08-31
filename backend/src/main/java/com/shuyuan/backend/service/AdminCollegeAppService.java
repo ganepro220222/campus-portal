@@ -23,6 +23,7 @@ public class AdminCollegeAppService {
 
     private final CollegeAppMapper collegeAppMapper;
     private final AdminPermissionService adminPermissionService;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public PageResult<Map<String, Object>> list(int page, int size) {
         adminPermissionService.require("admin:super");
@@ -46,9 +47,12 @@ public class AdminCollegeAppService {
         adminPermissionService.require("admin:super");
         validateRequest(req);
         CollegeApp existing = requireRow(id);
+        String oldIcon = existing.getIconUrl();
         applyRequest(existing, req);
         collegeAppMapper.updateById(existing);
-        return toVo(collegeAppMapper.selectById(id));
+        CollegeApp saved = collegeAppMapper.selectById(id);
+        ossMediaCleanupService.afterReplace(oldIcon, saved.getIconUrl());
+        return toVo(saved);
     }
 
     public void delete(Long id) {

@@ -27,6 +27,7 @@ public class AdminNewsService {
     private final CategoryService categoryService;
     private final AdminPermissionService adminPermissionService;
     private final SearchIndexSyncService searchIndexSyncService;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public PageResult<Map<String, Object>> list(String status, Long categoryId, int page, int size) {
         adminPermissionService.require("news:read");
@@ -64,12 +65,19 @@ public class AdminNewsService {
     public Map<String, Object> update(Long id, NewsSaveRequest req) {
         adminPermissionService.require("news:write");
         News news = requireNews(id);
+        String oldCover = news.getCover();
+        String oldContent = news.getContent();
         fromRequest(news, req);
         newsMapper.updateById(news);
+        News saved = newsMapper.selectById(id);
         if ("published".equals(news.getStatus())) {
-            searchIndexSyncService.syncNews(newsMapper.selectById(id));
+            searchIndexSyncService.syncNews(saved);
         }
-        return toVo(newsMapper.selectById(id), categoryService.nameMap("news"));
+        ossMediaCleanupService.afterReplace(oldCover, saved.getCover());
+        if (oldContent != null && saved.getContent() != null && !oldContent.equals(saved.getContent())) {
+            ossMediaCleanupService.releaseStored(List.of(oldContent));
+        }
+        return toVo(saved, categoryService.nameMap("news"));
     }
 
     @Transactional

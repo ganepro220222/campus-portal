@@ -2,13 +2,18 @@ package com.shuyuan.backend.service;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
+import com.aliyun.oss.model.ListObjectsRequest;
 import com.aliyun.oss.model.OSSObject;
+import com.aliyun.oss.model.OSSObjectSummary;
+import com.aliyun.oss.model.ObjectListing;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.OssProperties;
 import com.shuyuan.backend.util.CourseVideoUrlPolicy;
+import com.shuyuan.backend.util.OssManagedObjectKey;
 import com.shuyuan.backend.util.UploadContentInspector;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,8 +24,10 @@ import java.io.InputStream;
 import java.net.URI;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -29,9 +36,12 @@ import java.util.UUID;
 /**
  * 对象存储：后台上传、签名 URL 下发（私有 Bucket + CDN）
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OssService {
+
+    public record ManagedObject(String key, Date lastModified) {}
 
     private static final Map<String, Set<String>> SCENE_EXTENSIONS = buildSceneExtensions();
 
@@ -222,6 +232,63 @@ public class OssService {
             shutdownQuietly(client);
         }
         return Map.of("url", buildPublicUrl(objectKey), "objectKey", objectKey);
+    }
+
+    /**
+     * 删除后台前缀下的对象。未启用 / 非白名单 / 云端失败都返回 false，不抛给业务。
+     */
+    public boolean deleteObjectQuietly(String objectKey) {
+        if (!OssManagedObjectKey.isManaged(objectKey)) {
+            log.warn("[oss] skip delete unmanaged key={}", objectKey);
+            return false;
+        }
+        if (!isEnabled()) {
+            return false;
+        }
+        OSS client = null;
+        try {
+            client = buildClient();
+            client.deleteObject(ossProperties.getBucket(), objectKey);
+            return true;
+        } catch (Exception e) {
+            log.warn("[oss] delete failed key={}", objectKey, e);
+            return false;
+        } finally {
+            shutdownQuietly(client);
+        }
+    }
+
+    /** 列出后台五个前缀下的对象（不含 craft- / exhibits）。 */
+    public List<ManagedObject> listManagedObjects() {
+        List<ManagedObject> out = new ArrayList<>();
+        if (!isEnabled()) {
+            return out;
+        }
+        OSS client = null;
+        try {
+            client = buildClient();
+            for (String prefix : OssManagedObjectKey.PREFIXES) {
+                String marker = null;
+                do {
+                    ListObjectsRequest req = new ListObjectsRequest(ossProperties.getBucket())
+                            .withPrefix(prefix)
+                            .withMaxKeys(1000);
+                    if (marker != null) {
+                        req.setMarker(marker);
+                    }
+                    ObjectListing listing = client.listObjects(req);
+                    for (OSSObjectSummary summary : listing.getObjectSummaries()) {
+                        if (OssManagedObjectKey.isManaged(summary.getKey())) {
+                            out.add(new ManagedObject(summary.getKey(), summary.getLastModified()));
+                        }
+                    }
+                    marker = listing.isTruncated() ? listing.getNextMarker() : null;
+                } while (marker != null);
+            }
+        } finally {
+            shutdownQuietly(client);
+        }
+        return out;
     }
 
     private void validateExtension(String scene, String ext) {

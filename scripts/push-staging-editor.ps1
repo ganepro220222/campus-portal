@@ -79,6 +79,6 @@ scp -r "$Pack\*" $dest
 if ($LASTEXITCODE -ne 0) { throw "scp failed (exit $LASTEXITCODE)" }
 
 Write-Host "Remote apply..."
-ssh "${User}@${Server}" "bash ${RemoteRepo}/scripts/apply-staging-editor.sh"
+ssh "${User}@${Server}" "set -a; [ -f /etc/shuyuan/studio.env ] && . /etc/shuyuan/studio.env; set +a; bash ${RemoteRepo}/scripts/apply-staging-editor.sh"
 if ($LASTEXITCODE -ne 0) { throw "remote apply failed (exit $LASTEXITCODE)" }
 Write-Host "Done. Open http://${Server}${StudioPrefix}/studio.html"

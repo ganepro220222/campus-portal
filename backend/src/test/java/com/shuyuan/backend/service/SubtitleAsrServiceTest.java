@@ -44,6 +44,8 @@ class SubtitleAsrServiceTest {
     private OssService ossService;
     @Mock
     private ShuyuanProperties shuyuanProperties;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     @InjectMocks
     private SubtitleAsrService subtitleAsrService;
@@ -132,6 +134,7 @@ class SubtitleAsrServiceTest {
         assertSetsColumn(cap.getValue(), "subtitle_url", "subtitles/a.vtt");
         // 就绪时必须抹掉上一轮的失败原因，否则「已就绪」还挂着旧报错
         assertSetsColumn(cap.getValue(), "subtitle_asr_last_error", null);
+        verify(ossMediaCleanupService).afterReplace(null, "subtitles/a.vtt");
     }
 
     @Test

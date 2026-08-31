@@ -876,6 +876,17 @@ async function load() {
   if (!hasApi) { $('bnote').innerHTML = '⚠ 未检测到工作台服务：批量保存需先 <code>node _server/studio-server.mjs</code> 启动。'; }
 }
 // hasModel 只在服务端明确给出时才置 false（未知一律不判「缺模型」，免得静态托管误报）
+/** 上次修过：服务端若再把 CDN 绝对地址拼成 craft-001/https://…，这里剥掉前缀，封面才不会再空。 */
+function publicPosterHref(poster, dir) {
+  let p = String(poster || '').trim()
+  if (!p) return ''
+  const prefix = dir ? `${dir}/` : ''
+  if (prefix && p.startsWith(prefix) && /^(https?:|data:|blob:|\/\/)/.test(p.slice(prefix.length))) {
+    return p.slice(prefix.length)
+  }
+  return p
+}
+
 const normApi = e => ({ dir: e.dir, title: e.title || e.dir, subtitle: e.subtitle || '', hotspots: e.hotspots || 0, audio: e.audio || 0,
   hasPano: !!e.hasPano, usesPanorama: !!e.usesPanorama, envMode: e.envMode || '',
   hasModel: typeof e.hasModel === 'boolean' ? e.hasModel : undefined,
@@ -886,7 +897,7 @@ const normCfg = (dir, cfg, ov) => { const zh = (cfg.i18n && cfg.i18n.zh) || {}; 
   hotspots: (cfg.hotspots || []).length, audio: (cfg.audio || []).length,
   hasPano: false, usesPanorama: false, envMode: env.mode || '',
   panorama: as.panorama || '', envPreset: env.preset || 'room',
-  poster: as.poster ? `${dir}/${as.poster}` : '', mtime: 0 } }
+  poster: as.poster && /^(https?:|data:|blob:|\/\/)/.test(as.poster) ? as.poster : (as.poster ? `${dir}/${as.poster}` : ''), mtime: 0 } }
 async function assetExists(dir, p) {
   const s = String(p || '').trim()
   if (!s) return false
@@ -899,7 +910,7 @@ function render(r) {
   const el = document.createElement('div'); el.className = 'card'; el.dataset.dir = r.dir
   const title = r.title || r.dir
   const subtitle = r.error ? ('⚠️ 读取失败：' + r.error) : (r.subtitle || '')
-  const poster = r.poster || ''
+  const poster = publicPosterHref(r.poster, r.dir)
   const env = esc(envLabel(r))
   const badges = r.error ? '' : `
     <span class="badge">热点 ${r.hotspots || 0}</span>

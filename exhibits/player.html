@@ -425,6 +425,7 @@ import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, 
 import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, PREVIEW_DEVICES, DEFAULT_PREVIEW_DEVICE, previewDevice, framingCoverage, devicePreviewFit, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, resolveRendererQuality } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
+import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -435,6 +436,13 @@ const editMode = params.get('mode') === 'edit'
 const EX = (params.get('ex') || '').replace(/^\/+|\/+$/g, '')
 const BASE = EX ? EX + '/' : ''
 const asset = p => (!p || /^(https?:|data:|blob:|\/\/|\/)/.test(p)) ? p : BASE + p   // 相对路径补展品目录前缀
+/** config 被改成 CDN 绝对地址后，在线编辑器（api 域）拉 GLB 会撞 CORS；盘上文件还在就改回同源。 */
+function sameOriginAssetUrl(stored) {
+  const localized = localizeCdnAsset(stored, EX)
+  if (!localized || localized === stored) return ''
+  const next = asset(localized)
+  return next && next !== stored ? next : ''
+}
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
 /** Safari / 微信 / iOS 全系 WebKit（含 Edge·Chrome·Telegram 内置）：延迟全景 PMREM，8042→2048。 */
 function isStrictWebKitHost() {
@@ -2064,7 +2072,7 @@ function start() {
   }
   buildLights() // 五光源灯组（叠加在 IBL 上，可编辑）
 
-  const modelUrl = asset(cfg.assets.model)
+  const modelUrl = sameOriginAssetUrl(cfg.assets.model) || asset(cfg.assets.model)
   if (!modelUrl) return failPlayer('模型地址无效', true)
 
   const modelTimers = createModelLoadTimers({

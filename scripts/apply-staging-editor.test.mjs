@@ -45,14 +45,16 @@ assert.match(sh, /正式验收须设置 STUDIO_PASS/)
 assert.match(sh, /ALLOW_AUTH_ONLY_PROBE/)
 assert.match(sh, /exit 2/)
 assert.doesNotMatch(sh, /未设 STUDIO_PASS：仅验证 401/)
+assert.match(sh, /detect_probe_origin/, 'must switch to https://127.0.0.1 when HTTP 301s to HTTPS')
+assert.match(sh, /PROBE_ORIGIN/, 'probes must use detected origin, not hardcoded http://127.0.0.1')
 assert.match(
   sh,
-  /probe_html_required "http:\/\/127\.0\.0\.1\$\{STUDIO_PREFIX\}\/studio\.html" "\$\{STUDIO_PREFIX\}\/studio\.html"/,
+  /probe_html_required "\$\{PROBE_ORIGIN\}\$\{STUDIO_PREFIX\}\/studio\.html" "\$\{STUDIO_PREFIX\}\/studio\.html"/,
   'expect_path must follow STUDIO_HTTP_PREFIX',
 )
 assert.match(
   sh,
-  /probe_html_required "http:\/\/127\.0\.0\.1\$\{STUDIO_PREFIX\}\/player\.html" "\$\{STUDIO_PREFIX\}\/player\.html"/,
+  /probe_html_required "\$\{PROBE_ORIGIN\}\$\{STUDIO_PREFIX\}\/player\.html" "\$\{STUDIO_PREFIX\}\/player\.html"/,
   'player expect_path must follow STUDIO_HTTP_PREFIX',
 )
 assert.match(sh, /probe_api_list_requires_unauth/, 'must verify API blocks unauthenticated access')

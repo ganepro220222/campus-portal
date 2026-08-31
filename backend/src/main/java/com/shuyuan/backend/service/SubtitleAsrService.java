@@ -26,6 +26,7 @@ public class SubtitleAsrService {
     private final AsrService asrService;
     private final OssService ossService;
     private final ShuyuanProperties shuyuanProperties;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public void pollProcessingTasks() {
         if (!asrService.isConfigured()) {
@@ -74,12 +75,14 @@ public class SubtitleAsrService {
             return;
         }
         var uploaded = ossService.uploadText("subtitle", "vtt", vtt, "text/vtt; charset=utf-8");
+        String newUrl = uploaded.get("url");
         // 就绪时要抹掉上一轮的失败原因；updateById 跳过 null 字段，只能显式 set
         courseMapper.update(null, new LambdaUpdateWrapper<Course>()
                 .eq(Course::getId, course.getId())
-                .set(Course::getSubtitleUrl, uploaded.get("url"))
+                .set(Course::getSubtitleUrl, newUrl)
                 .set(Course::getSubtitleStatus, "ready")
                 .set(Course::getSubtitleAsrLastError, null));
+        ossMediaCleanupService.afterReplace(course.getSubtitleUrl(), newUrl);
         log.info("[subtitle-asr] 课程 {} 字幕已就绪", course.getId());
     }
 

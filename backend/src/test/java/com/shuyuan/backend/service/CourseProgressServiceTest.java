@@ -289,7 +289,8 @@ class CourseProgressServiceTest {
         existing.setCompleted(0);
         existing.setWatchedSeconds(100);
         existing.setLastReportPositionSeconds(520);
-        existing.setUpdatedAt(LocalDateTime.now().minusSeconds(20));
+        // 20 秒间隔最多认 50 秒进度（2 倍速 + 10 秒缓冲）；70 秒跳跃会被风控拒掉
+        existing.setUpdatedAt(LocalDateTime.now().minusSeconds(40));
 
         when(courseProgressMapper.selectOne(any())).thenReturn(existing);
         doReturn(1).when(courseProgressMapper).updateById(any(CourseProgress.class));

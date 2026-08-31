@@ -33,6 +33,8 @@ class AdminCraftServiceTest {
     private AdminPermissionService adminPermissionService;
     @Mock
     private SearchIndexSyncService searchIndexSyncService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     @InjectMocks
     private AdminCraftService adminCraftService;

@@ -33,6 +33,12 @@ class AdminCourseServiceTest {
     private AdminPermissionService adminPermissionService;
     @Mock
     private SearchIndexSyncService searchIndexSyncService;
+    @Mock
+    private AsrService asrService;
+    @Mock
+    private OssService ossService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     @InjectMocks
     private AdminCourseService adminCourseService;

@@ -150,6 +150,14 @@ function studio_path_inside_root(string $root, string $local): bool {
   return str_starts_with($targetNorm . '/', $rootNorm . '/');
 }
 
+/** 列表封面：http(s) 原样返回，相对路径才加展品目录前缀 */
+function studio_exhibit_public_href(string $dir, ?string $asset): string {
+  $p = trim((string)$asset);
+  if ($p === '') return '';
+  if (preg_match('#^(https?:|data:|blob:|//)#i', $p)) return $p;
+  return rtrim($dir, '/') . '/' . ltrim($p, '/');
+}
+
 /** 通用资源存在性判断（模型 / 全景共用同一套路径解析规则） */
 function studio_has_asset_file(string $root, string $exhibit, ?string $asset): bool {
   $p = trim((string)$asset);
@@ -367,7 +375,7 @@ if ($isList) {
       'hasModel' => studio_has_asset_file($ROOT, $d, $c['assets']['model'] ?? ''),
       'panorama' => $c['assets']['panorama'] ?? '',
       'envPreset' => $c['environment']['preset'] ?? 'room',
-      'poster' => !empty($c['assets']['poster']) ? "$d/" . $c['assets']['poster'] : '',
+      'poster' => studio_exhibit_public_href($d, $c['assets']['poster'] ?? ''),
       'mtime' => filemtime($cp) * 1000,
     ];
   }

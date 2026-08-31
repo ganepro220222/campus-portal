@@ -14,14 +14,17 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EX="$ROOT/exhibits"
 PLAYER="$EX/player.html"
 STUDIO_PREFIX="${STUDIO_HTTP_PREFIX:-/studio}"
-PUBLIC_HOST="${STUDIO_PUBLIC_HOST:-47.109.0.192}"
+PUBLIC_HOST="${STUDIO_PUBLIC_HOST:-api.yunmanvr.com}"
 STUDIO_USER="${STUDIO_USER:-admin}"
 STUDIO_PASS="${STUDIO_PASS:-}"
+PROBE_ORIGIN="${STUDIO_PROBE_ORIGIN:-http://127.0.0.1}"
 PROBE_FAIL=0
 STUDIO_HTML_OK=0
 PLAYER_HTML_OK=0
 API_OK=0
 
+# 本机 HTTP 常 301 到 https://api.yunmanvr.com；curl -L 跨主机会丢掉 Authorization → 假 401。
+CURL_COMMON=()
 CURL_AUTH=()
 if [ -n "$STUDIO_PASS" ]; then
   CURL_AUTH=(-u "${STUDIO_USER}:${STUDIO_PASS}")
@@ -29,6 +32,19 @@ elif [ "${ALLOW_AUTH_ONLY_PROBE:-0}" != "1" ]; then
   echo "错误: 正式验收须设置 STUDIO_PASS（仅测 Basic Auth 可用 ALLOW_AUTH_ONLY_PROBE=1）" >&2
   exit 1
 fi
+
+detect_probe_origin() {
+  local loc
+  loc="$(curl -sSI --max-redirs 0 "http://127.0.0.1${STUDIO_PREFIX}/studio.html" 2>/dev/null \
+    | awk 'BEGIN{IGNORECASE=1} /^Location:/{print $2; exit}' | tr -d '\r')"
+  if [[ "${loc}" == https://* ]]; then
+    PROBE_ORIGIN="https://127.0.0.1"
+    CURL_COMMON=(-k)
+    echo "HTTP 被 301 到 ${loc}，探测改用 ${PROBE_ORIGIN}（curl -k，避免跨主机丢掉 Basic Auth）"
+  else
+    echo "探测源 ${PROBE_ORIGIN}"
+  fi
+}
 
 echo "=== apply-staging-editor @ $ROOT ==="
 
@@ -45,7 +61,7 @@ wait_studio_upstream() {
   local timeout="${STUDIO_READY_TIMEOUT:-30}"
   local interval=1 elapsed=0 code=000
   while [ "$elapsed" -lt "$timeout" ]; do
-    code="$(curl -sS -o /dev/null -w '%{http_code}' "${CURL_AUTH[@]}" "$url" 2>/dev/null || echo "000")"
+    code="$(curl -sS "${CURL_COMMON[@]}" -o /dev/null -w '%{http_code}' "${CURL_AUTH[@]}" "$url" 2>/dev/null || echo "000")"
     case "$code" in
       200|401)
         echo "studio 上游就绪（${url} → HTTP/${code}，${elapsed}s）"
@@ -63,7 +79,8 @@ if systemctl is-active --quiet studio-server 2>/dev/null; then
   echo "studio-server 运行中：__SAVE_API__ 由服务响应时注入，跳过磁盘 sed"
   echo ""
   echo "=== 等待 studio 上游就绪（避免 restart 后立即探测 502）==="
-  wait_studio_upstream "http://127.0.0.1/studio-api/list" || true
+  detect_probe_origin
+  wait_studio_upstream "${PROBE_ORIGIN}/studio-api/list" || true
 else
   bash "$ROOT/scripts/staging-save-api.sh" "$PLAYER"
 fi
@@ -82,7 +99,7 @@ fi
 probe_optional() {
   local url="$1"
   local line code
-  line="$(curl -sI "$url" 2>/dev/null | head -1 || true)"
+  line="$(curl -sI "${CURL_COMMON[@]}" "$url" 2>/dev/null | head -1 || true)"
   code="$(echo "$line" | awk '{print $2}')"
   printf '%-55s ' "$url"
   echo "${line:-curl failed}"
@@ -93,8 +110,8 @@ probe_html_required() {
   local url="$1" expect_path="$2" marker="$3"
   local tmp code effective
   tmp="$(mktemp)"
-  code="$(curl -sS -L --max-redirs 5 "${CURL_AUTH[@]}" -o "$tmp" -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
-  effective="$(curl -sS -L --max-redirs 5 "${CURL_AUTH[@]}" -o /dev/null -w '%{url_effective}' "$url" 2>/dev/null || true)"
+  code="$(curl -sS "${CURL_COMMON[@]}" -L --max-redirs 5 "${CURL_AUTH[@]}" -o "$tmp" -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
+  effective="$(curl -sS "${CURL_COMMON[@]}" -L --max-redirs 5 "${CURL_AUTH[@]}" -o /dev/null -w '%{url_effective}' "$url" 2>/dev/null || true)"
   printf '%-55s ' "$url"
   if [[ "$effective" != *"$expect_path"* ]]; then
     echo "FAIL redirect→${effective:-unknown} (expected *${expect_path}*)"
@@ -137,7 +154,7 @@ probe_html_required() {
 probe_api_list_required() {
   local url="$1"
   local body code
-  body="$(curl -sS -L --max-redirs 5 "${CURL_AUTH[@]}" -w '\n%{http_code}' "$url" 2>/dev/null || printf '\n000')"
+  body="$(curl -sS "${CURL_COMMON[@]}" -L --max-redirs 5 "${CURL_AUTH[@]}" -w '\n%{http_code}' "$url" 2>/dev/null || printf '\n000')"
   code="${body##*$'\n'}"
   body="${body%$'\n'*}"
   printf '%-55s ' "$url"
@@ -170,7 +187,7 @@ probe_api_list_required() {
 
 probe_api_list_requires_unauth() {
   local url="$1" code
-  code="$(curl -sS -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
+  code="$(curl -sS "${CURL_COMMON[@]}" -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
   printf '%-55s ' "(no auth) $url"
   if [ -n "$STUDIO_PASS" ]; then
     case "$code" in
@@ -192,11 +209,20 @@ probe_api_list_requires_unauth() {
 probe_module_required() {
   local url="$1" name="$2"
   local code
-  code="$(curl -sS -L "${CURL_AUTH[@]}" -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
+  code="$(curl -sS "${CURL_COMMON[@]}" -L "${CURL_AUTH[@]}" -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
   printf '%-55s ' "$url"
   case "$code" in
     200)
       echo "OK  HTTP/1.1 200 module (${name})"
+      return 0
+      ;;
+    401)
+      if [ -n "$STUDIO_PASS" ]; then
+        echo "FAIL HTTP/401 (${name} 须 200；STUDIO_PASS 可能被拒)"
+        PROBE_FAIL=1
+        return 1
+      fi
+      echo "WARN HTTP/1.1 401 auth-only (未验证 ${name})"
       return 0
       ;;
     *)
@@ -207,22 +233,26 @@ probe_module_required() {
   esac
 }
 
+if ! systemctl is-active --quiet studio-server 2>/dev/null; then
+  detect_probe_origin
+fi
+
 echo ""
-echo "=== HTTP 探测（本机 Nginx，编辑器入口 ${STUDIO_PREFIX}/）==="
+echo "=== HTTP 探测（本机 Nginx，编辑器入口 ${STUDIO_PREFIX}/，源 ${PROBE_ORIGIN}）==="
 if [ -n "$STUDIO_PASS" ]; then
   echo "使用 STUDIO_USER/STUDIO_PASS 进行完整验收（marker + JSON）"
 elif [ "${ALLOW_AUTH_ONLY_PROBE:-0}" = "1" ]; then
   echo "ALLOW_AUTH_ONLY_PROBE=1：仅验证 401，不验证页面内容与 API JSON"
 fi
-probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/studio.html" "${STUDIO_PREFIX}/studio.html" "3D 鉴赏工作台" && STUDIO_HTML_OK=1 || true
-probe_module_required "http://127.0.0.1${STUDIO_PREFIX}/light-rig.mjs" "light-rig" || true
-probe_html_required "http://127.0.0.1${STUDIO_PREFIX}/player.html" "${STUDIO_PREFIX}/player.html" "window.__SY_PLAYER" && PLAYER_HTML_OK=1 || true
-probe_api_list_required "http://127.0.0.1/studio-api/list" && API_OK=1 || true
-probe_api_list_requires_unauth "http://127.0.0.1/studio-api/list" || true
+probe_html_required "${PROBE_ORIGIN}${STUDIO_PREFIX}/studio.html" "${STUDIO_PREFIX}/studio.html" "3D 鉴赏工作台" && STUDIO_HTML_OK=1 || true
+probe_module_required "${PROBE_ORIGIN}${STUDIO_PREFIX}/light-rig.mjs" "light-rig" || true
+probe_html_required "${PROBE_ORIGIN}${STUDIO_PREFIX}/player.html" "${STUDIO_PREFIX}/player.html" "window.__SY_PLAYER" && PLAYER_HTML_OK=1 || true
+probe_api_list_required "${PROBE_ORIGIN}/studio-api/list" && API_OK=1 || true
+probe_api_list_requires_unauth "${PROBE_ORIGIN}/studio-api/list" || true
 echo ""
 echo "=== 参考（/exhibits/ 未配置 alias 时 404 属正常）==="
-probe_optional "http://127.0.0.1/exhibits/studio.html"
-probe_optional "http://127.0.0.1/exhibits/studio-api/list"
+probe_optional "${PROBE_ORIGIN}/exhibits/studio.html"
+probe_optional "${PROBE_ORIGIN}/exhibits/studio-api/list"
 
 echo ""
 if [ "$PROBE_FAIL" -ne 0 ]; then
@@ -238,4 +268,4 @@ if [ -z "$STUDIO_PASS" ] && [ "${ALLOW_AUTH_ONLY_PROBE:-0}" = "1" ]; then
   exit 2
 fi
 
-echo "外网：http://${PUBLIC_HOST}${STUDIO_PREFIX}/studio.html"
+echo "外网：https://${PUBLIC_HOST}${STUDIO_PREFIX}/studio.html"

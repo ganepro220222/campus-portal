@@ -25,6 +25,8 @@ class AdminResourceServiceTest {
     private AdminPermissionService adminPermissionService;
     @Mock
     private SearchIndexSyncService searchIndexSyncService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     @InjectMocks
     private AdminResourceService adminResourceService;

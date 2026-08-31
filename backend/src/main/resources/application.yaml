@@ -113,6 +113,10 @@ shuyuan:
     cdn-domain: ${OSS_CDN_DOMAIN:}
     sign-expire-seconds: ${OSS_SIGN_EXPIRE_SECONDS:7200}
     max-upload-bytes: ${OSS_MAX_UPLOAD_BYTES:209715200}
+    orphan-min-age-hours: ${OSS_ORPHAN_MIN_AGE_HOURS:48}
+    # 默认关闭：一二期（换素材删旧、彻底删除清对象）在预发验证通过后，再设 true 开启每日孤儿扫描
+    orphan-sweep-enabled: ${OSS_ORPHAN_SWEEP_ENABLED:false}
+    orphan-sweep-max-deletes: ${OSS_ORPHAN_SWEEP_MAX_DELETES:80}
 
 mybatis-plus:
   configuration:

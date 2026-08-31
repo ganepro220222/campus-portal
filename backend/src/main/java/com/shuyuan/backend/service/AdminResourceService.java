@@ -26,6 +26,7 @@ public class AdminResourceService {
     private final CategoryService categoryService;
     private final AdminPermissionService adminPermissionService;
     private final SearchIndexSyncService searchIndexSyncService;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public PageResult<Map<String, Object>> list(Long categoryId, String fileType, Integer status,
                                                 int page, int size) {
@@ -72,11 +73,15 @@ public class AdminResourceService {
     public Map<String, Object> update(Long id, ResourceSaveRequest req) {
         adminPermissionService.require("course:write");
         Resource resource = requireResource(id);
+        String oldFile = resource.getFileUrl();
+        String oldPreview = resource.getPreviewUrl();
         validateRequest(req);
         fromRequest(resource, req);
         resourceMapper.updateById(resource);
         Resource saved = resourceMapper.selectById(id);
         syncSearchIfOnline(saved);
+        ossMediaCleanupService.afterReplace(oldFile, saved.getFileUrl());
+        ossMediaCleanupService.afterReplace(oldPreview, saved.getPreviewUrl());
         return toVo(saved, categoryService.nameMap("resource"));
     }
 

@@ -31,6 +31,7 @@ public class AdminHallService {
     private final CategoryService categoryService;
     private final AdminPermissionService adminPermissionService;
     private final SearchIndexSyncService searchIndexSyncService;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     public PageResult<Map<String, Object>> list(int page, int size) {
         adminPermissionService.require("hall:read");
@@ -85,6 +86,8 @@ public class AdminHallService {
     public Map<String, Object> update(Long id, HallSaveRequest req) {
         adminPermissionService.require("hall:write");
         Hall hall = requireHall(id);
+        String oldCover = hall.getCover();
+        List<String> oldMedia = contentPayloadPresent(req) ? listLiveMediaUrls(id) : List.of();
         fromRequest(hall, req);
         hallMapper.updateById(hall);
         syncContent(id, req);
@@ -94,6 +97,8 @@ public class AdminHallService {
         } else {
             searchIndexSyncService.removeHall(id);
         }
+        ossMediaCleanupService.afterReplace(oldCover, saved.getCover());
+        ossMediaCleanupService.releaseStored(oldMedia);
         return detail(id);
     }
 
@@ -180,8 +185,21 @@ public class AdminHallService {
         return hall;
     }
 
+    private static boolean contentPayloadPresent(HallSaveRequest req) {
+        return req.getSlides() != null || req.getSections() != null || req.getAudioUrl() != null;
+    }
+
+    private List<String> listLiveMediaUrls(Long hallId) {
+        return hallMediaMapper.selectList(new LambdaQueryWrapper<HallMedia>()
+                        .eq(HallMedia::getHallId, hallId))
+                .stream()
+                .map(HallMedia::getUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .toList();
+    }
+
     private void syncContent(Long hallId, HallSaveRequest req) {
-        if (req.getSlides() == null && req.getSections() == null && req.getAudioUrl() == null) {
+        if (!contentPayloadPresent(req)) {
             return;
         }
 

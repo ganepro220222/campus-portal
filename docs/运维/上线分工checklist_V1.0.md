@@ -189,7 +189,7 @@ flowchart LR
 | ☐ | ECS | 4C8G（生产）；2C4G（staging 首年可选） | 乙方 | 实例 Running、安全组已开 22/80/443 |
 | ☐ | RDS MySQL | 2C4G，utf8mb4，**自动备份 30 天** | 乙方 | 可连接、白名单含 ECS |
 | ☐ | Redis | 1G | 乙方 | 可连接、设密码 |
-| ☐ | OSS + CDN | 媒体 Bucket，私有读 + CDN 域名 | 乙方 | 签名 URL 抽测通过 |
+| ☑ | OSS + CDN | 媒体 Bucket，私有读 + CDN 域名 | 乙方 | staging 已通：`yunman-shuyuan` + `cdn.yunmanvr.com`（切专用域时再加主机名） |
 | ☐ | SSL 证书 | 免费 DV 或云厂商证书 | 乙方 | 覆盖 API 子域名 |
 | ☐ | 微信认证费 | 300 元/年 | 乙方（校方授权主体） | 认证状态「已认证」 |
 

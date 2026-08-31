@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url'
 import { computeRootHash, getIdentityPayload } from './studio-identity.mjs'
 import { createExhibit } from '../exhibit-create.mjs'
 import { assetFingerprint, hasAssetFile, listPanoramaCandidates, checkPanoramaPathAvailability } from '../pano-check.mjs'
+import { exhibitPublicHref } from '../exhibit-asset-cdn.mjs'
 import { portAttempts, isFallbackEnabled, isPortUnavailableError, writePortFile, removePortFile } from '../studio-port.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
@@ -94,7 +95,7 @@ function listExhibits() {
         hasModel: hasAssetFile(exDir, assets.model, ROOT),
         panorama: assets.panorama || '',
         envPreset: (c.environment && c.environment.preset) || 'room',
-        poster: assets.poster ? d.name + '/' + assets.poster : '',
+        poster: exhibitPublicHref(d.name, assets.poster),
         mtime: fs.statSync(cp).mtimeMs })
     } catch (e) { out.push({ dir: d.name, title: d.name, error: String(e.message) }) }
   }

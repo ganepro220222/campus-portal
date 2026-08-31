@@ -44,6 +44,7 @@ public class RecycleBinService {
     private final AdminPermissionService adminPermissionService;
     private final DangerousActionGuard dangerousActionGuard;
     private final AdminAnnouncementService adminAnnouncementService;
+    private final OssMediaCleanupService ossMediaCleanupService;
 
     /** 彻底删除的风险档位 */
     public enum DeleteRisk {
@@ -252,6 +253,12 @@ public class RecycleBinService {
             dangerousActionGuard.verifyCurrentAdminPassword(password);
         }
 
+        // 必须在物理删行之前收集；OSS 删除等提交成功后再做，失败不挡回收站
+        List<String> media = ossMediaCleanupService.collectStoredFor(t.name(), id);
+        if (media == null) {
+            media = List.of();
+        }
+
         purgeBehaviourReferences(t, id);
         for (String[] child : t.children) {
             recycleBinMapper.purgeChildren(child[0], child[1], id);
@@ -265,6 +272,7 @@ public class RecycleBinService {
         if (n == 0) {
             throw new BusinessException(404, "该内容不在回收站中，可能已被恢复或彻底删除");
         }
+        ossMediaCleanupService.releaseStored(media);
     }
 
     private String requireDeletedName(ContentType t, Long id) {

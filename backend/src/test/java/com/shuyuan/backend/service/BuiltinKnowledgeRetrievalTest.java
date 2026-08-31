@@ -53,6 +53,8 @@ class BuiltinKnowledgeRetrievalTest {
     private KnowledgeChunkMapper knowledgeChunkMapper;
     @Mock
     private AdminPermissionService adminPermissionService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     private KnowledgeService knowledgeService;
     /** chunkIndex 起始位置 -> 文档标题，用于断言命中了哪一篇 */
@@ -60,7 +62,8 @@ class BuiltinKnowledgeRetrievalTest {
 
     @BeforeEach
     void setUp() {
-        knowledgeService = new KnowledgeService(knowledgeDocMapper, knowledgeChunkMapper, adminPermissionService);
+        knowledgeService = new KnowledgeService(
+                knowledgeDocMapper, knowledgeChunkMapper, adminPermissionService, ossMediaCleanupService);
 
         List<KnowledgeDoc> docs = new ArrayList<>();
         List<KnowledgeChunk> chunks = new ArrayList<>();

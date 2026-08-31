@@ -69,7 +69,7 @@ public final class CourseVideoUrlPolicy {
                 // fall through
             }
         }
-        String endpoint = props.getEndpoint();
+        String endpoint = OssEndpointSupport.publicEndpoint(props.getEndpoint());
         String bucket = props.getBucket();
         if (StringUtils.hasText(endpoint) && StringUtils.hasText(bucket)) {
             String ep = endpoint.replace("https://", "").replace("http://", "");

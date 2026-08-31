@@ -53,7 +53,7 @@
           preview="video"
           upload-label="上传视频"
           done-text="视频已上传"
-          hint="支持 MP4 格式，文件较大时请耐心等待"
+          hint="支持 MP4，单文件不超过 200MB；大视频可能需要几分钟，请勿关闭页面"
           @uploaded="onCourseVideoUploaded"
         />
       </el-form-item>

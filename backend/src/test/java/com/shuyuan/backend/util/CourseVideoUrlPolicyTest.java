@@ -64,6 +64,15 @@ class CourseVideoUrlPolicyTest {
     }
 
     @Test
+    void acceptsPublicBucketHost_whenEndpointWasWrittenAsInternal() {
+        props.setEndpoint("https://oss-cn-shanghai-internal.aliyuncs.com");
+        props.setCdnDomain("");
+        String key = CourseVideoUrlPolicy.resolveTrustedVideoObjectKey(
+                "https://my-bucket.oss-cn-shanghai.aliyuncs.com/videos/demo.mp4", props, true);
+        assertEquals("videos/demo.mp4", key);
+    }
+
+    @Test
     void rejectsWhenOssDisabled() {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> CourseVideoUrlPolicy.resolveTrustedVideoObjectKey("videos/demo.mp4", props, false));

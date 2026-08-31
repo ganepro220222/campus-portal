@@ -10,6 +10,7 @@ import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.OssProperties;
 import com.shuyuan.backend.util.CourseVideoUrlPolicy;
+import com.shuyuan.backend.util.OssEndpointSupport;
 import com.shuyuan.backend.util.OssManagedObjectKey;
 import com.shuyuan.backend.util.UploadContentInspector;
 import lombok.RequiredArgsConstructor;
@@ -119,7 +120,7 @@ public class OssService {
         }
         OSS client = null;
         try {
-            client = buildClient();
+            client = buildTransferClient();
             OSSObject object = client.getObject(ossProperties.getBucket(), objectKey);
             try (InputStream in = object.getObjectContent()) {
                 return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
@@ -149,7 +150,7 @@ public class OssService {
         }
         OSS client = null;
         try {
-            client = buildClient();
+            client = buildSignClient();
             Date expire = new Date(System.currentTimeMillis() + expireSeconds * 1000L);
             return client.generatePresignedUrl(ossProperties.getBucket(), objectKey, expire).toString();
         } catch (BusinessException e) {
@@ -183,10 +184,14 @@ public class OssService {
             byte[] header = in.readNBytes(64);
             String contentType = UploadContentInspector.inspect(ext, header);
             in.reset();
-            client = buildClient();
+            client = buildTransferClient();
             ObjectMetadata meta = new ObjectMetadata();
             meta.setContentLength(file.getSize());
             meta.setContentType(contentType);
+            log.info("[oss] upload scene={} key={} bytes={} via {}",
+                    scene, objectKey, file.getSize(),
+                    OssEndpointSupport.transferEndpoint(
+                            ossProperties.getEndpoint(), ossProperties.getInternalEndpoint()));
             client.putObject(ossProperties.getBucket(), objectKey, in, meta);
         } catch (IOException e) {
             throw new BusinessException(500, "读取上传文件失败");
@@ -218,7 +223,7 @@ public class OssService {
         String objectKey = buildObjectKey(scene, ext);
         OSS client = null;
         try {
-            client = buildClient();
+            client = buildTransferClient();
             ObjectMetadata meta = new ObjectMetadata();
             meta.setContentLength(bytes.length);
             meta.setContentType(StringUtils.hasText(contentType) ? contentType : "text/vtt; charset=utf-8");
@@ -247,7 +252,7 @@ public class OssService {
         }
         OSS client = null;
         try {
-            client = buildClient();
+            client = buildTransferClient();
             client.deleteObject(ossProperties.getBucket(), objectKey);
             return true;
         } catch (Exception e) {
@@ -266,7 +271,7 @@ public class OssService {
         }
         OSS client = null;
         try {
-            client = buildClient();
+            client = buildTransferClient();
             for (String prefix : OssManagedObjectKey.PREFIXES) {
                 String marker = null;
                 do {
@@ -345,7 +350,7 @@ public class OssService {
     private String buildPublicUrl(String objectKey) {
         String domain = StringUtils.hasText(ossProperties.getCdnDomain())
                 ? trimTrailingSlash(ossProperties.getCdnDomain())
-                : ("https://" + ossProperties.getBucket() + "." + ossProperties.getEndpoint().replace("https://", "").replace("http://", ""));
+                : OssEndpointSupport.publicBucketBase(ossProperties.getBucket(), ossProperties.getEndpoint());
         return domain + "/" + objectKey;
     }
 
@@ -372,9 +377,20 @@ public class OssService {
         return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
     }
 
-    private OSS buildClient() {
+    /** 上传 / 删除 / 读对象：有内网配置则走 VPC，不占用 ECS 5Mbps 公网。 */
+    private OSS buildTransferClient() {
         return new OSSClientBuilder().build(
-                ossProperties.getEndpoint(),
+                OssEndpointSupport.transferEndpoint(
+                        ossProperties.getEndpoint(), ossProperties.getInternalEndpoint()),
+                ossProperties.getAccessKey(),
+                ossProperties.getSecretKey()
+        );
+    }
+
+    /** 预签名必须用外网 Endpoint，否则 ASR / 浏览器无法访问。 */
+    private OSS buildSignClient() {
+        return new OSSClientBuilder().build(
+                OssEndpointSupport.publicEndpoint(ossProperties.getEndpoint()),
                 ossProperties.getAccessKey(),
                 ossProperties.getSecretKey()
         );

@@ -107,6 +107,7 @@ shuyuan:
   oss:
     enabled: ${OSS_ENABLED:false}
     endpoint: ${OSS_ENDPOINT:}
+    internal-endpoint: ${OSS_INTERNAL_ENDPOINT:}
     bucket: ${OSS_BUCKET:}
     access-key: ${OSS_ACCESS_KEY:}
     secret-key: ${OSS_SECRET_KEY:}

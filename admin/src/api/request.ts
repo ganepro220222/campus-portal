@@ -60,7 +60,8 @@ http.interceptors.response.use(
     if (body && typeof body.code === 'number') {
       return rejectApiBody(body, err.config)
     }
-    ElMessage.error('网络异常，请检查后端服务')
+    const aborted = err.code === 'ECONNABORTED' || /timeout/i.test(String(err.message || ''))
+    ElMessage.error(aborted ? '请求超时，请稍后重试' : '网络异常，请检查后端服务')
     return Promise.reject(err)
   }
 )

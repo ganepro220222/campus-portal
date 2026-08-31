@@ -131,6 +131,19 @@ watch(fitMode, (v) => {
   emit('update:fitMode', v === 'fit' ? 'fit' : 'fill')
 })
 
+function resolveUploadError(e: unknown): string {
+  if (e && typeof e === 'object') {
+    const body = e as { message?: string; code?: string | number }
+    if (typeof body.message === 'string' && body.message.trim() && typeof body.code === 'number') {
+      return body.message
+    }
+    if (body.code === 'ECONNABORTED' || /timeout/i.test(String((e as { message?: string }).message || ''))) {
+      return '上传超时。大视频请保持页面不要关闭，并检查网络后重试'
+    }
+  }
+  return '上传失败，请检查文件格式与大小，或联系技术人员协助'
+}
+
 async function handleUpload(options: UploadRequestOptions) {
   const file = options.file as File
   if (!file) return
@@ -148,9 +161,8 @@ async function handleUpload(options: UploadRequestOptions) {
     })
     ElMessage.success('上传成功')
     options.onSuccess?.(res)
-  } catch {
-    uploadError.value = '上传失败，请检查文件格式与大小，或联系技术人员协助'
-    ElMessage.error('上传失败')
+  } catch (e) {
+    uploadError.value = resolveUploadError(e)
   } finally {
     uploading.value = false
   }

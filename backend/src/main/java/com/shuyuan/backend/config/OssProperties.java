@@ -15,6 +15,11 @@ public class OssProperties {
     /** 是否启用 OSS（未配置密钥时自动视为关闭，开发环境可手填 URL） */
     private boolean enabled = false;
     private String endpoint = "";
+    /**
+     * ECS 同地域内网 Endpoint（如 {@code https://oss-cn-chengdu-internal.aliyuncs.com}）。
+     * 只给上传/删除/读对象用；本机不要配，签名和对外 URL 仍用 {@link #endpoint}。
+     */
+    private String internalEndpoint = "";
     private String bucket = "";
     private String accessKey = "";
     private String secretKey = "";

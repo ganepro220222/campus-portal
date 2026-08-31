@@ -140,12 +140,15 @@ function classifyOpenError(msg) {
 }
 
 async function tryOpenLocal(path, openType) {
+  // PDF 预览器强制看后缀；docx/ppt 往往靠 fileType 就能开。先补后缀再打开。
+  const named = namedTempPath(path, openType)
+  const local = named && named !== path
+    ? await copyToNamedPath(path, named).catch(() => path)
+    : path
   try {
-    await wxOpenDocument(path, openType)
+    await wxOpenDocument(local, openType)
   } catch (first) {
-    const named = namedTempPath(path, openType)
-    const copied = await copyToNamedPath(path, named).catch(() => path)
-    await wxOpenDocument(copied, openType).catch(() => wxOpenDocument(copied))
+    await wxOpenDocument(local).catch(() => wxOpenDocument(path, openType))
   }
 }
 

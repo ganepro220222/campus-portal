@@ -96,8 +96,19 @@ const uploadError = ref('')
 
 const resolvedPreview = computed<PreviewMode>(() => {
   if (props.preview !== 'auto') return props.preview
-  if (props.scene === 'video' || props.accept.includes('video')) return 'video'
-  if (props.scene === 'subtitle' || props.accept.includes('.vtt') || props.accept.includes('.srt')) {
+  if (props.scene === 'video' || props.accept.includes('video/')) return 'video'
+  if (
+    props.scene === 'resource_file'
+    || props.scene === 'document'
+    || props.scene === 'file'
+    || props.scene === 'subtitle'
+    || props.accept.includes('.vtt')
+    || props.accept.includes('.srt')
+    || props.accept.includes('.pdf')
+    || props.accept.includes('.doc')
+    || props.accept.includes('.ppt')
+    || props.accept.includes('.mp3')
+  ) {
     return 'file'
   }
   return 'image'

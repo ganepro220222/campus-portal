@@ -18,8 +18,22 @@
         <video :src="inner" class="preview-video" controls preload="metadata" />
       </div>
       <div v-else-if="showAudioPreview" class="preview-wrap preview-wrap--audio">
-        <audio :src="inner" class="preview-audio" controls preload="metadata" />
+        <div class="audio-row">
+          <el-button size="small" @click="toggleAudioPreview">{{ audioPlaying ? '暂停' : '试听' }}</el-button>
+          <audio
+            ref="audioEl"
+            :src="inner"
+            class="preview-audio"
+            controls
+            preload="metadata"
+            @play="audioPlaying = true"
+            @pause="audioPlaying = false"
+            @ended="audioPlaying = false"
+            @error="audioError = true"
+          />
+        </div>
         <span class="file-name">{{ previewLabel }}</span>
+        <p v-if="audioError" class="hint error">语音无法播放，请重新上传或换 MP3</p>
       </div>
       <div v-else-if="showFilePreview" class="preview-wrap preview-wrap--file">
         <el-icon class="file-icon"><Document /></el-icon>
@@ -101,6 +115,9 @@ const fitMode = ref<CoverFitMode>(props.fitMode || 'fill')
 const uploading = ref(false)
 const uploadError = ref('')
 const originalName = ref('')
+const audioEl = ref<HTMLAudioElement | null>(null)
+const audioPlaying = ref(false)
+const audioError = ref(false)
 
 const resolvedPreview = computed<PreviewMode>(() => {
   if (props.preview !== 'auto') return props.preview
@@ -139,8 +156,10 @@ watch(() => props.modelValue, (v) => {
   const next = v || ''
   if (next !== inner.value) {
     originalName.value = ''
+    stopAudioPreview()
   }
   inner.value = next
+  audioError.value = false
 })
 
 watch(() => props.fitMode, (v) => {
@@ -189,9 +208,33 @@ async function handleUpload(options: UploadRequestOptions) {
   }
 }
 
+function stopAudioPreview() {
+  const el = audioEl.value
+  if (el) {
+    el.pause()
+    el.currentTime = 0
+  }
+  audioPlaying.value = false
+}
+
+function toggleAudioPreview() {
+  const el = audioEl.value
+  if (!el) return
+  audioError.value = false
+  if (el.paused) {
+    el.play().catch(() => {
+      audioError.value = true
+    })
+    return
+  }
+  el.pause()
+}
+
 function clear() {
+  stopAudioPreview()
   inner.value = ''
   originalName.value = ''
+  audioError.value = false
   emit('update:modelValue', '')
 }
 </script>
@@ -232,15 +275,23 @@ function clear() {
   align-items: stretch;
   justify-content: center;
   gap: 8px;
-  width: 240px;
+  width: 280px;
   height: auto;
-  min-height: 72px;
+  min-height: 88px;
   padding: 10px;
+  overflow: visible;
+}
+
+.audio-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .preview-audio {
-  width: 100%;
-  height: 36px;
+  flex: 1;
+  min-width: 0;
+  height: 40px;
 }
 
 .preview-wrap--file {

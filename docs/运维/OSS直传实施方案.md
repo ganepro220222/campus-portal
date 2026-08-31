@@ -1,6 +1,6 @@
 # OSS 视频直传实施方案
 
-> 贵州交通职业大学 · 云端书院  
+> 贵州交通职业大学 · 云端书院
 > 对应：技术方案 §4.4 大文件直传；本轮用 **PostObject 签名策略**，不新建 RAM/STS 角色。
 
 管理后台「上传」按钮不变。仅课程视频与资料里的 MP4/MOV 在开关打开后由浏览器直传 OSS；图片/音频/文档/字幕仍走 ECS 中转。小程序播放仍用现有 CDN 短时签名，与上传路径无关。
@@ -54,12 +54,22 @@ curl -sI -X OPTIONS \
 2. `cd /opt/shuyuan && bash scripts/update-staging-from-github.sh`（不要 `SKIP_DOCKER=1`）
 3. 本机 `powershell -File scripts/deploy-admin-staging.ps1`
 4. 后台强刷后传一个 **略大于 200MB** 的 MP4：应显示百分比，课程保存后小程序能播
+5. 若进度条走完后红字「确认失败」，点 **重新确认**，不要重新选文件
 
 回退：把开关改回 `false` 并重建 backend，上传恢复为 200MB 中转。
 
-## 5. 不做
+## 5. 使用限制（本轮不做 Multipart / 转码）
+
+- 直传是一次性 POST：断网、刷新、休眠后必须从头再传。请保持页面打开。
+- 上传中可点「取消」。不能暂停/续传。
+- OSS POST 成功但 `/complete` 失败时，用「重新确认」只调确认接口；`/complete` 对同一 key 幂等。
+- 确认时会扫文件头/尾：H.265/HEVC 会拒绝；moov 在尾部会提示 Fast Start，不拦截。
+- 请上传 H.264 + AAC 的 MP4。本轮不做云转码。
+- Policy 默认 1 小时（`OSS_DIRECT_POLICY_EXPIRE_SECONDS`），与浏览器直传超时对齐。
+
+## 6. 不做
 
 - 本轮不上 RAM 角色 / STS
 - 不把 2GB 文件经 ECS 中转
 - 不改小程序播放、微信域名、CDN 路径鉴权
-- 不做视频转码
+- 不做视频转码、不做 OSS Multipart 断点续传

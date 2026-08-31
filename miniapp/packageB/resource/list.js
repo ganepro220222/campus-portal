@@ -21,7 +21,9 @@ const FT = {
   xls:  { cls: 'ft-xlsx', label: 'XLS', kind: '文档' },
   xlsx: { cls: 'ft-xlsx', label: 'XLSX', kind: '文档' },
   mp4:  { cls: 'ft-mp4',  label: 'MP4', kind: '视频' },
-  mp3:  { cls: 'ft-mp3',  label: 'MP3', kind: '音频' }
+  mp3:  { cls: 'ft-mp3',  label: 'MP3', kind: '音频' },
+  aac:  { cls: 'ft-mp3',  label: 'AAC', kind: '音频' },
+  m4a:  { cls: 'ft-mp3',  label: 'M4A', kind: '音频' }
 }
 const CATS = ['全部', '课件', '文档', '视频', '音频']
 

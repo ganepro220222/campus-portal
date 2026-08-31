@@ -70,4 +70,51 @@ class UploadContentInspectorTest {
                 () -> UploadContentInspector.inspect("aac", "<html>".getBytes()));
         assertEquals(400, ex.getCode());
     }
+
+    @Test
+    void inspectVideoPlayability_rejectsHevcFtypBrand() {
+        byte[] head = isoBox("ftyp", concat("hev1".getBytes(), new byte[]{0, 0, 0, 0}, "isom".getBytes()));
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> UploadContentInspector.inspectVideoPlayability(head, null));
+        assertEquals(400, ex.getCode());
+        org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("H.265"));
+    }
+
+    @Test
+    void inspectVideoPlayability_acceptsAvcFtypAndWarnsWhenMoovAtTail() {
+        byte[] head = isoBox("ftyp", concat("isom".getBytes(), new byte[]{0, 0, 0, 0}, "mp41".getBytes()));
+        byte[] tail = isoBox("moov", new byte[0]);
+        assertEquals("", UploadContentInspector.inspectVideoPlayability(
+                concat(head, isoBox("moov", new byte[0])), null));
+
+        String warning = UploadContentInspector.inspectVideoPlayability(head, tail);
+        org.junit.jupiter.api.Assertions.assertTrue(warning.contains("Fast Start"));
+    }
+
+    private static byte[] isoBox(String type, byte[] payload) {
+        int size = 8 + payload.length;
+        byte[] out = new byte[size];
+        out[0] = (byte) (size >>> 24);
+        out[1] = (byte) (size >>> 16);
+        out[2] = (byte) (size >>> 8);
+        out[3] = (byte) size;
+        byte[] four = type.getBytes();
+        System.arraycopy(four, 0, out, 4, 4);
+        System.arraycopy(payload, 0, out, 8, payload.length);
+        return out;
+    }
+
+    private static byte[] concat(byte[]... parts) {
+        int len = 0;
+        for (byte[] part : parts) {
+            len += part.length;
+        }
+        byte[] out = new byte[len];
+        int pos = 0;
+        for (byte[] part : parts) {
+            System.arraycopy(part, 0, out, pos, part.length);
+            pos += part.length;
+        }
+        return out;
+    }
 }

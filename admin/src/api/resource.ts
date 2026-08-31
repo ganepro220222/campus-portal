@@ -27,7 +27,9 @@ export const FILE_TYPE_OPTIONS = [
   { value: 'xls', label: 'Excel XLS' },
   { value: 'xlsx', label: 'Excel XLSX' },
   { value: 'mp4', label: '视频 MP4' },
-  { value: 'mp3', label: '音频 MP3' }
+  { value: 'mp3', label: '音频 MP3' },
+  { value: 'aac', label: '音频 AAC' },
+  { value: 'm4a', label: '音频 M4A' }
 ]
 
 export function fetchResources(params: ResourceQuery) {

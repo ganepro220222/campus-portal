@@ -183,7 +183,10 @@ const emit = defineEmits<{
 
 const formRef = ref<FormInstance>()
 
-async function onCourseVideoUploaded(payload: { file: File }) {
+async function onCourseVideoUploaded(payload: { file?: File }) {
+  if (!payload.file) {
+    return
+  }
   const seconds = await readVideoDurationSeconds(payload.file)
   const minutes = seconds == null ? undefined : secondsToDurationMinutes(seconds)
   if (minutes != null) {

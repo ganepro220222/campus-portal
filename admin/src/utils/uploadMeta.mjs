@@ -10,7 +10,9 @@ const EXT_TO_RESOURCE_TYPE = {
   xlsx: 'xlsx',
   mp4: 'mp4',
   mov: 'mp4',
-  mp3: 'mp3'
+  mp3: 'mp3',
+  aac: 'aac',
+  m4a: 'm4a'
 }
 
 export function extractFileExtension(fileName) {
@@ -49,7 +51,8 @@ const EXT_PREVIEW_LABEL = {
   mp4: '视频 MP4',
   mov: '视频',
   mp3: '音频 MP3',
-  m4a: '音频',
+  aac: '音频 AAC',
+  m4a: '音频 M4A',
   wav: '音频',
   vtt: '字幕 VTT',
   srt: '字幕 SRT'

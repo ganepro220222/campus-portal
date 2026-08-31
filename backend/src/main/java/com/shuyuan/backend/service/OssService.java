@@ -63,6 +63,7 @@ public class OssService {
     public static final String DIRECT_UPLOAD_DISABLED = "OSS_DIRECT_UPLOAD_DISABLED";
     private static final Pattern DIRECT_VIDEO_KEY =
             Pattern.compile("^videos/\\d{6}/[a-f0-9]{32}\\.(mp4|mov)$");
+    private static final int VIDEO_PROBE_BYTES = 256 * 1024;
 
     private static Map<String, Set<String>> buildSceneExtensions() {
         Map<String, Set<String>> map = new HashMap<>();
@@ -72,7 +73,7 @@ public class OssService {
         map.put("audio", Set.of("mp3", "m4a", "aac", "wav"));
         map.put("document", Set.of("pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx"));
         map.put("resource_file", Set.of(
-                "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "mp4", "mov", "mp3"));
+                "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "mp4", "mov", "mp3", "aac", "m4a"));
         map.put("subtitle", Set.of("vtt", "srt"));
         return Map.copyOf(map);
     }
@@ -446,12 +447,15 @@ public class OssService {
             deleteObjectQuietly(key);
             throw new BusinessException(400, "上传大小与声明不一致");
         }
-        GetObjectRequest rangeReq = new GetObjectRequest(ossProperties.getBucket(), key);
-        rangeReq.setRange(0, 63);
-        try (OSSObject object = client.getObject(rangeReq);
-             InputStream in = object.getObjectContent()) {
-            byte[] header = in.readNBytes(64);
-            UploadContentInspector.inspect(ext, header);
+        String warning;
+        try {
+            byte[] head = readObjectRange(client, key, 0, Math.min(size, VIDEO_PROBE_BYTES) - 1);
+            UploadContentInspector.inspect(ext, head);
+            byte[] tail = null;
+            if (size > VIDEO_PROBE_BYTES) {
+                tail = readObjectRange(client, key, size - VIDEO_PROBE_BYTES, size - 1);
+            }
+            warning = UploadContentInspector.inspectVideoPlayability(head, tail);
         } catch (BusinessException e) {
             deleteObjectQuietly(key);
             throw e;
@@ -460,10 +464,23 @@ public class OssService {
             throw new BusinessException(400, "无法校验文件内容");
         }
         rangeMetadataCache.remove(key);
-        return Map.of(
-                "url", buildPublicUrl(key),
-                "objectKey", key
-        );
+        Map<String, String> result = new LinkedHashMap<>();
+        result.put("url", buildPublicUrl(key));
+        result.put("objectKey", key);
+        if (warning != null && !warning.isBlank()) {
+            result.put("compatWarning", warning);
+        }
+        return result;
+    }
+
+    private byte[] readObjectRange(OSS client, String key, long start, long endInclusive) throws Exception {
+        GetObjectRequest rangeReq = new GetObjectRequest(ossProperties.getBucket(), key);
+        rangeReq.setRange(start, endInclusive);
+        int want = (int) (endInclusive - start + 1);
+        try (OSSObject object = client.getObject(rangeReq);
+             InputStream in = object.getObjectContent()) {
+            return in.readNBytes(want);
+        }
     }
 
     boolean isDirectVideoCandidate(String scene, String ext) {

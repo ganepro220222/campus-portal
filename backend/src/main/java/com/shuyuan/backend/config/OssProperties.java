@@ -54,8 +54,8 @@ public class OssProperties {
     private long imageMaxBytes = 20L * 1024 * 1024;
     /** 字幕中转上限，默认 10MB */
     private long subtitleMaxBytes = 10L * 1024 * 1024;
-    /** 直传 policy 有效期（秒） */
-    private int directPolicyExpireSeconds = 900;
+    /** 直传 policy 有效期（秒）；需覆盖整段 PostObject，默认 1 小时 */
+    private int directPolicyExpireSeconds = 3600;
     /** 孤儿对象最短存活小时数，避免删掉已上传尚未点保存的文件 */
     private int orphanMinAgeHours = 48;
     /**

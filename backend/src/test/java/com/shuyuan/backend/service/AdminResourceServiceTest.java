@@ -84,8 +84,8 @@ class AdminResourceServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"xls", "xlsx"})
-    void create_acceptsExcelResourceTypes(String fileType) {
+    @ValueSource(strings = {"xls", "xlsx", "aac", "m4a"})
+    void create_acceptsExcelAndCourseAudioResourceTypes(String fileType) {
         java.util.concurrent.atomic.AtomicReference<Resource> inserted =
                 new java.util.concurrent.atomic.AtomicReference<>();
         doAnswer(invocation -> {
@@ -99,7 +99,7 @@ class AdminResourceServiceTest {
 
         ResourceSaveRequest request = new ResourceSaveRequest();
         request.setName("课程安排表");
-        request.setFileUrl("https://cdn.example.com/files/202609/schedule." + fileType);
+        request.setFileUrl("https://cdn.example.com/files/202609/material." + fileType);
         request.setFileType(fileType);
         request.setStatus(0);
 

@@ -35,7 +35,7 @@
           />
         </div>
         <span class="file-name">{{ previewLabel }}</span>
-        <p v-if="audioError" class="hint error">语音无法播放，请重新上传或换 MP3</p>
+        <p v-if="audioError" class="hint error">语音无法播放，请重新上传或换 MP3 / AAC</p>
       </div>
       <div v-else-if="showFilePreview" class="preview-wrap preview-wrap--file">
         <el-icon class="file-icon"><Document /></el-icon>
@@ -52,6 +52,7 @@
           >
             <el-button :loading="uploading" type="primary">{{ uploadLabel }}</el-button>
           </el-upload>
+          <el-button v-if="uploading && uploadPercent != null" @click="cancelOssUpload">取消</el-button>
           <span v-if="inner" class="status-ok">{{ doneText }}</span>
           <el-button v-if="inner" link type="danger" @click="clear">重新上传</el-button>
         </div>
@@ -61,6 +62,13 @@
           :percentage="uploadPercent"
           :stroke-width="8"
         />
+        <div v-if="pendingComplete && !uploading" class="pending-complete">
+          <p class="hint">文件已传到云存储，等待服务器确认{{ pendingComplete.fileName ? `（${pendingComplete.fileName}）` : '' }}。请点「重新确认」，不要重新选文件。</p>
+          <div class="row">
+            <el-button type="primary" size="small" @click="retryPendingComplete">重新确认</el-button>
+            <el-button size="small" @click="discardPendingComplete">放弃待确认</el-button>
+          </div>
+        </div>
         <p v-if="aspectHint" class="hint aspect-hint">{{ aspectHint }}</p>
         <div v-if="showCoverFit" class="fit-mode">
           <span class="fit-label">小程序展示</span>
@@ -77,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Document } from '@element-plus/icons-vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import {
@@ -98,6 +106,7 @@ import {
   formatUploadPreviewLabel,
   isDirectUploadCandidate
 } from '@/utils/uploadMeta.mjs'
+import { DIRECT_PENDING_KEY, parseDirectPending, pendingForScene } from '@/utils/directPending.mjs'
 
 type PreviewMode = 'auto' | 'image' | 'video' | 'audio' | 'file' | 'none'
 
@@ -130,7 +139,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   'update:fitMode': [value: CoverFitMode]
-  uploaded: [payload: { url: string; sizeBytes: number; fileName: string; file: File }]
+  uploaded: [payload: { url: string; sizeBytes: number; fileName: string; file?: File }]
 }>()
 
 const PROXY_MAX_BYTES = 200 * 1024 * 1024
@@ -145,6 +154,8 @@ const originalName = ref('')
 const audioEl = ref<HTMLAudioElement | null>(null)
 const audioPlaying = ref(false)
 const audioError = ref(false)
+const pendingComplete = ref<{ scene: string; objectKey: string; size: number; fileName: string; uploadedAt: number } | null>(null)
+let ossAbort: AbortController | null = null
 
 const resolvedPreview = computed<PreviewMode>(() => {
   if (props.preview !== 'auto') return props.preview
@@ -215,13 +226,23 @@ const isVideoScene = computed(() =>
 const resolvedHint = computed(() => {
   if (isVideoScene.value) {
     const max = capabilities.value?.videoMaxBytes || PROXY_MAX_BYTES
-    return `支持 MP4 / MOV，单文件不超过 ${formatByteLimit(max) || '200MB'}；大视频请保持页面不要关闭`
+    const direct = capabilities.value?.directUploadEnabled
+    const limit = `支持 MP4 / MOV（请用 H.264 + AAC），单文件不超过 ${formatByteLimit(max) || '200MB'}`
+    if (direct) {
+      return `${limit}。大视频由浏览器直传，中断或刷新后无法续传，请保持页面打开；超过约 1 小时须重新上传`
+    }
+    return `${limit}；大视频请保持页面不要关闭`
   }
   return props.hint
 })
 
 onMounted(() => {
   void loadCapabilities()
+  restorePending()
+})
+
+onUnmounted(() => {
+  ossAbort?.abort()
 })
 
 async function loadCapabilities() {
@@ -309,11 +330,98 @@ function throwIfTooLargeForProxy(file: File, cause?: unknown): void {
   )
 }
 
-async function completeDirect(scene: string, key: string, size: number): Promise<UploadResult> {
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function isAbortError(e: unknown): boolean {
+  return /已取消/.test(errorMessage(e))
+}
+
+function persistPending(payload: { scene: string; objectKey: string; size: number; fileName: string }) {
+  const record = { ...payload, uploadedAt: Date.now() }
+  pendingComplete.value = record
   try {
-    return await completeDirectUpload(scene, key, size)
+    localStorage.setItem(DIRECT_PENDING_KEY, JSON.stringify(record))
   } catch {
-    return await completeDirectUpload(scene, key, size)
+    /* 无痕模式等写不了也不阻断确认 */
+  }
+}
+
+function restorePending() {
+  try {
+    pendingComplete.value = pendingForScene(
+      parseDirectPending(localStorage.getItem(DIRECT_PENDING_KEY)),
+      props.scene
+    )
+  } catch {
+    pendingComplete.value = null
+  }
+}
+
+function discardPendingComplete() {
+  pendingComplete.value = null
+  try {
+    const current = parseDirectPending(localStorage.getItem(DIRECT_PENDING_KEY))
+    if (!current || current.scene === props.scene) {
+      localStorage.removeItem(DIRECT_PENDING_KEY)
+    }
+  } catch {
+    localStorage.removeItem(DIRECT_PENDING_KEY)
+  }
+}
+
+function cancelOssUpload() {
+  ossAbort?.abort()
+}
+
+async function completeDirect(scene: string, key: string, size: number): Promise<UploadResult> {
+  let last: unknown
+  for (let i = 0; i < 2; i++) {
+    try {
+      return await completeDirectUpload(scene, key, size)
+    } catch (e) {
+      last = e
+      if (i === 0) {
+        await sleep(800)
+      }
+    }
+  }
+  throw last instanceof Error ? last : new Error('文件已传到云存储但确认失败，请稍后重试')
+}
+
+async function applyUploadResult(res: UploadResult, fileName: string, file?: File, sizeBytes?: number) {
+  discardPendingComplete()
+  inner.value = res.url
+  emit('update:modelValue', res.url)
+  originalName.value = fileName || ''
+  emit('uploaded', {
+    url: res.url,
+    sizeBytes: file?.size ?? sizeBytes ?? 0,
+    fileName: fileName || '',
+    file
+  })
+  if (res.compatWarning) {
+    ElMessage.warning(res.compatWarning)
+  } else {
+    ElMessage.success('上传成功')
+  }
+}
+
+async function retryPendingComplete() {
+  const pending = pendingComplete.value
+  if (!pending) {
+    return
+  }
+  uploading.value = true
+  uploadError.value = ''
+  try {
+    const res = await completeDirect(pending.scene, pending.objectKey, pending.size)
+    await applyUploadResult(res, pending.fileName, undefined, pending.size)
+  } catch (e) {
+    uploadError.value = errorMessage(e) || '确认失败，请稍后重试。不要重新上传整个文件'
+  } finally {
+    uploading.value = false
   }
 }
 
@@ -334,24 +442,35 @@ async function uploadWithFallback(file: File): Promise<UploadResult> {
     }
     return uploadFile(file, props.scene)
   }
+  ossAbort?.abort()
+  ossAbort = new AbortController()
   try {
     uploadPercent.value = 0
     await postFileToOss(policy, file, (percent) => {
       uploadPercent.value = percent
-    })
+    }, ossAbort.signal)
   } catch (e) {
+    if (isAbortError(e)) {
+      throw e
+    }
     throwIfTooLargeForProxy(file, e)
     ElMessage.warning('直传未成功，已改为服务器中转')
     uploadPercent.value = null
     return uploadFile(file, props.scene)
   }
   uploadPercent.value = Math.max(uploadPercent.value || 0, 99)
+  persistPending({
+    scene: props.scene,
+    objectKey: policy.key,
+    size: file.size,
+    fileName: file.name || ''
+  })
   try {
     const result = await completeDirect(props.scene, policy.key, file.size)
     uploadPercent.value = 100
     return result
   } catch (e) {
-    throw new Error(errorMessage(e) || '文件已传到云存储但确认失败，请稍后重试')
+    throw new Error(errorMessage(e) || '文件已传到云存储但确认失败，请点击「重新确认」，不要重新选文件')
   }
 }
 
@@ -361,6 +480,7 @@ async function handleUpload(options: UploadRequestOptions) {
   uploading.value = true
   uploadPercent.value = null
   uploadError.value = ''
+  discardPendingComplete()
   try {
     if (!capabilities.value) {
       await loadCapabilities()
@@ -369,22 +489,14 @@ async function handleUpload(options: UploadRequestOptions) {
       throw new Error(`视频不能超过 ${formatByteLimit(videoMaxBytes()) || '200MB'}`)
     }
     const res = await uploadWithFallback(file)
-    inner.value = res.url
-    emit('update:modelValue', res.url)
-    originalName.value = file.name || ''
-    emit('uploaded', {
-      url: res.url,
-      sizeBytes: file.size,
-      fileName: file.name || '',
-      file
-    })
-    ElMessage.success('上传成功')
+    await applyUploadResult(res, file.name || '', file)
     options.onSuccess?.(res)
   } catch (e) {
     uploadError.value = resolveUploadError(e)
   } finally {
     uploading.value = false
     uploadPercent.value = null
+    ossAbort = null
   }
 }
 
@@ -578,5 +690,13 @@ function clear() {
 
 .hint.error {
   color: var(--el-color-danger);
+}
+
+.pending-complete {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--el-color-warning);
+  border-radius: 8px;
+  background: var(--el-color-warning-light-9);
 }
 </style>

@@ -3,8 +3,10 @@ package com.shuyuan.backend.util;
 import com.shuyuan.backend.common.exception.BusinessException;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 上传文件魔数校验与服务端 Content-Type 推断（不信任客户端 multipart Content-Type）。
@@ -48,6 +50,101 @@ public final class UploadContentInspector {
             throw new BusinessException(400, "文件内容与扩展名不匹配");
         }
         return EXT_CONTENT_TYPES.getOrDefault(normalized, "application/octet-stream");
+    }
+
+    /**
+     * 直传完成后的播放兼容性门禁（不是转码）。
+     * 扫描文件头/尾的 ISO BMFF box：H.265 直接拒绝；moov 只在尾部则给出 Fast Start 提示。
+     */
+    public static String inspectVideoPlayability(byte[] head, byte[] tail) {
+        Set<String> headBoxes = collectIsoBoxTypes(head);
+        Set<String> tailBoxes = collectIsoBoxTypes(tail);
+        if (containsHevc(headBoxes) || containsHevc(tailBoxes) || ftypHasHevcBrand(head)) {
+            throw new BusinessException(400,
+                    "视频为 H.265/HEVC，部分手机无法播放。请转换为 H.264（AVC）的 MP4 后再上传");
+        }
+        if (!headBoxes.contains("moov") && tailBoxes.contains("moov")) {
+            return "该视频未做 Fast Start（moov 在文件尾），小程序首次打开可能较慢。建议导出时勾选 faststart";
+        }
+        return "";
+    }
+
+    private static boolean containsHevc(Set<String> types) {
+        return types.contains("hvc1") || types.contains("hev1") || types.contains("dvh1");
+    }
+
+    private static boolean ftypHasHevcBrand(byte[] head) {
+        for (String brand : ftypBrands(head)) {
+            if ("hvc1".equals(brand) || "hev1".equals(brand) || "dvh1".equals(brand)
+                    || "heic".equals(brand) || "heim".equals(brand)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static Set<String> ftypBrands(byte[] data) {
+        Set<String> brands = new HashSet<>();
+        if (data == null || data.length < 16) {
+            return brands;
+        }
+        if (!(data.length >= 8 && data[4] == 'f' && data[5] == 't' && data[6] == 'y' && data[7] == 'p')) {
+            return brands;
+        }
+        int size = readInt32(data, 0);
+        int end = size >= 16 ? Math.min(data.length, size) : data.length;
+        brands.add(fourCc(data, 8));
+        for (int i = 16; i + 4 <= end; i += 4) {
+            brands.add(fourCc(data, i));
+        }
+        return brands;
+    }
+
+    static Set<String> collectIsoBoxTypes(byte[] data) {
+        Set<String> types = new HashSet<>();
+        if (data == null || data.length < 8) {
+            return types;
+        }
+        for (int offset = 0; offset + 8 <= data.length; offset++) {
+            if (!looksLikeBoxHeader(data, offset)) {
+                continue;
+            }
+            String type = fourCc(data, offset + 4);
+            types.add(type);
+        }
+        return types;
+    }
+
+    private static boolean looksLikeBoxHeader(byte[] data, int offset) {
+        long size = readInt32(data, offset) & 0xFFFFFFFFL;
+        if (size != 0 && (size < 8 || size > 64L * 1024 * 1024)) {
+            return false;
+        }
+        String type = fourCc(data, offset + 4);
+        if (type.length() != 4) {
+            return false;
+        }
+        for (int i = 0; i < 4; i++) {
+            char c = type.charAt(i);
+            if (!(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9') && c != ' ') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int readInt32(byte[] data, int offset) {
+        return ((data[offset] & 0xFF) << 24)
+                | ((data[offset + 1] & 0xFF) << 16)
+                | ((data[offset + 2] & 0xFF) << 8)
+                | (data[offset + 3] & 0xFF);
+    }
+
+    private static String fourCc(byte[] data, int offset) {
+        if (offset + 4 > data.length) {
+            return "";
+        }
+        return new String(data, offset, 4, StandardCharsets.US_ASCII);
     }
 
     private static boolean matchesMagic(String ext, byte[] h) {

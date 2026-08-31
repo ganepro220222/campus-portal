@@ -6,7 +6,7 @@
     </div>
 
     <p class="text-muted">
-      维护 PDF/Word/PPT/Excel/音视频学习资料；下架后小程序不可见，下载次数由学员端下载接口自动累计。
+      维护 PDF/Word/PPT/Excel/音视频学习资料（音频含 MP3/AAC/M4A）；下架后小程序不可见，下载次数由学员端下载接口自动累计。
     </p>
 
     <div class="toolbar">
@@ -117,10 +117,10 @@
             scene="resource_file"
             preview="file"
             :display-name="form.name"
-            accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4,.mov,.mp3"
+            accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4,.mov,.mp3,.aac,.m4a"
             upload-label="上传文件"
             done-text="文件已上传"
-            hint="支持 PDF、Word、PPT、Excel、MP4、MOV、MP3。小程序内打开建议 30MB 以内；更大文件请用外链。"
+            hint="支持 PDF、Word、PPT、Excel、MP4、MOV、MP3、AAC、M4A。小程序内打开建议 30MB 以内；更大文件请用外链。"
             @uploaded="onResourceFileUploaded"
           />
         </el-form-item>

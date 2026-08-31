@@ -1,3 +1,19 @@
+declare module '@/utils/directPending.mjs' {
+  export const DIRECT_PENDING_KEY: string
+  export const DIRECT_PENDING_MAX_AGE_MS: number
+  export function parseDirectPending(raw: unknown, now?: number): {
+    scene: string
+    objectKey: string
+    size: number
+    fileName: string
+    uploadedAt: number
+  } | null
+  export function pendingForScene<T extends { scene: string } | null | undefined>(
+    pending: T,
+    scene: string
+  ): T | null
+}
+
 declare module '@/utils/uploadMeta.mjs' {
   export function extractFileExtension(fileName: string): string
   export function extractFileNameFromUrl(url: string): string

@@ -4,6 +4,7 @@ import type { RequestConfig } from './request'
 export interface UploadResult {
   url: string
   objectKey: string
+  compatWarning?: string
 }
 
 export interface UploadCapabilities {
@@ -66,13 +67,18 @@ export function isDirectUploadDisabledError(error: unknown): boolean {
   return body.errorKey === DIRECT_UPLOAD_DISABLED || body.code === 503
 }
 
-/** 浏览器把文件 POST 到 OSS，不经过 ECS。 */
+/** 浏览器把文件 POST 到 OSS，不经过 ECS。不可断点续传。 */
 export function postFileToOss(
   policy: DirectPolicy,
   file: File,
-  onProgress?: (percent: number) => void
+  onProgress?: (percent: number) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new Error('已取消上传'))
+      return
+    }
     const form = new FormData()
     form.append('key', policy.key)
     form.append('policy', policy.policy)
@@ -85,29 +91,38 @@ export function postFileToOss(
     const xhr = new XMLHttpRequest()
     xhr.open('POST', host)
     xhr.timeout = DIRECT_UPLOAD_TIMEOUT_MS
+    const onAbort = () => {
+      xhr.abort()
+    }
+    signal?.addEventListener('abort', onAbort)
     xhr.upload.onprogress = (event) => {
       if (!onProgress || !event.lengthComputable || event.total <= 0) {
         return
       }
       onProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)))
     }
+    const finish = (fn: () => void) => {
+      signal?.removeEventListener('abort', onAbort)
+      fn()
+    }
     xhr.onload = () => {
       if (xhr.status === 200 || xhr.status === 204) {
         onProgress?.(100)
-        resolve()
+        finish(() => resolve())
         return
       }
       const xml = String(xhr.responseText || '')
       const code = xml.match(/<Code>([^<]+)<\/Code>/i)?.[1]
       const message = xml.match(/<Message>([^<]+)<\/Message>/i)?.[1]
       if (code || message) {
-        reject(new Error([code, message].filter(Boolean).join(': ')))
+        finish(() => reject(new Error([code, message].filter(Boolean).join(': '))))
         return
       }
-      reject(new Error('直传到对象存储失败（HTTP ' + xhr.status + '）'))
+      finish(() => reject(new Error('直传到对象存储失败（HTTP ' + xhr.status + '）')))
     }
-    xhr.onerror = () => reject(new Error('浏览器拦截了到对象存储的请求，请检查控制台是否出现 CSP / CORS 报错'))
-    xhr.ontimeout = () => reject(new Error('直传到对象存储超时，请保持页面不要关闭后重试'))
+    xhr.onerror = () => finish(() => reject(new Error('浏览器拦截了到对象存储的请求，请检查控制台是否出现 CSP / CORS 报错')))
+    xhr.ontimeout = () => finish(() => reject(new Error('直传到对象存储超时，请保持页面不要关闭后重试')))
+    xhr.onabort = () => finish(() => reject(new Error('已取消上传')))
     xhr.send(form)
   })
 }

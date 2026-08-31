@@ -86,11 +86,23 @@ function coerceVttText(data) {
  */
 function withVideoReloadNonce(url, nonce) {
   if (!url) return ''
-  const token = nonce == null ? Date.now() : nonce
-  const stripped = String(url).replace(/([?&])_r=\d+/, '')
-  const base = stripped.endsWith('?') || stripped.endsWith('&') ? stripped.slice(0, -1) : stripped
-  const sep = base.includes('?') ? '&' : '?'
-  return base + sep + '_r=' + token
+  const token = String(nonce == null ? Date.now() : nonce)
+  try {
+    const parsed = new URL(url)
+    parsed.searchParams.delete('_r')
+    parsed.searchParams.set('_r', token)
+    return parsed.href
+  } catch {
+    const hashIdx = String(url).indexOf('#')
+    const hash = hashIdx >= 0 ? String(url).slice(hashIdx) : ''
+    const withoutHash = hashIdx >= 0 ? String(url).slice(0, hashIdx) : String(url)
+    const qIdx = withoutHash.indexOf('?')
+    const path = qIdx >= 0 ? withoutHash.slice(0, qIdx) : withoutHash
+    const query = qIdx >= 0 ? withoutHash.slice(qIdx + 1) : ''
+    const params = query.split('&').filter(Boolean).filter((part) => !/^_r=\d+$/.test(part))
+    params.push('_r=' + token)
+    return path + '?' + params.join('&') + hash
+  }
 }
 
 function isVttHttpSuccess(statusCode) {

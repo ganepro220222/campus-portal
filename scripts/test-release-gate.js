@@ -58,7 +58,20 @@ function assertRequestLazyGetApp() {
   }
 }
 
+function assertViewerCheckInPreflight() {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
+  if (!pkg.scripts || !pkg.scripts['check:viewer']) {
+    console.error('[test-release-gate] package.json 缺少 check:viewer（改 player.html 后必须能本地拦住过期观看版）')
+    process.exit(1)
+  }
+  if (!String(pkg.scripts['preflight:local'] || '').includes('check:viewer')) {
+    console.error('[test-release-gate] preflight:local 必须包含 check:viewer，否则观看版 bundle 会再次漏提交')
+    process.exit(1)
+  }
+}
+
 assertReleaseEnvFixture()
 assertProdMiniappTemplate()
 assertRequestLazyGetApp()
+assertViewerCheckInPreflight()
 console.log('[test-release-gate] 通过')

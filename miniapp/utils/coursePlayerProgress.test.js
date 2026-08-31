@@ -42,6 +42,14 @@ assert.strictEqual(
   withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4?_r=1', 8),
   'https://cdn.yunmanvr.com/videos/a.mp4?_r=8'
 )
+assert.strictEqual(
+  withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4?_r=1&token=2', 8),
+  'https://cdn.yunmanvr.com/videos/a.mp4?token=2&_r=8'
+)
+assert.strictEqual(
+  withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4?foo=1&_r=1', 8),
+  'https://cdn.yunmanvr.com/videos/a.mp4?foo=1&_r=8'
+)
 assert.strictEqual(withVideoReloadNonce(''), '')
 
 assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 303, completed: true, totalDurationSeconds: 303 }), 0)

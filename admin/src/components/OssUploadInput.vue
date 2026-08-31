@@ -17,9 +17,13 @@
       <div v-else-if="showVideoPreview" class="preview-wrap preview-wrap--video">
         <video :src="inner" class="preview-video" controls preload="metadata" />
       </div>
+      <div v-else-if="showAudioPreview" class="preview-wrap preview-wrap--audio">
+        <audio :src="inner" class="preview-audio" controls preload="metadata" />
+        <span class="file-name">{{ previewLabel }}</span>
+      </div>
       <div v-else-if="showFilePreview" class="preview-wrap preview-wrap--file">
         <el-icon class="file-icon"><Document /></el-icon>
-        <span class="file-name">{{ fileName }}</span>
+        <span class="file-name">{{ previewLabel }}</span>
       </div>
 
       <div class="controls">
@@ -56,8 +60,9 @@ import { Document } from '@element-plus/icons-vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import { uploadFile } from '@/api/upload'
 import type { CoverFitMode } from '@/utils/cover'
+import { formatUploadPreviewLabel } from '@/utils/uploadMeta.mjs'
 
-type PreviewMode = 'auto' | 'image' | 'video' | 'file' | 'none'
+type PreviewMode = 'auto' | 'image' | 'video' | 'audio' | 'file' | 'none'
 
 const props = withDefaults(defineProps<{
   modelValue?: string
@@ -70,6 +75,7 @@ const props = withDefaults(defineProps<{
   aspectHint?: string
   showCoverFit?: boolean
   preview?: PreviewMode
+  displayName?: string
 }>(), {
   modelValue: '',
   fitMode: 'fill',
@@ -80,7 +86,8 @@ const props = withDefaults(defineProps<{
   hint: '上传后小程序端自动展示；若按钮不可用请联系技术人员',
   aspectHint: '',
   showCoverFit: false,
-  preview: 'auto'
+  preview: 'auto',
+  displayName: ''
 })
 
 const emit = defineEmits<{
@@ -93,10 +100,14 @@ const inner = ref(props.modelValue || '')
 const fitMode = ref<CoverFitMode>(props.fitMode || 'fill')
 const uploading = ref(false)
 const uploadError = ref('')
+const originalName = ref('')
 
 const resolvedPreview = computed<PreviewMode>(() => {
   if (props.preview !== 'auto') return props.preview
   if (props.scene === 'video' || props.accept.includes('video/')) return 'video'
+  if (props.scene === 'audio' || props.accept.includes('audio/') || props.accept.includes('.mp3')) {
+    return 'audio'
+  }
   if (
     props.scene === 'resource_file'
     || props.scene === 'document'
@@ -107,7 +118,6 @@ const resolvedPreview = computed<PreviewMode>(() => {
     || props.accept.includes('.pdf')
     || props.accept.includes('.doc')
     || props.accept.includes('.ppt')
-    || props.accept.includes('.mp3')
   ) {
     return 'file'
   }
@@ -116,22 +126,21 @@ const resolvedPreview = computed<PreviewMode>(() => {
 
 const showImagePreview = computed(() => inner.value && resolvedPreview.value === 'image')
 const showVideoPreview = computed(() => inner.value && resolvedPreview.value === 'video')
+const showAudioPreview = computed(() => inner.value && resolvedPreview.value === 'audio')
 const showFilePreview = computed(() => inner.value && resolvedPreview.value === 'file')
 
-const fileName = computed(() => {
-  if (!inner.value) return ''
-  try {
-    const path = new URL(inner.value).pathname
-    const name = path.split('/').pop()
-    return name || inner.value
-  } catch {
-    const parts = inner.value.split('/')
-    return parts[parts.length - 1] || inner.value
-  }
-})
+const previewLabel = computed(() => formatUploadPreviewLabel({
+  url: inner.value,
+  originalName: originalName.value,
+  displayName: props.displayName
+}))
 
 watch(() => props.modelValue, (v) => {
-  inner.value = v || ''
+  const next = v || ''
+  if (next !== inner.value) {
+    originalName.value = ''
+  }
+  inner.value = next
 })
 
 watch(() => props.fitMode, (v) => {
@@ -164,6 +173,7 @@ async function handleUpload(options: UploadRequestOptions) {
     const res = await uploadFile(file, props.scene)
     inner.value = res.url
     emit('update:modelValue', res.url)
+    originalName.value = file.name || ''
     emit('uploaded', {
       url: res.url,
       sizeBytes: file.size,
@@ -181,6 +191,7 @@ async function handleUpload(options: UploadRequestOptions) {
 
 function clear() {
   inner.value = ''
+  originalName.value = ''
   emit('update:modelValue', '')
 }
 </script>
@@ -213,6 +224,23 @@ function clear() {
 .preview-wrap--video {
   width: 200px;
   height: 112px;
+}
+
+.preview-wrap--audio {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  width: 240px;
+  height: auto;
+  min-height: 72px;
+  padding: 10px;
+}
+
+.preview-audio {
+  width: 100%;
+  height: 36px;
 }
 
 .preview-wrap--file {

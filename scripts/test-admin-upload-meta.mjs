@@ -8,7 +8,10 @@ import {
   bytesToFileSizeKb,
   formatFileSizeKb,
   secondsToDurationMinutes,
-  extractFileExtension
+  extractFileExtension,
+  extractFileNameFromUrl,
+  isStoredObjectFileName,
+  formatUploadPreviewLabel
 } from '../admin/src/utils/uploadMeta.mjs'
 
 assert.equal(extractFileExtension('手册.PDF'), 'pdf')
@@ -39,5 +42,27 @@ assert.equal(secondsToDurationMinutes(25 * 60 + 20), 25)
 assert.equal(secondsToDurationMinutes(45), 1)
 assert.equal(secondsToDurationMinutes(0), undefined)
 assert.equal(secondsToDurationMinutes(NaN), undefined)
+
+assert.equal(extractFileNameFromUrl('https://cdn.yunmanvr.com/files/202608/abc.docx'), 'abc.docx')
+assert.equal(isStoredObjectFileName('20a01a4ebcac406b8bb42c2d00e5894b.docx'), true)
+assert.equal(isStoredObjectFileName('手工技艺入门读本.doc'), false)
+assert.equal(
+  formatUploadPreviewLabel({ url: 'https://cdn.yunmanvr.com/files/202608/20a01a4ebcac406b8bb42c2d00e5894b.docx' }),
+  'Word 文档'
+)
+assert.equal(
+  formatUploadPreviewLabel({
+    url: 'https://cdn.yunmanvr.com/files/202608/20a01a4ebcac406b8bb42c2d00e5894b.docx',
+    originalName: '手工技艺入门读本.doc'
+  }),
+  '手工技艺入门读本.doc'
+)
+assert.equal(
+  formatUploadPreviewLabel({
+    url: 'https://cdn.yunmanvr.com/audios/202608/aaaabbbbccccddddeeeeffff00001111.mp3',
+    displayName: '语音讲解'
+  }),
+  '语音讲解'
+)
 
 console.log('test-admin-upload-meta: ok')

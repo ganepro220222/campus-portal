@@ -19,6 +19,54 @@ export function extractFileExtension(fileName) {
   return base.slice(dot + 1).toLowerCase()
 }
 
+export function extractFileNameFromUrl(url) {
+  const raw = String(url || '').trim()
+  if (!raw) return ''
+  try {
+    const path = new URL(raw).pathname
+    return decodeURIComponent(path.split('/').pop() || '')
+  } catch {
+    return raw.split('?')[0].split('#')[0].split('/').pop() || ''
+  }
+}
+
+/** OSS 对象名是 32 位 hex + 后缀，不宜直接给老师看。 */
+export function isStoredObjectFileName(name) {
+  return /^[a-f0-9]{32}\.[a-z0-9]+$/i.test(String(name || '').trim())
+}
+
+const EXT_PREVIEW_LABEL = {
+  pdf: 'PDF 文件',
+  doc: 'Word 文档',
+  docx: 'Word 文档',
+  ppt: 'PPT 演示文稿',
+  pptx: 'PPT 演示文稿',
+  xls: 'Excel 表格',
+  xlsx: 'Excel 表格',
+  mp4: '视频 MP4',
+  mov: '视频',
+  mp3: '音频 MP3',
+  m4a: '音频',
+  wav: '音频',
+  vtt: '字幕 VTT',
+  srt: '字幕 SRT'
+}
+
+/**
+ * 上传预览文案：优先可读文件名 / 资源名称，否则按后缀显示「PDF 文件」，不展示 OSS 哈希名。
+ */
+export function formatUploadPreviewLabel({ url, originalName, displayName } = {}) {
+  const pickReadable = (value) => {
+    const name = String(value || '').trim().split(/[\\/]/).pop()
+    if (!name || isStoredObjectFileName(name)) return ''
+    return name
+  }
+  const readable = pickReadable(displayName) || pickReadable(originalName) || pickReadable(extractFileNameFromUrl(url))
+  if (readable) return readable
+  const ext = extractFileExtension(originalName || extractFileNameFromUrl(url) || url)
+  return EXT_PREVIEW_LABEL[ext] || (ext ? `${ext.toUpperCase()} 文件` : '已上传文件')
+}
+
 /** 与资源下拉 / 后端 ALLOWED_FILE_TYPES 对齐；认不出返回空，不覆盖老师已选。 */
 export function inferResourceFileType(fileName) {
   const ext = extractFileExtension(fileName)

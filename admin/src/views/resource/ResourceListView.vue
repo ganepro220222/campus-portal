@@ -116,6 +116,7 @@
             v-model="form.fileUrl"
             scene="resource_file"
             preview="file"
+            :display-name="form.name"
             accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mp3"
             upload-label="上传文件"
             done-text="文件已上传"

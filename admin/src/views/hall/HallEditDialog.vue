@@ -119,6 +119,7 @@
         <OssUploadInput
           v-model="form.audioUrl"
           scene="audio"
+          preview="audio"
           accept="audio/*"
           upload-label="上传语音"
           done-text="语音已上传"

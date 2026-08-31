@@ -8,7 +8,7 @@
       </el-select>
     </div>
 
-    <p class="text-muted">查看小程序用户提交的意见反馈。回复内容仅保存在后台备查，用户端不会收到通知；需要答复用户时，请使用其填写的联系方式。</p>
+    <p class="text-muted">查看小程序用户提交的意见反馈及附图。提交回复后，用户会在小程序消息中心收到通知。</p>
 
     <el-table v-loading="loading" :data="list" stripe border>
       <el-table-column prop="createTime" label="提交时间" width="150" />
@@ -51,6 +51,21 @@
         <div class="detail-content">
           <span class="label">反馈内容</span>
           <p>{{ current.content }}</p>
+        </div>
+        <div v-if="current.images?.length" class="detail-content">
+          <span class="label">反馈附图</span>
+          <div class="detail-images">
+            <el-image
+              v-for="(url, index) in current.images"
+              :key="`${url}-${index}`"
+              :src="url"
+              :preview-src-list="current.images"
+              :initial-index="index"
+              fit="cover"
+              class="detail-image"
+              preview-teleported
+            />
+          </div>
         </div>
         <div v-if="current.reply" class="detail-content replied">
           <span class="label">已回复</span>
@@ -126,7 +141,7 @@ async function onSaveReply() {
   saving.value = true
   try {
     const updated = await replyFeedback(current.value.id, form.reply.trim())
-    ElMessage.success('回复已保存')
+    ElMessage.success('回复已保存，并已发送至用户消息中心')
     dialogVisible.value = false
     const idx = list.value.findIndex((i) => i.id === updated.id)
     if (idx >= 0) list.value[idx] = updated
@@ -151,6 +166,19 @@ loadData()
   white-space: pre-wrap;
 }
 .detail-content.replied p { background: #f0f9eb; }
+.detail-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.detail-image {
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  cursor: zoom-in;
+}
 .label {
   display: inline-block;
   width: 72px;

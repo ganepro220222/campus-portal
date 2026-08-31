@@ -57,7 +57,7 @@
       <view class="fb-label">联系方式</view>
       <input
         class="fb-input"
-        placeholder="手机号 / 微信（选填，便于回复）"
+        placeholder="手机号 / 微信（选填，便于必要时联系）"
         placeholder-class="fb-ph"
         value="{{contact}}"
         bindinput="onContact"
@@ -66,7 +66,7 @@
 
     <view class="fb-tip">
       <icon name="chat" size="14" color="#BE9C44" />
-      <text>你的每一条建议都是我们优化云端书院的动力</text>
+      <text>提交后，如有管理员回复，将发送至消息中心</text>
     </view>
 
     <view class="fb-pad"></view>

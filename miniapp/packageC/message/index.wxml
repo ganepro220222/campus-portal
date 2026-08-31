@@ -6,7 +6,7 @@
   <view wx:elif="{{!list.length}}" class="empty-state">
     <icon name="bell" size="42" color="#C3CCE0" />
     <text>暂无消息</text>
-    <text class="msg-empty-sub">报名结果、审核通知等将显示在这里</text>
+    <text class="msg-empty-sub">报名结果、反馈回复等将显示在这里</text>
   </view>
 
   <view wx:else class="msg-main">

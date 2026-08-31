@@ -34,6 +34,7 @@ public class AdminFeedbackService {
     private final FeedbackMapper feedbackMapper;
     private final MemberMapper memberMapper;
     private final AdminPermissionService adminPermissionService;
+    private final MessageService messageService;
     private final ObjectMapper objectMapper;
 
     public PageResult<Map<String, Object>> list(int page, int size, String status) {
@@ -74,6 +75,13 @@ public class AdminFeedbackService {
         feedback.setRepliedAt(LocalDateTime.now());
         feedback.setRepliedBy(AdminContext.getAdminId());
         feedbackMapper.updateById(feedback);
+        messageService.create(
+                feedback.getMemberId(),
+                "意见反馈已回复",
+                "管理员回复：" + reply,
+                "system",
+                "feedback",
+                feedback.getId());
         Member member = memberMapper.selectById(feedback.getMemberId());
         return toVo(feedbackMapper.selectById(id), member);
     }

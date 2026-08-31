@@ -4,7 +4,7 @@ const { requireLogin } = require('./auth')
 
 const DOC_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'word', 'xls', 'xlsx'])
 const VIDEO_TYPES = new Set(['mp4', 'mov'])
-const AUDIO_TYPES = new Set(['mp3', 'm4a', 'wav'])
+const AUDIO_TYPES = new Set(['mp3', 'm4a', 'aac', 'wav'])
 const OPEN_DOC_EXTS = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])
 /** 每次只把 4MB 放进 JS 内存；同时兼容 wx.request 与后端 ResourceService 上限。 */
 const FILE_CHUNK_BYTES = 4 * 1024 * 1024

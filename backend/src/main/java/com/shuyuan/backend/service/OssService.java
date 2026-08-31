@@ -69,7 +69,7 @@ public class OssService {
         map.put("image", Set.of("jpg", "jpeg", "png", "webp", "gif"));
         map.put("feedback", Set.of("jpg", "jpeg", "png", "webp", "gif"));
         map.put("video", Set.of("mp4", "mov"));
-        map.put("audio", Set.of("mp3", "m4a", "wav"));
+        map.put("audio", Set.of("mp3", "m4a", "aac", "wav"));
         map.put("document", Set.of("pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx"));
         map.put("resource_file", Set.of(
                 "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "mp4", "mov", "mp3"));
@@ -665,7 +665,7 @@ public class OssService {
         }
         return switch (ext.toLowerCase(Locale.ROOT)) {
             case "mp4", "mov" -> "videos";
-            case "mp3", "m4a", "wav" -> "audios";
+            case "mp3", "m4a", "aac", "wav" -> "audios";
             default -> "files";
         };
     }

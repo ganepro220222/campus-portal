@@ -1,7 +1,20 @@
 <!-- packageC/message/index.wxml — 站内消息中心 -->
 <view class="msg-page">
   <nav-bar title="消息中心" />
-  <view wx:if="{{loading}}" class="msg-state"><text>加载中…</text></view>
+
+  <view wx:if="{{refreshError && list.length}}" class="page-refresh-bar" bindtap="onRetry">
+    <text>消息刷新失败，点击重试</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="page-state-box">
+    <text class="page-state-text">加载中…</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="page-state-box">
+    <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+    <text class="page-state-text">消息加载失败，请检查网络后重试</text>
+    <view class="page-state-action" bindtap="onRetry">重新加载</view>
+  </view>
 
   <view wx:elif="{{!list.length}}" class="empty-state">
     <icon name="bell" size="42" color="#C3CCE0" />

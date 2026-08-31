@@ -120,10 +120,10 @@
           v-model="form.audioUrl"
           scene="audio"
           preview="audio"
-          accept="audio/*"
+          accept=".mp3,.aac,.m4a,.wav"
           upload-label="上传语音"
           done-text="语音已上传"
-          hint="支持 MP3 等常见音频格式"
+          hint="支持 MP3、AAC、M4A、WAV"
         />
       </el-form-item>
       <el-form-item label="时长说明">

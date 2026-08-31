@@ -21,6 +21,7 @@ public final class UploadContentInspector {
             Map.entry("mov", "video/quicktime"),
             Map.entry("mp3", "audio/mpeg"),
             Map.entry("m4a", "audio/mp4"),
+            Map.entry("aac", "audio/aac"),
             Map.entry("wav", "audio/wav"),
             Map.entry("pdf", "application/pdf"),
             Map.entry("doc", "application/msword"),
@@ -61,6 +62,8 @@ public final class UploadContentInspector {
             case "mp3" -> (h.length >= 3 && h[0] == 'I' && h[1] == 'D' && h[2] == '3')
                     || (h.length >= 2 && (h[0] & 0xFF) == 0xFF && ((h[1] & 0xE0) == 0xE0 || (h[1] & 0xF0) == 0xF0));
             case "m4a" -> h.length >= 8 && h[4] == 'f' && h[5] == 't' && h[6] == 'y' && h[7] == 'p';
+            case "aac" -> isAdtsAac(h) || startsWith(h, 'A', 'D', 'I', 'F')
+                    || (h.length >= 8 && h[4] == 'f' && h[5] == 't' && h[6] == 'y' && h[7] == 'p');
             case "wav" -> h.length >= 12 && startsWith(h, 'R', 'I', 'F', 'F')
                     && h[8] == 'W' && h[9] == 'A' && h[10] == 'V' && h[11] == 'E';
             case "doc", "ppt", "xls" -> startsWith(
@@ -72,6 +75,13 @@ public final class UploadContentInspector {
             case "srt" -> looksLikeSrt(h);
             default -> false;
         };
+    }
+
+    /** ADTS：12 bit 同步字且 layer=00，避免把 MP3 帧当成 AAC。 */
+    private static boolean isAdtsAac(byte[] h) {
+        return h.length >= 2
+                && (h[0] & 0xFF) == 0xFF
+                && (h[1] & 0xF6) == 0xF0;
     }
 
     private static boolean looksLikeJson(byte[] h) {

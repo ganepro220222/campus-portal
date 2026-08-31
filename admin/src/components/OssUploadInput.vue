@@ -149,7 +149,7 @@ const audioError = ref(false)
 const resolvedPreview = computed<PreviewMode>(() => {
   if (props.preview !== 'auto') return props.preview
   if (props.scene === 'video' || props.accept.includes('video/')) return 'video'
-  if (props.scene === 'audio' || props.accept.includes('audio/') || props.accept.includes('.mp3')) {
+  if (props.scene === 'audio' || props.accept.includes('audio/') || props.accept.includes('.mp3') || props.accept.includes('.aac') || props.accept.includes('.m4a')) {
     return 'audio'
   }
   if (

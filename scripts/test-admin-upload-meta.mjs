@@ -97,5 +97,8 @@ assert.doesNotMatch(courseDialog, /不超过 200MB/)
 assert.match(resourceView, /\.mov/)
 const adminCsp = readFileSync(new URL('../admin/index.html', import.meta.url), 'utf8')
 assert.match(adminCsp, /connect-src[^"]*https:\/\/\*\.oss-cn-chengdu\.aliyuncs\.com/)
+const hallDialog = readFileSync(new URL('../admin/src/views/hall/HallEditDialog.vue', import.meta.url), 'utf8')
+assert.doesNotMatch(hallDialog, /accept="audio\/\*"/)
+assert.match(hallDialog, /accept="[^"]*\.aac[^"]*"/)
 
 console.log('test-admin-upload-meta: ok')

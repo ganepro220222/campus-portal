@@ -1,11 +1,18 @@
 // packageC/message/index.js — 站内消息中心
 const { get, put } = require('../../utils/request')
+const {
+  buildMessageLoadingPatch,
+  buildMessageLoadedPatch,
+  buildMessageFailurePatch
+} = require('../../utils/messageCenterLoad')
 
 Page({
   data: {
     list: [],
     unreadCount: 0,
-    loading: true
+    loading: true,
+    error: false,
+    refreshError: false
   },
 
   onShow() {
@@ -16,21 +23,19 @@ Page({
     this._load().finally(() => wx.stopPullDownRefresh())
   },
 
+  onRetry() {
+    this._load()
+  },
+
   async _load() {
-    this.setData({ loading: true })
+    const hasList = this.data.list.length > 0
+    this.setData(buildMessageLoadingPatch(hasList))
     try {
-      const [list, stats] = await Promise.all([
-        get('/messages').catch(() => []),
-        get('/profile/stats').catch(() => ({}))
-      ])
-      const messages = list || []
-      this.setData({
-        list: messages,
-        unreadCount: (stats && stats.unreadMessages) || messages.filter(m => m.readStatus === 0).length,
-        loading: false
-      })
+      const list = await get('/messages')
+      const stats = await get('/profile/stats').catch(() => null)
+      this.setData(buildMessageLoadedPatch(list, stats))
     } catch (e) {
-      this.setData({ list: [], loading: false })
+      this.setData(buildMessageFailurePatch(hasList))
     }
   },
 

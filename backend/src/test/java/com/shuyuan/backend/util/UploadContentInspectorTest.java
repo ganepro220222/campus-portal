@@ -60,4 +60,14 @@ class UploadContentInspectorTest {
                 () -> UploadContentInspector.inspect("xlsx", xls));
         assertEquals(400, ex.getCode());
     }
+
+    @Test
+    void inspect_acceptsAdtsAacAndRejectsHtml() {
+        byte[] adts = new byte[]{(byte) 0xFF, (byte) 0xF1, 0x50, (byte) 0x80};
+        assertEquals("audio/aac", UploadContentInspector.inspect("aac", adts));
+
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> UploadContentInspector.inspect("aac", "<html>".getBytes()));
+        assertEquals(400, ex.getCode());
+    }
 }

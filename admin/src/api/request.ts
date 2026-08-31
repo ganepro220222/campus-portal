@@ -18,6 +18,13 @@ http.interceptors.request.use((config) => {
   return config
 })
 
+/** silent=true 时失败不弹全局错误提示（调用方自行兜底，如预览签名地址换取） */
+export type RequestConfig = AxiosRequestConfig & { silent?: boolean }
+
+function isSilent(config?: AxiosRequestConfig): boolean {
+  return (config as RequestConfig | undefined)?.silent === true
+}
+
 function rejectApiBody(body: ApiResult, config?: AxiosRequestConfig): Promise<never> {
   if (body.code === 401) {
     const auth = useAuthStore()
@@ -42,7 +49,9 @@ function rejectApiBody(body: ApiResult, config?: AxiosRequestConfig): Promise<ne
     ElMessage.warning({ message: body.message || '操作过于频繁', duration: 4000 })
     return Promise.reject(body)
   }
-  ElMessage.error(body.message || '请求失败')
+  if (!isSilent(config)) {
+    ElMessage.error(body.message || '请求失败')
+  }
   return Promise.reject(body)
 }
 
@@ -60,13 +69,15 @@ http.interceptors.response.use(
     if (body && typeof body.code === 'number') {
       return rejectApiBody(body, err.config)
     }
-    const aborted = err.code === 'ECONNABORTED' || /timeout/i.test(String(err.message || ''))
-    ElMessage.error(aborted ? '请求超时，请稍后重试' : '网络异常，请检查后端服务')
+    if (!isSilent(err.config)) {
+      const aborted = err.code === 'ECONNABORTED' || /timeout/i.test(String(err.message || ''))
+      ElMessage.error(aborted ? '请求超时，请稍后重试' : '网络异常，请检查后端服务')
+    }
     return Promise.reject(err)
   }
 )
 
-export function get<T>(url: string, params?: Record<string, unknown>, config?: AxiosRequestConfig) {
+export function get<T>(url: string, params?: Record<string, unknown>, config?: RequestConfig) {
   return http.get<T, T>(url, { params, ...config })
 }
 

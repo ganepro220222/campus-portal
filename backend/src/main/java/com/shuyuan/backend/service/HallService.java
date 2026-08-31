@@ -28,6 +28,7 @@ public class HallService {
     private final EventLogService eventLogService;
     private final PointService pointService;
     private final FavoriteService favoriteService;
+    private final OssService ossService;
 
     public List<Map<String, Object>> list(String category) {
         Map<Long, String> catMap = categoryService.nameMap("hall");
@@ -91,7 +92,8 @@ public class HallService {
         m.put("slides", slides);
         m.put("sections", buildSectionViews(sections, media));
         m.put("caption", caption);
-        m.put("audioUrl", audio != null ? audio.getUrl() : null);
+        // 语音存的是 /audios/* 裸地址，CDN URL 鉴权开启后必须签名才能播
+        m.put("audioUrl", audio != null ? ossService.signUrl(audio.getUrl()) : null);
         m.put("audioTime", audio != null && audio.getCaption() != null ? audio.getCaption() : "语音讲解");
         eventLogService.record("view", "hall", id);
         pointService.awardCurrentUser("view_hall");

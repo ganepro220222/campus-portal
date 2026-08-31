@@ -15,14 +15,16 @@
         />
       </div>
       <div v-else-if="showVideoPreview" class="preview-wrap preview-wrap--video">
-        <video :src="inner" class="preview-video" controls preload="metadata" />
+        <video v-if="previewSrc" :src="previewSrc" class="preview-video" controls preload="metadata" />
+        <p v-else class="hint preview-loading">预览加载中…</p>
       </div>
       <div v-else-if="showAudioPreview" class="preview-wrap preview-wrap--audio">
         <div class="audio-row">
-          <el-button size="small" @click="toggleAudioPreview">{{ audioPlaying ? '暂停' : '试听' }}</el-button>
+          <el-button size="small" :disabled="!previewSrc" @click="toggleAudioPreview">{{ audioPlaying ? '暂停' : '试听' }}</el-button>
           <audio
+            v-if="previewSrc"
             ref="audioEl"
-            :src="inner"
+            :src="previewSrc"
             class="preview-audio"
             controls
             preload="metadata"
@@ -72,7 +74,7 @@
 import { computed, ref, watch } from 'vue'
 import { Document } from '@element-plus/icons-vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
-import { uploadFile } from '@/api/upload'
+import { fetchPreviewUrl, uploadFile } from '@/api/upload'
 import type { CoverFitMode } from '@/utils/cover'
 import { formatUploadPreviewLabel } from '@/utils/uploadMeta.mjs'
 
@@ -145,6 +147,35 @@ const showImagePreview = computed(() => inner.value && resolvedPreview.value ===
 const showVideoPreview = computed(() => inner.value && resolvedPreview.value === 'video')
 const showAudioPreview = computed(() => inner.value && resolvedPreview.value === 'audio')
 const showFilePreview = computed(() => inner.value && resolvedPreview.value === 'file')
+
+/*
+ * 音视频落库的是不带签名的原始地址；CDN 开启 URL 鉴权后直接当 src 用会 403
+ * （表现为音频弹「无法播放」红字、视频一片黑）。预览一律先找后端换短时签名地址，
+ * 表单保存的值保持原始地址不变。图片目录不在鉴权范围，无需换。
+ */
+const previewSrc = ref('')
+let previewSeq = 0
+
+watch(
+  [inner, resolvedPreview],
+  ([url, mode]) => {
+    previewSeq += 1
+    const seq = previewSeq
+    if (!url || (mode !== 'audio' && mode !== 'video') || !/^https?:\/\//i.test(url)) {
+      previewSrc.value = url || ''
+      return
+    }
+    previewSrc.value = ''
+    fetchPreviewUrl(url)
+      .then((signed) => {
+        if (seq === previewSeq) previewSrc.value = signed || url
+      })
+      .catch(() => {
+        if (seq === previewSeq) previewSrc.value = url
+      })
+  },
+  { immediate: true }
+)
 
 const previewLabel = computed(() => formatUploadPreviewLabel({
   url: inner.value,

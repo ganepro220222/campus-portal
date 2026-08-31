@@ -80,7 +80,7 @@ function resolveTimeout(options) {
   return typeof custom === 'number' && custom > 0 ? custom : DEFAULT_TIMEOUT
 }
 
-/** 微信 downloadFile 带 Authorization header 会误报合法域名；资料文件改走 query。 */
+/** downloadFile 的备选鉴权：登录态放进 ?access_token=（个别客户端对带 header 的 downloadFile 误报域名时用）。 */
 function withAccessTokenQuery(url, token) {
   if (!token) return String(url || '')
   const base = String(url || '')
@@ -238,9 +238,14 @@ const getArrayBuffer = (url, options = {}) => {
   })
 }
 
-/** GET 文件落到微信临时路径，不经过 JS ArrayBuffer。downloadFile 合法域名须含 API 主机。 */
+/**
+ * GET 文件落到微信临时路径，不经过 JS ArrayBuffer。downloadFile 合法域名须含 API 主机。
+ * options.auth：'header'（默认，Authorization 头，URL 干净无 query）或
+ * 'query'（?access_token=，作为个别客户端误报域名时的备选线路）。
+ */
 const downloadToTempFile = (url, options = {}) => {
   const silent = options.silent === true
+  const useQueryAuth = options.auth === 'query'
   return new Promise((resolve, reject) => {
     const token = resolveToken()
     const ext = String(options.ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
@@ -248,7 +253,9 @@ const downloadToTempFile = (url, options = {}) => {
       ? `${wx.env.USER_DATA_PATH}/dl_${Date.now()}.${ext}`
       : ''
     const payload = {
-      url: withAccessTokenQuery(resolveBaseUrl() + url, token),
+      url: useQueryAuth
+        ? withAccessTokenQuery(resolveBaseUrl() + url, token)
+        : (resolveBaseUrl() + url),
       timeout: resolveTimeout({ timeout: options.timeout || 180000 }),
       success(res) {
         const local = res.filePath || res.tempFilePath || filePath
@@ -272,6 +279,9 @@ const downloadToTempFile = (url, options = {}) => {
         }
         reject(err)
       }
+    }
+    if (!useQueryAuth) {
+      payload.header = { Authorization: token ? ('Bearer ' + token) : '' }
     }
     if (filePath) payload.filePath = filePath
     wx.downloadFile(payload)

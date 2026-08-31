@@ -73,22 +73,36 @@ function canUseArrayBufferFallback(fileSizeKb) {
   return Number.isFinite(n) && n > 0 && n <= ARRAYBUFFER_MAX_KB
 }
 
+/**
+ * 经 API 拉文件，按成功率从高到低逐个尝试：
+ * 1. downloadFile + Authorization 头（URL 干净、路径以真实后缀结尾）
+ * 2. downloadFile + ?access_token=（防个别客户端对带 header 的 downloadFile 误报域名）
+ * 3. 小文件 wx.request ArrayBuffer（完全绕开 downloadFile 的各种怪癖；走旧版 /file 路径，
+ *    后端未更新到带文件名的新路由时也能成）
+ * 域名误报是客户端本地立即失败，串行重试没有额外流量。
+ */
 async function fetchViaApi(resourceId, ext, fileSizeKb) {
-  try {
-    const tmp = await downloadToTempFile(resourceFileDownloadPath(resourceId, ext), {
-      timeout: 180000,
-      silent: true,
-      ext
-    })
-    const named = namedTempPath(tmp, ext)
-    return copyToNamedPath(tmp, named).catch(() => tmp)
-  } catch (e) {
-    if (classifyOpenError(errText(e)) === 'domain' && canUseArrayBufferFallback(fileSizeKb)) {
-      const buffer = await getArrayBuffer(resourceFileDownloadPath(resourceId, ext), { timeout: 180000, silent: true })
-      return writeLocalFile(buffer, ext)
+  const apiPath = resourceFileDownloadPath(resourceId, ext)
+  const attempts = [
+    { label: 'api-header', run: () => downloadToTempFile(apiPath, { timeout: 180000, silent: true, ext }) },
+    { label: 'api-query', run: () => downloadToTempFile(apiPath, { timeout: 180000, silent: true, ext, auth: 'query' }) }
+  ]
+  let lastErr = null
+  for (const attempt of attempts) {
+    try {
+      const tmp = await attempt.run()
+      const named = namedTempPath(tmp, ext)
+      return await copyToNamedPath(tmp, named).catch(() => tmp)
+    } catch (e) {
+      lastErr = e
+      console.error('[resourceDownload]', attempt.label, 'failed:', errText(e))
     }
-    throw e
   }
+  if (canUseArrayBufferFallback(fileSizeKb)) {
+    const buffer = await getArrayBuffer(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
+    return writeLocalFile(buffer, ext)
+  }
+  throw lastErr || new Error('download-failed')
 }
 
 function wxDownloadTemp(url, ext) {
@@ -174,12 +188,12 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
   try {
     let path
     if (resourceId) {
-      // 微信 downloadFile 对 PDF 会检查 URL 是否像「.pdf 结尾」。
-      // CDN 鉴权后变成 .pdf?auth_key=...，API 的 /file 又没有后缀，都会误报合法域名。
-      // 走 /file/document.pdf + 本地 filePath。
+      // 文档优先走 API（路径以真实后缀结尾，如 /file/document.pdf），
+      // 全部失败再直拉 CDN（CDN 签名地址是 .pdf?auth_key=...，个别客户端会误报域名）。
       try {
         path = await fetchViaApi(resourceId, openType, fileSizeKb)
       } catch (apiErr) {
+        console.error('[resourceDownload] cdn-direct fallback, api error:', errText(apiErr))
         path = await wxDownloadTemp(url, openType)
       }
     } else {
@@ -192,14 +206,17 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
     wx.hideLoading()
     const msg = errText(e)
     const kind = classifyOpenError(msg)
+    console.error('[resourceDownload] openDocument failed:', msg)
     if (kind === 'download') {
       wx.showToast({ title: '文件下载失败，请检查网络后重试', icon: 'none' })
     } else {
+      // 弹窗里带上原始错误，方便远程排查（用户截图即可定位是哪一步、什么错）
+      const detail = msg ? '\n[' + msg.slice(0, 60) + ']' : ''
       wx.showModal({
         title: '无法打开文件',
-        content: kind === 'domain'
-          ? '微信未能直接下载该文件。可先复制链接，用手机浏览器打开。'
-          : '微信无法预览该文档。可复制链接到手机浏览器打开。',
+        content: (kind === 'domain'
+          ? '微信拦截了下载地址。若服务器域名刚调整过，请完全退出微信后重进小程序再试；仍不行可复制链接用浏览器打开。'
+          : '微信无法预览该文档。可复制链接到手机浏览器打开。') + detail,
         confirmText: '复制链接',
         success(res) {
           if (res.confirm) copyUrlFallback(url, '')

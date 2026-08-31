@@ -1,4 +1,4 @@
-import { post } from './request'
+import { get, post } from './request'
 
 export interface UploadResult {
   url: string
@@ -16,6 +16,12 @@ export function uploadTimeoutMs(file: File, scene: string): number {
     return LARGE_UPLOAD_TIMEOUT_MS
   }
   return UPLOAD_TIMEOUT_MS
+}
+
+/** CDN 开启 URL 鉴权后，落库的裸地址直接播放会 403；预览前换取短时签名地址 */
+export function fetchPreviewUrl(url: string): Promise<string> {
+  return get<{ url: string }>('/admin/upload/preview-url', { url }, { silent: true })
+    .then((r) => r.url || url)
 }
 
 /** 管理端媒体上传（OSS 中转） */

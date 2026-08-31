@@ -4,6 +4,7 @@ import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.context.MemberSession;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.service.MemberAuthGate;
+import com.shuyuan.backend.util.MemberBearerToken;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,11 +22,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String auth = request.getHeader("Authorization");
-        if (auth == null || !auth.startsWith("Bearer ")) {
-            return true;
-        }
-        String token = auth.substring(7).trim();
+        String token = MemberBearerToken.from(request);
         if (token.isEmpty()) {
             return true;
         }

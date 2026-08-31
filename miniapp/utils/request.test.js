@@ -58,6 +58,15 @@ try {
 
   assert.strictEqual(typeof request.downloadToTempFile, 'function')
   assert.strictEqual(typeof request.getArrayBuffer, 'function')
+  assert.strictEqual(
+    request._withAccessTokenQuery('https://api.yunmanvr.com/api/v1/resources/1/file', 'abc+d'),
+    'https://api.yunmanvr.com/api/v1/resources/1/file?access_token=abc%2Bd'
+  )
+  assert.strictEqual(
+    request._withAccessTokenQuery('https://api.example/x?y=1', 't'),
+    'https://api.example/x?y=1&access_token=t'
+  )
+  assert.strictEqual(request._withAccessTokenQuery('/resources/1/file', ''), '/resources/1/file')
 
   console.log('[request.test] PASS')
 } finally {

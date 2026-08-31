@@ -181,7 +181,7 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
       wx.showModal({
         title: '无法打开文件',
         content: kind === 'domain'
-          ? '微信未能直接下载该文件。请确认 downloadFile 合法域名含 API 主机后重试。'
+          ? '微信未能直接下载该文件。可先复制链接，用手机浏览器打开。'
           : '微信无法预览该文档。可复制链接到手机浏览器打开。',
         confirmText: '复制链接',
         success(res) {

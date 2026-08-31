@@ -80,6 +80,14 @@ function resolveTimeout(options) {
   return typeof custom === 'number' && custom > 0 ? custom : DEFAULT_TIMEOUT
 }
 
+/** 微信 downloadFile 带 Authorization header 会误报合法域名；资料文件改走 query。 */
+function withAccessTokenQuery(url, token) {
+  if (!token) return String(url || '')
+  const base = String(url || '')
+  const sep = base.includes('?') ? '&' : '?'
+  return base + sep + 'access_token=' + encodeURIComponent(token)
+}
+
 function handlePasswordChangeRequired(body, silent) {
   const { redirectToChangePassword, setMustChangePasswordFlag } = require('./auth')
   setMustChangePasswordFlag(true)
@@ -236,9 +244,8 @@ const downloadToTempFile = (url, options = {}) => {
   return new Promise((resolve, reject) => {
     const token = resolveToken()
     wx.downloadFile({
-      url: resolveBaseUrl() + url,
+      url: withAccessTokenQuery(resolveBaseUrl() + url, token),
       timeout: resolveTimeout({ timeout: options.timeout || 180000 }),
-      header: { Authorization: token ? ('Bearer ' + token) : '' },
       success(res) {
         if (res.statusCode === 200 && (res.tempFilePath || res.filePath)) {
           resolve(res.tempFilePath || res.filePath)
@@ -283,5 +290,6 @@ module.exports = {
   _handlePasswordChangeRequired: handlePasswordChangeRequired,
   _sanitizeRequestData: sanitizeRequestData,
   _resolveRequestData: resolveRequestData,
-  _isQueryMethod: isQueryMethod
+  _isQueryMethod: isQueryMethod,
+  _withAccessTokenQuery: withAccessTokenQuery
 }

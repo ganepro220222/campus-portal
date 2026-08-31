@@ -97,6 +97,14 @@ function errText(e) {
   return String((e && e.errMsg) || (e && e.message) || e || '')
 }
 
+/** download=没下下来；domain=微信未放行该域名；open=已下载但预览失败 */
+function classifyOpenError(msg) {
+  const s = String(msg || '')
+  if (/url not in domain list/i.test(s)) return 'domain'
+  if (/download-failed|downloadFile:fail|timeout/i.test(s)) return 'download'
+  return 'open'
+}
+
 async function openDocument(url, fileType) {
   const openType = documentOpenType(fileType, url)
   wx.showLoading({ title: '下载中…', mask: true })
@@ -115,12 +123,22 @@ async function openDocument(url, fileType) {
   } catch (e) {
     wx.hideLoading()
     const msg = errText(e)
-    if (/download-failed|fail.*download|timeout/i.test(msg)) {
+    const kind = classifyOpenError(msg)
+    if (kind === 'download') {
       wx.showToast({ title: '文件下载失败，请检查网络后重试', icon: 'none' })
+    } else if (kind === 'domain') {
+      wx.showModal({
+        title: '无法打开文件',
+        content: '微信未允许小程序直接下载该文件。可先复制链接，用手机浏览器打开。',
+        confirmText: '复制链接',
+        success(res) {
+          if (res.confirm) copyUrlFallback(url, '')
+        }
+      })
     } else {
       wx.showModal({
         title: '无法打开文件',
-        content: '文件已下载，但微信预览失败。可复制链接到手机浏览器打开。\n' + (msg || ''),
+        content: '微信无法预览该文档。可复制链接到手机浏览器打开。',
         confirmText: '复制链接',
         success(res) {
           if (res.confirm) copyUrlFallback(url, '')
@@ -222,5 +240,6 @@ module.exports = {
   normalizeType,
   extFromUrl,
   documentOpenType,
-  namedTempPath
+  namedTempPath,
+  classifyOpenError
 }

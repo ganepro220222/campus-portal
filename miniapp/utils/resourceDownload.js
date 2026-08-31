@@ -5,6 +5,7 @@ const { requireLogin } = require('./auth')
 const DOC_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'word'])
 const VIDEO_TYPES = new Set(['mp4', 'mov'])
 const AUDIO_TYPES = new Set(['mp3', 'm4a', 'wav'])
+const OPEN_DOC_EXTS = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])
 
 let _audioCtx = null
 
@@ -14,18 +15,42 @@ function normalizeType(fileType) {
   return t
 }
 
+function extFromUrl(url) {
+  const path = String(url || '').split('?')[0].split('#')[0]
+  const m = path.match(/\.([A-Za-z0-9]+)$/)
+  return m ? m[1].toLowerCase() : ''
+}
+
+/**
+ * wx.openDocument 的 fileType 必须和真实后缀一致。
+ * 后台 Word/PPT 存的是 word/ppt，OSS 上实际是 .docx/.pptx；用 doc/ppt 去开会失败。
+ */
+function documentOpenType(fileType, url) {
+  const fromUrl = extFromUrl(url)
+  if (OPEN_DOC_EXTS.has(fromUrl)) return fromUrl
+  const t = String(fileType || '').toLowerCase()
+  if (t === 'word' || t === 'doc') return 'docx'
+  if (t === 'ppt') return 'pptx'
+  if (OPEN_DOC_EXTS.has(t)) return t
+  return 'pdf'
+}
+
 function pickUrl(data) {
   if (!data) return ''
   return data.fileUrl || data.previewUrl || ''
 }
 
-function wxDownload(url) {
+function wxDownload(url, ext) {
+  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
+  const filePath = `${wx.env.USER_DATA_PATH}/res_${Date.now()}.${safeExt}`
   return new Promise((resolve, reject) => {
     wx.downloadFile({
       url,
+      filePath,
+      timeout: 180000,
       success(res) {
-        if (res.statusCode === 200 && res.tempFilePath) {
-          resolve(res.tempFilePath)
+        if (res.statusCode === 200) {
+          resolve(res.filePath || filePath)
         } else {
           reject(new Error('download-failed'))
         }
@@ -36,12 +61,11 @@ function wxDownload(url) {
 }
 
 async function openDocument(url, fileType) {
+  const openType = documentOpenType(fileType, url)
   wx.showLoading({ title: '下载中…', mask: true })
   try {
-    const path = await wxDownload(url)
+    const path = await wxDownload(url, openType)
     wx.hideLoading()
-    const ext = normalizeType(fileType)
-    const openType = ['pdf', 'doc', 'docx', 'ppt', 'pptx'].includes(ext) ? ext : 'pdf'
     await new Promise((resolve, reject) => {
       wx.openDocument({
         filePath: path,
@@ -54,7 +78,12 @@ async function openDocument(url, fileType) {
     wx.showToast({ title: '已打开', icon: 'success' })
   } catch (e) {
     wx.hideLoading()
-    wx.showToast({ title: '无法打开文件，请稍后重试', icon: 'none' })
+    const msg = String((e && e.errMsg) || e.message || '')
+    if (/download-failed|fail.*download|timeout/i.test(msg)) {
+      wx.showToast({ title: '文件下载失败，请检查网络后重试', icon: 'none' })
+    } else {
+      wx.showToast({ title: '无法打开文件，请用手机打开', icon: 'none' })
+    }
     throw e
   }
 }
@@ -107,15 +136,16 @@ async function openDownloadedResource(data) {
     wx.showToast({ title: '文件地址不可用', icon: 'none' })
     throw new Error('no-url')
   }
-  const fileType = normalizeType(data.fileType)
-  if (DOC_TYPES.has(fileType)) {
-    await openDocument(url, fileType)
+  const rawType = String(data.fileType || '').toLowerCase()
+  const fileType = normalizeType(rawType)
+  if (DOC_TYPES.has(fileType) || DOC_TYPES.has(rawType)) {
+    await openDocument(url, data.fileType)
   } else if (VIDEO_TYPES.has(fileType)) {
     playVideo(url, data.name)
   } else if (AUDIO_TYPES.has(fileType)) {
     playAudio(url, data.name)
   } else {
-    await openDocument(url, fileType)
+    await openDocument(url, data.fileType)
   }
 }
 
@@ -146,5 +176,7 @@ function downloadResource(resourceId, options = {}) {
 module.exports = {
   downloadResource,
   openDownloadedResource,
-  normalizeType
+  normalizeType,
+  extFromUrl,
+  documentOpenType
 }

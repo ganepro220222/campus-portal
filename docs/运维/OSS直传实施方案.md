@@ -29,7 +29,7 @@ CORS 未配好时不要打开。打开后须重建 backend 容器，并重新部
 
 OSS 控制台 → Bucket → **权限管理** → **跨域设置** → 创建规则：
 
-- **来源**：预发管理后台 Origin，例如 `http://47.109.0.192`（不要带 `/admin`）。HTTPS 域名、本机开发分别再加 `https://你的后台域`、`http://localhost:5173`
+- **来源**：管理后台页面的 Origin（不要带 `/admin`）。预发 HTTPS 是 `https://api.yunmanvr.com`；用 IP 打开时再加 `http://47.109.0.192`；本机开发再加 `http://localhost:5173`。OSS 按规则从上到下匹配，**同一来源必须出现在带 POST 的那条里**，否则直传会被浏览器拦住。
 - **允许 Methods**：`POST`、`HEAD`、`GET`（不要 `*`）
 - **允许 Headers**：`*`
 - **暴露 Headers**：`ETag`、`x-oss-request-id`
@@ -39,12 +39,12 @@ OSS 控制台 → Bucket → **权限管理** → **跨域设置** → 创建规
 
 ```bash
 curl -sI -X OPTIONS \
-  -H "Origin: http://47.109.0.192" \
+  -H "Origin: https://api.yunmanvr.com" \
   -H "Access-Control-Request-Method: POST" \
   "https://<bucket>.oss-cn-chengdu.aliyuncs.com/"
 ```
 
-应出现 `Access-Control-Allow-Origin: http://47.109.0.192`。
+应出现 `Access-Control-Allow-Origin: https://api.yunmanvr.com` 且 Methods 含 `POST`。若返回 403 且没有该头，说明当前来源匹配到了只允许 GET/HEAD 的旧规则。
 
 ## 4. 打开直传
 

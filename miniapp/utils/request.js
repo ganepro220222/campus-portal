@@ -194,42 +194,6 @@ const upload = (url, filePath, name = 'file', formData = {}, options = {}) => {
   })
 }
 
-/** GET 二进制（资料文件）。不走 JSON 包装，避免 downloadFile 直拉 CDN。 */
-const getArrayBuffer = (url, options = {}) => {
-  const silent = options.silent === true
-  return new Promise((resolve, reject) => {
-    const token = resolveToken()
-    wx.request({
-      url: resolveBaseUrl() + url,
-      method: 'GET',
-      responseType: 'arraybuffer',
-      timeout: resolveTimeout({ timeout: options.timeout || 180000 }),
-      header: { Authorization: token ? ('Bearer ' + token) : '' },
-      success(res) {
-        if (res.statusCode === 200 && res.data) {
-          resolve(res.data)
-          return
-        }
-        if (res.statusCode === 401) {
-          logoutIfNeeded(url)
-          if (!silent) {
-            wx.showToast({ title: '请先登录', icon: 'none', duration: 2500 })
-          }
-        } else if (!silent) {
-          wx.showToast({ title: '文件下载失败', icon: 'none' })
-        }
-        reject(new Error('download-failed'))
-      },
-      fail(err) {
-        if (!silent) {
-          wx.showToast({ title: '网络异常，请检查连接', icon: 'none' })
-        }
-        reject(err)
-      }
-    })
-  })
-}
-
 /**
  * GET 单个二进制分块。只接受 206，避免旧后端把整个文件按 200 返回后再次塞满 JS 内存。
  */
@@ -275,14 +239,62 @@ const getArrayBufferChunk = (url, data, options = {}) => {
   })
 }
 
+/**
+ * 从后端签发的绝对 URL 读取一个 Range 分块。
+ * 只接受 206，防止源站忽略 Range 后把整个大文件装进小程序 JS 内存。
+ */
+const getUrlArrayBufferChunk = (url, offset, size, options = {}) => {
+  const sourceUrl = String(url || '')
+  const start = Number(offset)
+  const length = Number(size)
+  if (!/^https:\/\//i.test(sourceUrl)
+      || !Number.isSafeInteger(start) || start < 0
+      || !Number.isSafeInteger(length) || length <= 0) {
+    return Promise.reject(new Error('source-chunk-range-invalid'))
+  }
+
+  const silent = options.silent === true
+  return new Promise((resolve, reject) => {
+    wx.request({
+      url: sourceUrl,
+      method: 'GET',
+      responseType: 'arraybuffer',
+      timeout: resolveTimeout({ timeout: options.timeout || 180000 }),
+      header: { Range: `bytes=${start}-${start + length - 1}` },
+      success(res) {
+        if (res.statusCode === 206 && res.data) {
+          resolve({
+            data: res.data,
+            header: res.header || {},
+            statusCode: res.statusCode
+          })
+          return
+        }
+        if (!silent) {
+          wx.showToast({ title: '文件加速下载失败', icon: 'none' })
+        }
+        const error = new Error(`source-chunk-download-failed:${res.statusCode || 0}`)
+        error.statusCode = res.statusCode
+        reject(error)
+      },
+      fail(err) {
+        if (!silent) {
+          wx.showToast({ title: '网络异常，请检查连接', icon: 'none' })
+        }
+        reject(err)
+      }
+    })
+  })
+}
+
 module.exports = {
   get:    (url, data, options) => request(url, 'GET', data, options),
   post:   (url, data, options) => request(url, 'POST', data, options),
   put:    (url, data, options) => request(url, 'PUT', data, options),
   del:    (url, options)       => request(url, 'DELETE', {}, options),
   upload: (url, fp, name, fd, options) => upload(url, fp, name, fd, options),
-  getArrayBuffer,
   getArrayBufferChunk,
+  getUrlArrayBufferChunk,
   // 供单测校验：不在模块顶层缓存 getApp()
   _getRuntimeApp: getRuntimeApp,
   _resolveBaseUrl: resolveBaseUrl,

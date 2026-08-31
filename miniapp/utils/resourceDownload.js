@@ -1,14 +1,12 @@
 // utils/resourceDownload.js — 资源下载：调后端记录 + 按类型打开
-const { post, getArrayBuffer, getArrayBufferChunk } = require('./request')
+const { post, getArrayBufferChunk, getUrlArrayBufferChunk } = require('./request')
 const { requireLogin } = require('./auth')
 
 const DOC_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'word'])
 const VIDEO_TYPES = new Set(['mp4', 'mov'])
 const AUDIO_TYPES = new Set(['mp3', 'm4a', 'wav'])
 const OPEN_DOC_EXTS = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])
-/** 小文件可一次读取；超过此值必须分块，避免大 PDF 整份进入 JS 堆。 */
-const ARRAYBUFFER_MAX_KB = 8 * 1024
-/** 每次只把 4MB 放进 JS 内存；与后端 ResourceService 上限一致。 */
+/** 每次只把 4MB 放进 JS 内存；同时兼容 wx.request 与后端 ResourceService 上限。 */
 const FILE_CHUNK_BYTES = 4 * 1024 * 1024
 /** USER_DATA_PATH 总配额 200MB，留出 20MB 给小程序其它用户文件。 */
 const MAX_CHUNK_FILE_BYTES = 180 * 1024 * 1024
@@ -44,12 +42,6 @@ function documentOpenType(fileType, url) {
 function pickUrl(data) {
   if (!data) return ''
   return data.fileUrl || data.previewUrl || ''
-}
-
-function writeLocalFile(buffer, ext) {
-  const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
-  const filePath = `${wx.env.USER_DATA_PATH}/res_${Date.now()}.${safeExt}`
-  return writeFileData(filePath, buffer, false).then(() => filePath)
 }
 
 function writeFileData(filePath, data, append) {
@@ -117,11 +109,6 @@ function cleanupLegacyDocumentCache() {
   })
 }
 
-function canUseArrayBufferFallback(fileSizeKb) {
-  const n = Number(fileSizeKb)
-  return Number.isFinite(n) && n > 0 && n <= ARRAYBUFFER_MAX_KB
-}
-
 function responseHeader(headers, name) {
   const target = String(name || '').toLowerCase()
   const source = headers || {}
@@ -129,15 +116,29 @@ function responseHeader(headers, name) {
   return key ? source[key] : ''
 }
 
-async function requestChunkWithRetry(resourceId, offset, downloader = getArrayBufferChunk) {
+function parseContentRange(value) {
+  const match = String(value || '').trim().match(/^bytes\s+(\d+)-(\d+)\/(\d+)$/i)
+  if (!match) return null
+  const start = Number(match[1])
+  const end = Number(match[2])
+  const total = Number(match[3])
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)
+      || !Number.isSafeInteger(total) || start < 0 || end < start
+      || total <= 0 || end >= total) {
+    return null
+  }
+  return { start, end, total }
+}
+
+function isSignedSourceUrl(url) {
+  return /^https:\/\//i.test(String(url || ''))
+}
+
+async function retryChunk(loader) {
   let lastError = null
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      return await downloader(
-        `/resources/${resourceId}/file-chunks`,
-        { offset, size: FILE_CHUNK_BYTES },
-        { timeout: 180000, silent: true }
-      )
+      return await loader()
     } catch (error) {
       lastError = error
     }
@@ -145,37 +146,103 @@ async function requestChunkWithRetry(resourceId, offset, downloader = getArrayBu
   throw lastError || new Error('chunk-download-failed')
 }
 
-async function fetchViaChunkApi(resourceId, ext, downloader = getArrayBufferChunk) {
+function requestChunkWithRetry(resourceId, offset, downloader = getArrayBufferChunk) {
+  return retryChunk(() => downloader(
+    `/resources/${resourceId}/file-chunks`,
+    { offset, size: FILE_CHUNK_BYTES },
+    { timeout: 180000, silent: true }
+  ))
+}
+
+function requestSourceChunkWithRetry(sourceUrl, offset, downloader = getUrlArrayBufferChunk) {
+  return retryChunk(() => downloader(
+    sourceUrl,
+    offset,
+    FILE_CHUNK_BYTES,
+    { timeout: 180000, silent: true }
+  ))
+}
+
+function validateChunkResponse(response, offset, source) {
+  const buffer = response && response.data
+  const length = buffer && Number(buffer.byteLength)
+  if (!Number.isFinite(length) || length <= 0 || length > FILE_CHUNK_BYTES) {
+    throw new Error('chunk-size-invalid')
+  }
+
+  if (source === 'signed-url') {
+    const range = parseContentRange(responseHeader(response.header, 'content-range'))
+    if (!range) {
+      throw new Error('chunk-source-range-missing')
+    }
+    if (range.start !== offset || range.end - range.start + 1 !== length) {
+      throw new Error('chunk-source-range-invalid')
+    }
+    return { buffer, length, total: range.total }
+  }
+
+  const total = Number(responseHeader(response.header, 'x-file-size'))
+  if (!Number.isSafeInteger(total) || total <= 0) {
+    throw new Error('chunk-total-missing')
+  }
+  return { buffer, length, total }
+}
+
+async function fetchViaPreferredChunks(
+  sourceUrl,
+  resourceId,
+  ext,
+  sourceDownloader = getUrlArrayBufferChunk,
+  apiDownloader = getArrayBufferChunk
+) {
   const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
   const filePath = `${wx.env.USER_DATA_PATH}/res_${Date.now()}.${safeExt}`
   let offset = 0
   let total = 0
+  let useSignedSource = isSignedSourceUrl(sourceUrl)
+  let sourceError = null
   try {
     while (total === 0 || offset < total) {
-      const response = await requestChunkWithRetry(resourceId, offset, downloader)
-      const buffer = response && response.data
-      const length = buffer && Number(buffer.byteLength)
-      if (!Number.isFinite(length) || length <= 0 || length > FILE_CHUNK_BYTES) {
-        throw new Error('chunk-size-invalid')
+      let chunk = null
+      if (useSignedSource) {
+        try {
+          const response = await requestSourceChunkWithRetry(sourceUrl, offset, sourceDownloader)
+          chunk = validateChunkResponse(response, offset, 'signed-url')
+        } catch (error) {
+          sourceError = error
+          useSignedSource = false
+          console.warn('[resourceDownload] signed source unavailable; using API chunks:', errText(error))
+        }
       }
 
-      const currentTotal = Number(responseHeader(response.header, 'x-file-size'))
-      if (!Number.isSafeInteger(currentTotal) || currentTotal <= 0) {
-        throw new Error('chunk-total-missing')
+      if (!chunk) {
+        try {
+          const response = await requestChunkWithRetry(resourceId, offset, apiDownloader)
+          chunk = validateChunkResponse(response, offset, 'api')
+        } catch (apiError) {
+          if (sourceError) {
+            throw new Error(
+              `chunk-all-sources-failed:${errText(sourceError).slice(0, 80)};`
+              + errText(apiError).slice(0, 80)
+            )
+          }
+          throw apiError
+        }
       }
-      if (currentTotal > MAX_CHUNK_FILE_BYTES) {
+
+      if (chunk.total > MAX_CHUNK_FILE_BYTES) {
         throw new Error('chunk-file-too-large')
       }
-      if (total > 0 && total !== currentTotal) {
+      if (total > 0 && total !== chunk.total) {
         throw new Error('chunk-file-changed')
       }
-      total = currentTotal
-      if (offset + length > total) {
+      total = chunk.total
+      if (offset + chunk.length > total) {
         throw new Error('chunk-range-invalid')
       }
 
-      await writeFileData(filePath, buffer, offset > 0)
-      offset += length
+      await writeFileData(filePath, chunk.buffer, offset > 0)
+      offset += chunk.length
       const percent = Math.min(100, Math.floor(offset * 100 / total))
       wx.showLoading({ title: `下载 ${percent}%`, mask: true })
     }
@@ -190,17 +257,10 @@ async function fetchViaChunkApi(resourceId, ext, downloader = getArrayBufferChun
 }
 
 /**
- * 文档只走已经稳定工作的 wx.request：
- * - <=8MB：一次 ArrayBuffer；
- * - >8MB/大小未知：后端 OSS Range + 4MB 分块，避免整份大 PDF 进入 JS 堆。
- * 不再调用该 AppID 下持续误报 domain list 的 wx.downloadFile。
+ * 保留纯 API 入口供兼容与单测；生产路径优先走签名文件源。
  */
-async function fetchViaApi(resourceId, ext, fileSizeKb) {
-  if (canUseArrayBufferFallback(fileSizeKb)) {
-    const buffer = await getArrayBuffer(`/resources/${resourceId}/file`, { timeout: 180000, silent: true })
-    return writeLocalFile(buffer, ext)
-  }
-  return fetchViaChunkApi(resourceId, ext)
+function fetchViaChunkApi(resourceId, ext, downloader = getArrayBufferChunk) {
+  return fetchViaPreferredChunks('', resourceId, ext, null, downloader)
 }
 
 function wxDownloadTemp(url) {
@@ -257,14 +317,14 @@ async function tryOpenLocal(path, openType) {
   }
 }
 
-async function openDocument(url, fileType, resourceId, fileSizeKb) {
+async function openDocument(url, fileType, resourceId) {
   const openType = documentOpenType(fileType, url)
   wx.showLoading({ title: '下载中…', mask: true })
   try {
     await cleanupLegacyDocumentCache()
     let path
     if (resourceId) {
-      path = await fetchViaApi(resourceId, openType, fileSizeKb)
+      path = await fetchViaPreferredChunks(url, resourceId, openType)
     } else {
       path = await wxDownloadTemp(url)
     }
@@ -347,13 +407,13 @@ async function openDownloadedResource(data) {
   const rawType = String(data.fileType || '').toLowerCase()
   const fileType = normalizeType(rawType)
   if (DOC_TYPES.has(fileType) || DOC_TYPES.has(rawType)) {
-    await openDocument(url, data.fileType, data.id, data.fileSizeKb)
+    await openDocument(url, data.fileType, data.id)
   } else if (VIDEO_TYPES.has(fileType)) {
     playVideo(url, data.name)
   } else if (AUDIO_TYPES.has(fileType)) {
     playAudio(url, data.name)
   } else {
-    await openDocument(url, data.fileType, data.id, data.fileSizeKb)
+    await openDocument(url, data.fileType, data.id)
   }
 }
 
@@ -388,11 +448,12 @@ module.exports = {
   extFromUrl,
   documentOpenType,
   classifyOpenError,
-  canUseArrayBufferFallback,
   isLegacyDocumentCacheFile,
   responseHeader,
+  parseContentRange,
+  isSignedSourceUrl,
   _fetchViaChunkApi: fetchViaChunkApi,
-  ARRAYBUFFER_MAX_KB,
+  _fetchViaPreferredChunks: fetchViaPreferredChunks,
   FILE_CHUNK_BYTES,
   MAX_CHUNK_FILE_BYTES
 }

@@ -8,10 +8,10 @@ const {
   extFromUrl,
   documentOpenType,
   classifyOpenError,
-  canUseArrayBufferFallback,
   isLegacyDocumentCacheFile,
   responseHeader,
-  ARRAYBUFFER_MAX_KB,
+  parseContentRange,
+  isSignedSourceUrl,
   FILE_CHUNK_BYTES,
   MAX_CHUNK_FILE_BYTES
 } = require('./resourceDownload')
@@ -47,14 +47,6 @@ assert.strictEqual(classifyOpenError('downloadFile:fail timeout'), 'download')
 assert.strictEqual(classifyOpenError('chunk-total-missing'), 'download')
 assert.strictEqual(classifyOpenError('openDocument:fail filetype not supported'), 'open')
 
-assert.strictEqual(canUseArrayBufferFallback(100), true)
-assert.strictEqual(canUseArrayBufferFallback(8 * 1024), true)
-assert.strictEqual(canUseArrayBufferFallback(8 * 1024 + 1), false)
-assert.strictEqual(canUseArrayBufferFallback(50 * 1024), false)
-assert.strictEqual(canUseArrayBufferFallback(0), false)
-assert.strictEqual(canUseArrayBufferFallback(undefined), false)
-assert.ok(ARRAYBUFFER_MAX_KB <= 8 * 1024)
-
 assert.strictEqual(isLegacyDocumentCacheFile('dl_1788190000000.pdf'), true)
 assert.strictEqual(isLegacyDocumentCacheFile('cdn_1788190000000.docx'), true)
 assert.strictEqual(isLegacyDocumentCacheFile('res_1788190000000.PDF'), true)
@@ -64,6 +56,20 @@ assert.strictEqual(isLegacyDocumentCacheFile('dl_manual.pdf'), false)
 assert.strictEqual(responseHeader({ 'X-File-Size': '32356' }, 'x-file-size'), '32356')
 assert.strictEqual(responseHeader({ 'x-file-size': '32356' }, 'X-File-Size'), '32356')
 assert.strictEqual(responseHeader({}, 'X-File-Size'), '')
+assert.deepStrictEqual(
+  parseContentRange('bytes 0-1023/33132336'),
+  { start: 0, end: 1023, total: 33132336 }
+)
+assert.deepStrictEqual(
+  parseContentRange('BYTES 4194304-8388607/33132336'),
+  { start: 4194304, end: 8388607, total: 33132336 }
+)
+assert.strictEqual(parseContentRange('bytes */33132336'), null)
+assert.strictEqual(parseContentRange('bytes 10-9/100'), null)
+assert.strictEqual(parseContentRange('bytes 0-100/100'), null)
+assert.strictEqual(isSignedSourceUrl('https://cdn.yunmanvr.com/files/a.pdf?auth_key=x'), true)
+assert.strictEqual(isSignedSourceUrl('http://cdn.yunmanvr.com/files/a.pdf'), false)
+assert.strictEqual(isSignedSourceUrl('/resources/1/file'), false)
 assert.strictEqual(FILE_CHUNK_BYTES, 4 * 1024 * 1024)
 assert.ok(MAX_CHUNK_FILE_BYTES < 200 * 1024 * 1024)
 

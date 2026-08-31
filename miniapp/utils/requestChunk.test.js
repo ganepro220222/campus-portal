@@ -43,6 +43,21 @@ async function run() {
   assert.strictEqual(result.data.byteLength, 3)
   assert.strictEqual(result.header['X-File-Size'], '10')
 
+  const sourceUrl = 'https://cdn.yunmanvr.com/files/document.pdf?auth_key=secret'
+  const sourceResult = await request.getUrlArrayBufferChunk(
+    sourceUrl,
+    4,
+    4,
+    { silent: true }
+  )
+  assert.strictEqual(captured.url, sourceUrl)
+  assert.strictEqual(captured.method, 'GET')
+  assert.strictEqual(captured.responseType, 'arraybuffer')
+  assert.deepStrictEqual(captured.header, { Range: 'bytes=4-7' })
+  assert.strictEqual(captured.data, undefined)
+  assert.strictEqual(sourceResult.statusCode, 206)
+  assert.strictEqual(sourceResult.data.byteLength, 3)
+
   responseStatus = 200
   await assert.rejects(
     request.getArrayBufferChunk(
@@ -51,6 +66,14 @@ async function run() {
       { silent: true }
     ),
     /chunk-download-failed:200/
+  )
+  await assert.rejects(
+    request.getUrlArrayBufferChunk(sourceUrl, 0, 4, { silent: true }),
+    /source-chunk-download-failed:200/
+  )
+  await assert.rejects(
+    request.getUrlArrayBufferChunk('/relative/file.pdf', 0, 4, { silent: true }),
+    /source-chunk-range-invalid/
   )
 
   console.log('[requestChunk.test] PASS')

@@ -1,19 +1,22 @@
 package com.shuyuan.backend.controller.admin;
 
 import com.shuyuan.backend.common.Result;
+import com.shuyuan.backend.dto.OssDirectCompleteRequest;
+import com.shuyuan.backend.dto.OssDirectPolicyRequest;
 import com.shuyuan.backend.service.AdminPermissionService;
 import com.shuyuan.backend.service.OssService;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "媒体上传")
 
 /**
- * 管理端媒体上传（OSS 中转兜底，大文件建议后续接 STS 直传）
+ * 管理端媒体上传。小文件走 OSS 中转；视频在开关打开后走 PostObject 直传。
  */
 @RestController
 @RequestMapping("/api/v1/admin/upload")
@@ -23,12 +26,30 @@ public class AdminUploadController {
     private final OssService ossService;
     private final AdminPermissionService adminPermissionService;
 
+    @GetMapping("/capabilities")
+    public Result<Map<String, Object>> capabilities() {
+        requireUploadPermission();
+        return Result.ok(ossService.uploadCapabilities());
+    }
+
     @PostMapping
     public Result<Map<String, String>> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "scene", defaultValue = "image") String scene) {
-        adminPermissionService.requireAny("course:write", "hall:write", "news:write", "admin:super");
+        requireUploadPermission();
         return Result.ok(ossService.upload(scene, file));
+    }
+
+    @PostMapping("/direct-policy")
+    public Result<Map<String, String>> directPolicy(@Valid @RequestBody OssDirectPolicyRequest req) {
+        requireUploadPermission();
+        return Result.ok(ossService.createDirectPolicy(req.getScene(), req.getFileName(), req.getSize()));
+    }
+
+    @PostMapping("/complete")
+    public Result<Map<String, String>> complete(@Valid @RequestBody OssDirectCompleteRequest req) {
+        requireUploadPermission();
+        return Result.ok(ossService.completeDirectUpload(req.getScene(), req.getObjectKey(), req.getSize()));
     }
 
     /**
@@ -39,5 +60,9 @@ public class AdminUploadController {
     public Result<Map<String, String>> previewUrl(@RequestParam("url") String url) {
         String signed = ossService.signUrl(url);
         return Result.ok(Map.of("url", signed == null ? "" : signed));
+    }
+
+    private void requireUploadPermission() {
+        adminPermissionService.requireAny("course:write", "hall:write", "news:write", "admin:super");
     }
 }

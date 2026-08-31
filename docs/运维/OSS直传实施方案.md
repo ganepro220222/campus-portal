@@ -1,0 +1,63 @@
+# OSS 视频直传实施方案
+
+> 贵州交通职业大学 · 云端书院  
+> 对应：技术方案 §4.4 大文件直传；本轮用 **PostObject 签名策略**，不新建 RAM/STS 角色。
+
+管理后台「上传」按钮不变。仅课程视频与资料里的 MP4/MOV 在开关打开后由浏览器直传 OSS；图片/音频/文档/字幕仍走 ECS 中转。小程序播放仍用现有 CDN 短时签名，与上传路径无关。
+
+## 1. 开关（默认关闭）
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `OSS_DIRECT_UPLOAD_ENABLED` | `false` | `true` 后，视频走直传；未配 CORS 或接口失败时自动回退中转（中转仍 200MB） |
+
+CORS 未配好时不要打开。打开后须重建 backend 容器，并重新部署管理后台静态资源。
+
+## 2. 场景上限
+
+| 场景 | 上限 | 路径 |
+|------|------|------|
+| 图片 | 20MB | 中转 |
+| 字幕 | 10MB | 中转 |
+| 音频 | 200MB | 中转 |
+| 文档 / 非视频资料 | 200MB | 中转 |
+| 视频 mp4/mov | 直传开：2GB；关：200MB | 直传（失败回退中转） |
+
+## 3. 阿里云控制台（仅 CORS）
+
+现有 Bucket、CDN 鉴权、AccessKey **不用改**，也**不要**把 Bucket 改成公共读。
+
+OSS 控制台 → Bucket → **权限管理** → **跨域设置** → 创建规则：
+
+- **来源**：预发管理后台 Origin，例如 `http://47.109.0.192`（不要带 `/admin`）。HTTPS 域名、本机开发分别再加 `https://你的后台域`、`http://localhost:5173`
+- **允许 Methods**：`POST`、`HEAD`、`GET`（不要 `*`）
+- **允许 Headers**：`*`
+- **暴露 Headers**：`ETag`、`x-oss-request-id`
+- **缓存时间**：`600`
+
+校验（把 Bucket 名换进去）：
+
+```bash
+curl -sI -X OPTIONS \
+  -H "Origin: http://47.109.0.192" \
+  -H "Access-Control-Request-Method: POST" \
+  "https://<bucket>.oss-cn-chengdu.aliyuncs.com/"
+```
+
+应出现 `Access-Control-Allow-Origin: http://47.109.0.192`。
+
+## 4. 打开直传
+
+1. ECS `.env` 增加 `OSS_DIRECT_UPLOAD_ENABLED=true`
+2. `cd /opt/shuyuan && bash scripts/update-staging-from-github.sh`（不要 `SKIP_DOCKER=1`）
+3. 本机 `powershell -File scripts/deploy-admin-staging.ps1`
+4. 后台强刷后传一个 **略大于 200MB** 的 MP4：应显示百分比，课程保存后小程序能播
+
+回退：把开关改回 `false` 并重建 backend，上传恢复为 200MB 中转。
+
+## 5. 不做
+
+- 本轮不上 RAM 角色 / STS
+- 不把 2GB 文件经 ECS 中转
+- 不改小程序播放、微信域名、CDN 路径鉴权
+- 不做视频转码

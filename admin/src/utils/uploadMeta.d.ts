@@ -8,6 +8,8 @@ declare module '@/utils/uploadMeta.mjs' {
     displayName?: string
   }): string
   export function inferResourceFileType(fileName: string): string
+  export function isDirectUploadCandidate(scene: string, fileName: string): boolean
+  export function formatByteLimit(bytes: number): string
   export function bytesToFileSizeKb(sizeBytes: number): number | undefined
   export function formatFileSizeKb(kb: number | undefined): string
   export function secondsToDurationMinutes(seconds: number): number | undefined
@@ -24,6 +26,8 @@ declare module '../../utils/uploadMeta.mjs' {
     displayName?: string
   }): string
   export function inferResourceFileType(fileName: string): string
+  export function isDirectUploadCandidate(scene: string, fileName: string): boolean
+  export function formatByteLimit(bytes: number): string
   export function bytesToFileSizeKb(sizeBytes: number): number | undefined
   export function formatFileSizeKb(kb: number | undefined): string
   export function secondsToDurationMinutes(seconds: number): number | undefined

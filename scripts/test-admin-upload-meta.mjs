@@ -12,7 +12,9 @@ import {
   extractFileExtension,
   extractFileNameFromUrl,
   isStoredObjectFileName,
-  formatUploadPreviewLabel
+  formatUploadPreviewLabel,
+  isDirectUploadCandidate,
+  formatByteLimit
 } from '../admin/src/utils/uploadMeta.mjs'
 
 assert.equal(extractFileExtension('手册.PDF'), 'pdf')
@@ -26,9 +28,18 @@ assert.equal(inferResourceFileType('slides.pptx'), 'ppt')
 assert.equal(inferResourceFileType('报名表.XLS'), 'xls')
 assert.equal(inferResourceFileType('课程安排.xlsx'), 'xlsx')
 assert.equal(inferResourceFileType('demo.mp4'), 'mp4')
+assert.equal(inferResourceFileType('demo.mov'), 'mp4')
 assert.equal(inferResourceFileType('guide.mp3'), 'mp3')
 assert.equal(inferResourceFileType('readme.txt'), '')
 assert.equal(inferResourceFileType(''), '')
+
+assert.equal(isDirectUploadCandidate('video', 'lesson.mp4'), true)
+assert.equal(isDirectUploadCandidate('resource_file', 'clip.MOV'), true)
+assert.equal(isDirectUploadCandidate('image', 'cover.jpg'), false)
+assert.equal(isDirectUploadCandidate('resource_file', 'notes.pdf'), false)
+assert.equal(formatByteLimit(20 * 1024 * 1024), '20MB')
+assert.equal(formatByteLimit(200 * 1024 * 1024), '200MB')
+assert.equal(formatByteLimit(2 * 1024 * 1024 * 1024), '2GB')
 
 const resourceApi = readFileSync(new URL('../admin/src/api/resource.ts', import.meta.url), 'utf8')
 const resourceView = readFileSync(
@@ -76,5 +87,13 @@ assert.equal(
   }),
   '语音讲解'
 )
+
+const uploadInput = readFileSync(new URL('../admin/src/components/OssUploadInput.vue', import.meta.url), 'utf8')
+assert.match(uploadInput, /fetchDirectPolicy/)
+assert.match(uploadInput, /postFileToOss/)
+assert.match(uploadInput, /completeDirectUpload/)
+const courseDialog = readFileSync(new URL('../admin/src/views/course/CourseEditDialog.vue', import.meta.url), 'utf8')
+assert.doesNotMatch(courseDialog, /不超过 200MB/)
+assert.match(resourceView, /\.mov/)
 
 console.log('test-admin-upload-meta: ok')

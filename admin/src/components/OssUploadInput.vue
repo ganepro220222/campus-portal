@@ -55,6 +55,12 @@
           <span v-if="inner" class="status-ok">{{ doneText }}</span>
           <el-button v-if="inner" link type="danger" @click="clear">重新上传</el-button>
         </div>
+        <el-progress
+          v-if="uploading && uploadPercent != null"
+          class="upload-progress"
+          :percentage="uploadPercent"
+          :stroke-width="8"
+        />
         <p v-if="aspectHint" class="hint aspect-hint">{{ aspectHint }}</p>
         <div v-if="showCoverFit" class="fit-mode">
           <span class="fit-label">小程序展示</span>
@@ -63,7 +69,7 @@
             <el-radio-button value="fit">完整显示</el-radio-button>
           </el-radio-group>
         </div>
-        <p v-if="hint" class="hint">{{ hint }}</p>
+        <p v-if="resolvedHint" class="hint">{{ resolvedHint }}</p>
         <p v-if="uploadError" class="hint error">{{ uploadError }}</p>
       </div>
     </div>
@@ -71,12 +77,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Document } from '@element-plus/icons-vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
-import { fetchPreviewUrl, uploadFile } from '@/api/upload'
+import {
+  completeDirectUpload,
+  fetchDirectPolicy,
+  fetchPreviewUrl,
+  fetchUploadCapabilities,
+  isDirectUploadDisabledError,
+  postFileToOss,
+  uploadFile,
+  type DirectPolicy,
+  type UploadCapabilities,
+  type UploadResult
+} from '@/api/upload'
 import type { CoverFitMode } from '@/utils/cover'
-import { formatUploadPreviewLabel } from '@/utils/uploadMeta.mjs'
+import {
+  formatByteLimit,
+  formatUploadPreviewLabel,
+  isDirectUploadCandidate
+} from '@/utils/uploadMeta.mjs'
 
 type PreviewMode = 'auto' | 'image' | 'video' | 'audio' | 'file' | 'none'
 
@@ -112,10 +133,14 @@ const emit = defineEmits<{
   uploaded: [payload: { url: string; sizeBytes: number; fileName: string; file: File }]
 }>()
 
+const PROXY_MAX_BYTES = 200 * 1024 * 1024
+
 const inner = ref(props.modelValue || '')
 const fitMode = ref<CoverFitMode>(props.fitMode || 'fill')
 const uploading = ref(false)
+const uploadPercent = ref<number | null>(null)
 const uploadError = ref('')
+const capabilities = ref<UploadCapabilities | null>(null)
 const originalName = ref('')
 const audioEl = ref<HTMLAudioElement | null>(null)
 const audioPlaying = ref(false)
@@ -183,6 +208,36 @@ const previewLabel = computed(() => formatUploadPreviewLabel({
   displayName: props.displayName
 }))
 
+const isVideoScene = computed(() =>
+  props.scene === 'video' || props.scene === 'course' || props.scene === 'resource'
+)
+
+const resolvedHint = computed(() => {
+  if (isVideoScene.value) {
+    const max = capabilities.value?.videoMaxBytes || PROXY_MAX_BYTES
+    return `支持 MP4 / MOV，单文件不超过 ${formatByteLimit(max) || '200MB'}；大视频请保持页面不要关闭`
+  }
+  return props.hint
+})
+
+onMounted(() => {
+  void loadCapabilities()
+})
+
+async function loadCapabilities() {
+  try {
+    capabilities.value = await fetchUploadCapabilities()
+  } catch {
+    capabilities.value = {
+      directUploadEnabled: false,
+      videoMaxBytes: PROXY_MAX_BYTES,
+      proxyMaxBytes: PROXY_MAX_BYTES,
+      imageMaxBytes: 20 * 1024 * 1024,
+      subtitleMaxBytes: 10 * 1024 * 1024
+    }
+  }
+}
+
 watch(() => props.modelValue, (v) => {
   const next = v || ''
   if (next !== inner.value) {
@@ -201,26 +256,118 @@ watch(fitMode, (v) => {
   emit('update:fitMode', v === 'fit' ? 'fit' : 'fill')
 })
 
+function errorMessage(e: unknown): string {
+  if (e && typeof e === 'object' && 'message' in e && typeof (e as { message?: string }).message === 'string') {
+    return (e as { message: string }).message
+  }
+  return e instanceof Error ? e.message : ''
+}
+
 function resolveUploadError(e: unknown): string {
+  const text = errorMessage(e)
   if (e && typeof e === 'object') {
     const body = e as { message?: string; code?: string | number }
     if (typeof body.message === 'string' && body.message.trim() && typeof body.code === 'number') {
       return body.message
     }
-    if (body.code === 'ECONNABORTED' || /timeout/i.test(String((e as { message?: string }).message || ''))) {
+    if (body.code === 'ECONNABORTED' || /timeout/i.test(text)) {
       return '上传超时。大视频请保持页面不要关闭，并检查网络后重试'
     }
   }
+  if (/oss-direct/i.test(text)) {
+    return '直传失败，请检查网络或联系运维确认 OSS 跨域后重试'
+  }
+  if (/[\u4e00-\u9fff]/.test(text)) {
+    return text
+  }
   return '上传失败，请检查文件格式与大小，或联系技术人员协助'
+}
+
+function isOversizeError(e: unknown): boolean {
+  return /不能超过|过大|上限/.test(errorMessage(e))
+}
+
+function proxyMaxBytes(): number {
+  return capabilities.value?.proxyMaxBytes || PROXY_MAX_BYTES
+}
+
+function videoMaxBytes(): number {
+  return capabilities.value?.videoMaxBytes || PROXY_MAX_BYTES
+}
+
+function shouldTryDirect(file: File): boolean {
+  return isDirectUploadCandidate(props.scene, file.name) && !!capabilities.value?.directUploadEnabled
+}
+
+function throwIfTooLargeForProxy(file: File): void {
+  if (file.size <= proxyMaxBytes()) {
+    return
+  }
+  throw new Error(
+    `直传未成功，该文件超过服务器中转上限（${formatByteLimit(proxyMaxBytes()) || '200MB'}）。请确认 OSS 跨域已配置后再试`
+  )
+}
+
+async function completeDirect(scene: string, key: string, size: number): Promise<UploadResult> {
+  try {
+    return await completeDirectUpload(scene, key, size)
+  } catch {
+    return await completeDirectUpload(scene, key, size)
+  }
+}
+
+async function uploadWithFallback(file: File): Promise<UploadResult> {
+  if (!shouldTryDirect(file)) {
+    return uploadFile(file, props.scene)
+  }
+  let policy: DirectPolicy
+  try {
+    policy = await fetchDirectPolicy(props.scene, file.name, file.size)
+  } catch (e) {
+    if (isOversizeError(e)) {
+      throw e
+    }
+    throwIfTooLargeForProxy(file)
+    if (!isDirectUploadDisabledError(e)) {
+      ElMessage.warning('直传未成功，已改为服务器中转')
+    }
+    return uploadFile(file, props.scene)
+  }
+  try {
+    uploadPercent.value = 0
+    await postFileToOss(policy, file, (percent) => {
+      uploadPercent.value = percent
+    })
+  } catch {
+    throwIfTooLargeForProxy(file)
+    ElMessage.warning('直传未成功，已改为服务器中转')
+    uploadPercent.value = null
+    return uploadFile(file, props.scene)
+  }
+  uploadPercent.value = Math.max(uploadPercent.value || 0, 99)
+  try {
+    const result = await completeDirect(props.scene, policy.key, file.size)
+    uploadPercent.value = 100
+    return result
+  } catch (e) {
+    throw new Error(errorMessage(e) || '文件已传到云存储但确认失败，请稍后重试')
+  }
 }
 
 async function handleUpload(options: UploadRequestOptions) {
   const file = options.file as File
   if (!file) return
   uploading.value = true
+  uploadPercent.value = null
   uploadError.value = ''
   try {
-    const res = await uploadFile(file, props.scene)
+    if (!capabilities.value) {
+      await loadCapabilities()
+    }
+    if (isDirectUploadCandidate(props.scene, file.name) && file.size > videoMaxBytes()) {
+      throw new Error(`视频不能超过 ${formatByteLimit(videoMaxBytes()) || '200MB'}`)
+    }
+    const res = await uploadWithFallback(file)
     inner.value = res.url
     emit('update:modelValue', res.url)
     originalName.value = file.name || ''
@@ -236,6 +383,7 @@ async function handleUpload(options: UploadRequestOptions) {
     uploadError.value = resolveUploadError(e)
   } finally {
     uploading.value = false
+    uploadPercent.value = null
   }
 }
 
@@ -391,6 +539,11 @@ function clear() {
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.upload-progress {
+  margin-top: 8px;
+  max-width: 360px;
 }
 
 .fit-mode {

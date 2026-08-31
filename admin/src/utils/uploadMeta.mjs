@@ -9,6 +9,7 @@ const EXT_TO_RESOURCE_TYPE = {
   xls: 'xls',
   xlsx: 'xlsx',
   mp4: 'mp4',
+  mov: 'mp4',
   mp3: 'mp3'
 }
 
@@ -73,6 +74,34 @@ export function formatUploadPreviewLabel({ url, originalName, displayName } = {}
 export function inferResourceFileType(fileName) {
   const ext = extractFileExtension(fileName)
   return EXT_TO_RESOURCE_TYPE[ext] || ''
+}
+
+/** 课程视频与资料里的 MP4/MOV 才走 OSS 直传。 */
+export function isDirectUploadCandidate(scene, fileName) {
+  const ext = extractFileExtension(fileName)
+  if (ext !== 'mp4' && ext !== 'mov') {
+    return false
+  }
+  const normalized = String(scene || '').toLowerCase()
+  return normalized === 'video'
+    || normalized === 'course'
+    || normalized === 'resource'
+    || normalized === 'resource_file'
+}
+
+export function formatByteLimit(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return ''
+  }
+  const gb = 1024 * 1024 * 1024
+  const mb = 1024 * 1024
+  if (bytes >= gb && bytes % gb === 0) {
+    return `${bytes / gb}GB`
+  }
+  if (bytes >= mb) {
+    return `${Math.round(bytes / mb)}MB`
+  }
+  return `${bytes}B`
 }
 
 export function bytesToFileSizeKb(sizeBytes) {

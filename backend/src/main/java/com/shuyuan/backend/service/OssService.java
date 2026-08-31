@@ -14,6 +14,7 @@ import com.shuyuan.backend.util.CdnUrlAuth;
 import com.shuyuan.backend.util.CourseVideoUrlPolicy;
 import com.shuyuan.backend.util.OssEndpointSupport;
 import com.shuyuan.backend.util.OssManagedObjectKey;
+import com.shuyuan.backend.util.OssPostPolicy;
 import com.shuyuan.backend.util.UploadContentInspector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,6 +42,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 
 /**
  * 对象存储：后台上传、签名 URL 下发（私有 Bucket + CDN）
@@ -57,6 +60,9 @@ public class OssService {
             Set.of("videos/", "files/", "audios/", "subtitles/");
     private static final long RANGE_METADATA_TTL_MILLIS = 5 * 60 * 1000L;
     private static final int RANGE_METADATA_CACHE_MAX = 2048;
+    public static final String DIRECT_UPLOAD_DISABLED = "OSS_DIRECT_UPLOAD_DISABLED";
+    private static final Pattern DIRECT_VIDEO_KEY =
+            Pattern.compile("^videos/\\d{6}/[a-f0-9]{32}\\.(mp4|mov)$");
 
     private static Map<String, Set<String>> buildSceneExtensions() {
         Map<String, Set<String>> map = new HashMap<>();
@@ -66,7 +72,7 @@ public class OssService {
         map.put("audio", Set.of("mp3", "m4a", "wav"));
         map.put("document", Set.of("pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx"));
         map.put("resource_file", Set.of(
-                "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "mp4", "mp3"));
+                "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "mp4", "mov", "mp3"));
         map.put("subtitle", Set.of("vtt", "srt"));
         return Map.copyOf(map);
     }
@@ -85,6 +91,21 @@ public class OssService {
                 && StringUtils.hasText(ossProperties.getBucket())
                 && StringUtils.hasText(ossProperties.getAccessKey())
                 && StringUtils.hasText(ossProperties.getSecretKey());
+    }
+
+    public boolean isDirectUploadReady() {
+        return isEnabled() && ossProperties.isDirectUploadEnabled();
+    }
+
+    public Map<String, Object> uploadCapabilities() {
+        Map<String, Object> m = new LinkedHashMap<>();
+        boolean direct = isDirectUploadReady();
+        m.put("directUploadEnabled", direct);
+        m.put("videoMaxBytes", maxBytesFor("video", "mp4", direct));
+        m.put("proxyMaxBytes", proxyLimitBytes());
+        m.put("imageMaxBytes", imageLimitBytes());
+        m.put("subtitleMaxBytes", subtitleLimitBytes());
+        return m;
     }
 
     /**
@@ -329,11 +350,9 @@ public class OssService {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(400, "上传文件不能为空");
         }
-        if (file.getSize() > ossProperties.getMaxUploadBytes()) {
-            throw new BusinessException(400, "文件过大，请使用直传或压缩后重试");
-        }
         String ext = extractExtension(file.getOriginalFilename());
         validateExtension(scene, ext);
+        assertSizeAllowed(scene, ext, file.getSize(), false);
         String objectKey = buildObjectKey(scene, ext);
 
         OSS client = null;
@@ -367,6 +386,150 @@ public class OssService {
                 "url", publicUrl,
                 "objectKey", objectKey
         );
+    }
+
+    public Map<String, String> createDirectPolicy(String scene, String fileName, long size) {
+        if (!isEnabled()) {
+            throw new BusinessException(503, "对象存储未配置，请设置 OSS 环境变量或手动填写 URL");
+        }
+        if (!ossProperties.isDirectUploadEnabled()) {
+            throw new BusinessException(503, "视频直传未开启", DIRECT_UPLOAD_DISABLED);
+        }
+        String ext = extractExtension(fileName);
+        validateExtension(scene, ext);
+        if (!isDirectVideoCandidate(scene, ext)) {
+            throw new BusinessException(400, "仅视频文件支持直传");
+        }
+        assertSizeAllowed(scene, ext, size, true);
+        String objectKey = buildObjectKey(scene, ext);
+        int ttl = Math.max(60, ossProperties.getDirectPolicyExpireSeconds());
+        Instant expireAt = Instant.now().plusSeconds(ttl);
+        String host = OssEndpointSupport.publicBucketBase(
+                ossProperties.getBucket(), ossProperties.getEndpoint());
+        OssPostPolicy.SignedPost signed = OssPostPolicy.sign(
+                host,
+                ossProperties.getBucket(),
+                ossProperties.getAccessKey(),
+                ossProperties.getSecretKey(),
+                objectKey,
+                size,
+                expireAt);
+        log.info("[oss] direct-policy scene={} key={} bytes={}", scene, objectKey, size);
+        return signed.toClientMap();
+    }
+
+    public Map<String, String> completeDirectUpload(String scene, String objectKey, long size) {
+        if (!isEnabled()) {
+            throw new BusinessException(503, "对象存储未配置，请设置 OSS 环境变量或手动填写 URL");
+        }
+        String key = objectKey == null ? "" : objectKey.trim();
+        if (!DIRECT_VIDEO_KEY.matcher(key).matches() || !OssManagedObjectKey.isManaged(key)) {
+            throw new BusinessException(400, "直传对象路径无效");
+        }
+        String ext = extractExtension(key);
+        validateExtension(scene, ext);
+        if (!isDirectVideoCandidate(scene, ext)) {
+            throw new BusinessException(400, "仅视频文件支持直传");
+        }
+        assertSizeAllowed(scene, ext, size, ossProperties.isDirectUploadEnabled());
+
+        OSS client = getRangeTransferClient();
+        ObjectMetadata metadata;
+        try {
+            metadata = client.getObjectMetadata(ossProperties.getBucket(), key);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(400, "文件尚未上传完成");
+        }
+        if (metadata.getContentLength() != size) {
+            deleteObjectQuietly(key);
+            throw new BusinessException(400, "上传大小与声明不一致");
+        }
+        GetObjectRequest rangeReq = new GetObjectRequest(ossProperties.getBucket(), key);
+        rangeReq.setRange(0, 63);
+        try (OSSObject object = client.getObject(rangeReq);
+             InputStream in = object.getObjectContent()) {
+            byte[] header = in.readNBytes(64);
+            UploadContentInspector.inspect(ext, header);
+        } catch (BusinessException e) {
+            deleteObjectQuietly(key);
+            throw e;
+        } catch (Exception e) {
+            deleteObjectQuietly(key);
+            throw new BusinessException(400, "无法校验文件内容");
+        }
+        rangeMetadataCache.remove(key);
+        return Map.of(
+                "url", buildPublicUrl(key),
+                "objectKey", key
+        );
+    }
+
+    boolean isDirectVideoCandidate(String scene, String ext) {
+        String normalized = normalizeScene(scene);
+        String e = ext == null ? "" : ext.toLowerCase(Locale.ROOT);
+        if (!"mp4".equals(e) && !"mov".equals(e)) {
+            return false;
+        }
+        return "video".equals(normalized) || "resource_file".equals(normalized);
+    }
+
+    long maxBytesFor(String scene, String ext, boolean allowDirectQuota) {
+        if (isDirectVideoCandidate(scene, ext) && allowDirectQuota && ossProperties.isDirectUploadEnabled()) {
+            long video = ossProperties.getDirectVideoMaxBytes();
+            return video > 0 ? video : 2L * 1024 * 1024 * 1024;
+        }
+        String normalized = normalizeScene(scene);
+        return switch (normalized) {
+            case "image", "feedback" -> imageLimitBytes();
+            case "subtitle" -> subtitleLimitBytes();
+            default -> proxyLimitBytes();
+        };
+    }
+
+    private void assertSizeAllowed(String scene, String ext, long size, boolean allowDirectQuota) {
+        long limit = maxBytesFor(scene, ext, allowDirectQuota);
+        if (size > limit) {
+            throw new BusinessException(400, sizeLimitMessage(scene, ext, limit));
+        }
+    }
+
+    private String sizeLimitMessage(String scene, String ext, long limit) {
+        if (isDirectVideoCandidate(scene, ext)) {
+            return "视频不能超过 " + formatLimit(limit);
+        }
+        String normalized = normalizeScene(scene);
+        return switch (normalized) {
+            case "image", "feedback" -> "图片不能超过 " + formatLimit(limit);
+            case "subtitle" -> "字幕不能超过 " + formatLimit(limit);
+            case "audio" -> "音频不能超过 " + formatLimit(limit);
+            default -> "文件过大，请压缩后重试（上限 " + formatLimit(limit) + "）";
+        };
+    }
+
+    private long proxyLimitBytes() {
+        long v = ossProperties.getMaxUploadBytes();
+        return v > 0 ? v : 200L * 1024 * 1024;
+    }
+
+    private long imageLimitBytes() {
+        long v = ossProperties.getImageMaxBytes();
+        return v > 0 ? v : 20L * 1024 * 1024;
+    }
+
+    private long subtitleLimitBytes() {
+        long v = ossProperties.getSubtitleMaxBytes();
+        return v > 0 ? v : 10L * 1024 * 1024;
+    }
+
+    private static String formatLimit(long bytes) {
+        long gb = 1024L * 1024L * 1024L;
+        if (bytes >= gb && bytes % gb == 0) {
+            return (bytes / gb) + "GB";
+        }
+        long mb = Math.max(1, bytes / (1024L * 1024L));
+        return mb + "MB";
     }
 
     /** 上传文本内容（如 ASR 生成的 VTT） */

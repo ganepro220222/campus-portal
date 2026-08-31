@@ -43,6 +43,19 @@ public class OssProperties {
     private int videoSignExpireSeconds = 4 * 3600;
     /** 后台中转上传单文件上限（字节），默认 200MB */
     private long maxUploadBytes = 200L * 1024 * 1024;
+    /**
+     * 视频 PostObject 直传。默认关闭；Bucket CORS 配好后再开。
+     * 关闭或直传失败时回退中转，中转仍受 {@link #maxUploadBytes} 限制。
+     */
+    private boolean directUploadEnabled = false;
+    /** 直传开启后课程/资料视频上限，默认 2GB */
+    private long directVideoMaxBytes = 2L * 1024 * 1024 * 1024;
+    /** 封面等图片中转上限，默认 20MB */
+    private long imageMaxBytes = 20L * 1024 * 1024;
+    /** 字幕中转上限，默认 10MB */
+    private long subtitleMaxBytes = 10L * 1024 * 1024;
+    /** 直传 policy 有效期（秒） */
+    private int directPolicyExpireSeconds = 900;
     /** 孤儿对象最短存活小时数，避免删掉已上传尚未点保存的文件 */
     private int orphanMinAgeHours = 48;
     /**

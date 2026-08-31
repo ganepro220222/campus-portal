@@ -117,10 +117,10 @@
             scene="resource_file"
             preview="file"
             :display-name="form.name"
-            accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4,.mp3"
+            accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4,.mov,.mp3"
             upload-label="上传文件"
             done-text="文件已上传"
-            hint="支持 PDF、Word、PPT、Excel、MP4、MP3。小程序内打开建议 30MB 以内；更大文件请用外链。"
+            hint="支持 PDF、Word、PPT、Excel、MP4、MOV、MP3。小程序内打开建议 30MB 以内；更大文件请用外链。"
             @uploaded="onResourceFileUploaded"
           />
         </el-form-item>

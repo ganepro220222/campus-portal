@@ -1,17 +1,23 @@
 package com.shuyuan.backend.service;
 
 import com.aliyun.oss.OSS;
+import com.aliyun.oss.model.GetObjectRequest;
+import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.config.OssProperties;
 import com.shuyuan.backend.util.CdnUrlAuth;
+import com.shuyuan.backend.util.OssPostPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Map;
 
@@ -23,6 +29,7 @@ import static org.mockito.Mockito.*;
  * OSS 白名单与未配置场景
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class OssServiceTest {
 
     @Mock
@@ -304,5 +311,164 @@ class OssServiceTest {
         var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
                 () -> ossService.upload("resource_file", file));
         assertEquals(400, ex.getCode());
+    }
+
+    @Test
+    void upload_rejectsImageOverTwentyMegabytes() {
+        enableOss();
+        when(ossProperties.getMaxUploadBytes()).thenReturn(200L * 1024 * 1024);
+        when(ossProperties.getImageMaxBytes()).thenReturn(20L * 1024 * 1024);
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "cover.jpg", "image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF}) {
+            @Override
+            public long getSize() {
+                return 21L * 1024 * 1024;
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+        };
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.upload("cover", file));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("图片"));
+    }
+
+    @Test
+    void uploadCapabilities_reportsProxyVideoLimitWhenDirectOff() {
+        enableOss();
+        when(ossProperties.isDirectUploadEnabled()).thenReturn(false);
+        when(ossProperties.getMaxUploadBytes()).thenReturn(200L * 1024 * 1024);
+        when(ossProperties.getImageMaxBytes()).thenReturn(20L * 1024 * 1024);
+        when(ossProperties.getSubtitleMaxBytes()).thenReturn(10L * 1024 * 1024);
+
+        Map<String, Object> caps = ossService.uploadCapabilities();
+        assertEquals(false, caps.get("directUploadEnabled"));
+        assertEquals(200L * 1024 * 1024, caps.get("videoMaxBytes"));
+        assertEquals(200L * 1024 * 1024, caps.get("proxyMaxBytes"));
+    }
+
+    @Test
+    void createDirectPolicy_rejectsOverTwoGigabytes() {
+        enableOssDirect();
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.createDirectPolicy("video", "a.mp4", 2L * 1024 * 1024 * 1024 + 1));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("2GB"));
+    }
+
+    @Test
+    void createDirectPolicy_disabled_returnsStableErrorKey() {
+        enableOss();
+        when(ossProperties.isDirectUploadEnabled()).thenReturn(false);
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.createDirectPolicy("video", "a.mp4", 1024));
+        assertEquals(503, ex.getCode());
+        assertEquals(OssService.DIRECT_UPLOAD_DISABLED, ex.getErrorKey());
+    }
+
+    @Test
+    void createDirectPolicy_rejectsNonVideo() {
+        enableOssDirect();
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.createDirectPolicy("document", "a.pdf", 1024));
+        assertEquals(400, ex.getCode());
+    }
+
+    @Test
+    void createDirectPolicy_signsExactVideoObject() {
+        enableOssDirect();
+        Map<String, String> policy = ossService.createDirectPolicy(
+                "video", "lesson.mp4", 250L * 1024 * 1024);
+        assertTrue(policy.get("key").startsWith("videos/"));
+        assertTrue(policy.get("key").endsWith(".mp4"));
+        assertEquals("ak", policy.get("accessKeyId"));
+        assertEquals("204", policy.get("successActionStatus"));
+        assertTrue(policy.get("host").startsWith("https://bucket.oss-cn-chengdu.aliyuncs.com"));
+        assertEquals(OssPostPolicy.hmacSha1Base64("sk", policy.get("policy")), policy.get("signature"));
+    }
+
+    @Test
+    void completeDirectUpload_deletesWhenSizeMismatches() {
+        enableOssDirect();
+        OssService service = spy(new OssService(ossProperties));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).getRangeTransferClient();
+        doReturn(true).when(service).deleteObjectQuietly(anyString());
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength(10);
+        String key = "videos/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp4";
+        when(client.getObjectMetadata("bucket", key)).thenReturn(meta);
+
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> service.completeDirectUpload("video", key, 20));
+        assertEquals(400, ex.getCode());
+        verify(service).deleteObjectQuietly(key);
+    }
+
+    @Test
+    void completeDirectUpload_deletesWhenMagicMismatches() {
+        enableOssDirect();
+        OssService service = spy(new OssService(ossProperties));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).getRangeTransferClient();
+        doReturn(true).when(service).deleteObjectQuietly(anyString());
+        String key = "videos/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp4";
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength(12);
+        when(client.getObjectMetadata("bucket", key)).thenReturn(meta);
+        OSSObject object = mock(OSSObject.class);
+        when(object.getObjectContent()).thenReturn(new ByteArrayInputStream("<html>nope".getBytes()));
+        when(client.getObject(any(GetObjectRequest.class))).thenReturn(object);
+
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> service.completeDirectUpload("video", key, 12));
+        assertEquals(400, ex.getCode());
+        verify(service).deleteObjectQuietly(key);
+    }
+
+    @Test
+    void completeDirectUpload_returnsPersistUrlWhenValid() {
+        enableOssDirect();
+        OssService service = spy(new OssService(ossProperties));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).getRangeTransferClient();
+        String key = "videos/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp4";
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength(12);
+        when(client.getObjectMetadata("bucket", key)).thenReturn(meta);
+        byte[] mp4Header = new byte[12];
+        mp4Header[4] = 'f';
+        mp4Header[5] = 't';
+        mp4Header[6] = 'y';
+        mp4Header[7] = 'p';
+        OSSObject object = mock(OSSObject.class);
+        when(object.getObjectContent()).thenReturn(new ByteArrayInputStream(mp4Header));
+        when(client.getObject(any(GetObjectRequest.class))).thenReturn(object);
+
+        Map<String, String> result = service.completeDirectUpload("video", key, 12);
+
+        assertEquals(key, result.get("objectKey"));
+        assertEquals("https://cdn.yunmanvr.com/" + key, result.get("url"));
+        verify(service, never()).deleteObjectQuietly(anyString());
+    }
+
+    private void enableOss() {
+        when(ossProperties.isEnabled()).thenReturn(true);
+        when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-chengdu.aliyuncs.com");
+        when(ossProperties.getBucket()).thenReturn("bucket");
+        when(ossProperties.getAccessKey()).thenReturn("ak");
+        when(ossProperties.getSecretKey()).thenReturn("sk");
+        when(ossProperties.getCdnDomain()).thenReturn("https://cdn.yunmanvr.com");
+    }
+
+    private void enableOssDirect() {
+        enableOss();
+        when(ossProperties.isDirectUploadEnabled()).thenReturn(true);
+        when(ossProperties.getDirectVideoMaxBytes()).thenReturn(2L * 1024 * 1024 * 1024);
+        when(ossProperties.getDirectPolicyExpireSeconds()).thenReturn(900);
+        when(ossProperties.getMaxUploadBytes()).thenReturn(200L * 1024 * 1024);
     }
 }

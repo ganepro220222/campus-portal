@@ -154,11 +154,16 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
   wx.showLoading({ title: '下载中…', mask: true })
   try {
     let path
-    try {
+    if (resourceId) {
+      // 文档走带登录态的 API。CDN 方式 A 的 auth_key 给 <video> 没问题，
+      // wx.downloadFile 直拉常被判域名失败或下到 403 页，再预览就会弹「复制链接」。
+      try {
+        path = await fetchViaApi(resourceId, openType, fileSizeKb)
+      } catch (apiErr) {
+        path = await wxDownloadTemp(url)
+      }
+    } else {
       path = await wxDownloadTemp(url)
-    } catch (cdnErr) {
-      if (!resourceId) throw cdnErr
-      path = await fetchViaApi(resourceId, openType, fileSizeKb)
     }
     wx.hideLoading()
     await tryOpenLocal(path, openType)
@@ -173,7 +178,7 @@ async function openDocument(url, fileType, resourceId, fileSizeKb) {
       wx.showModal({
         title: '无法打开文件',
         content: kind === 'domain'
-          ? '微信未能直接下载该文件。可先复制链接，用手机浏览器打开。'
+          ? '微信未能直接下载该文件。请确认 downloadFile 合法域名含 API 主机后重试。'
           : '微信无法预览该文档。可复制链接到手机浏览器打开。',
         confirmText: '复制链接',
         success(res) {

@@ -23,7 +23,8 @@ const FILES = [
   'miniapp/utils/request.js',
   'miniapp/utils/aiChat.js',
   'miniapp/packageD/ai-chat/index.js',
-  'miniapp/components/ai-assistant/index.js'
+  'miniapp/components/ai-assistant/index.js',
+  'admin/src/api/ai.ts'
 ]
 
 /** 把受检文件复制到一棵临时树，返回临时根目录 */
@@ -121,6 +122,9 @@ expectCaught('问答页写死 dailyLimit', FILES[4],
 expectCaught('助手浮标写死 dailyLimit', FILES[5],
   (s) => s.replace('exhaustedQuota(this.data.quota)',
     '{ needLogin: false, dailyLimit: 20, used: 20, remaining: 0 }'))
+
+expectCaught('后台扩写超时缩回默认值', FILES[6],
+  (s) => s.replace(/AI_POLISH_TIMEOUT_MS = [\d_]+/, 'AI_POLISH_TIMEOUT_MS = 30000'))
 
 if (failed) {
   console.error(`test-ai-quota-guard: ${failed} 条规则形同虚设`)

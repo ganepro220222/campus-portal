@@ -8,6 +8,7 @@
  *    请求跨过窗口边界时就会留下永不过期的负数键，用户凭空多出额度。
  * 3) AI 提问的超时必须能单独放宽。默认 10 秒跑不完「检索 + 大模型生成」，
  *    而超时那一刻服务端往往已经成功、答案已入库、次数照扣——用户只看到一句失败。
+ *    后台润色/扩写同理：axios 默认 30s，智谱服务端最多等 60s，客户端必须更长。
  * 4) 按天的额度必须说「今天用完了」。落进「操作过于频繁，请稍后再试」的兜底文案，
  *    用户会理解成歇一会儿就能接着用，于是反复点、反复看到同一句。
  * 5) 上限值由服务端配置下发，端上不许再各写一份字面量。
@@ -25,6 +26,7 @@ const interceptor = read('backend/src/main/java/com/shuyuan/backend/config/RateL
 const service = read('backend/src/main/java/com/shuyuan/backend/service/RateLimitService.java')
 const request = read('miniapp/utils/request.js')
 const aiChat = read('miniapp/utils/aiChat.js')
+const adminAi = read('admin/src/api/ai.ts')
 
 const errs = []
 
@@ -77,6 +79,15 @@ if (!askTimeout) {
 }
 if (!/sendQuestion[\s\S]{0,280}?timeout:\s*ASK_TIMEOUT/.test(aiChat)) {
   errs.push('sendQuestion 没有把 ASK_TIMEOUT 传下去')
+}
+const polishTimeout = adminAi.match(/AI_POLISH_TIMEOUT_MS\s*=\s*([\d_]+)/)
+if (!polishTimeout) {
+  errs.push('admin/src/api/ai.ts 缺少 AI_POLISH_TIMEOUT_MS')
+} else if (Number(polishTimeout[1].replace(/_/g, '')) <= 30000) {
+  errs.push(`AI_POLISH_TIMEOUT_MS=${polishTimeout[1]} 不比后台默认 30000 宽，扩写会被 axios 先掐断`)
+}
+if (!/timeout:\s*AI_POLISH_TIMEOUT_MS/.test(adminAi)) {
+  errs.push('polishContent 没有把 AI_POLISH_TIMEOUT_MS 传给 post')
 }
 if (!/async function sendQuestion[\s\S]{0,220}?silent:\s*true/.test(aiChat)) {
   errs.push('sendQuestion 未设 silent:true，超时后通用 toast 会与 AI 页专用提示冲突')

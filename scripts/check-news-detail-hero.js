@@ -6,7 +6,8 @@
  *    原来 WXML 渲染的是 `{{drop}}{{lead}}`，于是「示例内容…」显示成「示」+「示例内容…」，
  *    首字凭空多一个。而 mock 当年是手写 drop:'六' 配 lead:'月五日起…'（lead 已被截过），
  *    与接口口径正好相反——两套契约并存，改错一边就变成吃字。
- *    lead 必须保持完整：富文本正文那条分支单独渲染整段 lead，截短了那里会少首字。
+ *    展示一律 drop + leadRest；正文是不是富文本都要首字下沉，
+ *    否则后台一保存（content 变成 HTML）摘要首字会突然变回正常大小。
  *
  * 2) 头图必须始终有深色底：标题是白字。底色不能指望 colorClass——那是列表页的装饰，
  *    详情接口不下发它，真实数据里 class 是空的，于是没有封面时整块纯白、
@@ -41,9 +42,11 @@ if (!/leadRest:\s*lead\s*\?\s*lead\.slice\(1\)/.test(content)) {
 if (/drop:\s*raw\.drop/.test(content)) {
   errs.push('content.js 又开始信任外部下发的 drop —— mock 与接口口径相反，会重复或吃字')
 }
-// 富文本分支必须仍然渲染完整 lead，不能顺手改成 leadRest
-if (!/class="art-lead">\{\{article\.lead\}\}/.test(wxml)) {
-  errs.push('富文本分支必须渲染完整 article.lead，改成 leadRest 会吃掉首字')
+if (/class="art-lead">\{\{article\.lead\}\}/.test(wxml)) {
+  errs.push('摘要区又改回整段 lead —— 正文一变成富文本，首字下沉就会消失')
+}
+if (/useRichText/.test(wxml) && /showLead/.test(wxml) && /!article\.useRichText/.test(wxml)) {
+  errs.push('首字下沉又只挂在纯文本分支 —— 后台保存后摘要首字会变回正常大小')
 }
 // 摘要区仅在管理员填写 summary 时显示，避免自动 lead 与正文首段重复
 if (!/article\.showLead/.test(wxml)) {

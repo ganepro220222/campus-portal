@@ -65,8 +65,9 @@ function mergeNewsArticle(raw, fallback) {
      * lead:'月五日起…'（即 lead 已被截过），和接口下发的口径正好相反——
      * 所以这里一律自己从 lead 推导，不再信任外部传来的 drop，免得两套口径打架。
      *
-     * 注意 lead 必须保留完整：富文本正文那条分支单独渲染整段 lead，
-     * 若把 lead 截短，那条路径会吃掉首字。
+     * lead 保持完整只给数据层用。展示一律 drop + leadRest，
+     * 正文是不是富文本都一样——后台 WangEditor 一保存，content 就是 HTML，
+     * 若只在纯文本分支做首字下沉，编辑/扩写后摘要首字会突然变回正常大小。
      */
     drop: lead ? lead.charAt(0) : '',
     leadRest: lead ? lead.slice(1) : '',

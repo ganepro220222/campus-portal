@@ -19,8 +19,20 @@ if (!useMock) {
   assert.strictEqual(a.drop, '示')
   assert.strictEqual(a.leadRest, '例内容。部分展馆已支持语音导览。')
   assert.strictEqual(a.drop + a.leadRest, a.lead, 'drop + leadRest 必须还原成完整 lead')
-  // lead 要保持完整：富文本分支单独渲染整段 lead，截短了会吃首字
   assert.strictEqual(a.lead, '示例内容。部分展馆已支持语音导览。')
+}
+
+// 正文已是富文本时，摘要首字下沉仍要从 summary 拆，不能被 useRichText 关掉
+{
+  const a = mergeNewsArticle({
+    summary: '示例内容。常用资料已归类整理。',
+    content: '<p>扩写后的正文</p>',
+  }, {})
+  assert.strictEqual(a.useRichText, true)
+  assert.strictEqual(a.showLead, true)
+  assert.strictEqual(a.drop, '示')
+  assert.strictEqual(a.leadRest, '例内容。常用资料已归类整理。')
+  assert.strictEqual(a.drop + a.leadRest, a.lead)
 }
 
 // 外部传来的 drop 一律忽略——mock 与接口曾用相反口径，信任它就会重复或吃字

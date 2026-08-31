@@ -12,6 +12,11 @@ export interface AiPolishResult {
   remainingToday?: number
 }
 
+/** 后台默认 30s 跑不完扩写；服务端等智谱最多 60s，这里必须更长，否则 axios 先断。 */
+export const AI_POLISH_TIMEOUT_MS = 90_000
+
 export function polishContent(action: AiPolishAction, content: string, tone = 'cultural') {
-  return post<AiPolishResult>('/admin/ai/polish', { action, content, tone })
+  return post<AiPolishResult>('/admin/ai/polish', { action, content, tone }, {
+    timeout: AI_POLISH_TIMEOUT_MS
+  })
 }

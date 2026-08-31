@@ -65,7 +65,7 @@ def convert_should_include(path: Path) -> bool:
         return False
     if path.name in CONVERT_EXCLUDE_FILES:
         return False
-    if any(part == '__pycache__' for part in path.parts):
+    if any(part in {'.pytest_cache', '__pycache__', '.mypy_cache'} for part in path.parts):
         return False
     if any(rel.startswith(p.rstrip('/')) for p in CONVERT_EXCLUDE_PREFIXES if p.endswith('/')):
         return False

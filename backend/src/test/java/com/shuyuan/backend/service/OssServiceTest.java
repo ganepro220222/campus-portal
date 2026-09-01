@@ -585,6 +585,125 @@ class OssServiceTest {
         assertTrue(ossService.objectMeta("https://cdn.yunmanvr.com/files/202609/abc.pdf").isEmpty());
     }
 
+    // ---------- 字幕预览：白名单与截断口径 ----------
+
+    /**
+     * 只放行 .vtt/.srt 是这个接口的安全边界，不是挑食：
+     * 放开任意后缀，它就成了一个「按 URL 读任意受管对象正文」的接口。
+     */
+    @Test
+    void subtitlePreview_rejectsNonSubtitleExtensions() {
+        enableOss();
+        for (String url : new String[]{
+                "https://cdn.yunmanvr.com/files/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.pdf",
+                "https://cdn.yunmanvr.com/videos/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp4",
+                "https://cdn.yunmanvr.com/audios/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3"
+        }) {
+            var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                    () -> ossService.subtitlePreview(url));
+            assertEquals(400, ex.getCode(), url);
+            assertTrue(ex.getMessage().contains("VTT"), url);
+        }
+    }
+
+    /** 非受管前缀的对象一律拒绝，别让这个接口变成任意路径读取 */
+    @Test
+    void subtitlePreview_rejectsUnmanagedKey() {
+        enableOss();
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.subtitlePreview("https://cdn.yunmanvr.com/../../etc/passwd.vtt"));
+        assertEquals(400, ex.getCode());
+    }
+
+    @Test
+    void subtitlePreview_rejectsBlankUrl() {
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.subtitlePreview("  "));
+        assertEquals(400, ex.getCode());
+    }
+
+    /** 未配置 OSS 时给 503 而不是 500，前端才能把「没配」和「读失败」分开提示 */
+    @Test
+    void subtitlePreview_returns503WhenOssDisabled() {
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> ossService.subtitlePreview("https://cdn.yunmanvr.com/subtitles/202609/a.vtt"));
+        assertEquals(503, ex.getCode());
+    }
+
+    @Test
+    void subtitlePreview_readsWholeSmallFile() {
+        enableOss();
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).getRangeTransferClient();
+        String key = "subtitles/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.vtt";
+        String vtt = "WEBVTT\n\n00:00:01.200 --> 00:00:04.600\n各位同学好。\n";
+        byte[] body = vtt.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength(body.length);
+        when(client.getObjectMetadata("bucket", key)).thenReturn(meta);
+        OSSObject object = mock(OSSObject.class);
+        when(object.getObjectContent()).thenReturn(new ByteArrayInputStream(body));
+        when(client.getObject(any(GetObjectRequest.class))).thenReturn(object);
+
+        Map<String, Object> res = service.subtitlePreview("https://cdn.yunmanvr.com/" + key);
+        assertEquals(vtt, res.get("text"), "中文字幕必须按 UTF-8 还原，不能变成乱码");
+        assertEquals(false, res.get("truncated"));
+    }
+
+    /** 超过读取上限时必须如实标 truncated，否则前端会把「已读到的条数」当成总条数报给老师 */
+    @Test
+    void subtitlePreview_flagsTruncationBeyondCap() {
+        enableOss();
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).getRangeTransferClient();
+        String key = "subtitles/202609/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.srt";
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength(OssService.SUBTITLE_PREVIEW_MAX_BYTES + 1L);
+        when(client.getObjectMetadata("bucket", key)).thenReturn(meta);
+        OSSObject object = mock(OSSObject.class);
+        when(object.getObjectContent())
+                .thenReturn(new ByteArrayInputStream(new byte[OssService.SUBTITLE_PREVIEW_MAX_BYTES]));
+        when(client.getObject(any(GetObjectRequest.class))).thenReturn(object);
+
+        Map<String, Object> res = service.subtitlePreview("https://cdn.yunmanvr.com/" + key);
+        assertEquals(true, res.get("truncated"));
+    }
+
+    /** ASR 产了个 0 字节文件：不能抛异常，要如实返回空正文让前端提示「没有任何时间轴」 */
+    @Test
+    void subtitlePreview_returnsEmptyForZeroLengthObject() {
+        enableOss();
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).getRangeTransferClient();
+        String key = "subtitles/202609/cccccccccccccccccccccccccccccccc.vtt";
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength(0);
+        when(client.getObjectMetadata("bucket", key)).thenReturn(meta);
+
+        Map<String, Object> res = service.subtitlePreview("https://cdn.yunmanvr.com/" + key);
+        assertEquals("", res.get("text"));
+        assertEquals(false, res.get("truncated"));
+    }
+
+    /** 云端读失败给 500，且不能把 OSS 的原始异常信息透给前端 */
+    @Test
+    void subtitlePreview_wrapsRemoteFailure() {
+        enableOss();
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).getRangeTransferClient();
+        String key = "subtitles/202609/dddddddddddddddddddddddddddddddd.vtt";
+        when(client.getObjectMetadata("bucket", key)).thenThrow(new RuntimeException("NoSuchKey"));
+
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> service.subtitlePreview("https://cdn.yunmanvr.com/" + key));
+        assertEquals(500, ex.getCode());
+        assertEquals("读取字幕失败", ex.getMessage());
+    }
+
     private void enableOss() {
         when(ossProperties.isEnabled()).thenReturn(true);
         when(ossProperties.getEndpoint()).thenReturn("https://oss-cn-chengdu.aliyuncs.com");

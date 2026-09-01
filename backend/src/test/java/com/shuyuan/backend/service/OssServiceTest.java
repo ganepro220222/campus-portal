@@ -8,6 +8,7 @@ import com.shuyuan.backend.config.OssProperties;
 import com.shuyuan.backend.entity.OssObjectMeta;
 import com.shuyuan.backend.mapper.OssObjectMetaMapper;
 import com.shuyuan.backend.util.CdnUrlAuth;
+import com.shuyuan.backend.util.Mp4TestFixtures;
 import com.shuyuan.backend.util.OssPostPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,10 +23,13 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -425,9 +429,7 @@ class OssServiceTest {
         ObjectMetadata meta = new ObjectMetadata();
         meta.setContentLength(12);
         when(client.getObjectMetadata("bucket", key)).thenReturn(meta);
-        OSSObject object = mock(OSSObject.class);
-        when(object.getObjectContent()).thenReturn(new ByteArrayInputStream("<html>nope".getBytes()));
-        when(client.getObject(any(GetObjectRequest.class))).thenReturn(object);
+        stubRangeReads(client, "<html>nope".getBytes());
 
         var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
                 () -> service.completeDirectUpload("video", key, 12));
@@ -450,9 +452,7 @@ class OssServiceTest {
         mp4Header[5] = 't';
         mp4Header[6] = 'y';
         mp4Header[7] = 'p';
-        OSSObject object = mock(OSSObject.class);
-        when(object.getObjectContent()).thenAnswer(invocation -> new ByteArrayInputStream(mp4Header));
-        when(client.getObject(any(GetObjectRequest.class))).thenReturn(object);
+        stubRangeReads(client, mp4Header);
 
         Map<String, String> result = service.completeDirectUpload("video", key, 12);
 
@@ -473,25 +473,73 @@ class OssServiceTest {
         doReturn(client).when(service).getRangeTransferClient();
         doReturn(true).when(service).deleteObjectQuietly(anyString());
         String key = "videos/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp4";
-        byte[] hevc = new byte[]{
-                0, 0, 0, 20,
-                'f', 't', 'y', 'p',
-                'h', 'e', 'v', '1',
-                0, 0, 0, 0,
-                'i', 's', 'o', 'm'
-        };
+        byte[] hevc = Mp4TestFixtures.ftypHevc();
         ObjectMetadata meta = new ObjectMetadata();
         meta.setContentLength(hevc.length);
         when(client.getObjectMetadata("bucket", key)).thenReturn(meta);
-        OSSObject object = mock(OSSObject.class);
-        when(object.getObjectContent()).thenAnswer(invocation -> new ByteArrayInputStream(hevc));
-        when(client.getObject(any(GetObjectRequest.class))).thenReturn(object);
+        stubRangeReads(client, hevc);
 
         var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
                 () -> service.completeDirectUpload("video", key, hevc.length));
         assertEquals(400, ex.getCode());
         assertTrue(ex.getMessage().contains("H.265"));
         verify(service).deleteObjectQuietly(key);
+    }
+
+    @Test
+    void completeDirectUpload_rejectsBuriedHevcAndDeletes() {
+        enableOssDirect();
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).getRangeTransferClient();
+        doReturn(true).when(service).deleteObjectQuietly(anyString());
+        String key = "videos/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp4";
+        byte[] hevc = Mp4TestFixtures.buriedHevcAfterLargeMdat();
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength(hevc.length);
+        when(client.getObjectMetadata("bucket", key)).thenReturn(meta);
+        stubRangeReads(client, hevc);
+
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> service.completeDirectUpload("video", key, hevc.length));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("H.265"));
+        verify(service).deleteObjectQuietly(key);
+    }
+
+    @Test
+    void upload_rejectsHevcVideoAndDoesNotPutObject() {
+        enableOss();
+        when(ossProperties.getMaxUploadBytes()).thenReturn(200L * 1024 * 1024);
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).buildTransferClient();
+
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> service.upload("video",
+                        new MockMultipartFile("file", "iphone.mov", "video/quicktime",
+                                Mp4TestFixtures.buriedHevcAfterLargeMdat())));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("H.265"));
+        verify(client, never()).putObject(anyString(), anyString(), any(InputStream.class), any(ObjectMetadata.class));
+    }
+
+    @Test
+    void upload_returnsFastStartWarningForProxyVideo() {
+        enableOss();
+        when(ossProperties.getMaxUploadBytes()).thenReturn(200L * 1024 * 1024);
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).buildTransferClient();
+        byte[] file = Mp4TestFixtures.concat(
+                Mp4TestFixtures.ftypIsom(),
+                Mp4TestFixtures.isoBox("mdat", new byte[16]),
+                Mp4TestFixtures.videoMoov("avc1"));
+
+        Map<String, String> result = service.upload("video",
+                new MockMultipartFile("file", "lecture.mp4", "video/mp4", file));
+        assertTrue(result.get("compatWarning").contains("Fast Start"));
+        verify(client).putObject(eq("bucket"), anyString(), any(InputStream.class), any(ObjectMetadata.class));
     }
 
     @Test
@@ -702,6 +750,25 @@ class OssServiceTest {
                 () -> service.subtitlePreview("https://cdn.yunmanvr.com/" + key));
         assertEquals(500, ex.getCode());
         assertEquals("读取字幕失败", ex.getMessage());
+    }
+
+    private static void stubRangeReads(OSS client, byte[] body) {
+        when(client.getObject(any(GetObjectRequest.class))).thenAnswer(inv -> {
+            GetObjectRequest req = inv.getArgument(0);
+            long[] range = req.getRange();
+            int start = 0;
+            int end = body.length - 1;
+            if (range != null && range.length >= 2) {
+                start = (int) Math.max(0, range[0]);
+                end = range[1] < 0 ? body.length - 1 : (int) Math.min(body.length - 1, range[1]);
+            }
+            byte[] slice = (start <= end && start < body.length)
+                    ? Arrays.copyOfRange(body, start, end + 1)
+                    : new byte[0];
+            OSSObject object = mock(OSSObject.class);
+            when(object.getObjectContent()).thenReturn(new ByteArrayInputStream(slice));
+            return object;
+        });
     }
 
     private void enableOss() {

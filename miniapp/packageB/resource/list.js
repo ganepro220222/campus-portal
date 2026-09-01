@@ -2,6 +2,7 @@
 const { get } = require('../../utils/request')
 const { mergeResourceList } = require('../../utils/content')
 const { downloadResource } = require('../../utils/resourceDownload')
+const audioPlayer = require('../../utils/resourceAudioPlayer')
 const { requireLogin } = require('../../utils/auth')
 const { applyListCollected, patchListItemCollected, toggleFavorite } = require('../../utils/favoriteToggle')
 const {
@@ -49,6 +50,14 @@ Page({
   },
 
   onLoad() { this._loadList(true) },
+
+  onHide() {
+    audioPlayer.pause()
+  },
+
+  onUnload() {
+    audioPlayer.destroy()
+  },
 
   onRetry() {
     this.setData({ refreshError: false, error: false })

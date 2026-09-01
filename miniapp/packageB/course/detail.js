@@ -3,6 +3,7 @@ const { get } = require('../../utils/request')
 const { mergeCourseDetail } = require('../../utils/content')
 const { requireLogin } = require('../../utils/auth')
 const { downloadResource } = require('../../utils/resourceDownload')
+const audioPlayer = require('../../utils/resourceAudioPlayer')
 const { formatDuration } = require('../../utils/format')
 const { mapCollectedFromDetail, applyCollectedToggle, toggleFavorite } = require('../../utils/favoriteToggle')
 const {
@@ -64,6 +65,14 @@ Page({
 
   onBackList() {
     wx.switchTab({ url: '/pages/course/index' })
+  },
+
+  onHide() {
+    audioPlayer.pause()
+  },
+
+  onUnload() {
+    audioPlayer.destroy()
   },
 
   async _loadDetail(id, options = {}) {

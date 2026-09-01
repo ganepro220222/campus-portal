@@ -1,6 +1,7 @@
 // packageC/profile/list.js — 个人中心通用列表（收藏/报名/下载/足迹/徽章）
 const { get } = require('../../utils/request')
 const { downloadResource } = require('../../utils/resourceDownload')
+const audioPlayer = require('../../utils/resourceAudioPlayer')
 const {
   buildLoadedViewState,
   buildErrorViewState,
@@ -48,6 +49,14 @@ Page({
     const meta = TYPE_META[type] || TYPE_META.favorites
     this.setData({ type, navTitle: cfg.title, emptyText: cfg.empty, typeIcon: meta.icon, typeCls: meta.cls })
     this._load(type, cfg.api)
+  },
+
+  onHide() {
+    audioPlayer.pause()
+  },
+
+  onUnload() {
+    audioPlayer.destroy()
   },
 
   onShow() {

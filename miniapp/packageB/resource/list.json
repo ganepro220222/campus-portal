@@ -1,3 +1,6 @@
 {
-  "navigationStyle": "custom"
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "resource-audio-bar": "/components/resource-audio-bar/index"
+  }
 }

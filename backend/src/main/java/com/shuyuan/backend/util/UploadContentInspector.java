@@ -2,8 +2,12 @@ package com.shuyuan.backend.util;
 
 import com.shuyuan.backend.common.exception.BusinessException;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -12,6 +16,12 @@ import java.util.Set;
  * 上传文件魔数校验与服务端 Content-Type 推断（不信任客户端 multipart Content-Type）。
  */
 public final class UploadContentInspector {
+
+    public interface IsoByteSource {
+        long size();
+
+        byte[] read(long offset, int length) throws IOException;
+    }
 
     private static final Map<String, String> EXT_CONTENT_TYPES = Map.ofEntries(
             Map.entry("jpg", "image/jpeg"),
@@ -38,6 +48,18 @@ public final class UploadContentInspector {
             Map.entry("gltf", "model/gltf+json")
     );
 
+    private static final String HEVC_MESSAGE =
+            "视频为 H.265/HEVC，部分手机无法播放。请转换为 H.264（AVC）的 MP4 后再上传";
+    private static final String FAST_START_WARNING =
+            "该视频未做 Fast Start（moov 在文件尾），小程序首次打开可能较慢。建议导出时勾选 faststart";
+    private static final Set<String> HEVC_TYPES = Set.of("hvc1", "hev1", "dvh1", "dvhe", "hvcC");
+    private static final Set<String> HEVC_BRANDS = Set.of("hvc1", "hev1", "dvh1", "heic", "heim", "hevc");
+    private static final Set<String> CONTAINER_BOXES = Set.of(
+            "moov", "trak", "mdia", "minf", "stbl", "edts", "moof", "traf", "mvex");
+    private static final long MAX_BUFFERED_MOOV = 8L * 1024 * 1024;
+    private static final int MAX_BOXES = 10_000;
+    private static final int MAX_DEPTH = 40;
+
     private UploadContentInspector() {
     }
 
@@ -53,91 +75,253 @@ public final class UploadContentInspector {
     }
 
     /**
-     * 直传完成后的播放兼容性门禁（不是转码）。
-     * 扫描文件头/尾的 ISO BMFF box：H.265 直接拒绝；moov 只在尾部则给出 Fast Start 提示。
+     * 播放兼容性门禁（不是转码）：按 ISO BMFF box 大小跳转，读取完整 moov。
+     * H.265 直接拒绝；moov 在 mdat 之后则给出 Fast Start 提示。
+     */
+    public static String inspectVideoPlayability(byte[] file) {
+        return inspectVideoPlayability(ofBytes(file == null ? new byte[0] : file));
+    }
+
+    /**
+     * 仅有头尾切片时的兼容入口。不能代替对完整文件或 Range 源的解析。
      */
     public static String inspectVideoPlayability(byte[] head, byte[] tail) {
-        Set<String> headBoxes = collectIsoBoxTypes(head);
-        Set<String> tailBoxes = collectIsoBoxTypes(tail);
-        if (containsHevc(headBoxes) || containsHevc(tailBoxes) || ftypHasHevcBrand(head)) {
-            throw new BusinessException(400,
-                    "视频为 H.265/HEVC，部分手机无法播放。请转换为 H.264（AVC）的 MP4 后再上传");
+        if (tail == null || tail.length == 0) {
+            return inspectVideoPlayability(head == null ? new byte[0] : head);
         }
-        if (!headBoxes.contains("moov") && tailBoxes.contains("moov")) {
-            return "该视频未做 Fast Start（moov 在文件尾），小程序首次打开可能较慢。建议导出时勾选 faststart";
+        try {
+            ScanState headState = scan(ofBytes(head == null ? new byte[0] : head));
+            ScanState tailState = scan(ofBytes(tail));
+            if (headState.hevc || tailState.hevc) {
+                throw new BusinessException(400, HEVC_MESSAGE);
+            }
+            if (!headState.hasMoov() && tailState.hasMoov()) {
+                return FAST_START_WARNING;
+            }
+            return "";
+        } catch (IOException e) {
+            throw new BusinessException(400, "无法校验文件内容");
+        }
+    }
+
+    public static String inspectVideoPlayability(Path path) {
+        if (path == null || !Files.isRegularFile(path)) {
+            throw new BusinessException(400, "无法校验文件内容");
+        }
+        try (RandomAccessFile raf = new RandomAccessFile(path.toFile(), "r")) {
+            return inspectVideoPlayability(new RafIsoSource(raf));
+        } catch (BusinessException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new BusinessException(400, "无法校验文件内容");
+        }
+    }
+
+    public static String inspectVideoPlayability(IsoByteSource source) {
+        ScanState state;
+        try {
+            state = scan(source == null ? ofBytes(new byte[0]) : source);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new BusinessException(400, "无法校验文件内容");
+        }
+        if (state.hevc) {
+            throw new BusinessException(400, HEVC_MESSAGE);
+        }
+        if (state.hasMoov() && state.hasMdat() && state.moovOffset > state.mdatOffset) {
+            return FAST_START_WARNING;
         }
         return "";
     }
 
-    private static boolean containsHevc(Set<String> types) {
-        return types.contains("hvc1") || types.contains("hev1") || types.contains("dvh1");
+    static IsoByteSource ofBytes(byte[] data) {
+        byte[] bytes = data == null ? new byte[0] : data;
+        return new IsoByteSource() {
+            @Override
+            public long size() {
+                return bytes.length;
+            }
+
+            @Override
+            public byte[] read(long offset, int length) {
+                if (offset < 0 || offset >= bytes.length || length <= 0) {
+                    return new byte[0];
+                }
+                int start = (int) offset;
+                int want = Math.min(length, bytes.length - start);
+                return Arrays.copyOfRange(bytes, start, start + want);
+            }
+        };
     }
 
-    private static boolean ftypHasHevcBrand(byte[] head) {
-        for (String brand : ftypBrands(head)) {
-            if ("hvc1".equals(brand) || "hev1".equals(brand) || "dvh1".equals(brand)
-                    || "heic".equals(brand) || "heim".equals(brand)) {
+    private static ScanState scan(IsoByteSource source) throws IOException {
+        ScanState state = new ScanState();
+        long size = source.size();
+        if (size < 8) {
+            return state;
+        }
+        walk(source, 0, size, 0, true, state);
+        return state;
+    }
+
+    private static void walk(
+            IsoByteSource source,
+            long start,
+            long limit,
+            int depth,
+            boolean topLevel,
+            ScanState state) throws IOException {
+        if (depth > MAX_DEPTH || state.boxes > MAX_BOXES || start + 8 > limit) {
+            return;
+        }
+        long offset = start;
+        while (offset + 8 <= limit && state.boxes <= MAX_BOXES && !state.hevc) {
+            BoxHeader box = readHeader(source, offset, limit);
+            if (box == null) {
+                return;
+            }
+            state.boxes++;
+            if (topLevel) {
+                if ("moov".equals(box.type) && !state.hasMoov()) {
+                    state.moovOffset = offset;
+                }
+                if ("mdat".equals(box.type) && !state.hasMdat()) {
+                    state.mdatOffset = offset;
+                }
+            }
+            if (HEVC_TYPES.contains(box.type)) {
+                state.hevc = true;
+                return;
+            }
+            if ("ftyp".equals(box.type) && ftypPayloadHasHevcBrand(source, offset, box)) {
+                state.hevc = true;
+                return;
+            }
+            long payloadStart = offset + box.headerSize;
+            long payloadEnd = offset + box.size;
+            if ("stsd".equals(box.type) && payloadStart + 8 < payloadEnd) {
+                walk(source, payloadStart + 8, payloadEnd, depth + 1, false, state);
+            } else if (CONTAINER_BOXES.contains(box.type)) {
+                walkContainer(source, offset, box, payloadStart, payloadEnd, depth, state);
+            }
+            long next = offset + box.size;
+            if (next <= offset) {
+                return;
+            }
+            offset = next;
+        }
+    }
+
+    private static void walkContainer(
+            IsoByteSource source,
+            long offset,
+            BoxHeader box,
+            long payloadStart,
+            long payloadEnd,
+            int depth,
+            ScanState state) throws IOException {
+        if ("moov".equals(box.type) && box.size <= MAX_BUFFERED_MOOV && box.size >= box.headerSize) {
+            byte[] moov = source.read(offset, (int) box.size);
+            if (moov.length == (int) box.size) {
+                walk(ofBytes(moov), box.headerSize, moov.length, depth + 1, false, state);
+                return;
+            }
+        }
+        walk(source, payloadStart, payloadEnd, depth + 1, false, state);
+    }
+
+    private static boolean ftypPayloadHasHevcBrand(IsoByteSource source, long offset, BoxHeader box)
+            throws IOException {
+        long payloadLen = box.size - box.headerSize;
+        if (payloadLen < 4) {
+            return false;
+        }
+        int len = (int) Math.min(payloadLen, 4096);
+        byte[] payload = source.read(offset + box.headerSize, len);
+        if (payload.length < 4) {
+            return false;
+        }
+        if (isHevcBrand(fourCc(payload, 0))) {
+            return true;
+        }
+        for (int i = 8; i + 4 <= payload.length; i += 4) {
+            if (isHevcBrand(fourCc(payload, i))) {
                 return true;
             }
         }
         return false;
     }
 
-    static Set<String> ftypBrands(byte[] data) {
-        Set<String> brands = new HashSet<>();
-        if (data == null || data.length < 16) {
-            return brands;
-        }
-        if (!(data.length >= 8 && data[4] == 'f' && data[5] == 't' && data[6] == 'y' && data[7] == 'p')) {
-            return brands;
-        }
-        int size = readInt32(data, 0);
-        int end = size >= 16 ? Math.min(data.length, size) : data.length;
-        brands.add(fourCc(data, 8));
-        for (int i = 16; i + 4 <= end; i += 4) {
-            brands.add(fourCc(data, i));
-        }
-        return brands;
+    private static boolean isHevcBrand(String brand) {
+        return HEVC_BRANDS.contains(brand);
     }
 
-    static Set<String> collectIsoBoxTypes(byte[] data) {
-        Set<String> types = new HashSet<>();
-        if (data == null || data.length < 8) {
-            return types;
+    private static BoxHeader readHeader(IsoByteSource source, long offset, long limit) throws IOException {
+        long remaining = limit - offset;
+        if (remaining < 8) {
+            return null;
         }
-        for (int offset = 0; offset + 8 <= data.length; offset++) {
-            if (!looksLikeBoxHeader(data, offset)) {
-                continue;
+        int headNeed = remaining >= 16 ? 16 : (int) remaining;
+        byte[] header = source.read(offset, headNeed);
+        if (header.length < 8) {
+            return null;
+        }
+        long size = readU32(header, 0);
+        String type = fourCc(header, 4);
+        if (!looksLikeFourCc(type)) {
+            return null;
+        }
+        int headerSize = 8;
+        if (size == 1) {
+            if (header.length < 16) {
+                header = source.read(offset, 16);
+                if (header.length < 16) {
+                    return null;
+                }
             }
-            String type = fourCc(data, offset + 4);
-            types.add(type);
+            size = readU64(header, 8);
+            headerSize = 16;
+            if (size < 0) {
+                return null;
+            }
+        } else if (size == 0) {
+            size = remaining;
         }
-        return types;
+        if (size < headerSize || size > remaining) {
+            return null;
+        }
+        return new BoxHeader(size, type, headerSize);
     }
 
-    private static boolean looksLikeBoxHeader(byte[] data, int offset) {
-        long size = readInt32(data, offset) & 0xFFFFFFFFL;
-        if (size != 0 && (size < 8 || size > 64L * 1024 * 1024)) {
-            return false;
-        }
-        String type = fourCc(data, offset + 4);
-        if (type.length() != 4) {
+    private static boolean looksLikeFourCc(String type) {
+        if (type == null || type.length() != 4) {
             return false;
         }
         for (int i = 0; i < 4; i++) {
             char c = type.charAt(i);
-            if (!(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9') && c != ' ') {
+            if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z')
+                    && !(c >= '0' && c <= '9') && c != ' ') {
                 return false;
             }
         }
         return true;
     }
 
-    private static int readInt32(byte[] data, int offset) {
-        return ((data[offset] & 0xFF) << 24)
-                | ((data[offset + 1] & 0xFF) << 16)
-                | ((data[offset + 2] & 0xFF) << 8)
-                | (data[offset + 3] & 0xFF);
+    private static long readU32(byte[] data, int offset) {
+        return ((data[offset] & 0xFFL) << 24)
+                | ((data[offset + 1] & 0xFFL) << 16)
+                | ((data[offset + 2] & 0xFFL) << 8)
+                | (data[offset + 3] & 0xFFL);
+    }
+
+    private static long readU64(byte[] data, int offset) {
+        long high = readU32(data, offset);
+        long low = readU32(data, offset + 4);
+        if (high > 0x7FFFFFFFL) {
+            return -1;
+        }
+        return (high << 32) | low;
     }
 
     private static String fourCc(byte[] data, int offset) {
@@ -229,5 +413,56 @@ public final class UploadContentInspector {
 
     private static boolean startsWith(byte[] data, char c0, char c1, char c2, char c3) {
         return data.length >= 4 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3;
+    }
+
+    private record BoxHeader(long size, String type, int headerSize) {
+    }
+
+    private static final class ScanState {
+        boolean hevc;
+        long moovOffset = -1;
+        long mdatOffset = -1;
+        int boxes;
+
+        boolean hasMoov() {
+            return moovOffset >= 0;
+        }
+
+        boolean hasMdat() {
+            return mdatOffset >= 0;
+        }
+    }
+
+    private static final class RafIsoSource implements IsoByteSource {
+        private final RandomAccessFile raf;
+
+        private RafIsoSource(RandomAccessFile raf) {
+            this.raf = raf;
+        }
+
+        @Override
+        public long size() {
+            try {
+                return raf.length();
+            } catch (IOException e) {
+                return 0;
+            }
+        }
+
+        @Override
+        public byte[] read(long offset, int length) throws IOException {
+            long fileSize = raf.length();
+            if (offset < 0 || offset >= fileSize || length <= 0) {
+                return new byte[0];
+            }
+            int want = (int) Math.min(length, fileSize - offset);
+            byte[] buf = new byte[want];
+            raf.seek(offset);
+            int n = raf.read(buf);
+            if (n < 0) {
+                return new byte[0];
+            }
+            return n == want ? buf : Arrays.copyOf(buf, n);
+        }
     }
 }

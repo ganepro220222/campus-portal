@@ -1,6 +1,7 @@
 // utils/resourceDownload.js — 资源下载：调后端记录 + 按类型打开
 const { post, getArrayBufferChunk, getUrlArrayBufferChunk } = require('./request')
 const { requireLogin } = require('./auth')
+const audioPlayer = require('./resourceAudioPlayer')
 
 const DOC_TYPES = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'word', 'xls', 'xlsx'])
 const VIDEO_TYPES = new Set(['mp4', 'mov'])
@@ -11,7 +12,6 @@ const FILE_CHUNK_BYTES = 4 * 1024 * 1024
 /** USER_DATA_PATH 总配额 200MB，留出 20MB 给小程序其它用户文件。 */
 const MAX_CHUNK_FILE_BYTES = 180 * 1024 * 1024
 
-let _audioCtx = null
 // 下载流程共享 loading、缓存清理和 openDocument；同一时刻只能安全执行一个。
 let _activeDownloadId = null
 
@@ -369,22 +369,13 @@ function playVideo(url, name) {
   copyUrlFallback(url, name)
 }
 
-function playAudio(url, name) {
-  try {
-    if (_audioCtx) {
-      _audioCtx.stop()
-      _audioCtx.destroy()
-    }
-    _audioCtx = wx.createInnerAudioContext()
-    _audioCtx.src = url
-    _audioCtx.play()
-    wx.showToast({ title: '正在播放：' + (name || '音频'), icon: 'none', duration: 2500 })
-    _audioCtx.onError(() => {
-      copyUrlFallback(url, name)
-    })
-  } catch (e) {
-    copyUrlFallback(url, name)
-  }
+function playAudio(url, name, id) {
+  audioPlayer.play({
+    id,
+    url,
+    name: name || '音频',
+    onUnplayable: () => copyUrlFallback(url, name)
+  })
 }
 
 function copyUrlFallback(url, name) {
@@ -413,7 +404,7 @@ async function openDownloadedResource(data) {
   } else if (VIDEO_TYPES.has(fileType)) {
     playVideo(url, data.name)
   } else if (AUDIO_TYPES.has(fileType)) {
-    playAudio(url, data.name)
+    playAudio(url, data.name, data.id)
   } else {
     await openDocument(url, data.fileType, data.id)
   }

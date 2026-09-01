@@ -30,6 +30,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.net.URI;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -66,7 +68,6 @@ public class OssService {
     public static final String DIRECT_UPLOAD_DISABLED = "OSS_DIRECT_UPLOAD_DISABLED";
     private static final Pattern DIRECT_VIDEO_KEY =
             Pattern.compile("^videos/\\d{6}/[a-f0-9]{32}\\.(mp4|mov)$");
-    private static final int VIDEO_PROBE_BYTES = 256 * 1024;
 
     private static Map<String, Set<String>> buildSceneExtensions() {
         Map<String, Set<String>> map = new HashMap<>();
@@ -359,6 +360,9 @@ public class OssService {
         validateExtension(scene, ext);
         assertSizeAllowed(scene, ext, file.getSize(), false);
         String objectKey = buildObjectKey(scene, ext);
+        if (isMp4OrMov(ext)) {
+            return uploadInspectedVideo(scene, file, ext, objectKey);
+        }
 
         OSS client = null;
         try (InputStream raw = file.getInputStream();
@@ -392,6 +396,54 @@ public class OssService {
                 "url", publicUrl,
                 "objectKey", objectKey
         );
+    }
+
+    private Map<String, String> uploadInspectedVideo(
+            String scene, MultipartFile file, String ext, String objectKey) {
+        Path tmp = null;
+        OSS client = null;
+        try {
+            tmp = Files.createTempFile("shuyuan-up-", "." + ext);
+            file.transferTo(tmp.toFile());
+            long size = Files.size(tmp);
+            byte[] header = readFilePrefix(tmp, 64);
+            String contentType = UploadContentInspector.inspect(ext, header);
+            String warning = UploadContentInspector.inspectVideoPlayability(tmp);
+            client = buildTransferClient();
+            ObjectMetadata meta = new ObjectMetadata();
+            meta.setContentLength(size);
+            meta.setContentType(contentType);
+            log.info("[oss] upload scene={} key={} bytes={} via {}",
+                    scene, objectKey, size,
+                    OssEndpointSupport.transferEndpoint(
+                            ossProperties.getEndpoint(), ossProperties.getInternalEndpoint()));
+            try (InputStream in = Files.newInputStream(tmp)) {
+                client.putObject(ossProperties.getBucket(), objectKey, in, meta);
+            }
+            recordObjectMeta(scene, objectKey, file.getOriginalFilename(), size);
+            Map<String, String> result = new LinkedHashMap<>();
+            result.put("url", buildPublicUrl(objectKey));
+            result.put("objectKey", objectKey);
+            if (warning != null && !warning.isBlank()) {
+                result.put("compatWarning", warning);
+            }
+            return result;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new BusinessException(500, "读取上传文件失败");
+        } catch (Exception e) {
+            throw new BusinessException(500, "上传至对象存储失败");
+        } finally {
+            shutdownQuietly(client);
+            if (tmp != null) {
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (IOException ignored) {
+                    // 临时文件删不掉不影响这次上传结果
+                }
+            }
+        }
     }
 
     public Map<String, String> createDirectPolicy(String scene, String fileName, long size) {
@@ -458,13 +510,10 @@ public class OssService {
         }
         String warning;
         try {
-            byte[] head = readObjectRange(client, key, 0, Math.min(size, VIDEO_PROBE_BYTES) - 1);
+            UploadContentInspector.IsoByteSource source = ossIsoSource(client, key, size);
+            byte[] head = source.read(0, 64);
             UploadContentInspector.inspect(ext, head);
-            byte[] tail = null;
-            if (size > VIDEO_PROBE_BYTES) {
-                tail = readObjectRange(client, key, size - VIDEO_PROBE_BYTES, size - 1);
-            }
-            warning = UploadContentInspector.inspectVideoPlayability(head, tail);
+            warning = UploadContentInspector.inspectVideoPlayability(source);
         } catch (BusinessException e) {
             deleteObjectQuietly(key);
             throw e;
@@ -489,6 +538,41 @@ public class OssService {
         try (OSSObject object = client.getObject(rangeReq);
              InputStream in = object.getObjectContent()) {
             return in.readNBytes(want);
+        }
+    }
+
+    private UploadContentInspector.IsoByteSource ossIsoSource(OSS client, String key, long size) {
+        return new UploadContentInspector.IsoByteSource() {
+            @Override
+            public long size() {
+                return size;
+            }
+
+            @Override
+            public byte[] read(long offset, int length) throws IOException {
+                if (offset < 0 || offset >= size || length <= 0) {
+                    return new byte[0];
+                }
+                long end = Math.min(size - 1, offset + length - 1);
+                try {
+                    return readObjectRange(client, key, offset, end);
+                } catch (IOException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new IOException("读取对象失败", e);
+                }
+            }
+        };
+    }
+
+    private static boolean isMp4OrMov(String ext) {
+        String e = ext == null ? "" : ext.toLowerCase(Locale.ROOT);
+        return "mp4".equals(e) || "mov".equals(e);
+    }
+
+    private static byte[] readFilePrefix(Path path, int n) throws IOException {
+        try (InputStream in = Files.newInputStream(path)) {
+            return in.readNBytes(n);
         }
     }
 

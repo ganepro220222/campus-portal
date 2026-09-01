@@ -1,0 +1,78 @@
+/* components/resource-audio-bar/index.wxss */
+.rab-root {
+  flex-shrink: 0;
+}
+.rab-spacer {
+  height: calc(148rpx + env(safe-area-inset-bottom));
+}
+.rab {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 350;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid var(--line);
+  box-shadow: 0 -8rpx 24rpx rgba(31, 40, 90, 0.08);
+}
+.rab-btn {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: var(--sky-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rab-btn-on {
+  background: var(--navy);
+}
+.rab-btn-hover {
+  background: var(--sky);
+}
+.rab-btn-on.rab-btn-hover {
+  background: var(--navy-deep);
+}
+.rab-main {
+  flex: 1;
+  min-width: 0;
+}
+.rab-name {
+  font-size: 24rpx;
+  color: var(--ink);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rab-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 4rpx;
+}
+.rab-time {
+  font-size: 20rpx;
+  color: var(--muted);
+  width: 72rpx;
+  flex-shrink: 0;
+}
+.rab-time:last-child {
+  text-align: right;
+}
+.rab-slider {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.rab-error {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: #C0392B;
+}

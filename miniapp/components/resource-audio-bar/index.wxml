@@ -1,0 +1,34 @@
+<!-- components/resource-audio-bar/index.wxml -->
+<view wx:if="{{visible}}" class="rab-root">
+  <view class="rab-spacer"></view>
+  <view class="rab">
+    <view class="rab-btn" catchtap="onClose" hover-class="rab-btn-hover">
+      <icon name="close" size="18" color="#5A648A" />
+    </view>
+    <view class="rab-btn {{playing ? 'rab-btn-on' : ''}}" catchtap="onToggle" hover-class="rab-btn-hover">
+      <icon wx:if="{{playing}}" name="pause" size="18" color="#ffffff" />
+      <icon wx:else name="play" size="18" color="#2B356E" />
+    </view>
+    <view class="rab-main">
+      <view class="rab-name">{{name}}</view>
+      <view class="rab-row">
+        <text class="rab-time">{{currentText}}</text>
+        <slider
+          class="rab-slider"
+          min="0"
+          max="100"
+          step="1"
+          value="{{progress}}"
+          activeColor="#2B356E"
+          backgroundColor="#D5DCEC"
+          block-size="12"
+          disabled="{{duration <= 0}}"
+          bindchanging="onSeekChanging"
+          bindchange="onSeekChange"
+        />
+        <text class="rab-time">{{durationText}}</text>
+      </view>
+      <text wx:if="{{error}}" class="rab-error">{{error}}</text>
+    </view>
+  </view>
+</view>

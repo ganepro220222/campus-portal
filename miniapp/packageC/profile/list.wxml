@@ -88,4 +88,5 @@
   </view>
 
   <view class="pl-bottom"></view>
+  <resource-audio-bar />
 </view>

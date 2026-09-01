@@ -73,7 +73,7 @@ class UploadContentInspectorTest {
 
     @Test
     void inspectVideoPlayability_rejectsHevcFtypBrand() {
-        byte[] head = isoBox("ftyp", concat("hev1".getBytes(), new byte[]{0, 0, 0, 0}, "isom".getBytes()));
+        byte[] head = Mp4TestFixtures.ftypHevc();
         var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
                 () -> UploadContentInspector.inspectVideoPlayability(head, null));
         assertEquals(400, ex.getCode());
@@ -82,39 +82,40 @@ class UploadContentInspectorTest {
 
     @Test
     void inspectVideoPlayability_acceptsAvcFtypAndWarnsWhenMoovAtTail() {
-        byte[] head = isoBox("ftyp", concat("isom".getBytes(), new byte[]{0, 0, 0, 0}, "mp41".getBytes()));
-        byte[] tail = isoBox("moov", new byte[0]);
-        assertEquals("", UploadContentInspector.inspectVideoPlayability(
-                concat(head, isoBox("moov", new byte[0])), null));
+        byte[] head = Mp4TestFixtures.ftypIsom();
+        byte[] fastStart = Mp4TestFixtures.concat(head, Mp4TestFixtures.videoMoov("avc1"));
+        assertEquals("", UploadContentInspector.inspectVideoPlayability(fastStart));
 
-        String warning = UploadContentInspector.inspectVideoPlayability(head, tail);
+        byte[] noFastStart = Mp4TestFixtures.concat(
+                head,
+                Mp4TestFixtures.isoBox("mdat", new byte[16]),
+                Mp4TestFixtures.videoMoov("avc1"));
+        String warning = UploadContentInspector.inspectVideoPlayability(noFastStart);
         org.junit.jupiter.api.Assertions.assertTrue(warning.contains("Fast Start"));
+
+        String sliced = UploadContentInspector.inspectVideoPlayability(
+                head, Mp4TestFixtures.isoBox("moov", new byte[0]));
+        org.junit.jupiter.api.Assertions.assertTrue(sliced.contains("Fast Start"));
     }
 
-    private static byte[] isoBox(String type, byte[] payload) {
-        int size = 8 + payload.length;
-        byte[] out = new byte[size];
-        out[0] = (byte) (size >>> 24);
-        out[1] = (byte) (size >>> 16);
-        out[2] = (byte) (size >>> 8);
-        out[3] = (byte) size;
-        byte[] four = type.getBytes();
-        System.arraycopy(four, 0, out, 4, 4);
-        System.arraycopy(payload, 0, out, 8, payload.length);
-        return out;
+    @Test
+    void inspectVideoPlayability_rejectsHevcSampleEntryAfterLargeMdat() {
+        byte[] file = Mp4TestFixtures.buriedHevcAfterLargeMdat();
+        int probe = 256 * 1024;
+        byte[] head = java.util.Arrays.copyOfRange(file, 0, probe);
+        byte[] tail = java.util.Arrays.copyOfRange(file, file.length - probe, file.length);
+        assertEquals("", UploadContentInspector.inspectVideoPlayability(head, tail));
+
+        var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> UploadContentInspector.inspectVideoPlayability(file));
+        assertEquals(400, ex.getCode());
+        org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("H.265"));
     }
 
-    private static byte[] concat(byte[]... parts) {
-        int len = 0;
-        for (byte[] part : parts) {
-            len += part.length;
-        }
-        byte[] out = new byte[len];
-        int pos = 0;
-        for (byte[] part : parts) {
-            System.arraycopy(part, 0, out, pos, part.length);
-            pos += part.length;
-        }
-        return out;
+    @Test
+    void inspectVideoPlayability_acceptsAvcSampleEntryAfterLargeMdat() {
+        String warning = UploadContentInspector.inspectVideoPlayability(
+                Mp4TestFixtures.buriedAvcAfterLargeMdat());
+        org.junit.jupiter.api.Assertions.assertTrue(warning.contains("Fast Start"));
     }
 }

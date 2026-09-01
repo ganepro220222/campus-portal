@@ -59,4 +59,6 @@
 
     <view class="list-bottom"></view>
   </scroll-view>
+
+  <resource-audio-bar />
 </view>

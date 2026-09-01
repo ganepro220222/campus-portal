@@ -63,7 +63,7 @@ curl -sI -X OPTIONS \
 - 直传是一次性 POST：断网、刷新、休眠后必须从头再传。请保持页面打开。
 - 上传中可点「取消」。不能暂停/续传。
 - OSS POST 成功但 `/complete` 失败时，用「重新确认」只调确认接口；`/complete` 对同一 key 幂等。
-- 确认时会扫文件头/尾：H.265/HEVC 会拒绝；moov 在尾部会提示 Fast Start，不拦截。
+- 确认时按 ISO BMFF box 大小跳转读取 moov：H.265/HEVC 会拒绝；moov 在文件尾会提示 Fast Start，不拦截。普通中转上传走同一套检查。
 - 请上传 H.264 + AAC 的 MP4。本轮不做云转码。
 - Policy 默认 1 小时（`OSS_DIRECT_POLICY_EXPIRE_SECONDS`），与浏览器直传超时对齐。
 

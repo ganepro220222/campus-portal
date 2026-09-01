@@ -47,7 +47,7 @@
             <el-button link type="danger" @click="removeSection(sIdx)">删除章节</el-button>
           </div>
           <el-table :data="section.items" size="small" border class="slides-table">
-            <el-table-column label="图片" min-width="200">
+            <el-table-column label="图片" min-width="200" :resizable="false">
               <template #default="{ row }">
                 <OssUploadInput
                   v-model="row.url"
@@ -58,14 +58,14 @@
                 />
               </template>
             </el-table-column>
-            <el-table-column label="图说" min-width="180">
+            <el-table-column label="图说" min-width="180" :resizable="false">
               <template #default="{ row }">
                 <el-input v-model="row.caption" placeholder="图片说明" size="small" maxlength="200" />
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="70" align="center">
+            <el-table-column label="操作" width="70" align="center" :resizable="false">
               <template #default="{ $index }">
-                <el-button link type="danger" @click="removeSectionItem(sIdx, $index)">删</el-button>
+                <el-button link type="danger" @click="removeSectionItem(sIdx, $index)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -78,7 +78,7 @@
       <div class="slides-block">
         <el-button type="primary" link :icon="Plus" @click="addSlide">添加图片</el-button>
         <el-table :data="form.slides" size="small" border class="slides-table">
-          <el-table-column label="图片" min-width="200">
+          <el-table-column label="图片" min-width="200" :resizable="false">
             <template #default="{ row }">
               <OssUploadInput
                 v-model="row.url"
@@ -89,12 +89,12 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="图说" min-width="180">
+          <el-table-column label="图说" min-width="180" :resizable="false">
             <template #default="{ row }">
               <el-input v-model="row.caption" placeholder="图片说明" size="small" maxlength="200" />
             </template>
           </el-table-column>
-          <el-table-column label="排序" width="104" align="center">
+          <el-table-column label="排序" width="104" align="center" :resizable="false">
             <template #default="{ row }">
               <el-input-number
                 v-model="row.sort"
@@ -106,9 +106,9 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="64" align="center">
+          <el-table-column label="操作" width="70" align="center" :resizable="false">
             <template #default="{ $index }">
-              <el-button link type="danger" @click="removeSlide($index)">删</el-button>
+              <el-button link type="danger" @click="removeSlide($index)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>

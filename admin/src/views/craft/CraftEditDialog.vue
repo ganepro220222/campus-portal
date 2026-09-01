@@ -40,7 +40,7 @@
         </p>
         <el-button type="primary" link :icon="Plus" @click="addImage">添加一张图片</el-button>
         <el-table v-if="form.images.length" :data="form.images" size="small" border class="images-table">
-          <el-table-column label="图片" min-width="200">
+          <el-table-column label="图片" min-width="200" :resizable="false">
             <template #default="{ row }">
               <OssUploadInput
                 v-model="row.imageUrl"
@@ -51,12 +51,12 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="角度标签" width="120">
+          <el-table-column label="角度标签" width="120" :resizable="false">
             <template #default="{ row }">
               <el-input v-model="row.angleLabel" placeholder="正面" size="small" />
             </template>
           </el-table-column>
-          <el-table-column label="排序" width="104" align="center">
+          <el-table-column label="排序" width="104" align="center" :resizable="false">
             <template #default="{ row }">
               <el-input-number
                 v-model="row.sort"
@@ -68,9 +68,9 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="64" align="center">
+          <el-table-column label="操作" width="70" align="center" :resizable="false">
             <template #default="{ $index }">
-              <el-button link type="danger" @click="removeImage($index)">删</el-button>
+              <el-button link type="danger" @click="removeImage($index)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>

@@ -83,12 +83,44 @@ if (!openFn) {
   }
 }
 
-// ---------- 4) 文件卡自己写 box-sizing ----------
-const fileRule = (style.replace(/\/\*[\s\S]*?\*\//g, '').match(/\.preview-wrap--file\s*\{[^}]*\}/) || [''])[0]
+/*
+ * ---------- 4) 窄弹窗下的排版：换行、最小宽度、border-box ----------
+ *
+ * 资源管理是最窄的弹窗（600px，减去内边距与标签只剩 460px）。三条缺一不可：
+ *  - 不换行 → 320px 的卡片吃掉七成，操作列只剩 126px，最长那条格式说明被压成 6 行的细长条，
+ *    卡片右边空出 133px（实测），就是用户截图里圈出来的那块。
+ *  - .controls 没有 min-width → flex 会一直压缩它而不是换行，等于没修。
+ *  - .preview-wrap 没有 border-box → 语音块 width:100% 再加 10px 内边距，实测撑到 482px 横向溢出。
+ */
+const cssNoComment = style.replace(/\/\*[\s\S]*?\*\//g, '')
+const ruleOf = (sel) => (cssNoComment.match(new RegExp(`\\${sel}\\s*\\{[^}]*\\}`)) || [''])[0]
+
+const bodyRule = ruleOf('.oss-upload-body')
+if (!bodyRule) {
+  errs.push('找不到 .oss-upload-body 规则')
+} else if (!/flex-wrap:\s*wrap/.test(bodyRule)) {
+  errs.push('.oss-upload-body 未允许换行 —— 窄弹窗里操作列会被压成细长条，卡片右侧留大片空白')
+}
+
+const controlsRule = ruleOf('.controls')
+if (!controlsRule) {
+  errs.push('找不到 .controls 规则')
+} else if (!/min-width:\s*2[0-9]{2}px/.test(controlsRule)) {
+  errs.push('.controls 缺少 min-width（按钮行自然宽度实测 239px）—— 不给下限就只会被压扁，不会换行')
+}
+
+const wrapRule = ruleOf('.preview-wrap')
+if (!wrapRule) {
+  errs.push('找不到 .preview-wrap 规则')
+} else if (!/box-sizing:\s*border-box/.test(wrapRule)) {
+  errs.push('.preview-wrap 未写 box-sizing:border-box —— 本项目无全局 border-box，语音块会横向溢出')
+}
+
+const fileRule = ruleOf('.preview-wrap--file')
 if (!fileRule) {
   errs.push('找不到 .preview-wrap--file 规则')
-} else if (!/box-sizing:\s*border-box/.test(fileRule)) {
-  errs.push('.preview-wrap--file 未写 box-sizing:border-box —— width+padding 会叠成 342px 撑破窄栏')
+} else if (!/flex:\s*1\s+1\s/.test(fileRule)) {
+  errs.push('.preview-wrap--file 不能是死宽 —— 换行独占一行时要涨满，否则卡片右边又是一块空白')
 }
 
 // ---------- 5) 字幕预览 ----------

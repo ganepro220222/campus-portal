@@ -691,14 +691,33 @@ function clear() {
   width: 100%;
 }
 
+/*
+ * 预览块与操作列放不下就整行换行，别硬挤。
+ *
+ * 资源管理是最窄的弹窗（600px，减去 20x2 内边距与 100px 标签只剩 460px），
+ * 320px 的文件卡又不许收缩，操作列就只剩 126px——那条最长的格式说明被压成 6 行、
+ * 108px 高的细长条，文件卡右边一片空白（实测卡片下方空出 133px）。
+ * 学院管理 640px 同样中招，只是轻一些（空 31px）。
+ *
+ * 阈值不是拍的：操作按钮行的自然宽度实测 239px，配 .controls 的 min-width: 240px，
+ * 于是并排需要 320 + 14 + 240 = 574px。资源(460)、学院(500)换行，
+ * 课程(580)、展馆/文创(612)维持并排不受影响。
+ */
 .oss-upload-body {
   display: flex;
   gap: 14px;
   align-items: flex-start;
+  flex-wrap: wrap;
 }
 
 .preview-wrap {
   flex-shrink: 0;
+  /*
+   * 这个项目没有全局 border-box，各预览块的 width 与 padding/border 会叠加。
+   * 语音块（width:100% + padding:10px）因此在 460px 的资源弹窗里实测撑到 482px 横向溢出。
+   * 统一在基类上定死，省得每加一个变体就踩一次。
+   */
+  box-sizing: border-box;
   width: 148px;
   height: 96px;
   border: 1px solid var(--el-border-color-light);
@@ -723,10 +742,7 @@ function clear() {
  * Chromium 在这个宽度下会把总时长和时间轴一起裁掉。
  * 铺满整行后不依赖魔法宽度，弹窗变窄也不会退化。
  */
-.oss-upload-body--audio {
-  flex-wrap: wrap;
-}
-
+/* 换行由 .oss-upload-body 统一负责；这里只负责把播放器撑满整行（哪怕并排放得下） */
 .oss-upload-body--audio .preview-wrap--audio {
   width: 100%;
 }
@@ -765,12 +781,16 @@ function clear() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 320px;
+  /*
+   * 320px 只是「起始宽度」不是死宽：换行独占一行时要涨满，
+   * 否则卡片右边又留一块空白——那正是这次要修的观感问题。
+   * 图片/视频预览不这么做：它们有固定比例，拉伸反而不对。
+   */
+  flex: 1 1 320px;
+  min-width: 260px;
   max-width: 100%;
   height: auto;
   padding: 10px;
-  /* 这里没有全局 border-box，不写死的话 width/padding 会叠加成 342px，窄栏里要溢出 */
-  box-sizing: border-box;
   background: var(--el-bg-color);
   overflow: visible;
 }
@@ -893,8 +913,9 @@ function clear() {
 }
 
 .controls {
-  flex: 1;
-  min-width: 0;
+  /* 按钮行自然宽度实测 239px；低于这个数按钮自己会折行，所以宁可整块换行 */
+  flex: 1 1 240px;
+  min-width: 240px;
 }
 
 .row {

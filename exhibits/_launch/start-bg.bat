@@ -2,10 +2,11 @@
 cd /d "%~dp0.."
 if errorlevel 1 exit /b 1
 if "%PORT%"=="" set "PORT=8888"
-rem 便携工作台：无 STUDIO_PASS 时仅本机无鉴权（与 _dev/start.sh 一致；在线部署勿设此变量）
+rem Keep rem ASCII. cmd treats byte 0x85 as a line break; UTF-8 CJK often contains it.
+rem No STUDIO_PASS: local insecure only (same as _dev/start.sh). Do not set this on a public host.
 if not defined STUDIO_PASS set "STUDIO_ALLOW_INSECURE=1"
-rem 本机允许换端口：Windows 会把一些端口划给 Hyper-V/WSL 做动态排除，绑不上就自动试下一个。
-rem 命令行指定端口时不回退；服务器也不设这个变量——那里端口必须确定。
+rem Local: if the preferred port is in a Hyper-V/WSL excluded range, try the next candidate.
+rem Explicit PORT from the command line does not fall back; a public host must not set this.
 if defined PORT_EXPLICIT goto port_no_fallback
 set "STUDIO_PORT_FALLBACK=1"
 goto port_fallback_done

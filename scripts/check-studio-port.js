@@ -79,6 +79,17 @@ if (!/PORT_EXPLICIT/i.test(ensureBat)) {
   errs.push('exhibits/_launch/ensure-server.bat 须向 start-server 传递 PORT_EXPLICIT')
 }
 
+/* ---------- 5) 服务窗口 bat 禁止 0x85 ----------
+ * ExhibitsServer 是新建 cmd，默认 GBK。UTF-8 中文「仅/允/必」的字节里带 0x85，
+ * cmd 会把它当换行，后半截 rem 就变成「不是内部或外部命令」。
+ */
+for (const rel of ['exhibits/_launch/start-bg.bat', 'exhibits/_launch/start-server.bat']) {
+  const buf = fs.readFileSync(path.join(root, rel))
+  if (buf.includes(0x85)) {
+    errs.push(`${rel} 含字节 0x85：cmd 会当成换行。服务窗口里的 rem 请只用 ASCII`)
+  }
+}
+
 if (errs.length) {
   console.error('check-studio-port 失败：')
   for (const e of errs) console.error('  ✖ ' + e)

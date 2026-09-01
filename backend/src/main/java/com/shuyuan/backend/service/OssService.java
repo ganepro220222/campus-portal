@@ -8,8 +8,11 @@ import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.OSSObjectSummary;
 import com.aliyun.oss.model.ObjectListing;
 import com.aliyun.oss.model.ObjectMetadata;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.OssProperties;
+import com.shuyuan.backend.entity.OssObjectMeta;
+import com.shuyuan.backend.mapper.OssObjectMetaMapper;
 import com.shuyuan.backend.util.CdnUrlAuth;
 import com.shuyuan.backend.util.CourseVideoUrlPolicy;
 import com.shuyuan.backend.util.OssEndpointSupport;
@@ -79,6 +82,7 @@ public class OssService {
     }
 
     private final OssProperties ossProperties;
+    private final OssObjectMetaMapper ossObjectMetaMapper;
     private final AtomicBoolean cdnAuthIncompleteLogged = new AtomicBoolean();
     private final Object rangeClientLock = new Object();
     private final Map<String, RangeObjectMetadata> rangeMetadataCache = new ConcurrentHashMap<>();
@@ -382,6 +386,7 @@ public class OssService {
             shutdownQuietly(client);
         }
 
+        recordObjectMeta(scene, objectKey, file.getOriginalFilename(), file.getSize());
         String publicUrl = buildPublicUrl(objectKey);
         return Map.of(
                 "url", publicUrl,
@@ -415,6 +420,10 @@ public class OssService {
                 objectKey,
                 size,
                 expireAt);
+        // 直传时服务端拿不到文件本身，原始文件名只在签发这一刻出现过，所以在这里记。
+        // 声明大小就是最终大小——completeDirectUpload 会回查 ContentLength，对不上直接删对象，
+        // 而删对象会连带清掉这条元信息，不会留下指向空对象的记录。
+        recordObjectMeta(scene, objectKey, fileName, size);
         log.info("[oss] direct-policy scene={} key={} bytes={}", scene, objectKey, size);
         return signed.toClientMap();
     }
@@ -578,6 +587,133 @@ public class OssService {
         return Map.of("url", buildPublicUrl(objectKey), "objectKey", objectKey);
     }
 
+    /** 原始文件名最长 255，超长按字符截断（DB 是 utf8mb4，按字符算即可）。 */
+    private static final int MAX_ORIGINAL_NAME_CHARS = 255;
+
+    /**
+     * 记一份上传对象的原始文件名 / 大小，供后台预览框展示。
+     *
+     * 绝不能让这里的失败冒泡：老库还没跑 patch-oss-object-meta.sql 时表不存在，
+     * 若抛出去，等于「加了个显示文件名的小功能」把整个上传功能弄挂。
+     * 同理并发重传同一 key 撞唯一键也只记日志。
+     */
+    void recordObjectMeta(String scene, String objectKey, String originalName, long sizeBytes) {
+        if (!StringUtils.hasText(objectKey)) {
+            return;
+        }
+        String name = originalName == null ? "" : originalName.trim();
+        // 浏览器有的会带上完整路径（IE 系），只留最后一段
+        int slash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+        if (slash >= 0) {
+            name = name.substring(slash + 1);
+        }
+        if (name.length() > MAX_ORIGINAL_NAME_CHARS) {
+            name = name.substring(0, MAX_ORIGINAL_NAME_CHARS);
+        }
+        try {
+            OssObjectMeta row = new OssObjectMeta();
+            row.setObjectKey(objectKey);
+            row.setOriginalName(name);
+            row.setSizeBytes(Math.max(0, sizeBytes));
+            row.setScene(scene == null ? "" : scene);
+            ossObjectMetaMapper.insert(row);
+        } catch (Exception e) {
+            log.warn("[oss] record object meta failed key={} ({})", objectKey, e.getMessage());
+        }
+    }
+
+    /**
+     * 按落库地址反查上传元信息。查不到返回空 Map——老库里的历史对象本来就没有记录，
+     * 前端退回按后缀显示「PDF 文件」，不是错误。
+     */
+    public Map<String, Object> objectMeta(String stored) {
+        Map<String, Object> empty = Map.of();
+        if (!StringUtils.hasText(stored)) {
+            return empty;
+        }
+        String objectKey = resolveObjectKey(stored.trim());
+        if (!StringUtils.hasText(objectKey)) {
+            return empty;
+        }
+        OssObjectMeta row;
+        try {
+            row = ossObjectMetaMapper.selectOne(new LambdaQueryWrapper<OssObjectMeta>()
+                    .eq(OssObjectMeta::getObjectKey, objectKey)
+                    .orderByDesc(OssObjectMeta::getId)
+                    .last("LIMIT 1"));
+        } catch (Exception e) {
+            log.warn("[oss] query object meta failed key={} ({})", objectKey, e.getMessage());
+            return empty;
+        }
+        if (row == null) {
+            return empty;
+        }
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("objectKey", objectKey);
+        m.put("originalName", row.getOriginalName() == null ? "" : row.getOriginalName());
+        m.put("sizeBytes", row.getSizeBytes() == null ? 0L : row.getSizeBytes());
+        if (row.getCreateTime() != null) {
+            m.put("uploadedAt", row.getCreateTime().toString());
+        }
+        return m;
+    }
+
+    /** 字幕预览最多读这么多字节。真实一小时课的 VTT 也就几十 KB，够用且不会把内存读爆。 */
+    static final int SUBTITLE_PREVIEW_MAX_BYTES = 512 * 1024;
+    private static final Set<String> SUBTITLE_PREVIEW_EXTENSIONS = Set.of("vtt", "srt");
+
+    /**
+     * 读取字幕正文供后台预览。
+     *
+     * 字幕是 ASR 产出的，可能整份为空或编码坏掉，而后台只显示「字幕 VTT」四个字，
+     * 老师看不出来，要等学生在小程序里看到空白才发现。这里把正文取回去，前端解析出前几条展示。
+     *
+     * 只允许 .vtt/.srt：否则这就成了一个「按 URL 读任意受管对象」的接口。
+     */
+    public Map<String, Object> subtitlePreview(String stored) {
+        if (!StringUtils.hasText(stored)) {
+            throw new BusinessException(400, "文件地址无效");
+        }
+        if (!isEnabled()) {
+            throw new BusinessException(503, "对象存储未配置，无法读取字幕");
+        }
+        String objectKey = resolveObjectKey(stored.trim());
+        if (!StringUtils.hasText(objectKey) || !OssManagedObjectKey.isManaged(objectKey)) {
+            throw new BusinessException(400, "文件地址无效");
+        }
+        String ext = extractExtension(objectKey);
+        if (!SUBTITLE_PREVIEW_EXTENSIONS.contains(ext)) {
+            throw new BusinessException(400, "仅支持预览 VTT / SRT 字幕");
+        }
+        try {
+            OSS client = getRangeTransferClient();
+            RangeObjectMetadata metadata = getRangeObjectMetadata(client, objectKey);
+            long total = metadata.contentLength();
+            if (total <= 0) {
+                return Map.of("text", "", "truncated", false);
+            }
+            int want = (int) Math.min(total, SUBTITLE_PREVIEW_MAX_BYTES);
+            byte[] bytes = readObjectRange(client, objectKey, 0, want - 1L);
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("text", new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+            m.put("truncated", total > want);
+            return m;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(500, "读取字幕失败");
+        }
+    }
+
+    private void deleteObjectMetaQuietly(String objectKey) {
+        try {
+            ossObjectMetaMapper.delete(new LambdaQueryWrapper<OssObjectMeta>()
+                    .eq(OssObjectMeta::getObjectKey, objectKey));
+        } catch (Exception e) {
+            log.warn("[oss] delete object meta failed key={} ({})", objectKey, e.getMessage());
+        }
+    }
+
     /**
      * 删除后台前缀下的对象。未启用 / 非白名单 / 云端失败都返回 false，不抛给业务。
      */
@@ -594,6 +730,7 @@ public class OssService {
             client = buildTransferClient();
             client.deleteObject(ossProperties.getBucket(), objectKey);
             rangeMetadataCache.remove(objectKey);
+            deleteObjectMetaQuietly(objectKey);
             return true;
         } catch (Exception e) {
             log.warn("[oss] delete failed key={}", objectKey, e);

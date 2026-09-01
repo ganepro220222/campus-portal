@@ -62,6 +62,27 @@ public class AdminUploadController {
         return Result.ok(Map.of("url", signed == null ? "" : signed));
     }
 
+    /**
+     * 按落库地址反查上传时的原始文件名 / 大小 / 时间。
+     * OSS 对象名是 32 位 hex，不反查的话后台刷新后只能显示「PDF 文件」这种占位。
+     * 查不到返回空对象（老库历史文件本来就没有记录），前端自行退回按后缀显示。
+     */
+    @GetMapping("/file-meta")
+    public Result<Map<String, Object>> fileMeta(@RequestParam("url") String url) {
+        return Result.ok(ossService.objectMeta(url));
+    }
+
+    /**
+     * 读取字幕正文供后台预览框展示前几条。
+     * 字幕是 ASR 生成的，可能整份为空或乱码，只显示「字幕 VTT」根本看不出来。
+     * 仅限 .vtt/.srt，见 OssService#subtitlePreview。
+     */
+    @GetMapping("/subtitle-preview")
+    public Result<Map<String, Object>> subtitlePreview(@RequestParam("url") String url) {
+        requireUploadPermission();
+        return Result.ok(ossService.subtitlePreview(url));
+    }
+
     private void requireUploadPermission() {
         adminPermissionService.requireAny("course:write", "hall:write", "news:write", "admin:super");
     }

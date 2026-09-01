@@ -5,11 +5,14 @@ import com.aliyun.oss.model.GetObjectRequest;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.shuyuan.backend.config.OssProperties;
+import com.shuyuan.backend.entity.OssObjectMeta;
+import com.shuyuan.backend.mapper.OssObjectMetaMapper;
 import com.shuyuan.backend.util.CdnUrlAuth;
 import com.shuyuan.backend.util.OssPostPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -34,6 +37,9 @@ class OssServiceTest {
 
     @Mock
     private OssProperties ossProperties;
+
+    @Mock
+    private OssObjectMetaMapper ossObjectMetaMapper;
 
     @InjectMocks
     private OssService ossService;
@@ -250,7 +256,7 @@ class OssServiceTest {
         when(ossProperties.getSecretKey()).thenReturn("sk");
         when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
 
-        OssService service = spy(new OssService(ossProperties));
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
         OSS client = mock(OSS.class);
         doReturn(client).when(service).buildTransferClient();
         byte[] xlsHeader = new byte[]{
@@ -393,7 +399,7 @@ class OssServiceTest {
     @Test
     void completeDirectUpload_deletesWhenSizeMismatches() {
         enableOssDirect();
-        OssService service = spy(new OssService(ossProperties));
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
         OSS client = mock(OSS.class);
         doReturn(client).when(service).getRangeTransferClient();
         doReturn(true).when(service).deleteObjectQuietly(anyString());
@@ -411,7 +417,7 @@ class OssServiceTest {
     @Test
     void completeDirectUpload_deletesWhenMagicMismatches() {
         enableOssDirect();
-        OssService service = spy(new OssService(ossProperties));
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
         OSS client = mock(OSS.class);
         doReturn(client).when(service).getRangeTransferClient();
         doReturn(true).when(service).deleteObjectQuietly(anyString());
@@ -432,7 +438,7 @@ class OssServiceTest {
     @Test
     void completeDirectUpload_returnsPersistUrlWhenValid() {
         enableOssDirect();
-        OssService service = spy(new OssService(ossProperties));
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
         OSS client = mock(OSS.class);
         doReturn(client).when(service).getRangeTransferClient();
         String key = "videos/202609/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp4";
@@ -462,7 +468,7 @@ class OssServiceTest {
     @Test
     void completeDirectUpload_rejectsHevcAndDeletes() {
         enableOssDirect();
-        OssService service = spy(new OssService(ossProperties));
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
         OSS client = mock(OSS.class);
         doReturn(client).when(service).getRangeTransferClient();
         doReturn(true).when(service).deleteObjectQuietly(anyString());
@@ -492,7 +498,7 @@ class OssServiceTest {
     void upload_acceptsResourceFileAac() {
         enableOss();
         when(ossProperties.getMaxUploadBytes()).thenReturn(1024L * 1024);
-        OssService service = spy(new OssService(ossProperties));
+        OssService service = spy(new OssService(ossProperties, ossObjectMetaMapper));
         OSS client = mock(OSS.class);
         doReturn(client).when(service).buildTransferClient();
         byte[] adts = new byte[]{(byte) 0xFF, (byte) 0xF1, 0x50, (byte) 0x80};
@@ -500,6 +506,83 @@ class OssServiceTest {
                 new MockMultipartFile("file", "guide.aac", "audio/aac", adts));
         assertTrue(result.get("objectKey").startsWith("audios/"));
         assertTrue(result.get("objectKey").endsWith(".aac"));
+    }
+
+    // ---------- 上传对象元信息（后台预览框显示真实文件名） ----------
+
+    @Test
+    void upload_recordsOriginalFileName() throws Exception {
+        enableOss();
+        OssService service = spy(ossService);
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).buildTransferClient();
+        byte[] pdf = new byte[]{'%', 'P', 'D', 'F'};
+        Map<String, String> result = service.upload("document",
+                new MockMultipartFile("file", "2026春季选课指南.pdf", "application/pdf", pdf));
+
+        ArgumentCaptor<OssObjectMeta> captor = ArgumentCaptor.forClass(OssObjectMeta.class);
+        verify(ossObjectMetaMapper).insert(captor.capture());
+        OssObjectMeta saved = captor.getValue();
+        assertEquals(result.get("objectKey"), saved.getObjectKey());
+        assertEquals("2026春季选课指南.pdf", saved.getOriginalName());
+        assertEquals(pdf.length, saved.getSizeBytes());
+        assertEquals("document", saved.getScene());
+    }
+
+    /** 老库还没跑 patch-oss-object-meta.sql 时表不存在；记元信息失败绝不能把上传带崩 */
+    @Test
+    void upload_survivesMetaInsertFailure() throws Exception {
+        enableOss();
+        when(ossObjectMetaMapper.insert(any(OssObjectMeta.class))).thenThrow(new RuntimeException("Table doesn't exist"));
+        OssService service = spy(ossService);
+        OSS client = mock(OSS.class);
+        doReturn(client).when(service).buildTransferClient();
+        Map<String, String> result = service.upload("document",
+                new MockMultipartFile("file", "a.pdf", "application/pdf", new byte[]{'%', 'P', 'D', 'F'}));
+        assertTrue(result.get("url").endsWith(result.get("objectKey")));
+    }
+
+    /** 有的浏览器把整条本地路径当文件名传上来，只留最后一段 */
+    @Test
+    void recordObjectMeta_stripsClientPath() {
+        ossService.recordObjectMeta("document", "files/202609/abc.pdf", "C:\\Users\\老师\\讲义.pdf", 10);
+        ArgumentCaptor<OssObjectMeta> captor = ArgumentCaptor.forClass(OssObjectMeta.class);
+        verify(ossObjectMetaMapper).insert(captor.capture());
+        assertEquals("讲义.pdf", captor.getValue().getOriginalName());
+    }
+
+    @Test
+    void objectMeta_returnsEmptyWhenUnknown() {
+        enableOss();
+        when(ossObjectMetaMapper.selectOne(any())).thenReturn(null);
+        assertTrue(ossService.objectMeta("https://cdn.yunmanvr.com/files/202609/abc.pdf").isEmpty());
+        // 地址为空 / 解析不出对象名时同样返回空，不抛异常
+        assertTrue(ossService.objectMeta("").isEmpty());
+    }
+
+    @Test
+    void objectMeta_returnsStoredName() {
+        enableOss();
+        OssObjectMeta row = new OssObjectMeta();
+        row.setObjectKey("files/202609/abc.pdf");
+        row.setOriginalName("选课指南.pdf");
+        row.setSizeBytes(2_516_582L);
+        row.setCreateTime(java.time.LocalDateTime.of(2026, 9, 1, 14, 20));
+        when(ossObjectMetaMapper.selectOne(any())).thenReturn(row);
+
+        Map<String, Object> meta = ossService.objectMeta("https://cdn.yunmanvr.com/files/202609/abc.pdf");
+        assertEquals("选课指南.pdf", meta.get("originalName"));
+        assertEquals(2_516_582L, meta.get("sizeBytes"));
+        assertEquals("files/202609/abc.pdf", meta.get("objectKey"));
+        assertEquals("2026-09-01T14:20", meta.get("uploadedAt"));
+    }
+
+    /** 查询失败（老库无表）退化成「没有元信息」，不能把后台表单打开这件事弄挂 */
+    @Test
+    void objectMeta_survivesQueryFailure() {
+        enableOss();
+        when(ossObjectMetaMapper.selectOne(any())).thenThrow(new RuntimeException("Table doesn't exist"));
+        assertTrue(ossService.objectMeta("https://cdn.yunmanvr.com/files/202609/abc.pdf").isEmpty());
     }
 
     private void enableOss() {

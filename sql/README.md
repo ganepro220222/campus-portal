@@ -103,6 +103,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 20 | `patch-hall-vr-720-subdomains-20260829.sql` | 展馆 VR 链接切换到 720 云可校验子域名 + 11 号馆牙舟陶上线 | 仅数据；seed 已同步 |
 | 21 | `patch-hall-vr-visibility-20260829.sql` | 条件关闭空「待上线」页签 + 8/9 号馆第三方 VR 入口暂下线（展馆保留） | 仅数据；seed 已同步；**可重复执行** |
 | 22 | `patch-hall-vr-copy-20260830.sql` | 8/9 号馆简介去掉「支持 VR」承诺，与「VR 链接筹备中」对齐 | 仅数据；seed 已同步；**可重复执行** |
+| 23 | `patch-oss-object-meta.sql` | 上传对象元信息表：后台预览框显示真实文件名 / 大小 / 上传时间 | ✅ 已并入 init.sql；**可重复执行** |
 
 `patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 
@@ -187,6 +188,17 @@ bash scripts/backup-staging-mysql.sh
 
 与 `patch-subject-neutral-config.sql` 互补：后者不动 `college_app`；全新 Docker 库（`init.sql` +
 `seed-dev.sql`）已含新数据，**无需**再跑本 patch。
+
+#### `patch-oss-object-meta.sql`（旧库后台预览必读）
+
+**新库**：`init.sql` 已含 `oss_object_meta` 表，**勿**再跑本 patch。
+
+**旧库升级**：建表即可，幂等，可重复执行。
+
+- 不需要回填。历史对象没有元信息记录，后台预览框按后缀退回显示「PDF 文件」，与升级前一致；
+  该文件重新上传一次后自动补齐。
+- 不跑本 patch 也不会挂：写入与查询元信息都包了异常，失败只记日志，
+  上传与后台表单照常工作，只是预览框显示不出真实文件名。
 
 #### `patch-course-progress-watched-seconds.sql`（旧库课程进度必读）
 

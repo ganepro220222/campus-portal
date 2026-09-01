@@ -124,10 +124,12 @@
           upload-label="上传语音"
           done-text="语音已上传"
           hint="支持 MP3、AAC、M4A、WAV"
+          @duration="onAudioDuration"
         />
       </el-form-item>
       <el-form-item label="时长说明">
         <el-input v-model="form.audioTime" placeholder="如：语音讲解 03:48" maxlength="50" />
+        <p class="form-tip">留空会在上传语音后按实际时长自动填写</p>
       </el-form-item>
 
       <el-form-item label="排序" prop="sort">
@@ -190,6 +192,17 @@ const emit = defineEmits<{
 }>()
 
 const formRef = ref<FormInstance>()
+
+/**
+ * 语音传上来后按实际时长回填「时长说明」。
+ * 只在老师没写过的时候填——他可能想写「语音讲解 03:48（普通话）」这类自定义文案，
+ * 自动覆盖会把人家写的东西吃掉。
+ */
+function onAudioDuration(payload: { seconds: number; text: string }) {
+  if (props.form.audioTime && props.form.audioTime.trim()) return
+  if (!payload.text) return
+  props.form.audioTime = `语音讲解 ${payload.text}`
+}
 
 function addSlide() {
   props.form.slides.push({ url: '', caption: '', sort: props.form.slides.length })

@@ -29,6 +29,17 @@ declare module '@/utils/uploadMeta.mjs' {
   export function bytesToFileSizeKb(sizeBytes: number): number | undefined
   export function formatFileSizeKb(kb: number | undefined): string
   export function secondsToDurationMinutes(seconds: number): number | undefined
+  export function formatFileBadge(input: { url?: string; originalName?: string }): {
+    label: string
+    tone: 'pdf' | 'word' | 'ppt' | 'excel' | 'subtitle' | 'media' | 'generic'
+  }
+  export function formatUploadedAt(value: string | number | Date | undefined): string
+  export function formatFileMetaLine(input: { sizeBytes?: number; uploadedAt?: string }): string
+  export function formatDurationClock(seconds: number): string
+  export function parseSubtitleCues(text: string | null | undefined, limit?: number): {
+    total: number
+    cues: { start: string; end: string; text: string }[]
+  }
   export function readVideoDurationSeconds(file: File): Promise<number | null>
 }
 
@@ -47,5 +58,16 @@ declare module '../../utils/uploadMeta.mjs' {
   export function bytesToFileSizeKb(sizeBytes: number): number | undefined
   export function formatFileSizeKb(kb: number | undefined): string
   export function secondsToDurationMinutes(seconds: number): number | undefined
+  export function formatFileBadge(input: { url?: string; originalName?: string }): {
+    label: string
+    tone: 'pdf' | 'word' | 'ppt' | 'excel' | 'subtitle' | 'media' | 'generic'
+  }
+  export function formatUploadedAt(value: string | number | Date | undefined): string
+  export function formatFileMetaLine(input: { sizeBytes?: number; uploadedAt?: string }): string
+  export function formatDurationClock(seconds: number): string
+  export function parseSubtitleCues(text: string | null | undefined, limit?: number): {
+    total: number
+    cues: { start: string; end: string; text: string }[]
+  }
   export function readVideoDurationSeconds(file: File): Promise<number | null>
 }

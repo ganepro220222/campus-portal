@@ -20,7 +20,6 @@
       </div>
       <div v-else-if="showAudioPreview" class="preview-wrap preview-wrap--audio">
         <div class="audio-row">
-          <el-button size="small" :disabled="!previewSrc" @click="toggleAudioPreview">{{ audioPlaying ? '暂停' : '试听' }}</el-button>
           <audio
             v-if="previewSrc"
             ref="audioEl"
@@ -28,18 +27,45 @@
             class="preview-audio"
             controls
             preload="metadata"
-            @play="audioPlaying = true"
-            @pause="audioPlaying = false"
-            @ended="audioPlaying = false"
+            @loadedmetadata="onAudioLoadedMetadata"
             @error="audioError = true"
           />
+          <p v-else class="hint preview-loading">预览加载中…</p>
         </div>
-        <span class="file-name">{{ previewLabel }}</span>
+        <span class="file-name">{{ audioSummary }}</span>
         <p v-if="audioError" class="hint error">语音无法播放，请重新上传或换 MP3 / AAC</p>
       </div>
       <div v-else-if="showFilePreview" class="preview-wrap preview-wrap--file">
-        <el-icon class="file-icon"><Document /></el-icon>
-        <span class="file-name">{{ previewLabel }}</span>
+        <div class="file-card">
+          <span class="file-badge" :class="`file-badge--${fileBadge.tone}`">{{ fileBadge.label }}</span>
+          <div class="file-meta">
+            <div class="file-title" :title="previewLabel">{{ previewLabel }}</div>
+            <div v-if="fileMetaLine" class="file-sub">{{ fileMetaLine }}</div>
+            <el-button
+              link
+              type="primary"
+              class="file-open"
+              :loading="openingFile"
+              @click="openFileInNewTab"
+            >↗ 打开预览</el-button>
+          </div>
+        </div>
+        <div v-if="isSubtitleFile" class="subtitle-box">
+          <p v-if="subtitleError" class="hint error">{{ subtitleError }}</p>
+          <p v-else-if="subtitleLoading" class="hint">字幕读取中…</p>
+          <template v-else-if="subtitleCues.length">
+            <p class="hint subtitle-count">{{ subtitleCountText }}</p>
+            <div class="subtitle-cues">
+              <div v-for="(cue, i) in subtitleCues" :key="i" class="subtitle-cue">
+                <span class="subtitle-time">{{ cue.start }} → {{ cue.end }}</span>
+                <span class="subtitle-text">{{ cue.text || '（本条无文本）' }}</span>
+              </div>
+            </div>
+          </template>
+          <p v-else-if="subtitleLoaded" class="hint error">
+            字幕文件里没有任何时间轴，学生端会看不到字幕，请检查后重新生成或上传
+          </p>
+        </div>
       </div>
 
       <div class="controls">
@@ -86,25 +112,33 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { Document } from '@element-plus/icons-vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import {
   completeDirectUpload,
   fetchDirectPolicy,
+  fetchFileMeta,
   fetchPreviewUrl,
+  fetchSubtitlePreview,
   fetchUploadCapabilities,
   isDirectUploadDisabledError,
   postFileToOss,
   uploadFile,
   type DirectPolicy,
   type UploadCapabilities,
+  type UploadFileMeta,
   type UploadResult
 } from '@/api/upload'
 import type { CoverFitMode } from '@/utils/cover'
 import {
+  extractFileExtension,
+  extractFileNameFromUrl,
   formatByteLimit,
+  formatDurationClock,
+  formatFileBadge,
+  formatFileMetaLine,
   formatUploadPreviewLabel,
-  isDirectUploadCandidate
+  isDirectUploadCandidate,
+  parseSubtitleCues
 } from '@/utils/uploadMeta.mjs'
 import { DIRECT_PENDING_KEY, parseDirectPending, pendingForScene } from '@/utils/directPending.mjs'
 
@@ -140,6 +174,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
   'update:fitMode': [value: CoverFitMode]
   uploaded: [payload: { url: string; sizeBytes: number; fileName: string; file?: File }]
+  /** 读到音频时长后抛给表单，省掉老师听一遍再手打「时长说明」 */
+  duration: [payload: { seconds: number; text: string }]
 }>()
 
 const PROXY_MAX_BYTES = 200 * 1024 * 1024
@@ -152,7 +188,6 @@ const uploadError = ref('')
 const capabilities = ref<UploadCapabilities | null>(null)
 const originalName = ref('')
 const audioEl = ref<HTMLAudioElement | null>(null)
-const audioPlaying = ref(false)
 const audioError = ref(false)
 const pendingComplete = ref<{ scene: string; objectKey: string; size: number; fileName: string; uploadedAt: number } | null>(null)
 let ossAbort: AbortController | null = null
@@ -213,11 +248,144 @@ watch(
   { immediate: true }
 )
 
+/*
+ * 落库的是 OSS 对象名（32 位 hex），刷新页面后本次会话的 originalName 就没了，
+ * 预览框只能退回「PDF 文件」这种占位——老师无从确认自己传的是哪一版。
+ * 所以打开已有记录时向后端反查一次上传元信息；老库没有记录时返回空，行为与从前一致。
+ */
+const fileMeta = ref<UploadFileMeta>({})
+let metaSeq = 0
+
+watch(
+  [inner, resolvedPreview],
+  ([url, mode]) => {
+    metaSeq += 1
+    const seq = metaSeq
+    fileMeta.value = {}
+    if (!url || mode === 'image' || mode === 'none' || !/^https?:\/\//i.test(url)) return
+    fetchFileMeta(url).then((meta) => {
+      if (seq === metaSeq) fileMeta.value = meta || {}
+    })
+  },
+  { immediate: true }
+)
+
 const previewLabel = computed(() => formatUploadPreviewLabel({
   url: inner.value,
-  originalName: originalName.value,
+  // 本次会话刚传的优先，其次库里记的原名，最后才是调用方给的资源标题
+  originalName: originalName.value || fileMeta.value.originalName || '',
   displayName: props.displayName
 }))
+
+const fileBadge = computed(() => formatFileBadge({
+  url: inner.value,
+  originalName: originalName.value || fileMeta.value.originalName || ''
+}))
+
+const fileMetaLine = computed(() => formatFileMetaLine({
+  sizeBytes: fileMeta.value.sizeBytes,
+  uploadedAt: fileMeta.value.uploadedAt
+}))
+
+const fileExt = computed(() => extractFileExtension(
+  originalName.value || fileMeta.value.originalName || extractFileNameFromUrl(inner.value) || inner.value
+))
+const isSubtitleFile = computed(() => fileExt.value === 'vtt' || fileExt.value === 'srt')
+
+/*
+ * 「打开预览」必须懒签：签名地址是短时的，渲染时就签好，等老师真去点时可能已经过期。
+ * window.open 要先同步开好空窗口再改 location，否则 await 之后调用会被弹窗拦截器拦掉。
+ */
+const openingFile = ref(false)
+
+async function openFileInNewTab() {
+  if (!inner.value || openingFile.value) return
+  const win = window.open('', '_blank')
+  openingFile.value = true
+  try {
+    const signed = await fetchPreviewUrl(inner.value)
+    const href = signed || inner.value
+    if (win) {
+      win.location.href = href
+    } else {
+      // 弹窗被拦时退回当前标签页打开，总比什么都不发生强
+      window.location.href = href
+    }
+  } catch {
+    win?.close()
+    ElMessage.error('无法打开预览，请稍后重试')
+  } finally {
+    openingFile.value = false
+  }
+}
+
+const subtitleCues = ref<{ start: string; end: string; text: string }[]>([])
+const subtitleTotal = ref(0)
+const subtitleTruncated = ref(false)
+const subtitleLoading = ref(false)
+const subtitleLoaded = ref(false)
+const subtitleError = ref('')
+let subtitleSeq = 0
+
+watch(
+  [inner, isSubtitleFile],
+  ([url, isSubtitle]) => {
+    subtitleSeq += 1
+    const seq = subtitleSeq
+    subtitleCues.value = []
+    subtitleTotal.value = 0
+    subtitleTruncated.value = false
+    subtitleLoaded.value = false
+    subtitleError.value = ''
+    if (!url || !isSubtitle || !/^https?:\/\//i.test(url)) return
+    subtitleLoading.value = true
+    fetchSubtitlePreview(url)
+      .then((res) => {
+        if (seq !== subtitleSeq) return
+        const parsed = parseSubtitleCues(res.text, 2)
+        subtitleCues.value = parsed.cues
+        subtitleTotal.value = parsed.total
+        subtitleTruncated.value = res.truncated
+        subtitleLoaded.value = true
+      })
+      .catch(() => {
+        if (seq === subtitleSeq) subtitleError.value = '字幕读取失败，无法预览内容'
+      })
+      .finally(() => {
+        if (seq === subtitleSeq) subtitleLoading.value = false
+      })
+  },
+  { immediate: true }
+)
+
+const subtitleCountText = computed(() =>
+  subtitleTruncated.value
+    ? `已读取前 ${subtitleTotal.value} 条（文件较大，未读完）`
+    : `共 ${subtitleTotal.value} 条`
+)
+
+/*
+ * 语音第二行：文件名 · 时长 · 大小。
+ * 时长不是装饰——展馆表单紧挨着有个「时长说明」要老师自己听一遍手打，
+ * 这里读出来后 emit 出去让表单回填，跟资源大小/课程时长的自动带出是同一套做法。
+ */
+const audioDurationText = ref('')
+
+function onAudioLoadedMetadata(e: Event) {
+  const el = e.target as HTMLAudioElement | null
+  const seconds = el?.duration
+  if (!Number.isFinite(seconds) || !seconds || seconds <= 0) return
+  audioDurationText.value = formatDurationClock(seconds)
+  emit('duration', { seconds, text: audioDurationText.value })
+}
+
+const audioSummary = computed(() => {
+  const parts = [previewLabel.value]
+  if (audioDurationText.value) parts.push(audioDurationText.value)
+  const meta = fileMetaLine.value
+  if (meta) parts.push(meta)
+  return parts.filter(Boolean).join(' · ')
+})
 
 const isVideoScene = computed(() =>
   props.scene === 'video' || props.scene === 'course' || props.scene === 'resource'
@@ -506,20 +674,6 @@ function stopAudioPreview() {
     el.pause()
     el.currentTime = 0
   }
-  audioPlaying.value = false
-}
-
-function toggleAudioPreview() {
-  const el = audioEl.value
-  if (!el) return
-  audioError.value = false
-  if (el.paused) {
-    el.play().catch(() => {
-      audioError.value = true
-    })
-    return
-  }
-  el.pause()
 }
 
 function clear() {
@@ -527,6 +681,7 @@ function clear() {
   inner.value = ''
   originalName.value = ''
   audioError.value = false
+  audioDurationText.value = ''
   emit('update:modelValue', '')
 }
 </script>
@@ -595,26 +750,126 @@ function clear() {
   gap: 8px;
 }
 
-/* .file-name 默认居中是给文件图标那版用的；铺满整行后居中会飘到播放器正中间 */
-.preview-wrap--audio .file-name {
-  text-align: left;
-}
-
 .preview-audio {
   flex: 1;
   min-width: 0;
   height: 40px;
 }
 
+/*
+ * 文档预览：从 148px 方块改成横向卡片。
+ * 文件名是横向的东西，塞进方块里必然折行折得难看；而方块里原本只有一个通用图标
+ * 加一行「PDF 文件」，刷新之后连传的是哪一份都看不出来。
+ */
 .preview-wrap--file {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px;
+  gap: 8px;
+  width: 320px;
+  max-width: 100%;
   height: auto;
-  min-height: 72px;
+  padding: 10px;
+  /* 这里没有全局 border-box，不写死的话 width/padding 会叠加成 342px，窄栏里要溢出 */
+  box-sizing: border-box;
+  background: var(--el-bg-color);
+  overflow: visible;
+}
+
+.file-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* 分色角标：PDF/Word/PPT/Excel/字幕 一眼可分，之前全是同一个蓝色 Document 图标 */
+.file-badge {
+  flex: 0 0 38px;
+  height: 46px;
+  border-radius: 4px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 5px;
+  font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.3px;
+  color: #fff;
+  background: var(--el-color-info);
+}
+.file-badge--pdf { background: #e2483d; }
+.file-badge--word { background: #2b5797; }
+.file-badge--ppt { background: #d24726; }
+.file-badge--excel { background: #217346; }
+.file-badge--subtitle { background: #7a869a; }
+.file-badge--media { background: #6b4fbb; }
+.file-badge--generic { background: #909399; }
+
+.file-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 长文件名截两行，完整名字挂在 title 上悬浮可见 */
+.file-title {
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+  line-height: 1.35;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.file-sub {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  margin-top: 3px;
+}
+
+.file-open {
+  margin-top: 3px;
+  height: auto;
+  padding: 0;
+  font-size: 12px;
+}
+
+/* 字幕：把前两条摆出来。ASR 产出的空文件 / 乱码，只有这样才看得见 */
+.subtitle-box {
+  border-top: 1px dashed var(--el-border-color-light);
+  padding-top: 8px;
+}
+
+.subtitle-count {
+  margin: 0 0 6px;
+}
+
+.subtitle-cues {
+  background: var(--el-fill-color-light);
+  border-radius: 4px;
+  padding: 7px 9px;
+}
+
+.subtitle-cue + .subtitle-cue {
+  margin-top: 5px;
+}
+
+.subtitle-time {
+  display: block;
+  font: 11px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--el-text-color-placeholder);
+}
+
+.subtitle-text {
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-regular);
+  word-break: break-all;
+}
+
+.preview-loading {
+  margin: 0;
 }
 
 .preview-image {
@@ -629,15 +884,10 @@ function clear() {
   background: #111;
 }
 
-.file-icon {
-  font-size: 22px;
-  color: var(--el-color-primary);
-}
-
+/* 语音预览下方那行「文件名 · 时长 · 大小」；文档走 .file-card，不再共用这条 */
 .file-name {
   font-size: 11px;
   color: var(--el-text-color-secondary);
-  text-align: center;
   word-break: break-all;
   line-height: 1.3;
 }

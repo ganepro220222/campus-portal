@@ -696,6 +696,20 @@ CREATE TABLE IF NOT EXISTS `sys_config` (
   PRIMARY KEY (`config_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置项';
 
+-- 上传对象元信息：OSS 对象名是 32 位 hex，后台刷新后无法还原老师传的是哪个文件。
+-- 这里按对象名记一份原始文件名/大小/上传时间，供后台预览框展示。
+-- 只增不改，删对象时一并清掉；写入失败不影响上传本身。
+CREATE TABLE IF NOT EXISTS `oss_object_meta` (
+  `id`            BIGINT       NOT NULL AUTO_INCREMENT,
+  `object_key`    VARCHAR(255) NOT NULL COMMENT 'OSS 对象名（不含域名与 bucket）',
+  `original_name` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '上传时的原始文件名',
+  `size_bytes`    BIGINT       NOT NULL DEFAULT 0 COMMENT '字节数',
+  `scene`         VARCHAR(32)  NOT NULL DEFAULT '' COMMENT '上传场景',
+  `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_object_key` (`object_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='上传对象元信息';
+
 -- ============================================================
 -- 初始数据
 -- ============================================================

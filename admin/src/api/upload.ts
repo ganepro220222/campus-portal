@@ -47,6 +47,34 @@ export function fetchPreviewUrl(url: string): Promise<string> {
     .then((r) => r.url || url)
 }
 
+export interface UploadFileMeta {
+  objectKey?: string
+  originalName?: string
+  sizeBytes?: number
+  uploadedAt?: string
+}
+
+/**
+ * OSS 对象名是 32 位 hex，刷新页面后前端还原不出老师传的是哪个文件。
+ * 老库历史对象没有记录，接口返回空对象，调用方自行退回按后缀显示。
+ */
+export function fetchFileMeta(url: string): Promise<UploadFileMeta> {
+  return get<UploadFileMeta>('/admin/upload/file-meta', { url }, { silent: true })
+    .then((r) => r || {})
+    .catch(() => ({}))
+}
+
+export interface SubtitlePreview {
+  text: string
+  truncated: boolean
+}
+
+/** 字幕正文（仅 vtt/srt）。给后台预览框解析出前几条，判断 ASR 是不是产了个空文件。 */
+export function fetchSubtitlePreview(url: string): Promise<SubtitlePreview> {
+  return get<SubtitlePreview>('/admin/upload/subtitle-preview', { url }, { silent: true })
+    .then((r) => ({ text: r?.text || '', truncated: !!r?.truncated }))
+}
+
 export function fetchUploadCapabilities(): Promise<UploadCapabilities> {
   return get<UploadCapabilities>('/admin/upload/capabilities', undefined, { silent: true })
 }

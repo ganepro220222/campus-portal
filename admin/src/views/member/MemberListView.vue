@@ -65,7 +65,9 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="170" />
-      <el-table-column label="操作" width="290" fixed="right" align="center">
+      <!-- 330 是量出来的下限：五个按钮（禁用/重置密码/解绑微信/清退/删除）自然宽 274px，
+           290px 的列去掉内边距只剩 265px，会溢出被裁 -->
+      <el-table-column label="操作" width="330" fixed="right" align="center">
         <template #default="{ row }">
           <!-- el-tag 不带 el-button 之间的默认间距，混排时「已清退」会贴死「删除」，
                统一用 flex 排一行，间距由容器给 -->
@@ -90,6 +92,13 @@
               type="primary"
               @click="onResetPassword(row)"
             >重置密码</el-button>
+            <!-- 只有真绑了才显示：没绑的行摆一个点了必然报错的按钮没有意义 -->
+            <el-button
+              v-if="!row.anonymized && row.wxBound"
+              link
+              type="warning"
+              @click="onUnbindWechat(row)"
+            >解绑微信</el-button>
             <el-button
               v-if="!row.anonymized"
               link
@@ -182,6 +191,7 @@ import {
   fetchMemberDeleteImpact,
   fetchMembers,
   resetMemberPassword,
+  unbindMemberWechat,
   importMembers,
   updateMemberStatus,
   type MemberDeleteImpact,
@@ -331,6 +341,25 @@ async function onResetPassword(row: MemberItem) {
     '临时密码已生成',
     { type: 'warning', confirmButtonText: '我已记录' }
   )
+}
+
+/**
+ * 解绑微信。学生换手机号、换微信、微信号被盗、或当初绑错了，都走这里。
+ *
+ * <p>在此之前后台没有这个入口，唯一沾边的手段是「清退」——但清退会清空学号、
+ * 重新导入产生新的用户 ID，而报名、学习进度、积分、徽章都挂在旧 ID 上，
+ * 等于把这名学生一学期的记录清零。解绑只动微信绑定，其余一概不碰。
+ */
+async function onUnbindWechat(row: MemberItem) {
+  await ElMessageBox.confirm(
+    `解绑后「${row.realName}（${row.studentNo}）」这个学号可以用另一个微信重新绑定。` +
+      `学号密码登录不受影响，账号也不会被禁用；但对方手机上当前的登录状态会立即失效，需要重新登录。确定解绑吗？`,
+    '解绑微信确认',
+    { type: 'warning', confirmButtonText: '确定解绑' }
+  )
+  await unbindMemberWechat(row.id)
+  ElMessage.success('已解绑，学生可用新微信重新绑定')
+  await loadData()
 }
 
 async function onAnonymize(row: MemberItem) {

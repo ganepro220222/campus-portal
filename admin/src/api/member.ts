@@ -99,6 +99,21 @@ export function anonymizeMember(id: number) {
   return put<MemberItem>(`/admin/members/${id}/anonymize`)
 }
 
+export interface MemberUnbindWechatResult {
+  memberId: number
+  studentNo: string
+  /** 解绑后恒为 false，供列表就地更新 */
+  wxBound: boolean
+}
+
+/**
+ * 解绑微信：把 openid 还原成 acct:<学号> 占位值，本人即可换个微信重新绑。
+ * 学号密码登录不受影响，账号不会被禁用；被解绑那台设备上的登录态立即失效。
+ */
+export function unbindMemberWechat(id: number) {
+  return put<MemberUnbindWechatResult>(`/admin/members/${id}/unbind-wechat`)
+}
+
 export interface MemberResetPasswordResult {
   memberId: number
   studentNo: string

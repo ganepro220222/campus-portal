@@ -18,6 +18,7 @@ import com.shuyuan.backend.mapper.MemberPurgeMapper;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.util.MemberPasswordPolicy;
 import com.shuyuan.backend.util.StudentPasswordPolicy;
+import com.shuyuan.backend.util.TokenVersionSupport;
 import com.shuyuan.backend.vo.MemberImportErrorRow;
 import com.shuyuan.backend.vo.MemberImportResult;
 import com.shuyuan.backend.vo.MemberImportRow;
@@ -266,6 +267,73 @@ public class AdminMemberService {
         vo.put("studentNo", account.getStudentNo());
         vo.put("temporaryPassword", plain);
         vo.put("generated", generated);
+        return vo;
+    }
+
+    /**
+     * 解除师生账号与微信的绑定，让本人可以重新用别的微信绑定。
+     *
+     * <p>补的是一个已经被承诺过的能力：内置知识库《登录与账号》里写着「如果提示该学号已绑定
+     * 其他微信，需要联系管理员解绑」，而这句话是 AI 助手答学生问题时的检索来源——
+     * 学生问了、AI 照着答了、管理员打开后台却找不到任何入口。在此之前唯一沾边的手段是
+     * 「清退」，可它会清空学号、随机化密码，重新导入产生新的 member_id，
+     * 而报名、学习进度、积分、徽章等十几张表全按 member_id 关联，等于把这名学生
+     * 一个学期的数据清零——这不该是换个手机号的代价。
+     *
+     * <p>实现上不新造状态：导入账号本来就是 {@code acct:<学号>} 这个占位 openid，
+     * AuthService 两条绑定路径都用 {@link StudentPasswordPolicy#isPlaceholderOpenid}
+     * 判断「未绑定」。所以解绑就是把 openid 还原成占位值，让那个判断重新为真，
+     * 登录主路径一个字都不用改。
+     *
+     * <p>解绑不禁用账号：学号密码照常能登，学生自己重新绑微信即可，不需要额外的「换绑」功能。
+     */
+    @Transactional
+    public Map<String, Object> unbindWechat(Long memberId) {
+        adminPermissionService.require("admin:super");
+        Member member = requireMember(memberId);
+        if (isAnonymizedOpenid(member.getOpenid())) {
+            throw new BusinessException(400, "已清退账号没有微信绑定，无需解绑");
+        }
+        if (StudentPasswordPolicy.isPlaceholderOpenid(member.getOpenid())) {
+            // 不做成幂等成功：白跑一次会平白递增 tokenVersion，把本人正在用的学号登录态踢掉
+            throw new BusinessException(400, "该账号当前未绑定微信，无需解绑");
+        }
+        MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
+                .eq(MemberAccount::getMemberId, memberId)
+                .last("LIMIT 1"));
+        String studentNo = account == null ? null : trim(account.getStudentNo());
+        if (studentNo == null || studentNo.isBlank()) {
+            // openid 是 NOT NULL，占位值又必须由学号构造；没有学号就没有能还原的目标值
+            throw new BusinessException(400, "该用户没有学号账号，无法解绑微信");
+        }
+
+        String placeholder = StudentPasswordPolicy.placeholderOpenid(studentNo);
+        Member occupied = memberMapper.selectOne(new LambdaQueryWrapper<Member>()
+                .eq(Member::getOpenid, placeholder)
+                .last("LIMIT 1"));
+        if (occupied != null && !occupied.getId().equals(memberId)) {
+            // uk_openid 会拦，但报到前端是 500；这里提前给一句能照着查的话
+            throw new BusinessException(400,
+                    "学号 " + studentNo + " 的占位账号已被其他用户占用，请联系技术人员核对数据");
+        }
+
+        int changed = memberMapper.update(null, new LambdaUpdateWrapper<Member>()
+                .eq(Member::getId, memberId)
+                // 带上原 openid 做条件：两个管理员同时点、或本人正好在这一刻绑了别的微信时，
+                // 后到的那次只会影响 0 行，而不是把刚绑好的新微信又解掉
+                .eq(Member::getOpenid, member.getOpenid())
+                .set(Member::getOpenid, placeholder)
+                // 必须递增：不然被解绑的那台手机上的旧 JWT 还能继续用，
+                // 而「微信号被盗」正是这个功能的主要场景，不踢掉旧 token 等于白做
+                .set(Member::getTokenVersion, TokenVersionSupport.bump(member.getTokenVersion())));
+        if (changed == 0) {
+            throw new BusinessException(409, "该账号的绑定状态刚刚发生变化，请刷新后重试");
+        }
+
+        Map<String, Object> vo = new HashMap<>();
+        vo.put("memberId", memberId);
+        vo.put("studentNo", studentNo);
+        vo.put("wxBound", false);
         return vo;
     }
 

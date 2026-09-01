@@ -73,6 +73,17 @@ public class AdminMemberController {
         return Result.ok(adminMemberService.resetPassword(id, req));
     }
 
+    /**
+     * 解绑微信：把 openid 还原成 {@code acct:<学号>} 占位值，本人即可换个微信重新绑。
+     *
+     * <p>内置知识库《登录与账号》已经在让 AI 助手对学生说「联系管理员解绑」，
+     * 在此之前后台并没有这个入口。学号密码登录不受影响，账号也不会被禁用。
+     */
+    @PutMapping("/{id}/unbind-wechat")
+    public Result<Map<String, Object>> unbindWechat(@PathVariable Long id) {
+        return Result.ok(adminMemberService.unbindWechat(id));
+    }
+
     /** 清退：脱敏并禁用账号，保留历史统计外键，不物理删除 */
     @PutMapping("/{id}/anonymize")
     public Result<Map<String, Object>> anonymize(@PathVariable Long id) {

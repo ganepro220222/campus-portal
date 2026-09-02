@@ -41,11 +41,6 @@ Page({
     this._loadAnnouncements()
   },
 
-  onPullDownRefresh() {
-    store.clearCache('home')
-    this._loadPage().then(() => wx.stopPullDownRefresh())
-  },
-
   async _loadPage() {
     const cached = store.getCache('home')
     if (cached) {

@@ -7,7 +7,6 @@
 --   mysql ... shuyuan < /opt/shuyuan/sql/patch-hall-vr-720-subdomains-20260829.sql
 
 SET NAMES utf8mb4;
-USE shuyuan;
 
 UPDATE hall SET vr_url = 'https://a28c11ea.720roma.com/vr/515a9635070ca212/' WHERE id = 1;
 UPDATE hall SET vr_url = 'https://a28c11ea.720roma.com/vr/b5b7196093f3c25a/' WHERE id = 2;

@@ -446,7 +446,7 @@ CREATE TABLE IF NOT EXISTS `member_subscribe_record` (
   `id`              BIGINT       NOT NULL AUTO_INCREMENT,
   `member_id`       BIGINT       NOT NULL,
   `template_id`     VARCHAR(100) NOT NULL COMMENT '微信消息模板ID',
-  `scene`           VARCHAR(50)  NOT NULL COMMENT '使用场景：enroll_success/activity_remind/new_course',
+  `scene`           VARCHAR(50)  NOT NULL COMMENT '使用场景：enroll_success/enroll_approved/activity_remind',
   `available_count` INT          NOT NULL DEFAULT 0 COMMENT '剩余可发次数',
   `authorized_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `last_used_at`    DATETIME     DEFAULT NULL,

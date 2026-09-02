@@ -15,8 +15,6 @@
 -- 护栏用存储过程实现：SIGNAL 只能在存储程序里用。执行账号需要 CREATE ROUTINE 权限；
 -- 没有权限时脚本停在 CREATE PROCEDURE，同样是「什么都没删」的安全失败。
 
-USE shuyuan;
-
 -- 压测学员 member_id 101–150（与 patch-loadtest.sql 一致）
 SET @loadtest_min := 101;
 SET @loadtest_max := 150;

@@ -2,7 +2,6 @@
 -- 用法：type sql\patch-hall-vr.sql | docker compose -f docker-compose.dev.yml exec -T mysql mysql -uroot -pdev123456 shuyuan
 
 SET NAMES utf8mb4;
-USE shuyuan;
 
 ALTER TABLE `hall`
   ADD COLUMN `short_name` VARCHAR(50) DEFAULT NULL COMMENT '列表短名称' AFTER `name`,

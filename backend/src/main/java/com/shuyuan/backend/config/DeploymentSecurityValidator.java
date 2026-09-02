@@ -8,7 +8,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 /**
- * staging/prod 启动前校验：禁止 dev JWT、禁止微信 dev-mode、生产要求 WX 凭证。
+ * staging/prod 启动前强校验；本地 profile 使用公开开发 JWT 时仅告警，不阻断开发。
  */
 @Slf4j
 @Component
@@ -22,6 +22,13 @@ public class DeploymentSecurityValidator implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         String[] profiles = environment.getActiveProfiles();
         if (!DeploymentSecurityRules.requiresGuardedValidation(profiles)) {
+            if (!DeploymentSecurityRules.hasTestProfile(profiles)
+                    && DeploymentSecurityRules.isKnownInsecureJwtSecret(
+                    properties.getJwt().getSecret())) {
+                log.warn("当前本地 profile 使用公开开发 JWT 密钥，仅可用于本机开发；"
+                                + "共享环境请通过 JWT_SECRET 配置随机强密钥。activeProfiles={}",
+                        String.join(",", profiles));
+            }
             return;
         }
         DeploymentSecurityRules.validateGuardedDeployment(

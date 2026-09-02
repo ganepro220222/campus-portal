@@ -26,6 +26,13 @@ for (const list of [manifest.devFreshDb, manifest.prodFreshDb, manifest.required
   }
 }
 
+for (const name of fs.readdirSync(path.join(root, 'sql')).filter((item) => item.endsWith('.sql'))) {
+  const rel = `sql/${name}`
+  if (/^\s*USE\s+/im.test(read(rel))) {
+    errs.push(`${rel} 不得写死 USE；请由执行命令显式选择目标数据库`)
+  }
+}
+
 const compose = read('docker-compose.dev.yml')
 for (const mount of manifest.dockerComposeDevMounts) {
   if (!compose.includes(mount)) {

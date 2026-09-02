@@ -4,7 +4,6 @@
 --   type sql\patch-hall-real-data.sql | docker compose -f docker-compose.dev.yml exec -T mysql mysql -uroot -pdev123456 shuyuan
 
 SET NAMES utf8mb4;
-USE shuyuan;
 
 -- 1) 表结构（幂等，列已存在时会报错可忽略，建议先执行 patch-hall-vr.sql）
 -- ALTER TABLE `hall`

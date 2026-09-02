@@ -1,5 +1,4 @@
 -- 开发环境旧库补丁（banner 字段 + 测试账号密码）
-USE shuyuan;
 
 ALTER TABLE `banner`
   ADD COLUMN `title` VARCHAR(200) DEFAULT NULL COMMENT '标题' AFTER `id`,

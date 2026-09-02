@@ -23,9 +23,10 @@ info:
 
 shuyuan:
   jwt:
-    secret: shuyuan-dev-jwt-secret-change-in-prod
+    # dev/docker 可保留本地默认值（启动会告警）；共享环境应通过 JWT_SECRET 覆盖。
+    secret: ${JWT_SECRET:shuyuan-dev-jwt-secret-change-in-prod}
     expire-days: 7
-    admin-expire-hours: 8
+    admin-expire-hours: ${JWT_ADMIN_EXPIRE_HOURS:8}
   wx:
     dev-mode: true
     appid: ${WX_APPID:}

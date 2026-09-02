@@ -5,7 +5,6 @@
 -- 说明：校园安全教育馆甲方提供为 http 链接；小程序 web-view 要求 https，故入库使用 https 同路径。
 
 SET NAMES utf8mb4;
-USE shuyuan;
 
 UPDATE `hall` SET
   `name` = '校园安全教育馆',

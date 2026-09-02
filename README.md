@@ -33,7 +33,16 @@ docs/        Internal specs
    curl http://localhost:8080/api/v1/health
    ```
 
-3. Open `miniapp/` in WeChat DevTools (`baseUrl` is already `http://localhost:8080/api/v1`).
+3. Before opening `miniapp/` in WeChat DevTools, choose the target in
+   `miniapp/config/env.js`:
+
+   - `ENV = 'dev'`: local Docker backend at `http://localhost:8080/api/v1`
+   - `ENV = 'staging'`: staging API for real-device integration (the repository currently uses this)
+   - `ENV = 'prod'`: formal release only; configure the production `baseUrl` first
+
+   Do not assume the checked-in value points to localhost. Before a formal upload, switch to
+   `prod` and run `npm run check:release-all -- --env <deployment .env path>`; the release gate
+   rejects a non-prod miniapp target or placeholder production domain.
 
 **Fresh DB:** `init.sql` + `seed-dev.sql` + `patch-builtin-knowledge.sql` run automatically on first `mysql_data` volume creation.
 

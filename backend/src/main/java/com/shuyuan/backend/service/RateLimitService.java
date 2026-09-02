@@ -151,14 +151,6 @@ public class RateLimitService {
         };
     }
 
-    /** 查询用户在某场景下的已用次数（只读，不递增） */
-    public int getUserUsage(String scene, Long userId) {
-        if (userId == null) {
-            return 0;
-        }
-        return getUsage(scene, "u:" + userId);
-    }
-
     /** 查询用户当日（自然日）已用次数 */
     public int getUserCalendarDayUsage(String scene, Long userId) {
         if (userId == null) {

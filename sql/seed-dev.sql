@@ -3,8 +3,6 @@
 
 SET NAMES utf8mb4;
 
-USE shuyuan;
-
 -- 测试学员（学号 2021001，密码 Admin@123，与后台超管相同 BCrypt）
 INSERT IGNORE INTO `member` (`id`, `openid`, `nickname`, `points`, `status`) VALUES
 (1, 'acct:2021001', '测试学员', 28, 1);

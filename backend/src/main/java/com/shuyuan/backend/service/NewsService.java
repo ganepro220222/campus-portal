@@ -77,7 +77,7 @@ public class NewsService {
         m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(news.getCoverFitMode()));
         m.put("category", categoryName);
         m.put("categoryName", categoryName);
-        m.put("publishTime", news.getPublishTime());
+        m.put("publishTime", FormatUtils.formatDate(news.getPublishTime()));
         m.put("date", FormatUtils.formatDate(news.getPublishTime()));
         m.put("viewCount", viewCount);
         m.put("read", FormatUtils.formatCount(viewCount));

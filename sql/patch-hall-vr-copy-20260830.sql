@@ -8,7 +8,6 @@
 --     < sql/patch-hall-vr-copy-20260830.sql
 
 SET NAMES utf8mb4;
-USE shuyuan;
 
 UPDATE hall
 SET intro = '校园安全常识、应急演练与警示教育，VR 全景漫游正在筹备中。'

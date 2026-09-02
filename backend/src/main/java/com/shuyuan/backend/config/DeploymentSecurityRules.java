@@ -23,10 +23,12 @@ public final class DeploymentSecurityRules {
 
     private static final Set<String> PLACEHOLDER_VALUES = Set.of(
             PLACEHOLDER_JWT_SECRET,
+            "CHANGE_ME_JWT_SECRET_AT_LEAST_32_CHARS",
             "your-db-password",
             "your-redis-password",
             PLACEHOLDER_WX_APPID,
-            PLACEHOLDER_WX_SECRET
+            PLACEHOLDER_WX_SECRET,
+            "YOUR_WX_SECRET"
     );
 
     private static final Set<String> LOCAL_DB_HOSTS = Set.of(
@@ -111,6 +113,14 @@ public final class DeploymentSecurityRules {
             return false;
         }
         return PLACEHOLDER_VALUES.contains(value.trim());
+    }
+
+    static boolean isKnownInsecureJwtSecret(String jwtSecret) {
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            return true;
+        }
+        String trimmed = jwtSecret.trim();
+        return DEV_JWT_SECRETS.contains(trimmed) || isPlaceholderValue(trimmed);
     }
 
     static String extractJdbcHost(String datasourceUrl) {

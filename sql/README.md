@@ -15,6 +15,10 @@
 
 机器可读清单见 `sql/sql-init-manifest.json`（由 `npm run check:sql-init` 校验）。
 
+> **数据库选择约定：** SQL 文件不写死库名。手工执行时必须在命令行显式选择目标库，
+> 例如 `mysql -uroot -p <数据库名> < sql/patch-xxx.sql`；不要使用未指定数据库的
+> `mysql -uroot -p < sql/patch-xxx.sql`。
+
 ### 非 Docker 手动初始化
 
 #### 生产新库

@@ -20,8 +20,6 @@
 --
 -- 可重复执行（无对应行时不报错）。
 
-USE shuyuan;
-
 DROP PROCEDURE IF EXISTS _assert_demo_seed;
 DELIMITER $$
 CREATE PROCEDURE _assert_demo_seed(IN confirmed VARCHAR(16))

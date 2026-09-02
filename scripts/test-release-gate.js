@@ -70,8 +70,38 @@ function assertViewerCheckInPreflight() {
   }
 }
 
+function assertBackendEnvTemplatesExposeRuntimeControls() {
+  const required = [
+    'JWT_ADMIN_EXPIRE_HOURS',
+    'AI_PROVIDER',
+    'AI_API_KEY',
+    'AI_BASE_URL',
+    'AI_MODEL',
+    'AI_PER_DAY',
+    'AI_DAILY_LIMIT',
+    'AI_MIN_RELEVANCE_SCORE'
+  ]
+  for (const rel of ['.env.example', '.env.prod.template']) {
+    const content = fs.readFileSync(path.join(root, rel), 'utf8')
+    for (const key of required) {
+      if (!new RegExp(`^${key}=`, 'm').test(content)) {
+        console.error(`[test-release-gate] ${rel} 缺少 ${key}`)
+        process.exit(1)
+      }
+    }
+  }
+
+  const appConfig = fs.readFileSync(
+    path.join(root, 'backend/src/main/resources/application.yaml'), 'utf8')
+  if (!appConfig.includes('admin-expire-hours: ${JWT_ADMIN_EXPIRE_HOURS:8}')) {
+    console.error('[test-release-gate] application.yaml 未接入 JWT_ADMIN_EXPIRE_HOURS')
+    process.exit(1)
+  }
+}
+
 assertReleaseEnvFixture()
 assertProdMiniappTemplate()
 assertRequestLazyGetApp()
 assertViewerCheckInPreflight()
+assertBackendEnvTemplatesExposeRuntimeControls()
 console.log('[test-release-gate] 通过')

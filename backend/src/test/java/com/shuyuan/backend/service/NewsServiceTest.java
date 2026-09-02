@@ -53,7 +53,7 @@ class NewsServiceTest {
         news.setTitle("测试资讯");
         news.setStatus("published");
         news.setViewCount(10);
-        news.setPublishTime(LocalDateTime.now());
+        news.setPublishTime(LocalDateTime.of(2026, 9, 1, 10, 30));
         news.setContent("正文");
 
         when(newsMapper.selectById(3L)).thenReturn(news);
@@ -66,6 +66,8 @@ class NewsServiceTest {
         verify(newsInteractionService).enrichDetailInteraction(result, news);
         assertEquals(11, result.get("viewCount"));
         assertEquals(11, result.get("readCount"));
+        assertEquals("2026-09-01", result.get("publishTime"));
+        assertEquals("2026-09-01", result.get("date"));
     }
 
     @Test

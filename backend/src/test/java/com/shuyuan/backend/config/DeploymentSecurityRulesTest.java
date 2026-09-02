@@ -97,6 +97,19 @@ class DeploymentSecurityRulesTest {
         assertThrows(IllegalStateException.class, () ->
                 DeploymentSecurityRules.validateJwtSecret(
                         DeploymentSecurityRules.PLACEHOLDER_JWT_SECRET));
+        assertThrows(IllegalStateException.class, () ->
+                DeploymentSecurityRules.validateJwtSecret(
+                        "CHANGE_ME_JWT_SECRET_AT_LEAST_32_CHARS"));
+    }
+
+    @Test
+    void knownInsecureJwtSecret_coversLocalDefaultsAndPublicPlaceholder() {
+        assertTrue(DeploymentSecurityRules.isKnownInsecureJwtSecret(null));
+        assertTrue(DeploymentSecurityRules.isKnownInsecureJwtSecret(
+                DeploymentSecurityRules.DEV_JWT_SECRET_YAML));
+        assertTrue(DeploymentSecurityRules.isKnownInsecureJwtSecret(
+                DeploymentSecurityRules.PLACEHOLDER_JWT_SECRET));
+        assertFalse(DeploymentSecurityRules.isKnownInsecureJwtSecret(STRONG_SECRET));
     }
 
     @Test
@@ -105,6 +118,10 @@ class DeploymentSecurityRulesTest {
                 DeploymentSecurityRules.validateWxCredentials(
                         DeploymentSecurityRules.PLACEHOLDER_WX_APPID,
                         DeploymentSecurityRules.PLACEHOLDER_WX_SECRET));
+        assertThrows(IllegalStateException.class, () ->
+                DeploymentSecurityRules.validateWxCredentials(
+                        "wx-app-id",
+                        "YOUR_WX_SECRET"));
     }
 
     @Test

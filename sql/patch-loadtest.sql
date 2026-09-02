@@ -3,8 +3,6 @@
 -- 清理：mysql ... shuyuan < sql/patch-loadtest-cleanup.sql
 -- 可重复执行：先清理 activity_id=99 的旧报名再重置名额
 
-USE shuyuan;
-
 -- 压测活动：名额 50，初始已报 0
 INSERT INTO `activity` (`id`, `title`, `intro`, `location`, `start_time`, `enroll_start_time`, `enroll_end_time`, `quota`, `enrolled_count`, `status`, `need_review`)
 VALUES (99, '【压测】并发报名专项活动', '仅用于压测，勿对外展示', '线上', '2026-12-31 10:00:00', '2026-01-01 00:00:00', '2026-12-31 23:59:59', 50, 0, 'published', 0)

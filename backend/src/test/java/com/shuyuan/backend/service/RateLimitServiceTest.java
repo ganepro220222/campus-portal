@@ -75,14 +75,6 @@ class RateLimitServiceTest {
     }
 
     @Test
-    void getUserUsage_readsRedisWithoutIncrement() {
-        when(redis.opsForValue()).thenReturn(valueOps);
-        when(valueOps.get("ratelimit:ai:u:3")).thenReturn("7");
-        assertEquals(7, rateLimitService.getUserUsage("ai", 3L));
-        verify(valueOps, never()).increment(anyString());
-    }
-
-    @Test
     void checkUserCalendarDay_usesDateInKey() {
         when(redis.opsForValue()).thenReturn(valueOps);
         when(valueOps.increment(anyString())).thenReturn(1L);

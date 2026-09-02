@@ -3,6 +3,7 @@ package com.shuyuan.backend.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.entity.*;
 import com.shuyuan.backend.mapper.*;
+import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -65,7 +66,7 @@ public class HomeService {
         m.put("cover", n.getCover());
         m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(n.getCoverFitMode()));
         m.put("categoryName", categoryService.getName(n.getCategoryId(), catMap));
-        m.put("publishTime", n.getPublishTime());
+        m.put("publishTime", FormatUtils.formatDate(n.getPublishTime()));
         return m;
     }
 

@@ -14,7 +14,6 @@
 --     < sql/patch-hall-vr-visibility-20260829.sql
 
 SET NAMES utf8mb4;
-USE shuyuan;
 
 -- 1) 条件关闭空「待上线」页签：仅当该分类下没有任何上线展馆时才停用，
 --    避免误隐藏运维人员后来真实放入该分类的内容

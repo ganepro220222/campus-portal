@@ -187,11 +187,11 @@ async function onSave() {
   try {
     const payload = {
       content: form.content,
-      linkUrl: form.linkUrl || undefined,
+      linkUrl: form.linkUrl,
       sort: form.sort,
       isScroll: form.isScroll,
-      startTime: form.startTime || undefined,
-      endTime: form.endTime || undefined,
+      startTime: form.startTime,
+      endTime: form.endTime,
       status: form.status
     }
     if (editingId.value) {

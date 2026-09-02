@@ -126,7 +126,8 @@ public class AdminCollegeAppService {
         if (req.getContentUrl() != null) {
             row.setContentUrl(req.getContentUrl().trim());
         }
-        if (req.getApiToken() != null) {
+        // 密钥只写不回显；编辑表单留空表示保持现值，不能静默抹掉已有密钥。
+        if (req.getApiToken() != null && !req.getApiToken().isBlank()) {
             row.setApiToken(req.getApiToken().trim());
         }
     }

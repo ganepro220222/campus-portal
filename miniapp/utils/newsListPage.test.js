@@ -7,6 +7,8 @@ const {
   extractPageRecords,
   mergePageRecords,
   calcHasMore,
+  shouldRequestNextPage,
+  buildLoadMoreFailurePatch,
   filterByCategory,
   sliceMockPage,
   mockHasMore
@@ -21,6 +23,55 @@ assert.deepStrictEqual(mergePageRecords([{ id: 1 }], [{ id: 2 }], true), [{ id: 
 
 assert.strictEqual(calcHasMore(new Array(10), 10), true)
 assert.strictEqual(calcHasMore(new Array(9), 10), false)
+
+assert.strictEqual(shouldRequestNextPage({
+  hasMore: true,
+  loading: false,
+  loadMoreError: false
+}), true)
+assert.strictEqual(shouldRequestNextPage({
+  hasMore: true,
+  loading: false,
+  loadMoreError: true
+}), false, '分页失败后触底不应自动重试')
+assert.strictEqual(shouldRequestNextPage({
+  hasMore: true,
+  loading: false,
+  loadMoreError: true
+}, true), true, '分页失败后允许点击重试')
+assert.strictEqual(shouldRequestNextPage({
+  hasMore: true,
+  loading: false,
+  loadMoreError: false
+}, true), false)
+assert.strictEqual(shouldRequestNextPage({
+  hasMore: true,
+  loading: true,
+  loadMoreError: true
+}, true), false)
+assert.strictEqual(shouldRequestNextPage({
+  hasMore: false,
+  loading: false,
+  loadMoreError: true
+}, true), false)
+
+{
+  const state = {
+    newsList: [{ id: 1 }],
+    page: 3,
+    hasMore: true,
+    loading: true,
+    loadMoreError: false
+  }
+  const patch = buildLoadMoreFailurePatch()
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(patch, 'page'), false)
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(patch, 'hasMore'), false)
+  Object.assign(state, patch)
+  assert.strictEqual(state.page, 3, '分页失败后保留待重试页码')
+  assert.strictEqual(state.hasMore, true, '分页失败后保留 hasMore')
+  assert.strictEqual(state.loading, false)
+  assert.strictEqual(state.loadMoreError, true)
+}
 
 const filtered = filterByCategory([
   { categoryName: '书院动态' },

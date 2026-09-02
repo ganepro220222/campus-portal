@@ -49,6 +49,7 @@ export function useCourseList() {
     videoUrl: null
   })
   const subtitleUrlInput = ref('')
+  const subtitleSavedUrl = ref('')
   const subtitleTriggering = ref(false)
   const subtitleSaving = ref(false)
 
@@ -63,7 +64,6 @@ export function useCourseList() {
     intro: '',
     videoUrl: '',
     subtitleUrl: '',
-    status: 0,
     resourceIds: [] as number[]
   })
 
@@ -119,9 +119,9 @@ export function useCourseList() {
     form.intro = ''
     form.videoUrl = ''
     form.subtitleUrl = ''
-    form.status = 0
     form.resourceIds = []
     subtitleUrlInput.value = ''
+    subtitleSavedUrl.value = ''
     subtitleInfo.value = {
       courseId: 0,
       subtitleStatus: 'none',
@@ -147,16 +147,24 @@ export function useCourseList() {
       form.startTime = detail.startTime || ''
       form.intro = detail.intro || ''
       form.videoUrl = detail.videoUrl || ''
-      form.subtitleUrl = detail.subtitleUrl || ''
-      form.status = detail.status ?? 0
       form.resourceIds = detail.resourceIds || []
-      subtitleUrlInput.value = detail.subtitleUrl || ''
       subtitleInfo.value = await fetchSubtitleStatus(row.id)
+      const currentSubtitleUrl = subtitleInfo.value.subtitleUrl || detail.subtitleUrl || ''
+      form.subtitleUrl = currentSubtitleUrl
+      subtitleUrlInput.value = currentSubtitleUrl
+      subtitleSavedUrl.value = currentSubtitleUrl
     }
     dialogVisible.value = true
   }
 
   async function onSave() {
+    const pendingSubtitleUrl = subtitleUrlInput.value.trim()
+    const subtitleDirty = Boolean(editingId.value)
+      && pendingSubtitleUrl !== subtitleSavedUrl.value.trim()
+    if (subtitleDirty && !pendingSubtitleUrl) {
+      ElMessage.warning('字幕已清空但尚未选择替代文件，请上传新字幕或取消本次变更')
+      return
+    }
     saving.value = true
     try {
       const payload = {
@@ -168,13 +176,25 @@ export function useCourseList() {
         startTime: form.startTime || undefined,
         intro: form.intro || undefined,
         videoUrl: form.videoUrl || undefined,
-        subtitleUrl: form.subtitleUrl || undefined,
-        status: form.status,
         resourceIds: form.resourceIds
       }
       if (editingId.value) {
         await updateCourse(editingId.value, payload)
-        ElMessage.success('已更新')
+        if (subtitleDirty) {
+          subtitleSaving.value = true
+          try {
+            subtitleInfo.value = await updateSubtitle(editingId.value, pendingSubtitleUrl)
+            form.subtitleUrl = pendingSubtitleUrl
+            subtitleSavedUrl.value = pendingSubtitleUrl
+          } catch (error) {
+            ElMessage.error('课程内容已保存，但字幕保存失败；弹窗已保留，请重试保存字幕')
+            await loadData()
+            return
+          } finally {
+            subtitleSaving.value = false
+          }
+        }
+        ElMessage.success(subtitleDirty ? '已更新课程和字幕' : '已更新')
       } else {
         await createCourse(payload)
         ElMessage.success('已创建')
@@ -207,6 +227,7 @@ export function useCourseList() {
     try {
       subtitleInfo.value = await updateSubtitle(editingId.value, subtitleUrlInput.value.trim())
       form.subtitleUrl = subtitleUrlInput.value.trim()
+      subtitleSavedUrl.value = form.subtitleUrl
       ElMessage.success('字幕已保存')
       await loadData()
     } finally {

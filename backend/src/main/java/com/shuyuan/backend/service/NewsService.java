@@ -27,8 +27,18 @@ public class NewsService {
     private final NewsInteractionService newsInteractionService;
 
     public Object list(String category, Long categoryId, Integer page, Integer size) {
+        CategoryService.CategoryFilter filter =
+                categoryService.resolveFilter("news", categoryId, category);
+        if (filter.isInvalid()) {
+            if (page != null && page > 0) {
+                int pageSize = size == null || size <= 0 ? 10 : size;
+                return new PageResult<>(List.of(), 0, page, pageSize);
+            }
+            return List.of();
+        }
+
         Map<Long, String> catMap = categoryService.nameMap("news");
-        LambdaQueryWrapper<News> qw = baseQuery(catMap, category, categoryId);
+        LambdaQueryWrapper<News> qw = baseQuery(filter);
 
         if (page != null && page > 0) {
             int pageSize = size == null || size <= 0 ? 10 : size;
@@ -104,18 +114,13 @@ public class NewsService {
         }).toList();
     }
 
-    private LambdaQueryWrapper<News> baseQuery(Map<Long, String> catMap, String category, Long categoryId) {
+    private LambdaQueryWrapper<News> baseQuery(CategoryService.CategoryFilter filter) {
         LambdaQueryWrapper<News> qw = new LambdaQueryWrapper<News>()
                 .eq(News::getStatus, "published")
                 .orderByDesc(News::getIsTop)
                 .orderByDesc(News::getPublishTime);
-        if (categoryId != null && categoryId > 0) {
-            qw.eq(News::getCategoryId, categoryId);
-        } else if (category != null && !category.isBlank() && !"全部".equals(category)) {
-            Long cid = categoryService.findIdByName("news", category);
-            if (cid != null) {
-                qw.eq(News::getCategoryId, cid);
-            }
+        if (filter.shouldFilter()) {
+            qw.eq(News::getCategoryId, filter.categoryId());
         }
         return qw;
     }

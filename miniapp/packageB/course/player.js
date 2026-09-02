@@ -6,6 +6,8 @@ const {
   resolveEndedReport,
   shouldReportByInterval,
   isSeekBackward,
+  normalizeSeekCompletePosition,
+  getCoursePlayerPlatform,
   resolveVideoResumePosition,
   resolveResumeInitialTime,
   coerceVttText,
@@ -96,7 +98,12 @@ Page({
   },
 
   onSeekComplete(e) {
-    const cur = Math.floor(e.detail.currentTime || this._currentPosition || 0)
+    const normalizedPosition = normalizeSeekCompletePosition(
+      e && e.detail && e.detail.position,
+      getCoursePlayerPlatform(wx)
+    )
+    if (normalizedPosition == null) return
+    const cur = Math.floor(normalizedPosition)
     const total = Math.floor(this._currentDuration || 0)
     this._currentPosition = cur
     if (!this._courseId || total <= 0) {

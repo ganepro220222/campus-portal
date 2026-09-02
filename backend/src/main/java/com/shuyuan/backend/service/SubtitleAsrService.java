@@ -8,10 +8,10 @@ import com.shuyuan.backend.asr.SubtitleAsrPollPolicy;
 import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.entity.Course;
 import com.shuyuan.backend.mapper.CourseMapper;
+import com.shuyuan.backend.util.OssManagedObjectKey;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -46,42 +46,50 @@ public class SubtitleAsrService {
                 .last("LIMIT " + batchSize));
         for (Course course : tasks) {
             if (isTimedOut(course)) {
-                markFailed(course.getId(), "ASR 任务超时");
+                markFailed(course.getId(), course.getSubtitleTaskId(), "ASR 任务超时");
                 continue;
             }
             try {
                 handleOne(course);
             } catch (Exception e) {
                 log.warn("[subtitle-asr] 轮询课程 {} 失败: {}", course.getId(), e.getMessage());
-                markPollError(course.getId(), truncateError(e.getMessage()));
+                markPollError(course.getId(), course.getSubtitleTaskId(), truncateError(e.getMessage()));
             }
         }
     }
 
-    @Transactional
     protected void handleOne(Course course) {
-        recordPollAttempt(course.getId());
-        AsrJobResult result = asrService.query(course.getSubtitleTaskId());
+        String taskId = course.getSubtitleTaskId();
+        if (!recordPollAttempt(course.getId(), taskId)) {
+            log.info("[subtitle-asr] 忽略已取消或已替换的任务 courseId={} taskId={}", course.getId(), taskId);
+            return;
+        }
+        AsrJobResult result = asrService.query(taskId);
         if (result.state() == AsrJobState.PROCESSING) {
             return;
         }
         if (result.state() == AsrJobState.FAILED) {
-            markFailed(course.getId(), result.errorMessage());
+            markFailed(course.getId(), taskId, result.errorMessage());
             return;
         }
         String vtt = result.vttContent();
         if (!StringUtils.hasText(vtt)) {
-            markFailed(course.getId(), "ASR 结果为空");
+            markFailed(course.getId(), taskId, "ASR 结果为空");
             return;
         }
         var uploaded = ossService.uploadText("subtitle", "vtt", vtt, "text/vtt; charset=utf-8");
         String newUrl = uploaded.get("url");
         // 就绪时要抹掉上一轮的失败原因；updateById 跳过 null 字段，只能显式 set
-        courseMapper.update(null, new LambdaUpdateWrapper<Course>()
-                .eq(Course::getId, course.getId())
+        int updated = courseMapper.update(null, currentTaskUpdate(course.getId(), taskId)
                 .set(Course::getSubtitleUrl, newUrl)
                 .set(Course::getSubtitleStatus, "ready")
                 .set(Course::getSubtitleAsrLastError, null));
+        if (updated == 0) {
+            String orphanKey = OssManagedObjectKey.extractManaged(newUrl);
+            ossMediaCleanupService.deleteIfUnreferenced(orphanKey);
+            log.info("[subtitle-asr] 丢弃晚到结果 courseId={} taskId={}", course.getId(), taskId);
+            return;
+        }
         ossMediaCleanupService.afterReplace(course.getSubtitleUrl(), newUrl);
         log.info("[subtitle-asr] 课程 {} 字幕已就绪", course.getId());
     }
@@ -98,32 +106,28 @@ public class SubtitleAsrService {
         return started.isBefore(LocalDateTime.now().minusHours(hours));
     }
 
-    private void recordPollAttempt(Long courseId) {
-        Course current = courseMapper.selectById(courseId);
-        if (current == null) {
-            return;
-        }
-        Course update = new Course();
-        update.setId(courseId);
-        update.setSubtitleAsrLastPollAt(LocalDateTime.now());
-        int prev = current.getSubtitleAsrAttemptCount() != null ? current.getSubtitleAsrAttemptCount() : 0;
-        update.setSubtitleAsrAttemptCount(prev + 1);
-        courseMapper.updateById(update);
+    private boolean recordPollAttempt(Long courseId, String taskId) {
+        return courseMapper.update(null, currentTaskUpdate(courseId, taskId)
+                .set(Course::getSubtitleAsrLastPollAt, LocalDateTime.now())
+                .setSql("subtitle_asr_attempt_count = COALESCE(subtitle_asr_attempt_count, 0) + 1")) > 0;
     }
 
-    private void markFailed(Long courseId, String error) {
-        Course update = new Course();
-        update.setId(courseId);
-        update.setSubtitleStatus("failed");
-        update.setSubtitleAsrLastError(truncateError(error));
-        courseMapper.updateById(update);
+    private void markFailed(Long courseId, String taskId, String error) {
+        courseMapper.update(null, currentTaskUpdate(courseId, taskId)
+                .set(Course::getSubtitleStatus, "failed")
+                .set(Course::getSubtitleAsrLastError, truncateError(error)));
     }
 
-    private void markPollError(Long courseId, String error) {
-        Course update = new Course();
-        update.setId(courseId);
-        update.setSubtitleAsrLastError(truncateError(error));
-        courseMapper.updateById(update);
+    private void markPollError(Long courseId, String taskId, String error) {
+        courseMapper.update(null, currentTaskUpdate(courseId, taskId)
+                .set(Course::getSubtitleAsrLastError, truncateError(error)));
+    }
+
+    private LambdaUpdateWrapper<Course> currentTaskUpdate(Long courseId, String taskId) {
+        return new LambdaUpdateWrapper<Course>()
+                .eq(Course::getId, courseId)
+                .eq(Course::getSubtitleTaskId, taskId)
+                .eq(Course::getSubtitleStatus, "processing");
     }
 
     private static String truncateError(String message) {

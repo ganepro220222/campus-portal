@@ -60,6 +60,9 @@ public class FeedbackService {
             return "其他";
         }
         String t = type.trim();
+        if ("other".equalsIgnoreCase(t)) {
+            return "其他";
+        }
         return ALLOWED_TYPES.contains(t) ? t : "其他";
     }
 

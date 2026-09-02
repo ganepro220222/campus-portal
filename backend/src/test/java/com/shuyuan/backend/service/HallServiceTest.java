@@ -124,17 +124,6 @@ class HallServiceTest {
     }
 
     @Test
-    void isUnfilteredCategory_treatsWxUndefinedSentinelAsAll() {
-        assertTrue(HallService.isUnfilteredCategory(null));
-        assertTrue(HallService.isUnfilteredCategory(""));
-        assertTrue(HallService.isUnfilteredCategory("全部"));
-        assertTrue(HallService.isUnfilteredCategory("undefined"));
-        assertTrue(HallService.isUnfilteredCategory("null"));
-        assertFalse(HallService.isUnfilteredCategory("不存在的分类"));
-        assertFalse(HallService.isUnfilteredCategory("安全教育"));
-    }
-
-    @Test
     void list_returnsAllWhenCategoryIsUndefinedSentinel() {
         Hall hall = new Hall();
         hall.setId(1L);
@@ -142,6 +131,8 @@ class HallServiceTest {
         hall.setCategoryId(4L);
         hall.setStatus(1);
 
+        when(categoryService.resolveFilter("hall", "undefined"))
+                .thenReturn(CategoryService.CategoryFilter.unfiltered());
         when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of(4L, "博物馆与校史"));
         when(categoryService.getName(4L, java.util.Map.of(4L, "博物馆与校史"))).thenReturn("博物馆与校史");
         when(hallMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(hall));
@@ -149,14 +140,12 @@ class HallServiceTest {
         var result = hallService.list("undefined");
 
         assertEquals(1, result.size());
-        org.mockito.Mockito.verify(categoryService, org.mockito.Mockito.never())
-                .findIdByName("hall", "undefined");
     }
 
     @Test
     void list_returnsEmptyWhenCategoryNotFound() {
-        when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of());
-        when(categoryService.findIdByName("hall", "不存在的分类")).thenReturn(null);
+        when(categoryService.resolveFilter("hall", "不存在的分类"))
+                .thenReturn(CategoryService.CategoryFilter.invalid());
 
         var result = hallService.list("不存在的分类");
 
@@ -172,8 +161,9 @@ class HallServiceTest {
         hall.setCategoryId(17L);
         hall.setStatus(1);
 
+        when(categoryService.resolveFilter("hall", "安全教育"))
+                .thenReturn(CategoryService.CategoryFilter.matched(17L));
         when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of(17L, "安全教育"));
-        when(categoryService.findIdByName("hall", "安全教育")).thenReturn(17L);
         when(categoryService.getName(17L, java.util.Map.of(17L, "安全教育"))).thenReturn("安全教育");
         when(hallMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(hall));
 

@@ -34,15 +34,17 @@ public class ResourceService {
     private final FavoriteService favoriteService;
 
     public List<Map<String, Object>> list(String category, String fileType) {
+        CategoryService.CategoryFilter filter = categoryService.resolveFilter("resource", category);
+        if (filter.isInvalid()) {
+            return List.of();
+        }
+
         Map<Long, String> catMap = categoryService.nameMap("resource");
         LambdaQueryWrapper<Resource> qw = new LambdaQueryWrapper<Resource>()
                 .eq(Resource::getStatus, 1)
                 .orderByDesc(Resource::getCreateTime);
-        if (category != null && !category.isBlank() && !"全部".equals(category)) {
-            Long cid = categoryService.findIdByName("resource", category);
-            if (cid != null) {
-                qw.eq(Resource::getCategoryId, cid);
-            }
+        if (filter.shouldFilter()) {
+            qw.eq(Resource::getCategoryId, filter.categoryId());
         }
         if (fileType != null && !fileType.isBlank() && !"全部".equals(fileType)) {
             qw.eq(Resource::getFileType, fileType);

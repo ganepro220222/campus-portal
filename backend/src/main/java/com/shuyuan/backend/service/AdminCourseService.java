@@ -15,6 +15,7 @@ import com.shuyuan.backend.mapper.CourseResourceMapper;
 import com.shuyuan.backend.mapper.ResourceMapper;
 import com.shuyuan.backend.util.CoverFitMode;
 import com.shuyuan.backend.util.FormatUtils;
+import com.shuyuan.backend.util.OssManagedObjectKey;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,9 +70,8 @@ public class AdminCourseService {
         adminPermissionService.require("course:write");
         validateName(req);
         Course course = fromRequest(new Course(), req);
-        if (course.getStatus() == null) {
-            course.setStatus(0);
-        }
+        // 保存接口只负责内容编辑；上下架必须经过 course:publish 权限入口。
+        course.setStatus(0);
         if (course.getSubtitleStatus() == null || course.getSubtitleStatus().isBlank()) {
             course.setSubtitleStatus(resolveSubtitleStatus(course));
         }
@@ -85,15 +85,27 @@ public class AdminCourseService {
     @Transactional
     public Map<String, Object> update(Long id, CourseSaveRequest req) {
         adminPermissionService.require("course:write");
-        Course course = requireCourse(id);
+        Course course = requireCourseForUpdate(id);
         String oldCover = course.getCover();
         String oldVideo = course.getVideoUrl();
         String oldSubtitle = course.getSubtitleUrl();
         fromRequest(course, req);
-        if (course.getSubtitleUrl() != null && !course.getSubtitleUrl().isBlank()) {
-            course.setSubtitleStatus("ready");
+        boolean videoChanged = !OssManagedObjectKey.sameStoredMedia(oldVideo, course.getVideoUrl());
+        boolean newSubtitleProvided = req.getSubtitleUrl() != null
+                && !req.getSubtitleUrl().isBlank()
+                && !OssManagedObjectKey.sameStoredMedia(oldSubtitle, req.getSubtitleUrl());
+        SubtitleMutation subtitleMutation = newSubtitleProvided
+                ? SubtitleMutation.MANUAL_READY
+                : videoChanged ? SubtitleMutation.CLEAR_FOR_NEW_VIDEO : SubtitleMutation.NONE;
+        if (subtitleMutation == SubtitleMutation.CLEAR_FOR_NEW_VIDEO) {
+            clearSubtitleFieldsInMemory(course);
+        } else if (subtitleMutation == SubtitleMutation.MANUAL_READY) {
+            prepareManualSubtitleInMemory(course);
         }
         courseMapper.updateById(course);
+        if (subtitleMutation != SubtitleMutation.NONE) {
+            persistSubtitleMutation(id, course, subtitleMutation);
+        }
         syncResources(id, req.getResourceIds());
         Course saved = courseMapper.selectById(id);
         syncSearchIfOnline(saved);
@@ -133,7 +145,8 @@ public class AdminCourseService {
     @Transactional
     public Map<String, Object> triggerSubtitle(Long id) {
         adminPermissionService.require("course:write");
-        Course course = requireCourse(id);
+        // 从读取视频到记录 taskId 全程锁定课程行，避免并发换视频后写入旧视频的 ASR 任务。
+        Course course = requireCourseForUpdate(id);
         if (course.getVideoUrl() == null || course.getVideoUrl().isBlank()) {
             throw new BusinessException(400, "请先配置视频地址");
         }
@@ -175,16 +188,20 @@ public class AdminCourseService {
     @Transactional
     public Map<String, Object> updateSubtitle(Long id, SubtitleUpdateRequest req) {
         adminPermissionService.require("course:write");
-        Course existing = requireCourse(id);
+        Course existing = requireCourseForUpdate(id);
         if (req == null || req.getSubtitleUrl() == null || req.getSubtitleUrl().isBlank()) {
             throw new BusinessException(400, "字幕地址不能为空");
         }
         String newUrl = req.getSubtitleUrl().trim();
-        Course update = new Course();
-        update.setId(id);
-        update.setSubtitleUrl(newUrl);
-        update.setSubtitleStatus("ready");
-        courseMapper.updateById(update);
+        courseMapper.update(null, new LambdaUpdateWrapper<Course>()
+                .eq(Course::getId, id)
+                .set(Course::getSubtitleUrl, newUrl)
+                .set(Course::getSubtitleStatus, "ready")
+                .set(Course::getSubtitleTaskId, null)
+                .set(Course::getSubtitleAsrStartedAt, null)
+                .set(Course::getSubtitleAsrLastPollAt, null)
+                .set(Course::getSubtitleAsrAttemptCount, 0)
+                .set(Course::getSubtitleAsrLastError, null));
         ossMediaCleanupService.afterReplace(existing.getSubtitleUrl(), newUrl);
         return subtitleStatus(id);
     }
@@ -202,6 +219,14 @@ public class AdminCourseService {
 
     private Course requireCourse(Long id) {
         Course course = courseMapper.selectById(id);
+        if (course == null) {
+            throw new BusinessException(404, "课程不存在");
+        }
+        return course;
+    }
+
+    private Course requireCourseForUpdate(Long id) {
+        Course course = courseMapper.selectByIdForUpdate(id);
         if (course == null) {
             throw new BusinessException(404, "课程不存在");
         }
@@ -242,13 +267,46 @@ public class AdminCourseService {
         if (req.getVideoUrl() != null) {
             course.setVideoUrl(req.getVideoUrl());
         }
-        if (req.getSubtitleUrl() != null) {
-            course.setSubtitleUrl(req.getSubtitleUrl());
-        }
-        if (req.getStatus() != null) {
-            course.setStatus(req.getStatus());
+        if (req.getSubtitleUrl() != null && !req.getSubtitleUrl().isBlank()) {
+            course.setSubtitleUrl(req.getSubtitleUrl().trim());
         }
         return course;
+    }
+
+    private static void clearSubtitleFieldsInMemory(Course course) {
+        course.setSubtitleStatus("none");
+        course.setSubtitleAsrAttemptCount(0);
+    }
+
+    private static void prepareManualSubtitleInMemory(Course course) {
+        course.setSubtitleStatus("ready");
+        course.setSubtitleAsrAttemptCount(0);
+    }
+
+    /**
+     * updateById 会跳过 NULL；需要显式 SET 才能真正取消旧 ASR 任务并清空字幕地址。
+     */
+    private void persistSubtitleMutation(Long id, Course course, SubtitleMutation mutation) {
+        LambdaUpdateWrapper<Course> update = new LambdaUpdateWrapper<Course>()
+                .eq(Course::getId, id)
+                .set(Course::getSubtitleStatus, course.getSubtitleStatus())
+                .set(Course::getSubtitleTaskId, null)
+                .set(Course::getSubtitleAsrStartedAt, null)
+                .set(Course::getSubtitleAsrLastPollAt, null)
+                .set(Course::getSubtitleAsrAttemptCount, 0)
+                .set(Course::getSubtitleAsrLastError, null);
+        if (mutation == SubtitleMutation.CLEAR_FOR_NEW_VIDEO) {
+            update.set(Course::getSubtitleUrl, null);
+        } else {
+            update.set(Course::getSubtitleUrl, course.getSubtitleUrl());
+        }
+        courseMapper.update(null, update);
+    }
+
+    private enum SubtitleMutation {
+        NONE,
+        CLEAR_FOR_NEW_VIDEO,
+        MANUAL_READY
     }
 
     private void syncResources(Long courseId, List<Long> resourceIds) {

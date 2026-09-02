@@ -27,15 +27,17 @@ public class CraftService {
     private final FavoriteService favoriteService;
 
     public List<Map<String, Object>> list(String category) {
+        CategoryService.CategoryFilter filter = categoryService.resolveFilter("craft", category);
+        if (filter.isInvalid()) {
+            return List.of();
+        }
+
         Map<Long, String> catMap = categoryService.nameMap("craft");
         LambdaQueryWrapper<Craft> qw = new LambdaQueryWrapper<Craft>()
                 .eq(Craft::getStatus, 1)
                 .orderByAsc(Craft::getSort);
-        if (category != null && !category.isBlank() && !"全部".equals(category)) {
-            Long cid = categoryService.findIdByName("craft", category);
-            if (cid != null) {
-                qw.eq(Craft::getCategoryId, cid);
-            }
+        if (filter.shouldFilter()) {
+            qw.eq(Craft::getCategoryId, filter.categoryId());
         }
         return craftMapper.selectList(qw).stream()
                 .map(c -> toListItem(c, catMap))

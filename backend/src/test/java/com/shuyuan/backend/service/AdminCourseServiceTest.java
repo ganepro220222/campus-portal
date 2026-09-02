@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.dto.CourseSaveRequest;
 import com.shuyuan.backend.entity.Course;
 import com.shuyuan.backend.mapper.CourseMapper;
 import com.shuyuan.backend.mapper.CourseResourceMapper;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 
@@ -91,6 +93,56 @@ class AdminCourseServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> adminCourseService.publish(13L));
 
         assertEquals(400, ex.getCode());
+        verify(searchIndexSyncService, never()).syncCourse(any());
+    }
+
+    @Test
+    void create_ignoresRequestedOnlineStatus() {
+        CourseSaveRequest req = new CourseSaveRequest();
+        req.setName("待审核课程");
+        req.setStatus(1);
+        doAnswer(invocation -> {
+            Course inserted = invocation.getArgument(0);
+            inserted.setId(20L);
+            return 1;
+        }).when(courseMapper).insert(any(Course.class));
+        Course saved = new Course();
+        saved.setId(20L);
+        saved.setName("待审核课程");
+        saved.setStatus(0);
+        saved.setSubtitleStatus("none");
+        when(courseMapper.selectById(20L)).thenReturn(saved);
+        when(courseResourceMapper.selectList(any())).thenReturn(List.of());
+        when(categoryService.nameMap("course")).thenReturn(java.util.Map.of());
+
+        adminCourseService.create(req);
+
+        ArgumentCaptor<Course> captor = ArgumentCaptor.forClass(Course.class);
+        verify(courseMapper).insert(captor.capture());
+        assertEquals(0, captor.getValue().getStatus());
+        verify(searchIndexSyncService, never()).syncCourse(any());
+    }
+
+    @Test
+    void update_ignoresRequestedOnlineStatus() {
+        Course existing = new Course();
+        existing.setId(21L);
+        existing.setName("待审核课程");
+        existing.setStatus(0);
+        existing.setSubtitleStatus("none");
+        when(courseMapper.selectByIdForUpdate(21L)).thenReturn(existing);
+        when(courseMapper.selectById(21L)).thenReturn(existing);
+        when(courseResourceMapper.selectList(any())).thenReturn(List.of());
+        when(categoryService.nameMap("course")).thenReturn(java.util.Map.of());
+        CourseSaveRequest req = new CourseSaveRequest();
+        req.setName("仅改标题");
+        req.setStatus(1);
+
+        adminCourseService.update(21L, req);
+
+        ArgumentCaptor<Course> captor = ArgumentCaptor.forClass(Course.class);
+        verify(courseMapper).updateById(captor.capture());
+        assertEquals(0, captor.getValue().getStatus());
         verify(searchIndexSyncService, never()).syncCourse(any());
     }
 }

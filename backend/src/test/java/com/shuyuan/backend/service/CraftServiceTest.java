@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -85,5 +86,14 @@ class CraftServiceTest {
     void detail_throwsWhenCraftMissing() {
         when(craftMapper.selectById(99L)).thenReturn(null);
         assertThrows(BusinessException.class, () -> craftService.detail(99L));
+    }
+
+    @Test
+    void list_invalidCategoryFailsClosed() {
+        when(categoryService.resolveFilter("craft", "已停用"))
+                .thenReturn(CategoryService.CategoryFilter.invalid());
+
+        assertEquals(List.of(), craftService.list("已停用"));
+        verifyNoInteractions(craftMapper);
     }
 }

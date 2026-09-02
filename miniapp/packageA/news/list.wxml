@@ -39,6 +39,11 @@
   </view>
 
   <view wx:if="{{loading}}" class="list-tip">加载中…</view>
+  <view
+    wx:elif="{{loadMoreError && newsList.length && hasMore}}"
+    class="list-tip list-tip-retry"
+    bindtap="onRetryLoadMore"
+  >加载更多失败，点击重试</view>
   <view wx:elif="{{!hasMore && newsList.length}}" class="list-tip">— 已加载全部 —</view>
   <view wx:elif="{{!newsList.length}}" class="empty-state">
     <icon name="news" size="40" color="#C3CCE0" />

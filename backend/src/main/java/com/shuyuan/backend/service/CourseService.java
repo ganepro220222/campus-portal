@@ -32,15 +32,17 @@ public class CourseService {
     private final FavoriteService favoriteService;
 
     public List<Map<String, Object>> list(String category) {
+        CategoryService.CategoryFilter filter = categoryService.resolveFilter("course", category);
+        if (filter.isInvalid()) {
+            return List.of();
+        }
+
         Map<Long, String> catMap = categoryService.nameMap("course");
         LambdaQueryWrapper<Course> qw = new LambdaQueryWrapper<Course>()
                 .eq(Course::getStatus, 1)
                 .orderByDesc(Course::getStartTime);
-        if (category != null && !category.isBlank() && !"全部".equals(category)) {
-            Long cid = categoryService.findIdByName("course", category);
-            if (cid != null) {
-                qw.eq(Course::getCategoryId, cid);
-            }
+        if (filter.shouldFilter()) {
+            qw.eq(Course::getCategoryId, filter.categoryId());
         }
         return courseMapper.selectList(qw).stream()
                 .map(c -> toListItem(c, catMap))

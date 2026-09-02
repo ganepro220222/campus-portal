@@ -128,12 +128,7 @@
           <span v-if="form.fileSizeKb">{{ formatFileSizeKb(form.fileSizeKb) }}</span>
           <span v-else class="text-muted">{{ form.fileUrl ? '未记录大小，重新上传后自动计算' : '上传学习资料后自动计算' }}</span>
         </el-form-item>
-        <el-form-item label="上下架">
-          <el-radio-group v-model="form.status">
-            <el-radio :value="1">上架</el-radio>
-            <el-radio :value="0">下架</el-radio>
-          </el-radio-group>
-        </el-form-item>
+        <p class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
         <el-form-item v-if="editingId" label="下载次数">
           <span>{{ form.downloadCount }} 次（只读，由学员下载自动累计）</span>
         </el-form-item>
@@ -195,7 +190,6 @@ const form = reactive({
   fileUrl: '',
   previewUrl: '',
   fileSizeKb: undefined as number | undefined,
-  status: 0,
   downloadCount: 0
 })
 
@@ -250,7 +244,6 @@ function resetForm() {
   form.fileUrl = ''
   form.previewUrl = ''
   form.fileSizeKb = undefined
-  form.status = 0
   form.downloadCount = 0
 }
 
@@ -265,7 +258,6 @@ async function openDialog(row?: ResourceItem) {
     form.fileUrl = detail.fileUrl
     form.previewUrl = detail.previewUrl || ''
     form.fileSizeKb = detail.fileSizeKb ?? undefined
-    form.status = detail.status ?? 0
     form.downloadCount = detail.downloadCount ?? 0
   }
   dialogVisible.value = true
@@ -282,8 +274,7 @@ async function onSave() {
       fileType: form.fileType,
       fileUrl: form.fileUrl,
       previewUrl: form.previewUrl || undefined,
-      fileSizeKb: form.fileSizeKb,
-      status: form.status
+      fileSizeKb: form.fileSizeKb
     }
     if (editingId.value) {
       await updateResource(editingId.value, payload)

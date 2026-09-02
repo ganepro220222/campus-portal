@@ -71,6 +71,15 @@ class ResourceServiceTest {
     }
 
     @Test
+    void list_invalidCategoryFailsClosed() {
+        when(categoryService.resolveFilter("resource", "已停用"))
+                .thenReturn(CategoryService.CategoryFilter.invalid());
+
+        assertTrue(resourceService.list("已停用", null).isEmpty());
+        verifyNoInteractions(resourceMapper);
+    }
+
+    @Test
     void download_recordsAndIncrementsAtomically() {
         Resource resource = activeResource();
         when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(resource);

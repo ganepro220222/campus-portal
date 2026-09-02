@@ -135,12 +135,7 @@
       <el-form-item label="排序" prop="sort">
         <el-input-number v-model="form.sort" :min="0" :max="999" />
       </el-form-item>
-      <el-form-item label="状态" prop="status">
-        <el-radio-group v-model="form.status">
-          <el-radio :value="1">上架</el-radio>
-          <el-radio :value="0">下架</el-radio>
-        </el-radio-group>
-      </el-form-item>
+      <p class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
     </el-form>
     <template #footer>
       <el-button @click="emit('update:visible', false)">取消</el-button>
@@ -170,7 +165,6 @@ export interface HallFormState {
   vrUrl: string
   categoryId: number | undefined
   sort: number
-  status: number
   slides: HallSlideItem[]
   sections: HallSectionItem[]
   audioUrl: string

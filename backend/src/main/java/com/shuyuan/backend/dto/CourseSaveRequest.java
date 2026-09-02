@@ -45,7 +45,7 @@ public class CourseSaveRequest {
     @Size(max = 500, groups = {Create.class, Update.class})
     private String subtitleUrl;
 
-    /** 1 上架 0 下架 */
+    /** 兼容旧客户端保留；保存接口忽略此字段，上下架请使用 publish/unpublish。 */
     @Min(value = 0, groups = {Create.class, Update.class})
     @Max(value = 1, groups = {Create.class, Update.class})
     private Integer status;

@@ -17,6 +17,24 @@ function calcHasMore(records, pageSize) {
   return (records || []).length >= pageSize
 }
 
+/**
+ * 自动触底在分页失败后必须停住，只有显式点击重试才能再次请求同一页。
+ */
+function shouldRequestNextPage({ hasMore, loading, loadMoreError }, manualRetry = false) {
+  if (!hasMore || loading) return false
+  return manualRetry ? !!loadMoreError : !loadMoreError
+}
+
+/**
+ * 分页失败只结束 loading 并展示重试入口；不覆盖 page / hasMore。
+ */
+function buildLoadMoreFailurePatch() {
+  return {
+    loading: false,
+    loadMoreError: true
+  }
+}
+
 function filterByCategory(list, categoryName) {
   if (!categoryName || categoryName === '全部') return list || []
   return (list || []).filter(n => (n.category || n.categoryName) === categoryName)
@@ -38,6 +56,8 @@ module.exports = {
   extractPageRecords,
   mergePageRecords,
   calcHasMore,
+  shouldRequestNextPage,
+  buildLoadMoreFailurePatch,
   filterByCategory,
   sliceMockPage,
   mockHasMore

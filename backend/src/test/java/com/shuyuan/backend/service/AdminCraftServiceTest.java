@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.dto.CraftSaveRequest;
 import com.shuyuan.backend.entity.Craft;
 import com.shuyuan.backend.mapper.CraftContactMapper;
 import com.shuyuan.backend.mapper.CraftImageMapper;
@@ -90,5 +91,33 @@ class AdminCraftServiceTest {
 
         assertEquals(400, ex.getCode());
         verify(searchIndexSyncService, never()).removeCraft(any());
+    }
+
+    @Test
+    void createAndUpdate_ignoreRequestedOnlineStatus() {
+        java.util.concurrent.atomic.AtomicReference<Craft> stored = new java.util.concurrent.atomic.AtomicReference<>();
+        doAnswer(invocation -> {
+            Craft craft = invocation.getArgument(0);
+            craft.setId(4L);
+            stored.set(craft);
+            return 1;
+        }).when(craftMapper).insert(any(Craft.class));
+        when(craftMapper.selectById(4L)).thenAnswer(invocation -> stored.get());
+        when(categoryService.nameMap("craft")).thenReturn(java.util.Map.of());
+        when(craftImageMapper.selectList(any())).thenReturn(List.of());
+        when(craftContactMapper.selectById(4L)).thenReturn(null);
+        CraftSaveRequest create = new CraftSaveRequest();
+        create.setName("待审核文创");
+        create.setStatus(1);
+
+        adminCraftService.create(create);
+
+        assertEquals(0, stored.get().getStatus());
+        CraftSaveRequest update = new CraftSaveRequest();
+        update.setName("只改名称");
+        update.setStatus(1);
+        adminCraftService.update(4L, update);
+        assertEquals(0, stored.get().getStatus());
+        verify(searchIndexSyncService, never()).syncCraft(any());
     }
 }

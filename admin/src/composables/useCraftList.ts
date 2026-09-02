@@ -43,7 +43,6 @@ export function useCraftList() {
     introZh: '',
     introEn: '',
     sort: 0,
-    status: 0,
     images: [] as CraftImagePayload[],
     contact: {
       phone: '',
@@ -92,7 +91,6 @@ export function useCraftList() {
     form.introZh = ''
     form.introEn = ''
     form.sort = 0
-    form.status = 0
     form.images = []
     form.contact = { phone: '', wechat: '', workWechat: '', email: '' }
   }
@@ -109,7 +107,6 @@ export function useCraftList() {
       form.introZh = detail.introZh || ''
       form.introEn = detail.introEn || ''
       form.sort = detail.sort ?? 0
-      form.status = detail.status ?? 0
       form.images = (detail.images || []).map((img) => ({
         imageUrl: img.imageUrl,
         angleLabel: img.angleLabel || '',
@@ -137,7 +134,6 @@ export function useCraftList() {
         introZh: form.introZh,
         introEn: form.introEn || undefined,
         sort: form.sort,
-        status: form.status,
         images: form.images.filter((img) => img.imageUrl?.trim()),
         contact: {
           phone: form.contact.phone || undefined,

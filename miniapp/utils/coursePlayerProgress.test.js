@@ -4,6 +4,8 @@ const {
   resolveEndedReport,
   shouldReportByInterval,
   isSeekBackward,
+  normalizeSeekCompletePosition,
+  getCoursePlayerPlatform,
   resolveVideoResumePosition,
   resolveResumeInitialTime,
   coerceVttText,
@@ -33,6 +35,39 @@ assert.strictEqual(shouldReportByInterval(20, 480), false)
 assert.strictEqual(isSeekBackward(0, 480), true)
 assert.strictEqual(isSeekBackward(478, 480), false)
 assert.strictEqual(isSeekBackward(100, 480), true)
+
+assert.strictEqual(normalizeSeekCompletePosition(12500, 'android'), 12.5)
+assert.strictEqual(normalizeSeekCompletePosition(12500, 'AnDrOiD'), 12.5)
+assert.strictEqual(normalizeSeekCompletePosition(12.5, 'ios'), 12.5)
+assert.strictEqual(normalizeSeekCompletePosition(12.5, 'devtools'), 12.5)
+assert.strictEqual(normalizeSeekCompletePosition(12.5, 'unknown'), 12.5)
+assert.strictEqual(normalizeSeekCompletePosition(12.5), 12.5)
+assert.strictEqual(normalizeSeekCompletePosition(undefined, 'android'), null)
+assert.strictEqual(normalizeSeekCompletePosition(NaN, 'android'), null)
+assert.strictEqual(normalizeSeekCompletePosition(Infinity, 'android'), null)
+assert.strictEqual(normalizeSeekCompletePosition(-1, 'android'), null)
+assert.strictEqual(normalizeSeekCompletePosition('12.5', 'android'), null)
+assert.strictEqual(normalizeSeekCompletePosition(Symbol('invalid'), 'android'), null)
+
+assert.strictEqual(getCoursePlayerPlatform({
+  getDeviceInfo: () => ({ platform: 'android' }),
+  getSystemInfoSync: () => ({ platform: 'ios' })
+}), 'android')
+assert.strictEqual(getCoursePlayerPlatform({
+  getSystemInfoSync: () => ({ platform: 'devtools' })
+}), 'devtools')
+assert.strictEqual(getCoursePlayerPlatform({
+  getDeviceInfo: () => { throw new Error('unsupported') },
+  getSystemInfoSync: () => ({ platform: 'ios' })
+}), 'ios')
+assert.strictEqual(getCoursePlayerPlatform({
+  getDeviceInfo: () => ({}),
+  getSystemInfoSync: () => ({ platform: 'android' })
+}), 'android')
+assert.strictEqual(getCoursePlayerPlatform({
+  getDeviceInfo: () => { throw new Error('unsupported') },
+  getSystemInfoSync: () => { throw new Error('unsupported') }
+}), '')
 
 assert.strictEqual(
   withVideoReloadNonce('https://cdn.yunmanvr.com/videos/a.mp4', 99),

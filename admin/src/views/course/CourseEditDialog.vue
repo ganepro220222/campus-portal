@@ -72,12 +72,7 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="上下架">
-        <el-radio-group v-model="form.status">
-          <el-radio :value="1">上架</el-radio>
-          <el-radio :value="0">下架</el-radio>
-        </el-radio-group>
-      </el-form-item>
+      <p class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
 
       <template v-if="editingId">
         <el-divider content-position="left">字幕管理</el-divider>
@@ -153,7 +148,6 @@ export interface CourseFormState {
   intro: string
   videoUrl: string
   subtitleUrl: string
-  status: number
   resourceIds: number[]
 }
 

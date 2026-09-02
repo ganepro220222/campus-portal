@@ -76,7 +76,7 @@ class AdminHallServiceTest {
         saved.setShortName("节水宣传中心");
         saved.setVrUrl("https://www.720yun.com/vr/f7bj5pmOkO2");
         saved.setCategoryId(18L);
-        saved.setStatus(1);
+        saved.setStatus(0);
         saved.setSort(0);
         when(hallMapper.selectById(10L)).thenReturn(saved);
         when(hallMediaMapper.selectList(any())).thenReturn(List.of());
@@ -84,6 +84,7 @@ class AdminHallServiceTest {
 
         adminHallService.create(req);
 
+        verify(hallMapper).insert(argThat((Hall hall) -> hall.getStatus() == 0));
         verify(hallMediaMapper, times(2)).delete(any());
         verify(hallMediaMapper, times(2)).insert(any(HallMedia.class));
     }
@@ -118,7 +119,7 @@ class AdminHallServiceTest {
         Hall saved = new Hall();
         saved.setId(2L);
         saved.setName("校史馆");
-        saved.setStatus(1);
+        saved.setStatus(0);
         saved.setSort(0);
         when(hallMapper.selectById(2L)).thenReturn(saved);
         when(hallMediaMapper.selectList(any())).thenReturn(List.of());
@@ -126,6 +127,7 @@ class AdminHallServiceTest {
 
         adminHallService.create(req);
 
+        verify(hallMapper).insert(argThat((Hall hall) -> hall.getStatus() == 0));
         verify(hallSectionMapper).delete(any());
         verify(hallSectionMapper).insert(any(HallSection.class));
         verify(hallMediaMapper).delete(any());
@@ -173,7 +175,7 @@ class AdminHallServiceTest {
         saved.setId(2L);
         saved.setName("校史馆");
         saved.setVrUrl("https://roma.720yun.com/vr/b5b7196093f3c25a/");
-        saved.setStatus(1);
+        saved.setStatus(0);
         saved.setSort(0);
         when(hallMapper.selectById(2L)).thenReturn(saved);
         when(hallMediaMapper.selectList(any())).thenReturn(List.of());
@@ -182,6 +184,7 @@ class AdminHallServiceTest {
         adminHallService.create(req);
 
         assertEquals("https://roma.720yun.com/vr/b5b7196093f3c25a/", captor.getValue().getVrUrl());
+        assertEquals(0, captor.getValue().getStatus());
     }
 
     @Test
@@ -234,6 +237,26 @@ class AdminHallServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> adminHallService.publish(9L));
 
         assertEquals(400, ex.getCode());
+        verify(searchIndexSyncService, never()).syncHall(any());
+    }
+
+    @Test
+    void update_ignoresRequestedOnlineStatus() {
+        Hall existing = new Hall();
+        existing.setId(10L);
+        existing.setName("待审核展馆");
+        existing.setStatus(0);
+        when(hallMapper.selectById(10L)).thenReturn(existing);
+        when(categoryService.nameMap("hall")).thenReturn(java.util.Map.of());
+        when(hallMediaMapper.selectList(any())).thenReturn(List.of());
+        when(hallSectionMapper.selectList(any())).thenReturn(List.of());
+        HallSaveRequest req = new HallSaveRequest();
+        req.setName("只改名称");
+        req.setStatus(1);
+
+        adminHallService.update(10L, req);
+
+        verify(hallMapper).updateById(argThat((Hall hall) -> hall.getStatus() == 0));
         verify(searchIndexSyncService, never()).syncHall(any());
     }
 }

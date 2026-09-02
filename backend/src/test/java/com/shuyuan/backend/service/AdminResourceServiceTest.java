@@ -101,12 +101,34 @@ class AdminResourceServiceTest {
         request.setName("课程安排表");
         request.setFileUrl("https://cdn.example.com/files/202609/material." + fileType);
         request.setFileType(fileType);
-        request.setStatus(0);
+        request.setStatus(1);
 
         var result = adminResourceService.create(request);
 
         assertEquals(fileType, result.get("fileType"));
         verify(resourceMapper).insert(argThat(
-                (Resource resource) -> fileType.equals(resource.getFileType())));
+                (Resource resource) -> fileType.equals(resource.getFileType()) && resource.getStatus() == 0));
+    }
+
+    @Test
+    void update_ignoresRequestedOnlineStatus() {
+        Resource existing = new Resource();
+        existing.setId(31L);
+        existing.setName("待审核资源");
+        existing.setFileUrl("files/a.pdf");
+        existing.setFileType("pdf");
+        existing.setStatus(0);
+        when(resourceMapper.selectById(31L)).thenReturn(existing);
+        when(categoryService.nameMap("resource")).thenReturn(java.util.Map.of());
+        ResourceSaveRequest request = new ResourceSaveRequest();
+        request.setName("只改名称");
+        request.setFileUrl("files/a.pdf");
+        request.setFileType("pdf");
+        request.setStatus(1);
+
+        adminResourceService.update(31L, request);
+
+        verify(resourceMapper).updateById(argThat((Resource resource) -> resource.getStatus() == 0));
+        verify(searchIndexSyncService, never()).syncResource(any());
     }
 }

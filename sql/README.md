@@ -104,6 +104,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 21 | `patch-hall-vr-visibility-20260829.sql` | 条件关闭空「待上线」页签 + 8/9 号馆第三方 VR 入口暂下线（展馆保留） | 仅数据；seed 已同步；**可重复执行** |
 | 22 | `patch-hall-vr-copy-20260830.sql` | 8/9 号馆简介去掉「支持 VR」承诺，与「VR 链接筹备中」对齐 | 仅数据；seed 已同步；**可重复执行** |
 | 23 | `patch-oss-object-meta.sql` | 上传对象元信息表：后台预览框显示真实文件名 / 大小 / 上传时间 | ✅ 已并入 init.sql；**可重复执行** |
+| 24 | `patch-feedback-type-normalize.sql` | 统一反馈类型中文值与默认值，修复历史 `other` 数据 | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
 
 `patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 
@@ -199,6 +200,13 @@ bash scripts/backup-staging-mysql.sh
   该文件重新上传一次后自动补齐。
 - 不跑本 patch 也不会挂：写入与查询元信息都包了异常，失败只记日志，
   上传与后台表单照常工作，只是预览框显示不出真实文件名。
+
+#### `patch-feedback-type-normalize.sql`（旧库反馈分类必读）
+
+**新库**：`init.sql` 已使用中文默认值「其他」，无需执行。
+
+**旧库升级**：执行本补丁（幂等，可重复执行）。补丁会在缺列时补列，把历史英文
+`other`、空值及未定义类型统一为「其他」，并将列默认值固定为「其他」。
 
 #### `patch-course-progress-watched-seconds.sql`（旧库课程进度必读）
 

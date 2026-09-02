@@ -71,9 +71,8 @@ public class AdminCraftService {
         if (craft.getSort() == null) {
             craft.setSort(0);
         }
-        if (craft.getStatus() == null) {
-            craft.setStatus(0);
-        }
+        // 保存接口只负责内容编辑；上下架必须经过 hall:publish 权限入口。
+        craft.setStatus(0);
         craftMapper.insert(craft);
         syncImages(craft.getId(), req.getImages());
         syncContact(craft.getId(), req.getContact());
@@ -172,9 +171,6 @@ public class AdminCraftService {
         }
         if (req.getSort() != null) {
             craft.setSort(req.getSort());
-        }
-        if (req.getStatus() != null) {
-            craft.setStatus(req.getStatus());
         }
         return craft;
     }

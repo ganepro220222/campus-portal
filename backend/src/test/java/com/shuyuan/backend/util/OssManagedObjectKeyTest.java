@@ -49,4 +49,18 @@ class OssManagedObjectKeyTest {
         assertEquals(1, keys.size());
         assertTrue(keys.contains("videos/202608/x.mp4"));
     }
+
+    @Test
+    void sameStoredMedia_normalizesManagedKeysButNotExternalUrls() {
+        assertTrue(OssManagedObjectKey.sameStoredMedia(
+                "videos/202608/x.mp4",
+                "https://cdn.yunmanvr.com/videos/202608/x.mp4?Expires=1&Signature=x"));
+        assertTrue(OssManagedObjectKey.sameStoredMedia("  https://external.example/a.mp4  ",
+                "https://external.example/a.mp4"));
+        assertTrue(OssManagedObjectKey.sameStoredMedia(null, " "));
+        assertFalse(OssManagedObjectKey.sameStoredMedia(
+                "https://external.example/a.mp4", "https://external.example/b.mp4"));
+        assertFalse(OssManagedObjectKey.sameStoredMedia(
+                "videos/202608/x.mp4", "videos/202608/y.mp4"));
+    }
 }

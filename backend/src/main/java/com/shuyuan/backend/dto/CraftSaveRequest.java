@@ -14,7 +14,7 @@ public class CraftSaveRequest {
     private String introZh;
     private String introEn;
     private Integer sort;
-    /** 1 上架 0 下架 */
+    /** 兼容旧客户端保留；保存接口忽略此字段，上下架请使用 publish/unpublish。 */
     private Integer status;
     /** 多角度鉴赏图，按 sort 排序 */
     private List<CraftImageItem> images;

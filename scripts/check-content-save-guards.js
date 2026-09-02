@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+/**
+ * 内容保存契约门禁：
+ * 1) course/hall/craft/resource 的普通保存不得重新获得上下架能力；
+ * 2) 只写密钥、可清空公告字段、课程字幕主保存不得再次静默丢失。
+ */
+const fs = require('node:fs')
+const path = require('node:path')
+
+const root = path.resolve(__dirname, '..')
+const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8')
+const errors = []
+
+const services = [
+  'AdminCourseService.java',
+  'AdminHallService.java',
+  'AdminCraftService.java',
+  'AdminResourceService.java'
+]
+for (const name of services) {
+  const source = read(`backend/src/main/java/com/shuyuan/backend/service/${name}`)
+  if (/setStatus\s*\(\s*req\.getStatus\s*\(\s*\)\s*\)/.test(source)) {
+    errors.push(`${name}：普通保存重新写入请求 status，会绕过 publish 权限`)
+  }
+}
+
+for (const rel of [
+  'admin/src/views/course/CourseEditDialog.vue',
+  'admin/src/views/hall/HallEditDialog.vue',
+  'admin/src/views/craft/CraftEditDialog.vue',
+  'admin/src/views/resource/ResourceListView.vue'
+]) {
+  if (/v-model="form\.status"/.test(read(rel))) {
+    errors.push(`${rel}：编辑表单重新出现上下架控件`)
+  }
+}
+
+for (const rel of [
+  'admin/src/composables/useCourseList.ts',
+  'admin/src/composables/useHallList.ts',
+  'admin/src/composables/useCraftList.ts',
+  'admin/src/views/resource/ResourceListView.vue'
+]) {
+  if (/status\s*:\s*form\.status/.test(read(rel))) {
+    errors.push(`${rel}：普通保存 payload 重新携带 status`)
+  }
+}
+
+const college = read('admin/src/views/college/CollegeListView.vue')
+if (!/editingId\.value\s*&&\s*!form\.apiToken\.trim\(\)/.test(college)
+    || !/delete[\s\S]{0,100}\.apiToken/.test(college)) {
+  errors.push('CollegeListView.vue：编辑态空 apiToken 未从 payload 中省略')
+}
+
+const announcement = read('admin/src/views/announcement/AnnouncementListView.vue')
+for (const field of ['linkUrl', 'startTime', 'endTime']) {
+  if (!new RegExp(`${field}:\\s*form\\.${field}(?:,|\\s*\\n)`).test(announcement)) {
+    errors.push(`AnnouncementListView.vue：${field} 未按原值提交，清空语义可能再次失效`)
+  }
+}
+
+const course = read('admin/src/composables/useCourseList.ts')
+if (/subtitleUrl\s*:\s*form\.subtitleUrl/.test(course)
+    || !/subtitleDirty/.test(course)
+    || !/await updateSubtitle\(/.test(course)) {
+  errors.push('useCourseList.ts：主保存未保持“课程成功后保存脏字幕”的契约')
+}
+
+if (errors.length) {
+  console.error('check-content-save-guards 失败：')
+  errors.forEach((error) => console.error(`  - ${error}`))
+  process.exit(1)
+}
+
+console.log('check-content-save-guards OK')

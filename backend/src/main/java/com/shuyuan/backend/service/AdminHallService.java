@@ -70,9 +70,8 @@ public class AdminHallService {
         if (hall.getSort() == null) {
             hall.setSort(0);
         }
-        if (hall.getStatus() == null) {
-            hall.setStatus(1);
-        }
+        // 保存接口只负责内容编辑；上下架必须经过 hall:publish 权限入口。
+        hall.setStatus(0);
         hallMapper.insert(hall);
         syncContent(hall.getId(), req);
         Hall saved = hallMapper.selectById(hall.getId());
@@ -178,9 +177,6 @@ public class AdminHallService {
         }
         if (req.getSort() != null) {
             hall.setSort(req.getSort());
-        }
-        if (req.getStatus() != null) {
-            hall.setStatus(req.getStatus());
         }
         return hall;
     }

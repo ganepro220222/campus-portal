@@ -93,7 +93,11 @@
           </el-form-item>
         </template>
         <el-form-item v-if="form.contentType === 'api_sync'" label="接口密钥" prop="apiToken">
-          <el-input v-model="form.apiToken" placeholder="选填，由技术人员配置" show-password />
+          <el-input
+            v-model="form.apiToken"
+            :placeholder="editingId ? '留空表示不修改；输入新值可更换' : '选填，由技术人员配置'"
+            show-password
+          />
         </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" :max="999" />
@@ -200,6 +204,9 @@ async function onSave() {
   saving.value = true
   try {
     const payload = { ...form }
+    if (editingId.value && !form.apiToken.trim()) {
+      delete (payload as Partial<typeof form>).apiToken
+    }
     if (editingId.value) {
       await updateCollege(editingId.value, payload)
       ElMessage.success('已更新')

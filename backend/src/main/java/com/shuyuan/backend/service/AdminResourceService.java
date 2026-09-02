@@ -61,9 +61,8 @@ public class AdminResourceService {
         validateRequest(req);
         Resource resource = fromRequest(new Resource(), req);
         resource.setDownloadCount(0);
-        if (resource.getStatus() == null) {
-            resource.setStatus(0);
-        }
+        // 保存接口只负责内容编辑；上下架必须经过 course:publish 权限入口。
+        resource.setStatus(0);
         resourceMapper.insert(resource);
         Resource saved = resourceMapper.selectById(resource.getId());
         syncSearchIfOnline(saved);
@@ -165,9 +164,6 @@ public class AdminResourceService {
         }
         if (req.getCategoryId() != null) {
             resource.setCategoryId(req.getCategoryId());
-        }
-        if (req.getStatus() != null) {
-            resource.setStatus(req.getStatus());
         }
         return resource;
     }

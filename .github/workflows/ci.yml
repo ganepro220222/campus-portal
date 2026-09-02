@@ -128,6 +128,9 @@ jobs:
       - name: Admin menu icon check
         run: npm run check:admin-menu-icons
 
+      - name: Content save permission and form contract check
+        run: npm run check:content-save-guards
+
       - name: Press feedback check
         run: npm run check:press-feedback
 

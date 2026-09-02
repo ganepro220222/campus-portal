@@ -3,9 +3,21 @@ const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
 const { withListFallback, useMock } = require('../../utils/mockGuard')
 const { decorateNewsFeed } = require('../../utils/decorate')
+const {
+  shouldRequestNextPage,
+  buildLoadMoreFailurePatch
+} = require('../../utils/newsListPage')
 
 Page({
-  data: { categories: [{ id: 0, name: '全部' }], newsList: [], currentCat: 0, page: 1, hasMore: true, loading: false },
+  data: {
+    categories: [{ id: 0, name: '全部' }],
+    newsList: [],
+    currentCat: 0,
+    page: 1,
+    hasMore: true,
+    loading: false,
+    loadMoreError: false
+  },
 
   onLoad() {
     this._loadCategories()
@@ -26,7 +38,14 @@ Page({
     }
   },
 
-  onReachBottom() { if (this.data.hasMore) this._loadList(false) },
+  onReachBottom() {
+    if (shouldRequestNextPage(this.data)) this._loadList(false)
+  },
+
+  onRetryLoadMore() {
+    if (shouldRequestNextPage(this.data, true)) this._loadList(false)
+  },
+
   onPullDownRefresh() { this._loadList(true).then(() => wx.stopPullDownRefresh()) },
 
   switchCat(e) {
@@ -37,7 +56,7 @@ Page({
   async _loadList(reset) {
     if (this.data.loading) return
     const page = reset ? 1 : this.data.page
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadMoreError: false })
     try {
       const res = await get('/news', { page, size: 10, categoryId: this.data.currentCat || undefined })
       const records = (res && res.records) ? res.records : []
@@ -48,7 +67,8 @@ Page({
         newsList: decorateNewsFeed(displayList),
         page: page + 1,
         hasMore: displayList.length ? hasMore : false,
-        loading: false
+        loading: false,
+        loadMoreError: false
       })
     } catch (err) {
       console.warn('[news/list] 列表加载失败', err)
@@ -56,10 +76,11 @@ Page({
         this.setData({
           newsList: decorateNewsFeed(withListFallback(null, mock.newsFull)),
           hasMore: false,
-          loading: false
+          loading: false,
+          loadMoreError: false
         })
       } else {
-        this.setData({ loading: false, hasMore: false })
+        this.setData(buildLoadMoreFailurePatch())
       }
     }
   },

@@ -73,6 +73,15 @@ class CourseServiceTest {
     }
 
     @Test
+    void list_invalidCategoryFailsClosed() {
+        when(categoryService.resolveFilter("course", "已停用"))
+                .thenReturn(CategoryService.CategoryFilter.invalid());
+
+        assertTrue(courseService.list("已停用").isEmpty());
+        verifyNoInteractions(courseMapper);
+    }
+
+    @Test
     void play_requiresLogin() {
         MemberContext.clear();
 

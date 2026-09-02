@@ -20,9 +20,11 @@ import java.util.List;
 import java.util.Map;
 
 import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsColumn;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsNonNullColumn;
 import static com.shuyuan.backend.service.UpdateWrapperAssertions.initEntityCache;
 import static com.shuyuan.backend.service.UpdateWrapperAssertions.updateCaptor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
@@ -78,11 +80,10 @@ class SubtitleAsrServiceTest {
 
         subtitleAsrService.pollProcessingTasks();
 
-        verify(courseMapper).updateById(argThat((Course u) ->
-                u.getId().equals(2L)
-                        && "failed".equals(u.getSubtitleStatus())
-                        && u.getSubtitleAsrLastError() != null
-                        && u.getSubtitleAsrLastError().contains("超时")));
+        ArgumentCaptor<LambdaUpdateWrapper<Course>> cap = updateCaptor();
+        verify(courseMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "subtitle_status", "failed");
+        assertCurrentTaskCas(cap.getValue(), "task-old");
         verify(asrService, never()).query("task-old");
     }
 
@@ -91,16 +92,16 @@ class SubtitleAsrServiceTest {
         Course course = processingCourse(3L, "task-run");
         course.setSubtitleAsrAttemptCount(0);
         when(courseMapper.selectList(any())).thenReturn(List.of(course));
-        when(courseMapper.selectById(3L)).thenReturn(course);
+        when(courseMapper.update(isNull(), any())).thenReturn(1);
         when(asrService.query("task-run")).thenReturn(AsrJobResult.processing());
 
         subtitleAsrService.pollProcessingTasks();
 
-        verify(courseMapper, atLeastOnce()).updateById(argThat((Course u) ->
-                u.getId().equals(3L)
-                        && u.getSubtitleAsrLastPollAt() != null
-                        && u.getSubtitleAsrAttemptCount() != null
-                        && u.getSubtitleAsrAttemptCount() == 1));
+        ArgumentCaptor<LambdaUpdateWrapper<Course>> cap = updateCaptor();
+        verify(courseMapper).update(isNull(), cap.capture());
+        assertSetsNonNullColumn(cap.getValue(), "subtitle_asr_last_poll_at");
+        assertTrue(cap.getValue().getSqlSet().contains("COALESCE(subtitle_asr_attempt_count, 0) + 1"));
+        assertCurrentTaskCas(cap.getValue(), "task-run");
     }
 
     @Test
@@ -117,8 +118,7 @@ class SubtitleAsrServiceTest {
         Course ok = processingCourse(5L, "task-ok");
         Course bad = processingCourse(6L, "task-bad");
         when(courseMapper.selectList(any())).thenReturn(List.of(bad, ok));
-        when(courseMapper.selectById(6L)).thenReturn(bad);
-        when(courseMapper.selectById(5L)).thenReturn(ok);
+        when(courseMapper.update(isNull(), any())).thenReturn(1);
         when(asrService.query("task-bad")).thenThrow(new RuntimeException("upstream down"));
         when(asrService.query("task-ok")).thenReturn(AsrJobResult.success("WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nhi\n"));
         when(ossService.uploadText(eq("subtitle"), eq("vtt"), any(), any()))
@@ -129,12 +129,33 @@ class SubtitleAsrServiceTest {
         verify(asrService).query("task-bad");
         verify(asrService).query("task-ok");
         ArgumentCaptor<LambdaUpdateWrapper<Course>> cap = updateCaptor();
-        verify(courseMapper).update(isNull(), cap.capture());
-        assertSetsColumn(cap.getValue(), "subtitle_status", "ready");
-        assertSetsColumn(cap.getValue(), "subtitle_url", "subtitles/a.vtt");
+        verify(courseMapper, atLeast(4)).update(isNull(), cap.capture());
+        LambdaUpdateWrapper<Course> ready = cap.getAllValues().stream()
+                .filter(w -> w.getSqlSet() != null && w.getSqlSet().contains("subtitle_url="))
+                .findFirst()
+                .orElseThrow();
+        assertSetsColumn(ready, "subtitle_status", "ready");
+        assertSetsColumn(ready, "subtitle_url", "subtitles/a.vtt");
         // 就绪时必须抹掉上一轮的失败原因，否则「已就绪」还挂着旧报错
-        assertSetsColumn(cap.getValue(), "subtitle_asr_last_error", null);
+        assertSetsColumn(ready, "subtitle_asr_last_error", null);
+        assertCurrentTaskCas(ready, "task-ok");
         verify(ossMediaCleanupService).afterReplace(null, "subtitles/a.vtt");
+    }
+
+    @Test
+    void pollProcessingTasks_discardsLateResultAndDeletesOrphanVtt() {
+        Course course = processingCourse(7L, "task-stale");
+        when(courseMapper.selectList(any())).thenReturn(List.of(course));
+        when(courseMapper.update(isNull(), any())).thenReturn(1, 0);
+        when(asrService.query("task-stale")).thenReturn(
+                AsrJobResult.success("WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nlate\n"));
+        when(ossService.uploadText(eq("subtitle"), eq("vtt"), any(), any()))
+                .thenReturn(Map.of("url", "subtitles/late.vtt"));
+
+        subtitleAsrService.pollProcessingTasks();
+
+        verify(ossMediaCleanupService).deleteIfUnreferenced("subtitles/late.vtt");
+        verify(ossMediaCleanupService, never()).afterReplace(any(), any());
     }
 
     @Test
@@ -150,5 +171,13 @@ class SubtitleAsrServiceTest {
         course.setSubtitleTaskId(taskId);
         course.setSubtitleAsrStartedAt(LocalDateTime.now());
         return course;
+    }
+
+    private static void assertCurrentTaskCas(LambdaUpdateWrapper<Course> wrapper, String taskId) {
+        String where = wrapper.getExpression().getNormal().getSqlSegment();
+        assertTrue(where.contains("subtitle_task_id"), "CAS 缺少 subtitle_task_id：" + where);
+        assertTrue(where.contains("subtitle_status"), "CAS 缺少 subtitle_status：" + where);
+        assertTrue(wrapper.getParamNameValuePairs().containsValue(taskId), "CAS 缺少 taskId");
+        assertTrue(wrapper.getParamNameValuePairs().containsValue("processing"), "CAS 缺少 processing 状态");
     }
 }

@@ -33,7 +33,6 @@ export function useHallList() {
     vrUrl: '',
     categoryId: undefined as number | undefined,
     sort: 0,
-    status: 1,
     slides: [] as HallSlideItem[],
     sections: [] as HallSectionItem[],
     audioUrl: '',
@@ -68,7 +67,6 @@ export function useHallList() {
     form.vrUrl = ''
     form.categoryId = categories.value[0]?.id
     form.sort = 0
-    form.status = 1
     form.slides = []
     form.sections = []
     form.audioUrl = ''
@@ -88,7 +86,6 @@ export function useHallList() {
       form.vrUrl = detail.vrUrl || ''
       form.categoryId = detail.categoryId ?? undefined
       form.sort = detail.sort ?? 0
-      form.status = detail.status ?? 1
       form.slides = (detail.slides || []).map((s) => ({
         url: s.url || '',
         caption: s.caption || '',

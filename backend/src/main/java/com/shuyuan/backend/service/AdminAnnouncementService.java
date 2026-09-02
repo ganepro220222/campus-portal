@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.exception.BusinessException;
@@ -74,6 +75,20 @@ public class AdminAnnouncementService {
         validateContent(req);
         fromRequest(announcement, req);
         announcementMapper.updateById(announcement);
+        // updateById 默认跳过 null；空字符串表示显式清空时间，必须用 wrapper 写 NULL。
+        if (req.getStartTime() != null || req.getEndTime() != null) {
+            LambdaUpdateWrapper<Announcement> scheduleUpdate = new LambdaUpdateWrapper<Announcement>()
+                    .eq(Announcement::getId, id);
+            if (req.getStartTime() != null) {
+                scheduleUpdate.set(Announcement::getStartTime,
+                        FormatUtils.parseDateTime(req.getStartTime()));
+            }
+            if (req.getEndTime() != null) {
+                scheduleUpdate.set(Announcement::getEndTime,
+                        FormatUtils.parseDateTime(req.getEndTime()));
+            }
+            announcementMapper.update(null, scheduleUpdate);
+        }
         evictActiveCache();
         return toVo(announcementMapper.selectById(id));
     }

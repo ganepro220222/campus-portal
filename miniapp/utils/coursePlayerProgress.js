@@ -22,6 +22,44 @@ function isSeekBackward(currentSec, lastReportSec, toleranceSec = 2) {
   return currentSec + toleranceSec < lastReportSec
 }
 
+/**
+ * seekcomplete.position 在 Android 为毫秒，其余平台为秒。
+ * 平台未知时按秒处理，避免依赖时长做单位猜测。
+ */
+function normalizeSeekCompletePosition(rawPosition, platform) {
+  if (typeof rawPosition !== 'number' || !Number.isFinite(rawPosition) || rawPosition < 0) return null
+  const position = rawPosition
+  return typeof platform === 'string' && platform.trim().toLowerCase() === 'android'
+    ? position / 1000
+    : position
+}
+
+/**
+ * 新版基础库优先使用 getDeviceInfo；旧版或调用失败时退回 getSystemInfoSync。
+ */
+function getCoursePlayerPlatform(wxApi) {
+  const api = wxApi || {}
+  if (typeof api.getDeviceInfo === 'function') {
+    try {
+      const info = api.getDeviceInfo()
+      if (info && typeof info.platform === 'string' && info.platform.trim()) {
+        return info.platform
+      }
+    } catch (err) {
+      // 继续使用旧接口兜底
+    }
+  }
+  if (typeof api.getSystemInfoSync === 'function') {
+    try {
+      const info = api.getSystemInfoSync()
+      if (info && typeof info.platform === 'string') return info.platform
+    } catch (err) {
+      // 未知平台按秒处理
+    }
+  }
+  return ''
+}
+
 /** 刷新视频 URL 后应恢复的播放位置 */
 function resolveVideoResumePosition({ currentPosition, initialTime }) {
   if (currentPosition != null && currentPosition > 0) return currentPosition
@@ -135,6 +173,8 @@ module.exports = {
   isVideoPlaybackStable,
   shouldGiveUpVideoReload,
   isSeekBackward,
+  normalizeSeekCompletePosition,
+  getCoursePlayerPlatform,
   resolveVideoResumePosition,
   resolveResumeInitialTime,
   coerceVttText,

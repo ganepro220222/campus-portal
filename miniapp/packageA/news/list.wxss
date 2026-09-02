@@ -80,4 +80,5 @@
 .ndate { font-size: 21rpx; color: var(--muted); }
 
 .list-tip { text-align: center; color: var(--muted); font-size: 23rpx; padding: 30rpx; }
+.list-tip-retry { color: var(--navy); }
 .list-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }

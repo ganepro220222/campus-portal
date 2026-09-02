@@ -67,6 +67,23 @@ public final class OssManagedObjectKey {
         return isManaged(key) ? key : null;
     }
 
+    /**
+     * 判断两个库字段是否指向同一份媒体。
+     *
+     * <p>受管素材按 object key 比较，因而裸 key、CDN 地址和带签名地址等价；
+     * 外部地址无法可靠归一化，只在去除首尾空白后完全相同时视为同一媒体。
+     */
+    public static boolean sameStoredMedia(String left, String right) {
+        String a = left == null ? "" : left.trim();
+        String b = right == null ? "" : right.trim();
+        if (a.equals(b)) {
+            return true;
+        }
+        String aKey = extractManaged(a);
+        String bKey = extractManaged(b);
+        return aKey != null && bKey != null && aKey.equals(bKey);
+    }
+
     public static boolean isManaged(String objectKey) {
         if (sanitize(objectKey) == null) {
             return false;

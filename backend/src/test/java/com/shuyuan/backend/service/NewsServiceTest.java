@@ -2,6 +2,7 @@ package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.entity.News;
 import com.shuyuan.backend.mapper.NewsMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -77,5 +78,20 @@ class NewsServiceTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> newsService.detail(4L, "127.0.0.1"));
         assertEquals(404, ex.getCode());
+    }
+
+    @Test
+    void list_invalidCategoryIdFailsClosedWithPagedShape() {
+        when(categoryService.resolveFilter("news", 99L, null))
+                .thenReturn(CategoryService.CategoryFilter.invalid());
+
+        Object result = newsService.list(null, 99L, 2, 10);
+
+        PageResult<?> page = org.junit.jupiter.api.Assertions.assertInstanceOf(PageResult.class, result);
+        assertEquals(0, page.getTotal());
+        assertEquals(2, page.getPage());
+        assertEquals(10, page.getSize());
+        org.junit.jupiter.api.Assertions.assertTrue(page.getRecords().isEmpty());
+        org.mockito.Mockito.verifyNoInteractions(newsMapper);
     }
 }

@@ -3,6 +3,7 @@ package com.shuyuan.backend.controller.admin;
 import com.shuyuan.backend.common.Result;
 import com.shuyuan.backend.dto.EnrollRejectRequest;
 import com.shuyuan.backend.service.AdminEnrollService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +24,8 @@ public class AdminEnrollController {
     }
 
     @PutMapping("/{id}/reject")
-    public Result<Map<String, Object>> reject(@PathVariable Long id, @RequestBody(required = false) EnrollRejectRequest req) {
+    public Result<Map<String, Object>> reject(@PathVariable Long id,
+                                              @Valid @RequestBody(required = false) EnrollRejectRequest req) {
         String reason = req != null ? req.getReason() : null;
         return Result.ok(adminEnrollService.reject(id, reason));
     }

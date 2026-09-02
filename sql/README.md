@@ -109,6 +109,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 22 | `patch-hall-vr-copy-20260830.sql` | 8/9 号馆简介去掉「支持 VR」承诺，与「VR 链接筹备中」对齐 | 仅数据；seed 已同步；**可重复执行** |
 | 23 | `patch-oss-object-meta.sql` | 上传对象元信息表：后台预览框显示真实文件名 / 大小 / 上传时间 | ✅ 已并入 init.sql；**可重复执行** |
 | 24 | `patch-feedback-type-normalize.sql` | 统一反馈类型中文值与默认值，修复历史 `other` 数据 | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
+| 25 | `patch-event-log-type-created-index.sql` | `event_log` 看板 view 聚合索引 `(event_type, created_at)` + 足迹索引 `(member_id, created_at)` | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
 
 `patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 
@@ -211,6 +212,19 @@ bash scripts/backup-staging-mysql.sh
 
 **旧库升级**：执行本补丁（幂等，可重复执行）。补丁会在缺列时补列，把历史英文
 `other`、空值及未定义类型统一为「其他」，并将列默认值固定为「其他」。
+
+#### `patch-event-log-type-created-index.sql`（旧库行为日志索引）
+
+**新库**：`init.sql` 已含 `idx_type_created`、`idx_member_created`，**勿**再跑本 patch。
+
+**旧库升级**：执行本补丁（幂等，可重复执行）。看板三条 view 聚合走 `(event_type, created_at)`；
+学习足迹走 `(member_id, created_at)`。`aggregateDaily` 仍按时间范围，继续用 `idx_created_at`。
+
+验收：
+
+```sql
+SHOW INDEX FROM event_log WHERE Key_name IN ('idx_type_created', 'idx_member_created');
+```
 
 #### `patch-course-progress-watched-seconds.sql`（旧库课程进度必读）
 

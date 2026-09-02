@@ -27,6 +27,8 @@ public class RateLimitService {
     public static final String SCENE_AI = "ai";
     /** 后台 AI 文案辅助：润色/扩写/摘要/标题/英译共用一个计数（每人每自然日） */
     public static final String SCENE_AI_POLISH = "ai-polish";
+    /** 意见反馈每日上限 */
+    public static final String SCENE_FEEDBACK_DAY = "feedback-day";
 
     /*
      * 退还一次已占用的计数。
@@ -147,6 +149,7 @@ public class RateLimitService {
         return switch (scene) {
             case SCENE_AI -> "今日问答次数已用完，请明天再来";
             case SCENE_AI_POLISH -> "今日 AI 文案辅助次数已用完（每人每天 " + limit + " 次），请明天再试";
+            case SCENE_FEEDBACK_DAY -> "今日反馈次数已用完，请明天再来";
             default -> "操作过于频繁，请稍后再试";
         };
     }

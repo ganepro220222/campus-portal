@@ -1,6 +1,5 @@
-import axios from 'axios'
 import { get, post, put, del } from './request'
-import { useAuthStore } from '@/stores/auth'
+import { downloadFile, downloadFilePost } from '@/utils/download'
 import type { PageResult } from '@/types/api'
 
 export interface MemberItem {
@@ -131,30 +130,10 @@ export function resetMemberPassword(id: number, newPassword?: string) {
   return put<MemberResetPasswordResult>(`/admin/members/${id}/reset-password`, { newPassword })
 }
 
-export async function downloadMemberImportTemplate() {
-  const auth = useAuthStore()
-  const res = await axios.get('/api/v1/admin/members/import-template', {
-    responseType: 'blob',
-    headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
-  })
-  const url = window.URL.createObjectURL(res.data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = '师生导入模板.xlsx'
-  a.click()
-  window.URL.revokeObjectURL(url)
+export function downloadMemberImportTemplate() {
+  return downloadFile('/admin/members/import-template', '师生导入模板.xlsx')
 }
 
-export async function downloadMemberImportErrors(rows: MemberImportErrorRow[]) {
-  const auth = useAuthStore()
-  const res = await axios.post('/api/v1/admin/members/import-errors/export', rows, {
-    responseType: 'blob',
-    headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
-  })
-  const url = window.URL.createObjectURL(res.data)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = '师生导入失败明细.xlsx'
-  a.click()
-  window.URL.revokeObjectURL(url)
+export function downloadMemberImportErrors(rows: MemberImportErrorRow[]) {
+  return downloadFilePost('/admin/members/import-errors/export', '师生导入失败明细.xlsx', rows)
 }

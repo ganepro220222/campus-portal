@@ -50,12 +50,35 @@ class EnrollServiceActivityCancelTest {
         approved.setStatus("approved");
 
         when(enrollMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(pending, approved));
+        when(enrollMapper.casCancelActive(anyLong())).thenReturn(1);
 
         enrollService.onActivityCancelled(activity);
 
-        verify(enrollMapper, times(2)).updateById(any(Enroll.class));
+        verify(enrollMapper, times(2)).casCancelActive(anyLong());
+        verify(enrollMapper, never()).updateById(any(Enroll.class));
         verify(activityMapper, times(2)).decrEnrolledCount(9L);
         verify(messageService, times(2)).create(anyLong(), eq("活动已取消"), contains("非遗体验"),
                 eq("enroll"), eq("activity"), eq(9L));
+    }
+
+    @Test
+    void onActivityCancelled_skipsAlreadyCancelledRow() {
+        Activity activity = new Activity();
+        activity.setId(9L);
+        activity.setTitle("非遗体验");
+
+        Enroll pending = new Enroll();
+        pending.setId(1L);
+        pending.setMemberId(10L);
+        pending.setActivityId(9L);
+        pending.setStatus("pending");
+
+        when(enrollMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(pending));
+        when(enrollMapper.casCancelActive(1L)).thenReturn(0);
+
+        enrollService.onActivityCancelled(activity);
+
+        verify(activityMapper, never()).decrEnrolledCount(anyLong());
+        verify(messageService, never()).create(anyLong(), anyString(), anyString(), anyString(), anyString(), anyLong());
     }
 }

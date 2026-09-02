@@ -209,6 +209,7 @@ flowchart LR
 | ☐ | 课程进度累计观看（**仅旧库**） | 执行 `patch-course-progress-watched-seconds.sql`；新库跳过 | 验收 SQL 返回 2 列（见 `sql/README.md` §19） |
 | ☐ | 上传对象元信息（**仅旧库**） | 执行 `patch-oss-object-meta.sql`；新库跳过 | 后台重传一份资料后，预览框显示真实文件名而非「PDF 文件」 |
 | ☐ | 反馈类型统一（**仅旧库**） | 执行 `patch-feedback-type-normalize.sql`；新库跳过 | `feedback.type` 无 `other`、空值或未定义类型（见 `sql/README.md` §24） |
+| ☐ | 行为日志索引（**仅旧库**） | 执行 `patch-event-log-type-created-index.sql`；新库跳过 | `SHOW INDEX FROM event_log` 含 `idx_type_created`、`idx_member_created`（见 `sql/README.md` §25） |
 | ☐ | 配置 `.env` | `SPRING_PROFILES_ACTIVE=prod`，JWT/DB/Redis/WX/OSS 等；**禁止**沿用 `.env.example` 的 `dev` | 对照环境变量说明 §6 清单 |
 | ☐ | 全量发布门禁 | `npm run check:release-all -- --env <部署机.env>` | 脚本退出码 0 |
 | ☐ | CORS（分域时） | 白名单不含 `localhost` / `example.edu.cn` / `*` | 同源反代可留空 |

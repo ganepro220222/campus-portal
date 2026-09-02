@@ -122,6 +122,7 @@ class EnrollServiceTest {
         when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
         when(enrollMapper.selectById(21L)).thenReturn(rejected);
         when(activityMapper.incrEnrolledCount(ACTIVITY_ID)).thenReturn(1);
+        when(enrollMapper.update(isNull(), any())).thenReturn(1);
 
         enrollService.enroll(ACTIVITY_ID, enrollRequest());
 
@@ -130,6 +131,31 @@ class EnrollServiceTest {
         // 不清的话，后台报名列表里「待审核」旁边会一直挂着上次的拒绝理由
         assertSetsColumn(cap.getValue(), "reject_reason", null);
         assertSetsColumn(cap.getValue(), "status", "approved");
+        String where = cap.getValue().getSqlSegment();
+        assertTrue(where.contains("status"), where);
+        assertTrue(cap.getValue().getParamNameValuePairs().containsValue("cancelled"));
+        assertTrue(cap.getValue().getParamNameValuePairs().containsValue("rejected"));
+    }
+
+    @Test
+    void enroll_reuseInactiveRowCasMissCompensatesQuota() {
+        Activity activity = publishedActivity(10, 3);
+        Enroll rejected = new Enroll();
+        rejected.setId(21L);
+        rejected.setStatus("rejected");
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(rejected);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
+        when(activityMapper.incrEnrolledCount(ACTIVITY_ID)).thenReturn(1);
+        when(enrollMapper.update(isNull(), any())).thenReturn(0);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.enroll(ACTIVITY_ID, enrollRequest()));
+        assertEquals(409, ex.getCode());
+        verify(activityMapper).decrEnrolledCount(ACTIVITY_ID);
+        verify(subscribeOutboxService, never()).enqueueEnrollSuccess(anyLong(), any(), any());
+        verify(pointService, never()).award(anyLong(), anyString());
     }
 
     @Test

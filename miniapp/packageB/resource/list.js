@@ -8,7 +8,9 @@ const { applyListCollected, patchListItemCollected, toggleFavorite } = require('
 const {
   buildFeedLoadingPatch,
   buildFeedLoadedPatch,
-  buildFeedFailurePatch
+  buildFeedFailurePatch,
+  prevForFeedFailure,
+  FEED_LOAD
 } = require('../../utils/feedListPage')
 
 // 文件类型 → 色标 / 标签 / 归类
@@ -46,10 +48,19 @@ Page({
     cats: CATS,
     activeCat: 0,
     keyword: '',
-    downloadingId: null
+    downloadingId: null,
+    collectingId: null
   },
 
   onLoad() { this._loadList(true) },
+
+  onShow() {
+    if (!this._shownOnce) {
+      this._shownOnce = true
+      return
+    }
+    this._loadList(false)
+  },
 
   onHide() {
     audioPlayer.pause()
@@ -67,7 +78,8 @@ Page({
   async _loadList(reset) {
     const prev = this.data
     const silent = !reset && prev.all && prev.all.length > 0
-    this.setData(buildFeedLoadingPatch(reset))
+    const loadOpts = silent ? FEED_LOAD.pullRefresh : FEED_LOAD.initial
+    this.setData(buildFeedLoadingPatch(loadOpts, prev, 'all'))
     try {
       const list = await get('/resources')
       const all = applyListCollected(decorate(mergeResourceList(list)))
@@ -75,7 +87,12 @@ Page({
       this._applyFilter()
     } catch (err) {
       console.warn('[resource/list] 加载失败', err)
-      this.setData(buildFeedFailurePatch(err, silent ? prev : { all: [] }, 'all'))
+      this.setData(buildFeedFailurePatch(
+        err,
+        prevForFeedFailure(loadOpts, prev, 'all'),
+        'all',
+        loadOpts
+      ))
       this._applyFilter()
     }
   },
@@ -119,13 +136,19 @@ Page({
     const id = e.currentTarget.dataset.id
     if (id == null || id === '') return
     requireLogin(() => {
+      if (this.data.collectingId) return
+      this.setData({ collectingId: id })
       toggleFavorite('resource', id).then(res => {
         const collected = !!(res && res.collected)
         this.setData({
           all: patchListItemCollected(this.data.all, id, collected),
-          resourceList: patchListItemCollected(this.data.resourceList, id, collected)
+          resourceList: patchListItemCollected(this.data.resourceList, id, collected),
+          collectingId: null
         })
         if (collected) wx.showToast({ title: '收藏成功', icon: 'none' })
+      }).catch(() => {
+        this.setData({ collectingId: null })
+        wx.showToast({ title: '操作失败', icon: 'none' })
       })
     })
   },

@@ -14,7 +14,8 @@
   "upgradePatches": [
     "sql/patch-course-progress-watched-seconds.sql",
     "sql/patch-oss-object-meta.sql",
-    "sql/patch-feedback-type-normalize.sql"
+    "sql/patch-feedback-type-normalize.sql",
+    "sql/patch-event-log-type-created-index.sql"
   ],
   "dockerComposeDevMounts": [
     "./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql",

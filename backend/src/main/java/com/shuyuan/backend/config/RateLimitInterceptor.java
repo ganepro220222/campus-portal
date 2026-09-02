@@ -83,6 +83,19 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             }
             return true;
         }
+        if (uri.endsWith("/api/v1/feedback")) {
+            Long memberId = MemberContext.getMemberId();
+            if (memberId != null) {
+                occupy(request, rateLimitService.checkUser(
+                        "feedback", memberId, cfg.getFeedbackPerMinute(), Duration.ofMinutes(1)));
+                occupy(request, rateLimitService.checkUserCalendarDay(
+                        RateLimitService.SCENE_FEEDBACK_DAY, memberId, cfg.getFeedbackPerDay()));
+            } else {
+                occupy(request, rateLimitService.checkIp(
+                        "feedback", ip, cfg.getFeedbackPerMinute(), Duration.ofMinutes(1)));
+            }
+            return true;
+        }
         if (uri.matches(".*/api/v1/ai/chat/sessions/\\d+/messages")) {
             Long memberId = MemberContext.getMemberId();
             if (memberId != null) {

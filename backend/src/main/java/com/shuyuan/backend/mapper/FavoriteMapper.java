@@ -13,7 +13,9 @@ public interface FavoriteMapper extends BaseMapper<Favorite> {
     @Delete("DELETE FROM favorite WHERE id = #{id}")
     int physicalDeleteById(@Param("id") Long id);
 
-    @Delete("DELETE FROM favorite WHERE member_id = #{memberId} AND target_type = #{targetType} AND target_id = #{targetId}")
+    /** 只清软删残留，避免并发 insert 后误删对方刚写入的有效收藏 */
+    @Delete("DELETE FROM favorite WHERE member_id = #{memberId} AND target_type = #{targetType} "
+            + "AND target_id = #{targetId} AND is_deleted = 1")
     int physicalDeleteByTarget(@Param("memberId") Long memberId,
                                @Param("targetType") String targetType,
                                @Param("targetId") Long targetId);

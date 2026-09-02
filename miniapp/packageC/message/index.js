@@ -44,14 +44,15 @@ Page({
     if (id) {
       try {
         await put(`/messages/${id}/read`)
+        const list = this.data.list.map(m =>
+          String(m.id) === String(id) ? { ...m, readStatus: 1 } : m
+        )
+        const unreadCount = list.filter(m => m.readStatus === 0).length
+        this.setData({ list, unreadCount })
       } catch (err) {
         console.warn('[message] 标已读失败', err)
+        wx.showToast({ title: '已读状态同步失败', icon: 'none' })
       }
-      const list = this.data.list.map(m =>
-        String(m.id) === String(id) ? { ...m, readStatus: 1 } : m
-      )
-      const unreadCount = list.filter(m => m.readStatus === 0).length
-      this.setData({ list, unreadCount })
     }
     if (route) {
       wx.navigateTo({ url: route, fail: () => {} })

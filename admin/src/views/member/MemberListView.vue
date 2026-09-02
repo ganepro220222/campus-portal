@@ -178,6 +178,7 @@ import DangerDeleteDialog, { type DangerReference } from '@/components/DangerDel
 import FieldHint from '@/components/FieldHint.vue'
 import { memberDeleteGuidance } from '@/utils/memberDeleteGuidance'
 import { normalizeListPage } from '@/utils/listPageNormalize'
+import { shouldApplyListResult } from '@/utils/listRequestSeq'
 import {
   deleteImpactMatchesPending,
   shouldApplyDeleteImpactResult
@@ -207,6 +208,7 @@ const pageSize = ref(20)
 const keyword = ref('')
 const statusFilter = ref<number | undefined>()
 const lastImportErrors = ref<MemberImportErrorRow[]>([])
+let listRequestSeq = 0
 
 const createVisible = ref(false)
 const creating = ref(false)
@@ -271,9 +273,13 @@ const deleteRefs = computed<DangerReference[]>(() => {
 })
 
 async function loadData() {
+  const seq = ++listRequestSeq
   loading.value = true
   try {
     const res = await fetchMembers(keyword.value || undefined, statusFilter.value, page.value, pageSize.value)
+    if (!shouldApplyListResult(seq, listRequestSeq)) {
+      return
+    }
     const nextPage = normalizeListPage(page.value, res.total, pageSize.value)
     if (nextPage !== page.value) {
       page.value = nextPage
@@ -282,7 +288,9 @@ async function loadData() {
     list.value = res.records
     total.value = res.total
   } finally {
-    loading.value = false
+    if (shouldApplyListResult(seq, listRequestSeq)) {
+      loading.value = false
+    }
   }
 }
 

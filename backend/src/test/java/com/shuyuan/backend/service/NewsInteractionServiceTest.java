@@ -23,6 +23,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -96,8 +99,12 @@ class NewsInteractionServiceTest {
         news.setId(9L);
         news.setStatus("published");
         news.setLikeCount(1);
+        News after = new News();
+        after.setId(9L);
+        after.setStatus("published");
+        after.setLikeCount(2);
 
-        when(newsMapper.selectById(9L)).thenReturn(news);
+        when(newsMapper.selectById(9L)).thenReturn(news, after);
         when(likeRecordMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
 
         Map<String, Object> result = newsInteractionService.toggleLike(9L);
@@ -106,6 +113,8 @@ class NewsInteractionServiceTest {
         assertEquals(2, result.get("likeCount"));
         verify(likeRecordMapper).physicalDeleteByTarget(100L, "news", 9L);
         verify(likeRecordMapper).insert(any(LikeRecord.class));
+        verify(newsMapper).adjustLikeCount(9L, 1);
+        verify(newsMapper, never()).updateById(any(News.class));
     }
 
     @Test
@@ -116,11 +125,15 @@ class NewsInteractionServiceTest {
         news.setId(9L);
         news.setStatus("published");
         news.setLikeCount(3);
+        News after = new News();
+        after.setId(9L);
+        after.setStatus("published");
+        after.setLikeCount(2);
 
         LikeRecord existing = new LikeRecord();
         existing.setId(55L);
 
-        when(newsMapper.selectById(9L)).thenReturn(news);
+        when(newsMapper.selectById(9L)).thenReturn(news, after);
         when(likeRecordMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
 
         Map<String, Object> result = newsInteractionService.toggleLike(9L);
@@ -128,5 +141,28 @@ class NewsInteractionServiceTest {
         assertFalse((Boolean) result.get("liked"));
         assertEquals(2, result.get("likeCount"));
         verify(likeRecordMapper).physicalDeleteById(55L);
+        verify(newsMapper).adjustLikeCount(9L, -1);
+    }
+
+    @Test
+    void toggleLike_duplicateKeyReturnsIdempotentLikedWithoutAwarding() {
+        MemberContext.setMemberId(100L);
+
+        News news = new News();
+        news.setId(9L);
+        news.setStatus("published");
+        news.setLikeCount(4);
+
+        when(newsMapper.selectById(9L)).thenReturn(news);
+        when(likeRecordMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null, new LikeRecord());
+        when(likeRecordMapper.insert(any(LikeRecord.class)))
+                .thenThrow(new org.springframework.dao.DuplicateKeyException("uk_member_target"));
+
+        Map<String, Object> result = newsInteractionService.toggleLike(9L);
+
+        assertTrue((Boolean) result.get("liked"));
+        assertEquals(4, result.get("likeCount"));
+        verify(newsMapper, never()).adjustLikeCount(anyLong(), anyInt());
+        verify(pointService, never()).awardCurrentUser("like");
     }
 }

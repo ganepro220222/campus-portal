@@ -99,4 +99,13 @@ class AdminSaveRequestValidationTest {
         Set<ConstraintViolation<AdminUserSaveRequest>> violations = validator.validate(req, ValidationGroups.Update.class);
         assertTrue(violations.isEmpty());
     }
+
+    @Test
+    void enrollReject_reasonMax200() {
+        EnrollRejectRequest req = new EnrollRejectRequest();
+        req.setReason("拒".repeat(201));
+        Set<ConstraintViolation<EnrollRejectRequest>> violations = validator.validate(req);
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getMessage().contains("200")));
+    }
 }

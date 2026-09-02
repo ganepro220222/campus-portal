@@ -35,7 +35,8 @@ Page({
     activeSectionId: '',
     scrollIntoView: '',
     collected: false,
-    collectLabel: '收藏'
+    collectLabel: '收藏',
+    favoriteBusy: false
   },
 
   onLoad(opts) {
@@ -283,10 +284,15 @@ Page({
     const id = this.data.contentId || this._hallId
     if (!id) return
     requireLogin(() => {
+      if (this.data.favoriteBusy) return
+      this.setData({ favoriteBusy: true })
       toggleFavorite('hall', id).then(res => {
         const patch = applyCollectedToggle(this.data, res)
-        this.setData(patch)
+        this.setData({ ...patch, favoriteBusy: false })
         if (patch.collected) wx.showToast({ title: '收藏成功', icon: 'none' })
+      }).catch(() => {
+        this.setData({ favoriteBusy: false })
+        wx.showToast({ title: '操作失败', icon: 'none' })
       })
     })
   }

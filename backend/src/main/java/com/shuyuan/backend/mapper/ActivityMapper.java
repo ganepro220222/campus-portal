@@ -19,4 +19,8 @@ public interface ActivityMapper extends BaseMapper<Activity> {
     @Update("UPDATE activity SET enrolled_count = GREATEST(enrolled_count - 1, 0) " +
             "WHERE id = #{activityId} AND is_deleted = 0")
     int decrEnrolledCount(@Param("activityId") Long activityId);
+
+    @Update("UPDATE activity SET status = 'cancelled' "
+            + "WHERE id = #{id} AND status <> 'cancelled' AND is_deleted = 0")
+    int casCancel(@Param("id") Long id);
 }

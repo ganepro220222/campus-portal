@@ -11,6 +11,7 @@ import com.shuyuan.backend.mapper.LikeRecordMapper;
 import com.shuyuan.backend.mapper.NewsMapper;
 import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +32,7 @@ public class NewsInteractionService {
     @Transactional
     public Map<String, Object> toggleLike(Long newsId) {
         Long memberId = requireMemberId();
-        News news = requireNews(newsId);
+        requireNews(newsId);
 
         LikeRecord existing = likeRecordMapper.selectOne(new LambdaQueryWrapper<LikeRecord>()
                 .eq(LikeRecord::getMemberId, memberId)
@@ -39,32 +40,45 @@ public class NewsInteractionService {
                 .eq(LikeRecord::getTargetId, newsId)
                 .last("LIMIT 1"));
 
-        int likeCount = news.getLikeCount() != null ? news.getLikeCount() : 0;
         boolean liked;
         if (existing != null) {
             likeRecordMapper.physicalDeleteById(existing.getId());
-            likeCount = Math.max(0, likeCount - 1);
+            newsMapper.adjustLikeCount(newsId, -1);
             liked = false;
         } else {
             // 清掉历史软删残留，避免 uk_member_target 冲突导致 500
             likeRecordMapper.physicalDeleteByTarget(memberId, "news", newsId);
-            LikeRecord record = new LikeRecord();
-            record.setMemberId(memberId);
-            record.setTargetType("news");
-            record.setTargetId(newsId);
-            likeRecordMapper.insert(record);
-            likeCount = likeCount + 1;
-            liked = true;
-            eventLogService.recordIfLoggedIn("like", "news", newsId);
-            pointService.awardCurrentUser("like");
+            try {
+                LikeRecord record = new LikeRecord();
+                record.setMemberId(memberId);
+                record.setTargetType("news");
+                record.setTargetId(newsId);
+                likeRecordMapper.insert(record);
+                newsMapper.adjustLikeCount(newsId, 1);
+                liked = true;
+                eventLogService.recordIfLoggedIn("like", "news", newsId);
+                pointService.awardCurrentUser("like");
+            } catch (DuplicateKeyException ex) {
+                liked = likeRecordMapper.selectOne(new LambdaQueryWrapper<LikeRecord>()
+                        .eq(LikeRecord::getMemberId, memberId)
+                        .eq(LikeRecord::getTargetType, "news")
+                        .eq(LikeRecord::getTargetId, newsId)
+                        .last("LIMIT 1")) != null;
+            }
         }
-        news.setLikeCount(likeCount);
-        newsMapper.updateById(news);
 
         Map<String, Object> result = new HashMap<>();
         result.put("liked", liked);
-        result.put("likeCount", likeCount);
+        result.put("likeCount", currentLikeCount(newsId));
         return result;
+    }
+
+    private int currentLikeCount(Long newsId) {
+        News news = newsMapper.selectById(newsId);
+        if (news == null || news.getLikeCount() == null) {
+            return 0;
+        }
+        return news.getLikeCount();
     }
 
     @Transactional

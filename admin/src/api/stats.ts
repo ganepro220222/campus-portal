@@ -1,7 +1,6 @@
-import axios from 'axios'
 import { get } from './request'
 import type { StatsOverview, StatsTrendItem, StatsModuleItem, StatsContentTopItem } from '@/types/api'
-import { useAuthStore } from '@/stores/auth'
+import { downloadFile } from '@/utils/download'
 
 export function fetchStatsOverview() {
   return get<StatsOverview>('/admin/stats/overview')
@@ -20,18 +19,6 @@ export function fetchStatsContentTop(targetType?: string, limit = 10) {
 }
 
 /** 下载月度统计 Excel */
-export async function exportStatsMonth(month?: string) {
-  const auth = useAuthStore()
-  const res = await axios.get('/api/v1/admin/stats/export', {
-    params: { month },
-    responseType: 'blob',
-    headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
-  })
-  const blob = res.data as Blob
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `统计月报_${month || 'current'}.xlsx`
-  a.click()
-  URL.revokeObjectURL(url)
+export function exportStatsMonth(month?: string) {
+  return downloadFile('/admin/stats/export', `统计月报_${month || 'current'}.xlsx`, { month })
 }

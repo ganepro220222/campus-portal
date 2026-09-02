@@ -6,6 +6,7 @@ const { buildFormFromProfile, validateProfileForm, mergeSavedProfile } = require
 Page({
   data: {
     loading: true,
+    error: false,
     submitting: false,
     form: buildFormFromProfile(null)
   },
@@ -24,12 +25,17 @@ Page({
       const profile = await get('/profile')
       this.setData({
         loading: false,
+        error: false,
         form: buildFormFromProfile(profile)
       })
     } catch (err) {
-      this.setData({ loading: false })
+      this.setData({ loading: false, error: true })
       console.warn('[profile/edit] load failed', err)
     }
+  },
+
+  onRetry() {
+    this._load()
   },
 
   onInput(e) {
@@ -39,7 +45,7 @@ Page({
   },
 
   async onSubmit() {
-    if (this.data.submitting) return
+    if (this.data.submitting || this.data.error) return
     const check = validateProfileForm(this.data.form)
     if (!check.ok) {
       wx.showToast({ title: check.message, icon: 'none' })

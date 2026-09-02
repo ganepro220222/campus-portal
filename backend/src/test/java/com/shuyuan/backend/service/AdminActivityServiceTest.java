@@ -41,10 +41,12 @@ class AdminActivityServiceTest {
         activity.setTitle("讲座");
         activity.setStatus("published");
         when(activityMapper.selectById(3L)).thenReturn(activity, activity, activity);
+        when(activityMapper.casCancel(3L)).thenReturn(1);
 
         adminActivityService.cancel(3L);
 
-        verify(activityMapper).updateById(any(Activity.class));
+        verify(activityMapper).casCancel(3L);
+        verify(activityMapper, never()).updateById(any(Activity.class));
         verify(enrollService).onActivityCancelled(any(Activity.class));
     }
 

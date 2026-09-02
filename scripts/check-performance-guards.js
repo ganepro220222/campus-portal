@@ -35,6 +35,14 @@ if (!/stat_daily\.date\s*=\s*DATE\(event_log\.created_at\)/i.test(eventMapper)) 
   errors.push('EventLogMapper：过期明细删除必须受 stat_daily 聚合结果保护')
 }
 
+const initSql = read('sql/init.sql')
+if (!/KEY\s+`idx_type_created`\s*\(\s*`event_type`\s*,\s*`created_at`\s*\)/.test(initSql)) {
+  errors.push('init.sql：event_log 必须有 (event_type, created_at) 看板聚合索引')
+}
+if (!/KEY\s+`idx_member_created`\s*\(\s*`member_id`\s*,\s*`created_at`\s*\)/.test(initSql)) {
+  errors.push('init.sql：event_log 必须有 (member_id, created_at) 足迹索引')
+}
+
 const searchSync = read('backend/src/main/java/com/shuyuan/backend/service/SearchIndexSyncService.java')
 if (!/disableAllEnabled\(/.test(searchSync) || !/upsertBatch\(/.test(searchSync)) {
   errors.push('SearchIndexSyncService：全量同步必须保持集合式禁用与批量 upsert')

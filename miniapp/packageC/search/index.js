@@ -4,6 +4,7 @@ const { mapSearchResults, buildRoute } = require('../../utils/search')
 const mock = require('../../mock/defaults')
 const { useMock } = require('../../utils/mockGuard')
 const { loadMiniappConfig, DEFAULT_MINIAPP_CONFIG } = require('../../utils/miniappConfig')
+const { bumpListGeneration, isStaleListRequest } = require('../../utils/feedListPage')
 
 const HISTORY_KEY = 'search_history'
 
@@ -52,6 +53,7 @@ Page({
 
   async doSearch(keyword) {
     const q = (keyword || '').trim()
+    const seq = bumpListGeneration(this)
     this.setData({ keyword: q, errorText: '' })
     if (!q) { this.setData({ results: [], searched: false }); return }
 
@@ -65,6 +67,7 @@ Page({
       console.warn('[search] 搜索失败', err)
       failed = true
     }
+    if (isStaleListRequest(this, seq)) return
     if (failed && !useMock) {
       this.setData({ results: [], searched: true, errorText: '搜索失败，请稍后重试' })
       return

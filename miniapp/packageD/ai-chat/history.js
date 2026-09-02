@@ -5,6 +5,7 @@ const { requireLogin } = require('../../utils/auth')
 Page({
   data: {
     loading: true,
+    error: false,
     list: []
   },
 
@@ -28,11 +29,18 @@ Page({
     try {
       const raw = await fetchSessions()
       const list = (raw || []).map(mapSessionItem).filter(Boolean)
-      this.setData({ list, loading: false })
+      this.setData({ list, loading: false, error: false })
     } catch (err) {
       console.warn('[ai-chat/history] 加载失败', err)
-      this.setData({ list: [], loading: false })
+      this.setData({
+        loading: false,
+        error: !(this.data.list && this.data.list.length)
+      })
     }
+  },
+
+  onRetry() {
+    this._load()
   },
 
   onItemTap(e) {

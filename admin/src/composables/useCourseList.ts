@@ -19,6 +19,7 @@ import { fetchResourceOptions } from '@/api/resource'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CourseItem, ResourceOption } from '@/types/api'
 import { explicitClear } from '@/utils/clearableField.mjs'
+import { shouldApplyListResult } from '@/utils/listRequestSeq'
 import type { CoverFitMode } from '@/utils/cover'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
@@ -40,6 +41,7 @@ export function useCourseList() {
   const filterStatus = ref<number | undefined>()
   const dialogVisible = ref(false)
   const editingId = ref<number | null>(null)
+  let listRequestSeq = 0
 
   const subtitleInfo = ref<SubtitleStatus>({
     courseId: 0,
@@ -90,6 +92,7 @@ export function useCourseList() {
   }
 
   async function loadData() {
+    const seq = ++listRequestSeq
     loading.value = true
     try {
       const res = await fetchCourses({
@@ -98,10 +101,15 @@ export function useCourseList() {
         categoryId: filterCategoryId.value,
         status: filterStatus.value
       })
+      if (!shouldApplyListResult(seq, listRequestSeq)) {
+        return
+      }
       list.value = res.records
       total.value = res.total
     } finally {
-      loading.value = false
+      if (shouldApplyListResult(seq, listRequestSeq)) {
+        loading.value = false
+      }
     }
   }
 

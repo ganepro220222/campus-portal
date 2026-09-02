@@ -60,6 +60,7 @@ import {
 } from '@/api/stats'
 import type { StatsContentTopItem, StatsOverview } from '@/types/api'
 import { useAuthStore } from '@/stores/auth'
+import { currentYearMonth } from '@/utils/localYearMonth.mjs'
 
 const auth = useAuthStore()
 const visible = computed(() => auth.can('stats:view') || auth.can('admin:super'))
@@ -68,7 +69,7 @@ const loading = ref(false)
 const exporting = ref(false)
 const overview = ref<StatsOverview | null>(null)
 const topList = ref<StatsContentTopItem[]>([])
-const exportMonth = ref(new Date().toISOString().slice(0, 7))
+const exportMonth = ref(currentYearMonth())
 
 const trendRef = ref<HTMLElement | null>(null)
 const moduleRef = ref<HTMLElement | null>(null)

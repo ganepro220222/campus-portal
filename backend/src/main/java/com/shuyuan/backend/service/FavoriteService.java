@@ -6,6 +6,7 @@ import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.*;
 import com.shuyuan.backend.mapper.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,20 +49,27 @@ public class FavoriteService {
                 .last("LIMIT 1"));
 
         boolean collected;
+        boolean changed = false;
         if (existing != null) {
             favoriteMapper.physicalDeleteById(existing.getId());
             collected = false;
+            changed = true;
         } else {
             // 清掉历史软删残留，避免 uk_member_target 冲突导致 500
             favoriteMapper.physicalDeleteByTarget(memberId, type, targetId);
-            Favorite record = new Favorite();
-            record.setMemberId(memberId);
-            record.setTargetType(type);
-            record.setTargetId(targetId);
-            favoriteMapper.insert(record);
-            collected = true;
-            eventLogService.recordIfLoggedIn("favorite", type, targetId);
-            pointService.awardCurrentUser("favorite");
+            try {
+                Favorite record = new Favorite();
+                record.setMemberId(memberId);
+                record.setTargetType(type);
+                record.setTargetId(targetId);
+                favoriteMapper.insert(record);
+                collected = true;
+                changed = true;
+                eventLogService.recordIfLoggedIn("favorite", type, targetId);
+                pointService.awardCurrentUser("favorite");
+            } catch (DuplicateKeyException ex) {
+                collected = isCollected(type, targetId);
+            }
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -69,7 +77,9 @@ public class FavoriteService {
         result.put("targetType", type);
         result.put("targetId", targetId);
         if ("news".equals(type)) {
-            result.put("favoriteCount", syncNewsFavoriteCount(targetId, collected));
+            result.put("favoriteCount", changed
+                    ? adjustNewsFavoriteCount(targetId, collected ? 1 : -1)
+                    : currentNewsFavoriteCount(targetId));
         }
         return result;
     }
@@ -128,20 +138,17 @@ public class FavoriteService {
         return favorite != null;
     }
 
-    private int syncNewsFavoriteCount(Long newsId, boolean justCollected) {
+    private int adjustNewsFavoriteCount(Long newsId, int delta) {
+        newsMapper.adjustFavoriteCount(newsId, delta);
+        return currentNewsFavoriteCount(newsId);
+    }
+
+    private int currentNewsFavoriteCount(Long newsId) {
         News news = newsMapper.selectById(newsId);
-        if (news == null) {
+        if (news == null || news.getFavoriteCount() == null) {
             return 0;
         }
-        int count = news.getFavoriteCount() != null ? news.getFavoriteCount() : 0;
-        if (justCollected) {
-            count = count + 1;
-        } else {
-            count = Math.max(0, count - 1);
-        }
-        news.setFavoriteCount(count);
-        newsMapper.updateById(news);
-        return count;
+        return news.getFavoriteCount();
     }
 
     private void validateTargetPublished(String type, Long targetId) {

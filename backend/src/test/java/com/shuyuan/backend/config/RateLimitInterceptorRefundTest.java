@@ -214,4 +214,23 @@ class RateLimitInterceptorRefundTest {
         assertEquals(java.util.List.of(AI_KEY),
                 request.getAttribute(RateLimitInterceptor.ATTR_OCCUPIED_KEYS));
     }
+
+    @Test
+    void 意见反馈按用户分钟与自然日双计() {
+        MemberContext.setMemberId(5L);
+        properties.getRateLimit().setFeedbackPerMinute(3);
+        properties.getRateLimit().setFeedbackPerDay(20);
+        when(rateLimitService.checkUser(eq("feedback"), eq(5L), eq(3), any()))
+                .thenReturn("ratelimit:feedback:u:5");
+        when(rateLimitService.checkUserCalendarDay(eq(RateLimitService.SCENE_FEEDBACK_DAY), eq(5L), eq(20)))
+                .thenReturn("ratelimit:feedback-day:u:5:2026-09-02");
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/feedback");
+        interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+        verify(rateLimitService).checkUser(eq("feedback"), eq(5L), eq(3), any());
+        verify(rateLimitService).checkUserCalendarDay(RateLimitService.SCENE_FEEDBACK_DAY, 5L, 20);
+        assertEquals(java.util.List.of("ratelimit:feedback:u:5", "ratelimit:feedback-day:u:5:2026-09-02"),
+                request.getAttribute(RateLimitInterceptor.ATTR_OCCUPIED_KEYS));
+    }
 }

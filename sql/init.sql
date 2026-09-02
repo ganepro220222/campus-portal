@@ -541,7 +541,9 @@ CREATE TABLE IF NOT EXISTS `event_log` (
   `created_at`  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_created_at` (`created_at`),
-  KEY `idx_member_event` (`member_id`, `event_type`)
+  KEY `idx_member_event` (`member_id`, `event_type`),
+  KEY `idx_type_created` (`event_type`, `created_at`),
+  KEY `idx_member_created` (`member_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='行为事件日志';
 
 CREATE TABLE IF NOT EXISTS `stat_daily` (

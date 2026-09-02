@@ -66,8 +66,9 @@ public class EnrollService {
                 // reject_reason 必须走 LambdaUpdateWrapper 才能真正置空：
                 // MyBatis-Plus 的 updateStrategy 默认 NOT_NULL，updateById 会跳过 null 字段，
                 // 否则重新报名后「待审核」旁边还挂着上次的拒绝理由
-                enrollMapper.update(null, new LambdaUpdateWrapper<Enroll>()
+                int reused = enrollMapper.update(null, new LambdaUpdateWrapper<Enroll>()
                         .eq(Enroll::getId, existing.getId())
+                        .in(Enroll::getStatus, "cancelled", "rejected")
                         .set(Enroll::getName, name)
                         .set(Enroll::getPhone, phone)
                         .set(Enroll::getCollege, college)
@@ -75,6 +76,10 @@ public class EnrollService {
                         .set(Enroll::getStatus, status)
                         .set(Enroll::getVoucherCode, voucherCode)
                         .set(Enroll::getRejectReason, null));
+                if (reused == 0) {
+                    activityMapper.decrEnrolledCount(activityId);
+                    throw new BusinessException(409, "您已报名该活动");
+                }
                 existing = enrollMapper.selectById(existing.getId());
             } else {
                 Enroll enroll = new Enroll();
@@ -136,10 +141,9 @@ public class EnrollService {
                 .eq(Enroll::getActivityId, activity.getId())
                 .in(Enroll::getStatus, List.of("pending", "approved")));
         for (Enroll enroll : active) {
-            Enroll update = new Enroll();
-            update.setId(enroll.getId());
-            update.setStatus("cancelled");
-            enrollMapper.updateById(update);
+            if (enrollMapper.casCancelActive(enroll.getId()) == 0) {
+                continue;
+            }
             activityMapper.decrEnrolledCount(activity.getId());
             createMessage(enroll.getMemberId(), "活动已取消",
                     "您报名的活动「" + activity.getTitle() + "」已取消，报名同步关闭。",

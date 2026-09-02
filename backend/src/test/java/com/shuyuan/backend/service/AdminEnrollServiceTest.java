@@ -24,6 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -129,6 +132,89 @@ class AdminEnrollServiceTest {
         approved.setStatus("approved");
 
         when(enrollMapper.selectById(11L)).thenReturn(pending, approved);
+        when(enrollMapper.casApprove(11L)).thenReturn(1);
         when(activityMapper.selectById(5L)).thenReturn(activity);
+    }
+
+    @Test
+    void approve_casMissDoesNotEnqueue() {
+        Enroll pending = new Enroll();
+        pending.setId(11L);
+        pending.setMemberId(88L);
+        pending.setActivityId(5L);
+        pending.setStatus("pending");
+        when(enrollMapper.selectById(11L)).thenReturn(pending);
+        when(enrollMapper.casApprove(11L)).thenReturn(0);
+
+        com.shuyuan.backend.common.exception.BusinessException ex =
+                assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                        () -> adminEnrollService.approve(11L));
+        assertEquals(409, ex.getCode());
+        verify(subscribeOutboxService, never()).enqueueEnrollApproved(anyLong(), any(), any());
+        verify(messageService, never()).create(anyLong(), anyString(), anyString(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    void reject_casMissDoesNotReleaseQuotaOrNotify() {
+        Enroll pending = new Enroll();
+        pending.setId(11L);
+        pending.setMemberId(88L);
+        pending.setActivityId(5L);
+        pending.setStatus("pending");
+        when(enrollMapper.selectById(11L)).thenReturn(pending);
+        when(enrollMapper.casReject(eq(11L), anyString())).thenReturn(0);
+
+        com.shuyuan.backend.common.exception.BusinessException ex =
+                assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                        () -> adminEnrollService.reject(11L, "名额已满"));
+        assertEquals(409, ex.getCode());
+        verify(activityMapper, never()).decrEnrolledCount(anyLong());
+        verify(messageService, never()).create(anyLong(), anyString(), anyString(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    void reject_tooLongReasonRejectedBeforeWrite() {
+        Enroll pending = new Enroll();
+        pending.setId(11L);
+        pending.setStatus("pending");
+        when(enrollMapper.selectById(11L)).thenReturn(pending);
+
+        com.shuyuan.backend.common.exception.BusinessException ex =
+                assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
+                        () -> adminEnrollService.reject(11L, "拒".repeat(201)));
+        assertEquals(400, ex.getCode());
+        assertTrue(ex.getMessage().contains("200"));
+        verify(enrollMapper, never()).casReject(anyLong(), anyString());
+    }
+
+    @Test
+    void reject_successReleasesQuotaOnce() {
+        Enroll pending = new Enroll();
+        pending.setId(11L);
+        pending.setMemberId(88L);
+        pending.setActivityId(5L);
+        pending.setStatus("pending");
+
+        Enroll rejected = new Enroll();
+        rejected.setId(11L);
+        rejected.setMemberId(88L);
+        rejected.setActivityId(5L);
+        rejected.setStatus("rejected");
+        rejected.setRejectReason("材料不全");
+
+        Activity activity = new Activity();
+        activity.setId(5L);
+        activity.setTitle("讲座");
+
+        when(enrollMapper.selectById(11L)).thenReturn(pending, rejected);
+        when(enrollMapper.casReject(11L, "材料不全")).thenReturn(1);
+        when(activityMapper.selectById(5L)).thenReturn(activity);
+
+        Map<String, Object> vo = adminEnrollService.reject(11L, "材料不全");
+
+        assertEquals("rejected", vo.get("status"));
+        verify(activityMapper).decrEnrolledCount(5L);
+        verify(messageService).create(eq(88L), eq("报名未通过"), contains("材料不全"),
+                eq("enroll"), eq("activity"), eq(5L));
     }
 }

@@ -55,13 +55,9 @@ public class AdminEnrollService {
     public Map<String, Object> approve(Long enrollId) {
         adminPermissionService.require("enroll:read");
         Enroll enroll = requireEnroll(enrollId);
-        if (!"pending".equals(enroll.getStatus())) {
-            throw new BusinessException(400, "仅待审核报名可通过");
+        if (enrollMapper.casApprove(enrollId) == 0) {
+            throw new BusinessException(409, "状态已变化请刷新");
         }
-        Enroll update = new Enroll();
-        update.setId(enrollId);
-        update.setStatus("approved");
-        enrollMapper.updateById(update);
 
         Activity activity = activityMapper.selectById(enroll.getActivityId());
         Enroll approved = enrollMapper.selectById(enrollId);
@@ -77,28 +73,30 @@ public class AdminEnrollService {
     public Map<String, Object> reject(Long enrollId, String reason) {
         adminPermissionService.require("enroll:read");
         Enroll enroll = requireEnroll(enrollId);
-        if ("rejected".equals(enroll.getStatus()) || "cancelled".equals(enroll.getStatus())) {
-            throw new BusinessException(400, "当前状态不可拒绝");
+        String rejectReason = normalizeRejectReason(reason);
+        if (enrollMapper.casReject(enrollId, rejectReason) == 0) {
+            throw new BusinessException(409, "状态已变化请刷新");
         }
 
-        // 拒绝释放名额（pending / approved 均占过名额）
-        if ("pending".equals(enroll.getStatus()) || "approved".equals(enroll.getStatus())) {
-            activityMapper.decrEnrolledCount(enroll.getActivityId());
-        }
-
-        Enroll update = new Enroll();
-        update.setId(enrollId);
-        update.setStatus("rejected");
-        update.setRejectReason(reason != null ? reason.trim() : "不符合报名条件");
-        enrollMapper.updateById(update);
+        activityMapper.decrEnrolledCount(enroll.getActivityId());
 
         Activity activity = activityMapper.selectById(enroll.getActivityId());
-        String rejectMsg = update.getRejectReason();
         notifyMember(enroll.getMemberId(), "报名未通过",
-                "您报名的活动「" + (activity != null ? activity.getTitle() : "") + "」未通过审核。原因：" + rejectMsg,
+                "您报名的活动「" + (activity != null ? activity.getTitle() : "") + "」未通过审核。原因：" + rejectReason,
                 enroll.getActivityId());
 
         return toVo(enrollMapper.selectById(enrollId));
+    }
+
+    static String normalizeRejectReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return "不符合报名条件";
+        }
+        String trimmed = reason.trim();
+        if (trimmed.length() > 200) {
+            throw new BusinessException(400, "拒绝原因不超过 200 字");
+        }
+        return trimmed;
     }
 
     /** 导出 Excel 报名名单 */

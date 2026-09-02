@@ -33,7 +33,8 @@ Page({
     galleryIndex: 0,
     lang: 'zh',
     collected: false,
-    collectLabel: '收藏'
+    collectLabel: '收藏',
+    favoriteBusy: false
   },
 
   onLoad(opts) {
@@ -182,10 +183,15 @@ Page({
     if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
     const id = this.data.contentId
     requireLogin(() => {
+      if (!id || this.data.favoriteBusy) return
+      this.setData({ favoriteBusy: true })
       toggleFavorite('craft', id).then(res => {
         const patch = applyCollectedToggle(this.data, res)
-        this.setData(patch)
+        this.setData({ ...patch, favoriteBusy: false })
         if (patch.collected) wx.showToast({ title: '收藏成功', icon: 'none' })
+      }).catch(() => {
+        this.setData({ favoriteBusy: false })
+        wx.showToast({ title: '操作失败', icon: 'none' })
       })
     })
   }

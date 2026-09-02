@@ -72,6 +72,10 @@ public class ShuyuanProperties {
         private int progressPerMinute = 60;
         /** 课程完成积分：每用户每小时最多完成门数（超出仍记完成但不发分） */
         private int courseCompletePerHour = 5;
+        /** 意见反馈：每用户每分钟 */
+        private int feedbackPerMinute = 3;
+        /** 意见反馈：每用户每自然日 */
+        private int feedbackPerDay = 20;
     }
 
     /** AI 问答（Phase 7） */

@@ -92,12 +92,10 @@ public class AdminActivityService {
     @Transactional
     public Map<String, Object> cancel(Long id) {
         adminPermissionService.require("admin:super");
-        Activity activity = requireActivity(id);
-        if ("cancelled".equals(activity.getStatus())) {
+        requireActivity(id);
+        if (activityMapper.casCancel(id) == 0) {
             throw new BusinessException(400, "活动已取消");
         }
-        activity.setStatus("cancelled");
-        activityMapper.updateById(activity);
         enrollService.onActivityCancelled(activityMapper.selectById(id));
         return toVo(activityMapper.selectById(id));
     }

@@ -93,7 +93,8 @@ class FavoriteServiceTest {
         assertTrue((Boolean) result.get("collected"));
         verify(favoriteMapper).physicalDeleteByTarget(9L, "news", 4L);
         verify(favoriteMapper).insert(any(Favorite.class));
-        verify(newsMapper).updateById(any(News.class));
+        verify(newsMapper).adjustFavoriteCount(4L, 1);
+        verify(newsMapper, never()).updateById(any(News.class));
     }
 
     @Test
@@ -113,6 +114,26 @@ class FavoriteServiceTest {
 
         assertFalse((Boolean) result.get("collected"));
         verify(favoriteMapper).physicalDeleteById(88L);
-        verify(newsMapper).updateById(any(News.class));
+        verify(newsMapper).adjustFavoriteCount(4L, -1);
+        verify(newsMapper, never()).updateById(any(News.class));
+    }
+
+    @Test
+    void toggle_duplicateKeyReturnsIdempotentCollectedWithoutAwarding() {
+        Hall hall = new Hall();
+        hall.setId(3L);
+        hall.setStatus(1);
+        Favorite winner = new Favorite();
+        winner.setId(77L);
+        when(hallMapper.selectById(3L)).thenReturn(hall);
+        when(favoriteMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null, winner);
+        when(favoriteMapper.insert(any(Favorite.class)))
+                .thenThrow(new org.springframework.dao.DuplicateKeyException("uk_member_target"));
+
+        Map<String, Object> result = favoriteService.toggle("hall", 3L);
+
+        assertTrue((Boolean) result.get("collected"));
+        verify(pointService, never()).awardCurrentUser("favorite");
+        verify(eventLogService, never()).recordIfLoggedIn(anyString(), anyString(), anyLong());
     }
 }

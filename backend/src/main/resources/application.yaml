@@ -43,6 +43,8 @@ shuyuan:
     wx-login-per-minute: 20
     admin-login-per-minute: 10
     enroll-per-minute: 5
+    feedback-per-minute: 3
+    feedback-per-day: 20
     # 小程序 AI 问答：每位学生每自然日。人数多少不改变个人体验（这是每人上限，不是共享池），
     # 20 次相当于一天完整用三轮，够用；数值同时写在交付与测试文档里，调整需一并更新。
     ai-per-day: ${AI_PER_DAY:20}

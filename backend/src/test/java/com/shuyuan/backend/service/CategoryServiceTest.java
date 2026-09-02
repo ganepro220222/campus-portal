@@ -5,6 +5,10 @@ import com.shuyuan.backend.entity.Category;
 import com.shuyuan.backend.mapper.CategoryMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -14,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,56 +27,88 @@ class CategoryServiceTest {
     @Mock
     private CategoryMapper categoryMapper;
 
-    @Test
-    void resolveFilter_treatsAllAndWxSentinelsAsUnfiltered() {
-        CategoryService service = new CategoryService(categoryMapper);
+    @InjectMocks
+    private CategoryService categoryService;
 
-        for (String value : new String[]{null, "", "  ", "全部", "undefined", "NULL"}) {
-            CategoryService.CategoryFilter filter = service.resolveFilter("hall", value);
-            assertEquals(CategoryService.CategoryFilter.Status.UNFILTERED, filter.status());
-        }
-        verify(categoryMapper, never()).selectOne(any(LambdaQueryWrapper.class));
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "  ", "\t", "全部", " undefined ", "NULL"})
+    void resolveFilter_distinguishesUnfilteredSentinelsWithoutQuerying(String rawName) {
+        CategoryService.CategoryFilter result = categoryService.resolveFilter("hall", rawName);
+
+        assertEquals(CategoryService.CategoryFilter.Status.UNFILTERED, result.status());
+        assertFalse(result.shouldFilter());
+        assertFalse(result.isInvalid());
+        verifyNoInteractions(categoryMapper);
     }
 
     @Test
-    void resolveFilter_matchesActiveCategoryByTrimmedName() {
-        CategoryService service = new CategoryService(categoryMapper);
-        Category category = category(8L, "course", "安全教育", 1);
+    void resolveFilter_returnsMatchedActiveCategoryName() {
+        Category category = category(17L, "hall", "安全教育", 1);
         when(categoryMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(category);
 
-        CategoryService.CategoryFilter filter = service.resolveFilter("course", " 安全教育 ");
+        CategoryService.CategoryFilter result =
+                categoryService.resolveFilter("hall", " 安全教育 ");
 
-        assertTrue(filter.shouldFilter());
-        assertEquals(8L, filter.categoryId());
+        assertEquals(CategoryService.CategoryFilter.Status.MATCHED, result.status());
+        assertEquals(17L, result.categoryId());
+        assertTrue(result.shouldFilter());
     }
 
     @Test
-    void resolveFilter_failsClosedForMissingOrInactiveName() {
-        CategoryService service = new CategoryService(categoryMapper);
-        when(categoryMapper.selectOne(any(LambdaQueryWrapper.class)))
-                .thenReturn(null)
-                .thenReturn(category(8L, "course", "安全教育", 0));
+    void resolveFilter_returnsInvalidForMissingOrInactiveCategoryName() {
+        Category inactive = category(17L, "hall", "安全教育", 0);
+        when(categoryMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(inactive);
 
-        assertTrue(service.resolveFilter("course", "已删除").isInvalid());
-        assertTrue(service.resolveFilter("course", "安全教育").isInvalid());
+        CategoryService.CategoryFilter result =
+                categoryService.resolveFilter("hall", "安全教育");
+
+        assertTrue(result.isInvalid());
     }
 
     @Test
-    void resolveFilter_idTakesPriorityAndValidatesTypeAndStatus() {
-        CategoryService service = new CategoryService(categoryMapper);
-        when(categoryMapper.selectById(9L)).thenReturn(category(9L, "news", "动态", 1));
-        when(categoryMapper.selectById(10L)).thenReturn(category(10L, "course", "停用课程", 0));
-        when(categoryMapper.selectById(11L)).thenReturn(category(11L, "course", "课程", 1));
+    void resolveFilter_returnsInvalidForMissingCategoryName() {
+        when(categoryMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
 
-        assertTrue(service.resolveFilter("course", 9L, "课程").isInvalid());
-        assertTrue(service.resolveFilter("course", 10L, "课程").isInvalid());
-        CategoryService.CategoryFilter matched = service.resolveFilter("course", 11L, "错误名称");
-        assertFalse(matched.isInvalid());
-        assertEquals(11L, matched.categoryId());
+        assertTrue(categoryService.resolveFilter("hall", "已删除分类").isInvalid());
+    }
+
+    @Test
+    void resolveFilter_prefersPositiveIdAndValidatesTypeAndStatus() {
+        Category activeNews = category(8L, "news", "通知公告", 1);
+        when(categoryMapper.selectById(8L)).thenReturn(activeNews);
+
+        CategoryService.CategoryFilter result =
+                categoryService.resolveFilter("news", 8L, "不存在的名称");
+
+        assertEquals(CategoryService.CategoryFilter.Status.MATCHED, result.status());
+        assertEquals(8L, result.categoryId());
         verify(categoryMapper, never()).selectOne(any(LambdaQueryWrapper.class));
     }
 
-    private static Category category(Long id, String type, String name, int status) {
+    @Test
+    void resolveFilter_rejectsPositiveIdFromWrongType() {
+        when(categoryMapper.selectById(8L))
+                .thenReturn(category(8L, "hall", "安全教育", 1));
+
+        CategoryService.CategoryFilter result =
+                categoryService.resolveFilter("news", 8L, "全部");
+
+        assertTrue(result.isInvalid());
+    }
+
+    @Test
+    void resolveFilter_rejectsInactivePositiveId() {
+        when(categoryMapper.selectById(8L))
+                .thenReturn(category(8L, "news", "通知公告", 0));
+
+        CategoryService.CategoryFilter result =
+                categoryService.resolveFilter("news", 8L, null);
+
+        assertTrue(result.isInvalid());
+    }
+
+    private static Category category(Long id, String type, String name, Integer status) {
         Category category = new Category();
         category.setId(id);
         category.setType(type);

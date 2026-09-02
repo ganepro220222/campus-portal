@@ -69,7 +69,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 1 | `patch-fix-charset.sql` | 修复早期 latin1 乱码 | — |
 | 2 | `patch-banner-columns.sql` | Banner 补 title/description | ✅ 已并入 |
 | 3 | `patch-cover-fit-mode.sql` | 封面 fill/fit 字段 | ✅ 已并入 |
-| 4 | `patch-feedback-type.sql` | 反馈 type 字段 | ✅ 已并入 |
+| 4 | `patch-feedback-type.sql` | 反馈 type 字段（历史兼容入口，已改为幂等） | ✅ 已并入 |
 | 5 | `patch-admin-account-security.sql` | 首次改密 + 发布权细分 + 内容审核角色 | 部分已并入（`must_change_password`、角色 4）；**可重复执行** |
 
 #### `patch-admin-account-security.sql`（旧库必读）

@@ -7,7 +7,7 @@
 SET NAMES utf8mb4;
 SET @db := DATABASE();
 
-SET @sql := (
+SET @feedback_type_sql := (
   SELECT IF(
     EXISTS(
       SELECT 1
@@ -17,25 +17,43 @@ SET @sql := (
         AND column_name = 'type'
     ),
     'SELECT ''skip: feedback.type exists'' AS migration_note',
-    'ALTER TABLE `feedback` ADD COLUMN `type` VARCHAR(30) NOT NULL DEFAULT ''其他'' AFTER `member_id`'
+    'ALTER TABLE `feedback` ADD COLUMN `type` VARCHAR(30) NOT NULL DEFAULT ''其他'' COMMENT ''功能建议/内容纠错/使用问题/其他'' AFTER `member_id`'
   )
 );
-PREPARE stmt FROM @sql;
+PREPARE stmt FROM @feedback_type_sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 UPDATE `feedback`
 SET `type` = CASE
-  WHEN LOWER(TRIM(`type`)) = 'other' THEN '其他'
-  ELSE TRIM(`type`)
-END;
-
-UPDATE `feedback`
-SET `type` = '其他'
+  WHEN TRIM(`type`) IN ('功能建议', '内容纠错', '使用问题', '其他') THEN TRIM(`type`)
+  ELSE '其他'
+END
 WHERE `type` IS NULL
-   OR `type` = ''
-   OR `type` NOT IN ('功能建议', '内容纠错', '使用问题', '其他');
+   OR CAST(`type` AS BINARY) <> CAST(
+     CASE
+       WHEN TRIM(`type`) IN ('功能建议', '内容纠错', '使用问题', '其他') THEN TRIM(`type`)
+       ELSE '其他'
+     END AS BINARY
+   );
 
-ALTER TABLE `feedback`
-  MODIFY COLUMN `type` VARCHAR(30) NOT NULL DEFAULT '其他'
-  COMMENT '功能建议/内容纠错/使用问题/其他';
+SET @feedback_type_sql := (
+  SELECT IF(
+    EXISTS(
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = @db
+        AND table_name = 'feedback'
+        AND column_name = 'type'
+        AND data_type = 'varchar'
+        AND character_maximum_length = 30
+        AND is_nullable = 'NO'
+        AND column_default = '其他'
+    ),
+    'SELECT ''skip: feedback.type definition is current'' AS migration_note',
+    'ALTER TABLE `feedback` MODIFY COLUMN `type` VARCHAR(30) NOT NULL DEFAULT ''其他'' COMMENT ''功能建议/内容纠错/使用问题/其他'''
+  )
+);
+PREPARE stmt FROM @feedback_type_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

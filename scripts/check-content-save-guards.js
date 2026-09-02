@@ -53,10 +53,21 @@ if (!/editingId\.value\s*&&\s*!form\.apiToken\.trim\(\)/.test(college)
 }
 
 const announcement = read('admin/src/views/announcement/AnnouncementListView.vue')
-for (const field of ['linkUrl', 'startTime', 'endTime']) {
-  if (!new RegExp(`${field}:\\s*form\\.${field}(?:,|\\s*\\n)`).test(announcement)) {
-    errors.push(`AnnouncementListView.vue：${field} 未按原值提交，清空语义可能再次失效`)
+if (!/linkUrl:\s*form\.linkUrl(?:,|\s*\n)/.test(announcement)) {
+  errors.push('AnnouncementListView.vue：linkUrl 未按原值提交，清空语义可能再次失效')
+}
+if ((announcement.match(/:value-on-clear="''"/g) || []).length < 2) {
+  errors.push('AnnouncementListView.vue：生效/失效时间选择器未设置 value-on-clear 空串')
+}
+for (const field of ['startTime', 'endTime']) {
+  if (!new RegExp(`${field}:\\s*explicitClear\\(form\\.${field}\\)`).test(announcement)) {
+    errors.push(`AnnouncementListView.vue：${field} 未把 null 收成空串，清空会再次失效`)
   }
+}
+
+const courseDialog = read('admin/src/views/course/CourseEditDialog.vue')
+if (!/v-model="form\.startTime"[\s\S]*?:value-on-clear="''"/.test(courseDialog)) {
+  errors.push('CourseEditDialog.vue：开课时间选择器未设置 value-on-clear 空串')
 }
 
 const course = read('admin/src/composables/useCourseList.ts')
@@ -69,8 +80,22 @@ if (!/videoSavedUrl/.test(course)
     || !/videoSavedUrl\.value\.trim\(\)\s*&&\s*!form\.videoUrl\.trim\(\)/.test(course)) {
   errors.push('useCourseList.ts：已有视频被清空时必须拦截保存，避免无确认删除素材')
 }
-if (!/startTime\s*:\s*form\.startTime(?:,|\s*\n)/.test(course)) {
-  errors.push('useCourseList.ts：startTime 未按原值提交，清空语义可能再次失效')
+if (!/startTime\s*:\s*explicitClear\(form\.startTime\)/.test(course)) {
+  errors.push('useCourseList.ts：startTime 未把 null 收成空串，清空会再次失效')
+}
+for (const field of ['cover', 'targetAudience', 'intro']) {
+  if (!new RegExp(`${field}:\\s*explicitClear\\(form\\.${field}\\)`).test(course)
+      || new RegExp(`${field}:\\s*form\\.${field}\\s*\\|\\|\\s*undefined`).test(course)) {
+    errors.push(`useCourseList.ts：${field} 仍可能把空串吃成 undefined，清空会再次失效`)
+  }
+}
+
+const craft = read('admin/src/composables/useCraftList.ts')
+for (const field of ['cover', 'introEn']) {
+  if (!new RegExp(`${field}:\\s*explicitClear\\(form\\.${field}\\)`).test(craft)
+      || new RegExp(`${field}:\\s*form\\.${field}\\s*\\|\\|\\s*undefined`).test(craft)) {
+    errors.push(`useCraftList.ts：${field} 仍可能把空串吃成 undefined，清空会再次失效`)
+  }
 }
 
 if (errors.length) {

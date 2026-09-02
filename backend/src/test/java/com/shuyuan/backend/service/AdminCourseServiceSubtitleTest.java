@@ -216,6 +216,37 @@ class AdminCourseServiceSubtitleTest {
     }
 
     @Test
+    void update_emptyCoverIntroAndAudience_writesEmptyStrings() {
+        Course existing = new Course();
+        existing.setId(24L);
+        existing.setName("课程");
+        existing.setStatus(0);
+        existing.setCover("covers/old.jpg");
+        existing.setIntro("旧介绍");
+        existing.setTargetAudience("全校");
+        when(courseMapper.selectByIdForUpdate(24L)).thenReturn(existing);
+        when(courseMapper.selectById(24L)).thenReturn(existing);
+        when(courseResourceMapper.selectList(any())).thenReturn(java.util.List.of());
+        when(categoryService.nameMap("course")).thenReturn(java.util.Map.of());
+        CourseSaveRequest req = new CourseSaveRequest();
+        req.setName("课程");
+        req.setCover("");
+        req.setIntro("");
+        req.setTargetAudience("");
+
+        adminCourseService.update(24L, req);
+
+        assertEquals("", existing.getCover());
+        assertEquals("", existing.getIntro());
+        assertEquals("", existing.getTargetAudience());
+        ArgumentCaptor<Course> cap = ArgumentCaptor.forClass(Course.class);
+        verify(courseMapper).updateById(cap.capture());
+        assertEquals("", cap.getValue().getCover());
+        assertEquals("", cap.getValue().getIntro());
+        assertEquals("", cap.getValue().getTargetAudience());
+    }
+
+    @Test
     void updateSubtitle_marksReadyAndClearsPreviousTaskState() {
         Course existing = processingCourse(22L, "videos/a.mp4", "subtitles/old.vtt", "task-live");
         when(courseMapper.selectByIdForUpdate(22L)).thenReturn(existing);

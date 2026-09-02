@@ -18,6 +18,7 @@ import {
 import { fetchResourceOptions } from '@/api/resource'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CourseItem, ResourceOption } from '@/types/api'
+import { explicitClear } from '@/utils/clearableField.mjs'
 import type { CoverFitMode } from '@/utils/cover'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
@@ -176,12 +177,12 @@ export function useCourseList() {
     try {
       const payload = {
         name: form.name,
-        cover: form.cover || undefined,
+        cover: explicitClear(form.cover),
         categoryId: form.categoryId,
-        targetAudience: form.targetAudience || undefined,
+        targetAudience: explicitClear(form.targetAudience),
         durationMinutes: form.durationMinutes,
-        startTime: form.startTime,
-        intro: form.intro || undefined,
+        startTime: explicitClear(form.startTime),
+        intro: explicitClear(form.intro),
         videoUrl: form.videoUrl || undefined,
         resourceIds: form.resourceIds
       }

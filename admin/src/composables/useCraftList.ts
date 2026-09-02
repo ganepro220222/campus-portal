@@ -14,6 +14,7 @@ import {
 import type { CraftImagePayload } from '@/api/craft'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CraftItem } from '@/types/api'
+import { explicitClear } from '@/utils/clearableField.mjs'
 import type { CoverFitMode } from '@/utils/cover'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
@@ -129,10 +130,10 @@ export function useCraftList() {
     try {
       const payload = {
         name: form.name,
-        cover: form.cover || undefined,
+        cover: explicitClear(form.cover),
         categoryId: form.categoryId,
         introZh: form.introZh,
-        introEn: form.introEn || undefined,
+        introEn: explicitClear(form.introEn),
         sort: form.sort,
         images: form.images.filter((img) => img.imageUrl?.trim()),
         contact: {

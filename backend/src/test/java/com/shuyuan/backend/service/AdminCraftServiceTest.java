@@ -120,4 +120,28 @@ class AdminCraftServiceTest {
         assertEquals(0, stored.get().getStatus());
         verify(searchIndexSyncService, never()).syncCraft(any());
     }
+
+    @Test
+    void update_emptyCoverAndIntroEn_writesEmptyStrings() {
+        Craft existing = new Craft();
+        existing.setId(5L);
+        existing.setName("剪纸");
+        existing.setStatus(0);
+        existing.setCover("covers/old.jpg");
+        existing.setIntroEn("old intro");
+        when(craftMapper.selectById(5L)).thenReturn(existing);
+        when(categoryService.nameMap("craft")).thenReturn(java.util.Map.of());
+        when(craftImageMapper.selectList(any())).thenReturn(List.of());
+        when(craftContactMapper.selectById(5L)).thenReturn(null);
+        CraftSaveRequest req = new CraftSaveRequest();
+        req.setName("剪纸");
+        req.setCover("");
+        req.setIntroEn("");
+
+        adminCraftService.update(5L, req);
+
+        assertEquals("", existing.getCover());
+        assertEquals("", existing.getIntroEn());
+        verify(craftMapper).updateById(existing);
+    }
 }

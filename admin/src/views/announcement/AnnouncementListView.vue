@@ -66,6 +66,7 @@
             placeholder="留空表示立即生效"
             format="YYYY-MM-DD HH:mm"
             value-format="YYYY-MM-DD HH:mm"
+            :value-on-clear="''"
             style="width: 100%"
             clearable
           />
@@ -77,6 +78,7 @@
             placeholder="留空表示长期有效"
             format="YYYY-MM-DD HH:mm"
             value-format="YYYY-MM-DD HH:mm"
+            :value-on-clear="''"
             style="width: 100%"
             clearable
           />
@@ -117,6 +119,7 @@ import {
 import type { AnnouncementItem } from '@/types/api'
 import FieldHint from '@/components/FieldHint.vue'
 import { FIELD_HINTS } from '@/utils/field-hints'
+import { explicitClear } from '@/utils/clearableField.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const loading = ref(false)
@@ -190,8 +193,8 @@ async function onSave() {
       linkUrl: form.linkUrl,
       sort: form.sort,
       isScroll: form.isScroll,
-      startTime: form.startTime,
-      endTime: form.endTime,
+      startTime: explicitClear(form.startTime),
+      endTime: explicitClear(form.endTime),
       status: form.status
     }
     if (editingId.value) {

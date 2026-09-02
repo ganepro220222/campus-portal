@@ -38,6 +38,7 @@
           placeholder="选择开课时间"
           format="YYYY-MM-DD HH:mm"
           value-format="YYYY-MM-DD HH:mm"
+          :value-on-clear="''"
           style="width: 100%"
         />
       </el-form-item>

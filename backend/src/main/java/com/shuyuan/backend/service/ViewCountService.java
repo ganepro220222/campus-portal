@@ -3,11 +3,12 @@ package com.shuyuan.backend.service;
 import com.shuyuan.backend.mapper.NewsMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.Set;
 
 /**
  * 浏览量 Redis 计数：INCR + 30 分钟去重，定时批量落库（docs Phase 6）
@@ -20,6 +21,7 @@ public class ViewCountService {
     private static final String VIEW_KEY_PREFIX = "view:";
     private static final String DEDUP_KEY_PREFIX = "viewed:";
     private static final Duration DEDUP_TTL = Duration.ofMinutes(30);
+    private static final long SCAN_BATCH_SIZE = 200;
 
     private final StringRedisTemplate redis;
     private final NewsMapper newsMapper;
@@ -62,36 +64,39 @@ public class ViewCountService {
 
     /** 将 Redis 中待落库的浏览量增量批量写入 MySQL */
     public int flushPendingCounts() {
-        Set<String> keys = redis.keys(VIEW_KEY_PREFIX + "*");
-        if (keys == null || keys.isEmpty()) {
-            return 0;
-        }
         int flushed = 0;
-        for (String key : keys) {
-            if (!key.startsWith(VIEW_KEY_PREFIX)) {
-                continue;
-            }
-            String deltaStr = redis.opsForValue().getAndDelete(key);
-            if (deltaStr == null || deltaStr.isBlank()) {
-                continue;
-            }
-            long delta;
-            try {
-                delta = Long.parseLong(deltaStr);
-            } catch (NumberFormatException e) {
-                log.warn("跳过非法浏览量键：{}={}", key, deltaStr);
-                continue;
-            }
-            if (delta <= 0) {
-                continue;
-            }
-            ViewKey parsed = parseViewKey(key);
-            if (parsed == null) {
-                log.warn("跳过无法解析的浏览量键：{}", key);
-                continue;
-            }
-            if (applyFlush(parsed.type(), parsed.id(), delta)) {
-                flushed++;
+        ScanOptions options = ScanOptions.scanOptions()
+                .match(VIEW_KEY_PREFIX + "*")
+                .count(SCAN_BATCH_SIZE)
+                .build();
+        try (Cursor<String> keys = redis.scan(options)) {
+            while (keys.hasNext()) {
+                String key = keys.next();
+                if (!key.startsWith(VIEW_KEY_PREFIX)) {
+                    continue;
+                }
+                String deltaStr = redis.opsForValue().getAndDelete(key);
+                if (deltaStr == null || deltaStr.isBlank()) {
+                    continue;
+                }
+                long delta;
+                try {
+                    delta = Long.parseLong(deltaStr);
+                } catch (NumberFormatException e) {
+                    log.warn("跳过非法浏览量键：{}={}", key, deltaStr);
+                    continue;
+                }
+                if (delta <= 0) {
+                    continue;
+                }
+                ViewKey parsed = parseViewKey(key);
+                if (parsed == null) {
+                    log.warn("跳过无法解析的浏览量键：{}", key);
+                    continue;
+                }
+                if (applyFlush(parsed.type(), parsed.id(), delta)) {
+                    flushed++;
+                }
             }
         }
         return flushed;

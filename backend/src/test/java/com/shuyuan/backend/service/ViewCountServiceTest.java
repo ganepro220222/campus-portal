@@ -6,11 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -33,6 +34,8 @@ class ViewCountServiceTest {
     private ValueOperations<String, String> valueOps;
     @Mock
     private NewsMapper newsMapper;
+    @Mock
+    private Cursor<String> cursor;
 
     private ViewCountService viewCountService;
 
@@ -79,13 +82,16 @@ class ViewCountServiceTest {
 
     @Test
     void flushPendingCounts_writesNewsDeltaAndClearsKey() {
-        when(redis.keys("view:*")).thenReturn(Set.of("view:news:5"));
+        when(redis.scan(any(ScanOptions.class))).thenReturn(cursor);
+        when(cursor.hasNext()).thenReturn(true, false);
+        when(cursor.next()).thenReturn("view:news:5");
         when(redis.opsForValue()).thenReturn(valueOps);
         when(valueOps.getAndDelete("view:news:5")).thenReturn("4");
         when(newsMapper.incrementViewCount(5L, 4L)).thenReturn(1);
 
         assertEquals(1, viewCountService.flushPendingCounts());
         verify(newsMapper).incrementViewCount(5L, 4L);
+        verify(redis, never()).keys(anyString());
     }
 
     @Test

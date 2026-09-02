@@ -19,9 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * 搜索索引同步（内容发布/下架时调用，与 docs Phase 2 一致）
@@ -30,6 +29,8 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class SearchIndexSyncService {
+
+    private static final int UPSERT_BATCH_SIZE = 200;
 
     private final SearchIndexMapper searchIndexMapper;
     private final NewsMapper newsMapper;
@@ -106,65 +107,54 @@ public class SearchIndexSyncService {
      */
     @Transactional
     public int syncAllPublished() {
-        Set<String> activeKeys = new HashSet<>();
+        List<SearchIndex> activeRows = new ArrayList<>();
 
         List<News> newsList = newsMapper.selectList(new LambdaQueryWrapper<News>()
                 .eq(News::getStatus, "published"));
         for (News news : newsList) {
-            syncNews(news);
-            activeKeys.add(indexKey("news", news.getId()));
+            activeRows.add(indexRow("news", news.getId(), news.getTitle(),
+                    news.getSummary(), news.getCover(), news.getPublishTime()));
         }
 
         List<Hall> halls = hallMapper.selectList(new LambdaQueryWrapper<Hall>()
                 .eq(Hall::getStatus, 1));
         for (Hall hall : halls) {
-            syncHall(hall);
-            activeKeys.add(indexKey("hall", hall.getId()));
+            activeRows.add(indexRow("hall", hall.getId(), hall.getName(),
+                    hall.getIntro(), hall.getCover(), LocalDateTime.now()));
         }
 
         List<Course> courses = courseMapper.selectList(new LambdaQueryWrapper<Course>()
                 .eq(Course::getStatus, 1));
         for (Course course : courses) {
-            syncCourse(course);
-            activeKeys.add(indexKey("course", course.getId()));
+            activeRows.add(indexRow("course", course.getId(), course.getName(),
+                    course.getIntro(), course.getCover(), course.getStartTime()));
         }
 
         List<Craft> crafts = craftMapper.selectList(new LambdaQueryWrapper<Craft>()
                 .eq(Craft::getStatus, 1));
         for (Craft craft : crafts) {
-            syncCraft(craft);
-            activeKeys.add(indexKey("craft", craft.getId()));
+            activeRows.add(indexRow("craft", craft.getId(), craft.getName(),
+                    craft.getIntroZh(), craft.getCover(), craft.getCreateTime()));
         }
 
         List<Resource> resources = resourceMapper.selectList(new LambdaQueryWrapper<Resource>()
                 .eq(Resource::getStatus, 1));
         for (Resource resource : resources) {
-            syncResource(resource);
-            activeKeys.add(indexKey("resource", resource.getId()));
+            String summary = resource.getFileType() != null
+                    ? resource.getFileType().toUpperCase() + " 学习资料"
+                    : "学习资料";
+            activeRows.add(indexRow("resource", resource.getId(), resource.getName(),
+                    summary, null, resource.getCreateTime()));
         }
 
-        int disabled = disableStaleEntries(activeKeys);
-        log.info("search_index 全量同步完成：活跃 {} 条，下架 {} 条", activeKeys.size(), disabled);
-        return activeKeys.size();
-    }
-
-    private int disableStaleEntries(Set<String> activeKeys) {
-        List<SearchIndex> enabled = searchIndexMapper.selectList(new LambdaQueryWrapper<SearchIndex>()
-                .eq(SearchIndex::getStatus, 1));
-        int disabled = 0;
-        for (SearchIndex row : enabled) {
-            String key = indexKey(row.getTargetType(), row.getTargetId());
-            if (!activeKeys.contains(key)) {
-                row.setStatus(0);
-                searchIndexMapper.updateById(row);
-                disabled++;
-            }
+        int reset = searchIndexMapper.disableAllEnabled();
+        for (int from = 0; from < activeRows.size(); from += UPSERT_BATCH_SIZE) {
+            int to = Math.min(from + UPSERT_BATCH_SIZE, activeRows.size());
+            searchIndexMapper.upsertBatch(activeRows.subList(from, to));
         }
-        return disabled;
-    }
-
-    private static String indexKey(String type, Long id) {
-        return type + ":" + id;
+        log.info("search_index 全量同步完成：活跃 {} 条，刷新前启用 {} 条",
+                activeRows.size(), reset);
+        return activeRows.size();
     }
 
     private void upsert(String type, Long targetId, String title, String summary,
@@ -191,6 +181,19 @@ public class SearchIndexSyncService {
             row.setStatus(1);
             searchIndexMapper.insert(row);
         }
+    }
+
+    private SearchIndex indexRow(String type, Long targetId, String title, String summary,
+                                 String cover, LocalDateTime publishTime) {
+        SearchIndex row = new SearchIndex();
+        row.setTargetType(type);
+        row.setTargetId(targetId);
+        row.setTitle(title != null ? title : "");
+        row.setSummary(summary);
+        row.setCover(cover);
+        row.setPublishTime(publishTime != null ? publishTime : LocalDateTime.now());
+        row.setStatus(1);
+        return row;
     }
 
     private void disable(String type, Long targetId) {

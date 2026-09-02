@@ -131,6 +131,9 @@ jobs:
       - name: Content save permission and form contract check
         run: npm run check:content-save-guards
 
+      - name: Performance regression guard check
+        run: npm run check:performance-guards
+
       - name: Press feedback check
         run: npm run check:press-feedback
 

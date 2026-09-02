@@ -2,6 +2,12 @@ spring:
   profiles:
     # 本地默认 dev；staging/prod 通过环境变量 SPRING_PROFILES_ACTIVE 注入
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  task:
+    scheduling:
+      # 调度任务分池并行，避免统计/清理长任务阻塞订阅消息与 ASR 轮询。
+      pool:
+        size: ${SCHEDULING_POOL_SIZE:4}
+      thread-name-prefix: shuyuan-scheduling-
   servlet:
     multipart:
       max-file-size: 200MB

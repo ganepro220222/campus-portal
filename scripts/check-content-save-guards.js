@@ -65,6 +65,13 @@ if (/subtitleUrl\s*:\s*form\.subtitleUrl/.test(course)
     || !/await updateSubtitle\(/.test(course)) {
   errors.push('useCourseList.ts：主保存未保持“课程成功后保存脏字幕”的契约')
 }
+if (!/videoSavedUrl/.test(course)
+    || !/videoSavedUrl\.value\.trim\(\)\s*&&\s*!form\.videoUrl\.trim\(\)/.test(course)) {
+  errors.push('useCourseList.ts：已有视频被清空时必须拦截保存，避免无确认删除素材')
+}
+if (!/startTime\s*:\s*form\.startTime(?:,|\s*\n)/.test(course)) {
+  errors.push('useCourseList.ts：startTime 未按原值提交，清空语义可能再次失效')
+}
 
 if (errors.length) {
   console.error('check-content-save-guards 失败：')

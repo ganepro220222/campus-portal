@@ -39,6 +39,7 @@ public class SubscribeService {
 
     public static final String SCENE_ENROLL_SUCCESS = "enroll_success";
     public static final String SCENE_ENROLL_APPROVED = "enroll_approved";
+    /** V1.x 预留消费场景；V1.0 尚无小程序授权入口和定时入队任务。 */
     public static final String SCENE_ACTIVITY_REMIND = "activity_remind";
 
     private static final String SEND_URL =

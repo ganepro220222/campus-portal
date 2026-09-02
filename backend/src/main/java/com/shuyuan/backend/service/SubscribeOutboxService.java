@@ -19,6 +19,9 @@ import java.util.List;
 
 /**
  * 微信订阅消息发件箱：与业务同事务写入，后台 worker 可靠投递。
+ *
+ * <p>V1.0 只入队报名成功/审核通过；activity_remind 的消费分支是 V1.x 预留，
+ * 尚未实现授权入口与定时入队，不能当作已上线功能。
  */
 @Slf4j
 @Service

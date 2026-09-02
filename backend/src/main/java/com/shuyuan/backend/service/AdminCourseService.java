@@ -103,6 +103,12 @@ public class AdminCourseService {
             prepareManualSubtitleInMemory(course);
         }
         courseMapper.updateById(course);
+        if (req.getStartTime() != null && req.getStartTime().isBlank()) {
+            // updateById 默认忽略 null；空串表达“清除开课时间”时必须显式 SET NULL。
+            courseMapper.update(null, new LambdaUpdateWrapper<Course>()
+                    .eq(Course::getId, id)
+                    .set(Course::getStartTime, null));
+        }
         if (subtitleMutation != SubtitleMutation.NONE) {
             persistSubtitleMutation(id, course, subtitleMutation);
         }

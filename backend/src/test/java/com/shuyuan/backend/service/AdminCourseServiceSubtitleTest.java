@@ -194,6 +194,28 @@ class AdminCourseServiceSubtitleTest {
     }
 
     @Test
+    void update_blankStartTime_explicitlyClearsDatabaseColumn() {
+        Course existing = new Course();
+        existing.setId(23L);
+        existing.setName("课程");
+        existing.setStatus(0);
+        existing.setStartTime(java.time.LocalDateTime.of(2026, 9, 1, 9, 0));
+        when(courseMapper.selectByIdForUpdate(23L)).thenReturn(existing);
+        when(courseMapper.selectById(23L)).thenReturn(existing);
+        when(courseResourceMapper.selectList(any())).thenReturn(java.util.List.of());
+        when(categoryService.nameMap("course")).thenReturn(java.util.Map.of());
+        CourseSaveRequest req = new CourseSaveRequest();
+        req.setName("课程");
+        req.setStartTime("");
+
+        adminCourseService.update(23L, req);
+
+        ArgumentCaptor<LambdaUpdateWrapper<Course>> cap = updateCaptor();
+        verify(courseMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "start_time", null);
+    }
+
+    @Test
     void updateSubtitle_marksReadyAndClearsPreviousTaskState() {
         Course existing = processingCourse(22L, "videos/a.mp4", "subtitles/old.vtt", "task-live");
         when(courseMapper.selectByIdForUpdate(22L)).thenReturn(existing);

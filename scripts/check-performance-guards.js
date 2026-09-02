@@ -40,9 +40,20 @@ if (!/disableAllEnabled\(/.test(searchSync) || !/upsertBatch\(/.test(searchSync)
   errors.push('SearchIndexSyncService：全量同步必须保持集合式禁用与批量 upsert')
 }
 
+const activity = read('backend/src/main/java/com/shuyuan/backend/service/ActivityService.java')
+if (!/MAX_PAGE_SIZE\s*=\s*100/.test(activity)
+    || !/Math\.min\(size,\s*MAX_PAGE_SIZE\)/.test(activity)) {
+  errors.push('ActivityService：公开活动分页必须限制单页最多 100 条')
+}
+
 const appConfig = read('backend/src/main/resources/application.yaml')
 if (!/scheduling:[\s\S]{0,180}size:\s*\$\{SCHEDULING_POOL_SIZE:4\}/.test(appConfig)) {
   errors.push('application.yaml：定时任务线程池默认值必须保持为 4 且可配置')
+}
+
+const compose = read('docker-compose.dev.yml')
+if (!/backend:[\s\S]*?logging:[\s\S]*?max-size:\s*"50m"[\s\S]*?max-file:\s*"5"/.test(compose)) {
+  errors.push('docker-compose.dev.yml：backend 容器日志必须保持 50m × 5 轮转上限')
 }
 
 if (errors.length) {

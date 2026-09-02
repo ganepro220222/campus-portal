@@ -20,17 +20,22 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ActivityService {
 
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final ActivityMapper activityMapper;
     private final EnrollService enrollService;
     private final EventLogService eventLogService;
 
     public PageResult<Map<String, Object>> list(int page, int size) {
-        Page<Activity> p = activityMapper.selectPage(new Page<>(page, size),
+        int safePage = Math.max(1, page);
+        int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
+        Page<Activity> p = activityMapper.selectPage(new Page<>(safePage, safeSize),
                 new LambdaQueryWrapper<Activity>()
                         .eq(Activity::getStatus, "published")
                         .orderByDesc(Activity::getStartTime));
         List<Map<String, Object>> records = p.getRecords().stream().map(this::toListVo).toList();
-        return new PageResult<>(records, p.getTotal(), page, size);
+        return new PageResult<>(records, p.getTotal(), safePage, safeSize);
     }
 
     public Map<String, Object> detail(Long id) {

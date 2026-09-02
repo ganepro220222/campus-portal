@@ -50,6 +50,7 @@ export function useCourseList() {
   })
   const subtitleUrlInput = ref('')
   const subtitleSavedUrl = ref('')
+  const videoSavedUrl = ref('')
   const subtitleTriggering = ref(false)
   const subtitleSaving = ref(false)
 
@@ -122,6 +123,7 @@ export function useCourseList() {
     form.resourceIds = []
     subtitleUrlInput.value = ''
     subtitleSavedUrl.value = ''
+    videoSavedUrl.value = ''
     subtitleInfo.value = {
       courseId: 0,
       subtitleStatus: 'none',
@@ -147,6 +149,7 @@ export function useCourseList() {
       form.startTime = detail.startTime || ''
       form.intro = detail.intro || ''
       form.videoUrl = detail.videoUrl || ''
+      videoSavedUrl.value = form.videoUrl
       form.resourceIds = detail.resourceIds || []
       subtitleInfo.value = await fetchSubtitleStatus(row.id)
       const currentSubtitleUrl = subtitleInfo.value.subtitleUrl || detail.subtitleUrl || ''
@@ -161,6 +164,10 @@ export function useCourseList() {
     const pendingSubtitleUrl = subtitleUrlInput.value.trim()
     const subtitleDirty = Boolean(editingId.value)
       && pendingSubtitleUrl !== subtitleSavedUrl.value.trim()
+    if (editingId.value && videoSavedUrl.value.trim() && !form.videoUrl.trim()) {
+      ElMessage.warning('视频已清空但尚未选择替代文件，请上传新视频或取消本次变更')
+      return
+    }
     if (subtitleDirty && !pendingSubtitleUrl) {
       ElMessage.warning('字幕已清空但尚未选择替代文件，请上传新字幕或取消本次变更')
       return
@@ -173,13 +180,14 @@ export function useCourseList() {
         categoryId: form.categoryId,
         targetAudience: form.targetAudience || undefined,
         durationMinutes: form.durationMinutes,
-        startTime: form.startTime || undefined,
+        startTime: form.startTime,
         intro: form.intro || undefined,
         videoUrl: form.videoUrl || undefined,
         resourceIds: form.resourceIds
       }
       if (editingId.value) {
         await updateCourse(editingId.value, payload)
+        videoSavedUrl.value = form.videoUrl.trim()
         if (subtitleDirty) {
           subtitleSaving.value = true
           try {

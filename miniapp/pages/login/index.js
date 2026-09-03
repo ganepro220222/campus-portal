@@ -91,7 +91,7 @@ Page({
           bindMode: true,
           wxBindToken: data.wxBindToken || ''
         })
-        wx.showToast({ title: '请绑定学号', icon: 'none' })
+        wx.showToast({ title: '请绑定账号', icon: 'none' })
         return
       }
       this._afterLogin(data)
@@ -105,7 +105,7 @@ Page({
   async onBindWxAccount() {
     const { studentNo, password, wxBindToken } = this.data
     if (!wxBindToken) return wx.showToast({ title: '请重新微信登录', icon: 'none' })
-    if (!studentNo.trim()) return wx.showToast({ title: '请输入学号/账号', icon: 'none' })
+    if (!studentNo.trim()) return wx.showToast({ title: '请输入账号', icon: 'none' })
     if (!password) return wx.showToast({ title: '请输入密码', icon: 'none' })
     if (this.data.loading) return
     this.setData({ loading: true })
@@ -121,7 +121,7 @@ Page({
 
   async onAccountLogin() {
     const { studentNo, password } = this.data
-    if (!studentNo.trim()) return wx.showToast({ title: '请输入学号/账号', icon: 'none' })
+    if (!studentNo.trim()) return wx.showToast({ title: '请输入账号', icon: 'none' })
     if (!password) return wx.showToast({ title: '请输入密码', icon: 'none' })
     if (this.data.loading) return
     this.setData({ loading: true })

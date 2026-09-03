@@ -47,7 +47,7 @@
         <view class="field-ic"><icon name="user" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
           class="field-input {{focusField === 'studentNo' ? 'on' : ''}}"
-          placeholder="请输入学号 / 账号"
+          placeholder="请输入账号"
           placeholder-class="field-ph"
           value="{{studentNo}}"
           data-field="studentNo"

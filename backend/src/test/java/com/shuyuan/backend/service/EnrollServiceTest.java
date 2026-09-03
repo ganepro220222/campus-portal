@@ -202,11 +202,69 @@ class EnrollServiceTest {
 
         when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
         when(enrollMapper.selectOne(any())).thenReturn(enroll);
+        when(enrollMapper.casCancelActive(20L)).thenReturn(1);
 
         enrollService.cancelEnroll(ACTIVITY_ID);
 
-        verify(enrollMapper).updateById(argThat((Enroll e) -> "cancelled".equals(e.getStatus())));
+        verify(enrollMapper).casCancelActive(20L);
+        verify(enrollMapper, never()).updateById(any(Enroll.class));
         verify(activityMapper).decrEnrolledCount(ACTIVITY_ID);
+    }
+
+    @Test
+    void cancelEnroll_secondInFlightCasMissDoesNotReleaseQuotaTwice() {
+        Activity activity = publishedActivity(10, 5);
+        Enroll enroll = new Enroll();
+        enroll.setId(20L);
+        enroll.setMemberId(MEMBER_ID);
+        enroll.setActivityId(ACTIVITY_ID);
+        enroll.setStatus("approved");
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(enroll);
+        when(enrollMapper.casCancelActive(20L)).thenReturn(1, 0);
+
+        enrollService.cancelEnroll(ACTIVITY_ID);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.cancelEnroll(ACTIVITY_ID));
+        assertEquals(409, ex.getCode());
+        verify(activityMapper, times(1)).decrEnrolledCount(ACTIVITY_ID);
+        verify(messageService, times(1)).create(eq(MEMBER_ID), eq("报名已取消"), anyString(),
+                eq("enroll"), eq("activity"), eq(ACTIVITY_ID));
+    }
+
+    @Test
+    void cancelEnroll_rejectsAlreadyCancelled() {
+        Activity activity = publishedActivity(10, 5);
+        Enroll enroll = new Enroll();
+        enroll.setId(20L);
+        enroll.setStatus("cancelled");
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(enroll);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.cancelEnroll(ACTIVITY_ID));
+        assertEquals(404, ex.getCode());
+        verify(enrollMapper, never()).casCancelActive(anyLong());
+        verify(activityMapper, never()).decrEnrolledCount(anyLong());
+    }
+
+    @Test
+    void cancelEnroll_rejectsRejected() {
+        Activity activity = publishedActivity(10, 5);
+        Enroll enroll = new Enroll();
+        enroll.setId(20L);
+        enroll.setStatus("rejected");
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(enroll);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.cancelEnroll(ACTIVITY_ID));
+        assertEquals(400, ex.getCode());
+        verify(enrollMapper, never()).casCancelActive(anyLong());
+        verify(activityMapper, never()).decrEnrolledCount(anyLong());
     }
 
     @Test

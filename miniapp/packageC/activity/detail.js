@@ -2,6 +2,7 @@
 const { get, del } = require('../../utils/request')
 const { requireLogin } = require('../../utils/auth')
 const { decorateActivities } = require('../../utils/decorate')
+const { canStartCancelEnroll } = require('../../utils/activity')
 const {
   buildDetailLoadedView,
   buildDetailInitialFailurePatch,
@@ -24,7 +25,8 @@ Page({
     isLoggedIn: false,
     actionType: 'loading',
     actionHint: '',
-    statusLabel: ''
+    statusLabel: '',
+    cancelling: false
   },
 
   onLoad(opts) {
@@ -94,19 +96,26 @@ Page({
   },
 
   async onCancelTap() {
-    const { activityId, detail } = this.data
+    const { activityId, detail, cancelling } = this.data
     if (!activityId || !detail) return
+    if (!canStartCancelEnroll(this._cancelling || cancelling)) return
     wx.showModal({
       title: '取消报名',
       content: '确定取消本次活动报名？名额将释放给其他同学。',
       success: async (res) => {
         if (!res.confirm) return
+        if (!canStartCancelEnroll(this._cancelling || this.data.cancelling)) return
+        this._cancelling = true
+        this.setData({ cancelling: true })
         try {
           await del(`/activities/${activityId}/enroll`)
           wx.showToast({ title: '已取消报名', icon: 'success' })
-          this._loadDetail(activityId, { showLoading: false, silent: true })
+          await this._loadDetail(activityId, { showLoading: false, silent: true })
         } catch (e) {
           // 错误 toast 由 request.js 处理
+        } finally {
+          this._cancelling = false
+          this.setData({ cancelling: false })
         }
       }
     })

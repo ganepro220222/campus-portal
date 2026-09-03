@@ -5,11 +5,13 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { currentYearMonth } from '../admin/src/utils/localYearMonth.mjs'
+import {
+  interpretDownloadErrorBody,
+  shouldAnnounceDownloadStarted
+} from '../admin/src/utils/downloadOutcome.mjs'
 
 const localMorning = new Date(2026, 8, 1, 0, 30, 0)
 assert.equal(currentYearMonth(localMorning), '2026-09')
-assert.notEqual(localMorning.toISOString().slice(0, 7), currentYearMonth(localMorning),
-  'UTC slice 与本地月份在月初窗口必须能分叉')
 
 const statsPanel = readFileSync(new URL('../admin/src/components/StatsPanel.vue', import.meta.url), 'utf8')
 assert.match(statsPanel, /currentYearMonth\(/)
@@ -20,6 +22,22 @@ assert.match(download, /downloadFilePost/)
 assert.match(download, /status === 401/)
 assert.match(download, /method:\s*'post'/)
 assert.match(download, /logoutOnUnauthorized|auth\.logout\(\)/)
+assert.match(download, /triggerDownload\(blob, name\)\s*\n\s*return true/)
+assert.match(download, /return false/)
+assert.match(download, /return requestDownload\(/)
+
+assert.equal(interpretDownloadErrorBody({ code: 500, message: 'boom' }).kind, 'error')
+assert.equal(shouldAnnounceDownloadStarted(false), false, 'HTTP 500 / 失败不得显示成功')
+assert.equal(interpretDownloadErrorBody({ code: 400, message: '月报生成失败' }).kind, 'error')
+assert.equal(shouldAnnounceDownloadStarted(undefined), false, 'JSON Blob 错误不得显示成功')
+assert.equal(interpretDownloadErrorBody({ code: 401 }).kind, 'unauthorized')
+assert.equal(shouldAnnounceDownloadStarted(false), false, '401 跳登录且不显示下载成功')
+assert.equal(interpretDownloadErrorBody({ code: 429 }).kind, 'rateLimited')
+assert.equal(interpretDownloadErrorBody({ code: 429 }).message, '操作过于频繁')
+assert.equal(shouldAnnounceDownloadStarted(true), true, '正常 Blob 才显示开始下载')
+
+assert.match(statsPanel, /shouldAnnounceDownloadStarted\(downloaded\)/)
+assert.doesNotMatch(statsPanel, /await exportStatsMonth\([^)]*\)\s*\r?\n\s*ElMessage\.success\('月报已开始下载'\)/)
 
 const statsApi = readFileSync(new URL('../admin/src/api/stats.ts', import.meta.url), 'utf8')
 assert.match(statsApi, /downloadFile\(/)

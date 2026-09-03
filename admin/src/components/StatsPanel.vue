@@ -60,6 +60,7 @@ import {
 } from '@/api/stats'
 import type { StatsContentTopItem, StatsOverview } from '@/types/api'
 import { useAuthStore } from '@/stores/auth'
+import { shouldAnnounceDownloadStarted } from '@/utils/downloadOutcome.mjs'
 import { currentYearMonth } from '@/utils/localYearMonth.mjs'
 
 const auth = useAuthStore()
@@ -170,10 +171,10 @@ async function renderModules(data: { moduleLabel: string; count: number }[]) {
 async function onExport() {
   exporting.value = true
   try {
-    await exportStatsMonth(exportMonth.value)
-    ElMessage.success('月报已开始下载')
-  } catch {
-    ElMessage.error('导出失败')
+    const downloaded = await exportStatsMonth(exportMonth.value)
+    if (shouldAnnounceDownloadStarted(downloaded)) {
+      ElMessage.success('月报已开始下载')
+    }
   } finally {
     exporting.value = false
   }

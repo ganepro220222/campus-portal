@@ -79,12 +79,12 @@
         <button class="btn-disabled" disabled>{{actionHint}}</button>
       </block>
       <block wx:elif="{{actionType === 'pending'}}">
-        <button wx:if="{{detail.canCancel !== false}}" class="btn-outline" bindtap="onCancelTap">取消报名</button>
+        <button wx:if="{{detail.canCancel !== false}}" class="btn-outline" disabled="{{cancelling}}" bindtap="onCancelTap">{{cancelling ? '取消中…' : '取消报名'}}</button>
         <button wx:else class="btn-disabled" disabled>{{detail.cancelHint || '当前无法取消报名'}}</button>
       </block>
       <block wx:elif="{{actionType === 'approved'}}">
         <button class="btn-outline" bindtap="onVoucherTap">查看凭证</button>
-        <button wx:if="{{detail.canCancel !== false}}" class="btn-primary btn-half" bindtap="onCancelTap">取消报名</button>
+        <button wx:if="{{detail.canCancel !== false}}" class="btn-primary btn-half" disabled="{{cancelling}}" bindtap="onCancelTap">{{cancelling ? '取消中…' : '取消报名'}}</button>
       </block>
       <block wx:elif="{{actionType === 'rejected'}}">
         <button class="btn-primary" bindtap="onEnrollTap">重新报名</button>

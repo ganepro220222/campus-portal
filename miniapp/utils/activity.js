@@ -77,6 +77,14 @@ function hasActiveEnroll(detail) {
   return st === 'pending' || st === 'approved'
 }
 
+function canStartCancelEnroll(cancelling) {
+  return !cancelling
+}
+
+function cancelEnrollButtonText(cancelling) {
+  return cancelling ? '取消中…' : '取消报名'
+}
+
 /** 底部操作区类型 */
 function resolveDetailAction(detail, isLoggedIn) {
   if (!detail) return { actionType: 'loading', hint: '' }
@@ -108,5 +116,7 @@ module.exports = {
   enrollStatusLabel,
   hasActiveEnroll,
   resolveDetailAction,
+  canStartCancelEnroll,
+  cancelEnrollButtonText,
   ENROLL_STATUS
 }

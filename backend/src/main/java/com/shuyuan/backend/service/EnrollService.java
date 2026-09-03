@@ -122,10 +122,10 @@ public class EnrollService {
             throw new BusinessException(400, "该报名已被拒绝，无法取消");
         }
 
-        Enroll update = new Enroll();
-        update.setId(enroll.getId());
-        update.setStatus("cancelled");
-        enrollMapper.updateById(update);
+        int affected = enrollMapper.casCancelActive(enroll.getId());
+        if (affected == 0) {
+            throw new BusinessException(409, "报名状态已变化，请刷新");
+        }
         activityMapper.decrEnrolledCount(activityId);
 
         createMessage(memberId, "报名已取消", "您已取消活动「" + activity.getTitle() + "」的报名。", "enroll", "activity", activityId);

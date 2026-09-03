@@ -3,12 +3,16 @@
  * 运行：node miniapp/utils/activity.test.js
  */
 const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 const {
   resolveEmptyActivityDetail,
   mergeActivityDetail,
   hasActiveEnroll,
   enrollStatusLabel,
-  resolveDetailAction
+  resolveDetailAction,
+  canStartCancelEnroll,
+  cancelEnrollButtonText
 } = require('./activity')
 
 assert.strictEqual(resolveEmptyActivityDetail(false), null)
@@ -54,5 +58,17 @@ assert.strictEqual(action({ enrollStatus: 'rejected', full: false, canEnroll: fa
 assert.strictEqual(action({ enrollStatus: 'pending', canCancel: false, cancelHint: '活动已经开始，无法取消报名' }).actionType, 'disabled')
 assert.strictEqual(action({ enrollStatus: 'pending', canCancel: true }).actionType, 'pending')
 assert.strictEqual(action({ enrollStatus: 'approved', canCancel: true }).actionType, 'approved')
+
+assert.strictEqual(canStartCancelEnroll(false), true)
+assert.strictEqual(canStartCancelEnroll(true), false)
+assert.strictEqual(cancelEnrollButtonText(false), '取消报名')
+assert.strictEqual(cancelEnrollButtonText(true), '取消中…')
+
+const detailJs = fs.readFileSync(path.join(__dirname, '../packageC/activity/detail.js'), 'utf8')
+assert.match(detailJs, /canStartCancelEnroll\(this\._cancelling/)
+assert.match(detailJs, /this\._cancelling = true/)
+const detailWxml = fs.readFileSync(path.join(__dirname, '../packageC/activity/detail.wxml'), 'utf8')
+assert.match(detailWxml, /取消中…/)
+assert.match(detailWxml, /disabled="\{\{cancelling\}\}"/)
 
 console.log('[activity.test] PASS')

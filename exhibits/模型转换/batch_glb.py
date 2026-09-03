@@ -137,6 +137,10 @@ def _finalize_output(
     final_path = os.path.join(out_dir, out_name)
 
     if os.path.exists(final_path) and not overwrite:
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass
         return None, out_name, f"输出已存在：{out_name}（加 --overwrite 覆盖）"
 
     shutil.move(temp_path, final_path)
@@ -275,7 +279,8 @@ def process_one(
             return result
 
         final_path, out_name, fin_err = _finalize_output(temp_path, stem, out_dir, overwrite)
-        temp_path = ""  # 已 move，无需清理
+        if not fin_err:
+            temp_path = ""
         if fin_err:
             result["状态"] = "失败"
             result["备注"] = fin_err

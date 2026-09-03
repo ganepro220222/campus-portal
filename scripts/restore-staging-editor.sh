@@ -46,6 +46,7 @@ for f in \
   exhibits/studio.html \
   exhibits/_server/api.php \
   exhibits/pano-check.mjs \
+  exhibits/studio-static-path.mjs \
   exhibits/exhibit-create.mjs \
   exhibits/studio-batch.mjs \
   exhibits/leader-geom.js; do

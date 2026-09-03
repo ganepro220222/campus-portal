@@ -863,6 +863,22 @@ test.describe('全景就绪超时', () => {
   })
 })
 
+test.describe('hotspot config', () => {
+  test('illegal hotspot position shows error instead of infinite loading', async ({ browser }) => {
+    const page = await browser.newPage()
+    await injectCfg(page, {
+      hotspots: [{ id: 'bad', position: { x: 1 }, i18n: { zh: { title: 'X', content: 'x' } } }],
+    })
+    await page.goto('/player.html?ex=craft-001', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('#error:not([hidden])', { timeout: 90_000 })
+    await expect(page.locator('#err-text')).toContainText('展品配置无法解析')
+    await expect(page.locator('#loading')).toHaveAttribute('hidden', '')
+    expect(await page.evaluate(() => window.__SY_PLAYER?.ready)).toBe(false)
+    await releaseWebGL(page)
+    await page.close()
+  })
+})
+
 test.describe('boot timeout', () => {
   test('config fetch pending shows timeout error and retry button', async ({ browser }) => {
     const page = await browser.newPage()

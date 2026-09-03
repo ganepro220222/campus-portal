@@ -14,7 +14,7 @@ if not OUT.is_absolute():
 
 EXCLUDE_ANY_DIRS = frozenset({
     'node_modules', 'e2e', 'test-results', 'playwright-report', 'blob-report',
-    '__pycache__', '_dev',
+    '__pycache__', '_dev', '_staging-editor-pack',
 })
 
 # 仅排除模型转换器 EXE 构建产物，不误伤展品 assets/build、assets/dist 等常见目录名

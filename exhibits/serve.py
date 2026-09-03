@@ -5,7 +5,8 @@ exhibits 本地工作台服务（纯 Python 标准库，与 studio-server.mjs �
   python serve.py [port]
 
 环境变量（可选）:
-  PORT, STUDIO_USER, STUDIO_PASS
+  PORT, STUDIO_USER, STUDIO_PASS, STUDIO_BIND
+  设了 STUDIO_PASS 时必须同时 STUDIO_BIND=127.0.0.1（公网只走反代）
 
 提供：静态托管 + /studio-api/list + /studio-api/save + player.html 注入 __SAVE_API__
 """
@@ -105,6 +106,46 @@ def identity_payload(root: Path) -> dict:
 
 
 from pano_check import asset_fingerprint, has_asset_file, list_panorama_candidates, check_panorama_path_availability
+
+# 与 studio-static-path.mjs 同一套静态守卫；改算法请同步改 Node。
+STATIC_UNDERSCORE_ALLOW = frozenset({'_panoramas'})
+_AUTH_FAIL: dict[str, tuple[int, float]] = {}
+
+
+def decode_static_rel(url_path: str) -> str:
+    rel = (url_path or '').lstrip('/') or 'studio.html'
+    if rel.endswith('/'):
+        rel += 'index.html'
+    return rel
+
+
+def deny_static_rel_reason(rel: str) -> str:
+    parts = [p for p in rel.replace('\\', '/').split('/') if p]
+    if any(p == '..' for p in parts):
+        return 'traversal'
+    if any(p.startswith('.') for p in parts):
+        return 'hidden'
+    if any(p.startswith('_') and p not in STATIC_UNDERSCORE_ALLOW for p in parts):
+        return 'private'
+    return ''
+
+
+def is_resolved_inside_root(root: Path, full: Path) -> bool:
+    try:
+        full.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def auth_fail_delay_s(ip: str) -> float:
+    now = time.time()
+    n, t0 = _AUTH_FAIL.get(ip, (0, now))
+    if now - t0 > 60:
+        n, t0 = 0, now
+    n += 1
+    _AUTH_FAIL[ip] = (n, t0)
+    return min(2.0, 0.08 * n)
 
 ROOT_HASH = compute_root_hash(ROOT)
 
@@ -215,6 +256,7 @@ class Handler(SimpleHTTPRequestHandler):
             return False
         auth = self.headers.get('Authorization', '')
         if not auth.startswith('Basic '):
+            time.sleep(auth_fail_delay_s(self.client_address[0] if self.client_address else ''))
             self.send_response(401)
             self.send_header('WWW-Authenticate', 'Basic realm="3D Studio", charset="UTF-8"')
             self.end_headers()
@@ -225,7 +267,9 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception:
             u, p = '', ''
         if u == USER and p == PASS:
+            _AUTH_FAIL.pop(self.client_address[0] if self.client_address else '', None)
             return True
+        time.sleep(auth_fail_delay_s(self.client_address[0] if self.client_address else ''))
         self.send_response(401)
         self.send_header('WWW-Authenticate', 'Basic realm="3D Studio", charset="UTF-8"')
         self.end_headers()
@@ -272,11 +316,12 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(200, {'availability': availability, 'exists': availability is True})
             except Exception as e:
                 return self._json(500, {'error': str(e)})
-        rel = p.lstrip('/') or 'studio.html'
-        if rel.endswith('/'):
-            rel += 'index.html'
+        rel = decode_static_rel(p)
+        if deny_static_rel_reason(rel):
+            self.send_error(403)
+            return
         full = (ROOT / rel).resolve()
-        if not str(full).startswith(str(ROOT.resolve())):
+        if not is_resolved_inside_root(ROOT, full):
             self.send_error(403)
             return
         if not full.is_file():
@@ -351,7 +396,9 @@ if __name__ == '__main__':
         else:
             print('ERROR: STUDIO_PASS not set. Set STUDIO_PASS or STUDIO_ALLOW_INSECURE=1 for local dev.', file=sys.stderr)
             raise SystemExit(1)
-    bind_host = '127.0.0.1' if (not PASS and os.environ.get('STUDIO_ALLOW_INSECURE') == '1') else ''
+    bind_host = os.environ.get('STUDIO_BIND') or (
+        '127.0.0.1' if (not PASS and os.environ.get('STUDIO_ALLOW_INSECURE') == '1') else ''
+    )
     attempts = port_attempts(PORT, fallback_enabled())
     last_err = None
     for i, port in enumerate(attempts):

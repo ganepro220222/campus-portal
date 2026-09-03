@@ -286,6 +286,20 @@ def _():
         eq(captured, [True])
 
 
+@test("输出已存在且未 overwrite 时清理临时 GLB")
+def _():
+    with tempfile.TemporaryDirectory() as inp, tempfile.TemporaryDirectory() as out:
+        src = os.path.join(inp, "dup.glb")
+        _make_box_glb(src, metallic=1.0)
+        r1 = process_one(src, inp, out, None, 85, "auto", True, False, True, "auto", 0.37, True, True)
+        ok(r1["状态"].startswith("成功"), r1.get("备注"))
+        r2 = process_one(src, inp, out, None, 85, "auto", True, False, False, "auto", 0.37, True, True)
+        eq(r2["状态"], "失败")
+        ok("输出已存在" in r2["备注"], r2.get("备注"))
+        leftovers = [n for n in os.listdir(out) if n.startswith(".tmp_")]
+        eq(leftovers, [])
+
+
 @test("empty_result 与 RESULT_FIELDS 一致")
 def _():
     import batch_glb

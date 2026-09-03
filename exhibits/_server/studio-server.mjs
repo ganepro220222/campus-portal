@@ -24,6 +24,7 @@ import { createExhibit } from '../exhibit-create.mjs'
 import { assetFingerprint, hasAssetFile, listPanoramaCandidates, checkPanoramaPathAvailability } from '../pano-check.mjs'
 import { exhibitPublicHref } from '../exhibit-asset-cdn.mjs'
 import { portAttempts, isFallbackEnabled, isPortUnavailableError, writePortFile, removePortFile } from '../studio-port.mjs'
+import { decodeStaticRel, denyStaticRelReason, isResolvedInsideRoot } from '../studio-static-path.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
 const ROOT_HASH = computeRootHash(ROOT)
@@ -51,6 +52,28 @@ function authDisabled() {
   return !PASS && process.env.STUDIO_ALLOW_INSECURE === '1'
 }
 
+const AUTH_FAIL = new Map()
+function authFailDelayMs(req) {
+  const ip = req.socket.remoteAddress || ''
+  const now = Date.now()
+  let b = AUTH_FAIL.get(ip)
+  if (!b || now - b.t > 60_000) b = { n: 0, t: now }
+  b.n += 1
+  AUTH_FAIL.set(ip, b)
+  return Math.min(2000, 80 * b.n)
+}
+function authOk(req) {
+  AUTH_FAIL.delete(req.socket.remoteAddress || '')
+}
+function rejectAuth(req, res) {
+  const delay = authFailDelayMs(req)
+  setTimeout(() => {
+    if (res.writableEnded) return
+    res.writeHead(401, { ...NO_STORE, 'WWW-Authenticate': 'Basic realm="3D Studio", charset="UTF-8"' })
+    res.end('需要登录')
+  }, delay)
+}
+
 function authed(req, res) {
   if (authDisabled()) return true
   if (!PASS) {
@@ -60,8 +83,11 @@ function authed(req, res) {
   const h = req.headers.authorization || ''
   const [, b64] = h.split(' ')
   const [u, p] = Buffer.from(b64 || '', 'base64').toString().split(':')
-  if (u === USER && p === PASS) return true
-  res.writeHead(401, { ...NO_STORE, 'WWW-Authenticate': 'Basic realm="3D Studio", charset="UTF-8"' }); res.end('需要登录')
+  if (u === USER && p === PASS) {
+    authOk(req)
+    return true
+  }
+  rejectAuth(req, res)
   return false
 }
 function isLocalhost(req) {
@@ -123,11 +149,15 @@ function saveConfig(ex, config, poster) {
 }
 
 function serveStatic(req, res, urlPath) {
-  let rel = decodeURIComponent(urlPath.split('?')[0]).replace(/^\/+/, '')
-  if (rel === '' ) rel = 'studio.html'
-  if (rel.endsWith('/')) rel += 'index.html'
-  const full = path.join(ROOT, rel)
-  if (!full.startsWith(ROOT)) return send(res, 403, 'text/plain', 'forbidden')       // 目录穿越防护
+  let rel
+  try {
+    rel = decodeStaticRel(urlPath)
+  } catch {
+    return send(res, 400, 'text/plain; charset=utf-8', 'bad request')
+  }
+  if (denyStaticRelReason(rel)) return send(res, 403, 'text/plain', 'forbidden')
+  const full = path.resolve(ROOT, rel)
+  if (!isResolvedInsideRoot(ROOT, full)) return send(res, 403, 'text/plain', 'forbidden')
   fs.readFile(full, (err, buf) => {
     if (err) return send(res, 404, 'text/plain; charset=utf-8', '404 Not Found: ' + rel)
     const ext = path.extname(full).toLowerCase()
@@ -144,11 +174,14 @@ function serveStatic(req, res, urlPath) {
    - 显式 STUDIO_BIND 优先（服务器上设 127.0.0.1，公网一律经 Nginx 反代，
      避免有人直连 :8200 绕过反代层的限流/日志）；
    - 无鉴权的本地调试模式强制回环，别让它意外暴露；
-   - 其余情况沿用 Node 默认（所有网卡）。 */
+   - 设了 STUDIO_PASS 时必须同时设 STUDIO_BIND=127.0.0.1（公网只走 Nginx 反代）；
+   - 其余未设 BIND 的情况沿用 Node 默认（所有网卡）——本地教师机不要这么干。 */
 const BIND_HOST = process.env.STUDIO_BIND
   || ((!PASS && process.env.STUDIO_ALLOW_INSECURE === '1') ? '127.0.0.1' : undefined)
 /* 处理函数抽出来：每次绑定尝试都要新建 server 实例（见 listenOn 的注释） */
 const requestHandler = (req, res) => {
+  req.on('error', () => { try { if (!res.writableEnded) res.destroy() } catch {} })
+  res.on('error', () => {})
   const u = req.url || '/'
   if (u.startsWith('/studio-api/identity')) {
     if (isLocalhost(req)) return json(res, 200, getIdentityPayload(ROOT))

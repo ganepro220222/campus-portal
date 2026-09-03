@@ -14,7 +14,7 @@ assert.doesNotMatch(player, /STUDIO-SAVE-ENDPOINT/, 'source player.html save end
 assert.match(player, /^<!DOCTYPE html>/, 'player.html must start with doctype')
 
 const paths = collectStagingEditorRelPaths()
-for (const need of ['player.html', 'studio.html', 'pano-check.mjs', 'exhibit-create.mjs']) {
+for (const need of ['player.html', 'studio.html', 'pano-check.mjs', 'exhibit-create.mjs', 'studio-static-path.mjs', 'studio-port.mjs']) {
   assert.ok(paths.includes(need), `missing ${need}`)
 }
 assert.ok(!paths.some(p => /^craft-/.test(p)), 'collector must exclude craft content')

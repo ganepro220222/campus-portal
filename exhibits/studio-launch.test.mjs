@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import http from 'node:http'
 import os from 'node:os'
 import net from 'node:net'
 import path from 'node:path'
@@ -70,7 +71,27 @@ function studioAuthHeaders() {
   return { Authorization: `Basic ${token}` }
 }
 
+function rawGet(port, urlPath, headers = {}) {
+  return new Promise((resolve, reject) => {
+    http.get({ hostname: '127.0.0.1', port, path: urlPath, headers }, (res) => {
+      res.resume()
+      res.on('end', () => resolve(res.statusCode))
+    }).on('error', reject)
+  })
+}
+
 console.log('studio-launch tests')
+
+test('static guard denies traversal, private prefix, and bad URI', async () => {
+  await withStudioServer(async (port) => {
+    const auth = studioAuthHeaders()
+    assert.equal(await rawGet(port, '/..%2fexhibits-upload%2fx', auth), 403)
+    assert.equal(await rawGet(port, '/_server/studio-server.mjs', auth), 403)
+    assert.equal(await rawGet(port, '/craft-001/.bak/x.json', auth), 403)
+    assert.equal(await rawGet(port, '/%zz', auth), 400)
+    assert.equal(await rawGet(port, '/studio.html', auth), 200)
+  })
+})
 
 test('verify-identity.mjs exits 0 on matching rootHash', async () => {
   await withStudioServer(async (port) => {
@@ -326,12 +347,26 @@ test('staging deploy scripts do not enable STUDIO_ALLOW_INSECURE', () => {
 
 test('serve.py binds loopback in insecure local mode', () => {
   const py = fs.readFileSync(path.join(ROOT, 'serve.py'), 'utf8')
-  assert.match(py, /bind_host = '127\.0\.0\.1' if \(not PASS and os\.environ\.get\('STUDIO_ALLOW_INSECURE'\) == '1'\)/)
+  assert.match(py, /STUDIO_BIND/)
+  assert.match(py, /'127\.0\.0\.1' if \(not PASS and os\.environ\.get\('STUDIO_ALLOW_INSECURE'\) == '1'\)/)
 })
 
 test('studio-server binds loopback in insecure local mode', () => {
   const node = fs.readFileSync(path.join(ROOT, '_server', 'studio-server.mjs'), 'utf8')
   assert.match(node, /STUDIO_ALLOW_INSECURE === '1'\) \? '127\.0\.0\.1'/)
+})
+
+test('README requires STUDIO_BIND when STUDIO_PASS is set', () => {
+  for (const rel of ['README.md', path.join('_server', 'README.md')]) {
+    const md = fs.readFileSync(path.join(ROOT, rel), 'utf8')
+    assert.match(md, /STUDIO_BIND=127\.0\.0\.1/, `${rel} must force STUDIO_BIND with STUDIO_PASS`)
+  }
+})
+
+test('stop.bat reads studio-port.txt and fails if still listening', () => {
+  const bat = fs.readFileSync(path.join(LAUNCH, 'stop.bat'), 'utf8')
+  assert.match(bat, /studio-port\.txt/)
+  assert.match(bat, /\[FAIL\]/)
 })
 
 test('ensure-server.bat avoids trailing-backslash cd paths', () => {

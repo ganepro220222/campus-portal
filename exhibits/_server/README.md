@@ -44,9 +44,11 @@
 
 ```bash
 cd exhibits
-STUDIO_PASS=你的密码 node _server/studio-server.mjs
+STUDIO_BIND=127.0.0.1 STUDIO_PASS=你的密码 node _server/studio-server.mjs
 # 浏览器打开 http://127.0.0.1:8888/studio.html
 ```
+
+设了 `STUDIO_PASS` **必须**同时设 `STUDIO_BIND=127.0.0.1`。公网只经 Nginx 反代，不要让 Node 直接绑全部网卡。
 
 未设置 `STUDIO_PASS` 时：
 - **生产/staging**：Node 拒绝启动；PHP 返回 503（除非本机 identity 探测）。

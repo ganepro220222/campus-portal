@@ -8,7 +8,13 @@
       <text class="ci-en">书院兄弟小程序互联入口</text>
     </view>
 
-    <view class="app-list college-list">
+    <view wx:if="{{loading}}" class="college-state">加载中…</view>
+    <view wx:elif="{{loadError}}" class="college-state">
+      <text>关联小程序加载失败</text>
+      <view class="page-state-action" bindtap="onRetry">重新加载</view>
+    </view>
+    <view wx:elif="{{!colleges.length}}" class="college-state">暂无关联小程序</view>
+    <view wx:else class="app-list college-list">
       <view
         wx:for="{{colleges}}"
         wx:key="id"

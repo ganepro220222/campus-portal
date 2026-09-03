@@ -14,7 +14,7 @@
         <view class="hero-info">
           <text class="nickname">{{userInfo.nickname || '书院用户'}}</text>
           <text class="college">{{collegeText}}</text>
-          <text class="points-inline">积分 {{stats.points || 0}}</text>
+          <text class="points-inline">积分 {{statsNumbersHidden ? '—' : (stats.points || 0)}}</text>
         </view>
         <view class="edit-chip">
           <text>编辑</text>
@@ -40,11 +40,11 @@
       <text>统计加载失败，点击重试</text>
     </view>
     <view class="stats-card">
-    <view class="stat" bindtap="onStatTap" data-type="favorites"><text class="stat-num">{{stats.favorites || 0}}</text><text class="stat-lbl">收藏</text></view>
+    <view class="stat" bindtap="onStatTap" data-type="favorites"><text class="stat-num">{{statsNumbersHidden ? '—' : (stats.favorites || 0)}}</text><text class="stat-lbl">收藏</text></view>
     <view class="stat-dv"></view>
-    <view class="stat" bindtap="onStatTap" data-type="enrolls"><text class="stat-num">{{stats.enrolls || 0}}</text><text class="stat-lbl">报名</text></view>
+    <view class="stat" bindtap="onStatTap" data-type="enrolls"><text class="stat-num">{{statsNumbersHidden ? '—' : (stats.enrolls || 0)}}</text><text class="stat-lbl">报名</text></view>
     <view class="stat-dv"></view>
-    <view class="stat" bindtap="onStatTap" data-type="downloads"><text class="stat-num">{{stats.downloads || 0}}</text><text class="stat-lbl">下载</text></view>
+    <view class="stat" bindtap="onStatTap" data-type="downloads"><text class="stat-num">{{statsNumbersHidden ? '—' : (stats.downloads || 0)}}</text><text class="stat-lbl">下载</text></view>
     <view class="stat-dv"></view>
     <view class="stat" bindtap="onStatTap" data-type="footprints"><view class="stat-ic"><icon name="footprint" size="26" color="#2B356E" /></view><text class="stat-lbl">足迹</text></view>
     </view>

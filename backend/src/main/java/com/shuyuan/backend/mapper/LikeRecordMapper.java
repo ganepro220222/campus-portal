@@ -13,6 +13,10 @@ public interface LikeRecordMapper extends BaseMapper<LikeRecord> {
     @Delete("DELETE FROM like_record WHERE id = #{id}")
     int physicalDeleteById(@Param("id") Long id);
 
+    /** 取消点赞带会员条件，affected==0 时不得再扣计数 */
+    @Delete("DELETE FROM like_record WHERE id = #{id} AND member_id = #{memberId}")
+    int physicalDeleteByIdAndMember(@Param("id") Long id, @Param("memberId") Long memberId);
+
     /** 只清软删残留，避免并发 insert 后误删对方刚写入的有效点赞 */
     @Delete("DELETE FROM like_record WHERE member_id = #{memberId} AND target_type = #{targetType} "
             + "AND target_id = #{targetId} AND is_deleted = 1")

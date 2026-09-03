@@ -31,7 +31,9 @@ Page({
     subtitleText: '',
     progressPercent: 0,
     completed: false,
-    playing: false
+    playing: false,
+    loadError: false,
+    videoFailed: false
   },
 
   onLoad(opts) {
@@ -47,13 +49,33 @@ Page({
     this._videoRecoveryStartPosition = null
     this._progressBaselineSent = false
 
+    this._loadCourse()
+  },
+
+  onRetryLoad() {
+    this._videoRetryCount = 0
+    this.setData({ loadError: false, videoFailed: false, videoUrl: '' })
+    this._loadCourse()
+  },
+
+  onRetryVideo() {
+    this._videoRetryCount = 0
+    this._reloadVideoUrl(false)
+  },
+
+  _loadCourse() {
+    const id = this._courseId
+    if (!id) return
     requireLogin(() => {
       Promise.all([
         get(`/courses/${id}`),
         get(`/courses/${id}/play`),
         get(`/courses/${id}/progress`).catch(() => null)
       ]).then(([course, play, progress]) => {
-        if (!course) return
+        if (!course) {
+          this.setData({ loadError: true })
+          return
+        }
         const initialTime = resolveResumeInitialTime({
           lastPositionSeconds: progress && progress.lastPositionSeconds,
           completed: !!(progress && progress.completed),
@@ -68,13 +90,16 @@ Page({
           subtitleUrl: media.subtitleUrl || '',
           initialTime,
           progressPercent: progress && progress.progressPercent ? Number(progress.progressPercent) : 0,
-          completed: !!(progress && progress.completed)
+          completed: !!(progress && progress.completed),
+          loadError: false,
+          videoFailed: false
         })
         if (media.hasSubtitle || media.subtitleUrl) {
           this._loadVtt()
         }
       }).catch(err => {
         console.warn('[course/player] 加载失败', err)
+        this.setData({ loadError: true })
         wx.showToast({ title: '课程加载失败', icon: 'none' })
       })
     })
@@ -198,6 +223,7 @@ Page({
   onVideoError() {
     if (this._videoReloading) return
     if (shouldGiveUpVideoReload({ consecutiveRetries: this._videoRetryCount })) {
+      this.setData({ videoFailed: true })
       wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
       return
     }
@@ -225,11 +251,14 @@ Page({
       const nextUrl = play.videoUrl === this.data.videoUrl
         ? withVideoReloadNonce(play.videoUrl)
         : play.videoUrl
-      this.setData({ videoUrl: nextUrl })
+      this.setData({ videoUrl: nextUrl, videoFailed: false })
       if (!silent) {
         wx.showToast({ title: '已刷新视频地址', icon: 'none' })
       }
     } catch (e) {
+      if (!silent) {
+        this.setData({ videoFailed: true })
+      }
       wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
     }
   },

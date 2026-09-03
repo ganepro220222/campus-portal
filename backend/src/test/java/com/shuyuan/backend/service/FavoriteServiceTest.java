@@ -18,6 +18,8 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -109,13 +111,34 @@ class FavoriteServiceTest {
 
         when(newsMapper.selectById(4L)).thenReturn(news);
         when(favoriteMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+        when(favoriteMapper.physicalDeleteByIdAndMember(88L, 9L)).thenReturn(1);
 
         Map<String, Object> result = favoriteService.toggle("news", 4L);
 
         assertFalse((Boolean) result.get("collected"));
-        verify(favoriteMapper).physicalDeleteById(88L);
+        verify(favoriteMapper).physicalDeleteByIdAndMember(88L, 9L);
         verify(newsMapper).adjustFavoriteCount(4L, -1);
         verify(newsMapper, never()).updateById(any(News.class));
+    }
+
+    @Test
+    void toggle_news_unfavorite_skipsAdjustWhenDeleteAffectsZeroRows() {
+        News news = new News();
+        news.setId(4L);
+        news.setStatus("published");
+        news.setFavoriteCount(3);
+
+        Favorite existing = new Favorite();
+        existing.setId(88L);
+
+        when(newsMapper.selectById(4L)).thenReturn(news);
+        when(favoriteMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+        when(favoriteMapper.physicalDeleteByIdAndMember(88L, 9L)).thenReturn(0);
+
+        Map<String, Object> result = favoriteService.toggle("news", 4L);
+
+        assertFalse((Boolean) result.get("collected"));
+        verify(newsMapper, never()).adjustFavoriteCount(anyLong(), anyInt());
     }
 
     @Test

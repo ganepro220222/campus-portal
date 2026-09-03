@@ -13,6 +13,9 @@
     </view>
   </scroll-view>
 
+  <view wx:if="{{refreshError && newsList.length}}" class="page-refresh-bar" bindtap="onRetryRefresh">
+    <text>动态刷新失败，点击重试</text>
+  </view>
   <view class="news-list">
     <view
       wx:for="{{newsList}}"
@@ -45,6 +48,11 @@
     bindtap="onRetryLoadMore"
   >加载更多失败，点击重试</view>
   <view wx:elif="{{!hasMore && newsList.length}}" class="list-tip">— 已加载全部 —</view>
+  <view wx:elif="{{loadError && !newsList.length}}" class="empty-state">
+    <icon name="alert" size="40" color="#C3CCE0" />
+    <text>动态加载失败</text>
+    <view class="page-state-action" bindtap="onRetryRefresh">重新加载</view>
+  </view>
   <view wx:elif="{{!newsList.length}}" class="empty-state">
     <icon name="news" size="40" color="#C3CCE0" />
     <text>暂无动态</text>

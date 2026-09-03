@@ -112,6 +112,7 @@ Page({
   },
 
   async _ask(shown) {
+    if (this.data.loading) return
     if (shown.length > QUESTION_MAX) {
       wx.showToast({ title: '问题过长，请控制在500字以内', icon: 'none' })
       return

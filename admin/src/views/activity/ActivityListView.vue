@@ -185,6 +185,7 @@ import FieldHint from '@/components/FieldHint.vue'
 import type { ActivityItem } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
 import { FIELD_HINTS } from '@/utils/field-hints'
+import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const router = useRouter()
@@ -201,6 +202,7 @@ const total = ref(0)
 const filterStatus = ref('')
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
+const coverSavedUrl = ref('')
 const formRef = ref<FormInstance>()
 
 const form = reactive({
@@ -269,6 +271,7 @@ function resetForm() {
   form.enrollEndTime = ''
   form.quota = 0
   form.needReview = 0
+  coverSavedUrl.value = ''
 }
 
 function openDialog(row?: ActivityItem) {
@@ -277,6 +280,7 @@ function openDialog(row?: ActivityItem) {
   if (row) {
     form.title = row.title
     form.cover = row.cover || ''
+    coverSavedUrl.value = form.cover
     form.coverFitMode = row.coverFitMode === 'fit' ? 'fit' : 'fill'
     form.intro = row.intro || ''
     form.location = row.location || ''
@@ -293,6 +297,13 @@ function openDialog(row?: ActivityItem) {
 async function onSave() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  try {
+    await confirmCoverClearIfNeeded(coverSavedUrl.value, form.cover, ({ message, title }) =>
+      ElMessageBox.confirm(message, title, { type: 'warning', confirmButtonText: '确定清空', cancelButtonText: '取消' })
+    )
+  } catch {
+    return
+  }
   saving.value = true
   try {
     const payload = { ...form }

@@ -15,6 +15,7 @@ import type { CraftImagePayload } from '@/api/craft'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CraftItem } from '@/types/api'
 import { explicitClear } from '@/utils/clearableField.mjs'
+import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
 import type { CoverFitMode } from '@/utils/cover'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
@@ -35,6 +36,7 @@ export function useCraftList() {
   const filterStatus = ref<number | undefined>()
   const dialogVisible = ref(false)
   const editingId = ref<number | null>(null)
+  const coverSavedUrl = ref('')
 
   const form = reactive({
     name: '',
@@ -94,6 +96,7 @@ export function useCraftList() {
     form.sort = 0
     form.images = []
     form.contact = { phone: '', wechat: '', workWechat: '', email: '' }
+    coverSavedUrl.value = ''
   }
 
   async function openDialog(row?: CraftItem) {
@@ -103,6 +106,7 @@ export function useCraftList() {
       const detail = await fetchCraft(row.id)
       form.name = detail.name
       form.cover = detail.cover || ''
+      coverSavedUrl.value = form.cover
       form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
       form.categoryId = detail.categoryId ?? undefined
       form.introZh = detail.introZh || ''
@@ -126,6 +130,13 @@ export function useCraftList() {
   }
 
   async function onSave() {
+    try {
+      await confirmCoverClearIfNeeded(coverSavedUrl.value, explicitClear(form.cover), ({ message, title }) =>
+        ElMessageBox.confirm(message, title, { type: 'warning', confirmButtonText: '确定清空', cancelButtonText: '取消' })
+      )
+    } catch {
+      return
+    }
     saving.value = true
     try {
       const payload = {

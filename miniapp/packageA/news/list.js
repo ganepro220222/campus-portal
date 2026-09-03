@@ -5,7 +5,8 @@ const { withListFallback, useMock } = require('../../utils/mockGuard')
 const { decorateNewsFeed } = require('../../utils/decorate')
 const {
   shouldRequestNextPage,
-  buildLoadMoreFailurePatch
+  buildLoadMoreFailurePatch,
+  buildResetFailurePatch
 } = require('../../utils/newsListPage')
 
 Page({
@@ -16,7 +17,9 @@ Page({
     page: 1,
     hasMore: true,
     loading: false,
-    loadMoreError: false
+    loadMoreError: false,
+    loadError: false,
+    refreshError: false
   },
 
   onLoad() {
@@ -48,6 +51,10 @@ Page({
 
   onPullDownRefresh() { this._loadList(true).then(() => wx.stopPullDownRefresh()) },
 
+  onRetryRefresh() {
+    this._loadList(true)
+  },
+
   switchCat(e) {
     this.setData({ currentCat: e.currentTarget.dataset.id })
     this._loadList(true)
@@ -56,7 +63,7 @@ Page({
   async _loadList(reset) {
     if (this.data.loading) return
     const page = reset ? 1 : this.data.page
-    this.setData({ loading: true, loadMoreError: false })
+    this.setData({ loading: true, loadMoreError: false, loadError: false, refreshError: false })
     try {
       const res = await get('/news', { page, size: 10, categoryId: this.data.currentCat || undefined })
       const records = (res && res.records) ? res.records : []
@@ -73,12 +80,7 @@ Page({
     } catch (err) {
       console.warn('[news/list] 列表加载失败', err)
       if (reset) {
-        this.setData({
-          newsList: decorateNewsFeed(withListFallback(null, mock.newsFull)),
-          hasMore: false,
-          loading: false,
-          loadMoreError: false
-        })
+        this.setData(buildResetFailurePatch(!!(this.data.newsList && this.data.newsList.length)))
       } else {
         this.setData(buildLoadMoreFailurePatch())
       }

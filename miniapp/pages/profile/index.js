@@ -22,6 +22,7 @@ Page({
     collegeText: '',
     stats: { favorites: 0, enrolls: 0, downloads: 0, points: 0, unreadMessages: 0 },
     statsRefreshError: false,
+    statsNumbersHidden: false,
     isLoggedIn: false
   },
 
@@ -35,7 +36,7 @@ Page({
 
   onRetryStats() {
     if (!this.data.isLoggedIn) return
-    this.setData({ statsRefreshError: false })
+    this.setData({ statsRefreshError: false, statsNumbersHidden: false })
     this._loadStats({ silent: true })
   },
 
@@ -63,13 +64,14 @@ Page({
     try {
       const stats = await get('/profile/stats')
       if (stats) {
-        this.setData({ stats, statsRefreshError: false })
+        this.setData({ stats, statsRefreshError: false, statsNumbersHidden: false })
       }
     } catch (err) {
       console.warn('[profile] 统计数据加载失败', err)
-      if (silent && hadStats) {
-        this.setData({ statsRefreshError: true })
-      }
+      this.setData({
+        statsRefreshError: true,
+        statsNumbersHidden: !hadStats
+      })
     }
   },
 

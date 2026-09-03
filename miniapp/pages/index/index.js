@@ -9,6 +9,20 @@ const {
 const { openContentLink } = require('../../utils/navigate')
 const { getNavBarLayout } = require('../../utils/navbar')
 const { mergeHomeNavItems, openNavItem, DEFAULT_ENTRIES } = require('../../utils/homeNav')
+const {
+  shouldShowHomeError,
+  shouldShowHomeRefreshError,
+  mergeHomeCache,
+  hasCacheableHomeData,
+  viewListsFromHomeCache,
+  resolveHomeSection
+} = require('../../utils/homePageLoad')
+
+function settle(promise, empty) {
+  return promise
+    .then((value) => ({ ok: true, value }))
+    .catch(() => ({ ok: false, value: empty }))
+}
 
 Page({
   data: {
@@ -23,6 +37,9 @@ Page({
     navEntries:         DEFAULT_ENTRIES,
     hasNewAnnouncement: false,
     loading:            true,
+    homeError:          false,
+    refreshError:       false,
+    sectionErrors:      { banners: false, recommends: false, colleges: false },
     statusBarHeight:    20,
     navContentHeight:   44,
     capsulePadding:     96
@@ -41,38 +58,114 @@ Page({
     this._loadAnnouncements()
   },
 
+  onRetryHome() {
+    this._homeRefreshing = false
+    this.setData({ homeError: false, refreshError: false })
+    this._refreshHome({ previous: store.getCache('home') })
+  },
+
   async _loadPage() {
     const cached = store.getCache('home')
     if (cached) {
       this.setData({
-        ...cached,
-        navEntries: cached.navEntries || DEFAULT_ENTRIES,
-        loading: false
+        ...viewListsFromHomeCache(cached, DEFAULT_ENTRIES),
+        loading: false,
+        homeError: false
       })
+      this._refreshHome({ previous: cached })
       return
     }
+    this.setData({ loading: true, homeError: false, refreshError: false })
+    await this._refreshHome({ previous: null })
+  },
+
+  async _refreshHome({ previous }) {
+    if (this._homeRefreshing) return
+    this._homeRefreshing = true
     try {
-      const [banners, recommends, colleges, navItems] = await Promise.all([
-        get('/banners').catch(() => []),
-        get('/home/recommends').catch(() => ({})),
-        get('/colleges/home').catch(() => []),
-        get('/home/nav-items').catch(() => [])
+      const [bannersR, recommendsR, collegesR, navR] = await Promise.all([
+        settle(get('/banners'), []),
+        settle(get('/home/recommends'), {}),
+        settle(get('/colleges/home'), []),
+        settle(get('/home/nav-items'), [])
       ])
-      const collegeAll = withListFallback(colleges, mock.collegesHome || [])
-      const data = {
-        banners:    decorateBanners(withListFallback(banners, mock.banners)),
-        hallList:   decorateHalls(withListFallback(recommends && recommends.halls, mock.hallsHome)),
-        newsList:   decorateNews(withListFallback(recommends && recommends.news, mock.newsHome)),
-        courseList: decorateCourses(withListFallback(recommends && recommends.courses, mock.coursesHome)),
+      const flags = {
+        banners: bannersR.ok,
+        recommends: recommendsR.ok,
+        colleges: collegesR.ok,
+        navItems: navR.ok
+      }
+      if (shouldShowHomeError(!!previous, flags)) {
+        this.setData({
+          loading: false,
+          homeError: true,
+          refreshError: false,
+          sectionErrors: { banners: true, recommends: true, colleges: true }
+        })
+        return
+      }
+
+      const failed = {
+        banners: !flags.banners,
+        recommends: !flags.recommends,
+        colleges: !flags.colleges,
+        navItems: !flags.navItems
+      }
+      const collegeAll = failed.colleges
+        ? resolveHomeSection(true, [], previous && previous.collegeList)
+        : withListFallback(collegesR.value, mock.collegesHome || [])
+      const next = {
+        banners: failed.banners
+          ? []
+          : decorateBanners(withListFallback(bannersR.value, mock.banners)),
+        hallList: failed.recommends
+          ? []
+          : decorateHalls(withListFallback(recommendsR.value && recommendsR.value.halls, mock.hallsHome)),
+        newsList: failed.recommends
+          ? []
+          : decorateNews(withListFallback(recommendsR.value && recommendsR.value.news, mock.newsHome)),
+        courseList: failed.recommends
+          ? []
+          : decorateCourses(withListFallback(recommendsR.value && recommendsR.value.courses, mock.coursesHome)),
         collegeList: collegeAll,
         collegeHome: collegeAll.slice(0, 3),
-        navEntries: mergeHomeNavItems(navItems)
+        navEntries: flags.navItems ? mergeHomeNavItems(navR.value) : mergeHomeNavItems([])
       }
-      store.setCache('home', data)
-      this.setData({ ...data, loading: false })
+      const view = {
+        banners: resolveHomeSection(failed.banners, next.banners, previous && previous.banners),
+        hallList: resolveHomeSection(failed.recommends, next.hallList, previous && previous.hallList),
+        newsList: resolveHomeSection(failed.recommends, next.newsList, previous && previous.newsList),
+        courseList: resolveHomeSection(failed.recommends, next.courseList, previous && previous.courseList),
+        collegeList: resolveHomeSection(failed.colleges, next.collegeList, previous && previous.collegeList),
+        collegeHome: resolveHomeSection(failed.colleges, next.collegeHome, previous && previous.collegeHome),
+        navEntries: failed.navItems
+          ? ((previous && previous.navEntries) || DEFAULT_ENTRIES)
+          : next.navEntries
+      }
+      const cache = mergeHomeCache(previous, view, failed)
+      if (hasCacheableHomeData(cache)) {
+        store.setCache('home', cache)
+      }
+      this.setData({
+        ...view,
+        loading: false,
+        homeError: false,
+        refreshError: shouldShowHomeRefreshError(!!previous, flags),
+        sectionErrors: {
+          banners: failed.banners,
+          recommends: failed.recommends,
+          colleges: failed.colleges
+        }
+      })
     } catch (err) {
       console.warn('[index] 首页数据加载失败', err)
-      this.setData({ loading: false })
+      if (!previous) {
+        this.setData({ loading: false, homeError: true })
+      } else {
+        this.setData({ loading: false, refreshError: true })
+      }
+    } finally {
+      this._homeRefreshing = false
     }
   },
 

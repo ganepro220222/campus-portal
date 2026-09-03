@@ -6,6 +6,9 @@
   flex-direction: column;
   background: linear-gradient(180deg, #EAF1FB 0%, #F5F8FC 500rpx);
 }
+.home-error-box { padding-top: 80rpx; }
+.home-page .page-refresh-bar { margin-left: 32rpx; margin-right: 32rpx; }
+.home-section-bar { margin: 0 0 16rpx; }
 
 /* ── 吸顶 Header ── */
 .header {

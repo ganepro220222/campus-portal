@@ -42,8 +42,10 @@ public class NewsInteractionService {
 
         boolean liked;
         if (existing != null) {
-            likeRecordMapper.physicalDeleteById(existing.getId());
-            newsMapper.adjustLikeCount(newsId, -1);
+            int affected = likeRecordMapper.physicalDeleteByIdAndMember(existing.getId(), memberId);
+            if (affected > 0) {
+                newsMapper.adjustLikeCount(newsId, -1);
+            }
             liked = false;
         } else {
             // 清掉历史软删残留，避免 uk_member_target 冲突导致 500

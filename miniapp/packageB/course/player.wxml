@@ -3,7 +3,7 @@
 
   <view class="stage">
     <video
-      wx:if="{{videoUrl}}"
+      wx:if="{{videoUrl && !loadError && !videoFailed}}"
       id="courseVideo"
       class="course-video"
       src="{{videoUrl}}"
@@ -22,6 +22,16 @@
       bindseekcomplete="onSeekComplete"
       bindloadedmetadata="onVideoLoadedMetadata"
     />
+    <view wx:elif="{{loadError}}" class="video-empty">
+      <text class="video-empty-ic">▶</text>
+      <text>课程加载失败</text>
+      <view class="player-retry" bindtap="onRetryLoad">重新加载</view>
+    </view>
+    <view wx:elif="{{videoFailed}}" class="video-empty">
+      <text class="video-empty-ic">▶</text>
+      <text>视频播放失败</text>
+      <view class="player-retry" bindtap="onRetryVideo">重新加载</view>
+    </view>
     <view wx:else class="video-empty">
       <text class="video-empty-ic">▶</text>
       <text>课程视频暂未配置</text>

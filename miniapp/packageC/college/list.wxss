@@ -8,5 +8,12 @@
 
 /* 关联小程序矩阵：与首页「协同育人」统一为 App 入口横条（样式见 app.wxss） */
 .college-list { padding: 20rpx 32rpx 0; }
+.college-state {
+  padding: 80rpx 32rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: var(--muted);
+}
+.college-state .page-state-action { margin: 24rpx auto 0; }
 
 .list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

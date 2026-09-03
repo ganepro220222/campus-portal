@@ -51,9 +51,9 @@ public class FavoriteService {
         boolean collected;
         boolean changed = false;
         if (existing != null) {
-            favoriteMapper.physicalDeleteById(existing.getId());
+            int affected = favoriteMapper.physicalDeleteByIdAndMember(existing.getId(), memberId);
             collected = false;
-            changed = true;
+            changed = affected > 0;
         } else {
             // 清掉历史软删残留，避免 uk_member_target 冲突导致 500
             favoriteMapper.physicalDeleteByTarget(memberId, type, targetId);

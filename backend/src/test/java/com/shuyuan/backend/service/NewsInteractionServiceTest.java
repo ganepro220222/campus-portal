@@ -135,13 +135,37 @@ class NewsInteractionServiceTest {
 
         when(newsMapper.selectById(9L)).thenReturn(news, after);
         when(likeRecordMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+        when(likeRecordMapper.physicalDeleteByIdAndMember(55L, 100L)).thenReturn(1);
 
         Map<String, Object> result = newsInteractionService.toggleLike(9L);
 
         assertFalse((Boolean) result.get("liked"));
         assertEquals(2, result.get("likeCount"));
-        verify(likeRecordMapper).physicalDeleteById(55L);
+        verify(likeRecordMapper).physicalDeleteByIdAndMember(55L, 100L);
         verify(newsMapper).adjustLikeCount(9L, -1);
+    }
+
+    @Test
+    void toggleLike_unlike_skipsAdjustWhenDeleteAffectsZeroRows() {
+        MemberContext.setMemberId(100L);
+
+        News news = new News();
+        news.setId(9L);
+        news.setStatus("published");
+        news.setLikeCount(3);
+
+        LikeRecord existing = new LikeRecord();
+        existing.setId(55L);
+
+        when(newsMapper.selectById(9L)).thenReturn(news);
+        when(likeRecordMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+        when(likeRecordMapper.physicalDeleteByIdAndMember(55L, 100L)).thenReturn(0);
+
+        Map<String, Object> result = newsInteractionService.toggleLike(9L);
+
+        assertFalse((Boolean) result.get("liked"));
+        assertEquals(3, result.get("likeCount"));
+        verify(newsMapper, never()).adjustLikeCount(anyLong(), anyInt());
     }
 
     @Test

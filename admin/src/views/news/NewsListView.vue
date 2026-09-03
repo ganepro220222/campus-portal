@@ -164,6 +164,7 @@ import { isEditorContentEmpty } from '@/utils/editor'
 import { pickFirstTitleSuggestion, plainTextToHtml, stripHtml } from '@/utils/html'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, NewsItem } from '@/types/api'
+import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const auth = useAuthStore()
@@ -185,6 +186,7 @@ const filterStatus = ref('')
 const filterCategoryId = ref<number | undefined>()
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
+const coverSavedUrl = ref('')
 const formRef = ref<FormInstance>()
 
 const form = reactive({
@@ -261,6 +263,7 @@ function resetForm() {
   form.content = ''
   form.categoryId = categories.value[0]?.id
   form.isTop = 0
+  coverSavedUrl.value = ''
 }
 
 function openDialog(row?: NewsItem) {
@@ -269,6 +272,7 @@ function openDialog(row?: NewsItem) {
   if (row) {
     form.title = row.title
     form.cover = row.cover || ''
+    coverSavedUrl.value = form.cover
     form.coverFitMode = (row.coverFitMode === 'fit' ? 'fit' : 'fill')
     form.summary = row.summary || ''
     form.content = row.content || ''
@@ -281,6 +285,13 @@ function openDialog(row?: NewsItem) {
 async function onSave() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  try {
+    await confirmCoverClearIfNeeded(coverSavedUrl.value, form.cover, ({ message, title }) =>
+      ElMessageBox.confirm(message, title, { type: 'warning', confirmButtonText: '确定清空', cancelButtonText: '取消' })
+    )
+  } catch {
+    return
+  }
   saving.value = true
   try {
     const payload = { ...form }

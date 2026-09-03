@@ -19,6 +19,7 @@ import { fetchResourceOptions } from '@/api/resource'
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CourseItem, ResourceOption } from '@/types/api'
 import { explicitClear } from '@/utils/clearableField.mjs'
+import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
 import { shouldApplyListResult } from '@/utils/listRequestSeq'
 import type { CoverFitMode } from '@/utils/cover'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
@@ -54,6 +55,7 @@ export function useCourseList() {
   const subtitleUrlInput = ref('')
   const subtitleSavedUrl = ref('')
   const videoSavedUrl = ref('')
+  const coverSavedUrl = ref('')
   const subtitleTriggering = ref(false)
   const subtitleSaving = ref(false)
 
@@ -133,6 +135,7 @@ export function useCourseList() {
     subtitleUrlInput.value = ''
     subtitleSavedUrl.value = ''
     videoSavedUrl.value = ''
+    coverSavedUrl.value = ''
     subtitleInfo.value = {
       courseId: 0,
       subtitleStatus: 'none',
@@ -151,6 +154,7 @@ export function useCourseList() {
       const detail = await fetchCourse(row.id)
       form.name = detail.name
       form.cover = detail.cover || ''
+      coverSavedUrl.value = form.cover
       form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
       form.categoryId = detail.categoryId ?? undefined
       form.targetAudience = detail.targetAudience || ''
@@ -173,6 +177,13 @@ export function useCourseList() {
     const pendingSubtitleUrl = subtitleUrlInput.value.trim()
     const subtitleDirty = Boolean(editingId.value)
       && pendingSubtitleUrl !== subtitleSavedUrl.value.trim()
+    try {
+      await confirmCoverClearIfNeeded(coverSavedUrl.value, explicitClear(form.cover), ({ message, title }) =>
+        ElMessageBox.confirm(message, title, { type: 'warning', confirmButtonText: '确定清空', cancelButtonText: '取消' })
+      )
+    } catch {
+      return
+    }
     if (editingId.value && videoSavedUrl.value.trim() && !form.videoUrl.trim()) {
       ElMessage.warning('视频已清空但尚未选择替代文件，请上传新视频或取消本次变更')
       return

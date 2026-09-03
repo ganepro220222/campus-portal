@@ -35,6 +35,25 @@ function buildLoadMoreFailurePatch() {
   }
 }
 
+/** 首载/下拉刷新失败：有内容保留列表，无内容进 error，都不清空伪装成「暂无动态」。 */
+function buildResetFailurePatch(hasContent) {
+  if (hasContent) {
+    return {
+      loading: false,
+      refreshError: true,
+      loadError: false,
+      loadMoreError: false
+    }
+  }
+  return {
+    loading: false,
+    loadError: true,
+    refreshError: false,
+    loadMoreError: false,
+    hasMore: false
+  }
+}
+
 function filterByCategory(list, categoryName) {
   if (!categoryName || categoryName === '全部') return list || []
   return (list || []).filter(n => (n.category || n.categoryName) === categoryName)
@@ -58,6 +77,7 @@ module.exports = {
   calcHasMore,
   shouldRequestNextPage,
   buildLoadMoreFailurePatch,
+  buildResetFailurePatch,
   filterByCategory,
   sliceMockPage,
   mockHasMore

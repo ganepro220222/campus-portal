@@ -6,7 +6,8 @@ const { withListFallback } = require('../../utils/mockGuard')
 Page({
   data: {
     colleges: [],
-    loading: true
+    loading: true,
+    loadError: false
   },
 
   onLoad() {
@@ -17,14 +18,18 @@ Page({
     this.loadColleges().finally(() => wx.stopPullDownRefresh())
   },
 
+  onRetry() {
+    this.loadColleges()
+  },
+
   async loadColleges() {
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadError: false })
     try {
       const list = await request('/colleges', 'GET')
-      this.setData({ colleges: withListFallback(list, mock.colleges), loading: false })
+      this.setData({ colleges: withListFallback(list, mock.colleges), loading: false, loadError: false })
     } catch (e) {
       console.warn('[college/list] 加载失败', e)
-      this.setData({ colleges: withListFallback(null, mock.colleges), loading: false })
+      this.setData({ colleges: [], loading: false, loadError: true })
     }
   },
 
@@ -58,8 +63,8 @@ Page({
     }
     if (type === 'api_sync') {
       wx.showModal({
-        title: '接口同步（预留）',
-        content: '该入口已预留，待甲方提供对方 API 文档并完成对接后启用。当前请使用「小程序跳转」或「手动录入」方式。',
+        title: '接口同步',
+        content: '该功能即将开放，敬请期待。当前请使用小程序跳转或查看简介。',
         showCancel: false,
         confirmText: '知道了'
       })

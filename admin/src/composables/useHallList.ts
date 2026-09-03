@@ -6,6 +6,7 @@ import { createHall, fetchHallDetail, fetchHalls, publishHall, removeHall, unpub
 import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, HallItem, HallSectionItem, HallSlideItem } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
+import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 /** 展馆列表页：分页、上下架与编辑弹窗状态 */
@@ -23,6 +24,7 @@ export function useHallList() {
   const total = ref(0)
   const dialogVisible = ref(false)
   const editingId = ref<number | null>(null)
+  const coverSavedUrl = ref('')
 
   const form = reactive({
     name: '',
@@ -71,6 +73,7 @@ export function useHallList() {
     form.sections = []
     form.audioUrl = ''
     form.audioTime = ''
+    coverSavedUrl.value = ''
   }
 
   async function openDialog(row?: HallItem) {
@@ -81,6 +84,7 @@ export function useHallList() {
       form.name = detail.name
       form.shortName = detail.shortName || ''
       form.cover = detail.cover || ''
+      coverSavedUrl.value = form.cover
       form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
       form.intro = detail.intro || ''
       form.vrUrl = detail.vrUrl || ''
@@ -107,6 +111,13 @@ export function useHallList() {
   }
 
   async function onSave() {
+    try {
+      await confirmCoverClearIfNeeded(coverSavedUrl.value, form.cover, ({ message, title }) =>
+        ElMessageBox.confirm(message, title, { type: 'warning', confirmButtonText: '确定清空', cancelButtonText: '取消' })
+      )
+    } catch {
+      return
+    }
     saving.value = true
     try {
       const payload = {

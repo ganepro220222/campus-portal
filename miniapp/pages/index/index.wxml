@@ -26,12 +26,24 @@
 
   <scroll-view class="scroll-body" scroll-y enhanced show-scrollbar="{{false}}">
 
-    <skeleton show="{{loading}}" type="home" count="5" />
-    <block wx:if="{{!loading}}">
+    <skeleton show="{{loading && !homeError}}" type="home" count="5" />
+    <view wx:if="{{homeError}}" class="page-state-box home-error-box">
+      <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+      <text class="page-state-text">首页加载失败，请检查网络后重试</text>
+      <view class="page-state-action" bindtap="onRetryHome">重新加载</view>
+    </view>
+    <block wx:elif="{{!loading}}">
+    <view wx:if="{{refreshError}}" class="page-refresh-bar" bindtap="onRetryHome">
+      <text>首页刷新失败，点击重试</text>
+    </view>
 
     <!-- Banner 轮播 -->
     <view class="wrap">
+      <view wx:if="{{sectionErrors.banners && !banners.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
+        <text>轮播加载失败，点击重试</text>
+      </view>
       <swiper
+        wx:if="{{banners.length}}"
         class="banner"
         autoplay
         interval="4200"
@@ -57,7 +69,7 @@
           </view>
         </swiper-item>
       </swiper>
-      <view class="bdots">
+      <view wx:if="{{banners.length}}" class="bdots">
         <view
           wx:for="{{banners}}"
           wx:key="id"
@@ -107,7 +119,10 @@
         <view class="sec-title serif">线上展馆</view>
         <view class="sec-more" bindtap="onSectionMore" data-path="/pages/hall/index">全部<icon name="chevron-right" size="13" color="#67708C" /></view>
       </view>
-      <scroll-view scroll-x class="halls-scroll" enhanced show-scrollbar="{{false}}">
+      <view wx:if="{{sectionErrors.recommends && !hallList.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
+        <text>展馆加载失败，点击重试</text>
+      </view>
+      <scroll-view wx:if="{{hallList.length}}" scroll-x class="halls-scroll" enhanced show-scrollbar="{{false}}">
         <view class="halls-inner">
           <view
             wx:for="{{hallList}}"
@@ -135,7 +150,10 @@
         <view class="sec-title serif">最新动态</view>
         <view class="sec-more" bindtap="onSectionMore" data-path="/pages/news/index">更多<icon name="chevron-right" size="13" color="#67708C" /></view>
       </view>
-      <view class="cards">
+      <view wx:if="{{sectionErrors.recommends && !newsList.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
+        <text>动态加载失败，点击重试</text>
+      </view>
+      <view wx:if="{{newsList.length}}" class="cards">
         <view
           wx:for="{{newsList}}"
           wx:key="id"
@@ -164,7 +182,10 @@
         <view class="sec-title serif">热门课程</view>
         <view class="sec-more" bindtap="onSectionMore" data-path="/pages/course/index">更多<icon name="chevron-right" size="13" color="#67708C" /></view>
       </view>
-      <view class="cards">
+      <view wx:if="{{sectionErrors.recommends && !courseList.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
+        <text>课程加载失败，点击重试</text>
+      </view>
+      <view wx:if="{{courseList.length}}" class="cards">
         <view
           wx:for="{{courseList}}"
           wx:key="id"
@@ -188,12 +209,15 @@
     </view>
 
     <!-- 协同育人 · 关联小程序（App 入口横条；1→N 统一，首页至多 3 条，余下进「更多」） -->
-    <view wx:if="{{collegeList.length}}" class="section wrap">
+    <view wx:if="{{collegeList.length || sectionErrors.colleges}}" class="section wrap">
       <view class="sec-head">
         <view class="sec-title serif">关联应用</view>
         <view class="sec-more" bindtap="onCollegeMore">全部<icon name="chevron-right" size="13" color="#67708C" /></view>
       </view>
-      <view class="app-list">
+      <view wx:if="{{sectionErrors.colleges && !collegeHome.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
+        <text>关联应用加载失败，点击重试</text>
+      </view>
+      <view wx:if="{{collegeHome.length}}" class="app-list">
         <view
           wx:for="{{collegeHome}}"
           wx:key="id"

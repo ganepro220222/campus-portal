@@ -9,6 +9,7 @@ const {
   calcHasMore,
   shouldRequestNextPage,
   buildLoadMoreFailurePatch,
+  buildResetFailurePatch,
   filterByCategory,
   sliceMockPage,
   mockHasMore
@@ -71,6 +72,15 @@ assert.strictEqual(shouldRequestNextPage({
   assert.strictEqual(state.hasMore, true, '分页失败后保留 hasMore')
   assert.strictEqual(state.loading, false)
   assert.strictEqual(state.loadMoreError, true)
+}
+
+{
+  const keep = buildResetFailurePatch(true)
+  assert.strictEqual(keep.refreshError, true)
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(keep, 'newsList'), false)
+  const empty = buildResetFailurePatch(false)
+  assert.strictEqual(empty.loadError, true)
+  assert.strictEqual(empty.hasMore, false)
 }
 
 const filtered = filterByCategory([

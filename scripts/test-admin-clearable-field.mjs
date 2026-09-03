@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { explicitClear } from '../admin/src/utils/clearableField.mjs'
+import { confirmCoverClearIfNeeded, isCoverBeingCleared } from '../admin/src/utils/coverClearConfirm.mjs'
 
 assert.equal(explicitClear(null), '')
 assert.equal(explicitClear(undefined), '')
@@ -36,5 +37,27 @@ const craftList = readFileSync(new URL('../admin/src/composables/useCraftList.ts
 assert.match(craftList, /cover:\s*explicitClear\(form\.cover\)/)
 assert.match(craftList, /introEn:\s*explicitClear\(form\.introEn\)/)
 assert.doesNotMatch(craftList, /cover:\s*form\.cover\s*\|\|\s*undefined/)
+
+assert.equal(isCoverBeingCleared('covers/a.jpg', ''), true)
+assert.equal(isCoverBeingCleared('covers/a.jpg', '   '), true)
+assert.equal(isCoverBeingCleared('covers/a.jpg', null), true)
+assert.equal(isCoverBeingCleared('', ''), false)
+assert.equal(isCoverBeingCleared('', 'covers/b.jpg'), false)
+assert.equal(isCoverBeingCleared('covers/a.jpg', 'covers/b.jpg'), false)
+assert.equal(isCoverBeingCleared(null, ''), false)
+
+let prompted = 0
+await confirmCoverClearIfNeeded('covers/a.jpg', '', async () => { prompted += 1 })
+assert.equal(prompted, 1)
+await confirmCoverClearIfNeeded('covers/a.jpg', 'covers/b.jpg', async () => { prompted += 1 })
+assert.equal(prompted, 1)
+await confirmCoverClearIfNeeded('', '', async () => { prompted += 1 })
+assert.equal(prompted, 1)
+
+assert.match(courseList, /confirmCoverClearIfNeeded\(coverSavedUrl\.value/)
+assert.match(readFileSync(new URL('../admin/src/composables/useHallList.ts', import.meta.url), 'utf8'), /confirmCoverClearIfNeeded\(coverSavedUrl\.value/)
+assert.match(craftList, /confirmCoverClearIfNeeded\(coverSavedUrl\.value/)
+assert.match(readFileSync(new URL('../admin/src/views/news/NewsListView.vue', import.meta.url), 'utf8'), /confirmCoverClearIfNeeded\(coverSavedUrl\.value/)
+assert.match(readFileSync(new URL('../admin/src/views/activity/ActivityListView.vue', import.meta.url), 'utf8'), /confirmCoverClearIfNeeded\(coverSavedUrl\.value/)
 
 console.log('test-admin-clearable-field OK')

@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -57,6 +58,40 @@ class MessageServiceTest {
     void unreadCount_returnsZeroWhenNoMember() {
         MemberContext.clear();
         assertEquals(0, messageService.unreadCount(null));
+    }
+
+    @Test
+    void listMine_feedbackMessageGetsDetailRoute() {
+        Message msg = new Message();
+        msg.setId(4L);
+        msg.setMemberId(10L);
+        msg.setTitle("意见反馈已回复");
+        msg.setContent("管理员回复：已处理");
+        msg.setType("system");
+        msg.setRelatedType("feedback");
+        msg.setRelatedId(7L);
+        msg.setReadStatus(0);
+        when(messageMapper.selectList(any())).thenReturn(List.of(msg));
+
+        List<Map<String, Object>> list = messageService.listMine();
+
+        assertEquals(1, list.size());
+        assertEquals("/packageC/feedback/detail?id=7", list.get(0).get("route"));
+        assertEquals("feedback", list.get(0).get("relatedType"));
+        assertEquals(7L, list.get(0).get("relatedId"));
+    }
+
+    @Test
+    void listMine_activityMessageKeepsActivityRoute() {
+        Message msg = new Message();
+        msg.setId(5L);
+        msg.setMemberId(10L);
+        msg.setRelatedType("activity");
+        msg.setRelatedId(1L);
+        msg.setReadStatus(0);
+        when(messageMapper.selectList(any())).thenReturn(List.of(msg));
+
+        assertEquals("/packageC/activity/detail?id=1", messageService.listMine().get(0).get("route"));
     }
 
     @Test

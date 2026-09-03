@@ -1,0 +1,47 @@
+<!-- packageC/feedback/list.wxml -->
+<view class="fb-list-page">
+  <nav-bar title="我的反馈" />
+
+  <view wx:if="{{refreshError && list.length}}" class="page-refresh-bar" bindtap="onRetry">
+    <text>反馈刷新失败，点击重试</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="page-state-box">
+    <text class="page-state-text">加载中…</text>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="page-state-box">
+    <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+    <text class="page-state-text">反馈加载失败，请检查网络后重试</text>
+    <view class="page-state-action" bindtap="onRetry">重新加载</view>
+  </view>
+
+  <view wx:elif="{{!list.length}}" class="empty-state">
+    <icon name="chat" size="42" color="#C3CCE0" />
+    <text>暂无反馈</text>
+    <text class="fb-empty-sub">提交后，管理员回复会显示在这里</text>
+    <view class="page-state-action" bindtap="onCreate">提交新反馈</view>
+  </view>
+
+  <scroll-view wx:else scroll-y class="fb-list-scroll" enhanced show-scrollbar="{{false}}">
+    <view
+      wx:for="{{list}}"
+      wx:key="id"
+      class="fb-row"
+      bindtap="onItemTap"
+      data-id="{{item.id}}"
+    >
+      <view class="fb-row-top">
+        <text class="fb-row-type">{{item.type || '其他'}}</text>
+        <text class="fb-row-status {{item.status === 'replied' ? 'on' : ''}}">{{item.statusLabel}}</text>
+      </view>
+      <text class="fb-row-content">{{item.content}}</text>
+      <text class="fb-row-time">{{item.createTime}}</text>
+    </view>
+    <view class="fb-list-bottom"></view>
+  </scroll-view>
+
+  <view wx:if="{{!loading && !loadError && list.length}}" class="fb-list-bar">
+    <button class="fb-submit" bindtap="onCreate">提交新反馈</button>
+  </view>
+</view>

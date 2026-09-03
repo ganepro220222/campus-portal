@@ -120,7 +120,7 @@ Page({
 
   onFeedback() {
     requireLogin(() => {
-      wx.navigateTo({ url: '/packageC/feedback/index' })
+      wx.navigateTo({ url: '/packageC/feedback/list' })
     })
   },
 

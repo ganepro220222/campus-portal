@@ -42,6 +42,8 @@
         "profile/edit",
         "profile/change-password/index",
         "message/index",
+        "feedback/list",
+        "feedback/detail",
         "feedback/index",
         "about/index",
         "legal/privacy"

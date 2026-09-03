@@ -66,7 +66,7 @@
 
     <view class="fb-tip">
       <icon name="chat" size="14" color="#BE9C44" />
-      <text>提交后，如有管理员回复，将发送至消息中心</text>
+      <text>提交后可在「我的反馈」查看处理进度；管理员回复也会发到消息中心</text>
     </view>
 
     <view class="fb-pad"></view>

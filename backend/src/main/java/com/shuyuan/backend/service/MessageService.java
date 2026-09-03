@@ -100,6 +100,9 @@ public class MessageService {
         if ("activity".equals(relatedType)) {
             return "/packageC/activity/detail?id=" + relatedId;
         }
+        if ("feedback".equals(relatedType)) {
+            return "/packageC/feedback/detail?id=" + relatedId;
+        }
         return "";
     }
 

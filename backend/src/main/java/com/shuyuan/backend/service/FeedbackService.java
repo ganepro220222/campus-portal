@@ -1,6 +1,8 @@
 package com.shuyuan.backend.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
@@ -55,6 +57,29 @@ public class FeedbackService {
         return toVo(feedbackMapper.selectById(feedback.getId()));
     }
 
+    public List<Map<String, Object>> listMine() {
+        Long memberId = requireMemberId();
+        return feedbackMapper.selectList(new LambdaQueryWrapper<Feedback>()
+                        .eq(Feedback::getMemberId, memberId)
+                        .orderByDesc(Feedback::getCreateTime)
+                        .last("LIMIT 100"))
+                .stream()
+                .map(this::toVo)
+                .toList();
+    }
+
+    public Map<String, Object> detail(Long id) {
+        Long memberId = requireMemberId();
+        if (id == null || id <= 0) {
+            throw new BusinessException(400, "反馈不存在");
+        }
+        Feedback feedback = feedbackMapper.selectById(id);
+        if (feedback == null || !memberId.equals(feedback.getMemberId())) {
+            throw new BusinessException(404, "反馈记录不存在");
+        }
+        return toVo(feedback);
+    }
+
     private String normalizeType(String type) {
         if (type == null || type.isBlank()) {
             return "其他";
@@ -91,9 +116,34 @@ public class FeedbackService {
         m.put("type", feedback.getType());
         m.put("content", feedback.getContent());
         m.put("contact", feedback.getContact());
+        m.put("images", parseImages(feedback.getImages()));
         m.put("status", feedback.getStatus());
+        m.put("statusLabel", statusLabel(feedback.getStatus()));
+        m.put("reply", feedback.getReply());
+        m.put("repliedAt", FormatUtils.formatDateTime(feedback.getRepliedAt()));
         m.put("createTime", FormatUtils.formatDateTime(feedback.getCreateTime()));
         return m;
+    }
+
+    private List<String> parseImages(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    static String statusLabel(String status) {
+        if ("replied".equals(status)) {
+            return "已回复";
+        }
+        if ("pending".equals(status)) {
+            return "待回复";
+        }
+        return status == null ? "" : status;
     }
 
     private Long requireMemberId() {

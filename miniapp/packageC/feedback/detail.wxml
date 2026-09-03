@@ -1,0 +1,53 @@
+<!-- packageC/feedback/detail.wxml -->
+<view class="fb-detail-page">
+  <nav-bar title="反馈详情" />
+
+  <view wx:if="{{loading}}" class="page-state-box">
+    <text class="page-state-text">加载中…</text>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="page-state-box">
+    <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+    <text class="page-state-text">反馈加载失败，请检查网络后重试</text>
+    <view class="page-state-action" bindtap="onRetry">重新加载</view>
+    <view class="page-state-link" bindtap="onBackList">返回我的反馈</view>
+  </view>
+
+  <view wx:elif="{{notFound}}" class="page-state-box">
+    <text class="page-state-text">反馈记录不存在</text>
+    <view class="page-state-link" bindtap="onBackList">返回我的反馈</view>
+  </view>
+
+  <scroll-view wx:elif="{{detail}}" scroll-y class="fb-detail-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="fb-card">
+      <view class="fb-detail-head">
+        <text class="fb-row-type">{{detail.type || '其他'}}</text>
+        <text class="fb-row-status {{detail.status === 'replied' ? 'on' : ''}}">{{detail.statusLabel}}</text>
+      </view>
+      <text class="fb-detail-time">提交于 {{detail.createTime}}</text>
+      <text class="fb-detail-body">{{detail.content}}</text>
+      <view wx:if="{{detail.images && detail.images.length}}" class="fb-images">
+        <image
+          wx:for="{{detail.images}}"
+          wx:key="*this"
+          class="fb-img"
+          src="{{item}}"
+          mode="aspectFill"
+          bindtap="onPreviewImage"
+          data-src="{{item}}"
+        />
+      </view>
+    </view>
+
+    <view wx:if="{{detail.reply}}" class="fb-card fb-reply-card">
+      <view class="fb-label">管理员回复</view>
+      <text class="fb-detail-body">{{detail.reply}}</text>
+      <text wx:if="{{detail.repliedAt}}" class="fb-detail-time">回复于 {{detail.repliedAt}}</text>
+    </view>
+    <view wx:else class="fb-card fb-reply-wait">
+      <text class="fb-detail-wait">管理员尚未回复，请耐心等待。</text>
+    </view>
+
+    <view class="fb-list-bottom"></view>
+  </scroll-view>
+</view>

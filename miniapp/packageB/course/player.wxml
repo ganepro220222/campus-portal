@@ -46,11 +46,16 @@
     <text class="sub-tx">{{subtitleText}}</text>
   </view>
 
+  <view wx:if="{{progressLoadError}}" class="page-refresh-bar" bindtap="onRetryProgress">
+    <text>上次学习位置加载失败，视频已从头开始。点击重新获取</text>
+  </view>
+  <view wx:elif="{{offerResumeJump}}" class="page-refresh-bar player-resume-bar" bindtap="onJumpToSaved">
+    <text>已找到上次位置 {{savedPositionLabel}}，点击跳转</text>
+  </view>
+
   <scroll-view scroll-y class="player-scroll" enhanced show-scrollbar="{{false}}">
     <view class="now serif">{{course.name}}</view>
-    <view class="now-sub">
-      {{completed ? '已完成学习' : (progressPercent > 0 ? '已学习 ' + progressPercent + '%' : '开始学习')}}
-    </view>
+    <view class="now-sub">{{progressStatusText}}</view>
     <view wx:if="{{course.intro}}" class="intro">{{course.intro}}</view>
     <view class="player-bottom"></view>
   </scroll-view>

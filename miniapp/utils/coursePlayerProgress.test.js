@@ -13,7 +13,13 @@ const {
   isVttHttpSuccess,
   looksLikeVtt,
   isVideoPlaybackStable,
-  shouldGiveUpVideoReload
+  shouldGiveUpVideoReload,
+  settlePromise,
+  formatResumeClock,
+  resolvePlayerProgressStatusText,
+  buildPlayerProgressView,
+  shouldAutoSeekOnProgressRetry,
+  resolveProgressRetryAction
 } = require('./coursePlayerProgress')
 
 {
@@ -93,6 +99,74 @@ assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 80, completed
 assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 302, completed: false, totalDurationSeconds: 303 }), 0)
 assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 0, completed: false, totalDurationSeconds: 0 }), 0)
 
+assert.strictEqual(formatResumeClock(0), '0:00')
+assert.strictEqual(formatResumeClock(1510), '25:10')
+assert.strictEqual(formatResumeClock(3661), '1:01:01')
+
+assert.strictEqual(resolvePlayerProgressStatusText({ progressLoadError: true }), '学习进度暂未加载')
+assert.strictEqual(resolvePlayerProgressStatusText({ completed: true, progressPercent: 0 }), '已完成学习')
+assert.strictEqual(resolvePlayerProgressStatusText({ progressPercent: 45 }), '已学习 45%')
+assert.strictEqual(resolvePlayerProgressStatusText({ progressPercent: 0 }), '开始学习')
+
+{
+  const failed = buildPlayerProgressView({ progress: null, failed: true })
+  assert.strictEqual(failed.progressLoadError, true)
+  assert.strictEqual(failed.progressKnown, false)
+  assert.strictEqual(failed.initialTime, 0)
+  assert.strictEqual(failed.progressStatusText, '学习进度暂未加载')
+}
+
+{
+  const zero = buildPlayerProgressView({
+    progress: { lastPositionSeconds: 0, completed: false, progressPercent: 0, totalDurationSeconds: 0 },
+    failed: false
+  })
+  assert.strictEqual(zero.progressLoadError, false)
+  assert.strictEqual(zero.progressKnown, true)
+  assert.strictEqual(zero.initialTime, 0)
+  assert.strictEqual(zero.progressStatusText, '开始学习')
+}
+
+{
+  const mid = buildPlayerProgressView({
+    progress: { lastPositionSeconds: 1510, completed: false, progressPercent: 45, totalDurationSeconds: 3600 },
+    failed: false
+  })
+  assert.strictEqual(mid.initialTime, 1510)
+  assert.strictEqual(mid.savedPositionLabel, '25:10')
+  assert.strictEqual(mid.completed, false)
+  assert.strictEqual(mid.progressStatusText, '已学习 45%')
+}
+
+{
+  const done = buildPlayerProgressView({
+    progress: { lastPositionSeconds: 3600, completed: true, progressPercent: 100, totalDurationSeconds: 3600 },
+    failed: false
+  })
+  assert.strictEqual(done.initialTime, 0)
+  assert.strictEqual(done.completed, true)
+  assert.strictEqual(done.progressStatusText, '已完成学习')
+}
+
+assert.strictEqual(shouldAutoSeekOnProgressRetry({ interacted: true, currentPosition: 0 }), false)
+assert.strictEqual(shouldAutoSeekOnProgressRetry({ interacted: false, currentPosition: 3 }), true)
+assert.strictEqual(shouldAutoSeekOnProgressRetry({ interacted: false, currentPosition: 20 }), false)
+
+{
+  const mid = buildPlayerProgressView({
+    progress: { lastPositionSeconds: 1510, completed: false, progressPercent: 45, totalDurationSeconds: 3600 },
+    failed: false
+  })
+  assert.deepStrictEqual(resolveProgressRetryAction({ view: mid, interacted: false, currentPosition: 2 }).kind, 'auto-seek')
+  assert.deepStrictEqual(resolveProgressRetryAction({ view: mid, interacted: true, currentPosition: 2 }).kind, 'offer-jump')
+  assert.deepStrictEqual(resolveProgressRetryAction({ view: mid, interacted: false, currentPosition: 40 }).kind, 'offer-jump')
+  const zero = buildPlayerProgressView({
+    progress: { lastPositionSeconds: 0, completed: false, progressPercent: 0 },
+    failed: false
+  })
+  assert.strictEqual(resolveProgressRetryAction({ view: zero, interacted: false, currentPosition: 0 }).kind, 'apply')
+}
+
 {
   const vtt = 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\n你好\n'
   assert.strictEqual(coerceVttText(vtt), vtt)
@@ -166,5 +240,28 @@ assert.strictEqual(
   assert.strictEqual(failed, true, '连续两次恢复仍失败时应停止重试')
   assert.strictEqual(playCalls, 8)
 }
+
+{
+  const fs = require('fs')
+  const path = require('path')
+  const playerJs = fs.readFileSync(path.join(__dirname, '../packageB/course/player.js'), 'utf8')
+  assert.match(playerJs, /settlePromise/)
+  assert.match(playerJs, /onRetryProgress/)
+  assert.match(playerJs, /progressLoadError/)
+  assert.doesNotMatch(playerJs, /\/progress`\)\.catch\(\(\) => null\)/)
+  const playerWxml = fs.readFileSync(path.join(__dirname, '../packageB/course/player.wxml'), 'utf8')
+  assert.match(playerWxml, /onRetryProgress/)
+  assert.match(playerWxml, /progressStatusText/)
+  assert.doesNotMatch(playerWxml, /开始学习/)
+}
+
+settlePromise(Promise.resolve({ lastPositionSeconds: 12 })).then((ok) => {
+  assert.strictEqual(ok.ok, true)
+  assert.strictEqual(ok.value.lastPositionSeconds, 12)
+})
+settlePromise(Promise.reject(new Error('progress-down'))).then((fail) => {
+  assert.strictEqual(fail.ok, false)
+  assert.ok(fail.error)
+})
 
 console.log('coursePlayerProgress.test: PASS')

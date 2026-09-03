@@ -80,6 +80,12 @@
 .player-scroll { flex: 1; overflow: hidden; padding: 0 28rpx; }
 .now { font-size: 34rpx; font-weight: 700; color: var(--ink); margin-top: 26rpx; }
 .now-sub { font-size: 23rpx; color: var(--muted); margin-top: 8rpx; }
+.player-resume-bar {
+  background: rgba(43, 53, 110, 0.08);
+  border-color: rgba(43, 53, 110, 0.18);
+  color: #2B356E;
+}
+.player-resume-bar:active { background: rgba(43, 53, 110, 0.12); }
 .intro {
   margin-top: 20rpx;
   font-size: 26rpx;

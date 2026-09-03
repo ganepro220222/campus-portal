@@ -79,6 +79,86 @@ function resolveResumeInitialTime({ lastPositionSeconds, completed, totalDuratio
   return pos > 0 ? pos : 0
 }
 
+function settlePromise(promise) {
+  return Promise.resolve(promise).then(
+    (value) => ({ ok: true, value }),
+    (error) => ({ ok: false, error })
+  )
+}
+
+function formatResumeClock(seconds) {
+  const s = Math.max(0, Math.floor(Number(seconds) || 0))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  const pad = (n) => (n < 10 ? '0' + n : String(n))
+  if (h > 0) return h + ':' + pad(m) + ':' + pad(sec)
+  return m + ':' + pad(sec)
+}
+
+function resolvePlayerProgressStatusText({ progressLoadError, completed, progressPercent }) {
+  if (progressLoadError) return '学习进度暂未加载'
+  if (completed) return '已完成学习'
+  const percent = Number(progressPercent) || 0
+  if (percent > 0) return '已学习 ' + percent + '%'
+  return '开始学习'
+}
+
+function buildPlayerProgressView({ progress, failed }) {
+  if (failed) {
+    return {
+      progressKnown: false,
+      progressLoadError: true,
+      initialTime: 0,
+      progressPercent: 0,
+      completed: false,
+      offerResumeJump: false,
+      savedPosition: 0,
+      savedPositionLabel: '',
+      progressStatusText: resolvePlayerProgressStatusText({ progressLoadError: true })
+    }
+  }
+  const initialTime = resolveResumeInitialTime({
+    lastPositionSeconds: progress && progress.lastPositionSeconds,
+    completed: !!(progress && progress.completed),
+    totalDurationSeconds: progress && progress.totalDurationSeconds
+  })
+  const progressPercent = progress && progress.progressPercent ? Number(progress.progressPercent) : 0
+  const completed = !!(progress && progress.completed)
+  return {
+    progressKnown: true,
+    progressLoadError: false,
+    initialTime,
+    progressPercent,
+    completed,
+    offerResumeJump: false,
+    savedPosition: initialTime,
+    savedPositionLabel: formatResumeClock(initialTime),
+    progressStatusText: resolvePlayerProgressStatusText({ completed, progressPercent })
+  }
+}
+
+const PROGRESS_AUTO_SEEK_GRACE_SECONDS = 8
+
+function shouldAutoSeekOnProgressRetry({
+  interacted,
+  currentPosition,
+  graceSeconds = PROGRESS_AUTO_SEEK_GRACE_SECONDS
+}) {
+  if (interacted) return false
+  const cur = Math.floor(Number(currentPosition) || 0)
+  return cur <= graceSeconds
+}
+
+function resolveProgressRetryAction({ view, interacted, currentPosition }) {
+  if (!view || view.progressLoadError) return { kind: 'none' }
+  if (view.initialTime <= 0) return { kind: 'apply' }
+  if (shouldAutoSeekOnProgressRetry({ interacted, currentPosition })) {
+    return { kind: 'auto-seek', position: view.initialTime, label: view.savedPositionLabel }
+  }
+  return { kind: 'offer-jump', position: view.initialTime, label: view.savedPositionLabel }
+}
+
 function coerceVttText(data) {
   if (typeof data === 'string') return data
   if (!data) return ''
@@ -178,5 +258,12 @@ module.exports = {
   resolveVideoResumePosition,
   resolveResumeInitialTime,
   coerceVttText,
-  withVideoReloadNonce
+  withVideoReloadNonce,
+  settlePromise,
+  formatResumeClock,
+  resolvePlayerProgressStatusText,
+  buildPlayerProgressView,
+  PROGRESS_AUTO_SEEK_GRACE_SECONDS,
+  shouldAutoSeekOnProgressRetry,
+  resolveProgressRetryAction
 }

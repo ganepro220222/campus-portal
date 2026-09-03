@@ -9,12 +9,15 @@ const {
   normalizeSeekCompletePosition,
   getCoursePlayerPlatform,
   resolveVideoResumePosition,
-  resolveResumeInitialTime,
   coerceVttText,
   withVideoReloadNonce,
   looksLikeVtt,
   isVideoPlaybackStable,
-  shouldGiveUpVideoReload
+  shouldGiveUpVideoReload,
+  settlePromise,
+  buildPlayerProgressView,
+  resolveProgressRetryAction,
+  PROGRESS_AUTO_SEEK_GRACE_SECONDS
 } = require('../../utils/coursePlayerProgress')
 
 const REPORT_INTERVAL_SEC = 20
@@ -33,7 +36,13 @@ Page({
     completed: false,
     playing: false,
     loadError: false,
-    videoFailed: false
+    videoFailed: false,
+    progressLoadError: false,
+    progressKnown: false,
+    offerResumeJump: false,
+    savedPosition: 0,
+    savedPositionLabel: '',
+    progressStatusText: '开始学习'
   },
 
   onLoad(opts) {
@@ -48,19 +57,90 @@ Page({
     this._subtitleReloading = false
     this._videoRecoveryStartPosition = null
     this._progressBaselineSent = false
+    this._progressInteracted = false
+    this._progressRetrying = false
 
     this._loadCourse()
   },
 
   onRetryLoad() {
     this._videoRetryCount = 0
-    this.setData({ loadError: false, videoFailed: false, videoUrl: '' })
+    this._progressInteracted = false
+    this._progressRetrying = false
+    this.setData({
+      loadError: false,
+      videoFailed: false,
+      videoUrl: '',
+      progressLoadError: false,
+      offerResumeJump: false
+    })
     this._loadCourse()
   },
 
   onRetryVideo() {
     this._videoRetryCount = 0
     this._reloadVideoUrl(false)
+  },
+
+  onRetryProgress() {
+    if (this._progressRetrying) return
+    const id = this._courseId
+    if (!id) return
+    this._progressRetrying = true
+    get(`/courses/${id}/progress`, {}, { silent: true }).then((progress) => {
+      this._applyFetchedProgress(progress)
+    }).catch(() => {
+      wx.showToast({ title: '学习进度仍未加载', icon: 'none' })
+    }).then(() => {
+      this._progressRetrying = false
+    }, () => {
+      this._progressRetrying = false
+    })
+  },
+
+  onJumpToSaved() {
+    const pos = Math.floor(this.data.savedPosition || 0)
+    if (pos <= 0) return
+    this._seekToSaved(pos)
+    this.setData({ offerResumeJump: false })
+  },
+
+  _applyFetchedProgress(progress) {
+    const view = buildPlayerProgressView({ progress, failed: false })
+    const action = resolveProgressRetryAction({
+      view,
+      interacted: this._progressInteracted,
+      currentPosition: this._currentPosition
+    })
+    if (action.kind === 'auto-seek') {
+      this.setData(view)
+      this._seekToSaved(action.position)
+      wx.showToast({ title: '已恢复至 ' + action.label, icon: 'none' })
+      return
+    }
+    if (action.kind === 'offer-jump') {
+      this.setData({
+        progressKnown: view.progressKnown,
+        progressLoadError: false,
+        progressPercent: view.progressPercent,
+        completed: view.completed,
+        progressStatusText: view.progressStatusText,
+        savedPosition: view.savedPosition,
+        savedPositionLabel: view.savedPositionLabel,
+        offerResumeJump: true
+      })
+      wx.showToast({ title: '已找到上次位置 ' + action.label, icon: 'none' })
+      return
+    }
+    this.setData(view)
+  },
+
+  _seekToSaved(pos) {
+    const p = Math.floor(pos || 0)
+    if (p <= 0) return
+    this.setData({ initialTime: p })
+    this._pendingVideoResume = { position: p, playing: this.data.playing }
+    this._applyPendingVideoResume()
   },
 
   _loadCourse() {
@@ -70,16 +150,16 @@ Page({
       Promise.all([
         get(`/courses/${id}`),
         get(`/courses/${id}/play`),
-        get(`/courses/${id}/progress`).catch(() => null)
-      ]).then(([course, play, progress]) => {
+        settlePromise(get(`/courses/${id}/progress`, {}, { silent: true }))
+      ]).then(([course, play, progressSettled]) => {
         if (!course) {
           this.setData({ loadError: true })
           return
         }
-        const initialTime = resolveResumeInitialTime({
-          lastPositionSeconds: progress && progress.lastPositionSeconds,
-          completed: !!(progress && progress.completed),
-          totalDurationSeconds: progress && progress.totalDurationSeconds
+        const progressFailed = !progressSettled.ok
+        const progressView = buildPlayerProgressView({
+          progress: progressFailed ? null : progressSettled.value,
+          failed: progressFailed
         })
         const media = play || {}
         this.setData({
@@ -88,11 +168,9 @@ Page({
           cover: course.cover || '',
           hasSubtitle: !!media.hasSubtitle && !!media.subtitleUrl,
           subtitleUrl: media.subtitleUrl || '',
-          initialTime,
-          progressPercent: progress && progress.progressPercent ? Number(progress.progressPercent) : 0,
-          completed: !!(progress && progress.completed),
           loadError: false,
-          videoFailed: false
+          videoFailed: false,
+          ...progressView
         })
         if (media.hasSubtitle || media.subtitleUrl) {
           this._loadVtt()
@@ -129,6 +207,7 @@ Page({
     )
     if (normalizedPosition == null) return
     const cur = Math.floor(normalizedPosition)
+    this._progressInteracted = true
     const total = Math.floor(this._currentDuration || 0)
     this._currentPosition = cur
     if (!this._courseId || total <= 0) {
@@ -152,6 +231,9 @@ Page({
     const total = Math.floor(e.detail.duration || 0)
     this._currentPosition = cur
     this._currentDuration = total
+    if (cur > PROGRESS_AUTO_SEEK_GRACE_SECONDS) {
+      this._progressInteracted = true
+    }
     if (!this._progressBaselineSent && total > 0 && this._courseId) {
       this._progressBaselineSent = true
       const baseline = this.data.initialTime || 0

@@ -15,7 +15,8 @@ const {
   mergeHomeCache,
   hasCacheableHomeData,
   viewListsFromHomeCache,
-  resolveHomeSection
+  resolveHomeSection,
+  buildAnnouncementLoadPatch
 } = require('../../utils/homePageLoad')
 
 function settle(promise, empty) {
@@ -36,6 +37,7 @@ Page({
     collegeHome:        [],
     navEntries:         DEFAULT_ENTRIES,
     hasNewAnnouncement: false,
+    announcementError:  false,
     loading:            true,
     homeError:          false,
     refreshError:       false,
@@ -60,8 +62,14 @@ Page({
 
   onRetryHome() {
     this._homeRefreshing = false
-    this.setData({ homeError: false, refreshError: false })
+    this.setData({ homeError: false, refreshError: false, announcementError: false })
     this._refreshHome({ previous: store.getCache('home') })
+    this._loadAnnouncements()
+  },
+
+  onRetryAnnouncements() {
+    this.setData({ announcementError: false })
+    this._loadAnnouncements()
   },
 
   async _loadPage() {
@@ -171,13 +179,20 @@ Page({
 
   async _loadAnnouncements() {
     try {
-      const list = await get('/announcements/active').catch(() => [])
-      this.setData({
-        announcements:      list || [],
-        hasNewAnnouncement: (list || []).length > 0
-      })
+      const list = await get('/announcements/active')
+      this.setData(buildAnnouncementLoadPatch({
+        previousAnnouncements: this.data.announcements,
+        previousHasNew: this.data.hasNewAnnouncement,
+        list,
+        failed: false
+      }))
     } catch (err) {
       console.warn('[index] 公告加载失败', err)
+      this.setData(buildAnnouncementLoadPatch({
+        previousAnnouncements: this.data.announcements,
+        previousHasNew: this.data.hasNewAnnouncement,
+        failed: true
+      }))
     }
   },
 

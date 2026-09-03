@@ -69,6 +69,33 @@ function resolveHomeSection(failed, decorated, previousList) {
   return Array.isArray(previousList) ? previousList : []
 }
 
+/**
+ * 公告：成功才写入列表；失败保留上次，首次失败只立错误态、不伪装成「没有公告」。
+ */
+function buildAnnouncementLoadPatch({ previousAnnouncements, previousHasNew, list, failed }) {
+  if (!failed) {
+    const announcements = Array.isArray(list) ? list : []
+    return {
+      announcements,
+      hasNewAnnouncement: announcements.length > 0,
+      announcementError: false
+    }
+  }
+  const prev = Array.isArray(previousAnnouncements) ? previousAnnouncements : []
+  if (prev.length) {
+    return {
+      announcements: prev,
+      hasNewAnnouncement: !!previousHasNew,
+      announcementError: true
+    }
+  }
+  return {
+    announcements: prev,
+    hasNewAnnouncement: false,
+    announcementError: true
+  }
+}
+
 module.exports = {
   allContentFailed,
   shouldShowHomeError,
@@ -76,5 +103,6 @@ module.exports = {
   mergeHomeCache,
   hasCacheableHomeData,
   viewListsFromHomeCache,
-  resolveHomeSection
+  resolveHomeSection,
+  buildAnnouncementLoadPatch
 }

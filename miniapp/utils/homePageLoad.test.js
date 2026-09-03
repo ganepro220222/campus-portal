@@ -3,6 +3,8 @@
  * 运行：node miniapp/utils/homePageLoad.test.js
  */
 const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 const {
   allContentFailed,
   shouldShowHomeError,
@@ -10,7 +12,8 @@ const {
   mergeHomeCache,
   hasCacheableHomeData,
   viewListsFromHomeCache,
-  resolveHomeSection
+  resolveHomeSection,
+  buildAnnouncementLoadPatch
 } = require('./homePageLoad')
 
 assert.strictEqual(allContentFailed({ banners: false, recommends: false, colleges: false }), true)
@@ -76,5 +79,58 @@ assert.deepStrictEqual(view.hallList, [{ id: 2 }])
 assert.deepStrictEqual(resolveHomeSection(false, [{ id: 1 }], [{ id: 9 }]), [{ id: 1 }])
 assert.deepStrictEqual(resolveHomeSection(true, [], [{ id: 9 }]), [{ id: 9 }])
 assert.deepStrictEqual(resolveHomeSection(true, [], null), [])
+
+const firstOk = buildAnnouncementLoadPatch({
+  previousAnnouncements: [],
+  previousHasNew: false,
+  list: [{ id: 1, content: '维护通知' }],
+  failed: false
+})
+assert.deepStrictEqual(firstOk.announcements, [{ id: 1, content: '维护通知' }])
+assert.strictEqual(firstOk.hasNewAnnouncement, true)
+assert.strictEqual(firstOk.announcementError, false)
+
+const secondFail = buildAnnouncementLoadPatch({
+  previousAnnouncements: firstOk.announcements,
+  previousHasNew: firstOk.hasNewAnnouncement,
+  failed: true
+})
+assert.deepStrictEqual(secondFail.announcements, [{ id: 1, content: '维护通知' }], '第二次失败保留原公告')
+assert.strictEqual(secondFail.hasNewAnnouncement, true)
+assert.strictEqual(secondFail.announcementError, true)
+
+const firstFail = buildAnnouncementLoadPatch({
+  previousAnnouncements: [],
+  previousHasNew: false,
+  list: [],
+  failed: true
+})
+assert.deepStrictEqual(firstFail.announcements, [])
+assert.strictEqual(firstFail.hasNewAnnouncement, false)
+assert.strictEqual(firstFail.announcementError, true, '首次失败立错误态，不伪装成没有公告')
+
+const retried = buildAnnouncementLoadPatch({
+  previousAnnouncements: secondFail.announcements,
+  previousHasNew: true,
+  list: [{ id: 2, content: '新公告' }],
+  failed: false
+})
+assert.strictEqual(retried.announcementError, false)
+assert.deepStrictEqual(retried.announcements, [{ id: 2, content: '新公告' }])
+assert.strictEqual(retried.hasNewAnnouncement, true)
+
+const realEmpty = buildAnnouncementLoadPatch({
+  previousAnnouncements: firstOk.announcements,
+  previousHasNew: true,
+  list: [],
+  failed: false
+})
+assert.deepStrictEqual(realEmpty.announcements, [])
+assert.strictEqual(realEmpty.hasNewAnnouncement, false)
+assert.strictEqual(realEmpty.announcementError, false)
+
+const indexJs = fs.readFileSync(path.join(__dirname, '../pages/index/index.js'), 'utf8')
+assert.match(indexJs, /buildAnnouncementLoadPatch/)
+assert.doesNotMatch(indexJs, /announcements\/active'\)\.catch\(\(\) => \[\]\)/)
 
 console.log('[homePageLoad.test] PASS')

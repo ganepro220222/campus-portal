@@ -41,7 +41,15 @@
             data-src="{{item.url || item.localPath}}"
           />
           <view wx:if="{{item.uploading}}" class="fb-img-mask">上传中…</view>
-          <view wx:elif="{{item.failed}}" class="fb-img-mask fb-img-fail">失败</view>
+          <view
+            wx:elif="{{item.failed}}"
+            class="fb-img-mask fb-img-fail"
+            data-id="{{item.id}}"
+            catchtap="onRetryImage"
+          >
+            <text>失败</text>
+            <text class="fb-img-retry">点此重试</text>
+          </view>
           <view class="fb-img-del" data-id="{{item.id}}" catchtap="onRemoveImage">×</view>
         </view>
         <view

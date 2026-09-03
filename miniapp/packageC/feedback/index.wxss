@@ -75,7 +75,12 @@
   color: #fff;
   font-size: 22rpx;
 }
-.fb-img-fail { background: rgba(180, 60, 60, 0.55); }
+.fb-img-fail {
+  flex-direction: column;
+  gap: 6rpx;
+  background: rgba(180, 60, 60, 0.55);
+}
+.fb-img-retry { font-size: 20rpx; opacity: 0.92; }
 /* 可见圆点仍 48rpx，热区靠透明 ::after 扩到 88rpx（44pt）。
    要点：父级 .fb-img-cell 是 overflow:hidden，**往外扩的部分会连同热区一起被裁掉**。
    元素本身距上/右各 6rpx，所以外侧最多只能扩 6rpx；再多写也不会生效——

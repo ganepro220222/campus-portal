@@ -5,12 +5,12 @@ function canAccessFeedback(isLoggedIn) {
 }
 
 function resolveUploadErrorMessage(err) {
-  if (!err) return '图片上传失败，可删除后重试'
+  if (!err) return '图片上传失败，可点图片重试'
   const code = err.code != null ? Number(err.code) : NaN
   if (code === 401) return '请先登录后再上传图片'
   if (code === 413) return '图片过大，请重新选择或压缩'
   if (err.message) return err.message
-  return '图片上传失败，可删除后重试'
+  return '图片上传失败，可点图片重试'
 }
 
 module.exports = {

@@ -49,17 +49,18 @@ if (/class="art-lead">\{\{article\.lead\}\}/.test(wxml)) {
   errs.push('摘要区又改回整段 lead —— 正文一变成富文本，首字下沉就会消失')
 }
 /*
- * 摘要短到只有一行时不做首字下沉：一行 28px 撑不住 36px 高的首字，
- * 大字会孤零零杵在虚线上方。所以允许「整段 lead」存在，但**只能**在
- * dropCap 为假的那条分支里；一旦它脱离 dropCap 判断，就又变回
- * 「富文本一保存首字就消失」那个老毛病了。
+ * 短摘要不再整段渲染 lead：一律 drop + leadRest。
+ * dropCap 只决定形态（下沉 vs 行内抬高），不能再把短摘要打回普通字号，
+ * 否则老师对比两条动态会以为短的那条坏了。
  */
-const plainLeadBranch = wxml.match(/<view[^>]*class="art-lead art-lead--plain"[^>]*>/)
-if (plainLeadBranch && !/article\.dropCap/.test(plainLeadBranch[0])) {
-  errs.push('整段 lead 的分支未挂在 !article.dropCap 上 —— 长摘要会丢掉首字下沉')
+if (/art-lead--plain/.test(wxml) && /\{\{article\.lead\}\}/.test(wxml)) {
+  errs.push('短摘要分支又整段渲染 lead —— 短摘要会丢掉首字放大')
 }
 if (!/article\.dropCap/.test(wxml)) {
-  errs.push('detail.wxml 未使用 dropCap —— 短摘要会出现首字悬空、右侧大片留白')
+  errs.push('detail.wxml 未使用 dropCap —— 无法区分下沉与 raised cap')
+}
+if (!/drop--raised/.test(wxml) || !/\.drop--raised/.test(wxss)) {
+  errs.push('短摘要未做 drop--raised —— 不够两行的摘要会看起来像没放大')
 }
 if (!/dropCap:\s*shouldDropCap\(lead\)/.test(content)) {
   errs.push('content.js 未按 shouldDropCap 产出 dropCap')

@@ -58,9 +58,10 @@ if (!useMock) {
   assert.strictEqual(shouldDropCap(''), false)
 
   const short = mergeNewsArticle({ summary: '书院春季开放。' }, {})
-  assert.strictEqual(short.dropCap, false, '短摘要不下沉，避免大字悬空')
-  assert.strictEqual(short.drop, '书', 'dropCap 为假时 drop/leadRest 仍照常产出')
+  assert.strictEqual(short.dropCap, false, '短摘要不下沉，改走 raised cap')
+  assert.strictEqual(short.drop, '书', 'dropCap 为假时 drop/leadRest 仍照常产出，页面才能抬高首字')
   assert.strictEqual(short.drop + short.leadRest, short.lead)
+  assert.strictEqual(short.showLead, true)
 
   const long = mergeNewsArticle({
     summary: '国家级非物质文化遗产牙舟陶数字展陈，汇集百余件 3D 数字化展品。'

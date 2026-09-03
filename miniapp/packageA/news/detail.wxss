@@ -96,8 +96,7 @@
    */
   overflow: hidden;
 }
-/* 摘要不足两行时不做首字下沉（见 content.js 的 shouldDropCap），
-   此时没有浮动元素，行高留白按常规正文走即可 */
+/* 短摘要不下沉（见 shouldDropCap），改成行内略抬高，避免老师觉得「这条没放大」 */
 .art-lead--plain {
   color: var(--sub);
 }
@@ -120,6 +119,14 @@
   font-weight: 700;
   color: var(--navy);
   margin: 4rpx 14rpx 0 0;
+}
+.drop--raised {
+  float: none;
+  display: inline;
+  font-size: 42rpx;
+  line-height: 1.2;
+  margin: 0 4rpx 0 0;
+  vertical-align: -2rpx;
 }
 
 .act-row { display: flex; gap: 18rpx; margin-top: 8rpx; }

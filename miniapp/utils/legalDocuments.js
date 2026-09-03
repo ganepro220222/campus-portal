@@ -1,6 +1,7 @@
 // utils/legalDocuments.js — 隐私/用户协议：远程配置 + 本地缓存 + 内置基线
 
 const { get } = require('./request')
+const { hideAiChatLegalCopy } = require('../config/features')
 
 const CACHE_KEY = 'legal_documents_cache_v1'
 const BASELINE_VERSION = 'baseline-2026-09'
@@ -100,8 +101,8 @@ function resolveFromSources(remote, cache) {
   const updatedAt = (remote && remote.updatedAt) || (cache && cache.updatedAt) || ''
 
   return {
-    privacy,
-    agreement,
+    privacy: hideAiChatLegalCopy(privacy),
+    agreement: hideAiChatLegalCopy(agreement),
     source,
     version,
     updatedAt,

@@ -40,6 +40,18 @@
   "packOptions": {
     "ignore": [
       {
+        "type": "folder",
+        "value": "packageD/ai-chat"
+      },
+      {
+        "type": "folder",
+        "value": "components/ai-assistant"
+      },
+      {
+        "type": "file",
+        "value": "utils/aiChat.js"
+      },
+      {
         "type": "file",
         "value": "config/.navigate-appids.test.json"
       },

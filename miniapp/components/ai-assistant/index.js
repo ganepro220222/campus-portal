@@ -10,6 +10,7 @@ const {
 } = require('../../utils/aiChat')
 const { loadMiniappConfig, DEFAULT_MINIAPP_CONFIG } = require('../../utils/miniappConfig')
 const { isOnTabBarPage } = require('../../utils/tabRoutes')
+const { ENABLE_AI_CHAT } = require('../../config/features')
 
 const QUESTION_MAX = 500
 
@@ -32,7 +33,8 @@ Component({
     sessionId: null,
     quota: null,
     quotaText: '登录后可使用 AI 智能问答',
-    loading: false
+    loading: false,
+    enabled: ENABLE_AI_CHAT
   },
   lifetimes: {
     attached() {

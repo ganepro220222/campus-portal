@@ -1,6 +1,7 @@
 // packageD/ai-chat/history.js — AI 会话历史
 const { fetchSessions, mapSessionItem } = require('../../utils/aiChat')
 const { requireLogin } = require('../../utils/auth')
+const { ENABLE_AI_CHAT } = require('../../config/features')
 
 Page({
   data: {
@@ -10,6 +11,11 @@ Page({
   },
 
   onLoad() {
+    if (!ENABLE_AI_CHAT) {
+      wx.showToast({ title: '页面暂未开放', icon: 'none' })
+      wx.navigateBack({ fail() { wx.switchTab({ url: '/pages/index/index' }) } })
+      return
+    }
     if (!getApp().isLoggedIn()) {
       this.setData({ loading: false })
       requireLogin(() => this._load())

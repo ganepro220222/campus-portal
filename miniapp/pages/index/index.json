@@ -1,8 +1,5 @@
 {
   "navigationStyle": "custom",
   "enablePullDownRefresh": false,
-  "backgroundTextStyle": "dark",
-  "usingComponents": {
-    "ai-assistant": "/components/ai-assistant/index"
-  }
+  "backgroundTextStyle": "dark"
 }

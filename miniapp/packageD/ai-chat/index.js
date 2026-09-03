@@ -12,6 +12,7 @@ const {
 } = require('../../utils/aiChat')
 
 const { loadMiniappConfig, DEFAULT_MINIAPP_CONFIG } = require('../../utils/miniappConfig')
+const { ENABLE_AI_CHAT } = require('../../config/features')
 
 const QUESTION_MAX = 500
 
@@ -31,6 +32,11 @@ Page({
   },
 
   async onLoad(opts) {
+    if (!ENABLE_AI_CHAT) {
+      wx.showToast({ title: '页面暂未开放', icon: 'none' })
+      wx.navigateBack({ fail() { wx.switchTab({ url: '/pages/index/index' }) } })
+      return
+    }
     const rawId = opts && opts.sessionId
     const parsed = rawId != null && rawId !== '' ? Number(rawId) : null
     const sessionId = Number.isFinite(parsed) && parsed > 0 ? parsed : null

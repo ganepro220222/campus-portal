@@ -1,7 +1,6 @@
 {
   "navigationStyle": "custom",
   "usingComponents": {
-    "ai-assistant": "/components/ai-assistant/index",
     "resource-audio-bar": "/components/resource-audio-bar/index"
   }
 }

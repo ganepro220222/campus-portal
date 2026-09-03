@@ -95,5 +95,4 @@
   </scroll-view>
   </block>
 
-  <ai-assistant bottom="60" />
 </view>

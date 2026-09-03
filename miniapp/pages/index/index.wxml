@@ -250,7 +250,4 @@
     </block>
   </scroll-view>
 
-  <!-- AI 助手 -->
-  <ai-assistant />
-
 </view>

@@ -1,5 +1,14 @@
 // packageC/about/index.js — 关于云端书院
 const { get } = require('../../utils/request')
+const { ENABLE_AI_CHAT, hideAiChatPlainCopy } = require('../../config/features')
+
+const ALL_FEATURES = [
+  { icon: 'museum', name: '线上展馆', desc: '沉浸式线上展馆，图文 + 语音讲解' },
+  { icon: 'course', name: '精品课程', desc: '多门在线课程，支持 AI 字幕' },
+  { icon: 'medal',  name: '文创展示', desc: '精品好物双语鉴赏与多图 / 3D 展示' },
+  { icon: 'calendar', name: '活动报名', desc: '讲座研学在线报名与凭证签到' },
+  { icon: 'robot',  name: '智能问答', desc: '基于书院知识库的智能问答助手' }
+]
 
 Page({
   data: {
@@ -15,13 +24,7 @@ Page({
     // 小程序备案号须在小程序内可见（《互联网信息服务管理办法》）。
     // 后台「内容配置」可覆盖；这里必须有兜底值，否则后台没配就等于没展示。
     icp: '黔ICP备17005610号-10X',
-    features: [
-      { icon: 'museum', name: '线上展馆', desc: '沉浸式线上展馆，图文 + 语音讲解' },
-      { icon: 'course', name: '精品课程', desc: '多门在线课程，支持 AI 字幕' },
-      { icon: 'medal',  name: '文创展示', desc: '精品好物双语鉴赏与多图 / 3D 展示' },
-      { icon: 'calendar', name: '活动报名', desc: '讲座研学在线报名与凭证签到' },
-      { icon: 'robot',  name: '智能问答', desc: '基于书院知识库的智能问答助手' }
-    ]
+    features: ENABLE_AI_CHAT ? ALL_FEATURES : ALL_FEATURES.filter((f) => f.name !== '智能问答')
   },
 
   onLoad() {
@@ -33,7 +36,7 @@ Page({
     get('/config/about').then((res) => {
       if (!res) return
       this.setData({
-        intro: res.intro || this.data.intro,
+        intro: hideAiChatPlainCopy(res.intro || this.data.intro),
         address: res.address || this.data.address,
         phone: res.phone || this.data.phone,
         email: res.email || this.data.email,

@@ -1,6 +1,7 @@
 // utils/homeNav.js — 首页功能入口矩阵
 
 const { isTabPage } = require('./navigate')
+const { ENABLE_AI_CHAT, isAiChatPath } = require('../config/features')
 
 const TONE_CLASSES = ['e1', 'e2', 'e3', 'e4', 'e5']
 
@@ -33,7 +34,11 @@ function mapNavItem(raw, index) {
 
 function mergeHomeNavItems(apiList) {
   const source = (apiList && apiList.length) ? apiList : DEFAULT_ENTRIES
-  return source.map(mapNavItem).filter(Boolean)
+  return source.map(mapNavItem).filter(Boolean).filter((item) => {
+    if (ENABLE_AI_CHAT) return true
+    const label = item.label || ''
+    return !isAiChatPath(item.path) && !label.includes('智能问答')
+  })
 }
 
 function openNavItem(entry) {

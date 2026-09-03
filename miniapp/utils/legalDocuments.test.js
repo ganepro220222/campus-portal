@@ -9,6 +9,7 @@ const {
   sourceHint,
   pickRemoteField
 } = require('./legalDocuments')
+const { ENABLE_AI_CHAT } = require('../config/features')
 
 assert.strictEqual(pickRemoteField({ privacy: '  ' }, 'privacy'), '')
 assert.strictEqual(pickRemoteField({ privacy: '<p>远程</p>' }, 'privacy'), '<p>远程</p>')
@@ -26,7 +27,14 @@ assert.strictEqual(cacheFallback.privacy, '<p>C</p>')
 
 const baselineFallback = resolveFromSources(null, null)
 assert.strictEqual(baselineFallback.source, 'baseline')
-assert.strictEqual(baselineFallback.privacy, BASELINE.privacy)
+if (ENABLE_AI_CHAT) {
+  assert.strictEqual(baselineFallback.privacy, BASELINE.privacy)
+} else {
+  assert.ok(!baselineFallback.privacy.includes('智能问答'))
+  assert.ok(!baselineFallback.agreement.includes('智能问答'))
+  assert.ok(!baselineFallback.privacy.includes('AI 生成'))
+  assert.ok(!baselineFallback.agreement.includes('AI 生成'))
+}
 assert.strictEqual(sourceHint(baselineFallback), '')
 assert.ok(BASELINE.privacy.includes('贵州云漫科技有限公司'))
 assert.ok(BASELINE.agreement.includes('贵州云漫科技有限公司'))

@@ -63,12 +63,12 @@
       <view wx:if="{{stats.unreadMessages > 0}}" class="mi-badge">{{stats.unreadMessages > 99 ? '99+' : stats.unreadMessages}}</view>
       <icon name="chevron-right" size="16" color="#C3CCE0" />
     </view>
-    <view class="menu-item" bindtap="onAiChat">
+    <view wx:if="{{showAiChat}}" class="menu-item" bindtap="onAiChat">
       <view class="mi-ic mi-blue"><icon name="robot" size="20" color="#ffffff" /></view>
       <text class="mi-tx">智能问答</text>
       <icon name="chevron-right" size="16" color="#C3CCE0" />
     </view>
-    <view class="menu-item" bindtap="onAiHistory">
+    <view wx:if="{{showAiChat}}" class="menu-item" bindtap="onAiHistory">
       <view class="mi-ic mi-blue"><icon name="chat" size="20" color="#ffffff" /></view>
       <text class="mi-tx">问答历史</text>
       <icon name="chevron-right" size="16" color="#C3CCE0" />

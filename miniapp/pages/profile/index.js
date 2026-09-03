@@ -15,6 +15,7 @@ function collegeDisplay(profile) {
 
 const { getUserInfo, requireLogin } = require('../../utils/auth')
 const { get } = require('../../utils/request')
+const { ENABLE_AI_CHAT } = require('../../config/features')
 
 Page({
   data: {
@@ -23,7 +24,8 @@ Page({
     stats: { favorites: 0, enrolls: 0, downloads: 0, points: 0, unreadMessages: 0 },
     statsRefreshError: false,
     statsNumbersHidden: false,
-    isLoggedIn: false
+    isLoggedIn: false,
+    showAiChat: ENABLE_AI_CHAT
   },
 
   onShow() {
@@ -107,10 +109,12 @@ Page({
   },
 
   onAiChat() {
+    if (!ENABLE_AI_CHAT) return
     wx.navigateTo({ url: '/packageD/ai-chat/index' })
   },
 
   onAiHistory() {
+    if (!ENABLE_AI_CHAT) return
     if (!this.data.isLoggedIn) {
       this.onLoginTap()
       return

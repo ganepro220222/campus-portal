@@ -77,9 +77,9 @@ INSERT IGNORE INTO `news` (`id`, `title`, `summary`, `content`, `category_id`, `
  '示例内容。部分展馆已支持语音导览。',
  '示例内容。进入展馆详情页后可直接跳转 VR 全景，配合图文与语音讲解浏览。',
  2, 'published', 980, '2026-06-03 09:00:00'),
-(3, '示例：课程中心支持自动字幕',
+(3, '示例：课程中心支持字幕',
  '示例内容。部分课程可在播放页开启字幕。',
- '示例内容。字幕由后台生成后随课程一同下发，播放页可切换开关。',
+ '示例内容。字幕由管理员配置后随课程一同下发，播放页可切换开关。',
  3, 'published', 1500, '2026-06-01 14:00:00'),
 (4, '示例：职业素养系列课程开放选学',
  '示例内容。课程已开放选学。',
@@ -93,6 +93,14 @@ INSERT IGNORE INTO `news` (`id`, `title`, `summary`, `content`, `category_id`, `
  '示例内容。建议补全姓名与联系方式。',
  '示例内容。资料完善后，活动报名与通知送达会更顺畅。',
  2, 'published', 655, '2026-05-20 09:00:00');
+
+-- INSERT IGNORE 不会覆盖已入库的旧示例。已有库再跑本文件时，把第 3 条里审核员仍可能看到的旧稿改掉。
+UPDATE `news` SET
+  `title` = '示例：课程中心支持字幕',
+  `summary` = '示例内容。部分课程可在播放页开启字幕。',
+  `content` = '示例内容。字幕由管理员配置后随课程一同下发，播放页可切换开关。'
+WHERE `id` = 3
+  AND (`title` LIKE '%自动字幕%' OR `title` LIKE '%AI%' OR `content` LIKE '%后台生成%' OR `content` LIKE '%AI%');
 
 -- 展馆（11 馆 — 校方 VR 展馆清单）
 INSERT IGNORE INTO `hall` (`id`, `name`, `short_name`, `intro`, `vr_url`, `category_id`, `sort`, `status`) VALUES
@@ -234,7 +242,7 @@ INSERT IGNORE INTO `college_app` (`id`, `name`, `description`, `sort`, `status`,
 (2, '示例关联应用 A', '示例条目 · 用于演示列表布局', 2, 1, 'manual', NULL, NULL),
 (3, '示例关联应用 B', '示例条目 · 用于演示跳转形态', 3, 1, 'jump',   'wxPLACEHOLDER002', 'pages/index/index');
 
--- AI 知识库演示资料（关键词检索，无 API Key 亦可演示 Fallback 回答）
+-- 知识库演示资料（关键词检索；与内置使用指南分开，清场时按 file_url 删除）
 INSERT IGNORE INTO `knowledge_doc` (`id`, `title`, `file_url`, `source_type`, `char_count`, `chunk_count`, `status`, `uploaded_by`, `created_at`) VALUES
 (1, '平台功能说明', 'manual://平台功能说明', 'manual', 420, 3, 'ready', 1, '2026-07-01 10:00:00'),
 (2, '云端书院简介', 'manual://云端书院简介', 'manual', 380, 2, 'ready', 1, '2026-07-01 10:05:00');

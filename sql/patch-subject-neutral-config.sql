@@ -15,12 +15,15 @@
 
 SET NAMES utf8mb4;
 
--- 1) AI 助手欢迎语：去掉「文化助手 / 文化相关问题」
-UPDATE `sys_config` SET `config_value` = '你好！我是书院助手，可以基于平台知识库为你解答使用与学习相关的问题。'
+-- 1) 问答欢迎语：去掉「文化助手 / 书院助手」自称
+UPDATE `sys_config` SET `config_value` = '你好，可以基于平台知识库为你解答使用与学习相关的问题。'
 WHERE `config_key` = 'ai_assistant_welcome'
-  AND `config_value` = '你好！我是书院文化助手，可以基于书院知识库为你解答文化相关问题。';
+  AND `config_value` IN (
+    '你好！我是书院文化助手，可以基于书院知识库为你解答文化相关问题。',
+    '你好！我是书院助手，可以基于平台知识库为你解答使用与学习相关的问题。'
+  );
 
--- 2) AI 助手推荐问题：由内容话题改为功能引导
+-- 2) 问答推荐问题：由内容话题改为功能引导
 UPDATE `sys_config` SET `config_value` = '["平台有哪些线上展馆？","怎么报名参加活动？","在哪查看学习足迹？"]'
 WHERE `config_key` = 'ai_assistant_chips'
   AND `config_value` = '["什么是阳明文化？","屯堡文化有何特色？","龙场悟道讲了什么？"]';

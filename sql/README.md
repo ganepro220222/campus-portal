@@ -40,12 +40,12 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 
 ### `patch-builtin-knowledge.sql`（所有环境都要执行）
 
-写入 8 篇「云端书院小程序使用指南」——登录、报名、积分、课程、书院助手等自身功能说明。
+写入内置「云端书院小程序使用指南」——登录、报名、积分、课程、知识问答等自身功能说明，
+以及按已上线展馆整理的导览篇。
 
-**为什么必须跑：** 「书院助手」是先检索知识库、再据此作答。知识库空着的时候它检索不到
-任何片段，只会反复回一句「没有找到相关资料」，而学生每问一次仍然要消耗当天 20 次额度中的
-一次——助手看起来什么都不会，次数还在掉。校方与学院的文化资料我们无从代劳，但「这个小程序
-怎么用」是我们自己的交付物，本来就该随系统一起给出。
+**为什么必须跑：** 知识问答先检索知识库再拼接资料。知识库空着的时候检索不到
+任何片段，只会反复回一句「没有找到相关资料」。校方未提供的文化典故我们不代写，
+但「这个小程序怎么用、展馆里有哪些馆」是已经上线的内容，应该随系统一起给出。
 
 | 特性 | 说明 |
 |------|------|
@@ -98,7 +98,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 11 | `patch-hall-vr-links-20260711.sql` | 校园安全教育馆、西部山区安全基地 VR 链接 | 仅数据 |
 | 12 | `patch-point-record-unique-cleanup.sql` | **旧库** `point_record` 重复流水查重/清理（加唯一键前） | — |
 | 13 | `patch-point-record-unique.sql` | **旧库** 添加 `uk_member_action_remark`（幂等，可重复执行） | ✅ 已并入 init.sql |
-| 14 | `patch-sys-config-miniapp.sql` | AI 助手欢迎语/推荐问题、搜索热词配置项 | ✅ 已并入 init.sql |
+| 14 | `patch-sys-config-miniapp.sql` | 问答欢迎语/推荐问题、搜索热词配置项 | ✅ 已并入 init.sql |
 | 15 | `patch-subtitle-asr-poll.sql` | 课程 ASR 轮询元数据字段（`subtitle_asr_*`） | ✅ 已并入 init.sql；**可重复执行** |
 | 16 | `patch-subject-neutral-config.sql` | **主体归属对齐**：把库里随 init.sql 写入的旧默认文案与机构占位串换成中性表述 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
 | 17 | `patch-college-app-demo.sql` | **首页关联应用**：`college_app` 从旧版 11 条学院名收敛为通途星 + 2 条示例 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
@@ -110,6 +110,8 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 23 | `patch-oss-object-meta.sql` | 上传对象元信息表：后台预览框显示真实文件名 / 大小 / 上传时间 | ✅ 已并入 init.sql；**可重复执行** |
 | 24 | `patch-feedback-type-normalize.sql` | 统一反馈类型中文值与默认值，修复历史 `other` 数据 | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
 | 25 | `patch-event-log-type-created-index.sql` | `event_log` 看板 view 聚合索引 `(event_type, created_at)` + 足迹索引 `(member_id, created_at)` | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
+| 26 | `patch-update-builtin-knowledge-kb-qa.sql` | **已有库**：把内置使用指南更新为知识问答口径；没有的篇会插入（含展馆导览） | 可重复执行 |
+| 27 | `patch-scrub-demo-ai-copy.sql` | **提审前**：把示例动态/课程/导航/欢迎语里残留的「AI / 智能问答 / 自动字幕」换成中性说法 | 可重复执行；演示数据删除后不必再跑 |
 
 `patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 
@@ -171,7 +173,7 @@ bash scripts/backup-staging-mysql.sh
 代码侧（miniapp、`SysConfigService` 的默认值、`init.sql`）已经改完，但**已经建好的库**里
 存的还是旧值——接口读的是库，改代码不会自动生效。本 patch 负责把库补上：
 
-- `sys_config` 的 AI 欢迎语 / 推荐问题 / 搜索热词；
+- `sys_config` 的问答欢迎语 / 推荐问题 / 搜索热词；
 - `badge` 里带「文化」字样的两个徽章名；
 - `member_profile.college`、`enroll.college` 里的旧占位串
   「贵州交通职业大学 · 中华文化书院」（个人中心顶部显示的就是它）。

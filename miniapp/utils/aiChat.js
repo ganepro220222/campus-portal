@@ -133,13 +133,17 @@ function resolveErrorAnswer(err, question) {
   }
   // 超时时服务端多半已经答完并存好了，再让用户去「确认登录、录入知识库」是南辕北辙
   if (isTimeoutError(err)) {
-    return '回答用时较长，可能已经生成。请稍后退出并重新进入本次会话查看。'
+    return '回答用时较长，可能已经写好。请稍后退出并重新进入本次会话查看。'
   }
   if (isNetworkError(err)) {
     return '网络连接失败，请检查网络后重试。'
   }
   if (err && err.message) {
-    return err.message
+    const msg = String(err.message)
+    if (/AI\s*服务|AI\s*生成|人工智能/.test(msg)) {
+      return '服务暂时不可用，请稍后重试。'
+    }
+    return msg
   }
   return '服务暂时不可用，请稍后重试。'
 }

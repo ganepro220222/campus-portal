@@ -57,7 +57,7 @@ assert.strictEqual(resolveErrorAnswer({ code: 429, message: '今日问答次数�
   '今日问答次数已用完，请明天再来')
 assert.strictEqual(resolveErrorAnswer({ code: 401 }), '请先登录后再使用知识问答。')
 assert.strictEqual(resolveErrorAnswer({ code: 502, message: 'AI 服务暂时不可用，请稍后重试' }),
-  'AI 服务暂时不可用，请稍后重试')
+  '服务暂时不可用，请稍后重试。')
 assert.ok(resolveErrorAnswer({}).includes('服务暂时不可用'))
 assert.ok(!resolveErrorAnswer({}).includes('知识库'))
 

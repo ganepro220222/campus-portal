@@ -160,9 +160,9 @@ function render(docs) {
 
 function renderUpdate(docs) {
   const lines = []
-  lines.push('-- 将已入库的内置使用指南更新为知识问答口径（可重复执行）')
-  lines.push('-- 由 scripts/build-builtin-knowledge.js --update-existing 生成，请勿手改。')
-  lines.push('-- 新库请先跑 patch-builtin-knowledge.sql；本文件按标题更新已存在行并重建分段。')
+  lines.push('-- 将已入库的内置使用指南更新为当前口径；没有的篇会插入（可重复执行）')
+  lines.push('-- 由 scripts/build-builtin-knowledge.js 生成，请勿手改。')
+  lines.push('-- 按标题匹配已存在行并重建分段；新标题在本文件内插入。')
   lines.push('')
   lines.push('SET NAMES utf8mb4;')
   lines.push('')
@@ -171,7 +171,21 @@ function renderUpdate(docs) {
     const aliases = TITLE_ALIASES[doc.name] || []
     const titles = [doc.title, ...aliases]
     const titleList = titles.map(sqlStr).join(', ')
-    lines.push(`-- ---------- 更新 ${doc.title} ----------`)
+    lines.push(`-- ---------- 更新或写入 ${doc.title} ----------`)
+    lines.push('SET @doc_id = (SELECT `id` FROM `knowledge_doc`')
+    lines.push(`                WHERE \`title\` IN (${titleList}) ORDER BY \`id\` LIMIT 1);`)
+    lines.push('INSERT INTO `knowledge_doc`')
+    lines.push('  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)')
+    lines.push('SELECT')
+    lines.push(`  ${sqlStr(doc.title)},`)
+    lines.push(`  ${sqlStr('builtin://' + doc.title)},`)
+    lines.push("  'manual',")
+    lines.push(`  ${sqlStr(doc.content)},`)
+    lines.push(`  ${doc.content.length},`)
+    lines.push(`  ${doc.parts.length},`)
+    lines.push("  'ready',")
+    lines.push('  NULL')
+    lines.push('FROM DUAL WHERE @doc_id IS NULL;')
     lines.push('SET @doc_id = (SELECT `id` FROM `knowledge_doc`')
     lines.push(`                WHERE \`title\` IN (${titleList}) ORDER BY \`id\` LIMIT 1);`)
     lines.push('UPDATE `knowledge_doc` SET')

@@ -6,7 +6,7 @@
  * 2) 清场脚本不能连带删除它。seed-dev-cleanup 原来按 `id BETWEEN 1 AND 2` 删知识库，
  *    而内置文档用的是自增 id——在没跑过 seed-dev 的库上正好落到 1、2，
  *    交付前「清一下演示数据」就会把随系统一起给的使用指南也清掉。
- * 3) 内置内容会被 AI 原样引用给用户看，所以「新闻」这类按审核口径要回避的词
+ * 3) 内置内容会原样拼给学生看，所以「新闻」这类按审核口径要回避的词
  *    在这里同样不能出现（check-subject-neutral 扫不到 .md/.sql）。
  * 4) 必须写入 content 列：后台编辑时靠它回填正文，缺了会显示成空白。
  *
@@ -72,8 +72,8 @@ for (const name of sources) {
   if (text.includes('新闻')) {
     errs.push(`sql/knowledge/${name} 出现「新闻」——会把这段原样念给用户和审核员，请改用「动态」`)
   }
-  if (text.includes('人工智能生成') || text.includes('内容由 AI 生成')) {
-    errs.push(`sql/knowledge/${name} 仍宣称由 AI/人工智能生成，学生端已改为知识库检索`)
+  if (text.includes('人工智能生成') || text.includes('内容由 AI 生成') || text.includes('AI 字幕') || text.includes('AI字幕')) {
+    errs.push(`sql/knowledge/${name} 仍含学生可见的 AI 表述，请改成知识库 / 字幕口径`)
   }
   if (!/^#\s+\S/m.test(text)) {
     errs.push(`sql/knowledge/${name} 首行不是「# 标题」`)

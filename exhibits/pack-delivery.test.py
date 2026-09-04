@@ -79,6 +79,7 @@ FORBIDDEN_PREFIXES = (
     '模型转换/dist/',
     '__pycache__/',
     '_staging-editor-pack/',
+    'deploy-test-server/',
 )
 
 NESTED_BUILD_PATHS = (
@@ -118,6 +119,9 @@ def test_should_include_excludes_nested_build_artifacts() -> None:
     staging = mod.ROOT / '_staging-editor-pack' / 'studio.html'
     if mod.should_include(staging):
         raise RuntimeError('should exclude _staging-editor-pack/studio.html')
+    deploy_player = mod.ROOT / 'deploy-test-server' / 'player.html'
+    if mod.should_include(deploy_player):
+        raise RuntimeError('should exclude deploy-test-server/player.html')
     ok_path = mod.ROOT / '模型转换' / 'convert_cli.py'
     if not mod.should_include(ok_path):
         raise RuntimeError('should include 模型转换/convert_cli.py')

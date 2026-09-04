@@ -81,6 +81,9 @@ exhibits/模型转换/*.spec
 exhibits/_runtime/studio-port.txt
 # push-staging-editor 每次现打的包，勿入库，免得旧包盖掉线上修复
 exhibits/_staging-editor-pack/
+# build-viewer.mjs --deploy-player 输出（无 .mjs MIME 的测试机用，不入库）
+exhibits/deploy-test-server/
+exhibits/player.deploy.html
 
 # build-viewer.mjs --upload 临时目录（进程号后缀，成功后会自动删）
 /exhibits-upload.staging-*/

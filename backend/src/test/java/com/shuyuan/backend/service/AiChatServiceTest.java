@@ -75,6 +75,7 @@ class AiChatServiceTest {
         when(knowledgeService.retrieve("阳明文化", 5)).thenReturn(List.of(chunk));
         // 检索到了对得上的资料，这一次应正常计费
         when(knowledgeService.hasSubstantialMatch(eq("阳明文化"), anyList(), anyInt())).thenReturn(true);
+        when(knowledgeService.pickBest(eq("阳明文化"), anyList())).thenReturn(chunk);
         when(aiClientService.chat(any(), any())).thenAnswer(invocation -> {
             assertFalse(TransactionSynchronizationManager.isActualTransactionActive(),
                     "外部 AI 调用不应处于数据库事务中");
@@ -145,24 +146,23 @@ class AiChatServiceTest {
     }
 
     /**
-     * 检索到了片段、但都对不上题：照常交给模型作答（该由模型说的话仍由模型说），
-     * 但这一次不计入用户的每日次数——他没得到有用的东西。
+     * 检索到了片段、但都对不上题：给固定引导语，不把弱相关摘录拼给学生，也不扣次数。
      */
     @Test
-    void 检索到片段但不算实质命中时照常作答却不扣次数() {
+    void 检索到片段但不算实质命中时回固定引导语且不扣次数() {
         openSession(12L, 6L);
         KnowledgeChunk noise = new KnowledgeChunk();
         noise.setChunkText("怎么报名活动……");
         when(knowledgeService.retrieve(anyString(), anyInt())).thenReturn(List.of(noise));
         when(knowledgeService.hasSubstantialMatch(anyString(), anyList(), anyInt())).thenReturn(false);
-        when(aiClientService.chat(anyList(), anyString())).thenReturn("很抱歉，我没有找到相关信息。");
         when(rateLimitService.getUserCalendarDayUsage("ai", 6L)).thenReturn(0);
 
         Map<String, Object> vo = ask(12L, "我心情不好怎么办");
 
-        verify(aiClientService).chat(anyList(), anyString());
+        verify(aiClientService, never()).chat(anyList(), anyString());
+        verify(knowledgeService, never()).pickBest(anyString(), anyList());
         verify(rateLimitService).refundUserCalendarDay(RateLimitService.SCENE_AI, 6L);
-        assertEquals("很抱歉，我没有找到相关信息。", vo.get("content"));
+        assertEquals(AiChatService.NO_MATERIAL_ANSWER, vo.get("content"));
         com.shuyuan.backend.common.context.MemberContext.clear();
     }
 

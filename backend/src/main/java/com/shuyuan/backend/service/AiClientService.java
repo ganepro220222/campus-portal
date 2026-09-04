@@ -55,8 +55,17 @@ public class AiClientService {
         String context = chunks == null || chunks.isEmpty()
                 ? "（无匹配资料）"
                 : chunks.stream()
-                .map(KnowledgeChunk::getChunkText)
+                .map(this::formatChunkForPrompt)
                 .collect(Collectors.joining("\n---\n"));
         return "【平台资料】\n" + context + "\n\n【用户问题】\n" + question;
+    }
+
+    private String formatChunkForPrompt(KnowledgeChunk chunk) {
+        String text = chunk.getChunkText() == null ? "" : chunk.getChunkText();
+        String title = FallbackAiService.displayTitle(chunk.getDocTitle());
+        if (title.isEmpty()) {
+            return text;
+        }
+        return "【" + title + "】\n" + text;
     }
 }

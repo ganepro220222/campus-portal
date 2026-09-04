@@ -106,6 +106,7 @@ class BuiltinKnowledgeRetrievalTest {
         }
 
         when(knowledgeDocMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(docs);
+        when(knowledgeDocMapper.selectBatchIds(any())).thenReturn(docs);
         when(knowledgeChunkMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(chunks);
     }
 
@@ -134,6 +135,7 @@ class BuiltinKnowledgeRetrievalTest {
         record Case(String question, String expectDocKeyword) {}
         List<Case> cases = List.of(
                 new Case("怎么报名活动", "活动报名"),
+                new Case("怎么参加活动", "活动报名"),
                 new Case("报名之后可以取消吗", "活动报名"),
                 new Case("名额满了还能报名吗", "活动报名"),
                 new Case("积分怎么获得", "积分与徽章"),
@@ -162,6 +164,15 @@ class BuiltinKnowledgeRetrievalTest {
             }
         }
         assertTrue(wrong.isEmpty(), String.join("\n", wrong));
+    }
+
+    @Test
+    void 参加能扩到报名并选中活动篇() {
+        String q = "怎么参加活动";
+        assertTrue(substantial(q), "「怎么参加活动」应算实质命中");
+        KnowledgeChunk best = knowledgeService.pickBest(q, ask(q));
+        assertTrue(chunkOwner.get(best.getChunkIndex()).contains("活动报名"),
+                "应选中《活动报名》，实际是《" + chunkOwner.get(best.getChunkIndex()) + "》");
     }
 
     // ---------- 不该命中的 ----------
@@ -246,7 +257,7 @@ class BuiltinKnowledgeRetrievalTest {
     /** 借检索本身的分词口径；这里只要一个与实现一致的查询词集合 */
     private java.util.Set<String> tokensOf(String q) {
         try {
-            var m = KnowledgeService.class.getDeclaredMethod("tokenize", String.class);
+            var m = KnowledgeService.class.getDeclaredMethod("queryTokens", String.class);
             m.setAccessible(true);
             @SuppressWarnings("unchecked")
             java.util.Set<String> tokens = (java.util.Set<String>) m.invoke(knowledgeService, q);
@@ -304,7 +315,7 @@ class BuiltinKnowledgeRetrievalTest {
     @Test
     void 常见的真实问题都算实质命中() {
         List<String> real = List.of(
-                "怎么报名活动", "积分怎么获得", "忘记密码怎么办", "课程看到多少算完成",
+                "怎么报名活动", "怎么参加活动", "积分怎么获得", "忘记密码怎么办", "课程看到多少算完成",
                 "展馆有多少个", "书院助手每天能问多少次", "怎么收藏一篇动态",
                 "牙舟陶怎么参观", "交通博物馆是什么",
                 // 以下措辞未在语料里出现过
@@ -324,13 +335,13 @@ class BuiltinKnowledgeRetrievalTest {
     /**
      * 已知边界：措辞离语料较远的真问题会落在阈值下方（实测 2 分，阈值 4）。
      *
-     * <p>如实记在这里而不是假装不存在。后果只是这一次不计入次数——对用户偏宽松的一侧；
-     * 回答本身照常给（判定只管扣不扣、不管答不答），所以可以接受。
+     * <p>如实记在这里而不是假装不存在。这一次不计入次数，学生看到固定引导语，
+     * 而不是一段弱相关摘录。
      */
     @Test
     void 已知边界用例记录在案() {
         String q = "手机上怎么把资料保存下来";
         assertFalse(substantial(q), "这条若变成实质命中是好事，说明语料更贴口语了，可更新本用例");
-        assertFalse(ask(q).isEmpty(), "但它仍应能检索到资料并正常作答，不能被短路掉");
+        assertFalse(ask(q).isEmpty(), "检索仍应能捞到片段；答不答由实质命中闸门决定");
     }
 }

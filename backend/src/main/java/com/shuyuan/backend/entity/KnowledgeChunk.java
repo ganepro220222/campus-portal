@@ -21,4 +21,8 @@ public class KnowledgeChunk {
 
     @TableField(exist = false)
     private double score;
+
+    /** 所属文档标题，检索时回填，不入库 */
+    @TableField(exist = false)
+    private String docTitle;
 }

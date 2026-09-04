@@ -180,13 +180,11 @@ public class KnowledgeService {
         if (hits.isEmpty()) {
             return List.of();
         }
-        Set<Long> docIds = hits.stream().map(KnowledgeChunk::getDocId).collect(Collectors.toSet());
-        Map<Long, String> titleMap = knowledgeDocMapper.selectBatchIds(docIds).stream()
-                .collect(Collectors.toMap(KnowledgeDoc::getId, KnowledgeDoc::getTitle));
         return hits.stream().map(c -> {
             Map<String, Object> m = new HashMap<>();
             m.put("docId", c.getDocId());
-            m.put("docTitle", titleMap.getOrDefault(c.getDocId(), "（已删除）"));
+            m.put("docTitle", c.getDocTitle() == null || c.getDocTitle().isBlank()
+                    ? "（已删除）" : c.getDocTitle());
             m.put("chunkIndex", c.getChunkIndex());
             m.put("chunkText", c.getChunkText());
             m.put("score", c.getScore());
@@ -221,7 +219,7 @@ public class KnowledgeService {
         if (question == null || question.isBlank()) {
             return List.of();
         }
-        Set<String> queryTokens = tokenize(question);
+        Set<String> queryTokens = queryTokens(question);
         if (queryTokens.isEmpty()) {
             return List.of();
         }
@@ -241,10 +239,40 @@ public class KnowledgeService {
                 scored.add(chunk);
             }
         }
-        return scored.stream()
+        List<KnowledgeChunk> top = scored.stream()
                 .sorted(Comparator.comparingDouble(KnowledgeChunk::getScore).reversed())
                 .limit(clampTopK(topK))
-                .toList();
+                .collect(Collectors.toList());
+        attachDocTitles(top);
+        return top;
+    }
+
+    /**
+     * 在已检索的片段里挑最能回答的一篇：先比加权分，再比原始命中数。
+     * 学生问答只展示这一篇，避免把三篇弱相关拼成一段「整理如下」。
+     */
+    public KnowledgeChunk pickBest(String question, List<KnowledgeChunk> chunks) {
+        if (chunks == null || chunks.isEmpty()) {
+            return null;
+        }
+        Set<String> tokens = queryTokens(question);
+        return chunks.stream()
+                .max(Comparator
+                        .comparingInt((KnowledgeChunk c) -> weightedScore(c, tokens))
+                        .thenComparingDouble(KnowledgeChunk::getScore))
+                .orElse(chunks.get(0));
+    }
+
+    private void attachDocTitles(List<KnowledgeChunk> chunks) {
+        if (chunks == null || chunks.isEmpty()) {
+            return;
+        }
+        Set<Long> ids = chunks.stream().map(KnowledgeChunk::getDocId).collect(Collectors.toSet());
+        Map<Long, String> titles = knowledgeDocMapper.selectBatchIds(ids).stream()
+                .collect(Collectors.toMap(KnowledgeDoc::getId, KnowledgeDoc::getTitle, (a, b) -> a));
+        for (KnowledgeChunk chunk : chunks) {
+            chunk.setDocTitle(titles.get(chunk.getDocId()));
+        }
     }
 
     /**
@@ -257,7 +285,7 @@ public class KnowledgeService {
      *
      * <p>这里换一套只用于「够不够格」判断的加权分：命中越长的 gram 权重越高
      * （4 字的「报名活动」显然比 2 字的「怎么」有说服力，权重 3 : 1）。
-     * <b>不动 retrieve 的排序与返回</b>——回答质量不受影响，这里只决定要不要走短路。
+     * 不够格时学生问答给固定引导语，不展示弱相关摘录。
      *
      * @param minScore 加权分下限，低于它视为没有实质资料
      */
@@ -265,7 +293,7 @@ public class KnowledgeService {
         if (chunks == null || chunks.isEmpty() || question == null || question.isBlank()) {
             return false;
         }
-        Set<String> queryTokens = tokenize(question);
+        Set<String> queryTokens = queryTokens(question);
         if (queryTokens.isEmpty()) {
             return false;
         }
@@ -284,8 +312,24 @@ public class KnowledgeService {
      * 「怎么办」「有什么」这种词——分数比真问题「手机上怎么把资料保存下来」（3 分）还高，
      * 光调阈值永远分不开。计「够不够格」时把这些词剔掉，剩下的才是话题信号。
      *
-     * <p>只用于 {@link #hasSubstantialMatch}，不影响 {@link #retrieve} 的排序与返回。
+     * <p>只用于 {@link #hasSubstantialMatch}，不影响 {@link #retrieve} 的排序。
      */
+
+    /**
+     * 问法侧的小同义表，只扩查询词，不改文档正文。
+     * 成对出现：参加↔报名、展厅↔展馆、全景↔VR、退掉↔取消。
+     */
+    private static final Map<String, List<String>> QUERY_SYNONYMS = Map.of(
+            "参加", List.of("报名"),
+            "报名", List.of("参加"),
+            "展厅", List.of("展馆"),
+            "展馆", List.of("展厅"),
+            "全景", List.of("VR", "vr"),
+            "VR", List.of("全景"),
+            "vr", List.of("全景"),
+            "退掉", List.of("取消"),
+            "取消", List.of("退掉"));
+
     private static final Set<String> QUESTION_STOP_GRAMS = Set.of(
             "怎么", "怎样", "么样", "怎么样", "怎么办", "么办", "如何",
             "什么", "为什", "什么的", "为什么", "是什", "什么时",
@@ -324,6 +368,26 @@ public class KnowledgeService {
         }
         long hits = queryTokens.stream().filter(hay::contains).count();
         return hits;
+    }
+
+    private Set<String> queryTokens(String question) {
+        return expandSynonyms(tokenize(question));
+    }
+
+    private Set<String> expandSynonyms(Set<String> tokens) {
+        Set<String> out = new HashSet<>(tokens);
+        for (String token : tokens) {
+            for (Map.Entry<String, List<String>> entry : QUERY_SYNONYMS.entrySet()) {
+                String src = entry.getKey();
+                if (!token.equals(src) && !token.contains(src)) {
+                    continue;
+                }
+                for (String dst : entry.getValue()) {
+                    out.add(token.equals(src) ? dst : token.replace(src, dst));
+                }
+            }
+        }
+        return out;
     }
 
     private Set<String> tokenize(String text) {

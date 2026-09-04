@@ -100,12 +100,18 @@ public class AiChatService {
                 question, chunks, properties.getAi().getMinRelevanceScore());
 
         /*
-         * 一段资料都没检索到时不必再问模型：它拿到的上下文是「（无匹配资料）」，
-         * 只会回一句「没有找到相关资料」——同样的话我们自己说得更快、更准，也更省。
+         * 没有实质命中时不再把弱相关片段拼给学生：n-gram 几乎总能捞到一点噪声，
+         * 拼出来的「整理如下」看起来像答了，其实答非所问。
          */
-        String answer = chunks.isEmpty()
-                ? NO_MATERIAL_ANSWER
-                : aiClientService.chat(chunks, question);
+        String answer;
+        if (!substantial) {
+            answer = NO_MATERIAL_ANSWER;
+        } else {
+            KnowledgeChunk best = knowledgeService.pickBest(question, chunks);
+            answer = best == null
+                    ? NO_MATERIAL_ANSWER
+                    : aiClientService.chat(List.of(best), question);
+        }
         String safetyStatus = "pass";
         if (!contentSafetyService.checkText(answer)) {
             answer = "该问题暂时无法回答，请换个方式提问。";
@@ -114,10 +120,6 @@ public class AiChatService {
 
         /*
          * 知识库里没有能回答这个问题的资料时，不该扣用户当天的次数——他什么也没得到。
-         *
-         * <p>这里的判定只用来决定「扣不扣」，不用来决定「答不答」：检索到东西就照常交给模型，
-         * 该由模型说的话仍然由模型说。这样判定偏高只是少扣一次（对用户宽容），
-         * 偏低也只是维持现状（照扣），两个方向都不会误伤到回答本身。
          */
         Map<String, Object> vo = aiChatPersistenceService.saveChatTurn(
                 sessionId, question, answer, chunks, safetyStatus);
@@ -136,13 +138,10 @@ public class AiChatService {
     }
 
     /**
-     * 一段资料都没检索到时的回答。
-     *
-     * <p>话术要给出下一步（换问法、去搜索、反馈补资料），而不是把用户堵在原地；
-     * 明确说明这一次不计次数，免得他以为问一次亏一次。
+     * 检索不够格时的回答：给下一步（换问法、去搜索、反馈补资料），不提剩余次数。
      */
     static final String NO_MATERIAL_ANSWER =
-            "书院知识库里暂时没有和这个问题相关的资料，所以我没法回答，本次也不会计入你今天的问答次数。"
+            "书院知识库里暂时没有和这个问题相关的资料。"
                     + "你可以换一个更贴近书院或小程序功能的问法，比如「怎么报名活动」「积分怎么获得」；"
                     + "也可以用首页顶部的搜索框直接查动态、课程、展馆与资源。"
                     + "如果你觉得这个问题本该有答案，欢迎通过「意见反馈」告诉我们，管理员可以把相关资料补进知识库。";

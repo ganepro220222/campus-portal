@@ -60,9 +60,8 @@ shuyuan:
     # 就算两个人各自打满 100 次，一天也就两百次，成本仍然可以忽略。
     daily-limit: ${AI_DAILY_LIMIT:100}
     max-chunks: 5
-    # 「这次检索到的资料够不够回答」的加权分下限。只决定要不要扣用户当天的问答次数，
-    # 不决定是否回答——所以两个方向的误判都是温和的：判高了是少扣一次，判低了是维持现状。
-    # 数值取自 BuiltinKnowledgeRetrievalTest 导出的实测分布（无关问题实测最高 3 分）。
+    # 「这次检索到的资料够不够回答」的加权分下限。不够格时给固定引导语、不展示弱相关摘录，
+    # 也不扣当天次数。数值取自 BuiltinKnowledgeRetrievalTest 导出的实测分布（无关问题最高 3 分）。
     min-relevance-score: ${AI_MIN_RELEVANCE_SCORE:4}
     # 学生问答是否走大模型。默认 false：有 Key 也只拼知识库，避免小程序被当成生成式 AI。
     # 管理台润色仍用 AI_API_KEY，不受此项影响。

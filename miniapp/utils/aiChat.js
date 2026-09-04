@@ -91,7 +91,7 @@ function mapMessagesToUi(messages) {
 
 function quotaSubtitle(quota) {
   if (!quota || quota.needLogin) {
-    return '登录后可使用 AI 智能问答'
+    return '登录后可使用知识问答'
   }
   if (quota.remaining <= 0) {
     return '今日问答次数已用完，请明天再来'
@@ -129,7 +129,7 @@ function resolveErrorAnswer(err, question) {
     return err.message || '今日问答次数已用完，请明天再来'
   }
   if (err && err.code === 401) {
-    return '请先登录后再使用书院助手。'
+    return '请先登录后再使用知识问答。'
   }
   // 超时时服务端多半已经答完并存好了，再让用户去「确认登录、录入知识库」是南辕北辙
   if (isTimeoutError(err)) {

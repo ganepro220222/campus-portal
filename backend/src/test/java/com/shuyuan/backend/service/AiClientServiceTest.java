@@ -1,10 +1,11 @@
 package com.shuyuan.backend.service;
 
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.entity.KnowledgeChunk;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -12,7 +13,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -28,10 +28,15 @@ class AiClientServiceTest {
     @Mock
     private FallbackAiService fallbackAiService;
 
-    @InjectMocks
+    private final ShuyuanProperties properties = new ShuyuanProperties();
     private AiClientService aiClientService;
 
     private static final String FALLBACK_ANSWER = "来自知识库的兜底回答";
+
+    @BeforeEach
+    void setUp() {
+        aiClientService = new AiClientService(zhipuAiService, fallbackAiService, properties);
+    }
 
     private List<KnowledgeChunk> chunks() {
         KnowledgeChunk c = new KnowledgeChunk();
@@ -41,7 +46,6 @@ class AiClientServiceTest {
 
     @Test
     void 未配置Key时直接走知识库() {
-        when(zhipuAiService.canUse()).thenReturn(false);
         when(fallbackAiService.chat(anyString(), anyString(), anyList())).thenReturn(FALLBACK_ANSWER);
 
         assertEquals(FALLBACK_ANSWER, aiClientService.chat(chunks(), "有哪些展馆？"));
@@ -49,7 +53,17 @@ class AiClientServiceTest {
     }
 
     @Test
-    void 大模型可用时用大模型的回答() {
+    void 即使Key可用学生问答默认仍走知识库() {
+        when(fallbackAiService.chat(anyString(), anyString(), anyList())).thenReturn(FALLBACK_ANSWER);
+
+        assertEquals(FALLBACK_ANSWER, aiClientService.chat(chunks(), "有哪些展馆？"));
+        verify(zhipuAiService, never()).canUse();
+        verify(zhipuAiService, never()).chat(anyString(), anyString());
+    }
+
+    @Test
+    void 打开chatUseLlm且大模型可用时用大模型的回答() {
+        properties.getAi().setChatUseLlm(true);
         when(zhipuAiService.canUse()).thenReturn(true);
         when(zhipuAiService.chat(anyString(), anyString())).thenReturn("大模型回答");
 
@@ -62,7 +76,8 @@ class AiClientServiceTest {
      * 用户看到的是「暂时无法回答」；而知识库片段本来就够答大部分问题。
      */
     @Test
-    void 大模型抛异常时降级到知识库而不是报错() {
+    void 打开chatUseLlm后大模型抛异常时降级到知识库而不是报错() {
+        properties.getAi().setChatUseLlm(true);
         when(zhipuAiService.canUse()).thenReturn(true);
         when(zhipuAiService.chat(anyString(), anyString()))
                 .thenThrow(new BusinessException(502, "AI 服务暂时不可用，请稍后重试"));
@@ -72,7 +87,8 @@ class AiClientServiceTest {
     }
 
     @Test
-    void 大模型返回空内容时也降级() {
+    void 打开chatUseLlm后大模型返回空内容时也降级() {
+        properties.getAi().setChatUseLlm(true);
         when(zhipuAiService.canUse()).thenReturn(true);
         when(zhipuAiService.chat(anyString(), anyString())).thenReturn("   ");
         when(fallbackAiService.chat(anyString(), anyString(), anyList())).thenReturn(FALLBACK_ANSWER);
@@ -86,6 +102,7 @@ class AiClientServiceTest {
      */
     @Test
     void 提示词不得冒任何机构的名义() {
+        properties.getAi().setChatUseLlm(true);
         when(zhipuAiService.canUse()).thenReturn(true);
         when(zhipuAiService.chat(anyString(), anyString())).thenReturn("ok");
 

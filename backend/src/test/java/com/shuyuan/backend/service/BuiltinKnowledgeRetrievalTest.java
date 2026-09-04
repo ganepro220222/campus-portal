@@ -148,7 +148,7 @@ class BuiltinKnowledgeRetrievalTest {
                 new Case("展馆有多少个", "动态展馆与搜索"),
                 new Case("消息中心在哪里", "个人中心与消息"),
                 new Case("怎么提交意见反馈", "个人中心与消息"),
-                new Case("书院助手每天能问多少次", "书院助手使用说明"),
+                new Case("书院助手每天能问多少次", "知识问答使用说明"),
                 new Case("这个小程序有什么功能", "小程序总览"));
 
         List<String> wrong = new ArrayList<>();

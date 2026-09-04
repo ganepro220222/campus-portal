@@ -19,6 +19,12 @@ const path = require('node:path')
 const root = path.resolve(__dirname, '..')
 const SRC_DIR = path.join(root, 'sql/knowledge')
 const OUT_FILE = path.join(root, 'sql/patch-builtin-knowledge.sql')
+const UPDATE_OUT = path.join(root, 'sql/patch-update-builtin-knowledge-kb-qa.sql')
+
+/** 标题改过的篇：按旧标题也能更新已入库文档 */
+const TITLE_ALIASES = {
+  '08-ai-assistant.md': ['使用指南 · 书院助手使用说明']
+}
 
 /** 与后端保持一致：TextChunker.CHUNK_SIZE / OVERLAP */
 const CHUNK_SIZE = 500
@@ -93,7 +99,7 @@ function render(docs) {
   lines.push('-- 本文件由 scripts/build-builtin-knowledge.js 依据 sql/knowledge/*.md 生成，请勿手改；')
   lines.push('-- 要改内容请改 sql/knowledge/ 下的 .md 再重新生成（npm run build:builtin-knowledge）。')
   lines.push('--')
-  lines.push('-- 为什么要内置：知识库空着的时候，书院助手检索不到任何片段，只会反复回答')
+  lines.push('-- 为什么要内置：知识库空着的时候，知识问答检索不到任何片段，只会反复回答')
   lines.push('-- 「没有找到相关资料」，而每问一次仍然消耗用户当天 20 次额度中的一次。')
   lines.push('-- 校方与学院的文化资料我们无从代劳，但「这个小程序怎么用」是我们自己的交付物，')
   lines.push('-- 本来就该随系统一起给出。')
@@ -152,8 +158,48 @@ function render(docs) {
   return lines.join('\n')
 }
 
+function renderUpdate(docs) {
+  const lines = []
+  lines.push('-- 将已入库的内置使用指南更新为知识问答口径（可重复执行）')
+  lines.push('-- 由 scripts/build-builtin-knowledge.js --update-existing 生成，请勿手改。')
+  lines.push('-- 新库请先跑 patch-builtin-knowledge.sql；本文件按标题更新已存在行并重建分段。')
+  lines.push('')
+  lines.push('SET NAMES utf8mb4;')
+  lines.push('')
+
+  for (const doc of docs) {
+    const aliases = TITLE_ALIASES[doc.name] || []
+    const titles = [doc.title, ...aliases]
+    const titleList = titles.map(sqlStr).join(', ')
+    lines.push(`-- ---------- 更新 ${doc.title} ----------`)
+    lines.push('SET @doc_id = (SELECT `id` FROM `knowledge_doc`')
+    lines.push(`                WHERE \`title\` IN (${titleList}) ORDER BY \`id\` LIMIT 1);`)
+    lines.push('UPDATE `knowledge_doc` SET')
+    lines.push(`  \`title\` = ${sqlStr(doc.title)},`)
+    lines.push(`  \`file_url\` = ${sqlStr('builtin://' + doc.title)},`)
+    lines.push(`  \`content\` = ${sqlStr(doc.content)},`)
+    lines.push(`  \`char_count\` = ${doc.content.length},`)
+    lines.push(`  \`chunk_count\` = ${doc.parts.length}`)
+    lines.push('WHERE `id` = @doc_id;')
+    lines.push('DELETE FROM `knowledge_chunk` WHERE `doc_id` = @doc_id;')
+    doc.parts.forEach((part, i) => {
+      const keywords = part.slice(0, KEYWORDS_LEN)
+      lines.push('INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)')
+      lines.push(`SELECT @doc_id, ${sqlStr(part)}, ${i}, ${sqlStr(keywords)}, ${part.length}`)
+      lines.push('FROM DUAL WHERE @doc_id IS NOT NULL;')
+    })
+    lines.push('')
+  }
+
+  lines.push("UPDATE `sys_config` SET `config_value` = '你好，可以基于平台知识库为你解答使用与学习相关的问题。'")
+  lines.push("WHERE `config_key` = 'ai_assistant_welcome';")
+  lines.push('')
+  return lines.join('\n')
+}
+
 const docs = loadDocs()
 const sql = render(docs)
+const updateSql = renderUpdate(docs)
 
 if (process.argv.includes('--check')) {
   if (!fs.existsSync(OUT_FILE)) {
@@ -166,12 +212,20 @@ if (process.argv.includes('--check')) {
     console.error('    请执行 npm run build:builtin-knowledge 重新生成后再提交')
     process.exit(1)
   }
+  if (!fs.existsSync(UPDATE_OUT) || fs.readFileSync(UPDATE_OUT, 'utf8') !== updateSql) {
+    console.error('build-builtin-knowledge --check 失败：')
+    console.error('  ✖ sql/patch-update-builtin-knowledge-kb-qa.sql 与源文件不同步')
+    console.error('    请执行 npm run build:builtin-knowledge 重新生成后再提交')
+    process.exit(1)
+  }
   console.log(`build-builtin-knowledge --check OK（${docs.length} 篇，${docs.reduce((n, d) => n + d.parts.length, 0)} 段）`)
   process.exit(0)
 }
 
 fs.writeFileSync(OUT_FILE, sql)
+fs.writeFileSync(UPDATE_OUT, updateSql)
 console.log(`已生成 sql/patch-builtin-knowledge.sql：${docs.length} 篇文档，${docs.reduce((n, d) => n + d.parts.length, 0)} 段`)
+console.log(`已生成 sql/patch-update-builtin-knowledge-kb-qa.sql`)
 for (const d of docs) {
   console.log(`  ${d.title}  ${d.content.length} 字 / ${d.parts.length} 段`)
 }

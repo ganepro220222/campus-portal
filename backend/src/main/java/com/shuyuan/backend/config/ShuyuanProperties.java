@@ -93,6 +93,11 @@ public class ShuyuanProperties {
          * 不影响是否回答与回答内容。取值依据见 BuiltinKnowledgeRetrievalTest 导出的分数分布。
          */
         private int minRelevanceScore = 4;
+        /**
+         * 学生问答是否调用大模型。默认 false：即使配置了智谱 Key 也只拼接知识库片段。
+         * 管理台润色仍看 apiKey / provider，不受此开关影响。
+         */
+        private boolean chatUseLlm = false;
     }
 
     /** 微信订阅消息模板（生产环境在公众平台申请后填入） */

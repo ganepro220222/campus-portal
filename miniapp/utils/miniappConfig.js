@@ -9,7 +9,7 @@ const { get } = require('./request')
  * 所以一律取功能导向的中性表述，不放具体内容话题。
  */
 const DEFAULT = {
-  aiAssistantWelcome: '你好！我是书院助手，可以基于平台知识库为你解答使用与学习相关的问题。',
+  aiAssistantWelcome: '你好，可以基于平台知识库为你解答使用与学习相关的问题。',
   aiAssistantChips: ['平台有哪些线上展馆？', '怎么报名参加活动？', '在哪查看学习足迹？'],
   searchHotTags: ['线上展馆', '精品课程', '活动报名', '学习资源', '文创展示']
 }

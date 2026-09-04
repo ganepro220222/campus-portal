@@ -64,6 +64,9 @@ shuyuan:
     # 不决定是否回答——所以两个方向的误判都是温和的：判高了是少扣一次，判低了是维持现状。
     # 数值取自 BuiltinKnowledgeRetrievalTest 导出的实测分布（无关问题实测最高 3 分）。
     min-relevance-score: ${AI_MIN_RELEVANCE_SCORE:4}
+    # 学生问答是否走大模型。默认 false：有 Key 也只拼知识库，避免小程序被当成生成式 AI。
+    # 管理台润色仍用 AI_API_KEY，不受此项影响。
+    chat-use-llm: ${AI_CHAT_USE_LLM:false}
   subscribe:
     enroll-success-template-id: ${WX_TMPL_ENROLL_SUCCESS:}
     enroll-approved-template-id: ${WX_TMPL_ENROLL_APPROVED:}

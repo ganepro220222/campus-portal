@@ -93,7 +93,7 @@ const ICON_OPTIONS = [
   { label: '资源下载', value: 'entry-resource' },
   { label: '报名', value: 'entry-enroll' },
   { label: '精品/文创', value: 'medal' },
-  { label: '智能问答', value: 'robot' },
+  { label: '知识问答', value: 'robot' },
   { label: '搜索', value: 'search' },
   { label: '通用网格', value: 'grid' }
 ]
@@ -107,7 +107,7 @@ const PATH_OPTIONS = [
   { label: '资源下载', value: '/packageB/resource/list' },
   { label: '精品好物列表', value: '/packageA/craft/list' },
   { label: '全局搜索', value: '/packageC/search/index' },
-  { label: '智能问答', value: '/packageD/ai-chat/index' },
+  { label: '知识问答', value: '/packageD/ai-chat/index' },
   { label: '关联小程序列表', value: '/packageC/college/list' }
 ]
 

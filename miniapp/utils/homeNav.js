@@ -37,7 +37,7 @@ function mergeHomeNavItems(apiList) {
   return source.map(mapNavItem).filter(Boolean).filter((item) => {
     if (ENABLE_AI_CHAT) return true
     const label = item.label || ''
-    return !isAiChatPath(item.path) && !label.includes('智能问答')
+    return !isAiChatPath(item.path) && !label.includes('智能问答') && !label.includes('知识问答')
   })
 }
 

@@ -1,5 +1,8 @@
 {
   "navigationStyle": "custom",
   "enableShareAppMessage": true,
-  "enableShareTimeline": true
+  "enableShareTimeline": true,
+  "usingComponents": {
+    "ai-assistant": "/components/ai-assistant/index"
+  }
 }

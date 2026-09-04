@@ -69,7 +69,7 @@ public class CourseService {
         m.put("openTime", FormatUtils.formatDate(course.getStartTime()));
         m.put("hasVideo", hasVideo);
         m.put("hasSubtitle", hasSubtitle);
-        m.put("tags", List.of(categoryName, hasSubtitle ? "AI 字幕" : "在线课程"));
+        m.put("tags", List.of(categoryName, hasSubtitle ? "字幕" : "在线课程"));
         m.put("resources", loadLinkedResources(id));
         eventLogService.record("view", "course", id);
         favoriteService.enrichCollected(m, "course", id);
@@ -155,7 +155,7 @@ public class CourseService {
         m.put("audience", c.getTargetAudience());
         m.put("targetAudience", c.getTargetAudience());
         m.put("lessonCount", c.getDurationMinutes() != null ? Math.max(1, c.getDurationMinutes() / 45) : 0);
-        m.put("tag", hasSubtitle ? "AI 字幕" : categoryName);
+        m.put("tag", hasSubtitle ? "字幕" : categoryName);
         m.put("tagGold", hasSubtitle);
         m.put("desc", c.getIntro());
         return m;

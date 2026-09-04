@@ -20,7 +20,7 @@ public class FallbackAiService {
                 .map(KnowledgeChunk::getChunkText)
                 .limit(3)
                 .collect(Collectors.joining("\n\n"));
-        return "根据书院文化资料整理如下：\n\n" + refs
+        return "根据平台知识库资料整理如下：\n\n" + refs
                 + "\n\n如需更深入了解，欢迎继续提问或前往相关展馆、课程页面浏览。";
     }
 }

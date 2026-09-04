@@ -19,13 +19,13 @@ assert.strictEqual(fallback.title, '暂无提问')
 
 const ui = mapMessagesToUi([
   { role: 'user', content: '你好' },
-  { role: 'assistant', content: '您好，我是书院助手。' }
+  { role: 'assistant', content: '您好，我是知识问答。' }
 ])
 assert.strictEqual(ui.length, 2)
 assert.strictEqual(ui[0].role, 'me')
 assert.strictEqual(ui[0].text, '你好')
 assert.strictEqual(ui[1].role, 'ai')
-assert.strictEqual(ui[1].text, '您好，我是书院助手。')
+assert.strictEqual(ui[1].text, '您好，我是知识问答。')
 
 // ---------- 超时：服务端多半已经答完并存好了 ----------
 const { resolveErrorAnswer, isTimeoutError, isNetworkError, exhaustedQuota, ASK_TIMEOUT } = require('./aiChat')
@@ -55,7 +55,7 @@ assert.ok(!resolveErrorAnswer({ errMsg: 'request:fail net::ERR_CONNECTION_REFUSE
 // 有 body.code 的业务错误优先按业务处理，不能被超时/网络分支抢走
 assert.strictEqual(resolveErrorAnswer({ code: 429, message: '今日问答次数已用完，请明天再来' }),
   '今日问答次数已用完，请明天再来')
-assert.strictEqual(resolveErrorAnswer({ code: 401 }), '请先登录后再使用书院助手。')
+assert.strictEqual(resolveErrorAnswer({ code: 401 }), '请先登录后再使用知识问答。')
 assert.strictEqual(resolveErrorAnswer({ code: 502, message: 'AI 服务暂时不可用，请稍后重试' }),
   'AI 服务暂时不可用，请稍后重试')
 assert.ok(resolveErrorAnswer({}).includes('服务暂时不可用'))

@@ -65,7 +65,7 @@
     </view>
     <view wx:if="{{showAiChat}}" class="menu-item" bindtap="onAiChat">
       <view class="mi-ic mi-blue"><icon name="robot" size="20" color="#ffffff" /></view>
-      <text class="mi-tx">智能问答</text>
+      <text class="mi-tx">知识问答</text>
       <icon name="chevron-right" size="16" color="#C3CCE0" />
     </view>
     <view wx:if="{{showAiChat}}" class="menu-item" bindtap="onAiHistory">

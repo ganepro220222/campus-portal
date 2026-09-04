@@ -371,7 +371,7 @@ Page({
 
   onCC() {
     this.setData({ cc: !this.data.cc })
-    wx.showToast({ title: this.data.cc ? 'AI 字幕已开启' : 'AI 字幕已关闭', icon: 'none' })
+    wx.showToast({ title: this.data.cc ? '字幕已开启' : '字幕已关闭', icon: 'none' })
   },
 
   _reportProgress(position, total) {

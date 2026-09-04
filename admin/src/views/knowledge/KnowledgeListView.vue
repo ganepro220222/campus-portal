@@ -1,12 +1,12 @@
 <template>
   <div class="page-card">
     <div class="page-header">
-      <h2>AI 知识库</h2>
+      <h2>知识库</h2>
       <el-button type="primary" :icon="Plus" @click="openCreate()">录入资料</el-button>
     </div>
 
     <p class="text-muted">
-      录入书院文化文本后自动切分入库，小程序 AI 问答将基于这些资料作答。状态为「已就绪」后可被检索；
+      录入书院文化文本后自动切分入库，小程序知识问答将基于这些资料作答。状态为「已就绪」后可被检索；
       编辑后会重新切分入库。
     </p>
 
@@ -275,7 +275,7 @@ async function onTest() {
 async function onToggleEnabled(row: KnowledgeDocItem, enabled: boolean) {
   try {
     await setKnowledgeDocEnabled(row.id, enabled)
-    ElMessage.success(enabled ? '已启用，将参与 AI 检索' : '已停用，不再参与 AI 检索')
+    ElMessage.success(enabled ? '已启用，将参与知识库检索' : '已停用，不再参与知识库检索')
     await loadData()
   } catch {
     await loadData() // 失败时重载，让开关回到服务端真实状态

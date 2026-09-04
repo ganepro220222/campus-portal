@@ -125,7 +125,7 @@ const router = createRouter({
           path: 'knowledge',
           name: 'Knowledge',
           component: () => import('@/views/knowledge/KnowledgeListView.vue'),
-          meta: { title: 'AI 知识库', permission: 'admin:super' }
+          meta: { title: '知识库', permission: 'admin:super' }
         },
         {
           path: 'categories',
@@ -149,7 +149,7 @@ const router = createRouter({
           path: 'ai-assistant-config',
           name: 'AiAssistantConfig',
           component: () => import('@/views/ai-assistant/AiAssistantConfigView.vue'),
-          meta: { title: 'AI 助手配置', permission: 'admin:super' }
+          meta: { title: '问答配置', permission: 'admin:super' }
         },
         {
           path: 'admin-users',
@@ -250,11 +250,11 @@ export const menuItems: MenuNode[] = [
   },
   {
     key: 'ai',
-    title: '智能助手',
-    icon: MagicStick, // 智能助手
+    title: '知识问答',
+    icon: MagicStick, // 知识问答
     children: [
-      { path: '/knowledge', title: 'AI 知识库', icon: Reading, permissions: ['admin:super'] },
-      { path: '/ai-assistant-config', title: 'AI 助手配置', icon: Operation, permissions: ['admin:super'] }
+      { path: '/knowledge', title: '知识库', icon: Reading, permissions: ['admin:super'] },
+      { path: '/ai-assistant-config', title: '问答配置', icon: Operation, permissions: ['admin:super'] }
     ]
   },
   {

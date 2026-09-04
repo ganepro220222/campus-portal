@@ -30,7 +30,7 @@
         <view class="player">
           <view class="player-bg"></view>
           <view class="cc" bindtap="onCC">
-            <icon name="cc" size="13" color="#ffffff" /> AI 字幕
+            <icon name="cc" size="13" color="#ffffff" /> 字幕
           </view>
           <view class="play" bindtap="onPlay"><icon name="play" size="26" color="#2B356E" /></view>
         </view>
@@ -40,7 +40,7 @@
           <view class="cmeta-title serif">{{course.name}}</view>
           <view wx:if="{{progressHint}}" class="progress-hint">{{progressHint}}</view>
           <view class="cmeta-tags">
-            <text wx:for="{{course.tags}}" wx:key="*this" class="pill {{item === 'AI 字幕' ? 'gold' : ''}}">{{item}}</text>
+            <text wx:for="{{course.tags}}" wx:key="*this" class="pill {{item === '字幕' ? 'gold' : ''}}">{{item}}</text>
           </view>
           <view class="minfo">
             <view class="mi"><icon name="users" size="15" color="#2B356E" /><text>授课对象：{{course.audience}}</text></view>
@@ -76,5 +76,6 @@
     </scroll-view>
   </block>
 
+  <ai-assistant bottom="60" />
   <resource-audio-bar />
 </view>

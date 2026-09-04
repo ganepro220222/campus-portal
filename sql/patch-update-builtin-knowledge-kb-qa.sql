@@ -1,30 +1,16 @@
--- 内置知识库：云端书院小程序自身的介绍、功能与使用指南
---
--- 本文件由 scripts/build-builtin-knowledge.js 依据 sql/knowledge/*.md 生成，请勿手改；
--- 要改内容请改 sql/knowledge/ 下的 .md 再重新生成（npm run build:builtin-knowledge）。
---
--- 为什么要内置：知识库空着的时候，知识问答检索不到任何片段，只会反复回答
--- 「没有找到相关资料」，而每问一次仍然消耗用户当天 20 次额度中的一次。
--- 校方与学院的文化资料我们无从代劳，但「这个小程序怎么用」是我们自己的交付物，
--- 本来就该随系统一起给出。
---
--- 特性：
---   * 可重复执行：按标题判重，已存在则跳过，不会产生重复文档
---   * 后台可管：source_type=manual，与手工录入的资料同一套增删改查，可编辑可停用可删除
---   * 分段与后端 TextChunker 完全一致（500 字一段、50 字重叠），
---     后台编辑保存后重新分段的结果与此处相同
---   * 不属于演示数据：sql/seed-dev-cleanup.sql 不会清除本文件写入的内容
+-- 将已入库的内置使用指南更新为知识问答口径（可重复执行）
+-- 由 scripts/build-builtin-knowledge.js --update-existing 生成，请勿手改。
+-- 新库请先跑 patch-builtin-knowledge.sql；本文件按标题更新已存在行并重建分段。
 
 SET NAMES utf8mb4;
 
--- ---------- 使用指南 · 小程序总览（源文件 sql/knowledge/01-overview.md，2 段） ----------
-INSERT INTO `knowledge_doc`
-  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
-SELECT
-  '使用指南 · 小程序总览',
-  'builtin://使用指南 · 小程序总览',
-  'manual',
-  '云端书院小程序是什么？有哪些功能？
+-- ---------- 更新 使用指南 · 小程序总览 ----------
+SET @doc_id = (SELECT `id` FROM `knowledge_doc`
+                WHERE `title` IN ('使用指南 · 小程序总览') ORDER BY `id` LIMIT 1);
+UPDATE `knowledge_doc` SET
+  `title` = '使用指南 · 小程序总览',
+  `file_url` = 'builtin://使用指南 · 小程序总览',
+  `content` = '云端书院小程序是什么？有哪些功能？
 
 云端书院是一个面向师生的文化学习与活动服务小程序。你可以在这里浏览书院动态、参观线上文化展馆、观看在线课程、下载学习资源、报名参加线下活动，并通过参与获得积分与学习徽章。
 
@@ -57,21 +43,10 @@ SELECT
 需要提醒的是，浏览大部分内容不需要登录，但收藏、点赞、报名活动、下载资源、记录学习进度、获得积分和使用知识问答都需要先登录。
 
 常见问法：这个小程序是干什么的？有哪些功能？首页有什么？底部四个标签分别是什么？在哪里找到活动报名？在哪里找到学习资源？',
-  878,
-  2,
-  'ready',
-  NULL
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM (SELECT 1 FROM `knowledge_doc` WHERE `title` = '使用指南 · 小程序总览' LIMIT 1) AS x
-);
-
-SET @doc_id = (SELECT `id` FROM `knowledge_doc`
-                WHERE `title` = '使用指南 · 小程序总览' ORDER BY `id` LIMIT 1);
-
--- 分段只在该文档尚无分段时写入，避免重复执行把段落插两遍
-SET @has_chunk = (SELECT COUNT(*) FROM `knowledge_chunk` WHERE `doc_id` = @doc_id);
-
+  `char_count` = 878,
+  `chunk_count` = 2
+WHERE `id` = @doc_id;
+DELETE FROM `knowledge_chunk` WHERE `doc_id` = @doc_id;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '云端书院小程序是什么？有哪些功能？
 
@@ -94,8 +69,7 @@ SELECT @doc_id, '云端书院小程序是什么？有哪些功能？
 学习资源：可下载的 PDF、', 0, '云端书院小程序是什么？有哪些功能？
 
 云端书院是一个面向师生的文化学习与活动服务小程序。你可以在这里浏览书院动态、参观线上文化展馆、观看在线课程、下载学习资源、', 500
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
-
+FROM DUAL WHERE @doc_id IS NOT NULL;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '看书院组织的线下活动，在报名时间内提交报名，获得凭证码与签到二维码。
 
@@ -118,16 +92,15 @@ SELECT @doc_id, '看书院组织的线下活动，在报名时间内提交报名
 学习资源：可下载的 PDF、Word、PPT、音视频等学习资料。
 
 文创：书院文创产品的', 428
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
+FROM DUAL WHERE @doc_id IS NOT NULL;
 
--- ---------- 使用指南 · 登录与账号（源文件 sql/knowledge/02-login-account.md，3 段） ----------
-INSERT INTO `knowledge_doc`
-  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
-SELECT
-  '使用指南 · 登录与账号',
-  'builtin://使用指南 · 登录与账号',
-  'manual',
-  '怎么登录云端书院小程序？账号从哪里来？忘记密码怎么办？
+-- ---------- 更新 使用指南 · 登录与账号 ----------
+SET @doc_id = (SELECT `id` FROM `knowledge_doc`
+                WHERE `title` IN ('使用指南 · 登录与账号') ORDER BY `id` LIMIT 1);
+UPDATE `knowledge_doc` SET
+  `title` = '使用指南 · 登录与账号',
+  `file_url` = 'builtin://使用指南 · 登录与账号',
+  `content` = '怎么登录云端书院小程序？账号从哪里来？忘记密码怎么办？
 
 账号来源：云端书院的账号不能自己注册。所有师生账号由学校或学院的管理员在管理后台统一导入或新增，账号以学号（教师为工号）作为登录名。如果你用微信打开小程序后提示需要绑定，说明系统里还没有你的账号，或者你的学号还没有被导入，请联系学院管理员。
 
@@ -152,21 +125,10 @@ SELECT
 退出登录：在个人中心可以退出当前账号。退出后收藏、报名等个人数据不会丢失，重新登录即可看到。
 
 常见问法：怎么登录？怎么注册？为什么登录不了？忘记密码怎么办？怎么改密码？怎么绑定微信？怎么解绑微信？账号从哪里来？为什么提示需要绑定学号？怎么退出登录？',
-  1001,
-  3,
-  'ready',
-  NULL
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM (SELECT 1 FROM `knowledge_doc` WHERE `title` = '使用指南 · 登录与账号' LIMIT 1) AS x
-);
-
-SET @doc_id = (SELECT `id` FROM `knowledge_doc`
-                WHERE `title` = '使用指南 · 登录与账号' ORDER BY `id` LIMIT 1);
-
--- 分段只在该文档尚无分段时写入，避免重复执行把段落插两遍
-SET @has_chunk = (SELECT COUNT(*) FROM `knowledge_chunk` WHERE `doc_id` = @doc_id);
-
+  `char_count` = 1001,
+  `chunk_count` = 3
+WHERE `id` = @doc_id;
+DELETE FROM `knowledge_chunk` WHERE `doc_id` = @doc_id;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '怎么登录云端书院小程序？账号从哪里来？忘记密码怎么办？
 
@@ -181,8 +143,7 @@ SELECT @doc_id, '怎么登录云端书院小程序？账号从哪里来？忘记
 第二种是直接用学号和密码登录。在登录页选择学号登录，输入学号与密码即可。学号登录后，也可以在个人资料页把当前微信绑定上去，之后就能免密登录。', 0, '怎么登录云端书院小程序？账号从哪里来？忘记密码怎么办？
 
 账号来源：云端书院的账号不能自己注册。所有师生账号由学校或学院的管理员在管理后台统一导入或新增，账号以', 500
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
-
+FROM DUAL WHERE @doc_id IS NOT NULL;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '择学号登录，输入学号与密码即可。学号登录后，也可以在个人资料页把当前微信绑定上去，之后就能免密登录。
 
@@ -201,24 +162,22 @@ SELECT @doc_id, '择学号登录，输入学号与密码即可。学号登录后
 常见问法：怎么登录？怎么注册？为什么登录不了？忘记密', 1, '择学号登录，输入学号与密码即可。学号登录后，也可以在个人资料页把当前微信绑定上去，之后就能免密登录。
 
 首次登录必须修改密码。管理员导入账号时会设置初始密码，第', 500
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
-
+FROM DUAL WHERE @doc_id IS NOT NULL;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '、报名等个人数据不会丢失，重新登录即可看到。
 
 常见问法：怎么登录？怎么注册？为什么登录不了？忘记密码怎么办？怎么改密码？怎么绑定微信？怎么解绑微信？账号从哪里来？为什么提示需要绑定学号？怎么退出登录？', 2, '、报名等个人数据不会丢失，重新登录即可看到。
 
 常见问法：怎么登录？怎么注册？为什么登录不了？忘记密码怎么办？怎么改密码？怎么绑定微信？怎么解绑微信？账号从哪里', 101
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
+FROM DUAL WHERE @doc_id IS NOT NULL;
 
--- ---------- 使用指南 · 动态展馆与搜索（源文件 sql/knowledge/03-news-hall-search.md，2 段） ----------
-INSERT INTO `knowledge_doc`
-  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
-SELECT
-  '使用指南 · 动态展馆与搜索',
-  'builtin://使用指南 · 动态展馆与搜索',
-  'manual',
-  '怎么看动态？展馆怎么参观？怎么搜索内容？收藏和点赞在哪里？
+-- ---------- 更新 使用指南 · 动态展馆与搜索 ----------
+SET @doc_id = (SELECT `id` FROM `knowledge_doc`
+                WHERE `title` IN ('使用指南 · 动态展馆与搜索') ORDER BY `id` LIMIT 1);
+UPDATE `knowledge_doc` SET
+  `title` = '使用指南 · 动态展馆与搜索',
+  `file_url` = 'builtin://使用指南 · 动态展馆与搜索',
+  `content` = '怎么看动态？展馆怎么参观？怎么搜索内容？收藏和点赞在哪里？
 
 动态：点击底部「动态」标签进入列表，可以按分类筛选，点击任意一条进入正文。正文页底部有收藏、点赞和分享按钮。收藏后可以在个人中心的「收藏」里找回；分享可以转发给微信好友，也可以生成海报图片保存到相册。列表里显示的阅读数是累计浏览量。
 
@@ -239,21 +198,10 @@ SELECT
 浏览记录：个人中心的「足迹」记录你最近浏览过的内容，方便找回看过但没收藏的东西。
 
 常见问法：怎么收藏？怎么取消收藏？收藏在哪里看？怎么点赞？怎么分享？怎么搜索？搜不到内容怎么办？展馆怎么进？展馆有几个？怎么看动态？浏览记录在哪里？',
-  800,
-  2,
-  'ready',
-  NULL
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM (SELECT 1 FROM `knowledge_doc` WHERE `title` = '使用指南 · 动态展馆与搜索' LIMIT 1) AS x
-);
-
-SET @doc_id = (SELECT `id` FROM `knowledge_doc`
-                WHERE `title` = '使用指南 · 动态展馆与搜索' ORDER BY `id` LIMIT 1);
-
--- 分段只在该文档尚无分段时写入，避免重复执行把段落插两遍
-SET @has_chunk = (SELECT COUNT(*) FROM `knowledge_chunk` WHERE `doc_id` = @doc_id);
-
+  `char_count` = 800,
+  `chunk_count` = 2
+WHERE `id` = @doc_id;
+DELETE FROM `knowledge_chunk` WHERE `doc_id` = @doc_id;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '怎么看动态？展馆怎么参观？怎么搜索内容？收藏和点赞在哪里？
 
@@ -270,8 +218,7 @@ SELECT @doc_id, '怎么看动态？展馆怎么参观？怎么搜索内容？收
 收藏：在动态', 0, '怎么看动态？展馆怎么参观？怎么搜索内容？收藏和点赞在哪里？
 
 动态：点击底部「动态」标签进入列表，可以按分类筛选，点击任意一条进入正文。正文页底部有收藏、点赞和', 500
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
-
+FROM DUAL WHERE @doc_id IS NOT NULL;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '应详情页。如果搜不到内容，可以换用更短的关键词再试，例如只搜「书法」而不是一整句话。
 
@@ -286,16 +233,15 @@ SELECT @doc_id, '应详情页。如果搜不到内容，可以换用更短的关
 常见问法：怎么收藏？怎么取消收藏？收藏在哪里看？怎么点赞？怎么分享？怎么搜索？搜不到内容怎么办？展馆怎么进？展馆有几个？怎么看动态？浏览记录在哪里？', 1, '应详情页。如果搜不到内容，可以换用更短的关键词再试，例如只搜「书法」而不是一整句话。
 
 收藏：在动态、课程、展馆、文创的详情页都可以收藏。收藏需要先登录。个人中', 350
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
+FROM DUAL WHERE @doc_id IS NOT NULL;
 
--- ---------- 使用指南 · 课程与学习资源（源文件 sql/knowledge/04-course-resource.md，2 段） ----------
-INSERT INTO `knowledge_doc`
-  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
-SELECT
-  '使用指南 · 课程与学习资源',
-  'builtin://使用指南 · 课程与学习资源',
-  'manual',
-  '怎么看课程？学习进度怎么算？课程什么时候算完成？资源在哪里下载？
+-- ---------- 更新 使用指南 · 课程与学习资源 ----------
+SET @doc_id = (SELECT `id` FROM `knowledge_doc`
+                WHERE `title` IN ('使用指南 · 课程与学习资源') ORDER BY `id` LIMIT 1);
+UPDATE `knowledge_doc` SET
+  `title` = '使用指南 · 课程与学习资源',
+  `file_url` = 'builtin://使用指南 · 课程与学习资源',
+  `content` = '怎么看课程？学习进度怎么算？课程什么时候算完成？资源在哪里下载？
 
 课程列表：点击底部「课程」标签进入。只有管理员已上架的课程才会显示。点击课程进入详情页，可以看到课程标题、讲师、简介与封面，点击播放进入播放页。
 
@@ -316,21 +262,10 @@ SELECT
 学习徽章：个人中心有「学习徽章」页面。完成 3 门课程可以获得「学习先锋」徽章，其他徽章的条件见积分与徽章相关说明。
 
 常见问法：怎么看课程？课程进度怎么算？看到多少算完成？为什么进度没有保存？课程有字幕吗？资源怎么下载？下载失败怎么办？下载记录在哪里？',
-  745,
-  2,
-  'ready',
-  NULL
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM (SELECT 1 FROM `knowledge_doc` WHERE `title` = '使用指南 · 课程与学习资源' LIMIT 1) AS x
-);
-
-SET @doc_id = (SELECT `id` FROM `knowledge_doc`
-                WHERE `title` = '使用指南 · 课程与学习资源' ORDER BY `id` LIMIT 1);
-
--- 分段只在该文档尚无分段时写入，避免重复执行把段落插两遍
-SET @has_chunk = (SELECT COUNT(*) FROM `knowledge_chunk` WHERE `doc_id` = @doc_id);
-
+  `char_count` = 745,
+  `chunk_count` = 2
+WHERE `id` = @doc_id;
+DELETE FROM `knowledge_chunk` WHERE `doc_id` = @doc_id;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '怎么看课程？学习进度怎么算？课程什么时候算完成？资源在哪里下载？
 
@@ -347,8 +282,7 @@ SELECT @doc_id, '怎么看课程？学习进度怎么算？课程什么时候算
 学习资源：资源列表提供可下载的学习资料，包括 PDF、Word、PPT 和音视频文件。可以从课程板块或首页的资源入口进入。点击下载即可，下载需要先登录。下载资源可以获得积分，每天有次数上限', 0, '怎么看课程？学习进度怎么算？课程什么时候算完成？资源在哪里下载？
 
 课程列表：点击底部「课程」标签进入。只有管理员已上架的课程才会显示。点击课程进入详情页，可以', 500
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
-
+FROM DUAL WHERE @doc_id IS NOT NULL;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '以从课程板块或首页的资源入口进入。点击下载即可，下载需要先登录。下载资源可以获得积分，每天有次数上限。
 
@@ -361,16 +295,15 @@ SELECT @doc_id, '以从课程板块或首页的资源入口进入。点击下载
 常见问法：怎么看课程？课程进度怎么算？看到多少算完成？为什么进度没有保存？课程有字幕吗？资源怎么下载？下载失败怎么办？下载记录在哪里？', 1, '以从课程板块或首页的资源入口进入。点击下载即可，下载需要先登录。下载资源可以获得积分，每天有次数上限。
 
 资源下载失败：如果下载没有反应或提示失败，先确认网络是', 295
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
+FROM DUAL WHERE @doc_id IS NOT NULL;
 
--- ---------- 使用指南 · 活动报名（源文件 sql/knowledge/05-activity-enroll.md，2 段） ----------
-INSERT INTO `knowledge_doc`
-  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
-SELECT
-  '使用指南 · 活动报名',
-  'builtin://使用指南 · 活动报名',
-  'manual',
-  '怎么报名活动？报名后要做什么？名额满了怎么办？可以取消报名吗？
+-- ---------- 更新 使用指南 · 活动报名 ----------
+SET @doc_id = (SELECT `id` FROM `knowledge_doc`
+                WHERE `title` IN ('使用指南 · 活动报名') ORDER BY `id` LIMIT 1);
+UPDATE `knowledge_doc` SET
+  `title` = '使用指南 · 活动报名',
+  `file_url` = 'builtin://使用指南 · 活动报名',
+  `content` = '怎么报名活动？报名后要做什么？名额满了怎么办？可以取消报名吗？
 
 怎么报名：在活动列表点击想参加的活动进入详情页，确认时间、地点与名额后点击报名，填写并提交报名表单即可。报名需要先登录。
 
@@ -395,21 +328,10 @@ SELECT
 报名提醒：如果开启了微信订阅消息授权，报名成功、审核通过和活动临近时会收到微信通知；没有授权时会以站内消息的形式发送到消息中心。
 
 常见问法：怎么报名？报名要审核吗？名额满了怎么办？怎么取消报名？报名凭证在哪里？签到二维码怎么看？活动取消了怎么办？我的报名在哪里看？为什么报名不了？',
-  934,
-  2,
-  'ready',
-  NULL
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM (SELECT 1 FROM `knowledge_doc` WHERE `title` = '使用指南 · 活动报名' LIMIT 1) AS x
-);
-
-SET @doc_id = (SELECT `id` FROM `knowledge_doc`
-                WHERE `title` = '使用指南 · 活动报名' ORDER BY `id` LIMIT 1);
-
--- 分段只在该文档尚无分段时写入，避免重复执行把段落插两遍
-SET @has_chunk = (SELECT COUNT(*) FROM `knowledge_chunk` WHERE `doc_id` = @doc_id);
-
+  `char_count` = 934,
+  `chunk_count` = 2
+WHERE `id` = @doc_id;
+DELETE FROM `knowledge_chunk` WHERE `doc_id` = @doc_id;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '怎么报名活动？报名后要做什么？名额满了怎么办？可以取消报名吗？
 
@@ -426,8 +348,7 @@ SELECT @doc_id, '怎么报名活动？报名后要做什么？名额满了怎么
 取消报名：在活动详情页或个人中心的「我的报名」里可以取消。取消后名额会释放给其他人。取消后的报名不会再出现在「我的报名」列表里', 0, '怎么报名活动？报名后要做什么？名额满了怎么办？可以取消报名吗？
 
 怎么报名：在活动列表点击想参加的活动进入详情页，确认时间、地点与名额后点击报名，填写并提交报名', 500
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
-
+FROM DUAL WHERE @doc_id IS NOT NULL;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '人中心的「我的报名」里可以取消。取消后名额会释放给其他人。取消后的报名不会再出现在「我的报名」列表里。
 
@@ -444,16 +365,15 @@ SELECT @doc_id, '人中心的「我的报名」里可以取消。取消后名额
 常见问法：怎么报名？报名要审核吗？名额满了怎么办？怎么取消报名？报名凭证在哪里？签到二维码怎么看？活动取消了怎么办？我的报名在哪里看？为什么报名不了？', 1, '人中心的「我的报名」里可以取消。取消后名额会释放给其他人。取消后的报名不会再出现在「我的报名」列表里。
 
 活动被取消：如果管理员取消了整个活动，你的待审核或已通', 484
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
+FROM DUAL WHERE @doc_id IS NOT NULL;
 
--- ---------- 使用指南 · 积分与徽章（源文件 sql/knowledge/06-points-badge.md，2 段） ----------
-INSERT INTO `knowledge_doc`
-  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
-SELECT
-  '使用指南 · 积分与徽章',
-  'builtin://使用指南 · 积分与徽章',
-  'manual',
-  '积分怎么获得？每天最多能得多少分？徽章怎么解锁？积分有什么用？
+-- ---------- 更新 使用指南 · 积分与徽章 ----------
+SET @doc_id = (SELECT `id` FROM `knowledge_doc`
+                WHERE `title` IN ('使用指南 · 积分与徽章') ORDER BY `id` LIMIT 1);
+UPDATE `knowledge_doc` SET
+  `title` = '使用指南 · 积分与徽章',
+  `file_url` = 'builtin://使用指南 · 积分与徽章',
+  `content` = '积分怎么获得？每天最多能得多少分？徽章怎么解锁？积分有什么用？
 
 积分需要先登录才会记录。未登录状态下浏览内容不会计分。
 
@@ -487,21 +407,10 @@ SELECT
 徽章达成条件后自动解锁，不需要手动领取。如果条件已达成但徽章没有显示，可以退出页面重新进入刷新一次。
 
 常见问法：积分怎么获得？积分怎么算？为什么积分没有增加？一天最多多少积分？积分有什么用？在哪里看积分？徽章怎么获得？徽章怎么解锁？有哪些徽章？',
-  844,
-  2,
-  'ready',
-  NULL
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM (SELECT 1 FROM `knowledge_doc` WHERE `title` = '使用指南 · 积分与徽章' LIMIT 1) AS x
-);
-
-SET @doc_id = (SELECT `id` FROM `knowledge_doc`
-                WHERE `title` = '使用指南 · 积分与徽章' ORDER BY `id` LIMIT 1);
-
--- 分段只在该文档尚无分段时写入，避免重复执行把段落插两遍
-SET @has_chunk = (SELECT COUNT(*) FROM `knowledge_chunk` WHERE `doc_id` = @doc_id);
-
+  `char_count` = 844,
+  `chunk_count` = 2
+WHERE `id` = @doc_id;
+DELETE FROM `knowledge_chunk` WHERE `doc_id` = @doc_id;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '积分怎么获得？每天最多能得多少分？徽章怎么解锁？积分有什么用？
 
@@ -526,8 +435,7 @@ SELECT @doc_id, '积分怎么获得？每天最多能得多少分？徽章怎么
 积分需要先登录才会记录。未登录状态下浏览内容不会计分。
 
 积分规则一览，每一项都有每天的次数上', 500
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
-
+FROM DUAL WHERE @doc_id IS NOT NULL;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '有三个。一是没有登录；二是当天这一项的次数上限已经用完，例如今天已经浏览过 5 条动态再看第 6 条就不再加分；三是同一门课程重复完成只计一次分，完成课程的积分对每门课只发一次。
 
@@ -545,16 +453,15 @@ SELECT @doc_id, '有三个。一是没有登录；二是当天这一项的次数
 徽章达成条件后自动解锁，不需要手动领取。如果条件已达成但徽章没有显示，可以退出页面重新进入刷新一次。
 
 常见问法：积分怎么获得？积分怎么算？为什么积分没有增加？一天最多多少积分？积分有什么用？在哪里看积分？徽章怎么获得？徽章怎么解锁？有哪些徽章？', 1, '有三个。一是没有登录；二是当天这一项的次数上限已经用完，例如今天已经浏览过 5 条动态再看第 6 条就不再加分；三是同一门课程重复完成只计一次分，完成课程的积分', 394
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
+FROM DUAL WHERE @doc_id IS NOT NULL;
 
--- ---------- 使用指南 · 个人中心与消息（源文件 sql/knowledge/07-profile-message.md，2 段） ----------
-INSERT INTO `knowledge_doc`
-  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
-SELECT
-  '使用指南 · 个人中心与消息',
-  'builtin://使用指南 · 个人中心与消息',
-  'manual',
-  '个人中心有什么？消息中心在哪里？怎么提交意见反馈？关联小程序是什么？
+-- ---------- 更新 使用指南 · 个人中心与消息 ----------
+SET @doc_id = (SELECT `id` FROM `knowledge_doc`
+                WHERE `title` IN ('使用指南 · 个人中心与消息') ORDER BY `id` LIMIT 1);
+UPDATE `knowledge_doc` SET
+  `title` = '使用指南 · 个人中心与消息',
+  `file_url` = 'builtin://使用指南 · 个人中心与消息',
+  `content` = '个人中心有什么？消息中心在哪里？怎么提交意见反馈？关联小程序是什么？
 
 个人中心入口：首页左上角的头像图标，或底部导航相关入口进入。未登录时会提示先登录。
 
@@ -585,21 +492,10 @@ SELECT
 隐私政策：可以从「关于云端书院」页面进入，说明小程序收集哪些信息以及如何使用。
 
 常见问法：个人中心在哪里？怎么改昵称？怎么改头像？消息中心在哪里？怎么看通知？怎么提交意见反馈？反馈会有人回复吗？关联小程序是什么？隐私政策在哪里看？',
-  924,
-  2,
-  'ready',
-  NULL
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM (SELECT 1 FROM `knowledge_doc` WHERE `title` = '使用指南 · 个人中心与消息' LIMIT 1) AS x
-);
-
-SET @doc_id = (SELECT `id` FROM `knowledge_doc`
-                WHERE `title` = '使用指南 · 个人中心与消息' ORDER BY `id` LIMIT 1);
-
--- 分段只在该文档尚无分段时写入，避免重复执行把段落插两遍
-SET @has_chunk = (SELECT COUNT(*) FROM `knowledge_chunk` WHERE `doc_id` = @doc_id);
-
+  `char_count` = 924,
+  `chunk_count` = 2
+WHERE `id` = @doc_id;
+DELETE FROM `knowledge_chunk` WHERE `doc_id` = @doc_id;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '个人中心有什么？消息中心在哪里？怎么提交意见反馈？关联小程序是什么？
 
@@ -628,8 +524,7 @@ SELECT @doc_id, '个人中心有什么？消息中心在哪里？怎么提交意
 个人中心入口：首页左上角的头像图标，或底部导航相关入口进入。未登录时会提示先登录。
 
 个', 500
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
-
+FROM DUAL WHERE @doc_id IS NOT NULL;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '于云端书院：小程序介绍与版本信息，隐私政策也可以从这里进入。
 
@@ -644,16 +539,15 @@ SELECT @doc_id, '于云端书院：小程序介绍与版本信息，隐私政策
 常见问法：个人中心在哪里？怎么改昵称？怎么改头像？消息中心在哪里？怎么看通知？怎么提交意见反馈？反馈会有人回复吗？关联小程序是什么？隐私政策在哪里看？', 1, '于云端书院：小程序介绍与版本信息，隐私政策也可以从这里进入。
 
 消息中心：报名成功、审核通过或拒绝、活动取消、活动临近提醒、意见反馈的管理员回复等都会以站内消息', 474
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
+FROM DUAL WHERE @doc_id IS NOT NULL;
 
--- ---------- 使用指南 · 知识问答使用说明（源文件 sql/knowledge/08-ai-assistant.md，2 段） ----------
-INSERT INTO `knowledge_doc`
-  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
-SELECT
-  '使用指南 · 知识问答使用说明',
-  'builtin://使用指南 · 知识问答使用说明',
-  'manual',
-  '知识问答是什么？能问什么？每天能问多少次？为什么有些问题答不上来？
+-- ---------- 更新 使用指南 · 知识问答使用说明 ----------
+SET @doc_id = (SELECT `id` FROM `knowledge_doc`
+                WHERE `title` IN ('使用指南 · 知识问答使用说明', '使用指南 · 书院助手使用说明') ORDER BY `id` LIMIT 1);
+UPDATE `knowledge_doc` SET
+  `title` = '使用指南 · 知识问答使用说明',
+  `file_url` = 'builtin://使用指南 · 知识问答使用说明',
+  `content` = '知识问答是什么？能问什么？每天能问多少次？为什么有些问题答不上来？
 
 知识问答是云端书院小程序内置的资料检索功能。它会先在书院知识库中检索与你的问题相关的资料，再把相关片段整理给你。首页有悬浮入口，个人中心有「知识问答」完整页面和「问答历史」。
 
@@ -676,21 +570,10 @@ SELECT
 必须登录才能使用知识问答。未登录时会提示先登录。
 
 常见问法：知识问答是什么？书院助手是什么？智能问答怎么用？可以问什么？每天能问几次？次数用完了怎么办？为什么答不上来？为什么说没有找到相关资料？问答历史在哪里看？',
-  892,
-  2,
-  'ready',
-  NULL
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM (SELECT 1 FROM `knowledge_doc` WHERE `title` = '使用指南 · 知识问答使用说明' LIMIT 1) AS x
-);
-
-SET @doc_id = (SELECT `id` FROM `knowledge_doc`
-                WHERE `title` = '使用指南 · 知识问答使用说明' ORDER BY `id` LIMIT 1);
-
--- 分段只在该文档尚无分段时写入，避免重复执行把段落插两遍
-SET @has_chunk = (SELECT COUNT(*) FROM `knowledge_chunk` WHERE `doc_id` = @doc_id);
-
+  `char_count` = 892,
+  `chunk_count` = 2
+WHERE `id` = @doc_id;
+DELETE FROM `knowledge_chunk` WHERE `doc_id` = @doc_id;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '知识问答是什么？能问什么？每天能问多少次？为什么有些问题答不上来？
 
@@ -705,8 +588,7 @@ SELECT @doc_id, '知识问答是什么？能问什么？每天能问多少次？
 每天能问多少次：每位用户每天有 20 次提问额度，按自然日计算，次日零点自动恢复。问答页顶部会显示「今日剩余 X 次问答」，用完时会提示「', 0, '知识问答是什么？能问什么？每天能问多少次？为什么有些问题答不上来？
 
 知识问答是云端书院小程序内置的资料检索功能。它会先在书院知识库中检索与你的问题相关的资料，', 500
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
-
+FROM DUAL WHERE @doc_id IS NOT NULL;
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
 SELECT @doc_id, '次提问额度，按自然日计算，次日零点自动恢复。问答页顶部会显示「今日剩余 X 次问答」，用完时会提示「今日问答次数已用完，请明天再来」。
 
@@ -723,11 +605,7 @@ SELECT @doc_id, '次提问额度，按自然日计算，次日零点自动恢复
 常见问法：知识问答是什么？书院助手是什么？智能问答怎么用？可以问什么？每天能问几次？次数用完了怎么办？为什么答不上来？为什么说没有找到相关资料？问答历史在哪里看？', 1, '次提问额度，按自然日计算，次日零点自动恢复。问答页顶部会显示「今日剩余 X 次问答」，用完时会提示「今日问答次数已用完，请明天再来」。
 
 哪些情况不会扣次数：如', 442
-FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
+FROM DUAL WHERE @doc_id IS NOT NULL;
 
--- 自检：内置文档均应为 ready 且分段数与 chunk_count 一致
-SELECT d.`title`, d.`chunk_count`, COUNT(c.`id`) AS `actual_chunks`, d.`status`
-FROM `knowledge_doc` d
-LEFT JOIN `knowledge_chunk` c ON c.`doc_id` = d.`id`
-WHERE d.`file_url` LIKE 'builtin://%'
-GROUP BY d.`id`, d.`title`, d.`chunk_count`, d.`status`;
+UPDATE `sys_config` SET `config_value` = '你好，可以基于平台知识库为你解答使用与学习相关的问题。'
+WHERE `config_key` = 'ai_assistant_welcome';

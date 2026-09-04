@@ -47,9 +47,25 @@ assert.ok(isAiChatPath('/packageD/ai-chat/history?x=1'))
 assert.ok(!isAiChatPath('/packageD/poster/generate'))
 
 const stripped = hideAiChatLegalCopy('<p><strong>5. 智能问答声明</strong></p>\n<p>AI 生成内容仅供参考。</p>\n<p>其他</p>')
+assert.ok(!stripped.includes('AI 生成'), stripped)
+assert.ok(stripped.includes('其他'))
 if (!ENABLE_AI_CHAT) {
   assert.ok(!stripped.includes('智能问答'))
-  assert.ok(stripped.includes('其他'))
+}
+
+if (ENABLE_AI_CHAT) {
+  const fabPages = [
+    'pages/index/index.json',
+    'packageA/news/detail.json',
+    'packageA/hall/detail.json',
+    'packageA/craft/detail.json',
+    'packageB/course/detail.json'
+  ]
+  fabPages.forEach((rel) => {
+    const json = JSON.parse(fs.readFileSync(path.join(miniappDir, rel), 'utf8'))
+    const comps = json.usingComponents || {}
+    assert.ok(comps['ai-assistant'], `开关已打开，${rel} 须注册 ai-assistant`)
+  })
 }
 
 console.log('[features.test] PASS')

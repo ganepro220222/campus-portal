@@ -1,22 +1,9 @@
 /**
- * 小程序功能开关。
+ * 小程序知识问答开关。
  *
- * 智能问答已完整保留（packageD/ai-chat、components/ai-assistant、utils/aiChat.js、
- * 后端 RAG 接口都不删）。当前为过审临时关闭：用户和审核员都看不到问答入口。
- *
- * ——— 加回智能问答时按顺序做这 4 步 ———
- * 1. 本文件 ENABLE_AI_CHAT 改为 true
- * 2. miniapp/app.json → packageD.pages 加回 "ai-chat/index"、"ai-chat/history"
- *    （可把分包 name 从「分享」改回「智能」）
- * 3. 去掉 miniapp/project.config.json → packOptions.ignore 里这三项：
- *    folder packageD/ai-chat、folder components/ai-assistant、file utils/aiChat.js
- * 4. 首页 / 动态详情 / 展馆详情 / 文创详情 / 课程详情：加回
- *    <ai-assistant />（或 bottom="60"）以及 json 里的 usingComponents
- *
- * 个人中心菜单、关于页功能列表、首页后台入口、协议里的问答段落
- * 会随本开关自动恢复，不必再改。
+ * 学生端只检索知识库、不调大模型。关闭时入口、分包页与协议问答段一并隐藏。
  */
-const ENABLE_AI_CHAT = false
+const ENABLE_AI_CHAT = true
 
 const AI_CHAT_APP_PAGES = ['ai-chat/index', 'ai-chat/history']
 
@@ -31,14 +18,25 @@ function isAiChatPath(path) {
   return /\/packageD\/ai-chat(\/|$)/.test(p)
 }
 
-function hideAiChatLegalCopy(html) {
-  if (ENABLE_AI_CHAT || !html) return html
+function sanitizeGenerativeAiClaims(html) {
+  if (!html) return html
   let s = String(html)
-  s = s.replace(/<p><strong>\d+\.\s*[^<]*(智能问答|AI\s*问答)[^<]*<\/strong><\/p>\s*<p>[\s\S]*?<\/p>\s*/g, '')
-  s = s.replace(/（\d+）智能问答：[^<]*(<br\s*\/?>)?\s*/g, '')
   s = s.replace(/<p>[^<]*(AI 生成内容|内容由 AI 生成)[^<]*<\/p>\s*/g, '')
-  s = s.replace(/、智能问答/g, '')
-  s = s.replace(/智能问答、/g, '')
+  s = s.replace(/相关内容可能经已备案的第三方模型服务处理。/g, '')
+  s = s.replace(/您在「智能问答」中提交的问题将用于生成回答；/g, '您在「知识问答」中提交的问题将用于在平台知识库中检索资料；')
+  s = s.replace(/AI 回答仅供参考/g, '回答仅供参考')
+  s = s.replace(/智能问答（AI）/g, '知识问答')
+  return s
+}
+
+function hideAiChatLegalCopy(html) {
+  if (!html) return html
+  let s = sanitizeGenerativeAiClaims(html)
+  if (ENABLE_AI_CHAT) return s
+  s = s.replace(/<p><strong>\d+\.\s*[^<]*(智能问答|AI\s*问答|知识问答)[^<]*<\/strong><\/p>\s*<p>[\s\S]*?<\/p>\s*/g, '')
+  s = s.replace(/（\d+）(?:智能问答|知识问答)：[^<]*(<br\s*\/?>)?\s*/g, '')
+  s = s.replace(/、(?:智能问答|知识问答)/g, '')
+  s = s.replace(/(?:智能问答|知识问答)、/g, '')
   return s
 }
 
@@ -49,6 +47,10 @@ function hideAiChatPlainCopy(text) {
     .replace(/智能问答、/g, '')
     .replace(/以及智能问答/g, '')
     .replace(/和智能问答/g, '')
+    .replace(/、知识问答/g, '')
+    .replace(/知识问答、/g, '')
+    .replace(/以及知识问答/g, '')
+    .replace(/和知识问答/g, '')
 }
 
 module.exports = {
@@ -57,5 +59,6 @@ module.exports = {
   AI_CHAT_PACK_IGNORES,
   isAiChatPath,
   hideAiChatLegalCopy,
-  hideAiChatPlainCopy
+  hideAiChatPlainCopy,
+  sanitizeGenerativeAiClaims
 }

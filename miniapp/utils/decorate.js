@@ -73,7 +73,7 @@ function decorateCourseCards(list) {
     icon: it.icon || COURSE_CARD_ICONS[i % COURSE_CARD_ICONS.length],
     audience: it.audience || it.targetAudience || '全校学生',
     tag: it.tag || it.categoryName || '精品课程',
-    tagGold: it.tagGold || it.tag === 'AI 字幕'
+    tagGold: it.tagGold === true || it.hasSubtitle === true || it.tag === '字幕'
   }))
 }
 

@@ -53,6 +53,8 @@
       "root": "packageD",
       "name": "分享",
       "pages": [
+        "ai-chat/index",
+        "ai-chat/history",
         "poster/generate"
       ]
     }

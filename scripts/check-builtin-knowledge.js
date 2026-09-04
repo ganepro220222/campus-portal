@@ -70,7 +70,10 @@ if (!sources.length) {
 for (const name of sources) {
   const text = read(path.join('sql/knowledge', name))
   if (text.includes('新闻')) {
-    errs.push(`sql/knowledge/${name} 出现「新闻」——AI 会把这段原样念给用户和审核员，请改用「动态」`)
+    errs.push(`sql/knowledge/${name} 出现「新闻」——会把这段原样念给用户和审核员，请改用「动态」`)
+  }
+  if (text.includes('人工智能生成') || text.includes('内容由 AI 生成')) {
+    errs.push(`sql/knowledge/${name} 仍宣称由 AI/人工智能生成，学生端已改为知识库检索`)
   }
   if (!/^#\s+\S/m.test(text)) {
     errs.push(`sql/knowledge/${name} 首行不是「# 标题」`)

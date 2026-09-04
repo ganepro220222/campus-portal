@@ -1,5 +1,6 @@
 package com.shuyuan.backend.service;
 
+import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.entity.KnowledgeChunk;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,15 +20,16 @@ public class AiClientService {
      * 书院是内容来源）相矛盾。这里只说平台名，不冒任何机构的名义。
      */
     private static final String SYSTEM_PROMPT =
-            "你是「云端书院」小程序的智能助手。"
+            "你是「云端书院」小程序的知识问答。"
                     + "请基于提供的平台资料作答，语言准确、简洁；"
                     + "若资料不足以回答，请诚实说明并引导用户换个问法。";
 
     private final ZhipuAiService zhipuAiService;
     private final FallbackAiService fallbackAiService;
+    private final ShuyuanProperties properties;
 
     /**
-     * 有 Key 就走大模型，否则用知识库片段作答。
+     * 默认只拼知识库片段。仅当 {@code chatUseLlm} 打开且 Key 可用时才调大模型。
      *
      * <p>上游失败一律降级而不是把异常抛给用户：接的是免费模型，QPS/额度超限是常态，
      * 而知识库片段本来就够回答大部分问题。让用户看到一个稍差的答案，
@@ -35,7 +37,7 @@ public class AiClientService {
      */
     public String chat(List<KnowledgeChunk> chunks, String question) {
         String userPrompt = buildUserPrompt(chunks, question);
-        if (zhipuAiService.canUse()) {
+        if (properties.getAi().isChatUseLlm() && zhipuAiService.canUse()) {
             try {
                 String answer = zhipuAiService.chat(SYSTEM_PROMPT, userPrompt);
                 if (answer != null && !answer.isBlank()) {

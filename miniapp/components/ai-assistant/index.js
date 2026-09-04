@@ -32,7 +32,7 @@ Component({
     onTabBar: false,
     sessionId: null,
     quota: null,
-    quotaText: '登录后可使用 AI 智能问答',
+    quotaText: '登录后可使用知识问答',
     loading: false,
     enabled: ENABLE_AI_CHAT
   },

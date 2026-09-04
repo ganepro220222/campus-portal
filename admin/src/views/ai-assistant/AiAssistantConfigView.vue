@@ -1,11 +1,11 @@
 <template>
   <div class="page-card">
     <div class="page-header">
-      <h2>AI 助手配置</h2>
+      <h2>问答配置</h2>
       <el-button type="primary" :loading="saving" @click="onSave">保存</el-button>
     </div>
 
-    <p class="text-muted">配置小程序悬浮「书院文化助手」欢迎语、推荐问题，以及搜索页热词（保存后小程序重新打开生效）。</p>
+    <p class="text-muted">配置小程序「知识问答」欢迎语、推荐问题，以及搜索页热词（保存后小程序重新打开生效）。</p>
 
     <el-form label-width="120px" style="max-width: 720px">
       <el-form-item label="欢迎语">

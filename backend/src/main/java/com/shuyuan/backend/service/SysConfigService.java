@@ -59,7 +59,7 @@ public class SysConfigService {
      */
 
     private static final String DEFAULT_WELCOME =
-            "你好！我是书院助手，可以基于平台知识库为你解答使用与学习相关的问题。";
+            "你好，可以基于平台知识库为你解答使用与学习相关的问题。";
     private static final String DEFAULT_CHIPS_JSON =
             "[\"平台有哪些线上展馆？\",\"怎么报名参加活动？\",\"在哪查看学习足迹？\"]";
     private static final String DEFAULT_HOT_TAGS_JSON =

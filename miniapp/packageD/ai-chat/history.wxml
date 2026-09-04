@@ -14,7 +14,7 @@
   <view wx:elif="{{!list.length}}" class="empty-state">
     <icon name="robot" size="42" color="#C3CCE0" />
     <text class="empty-text">暂无历史会话</text>
-    <text class="empty-hint">向书院助手提问后，会话会保存在这里</text>
+    <text class="empty-hint">向知识问答提问后，会话会保存在这里</text>
     <button class="btn-primary" bindtap="onNewChat">开始提问</button>
   </view>
 

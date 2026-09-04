@@ -37,12 +37,12 @@
       <text>课程视频暂未配置</text>
     </view>
     <view wx:if="{{hasSubtitle}}" class="cc-badge {{cc ? 'cc-on' : ''}}" catchtap="onCC">
-      <icon name="cc" size="13" color="#ffffff" /> AI 字幕
+      <icon name="cc" size="13" color="#ffffff" /> 字幕
     </view>
   </view>
 
   <view wx:if="{{cc && subtitleText}}" class="subtitle">
-    <view class="sub-tag"><icon name="cc" size="12" color="#2B356E" /> AI</view>
+    <view class="sub-tag"><icon name="cc" size="12" color="#2B356E" /> 字幕</view>
     <text class="sub-tx">{{subtitleText}}</text>
   </view>
 

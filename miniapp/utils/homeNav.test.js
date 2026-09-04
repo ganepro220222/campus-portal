@@ -27,4 +27,15 @@ if (ENABLE_AI_CHAT) {
   assert.strictEqual(mapped[0].path, '/pages/hall/index')
 }
 
+const mappedKb = mergeHomeNavItems([
+  { id: 9, label: '知识问答', icon: 'robot', path: '/packageD/ai-chat/index' },
+  { id: 2, label: '展馆展示', icon: 'museum', path: '/pages/hall/index' }
+])
+if (ENABLE_AI_CHAT) {
+  assert.strictEqual(mappedKb.length, 2)
+} else {
+  assert.strictEqual(mappedKb.length, 1)
+  assert.strictEqual(mappedKb[0].path, '/pages/hall/index')
+}
+
 console.log('[homeNav.test] PASS')

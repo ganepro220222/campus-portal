@@ -754,7 +754,7 @@ INSERT IGNORE INTO `sys_config` (`config_key`, `config_value`, `remark`) VALUES
 ('site_logo',       '',                           'Logo图片URL'),
 ('ai_daily_limit',  '20',                         '每用户每日AI问答次数上限'),
 ('ai_cache_ttl',    '86400',                      'AI答案缓存时长（秒）'),
-('ai_assistant_welcome', '你好！我是书院助手，可以基于平台知识库为你解答使用与学习相关的问题。', 'AI 助手欢迎语'),
+('ai_assistant_welcome', '你好，可以基于平台知识库为你解答使用与学习相关的问题。', '问答欢迎语'),
 ('ai_assistant_chips',   '["平台有哪些线上展馆？","怎么报名参加活动？","在哪查看学习足迹？"]', 'AI 助手推荐问题'),
 ('search_hot_tags',      '["线上展馆","精品课程","活动报名","学习资源","文创展示"]', '搜索热词'),
 ('wx_appid',        '',                           '微信小程序AppID'),

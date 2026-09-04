@@ -64,12 +64,12 @@ module.exports = {
   ],
 
   coursesHome: [
-    { id: 1, name: '示例课程：职业沟通与表达', categoryName: 'AI 字幕', lessonCount: 12, audience: '全校学生' },
+    { id: 1, name: '示例课程：职业沟通与表达', categoryName: '字幕', lessonCount: 12, audience: '全校学生' },
     { id: 2, name: '示例课程：数字素养通识', categoryName: '通识必修', lessonCount: 8, audience: '全校学生' }
   ],
 
   coursesFull: [
-    { id: 1, name: '示例课程：职业沟通与表达', cat: '职业素养', audience: '全校学生', lessonCount: 12, tag: 'AI 字幕', tagGold: true,
+    { id: 1, name: '示例课程：职业沟通与表达', cat: '职业素养', audience: '全校学生', lessonCount: 12, tag: '字幕', tagGold: true,
       desc: '示例内容。从倾听、提问到公开表达，训练职场沟通的基本功。' },
     { id: 2, name: '示例课程：数字素养通识', cat: '通识必修', audience: '全校学生', lessonCount: 8, tag: '通识必修',
       desc: '示例内容。信息检索、数据素养与网络安全常识。' },
@@ -204,7 +204,7 @@ module.exports = {
 
   courseDetail: {
     name: '示例课程：职业沟通与表达',
-    tags: ['书院动态', 'AI 字幕', '配套资源'],
+    tags: ['书院动态', '字幕', '配套资源'],
     audience: '全校学生',
     duration: '12 课时',
     openTime: '2026-06',

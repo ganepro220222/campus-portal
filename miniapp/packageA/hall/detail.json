@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "线上展馆"
+  "navigationBarTitleText": "线上展馆",
+  "usingComponents": {
+    "ai-assistant": "/components/ai-assistant/index"
+  }
 }

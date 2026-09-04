@@ -28,7 +28,7 @@ Page({
     scrollTo: '',
     loading: false,
     quota: null,
-    quotaText: '登录后可使用 AI 智能问答'
+    quotaText: '登录后可使用知识问答'
   },
 
   async onLoad(opts) {

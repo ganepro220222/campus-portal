@@ -206,7 +206,7 @@
           <view class="ccard-body">
             <view class="ccard-title serif">{{item.name}}</view>
             <view class="ccard-meta">
-              <text class="pill {{item.categoryName === 'AI 字幕' ? 'gold' : ''}}">{{item.categoryName}}</text>
+              <text class="pill {{item.tagGold ? 'gold' : ''}}">{{item.tag || item.categoryName}}</text>
               <text class="ccard-sub">{{item.lessonCount || 0}} 课时</text>
             </view>
           </view>
@@ -249,5 +249,7 @@
     <view class="scroll-bottom"></view>
     </block>
   </scroll-view>
+
+  <ai-assistant />
 
 </view>

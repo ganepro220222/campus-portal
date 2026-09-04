@@ -37,7 +37,7 @@ class SysConfigServiceTest {
     void getMiniappPublicConfig_usesDefaultsWhenMissing() {
         when(sysConfigMapper.selectById(any())).thenReturn(null);
         Map<String, Object> config = sysConfigService.getMiniappPublicConfig();
-        assertTrue(config.get("aiAssistantWelcome").toString().contains("书院助手"));
+        assertTrue(config.get("aiAssistantWelcome").toString().contains("知识库"));
         assertEquals(3, ((List<?>) config.get("aiAssistantChips")).size());
         assertEquals(5, ((List<?>) config.get("searchHotTags")).size());
     }

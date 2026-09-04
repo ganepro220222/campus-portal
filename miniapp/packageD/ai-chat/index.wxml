@@ -1,11 +1,11 @@
 <!-- packageD/ai-chat/index.wxml -->
 <view class="chat-page">
-  <nav-bar title="智能问答" />
+  <nav-bar title="知识问答" />
   <scroll-view scroll-y class="chat-body" scroll-into-view="{{scrollTo}}" scroll-with-animation enhanced show-scrollbar="{{false}}">
 
     <view class="chat-intro">
       <view class="ci-avatar"><icon name="robot" size="32" color="#ffffff" /></view>
-      <view class="ci-name serif">书院助手</view>
+      <view class="ci-name serif">知识问答</view>
       <view class="ci-desc">{{quotaText}}</view>
       <view class="ci-history" bindtap="onHistory">历史会话</view>
     </view>
@@ -27,7 +27,7 @@
       <input
         class="ci-in"
         value="{{input}}"
-        placeholder="向书院助手提问…"
+        placeholder="向知识问答提问…"
         placeholder-class="ci-ph"
         maxlength="500"
         confirm-type="send"
@@ -36,6 +36,6 @@
       />
       <view class="send" bindtap="send"><icon name="send" size="18" color="#ffffff" /></view>
     </view>
-    <view class="ai-note">内容由 AI 生成，仅供参考</view>
+    <view class="ai-note">答案来自平台知识库，仅供参考</view>
   </view>
 </view>

@@ -671,7 +671,7 @@ async function fetchWithTimeout(url, ms) {
 function initRenderer() {
   const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 768
   // 画质（DPR/MSAA）与全景安全解耦：strictWebKit 仍控制全景延迟 + PMREM 2048，
-  // 画布清晰度由 resolveRendererQuality 独立决定（strict 移动端默认 DPR 1.5，可配到 2）
+  // 画布清晰度由 resolveRendererQuality 独立决定（strict 移动端默认 DPR 1.5 + 抗锯齿）
   const quality = resolveRendererQuality({
     isMobile,
     strictWebKit,

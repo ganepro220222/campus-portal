@@ -65,10 +65,10 @@ test('strictWebKitPanoramaMaxWidth defaults to 2048 on strict hosts only', () =>
 
 const craftLikeCfg = { performance: { mobilePixelRatio: 1.5, desktopPixelRatio: 2 }, renderer: { maxPixelRatio: 2 } }
 
-test('resolveRendererQuality: strict mobile default is DPR 1.5 with MSAA off (was 1)', () => {
+test('resolveRendererQuality: strict mobile default is DPR 1.5 with MSAA on', () => {
   const q = resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 3, cfg: craftLikeCfg })
   assert.equal(q.pixelRatio, 1.5)
-  assert.equal(q.antialias, false)
+  assert.equal(q.antialias, true)
 })
 
 test('resolveRendererQuality: strictWebKitPixelRatio can raise DPR above mobilePixelRatio', () => {
@@ -91,7 +91,7 @@ test('resolveRendererQuality: device DPR below cap wins', () => {
   assert.equal(q.pixelRatio, 1)
 })
 
-test('resolveRendererQuality: strictWebKitAntialias opt-in enables MSAA on strict mobile', () => {
+test('resolveRendererQuality: strictWebKitAntialias can opt out on strict mobile', () => {
   const cfg = { performance: { strictWebKitAntialias: true } }
   assert.equal(resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 2, cfg }).antialias, true)
   const offCfg = { performance: { strictWebKitAntialias: false } }
@@ -114,7 +114,7 @@ test('resolveRendererQuality: non-strict and desktop paths unchanged', () => {
 test('resolveRendererQuality: missing config falls back to safe defaults', () => {
   const q = resolveRendererQuality({ isMobile: true, strictWebKit: true, devicePixelRatio: 3, cfg: null })
   assert.equal(q.pixelRatio, 1.5)
-  assert.equal(q.antialias, false)
+  assert.equal(q.antialias, true)
 })
 
 test('camera round-trip with zero pivot', () => {

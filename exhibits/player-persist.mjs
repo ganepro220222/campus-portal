@@ -143,9 +143,8 @@ export const STRICT_WEBKIT_PIXEL_RATIO_LIMIT = 2
  * 字段只能压低、无法提高清晰度；现在覆盖生效，但受 renderer.maxPixelRatio 与
  * 硬上限 2 双重封顶。
  *
- * strictWebKitAntialias 默认 false：WebGL antialias 只能在创建 context 时决定
- * （改配置后需刷新页面），且 MSAA 在低端微信 WebView 上有掉帧/发热风险，
- * 需真机验证后按展品显式开启。
+ * strict 移动端默认开抗锯齿（DPR 仍 1.5）。WebGL antialias 只能在创建 context
+ * 时决定，改配置后需刷新。单件展品可设 strictWebKitAntialias: false 关掉。
  */
 export function resolveRendererQuality({ isMobile, strictWebKit, devicePixelRatio, cfg }) {
   const n = (v, d) => (typeof v === 'number' && isFinite(v) && v > 0) ? v : d
@@ -157,7 +156,7 @@ export function resolveRendererQuality({ isMobile, strictWebKit, devicePixelRati
     const requested = n(perf?.strictWebKitPixelRatio, STRICT_WEBKIT_DEFAULT_PIXEL_RATIO)
     cap = Math.min(requested, rendererMax, STRICT_WEBKIT_PIXEL_RATIO_LIMIT)
     if (isMobile) {
-      antialias = perf?.strictWebKitAntialias === true
+      antialias = perf?.strictWebKitAntialias !== false
     }
   }
   const pixelRatio = Math.min(n(devicePixelRatio, 1), cap)

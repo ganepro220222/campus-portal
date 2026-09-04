@@ -4,7 +4,7 @@ const { get } = require('./request')
 const { hideAiChatLegalCopy } = require('../config/features')
 
 const CACHE_KEY = 'legal_documents_cache_v1'
-const BASELINE_VERSION = 'baseline-2026-09-05'
+const BASELINE_VERSION = 'baseline-2026-09-05b'
 
 const BASELINE = {
   version: BASELINE_VERSION,
@@ -44,7 +44,7 @@ const BASELINE = {
 <p><strong>4. 内容与知识产权</strong></p>
 <p>小程序内课程、图文、音视频、展陈与文创等内容的知识产权归权利人所有，未经授权不得擅自传播、镜像或用于商业用途。您提交的反馈内容，您保证有权提交，并授权我们为处理问题之目的进行存储与展示。</p>
 <p><strong>5. 知识问答声明</strong></p>
-<p>答案来自平台知识库，仅供参考，可能与最新安排有出入；活动安排、报名结果、课程通知等重要事项以页面展示及管理员通知为准。</p>
+<p>回答摘自平台已录入资料，可能与最新安排有出入；活动安排、报名结果、课程通知等重要事项以页面展示及管理员通知为准。</p>
 <p><strong>6. 免责声明</strong></p>
 <p>因网络、设备、第三方服务、不可抗力或您自身原因导致的服务中断、数据延迟或无法使用，我们在法律允许范围内不承担责任。展馆外链、关联应用等第三方页面由其提供方负责。</p>
 <p><strong>7. 协议变更与终止</strong></p>

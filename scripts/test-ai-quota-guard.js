@@ -95,7 +95,7 @@ expectCaught('后台超限文案退回兜底', FILES[1],
   (s) => s.replace(/case SCENE_AI_POLISH -> [^;]*;/, 'case SCENE_AI_POLISH -> "操作过于频繁，请稍后再试";'))
 
 expectCaught('小程序超限原文被改', FILES[1],
-  (s) => s.replace('今日问答次数已用完，请明天再来', '今日次数已用完'))
+  (s) => s.replace('今天提问比较频繁，请明天再试', '今日次数已用完'))
 
 expectCaught('request 又把 timeout 写死', FILES[2],
   (s) => s.replace('timeout: resolveTimeout(options)', 'timeout: 10000'))

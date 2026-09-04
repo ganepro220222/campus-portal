@@ -28,7 +28,7 @@ assert.strictEqual(ui[1].role, 'ai')
 assert.strictEqual(ui[1].text, '您好，我是知识问答。')
 
 // ---------- 超时：服务端多半已经答完并存好了 ----------
-const { resolveErrorAnswer, isTimeoutError, isNetworkError, exhaustedQuota, ASK_TIMEOUT } = require('./aiChat')
+const { resolveErrorAnswer, isTimeoutError, isNetworkError, exhaustedQuota, quotaSubtitle, ASK_TIMEOUT } = require('./aiChat')
 const { _resolveTimeout, DEFAULT_TIMEOUT } = require('./request')
 
 assert.ok(isTimeoutError({ errMsg: 'request:fail timeout' }))
@@ -53,8 +53,8 @@ assert.ok(resolveErrorAnswer({ errMsg: 'request:fail network is down' }).include
 assert.ok(!resolveErrorAnswer({ errMsg: 'request:fail net::ERR_CONNECTION_REFUSED' }).includes('知识库'))
 
 // 有 body.code 的业务错误优先按业务处理，不能被超时/网络分支抢走
-assert.strictEqual(resolveErrorAnswer({ code: 429, message: '今日问答次数已用完，请明天再来' }),
-  '今日问答次数已用完，请明天再来')
+assert.strictEqual(resolveErrorAnswer({ code: 429, message: '今天提问比较频繁，请明天再试' }),
+  '今天提问比较频繁，请明天再试')
 assert.strictEqual(resolveErrorAnswer({ code: 401 }), '请先登录后再使用知识问答。')
 assert.strictEqual(resolveErrorAnswer({ code: 502, message: 'AI 服务暂时不可用，请稍后重试' }),
   '服务暂时不可用，请稍后重试。')
@@ -72,7 +72,10 @@ assert.strictEqual(_resolveTimeout({ timeout: '30000' }), DEFAULT_TIMEOUT)
 // ---------- 429 置零时沿用服务端下发的上限，不各写一遍 20 ----------
 assert.deepStrictEqual(exhaustedQuota({ dailyLimit: 60, remaining: 3 }),
   { needLogin: false, dailyLimit: 60, used: 60, remaining: 0 })
-assert.strictEqual(exhaustedQuota(null).dailyLimit, 20)
+assert.strictEqual(exhaustedQuota(null).dailyLimit, 100)
 assert.strictEqual(exhaustedQuota({}).remaining, 0)
+assert.strictEqual(quotaSubtitle({ needLogin: true }), '登录后可查询平台已录入的资料')
+assert.strictEqual(quotaSubtitle({ needLogin: false, remaining: 80 }), '')
+assert.strictEqual(quotaSubtitle({ needLogin: false, remaining: 0 }), '今天提问比较频繁，请明天再试')
 
 console.log('[aiChat.test] PASS')

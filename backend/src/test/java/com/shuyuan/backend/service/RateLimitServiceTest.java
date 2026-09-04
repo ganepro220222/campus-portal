@@ -71,7 +71,7 @@ class RateLimitServiceTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> rateLimitService.checkUser("ai", 9L, 20, Duration.ofDays(1)));
         assertEquals(429, ex.getCode());
-        assertEquals("今日问答次数已用完，请明天再来", ex.getMessage());
+        assertEquals("今天提问比较频繁，请明天再试", ex.getMessage());
     }
 
     @Test

@@ -32,7 +32,7 @@ Component({
     onTabBar: false,
     sessionId: null,
     quota: null,
-    quotaText: '登录后可使用知识问答',
+    quotaText: '登录后可查询平台已录入的资料',
     loading: false,
     enabled: ENABLE_AI_CHAT
   },

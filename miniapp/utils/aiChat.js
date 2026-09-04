@@ -3,7 +3,7 @@
 const { get, post } = require('./request')
 
 /** 配额接口都取不到时的兜底显示值，与后端 shuyuan.rate-limit.ai-per-day 的默认值一致 */
-const DEFAULT_DAILY_LIMIT = 20
+const DEFAULT_DAILY_LIMIT = 100
 
 function hasToken() {
   const app = getApp()
@@ -91,12 +91,12 @@ function mapMessagesToUi(messages) {
 
 function quotaSubtitle(quota) {
   if (!quota || quota.needLogin) {
-    return '登录后可使用知识问答'
+    return '登录后可查询平台已录入的资料'
   }
   if (quota.remaining <= 0) {
-    return '今日问答次数已用完，请明天再来'
+    return '今天提问比较频繁，请明天再试'
   }
-  return `今日剩余 ${quota.remaining} 次问答`
+  return ''
 }
 
 /**
@@ -126,7 +126,7 @@ function applyQuotaFromMessage(quota, message) {
 
 function resolveErrorAnswer(err, question) {
   if (err && err.code === 429) {
-    return err.message || '今日问答次数已用完，请明天再来'
+    return err.message || '今天提问比较频繁，请明天再试'
   }
   if (err && err.code === 401) {
     return '请先登录后再使用知识问答。'

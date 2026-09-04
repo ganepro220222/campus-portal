@@ -45,9 +45,9 @@ shuyuan:
     enroll-per-minute: 5
     feedback-per-minute: 3
     feedback-per-day: 20
-    # 小程序 AI 问答：每位学生每自然日。人数多少不改变个人体验（这是每人上限，不是共享池），
-    # 20 次相当于一天完整用三轮，够用；数值同时写在交付与测试文档里，调整需一并更新。
-    ai-per-day: ${AI_PER_DAY:20}
+    # 学生知识问答：后台防刷上限，界面不再展示剩余次数。检索本身几乎不花钱，
+    # 20 太像聊天机器人额度；100 够日常用，异常刷取仍会被拦住。
+    ai-per-day: ${AI_PER_DAY:100}
     wxacode-per-minute: 30
   ai:
     provider: ${AI_PROVIDER:fallback}

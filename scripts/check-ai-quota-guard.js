@@ -108,7 +108,7 @@ for (const scene of ['SCENE_AI', 'SCENE_AI_POLISH']) {
 if (!/今日 AI 文案辅助次数已用完/.test(service)) {
   errs.push('后台 AI 辅助超限文案缺失')
 }
-if (!/今日问答次数已用完，请明天再来/.test(service)) {
+if (!/今天提问比较频繁，请明天再试/.test(service)) {
   errs.push('小程序问答超限文案被改动（端上多处依赖这句原文）')
 }
 

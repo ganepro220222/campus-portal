@@ -100,7 +100,7 @@ function render(docs) {
   lines.push('-- 要改内容请改 sql/knowledge/ 下的 .md 再重新生成（npm run build:builtin-knowledge）。')
   lines.push('--')
   lines.push('-- 为什么要内置：知识库空着的时候，知识问答检索不到任何片段，只会反复回答')
-  lines.push('-- 「没有找到相关资料」，而每问一次仍然消耗用户当天 20 次额度中的一次。')
+  lines.push('-- 「没有找到相关资料」。')
   lines.push('-- 校方与学院的文化资料我们无从代劳，但「这个小程序怎么用」是我们自己的交付物，')
   lines.push('-- 本来就该随系统一起给出。')
   lines.push('--')

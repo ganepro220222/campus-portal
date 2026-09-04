@@ -147,7 +147,7 @@ public class RateLimitService {
      */
     private static String limitMessage(String scene, int limit) {
         return switch (scene) {
-            case SCENE_AI -> "今日问答次数已用完，请明天再来";
+            case SCENE_AI -> "今天提问比较频繁，请明天再试";
             case SCENE_AI_POLISH -> "今日 AI 文案辅助次数已用完（每人每天 " + limit + " 次），请明天再试";
             case SCENE_FEEDBACK_DAY -> "今日反馈次数已用完，请明天再来";
             default -> "操作过于频繁，请稍后再试";

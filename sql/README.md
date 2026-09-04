@@ -112,6 +112,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 25 | `patch-event-log-type-created-index.sql` | `event_log` 看板 view 聚合索引 `(event_type, created_at)` + 足迹索引 `(member_id, created_at)` | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
 | 26 | `patch-update-builtin-knowledge-kb-qa.sql` | **已有库**：把内置使用指南更新为知识问答口径；没有的篇会插入（含展馆导览） | 可重复执行 |
 | 27 | `patch-scrub-demo-ai-copy.sql` | **提审前**：把示例动态/课程/导航/欢迎语里残留的「AI / 智能问答 / 自动字幕」换成中性说法 | 可重复执行；演示数据删除后不必再跑 |
+| 28 | `patch-hall-vr-8-9-20260905.sql` | 8/9 号馆回填 720yun VR 链接，简介去掉「筹备中」 | 仅数据；seed 已同步；**可重复执行** |
 
 `patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 

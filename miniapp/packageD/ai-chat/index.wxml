@@ -6,7 +6,7 @@
     <view class="chat-intro">
       <view class="ci-avatar"><icon name="robot" size="32" color="#ffffff" /></view>
       <view class="ci-name serif">知识问答</view>
-      <view class="ci-desc">{{quotaText}}</view>
+      <view class="ci-desc" wx:if="{{quotaText}}">{{quotaText}}</view>
       <view class="ci-history" bindtap="onHistory">历史会话</view>
     </view>
 
@@ -36,6 +36,6 @@
       />
       <view class="send" bindtap="send"><icon name="send" size="18" color="#ffffff" /></view>
     </view>
-    <view class="ai-note">答案来自平台知识库，仅供参考</view>
+    <view class="ai-note">摘自平台已录入资料</view>
   </view>
 </view>

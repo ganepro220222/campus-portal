@@ -65,7 +65,7 @@ public class ShuyuanProperties {
         /** 活动报名：每用户每分钟 */
         private int enrollPerMinute = 5;
         /** AI 问答（预留）：每用户每天 */
-        private int aiPerDay = 20;
+        private int aiPerDay = 100;
         /** 公开小程序码：每 IP 每分钟 */
         private int wxacodePerMinute = 30;
         /** 课程进度上报：每用户每分钟 */

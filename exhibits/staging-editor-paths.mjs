@@ -36,6 +36,7 @@ export const STAGING_EXHIBITS_CODE_EXTRA = [
   'exhibit-create.mjs',
   'exhibit_create.py',
   'new-exhibit.mjs',
+  'shading-risk.mjs',
 ]
 
 export const STAGING_EDITOR_STATIC_DIRS = ['_template', '_server']
@@ -121,19 +122,25 @@ function walkModuleGraph(htmlPath, rootDir) {
   return { files: [...seen] }
 }
 
-function listModuleGraphFiles(htmlPath, rootDir) {
+function isInsideRoot(file, rootDir) {
+  const root = path.resolve(rootDir)
+  const abs = path.resolve(file)
+  return abs === root || abs.startsWith(root + path.sep)
+}
+
+function listModuleGraphFiles(htmlPath, rootDir, { includeMissing = false } = {}) {
   return walkModuleGraph(htmlPath, rootDir).files
-    .filter(f => fs.existsSync(f))
+    .filter(f => isInsideRoot(f, rootDir) && (includeMissing || fs.existsSync(f)))
     .map(f => path.relative(rootDir, f).replace(/\\/g, '/'))
     .sort()
 }
 
-export function collectStagingEditorRelPaths(root = ROOT) {
+export function collectStagingEditorRelPaths(root = ROOT, { includeMissing = false } = {}) {
   const rels = new Set(['player.html', 'studio.html'])
   for (const html of ['player.html', 'studio.html']) {
     const htmlPath = path.join(root, html)
     if (!fs.existsSync(htmlPath)) continue
-    for (const rel of listModuleGraphFiles(htmlPath, root)) rels.add(rel)
+    for (const rel of listModuleGraphFiles(htmlPath, root, { includeMissing })) rels.add(rel)
   }
   const playerPath = path.join(root, 'player.html')
   if (fs.existsSync(playerPath)) {
@@ -143,7 +150,7 @@ export function collectStagingEditorRelPaths(root = ROOT) {
   }
   for (const rel of UPLOAD_VENDOR_REQUIRED) rels.add(rel)
   for (const rel of STAGING_EXHIBITS_CODE_EXTRA) {
-    if (fs.existsSync(path.join(root, rel))) rels.add(rel)
+    if (includeMissing || fs.existsSync(path.join(root, rel))) rels.add(rel)
   }
   for (const dir of STAGING_EDITOR_STATIC_DIRS) {
     if (fs.existsSync(path.join(root, dir))) rels.add(dir)
@@ -152,5 +159,5 @@ export function collectStagingEditorRelPaths(root = ROOT) {
 }
 
 export function collectStagingExhibitsCheckoutPaths(root = ROOT) {
-  return collectStagingEditorRelPaths(root).map(p => `exhibits/${p}`)
+  return collectStagingEditorRelPaths(root, { includeMissing: true }).map(p => `exhibits/${p}`)
 }

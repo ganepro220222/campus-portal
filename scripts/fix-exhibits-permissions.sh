@@ -416,7 +416,9 @@ systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null || true
 
 echo ""
 echo "完成。请验证："
-echo "  curl -sI http://127.0.0.1/exhibits/craft-001/ | head -1"
+echo "  # 本机 http://127.0.0.1 会 301 到 HTTPS，属正常；验收用："
+echo "  curl -sI -k --resolve api.yunmanvr.com:443:127.0.0.1 https://api.yunmanvr.com/exhibits/craft-001/ | head -1"
+echo "  curl -sI -k --resolve api.yunmanvr.com:443:127.0.0.1 https://api.yunmanvr.com/exhibits/player.view.html | head -1"
 echo "  ls -ld $EX                 # 应为 root:写组 drwxrwsr-t (3775)"
 echo "  ls -ld $EX/craft-* $EX/共享背景 2>/dev/null | head"
 echo "  ls -la $EX/_server | head -3   # 应为 root root drwxr-xr-x"

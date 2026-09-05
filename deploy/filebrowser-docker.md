@@ -128,7 +128,9 @@ EXHIBITS_GROUP=1000 FILEBROWSER_UID=1000 bash scripts/fix-exhibits-permissions.s
 上传后 Nginx 静态读验收：
 
 ```bash
-curl -sI http://127.0.0.1/exhibits/craft-001/<新文件名> | head -3
+# 本机 http://127.0.0.1 会 301 跳到 HTTPS，属正常，不要据此判断 403
+curl -sI -k --resolve api.yunmanvr.com:443:127.0.0.1 \
+  https://api.yunmanvr.com/exhibits/craft-001/config.json | head -3
 # 期望 HTTP/1.1 200
 ```
 

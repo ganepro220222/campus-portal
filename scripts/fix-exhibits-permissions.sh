@@ -212,6 +212,12 @@ maybe_apply_nginx_read_acl() {
     return 0
   fi
   local d
+  # 根目录 default ACL：File Browser 删掉再建 craft-* / 共享背景 时，Nginx 仍能读（不必再等跑脚本）
+  if ! setfacl -m "u:${NGX}:r-X" "$EX" || ! setfacl -d -m "u:${NGX}:rX" "$EX"; then
+    echo "错误: 无法对 exhibits 根应用 ACL（请确认文件系统支持 ACL 且已 apt install acl）" >&2
+    return 1
+  fi
+  echo "OK  ACL 只读 $NGX → exhibits 根（含 default，新上传目录可被 Nginx 读）"
   for d in "$EX"/craft-* "$EX/共享背景"; do
     [ -e "$d" ] || continue
     if setfacl -R -m "u:${NGX}:r-X" "$d" && setfacl -R -d -m "u:${NGX}:rX" "$d"; then

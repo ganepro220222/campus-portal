@@ -70,6 +70,15 @@ runuser -u filebrowser -- rm -f "$EX/studio.html" || true
 [ -f "$EX/studio.html" ] || { echo "FAIL: filebrowser must not delete studio.html"; exit 1; }
 [ -d "$EX/_server" ] || { echo "FAIL: _server disappeared"; exit 1; }
 
+# 删后重传：根 default ACL 应让 www-data 立刻能读（模拟 File Browser 新建 craft-*）
+runuser -u filebrowser -- mkdir "$EX/craft-001"
+runuser -u filebrowser -- sh -c "printf '{}\n' >\"$EX/craft-001/config.json\""
+chmod 640 "$EX/craft-001/config.json"
+runuser -u www-data -- test -x "$EX/craft-001" \
+  || { echo "FAIL: www-data cannot enter recreated craft-001 (root default ACL missing)"; exit 1; }
+runuser -u www-data -- test -r "$EX/craft-001/config.json" \
+  || { echo "FAIL: www-data cannot read recreated craft-001/config.json"; exit 1; }
+
 rm -rf "$TMP"
 
 # 无 runuser/sudo 时必须 exit 127，且不得出现假 OK（无 craft 样本场景）

@@ -176,6 +176,7 @@ docker logs filebrowser 2>&1 | tail -20
 | `curl -I /fm/` 404 | HEAD 不支持 | 改用 GET 验收 |
 | systemd `203/EXEC` | 误装了 native unit，host 无二进制 | `rm /etc/systemd/system/filebrowser.service && systemctl daemon-reload` |
 | 新上传 Nginx 403 | umask 过严或 ACL 未刷 | 跑 `fix-exhibits-permissions.sh`；确认 `apt install acl` |
+| 删光 craft-* 再上传后播放整页 403 | 新目录没有 Nginx 可读权限（不是没同步 OSS） | 立刻跑 `EXHIBITS_GROUP=1000 FILEBROWSER_UID=1000 bash scripts/fix-exhibits-permissions.sh`；页面能开后再视需要同步 OSS |
 | FM「服务器内部错误」 | Rules 正则被 UI 截断（非法 regex） | 删光 Rules 后改用**路径 Deny**（见上文） |
 
 ---

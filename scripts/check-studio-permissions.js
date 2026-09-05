@@ -68,6 +68,9 @@ if (!/缺少 runuser 或 sudo/.test(perms)) {
 if (!/setfacl -R -d -m "u:\$\{NGX\}:rX"/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh default ACL 应为 rX（新目录需 traverse）')
 }
+if (!/setfacl -d -m "u:\$\{NGX\}:rX" "\$EX"/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 应给 exhibits 根设 default ACL（删后重传才不会 403）')
+}
 if (/repair_content_other_read/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh 不应保留 dead repair_content_other_read')
 }

@@ -12,6 +12,7 @@ const {
   shouldRefreshDetailOnShow
 } = require('../../utils/detailPageInit')
 const { shouldSilentRefreshDetail } = require('../../utils/activityDetailLoad')
+const { enablePageShare, buildShareAppMessage, buildShareTimeline, pickShareImage } = require('../../utils/pageShare')
 
 Page({
   data: {
@@ -32,9 +33,29 @@ Page({
   onLoad(opts) {
     const entry = resolveDetailOnLoad(opts)
     this.setData(entry.patch)
+    enablePageShare()
     if (entry.shouldLoad) {
       this._loadDetail(entry.activityId)
     }
+  },
+
+  onShareAppMessage() {
+    const detail = this.data.detail
+    const id = this.data.activityId
+    return buildShareAppMessage({
+      title: (detail && detail.title) || '书院活动',
+      path: id ? `/packageC/activity/detail?id=${id}` : '/pages/activity/index',
+      imageUrl: pickShareImage(detail)
+    })
+  },
+
+  onShareTimeline() {
+    const detail = this.data.detail
+    const id = this.data.activityId
+    return buildShareTimeline({
+      title: (detail && detail.title) || '书院活动',
+      query: id ? `id=${id}` : ''
+    })
   },
 
   onShow() {

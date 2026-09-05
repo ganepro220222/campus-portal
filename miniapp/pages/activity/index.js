@@ -13,6 +13,7 @@ const {
   bumpListGeneration,
   isStaleListRequest
 } = require('../../utils/feedListPage')
+const { enablePageShare, buildShareAppMessage, buildShareTimeline } = require('../../utils/pageShare')
 
 Page({
   data: {
@@ -22,7 +23,10 @@ Page({
     refreshError: false
   },
 
-  onLoad() { this._loadList(FEED_LOAD.initial) },
+  onLoad() {
+    enablePageShare()
+    this._loadList(FEED_LOAD.initial)
+  },
 
   onPullDownRefresh() {
     this._loadList(FEED_LOAD.pullRefresh).then(() => wx.stopPullDownRefresh())
@@ -62,5 +66,13 @@ Page({
 
   onCardTap(e) {
     wx.navigateTo({ url: `/packageC/activity/detail?id=${e.currentTarget.dataset.id}` })
+  },
+
+  onShareAppMessage() {
+    return buildShareAppMessage({ title: '活动报名', path: '/pages/activity/index' })
+  },
+
+  onShareTimeline() {
+    return buildShareTimeline({ title: '活动报名' })
   }
 })

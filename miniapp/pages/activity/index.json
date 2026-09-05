@@ -1,5 +1,7 @@
 {
   "navigationStyle": "custom",
   "navigationBarTitleText": "活动报名",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true,
   "enablePullDownRefresh": true
 }

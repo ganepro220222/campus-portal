@@ -16,6 +16,7 @@ const {
   shouldRefreshContentOnShow,
   canInteractWithContent
 } = require('../../utils/contentPageInit')
+const { enablePageShare, buildShareAppMessage, buildShareTimeline, pickShareImage } = require('../../utils/pageShare')
 
 const CONTENT_KEY = 'course'
 
@@ -37,8 +38,28 @@ Page({
   onLoad(opts) {
     const entry = resolveContentDetailOnLoad(opts, { contentKey: CONTENT_KEY })
     this.setData(entry.patch)
+    enablePageShare()
     if (!entry.shouldLoad) return
     this._loadDetail(entry.contentId)
+  },
+
+  onShareAppMessage() {
+    const course = this.data.course
+    const id = this.data.contentId
+    return buildShareAppMessage({
+      title: (course && course.name) || '精品课程',
+      path: id ? `/packageB/course/detail?id=${id}` : '/pages/course/index',
+      imageUrl: pickShareImage(course)
+    })
+  },
+
+  onShareTimeline() {
+    const course = this.data.course
+    const id = this.data.contentId
+    return buildShareTimeline({
+      title: (course && course.name) || '精品课程',
+      query: id ? `id=${id}` : ''
+    })
   },
 
   onShow() {

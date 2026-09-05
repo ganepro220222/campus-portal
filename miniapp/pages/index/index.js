@@ -18,6 +18,7 @@ const {
   resolveHomeSection,
   buildAnnouncementLoadPatch
 } = require('../../utils/homePageLoad')
+const { enablePageShare, buildShareAppMessage, buildShareTimeline, pickShareImage } = require('../../utils/pageShare')
 
 function settle(promise, empty) {
   return promise
@@ -50,7 +51,20 @@ Page({
   onLoad() {
     const nav = getNavBarLayout()
     this.setData(nav)
+    enablePageShare()
     this._loadPage()
+  },
+
+  onShareAppMessage() {
+    return buildShareAppMessage({
+      title: '云端书院',
+      path: '/pages/index/index',
+      imageUrl: pickShareImage((this.data.banners || [])[0])
+    })
+  },
+
+  onShareTimeline() {
+    return buildShareTimeline({ title: '云端书院' })
   },
 
   onShow() {

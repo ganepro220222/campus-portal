@@ -15,6 +15,7 @@ const {
   bumpListGeneration,
   isStaleCategoryRequest
 } = require('../../utils/feedListPage')
+const { enablePageShare, buildShareAppMessage, buildShareTimeline } = require('../../utils/pageShare')
 const {
   DEFAULT_PAGE_SIZE,
   extractPageRecords,
@@ -44,6 +45,7 @@ Page({
 
   onLoad() {
     this.setData(getNavBarLayout())
+    enablePageShare()
     loadCategoryNames('news').then(cats => {
       this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })
     })
@@ -147,5 +149,13 @@ Page({
 
   onCardTap(e) {
     wx.navigateTo({ url: `/packageA/news/detail?id=${e.currentTarget.dataset.id}` })
+  },
+
+  onShareAppMessage() {
+    return buildShareAppMessage({ title: '书院动态', path: '/pages/news/index' })
+  },
+
+  onShareTimeline() {
+    return buildShareTimeline({ title: '书院动态' })
   }
 })

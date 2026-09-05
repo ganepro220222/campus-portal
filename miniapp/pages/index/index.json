@@ -1,5 +1,7 @@
 {
   "navigationStyle": "custom",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true,
   "enablePullDownRefresh": false,
   "backgroundTextStyle": "dark",
   "usingComponents": {

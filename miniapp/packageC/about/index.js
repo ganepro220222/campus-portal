@@ -1,6 +1,7 @@
 // packageC/about/index.js — 关于云端书院
 const { get } = require('../../utils/request')
 const { ENABLE_AI_CHAT, hideAiChatPlainCopy } = require('../../config/features')
+const { enablePageShare, buildShareAppMessage, buildShareTimeline } = require('../../utils/pageShare')
 
 const ALL_FEATURES = [
   { icon: 'museum', name: '线上展馆', desc: '沉浸式线上展馆，图文 + 语音讲解' },
@@ -28,6 +29,7 @@ Page({
   },
 
   onLoad() {
+    enablePageShare()
     try {
       const v = wx.getAccountInfoSync().miniProgram.version
       if (v) this.setData({ version: v })
@@ -54,5 +56,13 @@ Page({
 
   onPrivacy() {
     wx.navigateTo({ url: '/packageC/legal/privacy' })
+  },
+
+  onShareAppMessage() {
+    return buildShareAppMessage({ title: '云端书院', path: '/packageC/about/index' })
+  },
+
+  onShareTimeline() {
+    return buildShareTimeline({ title: '云端书院' })
   }
 })

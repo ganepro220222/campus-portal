@@ -15,6 +15,7 @@ const {
   bumpListGeneration,
   isStaleCategoryRequest
 } = require('../../utils/feedListPage')
+const { enablePageShare, buildShareAppMessage, buildShareTimeline } = require('../../utils/pageShare')
 
 Page({
   data: {
@@ -31,6 +32,7 @@ Page({
 
   onLoad() {
     this.setData(getNavBarLayout())
+    enablePageShare()
     loadCategoryNames('course').then(cats => {
       this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })
     })
@@ -93,5 +95,13 @@ Page({
 
   onCardTap(e) {
     wx.navigateTo({ url: `/packageB/course/detail?id=${e.currentTarget.dataset.id}` })
+  },
+
+  onShareAppMessage() {
+    return buildShareAppMessage({ title: '精品课程', path: '/pages/course/index' })
+  },
+
+  onShareTimeline() {
+    return buildShareTimeline({ title: '精品课程' })
   }
 })

@@ -74,6 +74,18 @@ if (/repair_content_other_read/.test(perms)) {
 if (!/FILEBROWSER_USER/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh 应支持 FILEBROWSER_USER 加入写组')
 }
+if (!/FILEBROWSER_UID/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 应支持 Docker File Browser 的 FILEBROWSER_UID')
+}
+if (!/verify_content_delete_gate/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 应验证可删除 craft-* / 共享背景且不能删代码')
+}
+if (!/chmod 3775 "\$EX"/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 应将 exhibits 根设为 3775（组写+sticky，才能删展品夹）')
+}
+if (/chmod 755 "\$EX"/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 不得把 exhibits 根锁成 755（否则删不掉 craft-*）')
+}
 if (!/EXHIBITS_GROUP 不能为 0/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh 应拒绝 EXHIBITS_GROUP=0')
 }

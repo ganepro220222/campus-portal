@@ -67,6 +67,7 @@ assert.match(healthSh, /docker image rm "\$BACKEND_ROLLBACK_TAG"/, 'must drop st
 assert.match(healthSh, /BACKEND_ROLLBACK_READY=1/, 'must mark rollback tag as deploy-current only')
 assert.match(healthSh, /BACKEND_ROLLBACK_READY:-0}" = "1"/, 'must not rollback to stale tag when not ready')
 assert.doesNotMatch(sh, /Docker 容器\/image 不会自动恢复/, 'should attempt container rollback')
+assert.match(sh, /FILEBROWSER_UID="\$\{FILEBROWSER_UID:-1000\}"/, 'Docker File Browser uid must be passed to permission fix')
 assert.match(sh, /check-static-deps/, 'must run static deps after update')
 assert.doesNotMatch(sh, /docker-compose\.dev\.yml/, 'must not fall back to dev compose')
 

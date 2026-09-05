@@ -2,9 +2,12 @@
 # staging ECS：exhibits 目录权限修复（代码只读 + 展品内容可协作编辑）。
 #
 # 原则：
-#   - Nginx (www-data) 只读：不进写组，靠目录 755 / 文件 644 的 other 位读静态展品
-#   - 代码树 root:root 755/644，防止 Web/上传误改 _server、vendor 等
+#   - Nginx (www-data) 只读：不进写组，靠目录 other 位读静态展品
+#   - 代码树 root:root 755/644，防止 Web/上传误改 _server、vendor、player.html 等
 #   - 仅 craft-*、共享背景等内容目录 setgid 2775 + 664，组内（File Browser / studio）可写
+#   - exhibits 根 3775（setgid+sticky+组写）：写组可新建/删除自己拥有的子项
+#     （才能从 File Browser 删掉整个 craft-* / 共享背景），但删不掉 root 属主的代码文件/目录
+#   - 内容目录 inode 属主改为 File Browser UID（Docker 默认 1000），sticky 下才能 unlink 整个夹
 #
 # 用法（SSH root）：
 #   bash scripts/fix-exhibits-permissions.sh
@@ -14,7 +17,9 @@
 #   EXHIBITS_GROUP=1000          # File Browser / 部署用户常见 gid
 #   NGINX_USER=www-data
 #   STUDIO_USER=studio           # systemd 工作台进程用户（存在则加入写组）
-#   FILEBROWSER_USER=filebrowser # File Browser 进程用户（存在则加入写组）
+#   FILEBROWSER_USER=filebrowser # 原生 systemd File Browser（存在则加入写组）
+#   FILEBROWSER_UID=1000         # Docker File Browser 宿主机 UID（无 filebrowser 用户时用）
+#   CONTENT_OWNER_UID=           # 覆盖内容目录属主；默认 filebrowser 用户或 FILEBROWSER_UID
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -40,7 +45,7 @@ resolve_exhibits_gid() {
     fi
     return
   fi
-  # 脚本会把 exhibits 根设为 root:root，不能再靠 stat 推断写组
+  # 根目录会写成 root:写组；仍优先用显式组名，避免误用其它非 0 组
   local name="${EXHIBITS_GROUP_NAME:-shuyuan-exhibits}"
   if getent group "$name" >/dev/null; then
     getent group "$name" | cut -d: -f3
@@ -74,11 +79,31 @@ harden_code_tree() {
   find "$dir" -type f -exec chmod 644 {} \;
 }
 
+resolve_content_owner_uid() {
+  if [ -n "${CONTENT_OWNER_UID:-}" ]; then
+    echo "${CONTENT_OWNER_UID}"
+    return
+  fi
+  # 显式 FILEBROWSER_UID 优先（staging Docker 固定 1000，避免宿主机碰巧有 filebrowser 用户）
+  if [ -n "${FILEBROWSER_UID:-}" ]; then
+    echo "${FILEBROWSER_UID}"
+    return
+  fi
+  if id "$FILEBROWSER_USER" &>/dev/null; then
+    id -u "$FILEBROWSER_USER"
+    return
+  fi
+  echo "1000"
+}
+
 apply_content_tree() {
   local dir="$1"
   chgrp -R "$GID" "$dir"
   find "$dir" -type d -exec chmod 2775 {} \;
   find "$dir" -type f -exec chmod 664 {} \;
+  # 只改目录 inode 属主：sticky 根下 File Browser 才能 unlink 整个展品夹/共享背景
+  # 内部文件仍可保持 root:写组 664，组员照常改内容
+  chown "$OWNER_UID:$GID" "$dir"
 }
 
 remove_nginx_from_write_group() {
@@ -119,23 +144,35 @@ if [ "$GID" = "0" ]; then
   exit 1
 fi
 
+OWNER_UID="$(resolve_content_owner_uid)"
+if [ "$OWNER_UID" = "0" ]; then
+  echo "错误: 内容目录属主不能为 root（CONTENT_OWNER_UID / FILEBROWSER_UID）" >&2
+  exit 1
+fi
+
+OWNER_NAME="$(getent passwd "$OWNER_UID" | cut -d: -f1 || true)"
+
 echo "=== fix-exhibits-permissions ==="
 echo "exhibits: $EX"
 echo "group:    $GNAME (gid $GID)"
 echo "nginx:    $NGX (只读)"
 echo "studio:   $STUDIO_USER"
 echo "filebrowser: $FILEBROWSER_USER"
+echo "content-owner: uid $OWNER_UID${OWNER_NAME:+ ($OWNER_NAME)}"
 
 remove_nginx_from_write_group
 add_user_to_write_group "$STUDIO_USER" "见 studio-server.service.example"
 add_user_to_write_group "$FILEBROWSER_USER" "见 filebrowser.service.example"
+if [ -n "$OWNER_NAME" ]; then
+  add_user_to_write_group "$OWNER_NAME" "File Browser 宿主机映射用户 (UID $OWNER_UID)"
+fi
 
-# exhibits 根：可遍历，不可被组内随意改
-chown root:root "$EX"
-chmod g-s "$EX" 2>/dev/null || true
-chmod 755 "$EX"
+# exhibits 根：写组可建/删自己拥有的子项（craft-* / 共享背景）；
+# sticky 阻止删除 root 属主的 player.html、_server、vendor 等
+chown root:"$GID" "$EX"
+chmod 3775 "$EX"
 
-echo "模式: 代码 root:root 755/644；内容 setgid 2775 + 664"
+echo "模式: 根 3775 sticky+setgid；代码 root:root 755/644；内容 2775/664 属主 $OWNER_UID"
 
 for d in "${CODE_DIRS[@]}"; do
   if [ -d "$EX/$d" ]; then
@@ -191,15 +228,29 @@ as_studio_available() {
   command -v runuser >/dev/null || command -v sudo >/dev/null
 }
 
-as_studio() {
+as_user() {
+  local u="$1"
+  shift
   if command -v runuser >/dev/null; then
-    runuser -u "$STUDIO_USER" -- "$@"
+    runuser -u "$u" -- "$@"
   elif command -v sudo >/dev/null; then
-    sudo -u "$STUDIO_USER" -- "$@"
+    sudo -u "$u" -- "$@"
   else
     echo "错误: 缺少 runuser 或 sudo，无法验证 studio 实际权限（Debian: apt install util-linux）" >&2
     return 127
   fi
+}
+
+as_studio() {
+  as_user "$STUDIO_USER" "$@"
+}
+
+as_content_owner() {
+  if [ -z "${OWNER_NAME:-}" ]; then
+    echo "错误: UID $OWNER_UID 无 passwd 项，无法验证 File Browser 删除权限" >&2
+    return 127
+  fi
+  as_user "$OWNER_NAME" "$@"
 }
 
 verify_studio_gate() {
@@ -240,6 +291,64 @@ verify_studio_gate() {
   fi
 }
 verify_studio_gate
+
+verify_content_delete_gate() {
+  local d owner probe_dir probe_file probe_code_dir
+  for d in "$EX"/craft-* "$EX/共享背景"; do
+    [ -d "$d" ] || continue
+    case "$(basename "$d")" in
+      craft-__perm_probe__) continue ;;
+    esac
+    owner="$(stat -c %u "$d")"
+    if [ "$owner" != "$OWNER_UID" ]; then
+      echo "错误: $(basename "$d") 属主是 uid $owner，应为 $OWNER_UID（否则 File Browser 删不掉整个文件夹）" >&2
+      exit 1
+    fi
+  done
+
+  if [ -z "${OWNER_NAME:-}" ]; then
+    echo "提示: 跳过删除门禁（UID $OWNER_UID 无 passwd 项；Docker 仍按数值 uid 写盘）"
+    return 0
+  fi
+  if ! as_studio_available; then
+    echo "错误: 缺少 runuser 或 sudo，无法验证 File Browser 删除权限（Debian: apt install util-linux）" >&2
+    exit 127
+  fi
+
+  probe_dir="$EX/craft-__perm_probe__"
+  rm -rf "$probe_dir"
+  mkdir "$probe_dir"
+  apply_content_tree "$probe_dir"
+  if ! as_content_owner rmdir "$probe_dir"; then
+    echo "错误: $OWNER_NAME (uid $OWNER_UID) 无法删除内容目录（检查根目录是否 3775、属主是否 $OWNER_UID）" >&2
+    rm -rf "$probe_dir"
+    exit 1
+  fi
+  echo "OK  $OWNER_NAME 可删除 craft-* 整个文件夹"
+
+  probe_file="$EX/.perm-probe-code-file"
+  printf 'probe\n' >"$probe_file"
+  chown root:root "$probe_file"
+  chmod 644 "$probe_file"
+  if as_content_owner rm -f "$probe_file" 2>/dev/null && [ ! -f "$probe_file" ]; then
+    echo "错误: $OWNER_NAME 不应能删除根上 root 属主文件（sticky 失效）" >&2
+    exit 1
+  fi
+  rm -f "$probe_file"
+
+  probe_code_dir="$EX/.perm-probe-code-dir"
+  rm -rf "$probe_code_dir"
+  mkdir "$probe_code_dir"
+  chown root:root "$probe_code_dir"
+  chmod 755 "$probe_code_dir"
+  if as_content_owner rmdir "$probe_code_dir" 2>/dev/null; then
+    echo "错误: $OWNER_NAME 不应能删除根上 root 属主目录（_server / vendor 同类）" >&2
+    exit 1
+  fi
+  rmdir "$probe_code_dir"
+  echo "OK  $OWNER_NAME 不能删除根上代码文件/目录"
+}
+verify_content_delete_gate
 
 studio_pid_groups_line() {
   local pid="$1"
@@ -302,6 +411,9 @@ systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null || true
 echo ""
 echo "完成。请验证："
 echo "  curl -sI http://127.0.0.1/exhibits/craft-001/ | head -1"
+echo "  ls -ld $EX                 # 应为 root:写组 drwxrwsr-t (3775)"
+echo "  ls -ld $EX/craft-* $EX/共享背景 2>/dev/null | head"
 echo "  ls -la $EX/_server | head -3   # 应为 root root drwxr-xr-x"
-echo "  （File Browser 上传后 Nginx 应 200；若 403 请确认 setfacl/acl 已装且本脚本已跑）"
+echo "  （File Browser 应能删除整个 craft-* / 共享背景，不能删 player.html / _server）"
+echo "  （上传后 Nginx 应 200；若 403 请确认 setfacl/acl 已装且本脚本已跑）"
 echo "  （File Browser systemd 建议 UMask=0022 + User=filebrowser，见 scripts/filebrowser.service.example）"

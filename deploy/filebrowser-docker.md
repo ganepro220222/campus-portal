@@ -3,7 +3,7 @@
 > **staging ECS 使用 Docker，不是 systemd 原生二进制。**  
 > 勿将 `scripts/filebrowser.service.example` 复制到 `/etc/systemd/system/`（host 无 `/usr/local/bin/filebrowser` 会 203/EXEC）。
 
-File Browser 供合伙人通过浏览器登录，向 `exhibits/craft-*` **整文件夹上传**展品资源。  
+File Browser 供合伙人通过浏览器登录，向 `exhibits/craft-*` **整文件夹上传**展品资源，并删除整个 `craft-*` / `共享背景` 文件夹。  
 外网路径：**`http://<ECS-IP>/fm/`**（与书院 `/api/` 分离，避免 API 冲突）。
 
 ---
@@ -115,14 +115,15 @@ curl -s -o /dev/null -w "GET /fm/ -> %{http_code}\n" http://127.0.0.1/fm/
 
 ```bash
 cd /opt/shuyuan
-EXHIBITS_GROUP=1000 bash scripts/fix-exhibits-permissions.sh
+EXHIBITS_GROUP=1000 FILEBROWSER_UID=1000 bash scripts/fix-exhibits-permissions.sh
 ```
 
 **Docker 说明：**
 
 - 容器写文件时 host 上显示为 **UID 1000**（常为 `ubuntu`），不是系统用户 `filebrowser`。
 - `FILEBROWSER_USER=filebrowser` 仅在使用 **systemd 原生** unit 时需要；Docker staging **不必**设。
-- 脚本会：代码 `root:root 755/644`、内容 `2775/664`、default ACL `www-data:rX`、必要时 restart `studio-server`。
+- 脚本会：exhibits 根 `3775`（写组可建/删自己的子目录，sticky 保护 `player.html` / `_server`）、代码 `root:root 755/644`、内容目录属主为 File Browser UID（Docker 默认 1000）+ `2775/664`、default ACL `www-data:rX`、必要时 restart `studio-server`。
+- 跑完后 File Browser 应能删除整个 `craft-*` 和 `共享背景`；不能删 `player.html`、`studio.html`、`_server`、`vendor`。
 
 上传后 Nginx 静态读验收：
 
@@ -163,7 +164,7 @@ done
 docker logs filebrowser 2>&1 | tail -20
 ```
 
-宿主机 `fix-exhibits-permissions.sh` 已用 root:root 755 保护代码；Rules 为 UI 层双保险。
+宿主机 `fix-exhibits-permissions.sh` 用 sticky + 代码 `root:root` 保护播放器源码；Rules 为 UI 层双保险。
 
 ---
 

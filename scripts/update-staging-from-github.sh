@@ -417,7 +417,9 @@ fi
 echo ""
 echo "=== exhibits 权限（File Browser 上传 + Nginx /exhibits/ 可读）==="
 if [ "${SKIP_EXHIBITS_PERMS:-0}" != "1" ]; then
-  EXHIBITS_GROUP="${EXHIBITS_GROUP:-1000}" bash scripts/fix-exhibits-permissions.sh
+  EXHIBITS_GROUP="${EXHIBITS_GROUP:-1000}" \
+    FILEBROWSER_UID="${FILEBROWSER_UID:-1000}" \
+    bash scripts/fix-exhibits-permissions.sh
 else
   echo "SKIP_EXHIBITS_PERMS=1，跳过"
 fi

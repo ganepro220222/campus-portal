@@ -9,15 +9,19 @@ apt-get install -y -qq acl sudo util-linux >/dev/null
 
 groupadd --system studio 2>/dev/null || true
 useradd --system --gid studio --shell /usr/sbin/nologin --no-create-home studio 2>/dev/null || true
+groupadd --system filebrowser 2>/dev/null || true
+useradd --system --gid filebrowser --shell /usr/sbin/nologin --no-create-home filebrowser 2>/dev/null || true
+getent passwd www-data >/dev/null || useradd --system --user-group --no-create-home --shell /usr/sbin/nologin www-data
 
 groupadd -g 10001 syperm-exhibits 2>/dev/null || groupadd syperm-exhibits 2>/dev/null || true
 
 TMP="$(mktemp -d)"
 chmod 755 "$TMP"
 EX="$TMP/exhibits"
-mkdir -p "$EX/_server" "$EX/craft-001"
+mkdir -p "$EX/_server" "$EX/craft-001" "$EX/共享背景"
 printf '// code\n' >"$EX/_server/studio-server.mjs"
 printf '{}\n' >"$EX/craft-001/config.json"
+printf 'bg\n' >"$EX/共享背景/keep.txt"
 printf '<html></html>\n' >"$EX/studio.html"
 
 export EXHIBITS_ROOT="$EX"
@@ -25,6 +29,7 @@ export EXHIBITS_GROUP=10001
 export EXHIBITS_GROUP_NAME=syperm-exhibits
 export NGINX_USER=www-data
 export STUDIO_USER=studio
+export FILEBROWSER_USER=filebrowser
 export SET_CONTENT_ACL=1
 
 bash /repo/scripts/fix-exhibits-permissions.sh
@@ -32,9 +37,16 @@ bash /repo/scripts/fix-exhibits-permissions.sh
 mode_file="$(stat -c '%a' "$EX/_server/studio-server.mjs")"
 mode_cfg="$(stat -c '%a' "$EX/craft-001/config.json")"
 mode_dir="$(stat -c '%a' "$EX/_server")"
+mode_root="$(stat -c '%a' "$EX")"
+fb_uid="$(id -u filebrowser)"
+craft_uid="$(stat -c '%u' "$EX/craft-001")"
+bg_uid="$(stat -c '%u' "$EX/共享背景")"
 [ "$mode_file" = "644" ] || { echo "FAIL: _server file mode=$mode_file"; exit 1; }
 [ "$mode_cfg" = "664" ] || { echo "FAIL: craft config mode=$mode_cfg"; exit 1; }
 [ "$mode_dir" = "755" ] || { echo "FAIL: _server dir mode=$mode_dir"; exit 1; }
+[ "$mode_root" = "3775" ] || { echo "FAIL: exhibits root mode=$mode_root (want 3775)"; exit 1; }
+[ "$craft_uid" = "$fb_uid" ] || { echo "FAIL: craft-001 owner=$craft_uid want $fb_uid"; exit 1; }
+[ "$bg_uid" = "$fb_uid" ] || { echo "FAIL: 共享背景 owner=$bg_uid want $fb_uid"; exit 1; }
 
 runuser -u studio -- test -w "$EX/craft-001/config.json"
 runuser -u studio -- test ! -w "$EX/_server/studio-server.mjs"
@@ -45,6 +57,18 @@ printf 'probe\n' >"$NEST/file.txt"
 chmod 640 "$NEST/file.txt"
 runuser -u www-data -- test -x "$NEST" || { echo "FAIL: www-data cannot traverse new subdir (default ACL missing x)"; exit 1; }
 runuser -u www-data -- test -r "$NEST/file.txt" || { echo "FAIL: www-data cannot read file in new subdir"; exit 1; }
+
+runuser -u filebrowser -- rm -rf "$EX/共享背景" \
+  || { echo "FAIL: filebrowser cannot delete 共享背景"; exit 1; }
+[ ! -d "$EX/共享背景" ] || { echo "FAIL: 共享背景 still exists after filebrowser delete"; exit 1; }
+
+runuser -u filebrowser -- rm -rf "$EX/craft-001" \
+  || { echo "FAIL: filebrowser cannot delete craft-001"; exit 1; }
+[ ! -d "$EX/craft-001" ] || { echo "FAIL: craft-001 still exists after filebrowser delete"; exit 1; }
+
+runuser -u filebrowser -- rm -f "$EX/studio.html" || true
+[ -f "$EX/studio.html" ] || { echo "FAIL: filebrowser must not delete studio.html"; exit 1; }
+[ -d "$EX/_server" ] || { echo "FAIL: _server disappeared"; exit 1; }
 
 rm -rf "$TMP"
 

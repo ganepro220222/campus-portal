@@ -18,7 +18,9 @@
 # 关键：
 #   - User=filebrowser（禁止 root，否则可绕过代码 644/755 改写 _server）
 #   - UMask=0022 使新文件为 644（other 可读），Nginx(www-data) 不在写组也能读
-#   - fix-exhibits-permissions 把 filebrowser 加入内容写组；default ACL 给 www-data 只读
+#   - fix-exhibits-permissions 把 filebrowser 加入写组，内容目录属主设为该用户；
+#     exhibits 根 3775 sticky，才能删除整个 craft-* / 共享背景，同时删不掉 player.html
+#   - default ACL 给 www-data 只读
 #   - File Browser 规则应禁止访问 _server、_launch、vendor 等代码路径（见 Web UI Rules）
 
 [Unit]

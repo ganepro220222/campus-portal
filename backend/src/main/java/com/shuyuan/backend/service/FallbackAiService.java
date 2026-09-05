@@ -19,12 +19,47 @@ public class FallbackAiService {
     }
 
     static String formatExcerpt(KnowledgeChunk chunk) {
-        String text = chunk.getChunkText() == null ? "" : chunk.getChunkText().trim();
+        String text = visibleExcerpt(chunk.getChunkText());
         String title = displayTitle(chunk.getDocTitle());
         if (title.isEmpty()) {
             return text;
         }
+        if (text.isEmpty()) {
+            return "【" + title + "】";
+        }
         return "【" + title + "】\n\n" + text;
+    }
+
+    /**
+     * 文首问句和文末「常见问法」是给检索用的，不是给学生看的答案。
+     * 现在学生端原样返回摘录，不剥掉就会把整串问题念出来。
+     */
+    static String visibleExcerpt(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String text = raw.trim();
+        int faq = text.indexOf("常见问法：");
+        if (faq >= 0) {
+            text = text.substring(0, faq).trim();
+        }
+        String[] paras = text.split("\\n\\n+", 2);
+        if (isQuestionDump(paras[0])) {
+            return paras.length > 1 ? paras[1].trim() : "";
+        }
+        return text;
+    }
+
+    static boolean isQuestionDump(String para) {
+        if (para == null) {
+            return false;
+        }
+        String t = para.replace('\n', ' ').trim();
+        if (t.isEmpty() || t.contains("：") || t.contains("。")) {
+            return false;
+        }
+        int marks = t.length() - t.replace("？", "").length();
+        return marks >= 2 && t.endsWith("？");
     }
 
     static String displayTitle(String title) {

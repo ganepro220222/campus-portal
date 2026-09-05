@@ -31,6 +31,24 @@ class FallbackAiServiceTest {
     }
 
     @Test
+    void 文首问句和文末常见问法不进学生摘录() {
+        KnowledgeChunk chunk = chunk("使用指南 · 个人中心与消息",
+                "个人中心有什么？消息中心在哪里？怎么看未读消息？首页铃铛为什么有红点？\n\n"
+                        + "消息中心在底部「我的」页面的「消息中心」。\n\n"
+                        + "常见问法：消息中心在哪里？反馈历史在哪里？");
+        assertEquals("【个人中心与消息】\n\n消息中心在底部「我的」页面的「消息中心」。",
+                FallbackAiService.formatExcerpt(chunk));
+    }
+
+    @Test
+    void 正文段落不会被当成问句堆() {
+        KnowledgeChunk chunk = chunk("使用指南 · 活动报名",
+                "怎么报名：在活动列表点击想参加的活动进入详情页。");
+        assertEquals("【活动报名】\n\n怎么报名：在活动列表点击想参加的活动进入详情页。",
+                FallbackAiService.formatExcerpt(chunk));
+    }
+
+    @Test
     void 没有使用指南前缀时保留原标题() {
         KnowledgeChunk chunk = chunk("牙舟陶数字展厅", "牙舟陶展厅支持全景浏览。");
         assertEquals("【牙舟陶数字展厅】\n\n牙舟陶展厅支持全景浏览。",

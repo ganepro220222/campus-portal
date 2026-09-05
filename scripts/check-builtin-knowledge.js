@@ -83,6 +83,53 @@ if (patch.includes('新闻')) {
   errs.push('sql/patch-builtin-knowledge.sql 出现「新闻」，请改源文件后重新生成')
 }
 
+// ---------- 3b) 入口说明必须跟小程序真实路由走 ----------
+// 问答会把最佳片段原样返回，写错入口比「没有找到答案」更误导。
+const allSrc = sources.map((name) => read(path.join('sql/knowledge', name))).join('\n')
+const homeJs = read('miniapp/pages/index/index.js')
+const profileJs = read('miniapp/pages/profile/index.js')
+const appJson = read('miniapp/app.json')
+const profileKb = sources.includes('07-profile-message.md')
+  ? read('sql/knowledge/07-profile-message.md')
+  : ''
+
+const bellTap = homeJs.match(/onBellTap\(\)\s*\{\s*wx\.switchTab\(\{\s*url:\s*'([^']+)'/)
+if (!bellTap) {
+  errs.push('首页 onBellTap 找不到跳转，无法核对知识库铃铛说明')
+} else if (bellTap[1] === '/pages/news/index') {
+  const forbiddenBell = [
+    '首页右上角的铃铛图标有未读消息',
+    '右上角是消息中心入口',
+    '右上角是消息中心',
+    '铃铛图标有未读消息时会显示红点'
+  ]
+  const hit = forbiddenBell.find((s) => allSrc.includes(s) || patch.includes(s))
+  if (hit) {
+    errs.push(`首页铃铛跳的是「动态」，知识库不得再写「${hit}」`)
+  }
+} else {
+  errs.push(`首页 onBellTap 已改跳 ${bellTap[1]}，请同步改知识库契约`)
+}
+
+if (!profileJs.includes("/packageC/message/index")) {
+  errs.push('个人中心消息入口已不在 /packageC/message/index，请同步改知识库契约')
+} else if (profileKb && !/我的|个人中心/.test(profileKb)) {
+  errs.push('07-profile-message.md 说明消息中心时必须提到「我的」或「个人中心」')
+}
+
+const feedbackGoesToList = /onFeedback[\s\S]{0,200}\/packageC\/feedback\/list/.test(profileJs)
+const feedbackListPage = appJson.includes('feedback/list')
+if (feedbackGoesToList && feedbackListPage) {
+  if (/不展示反馈历史/.test(allSrc) || /不展示反馈历史/.test(patch)) {
+    errs.push('反馈列表路由还在，知识库不得再写「不展示反馈历史」')
+  }
+  if (profileKb && !/反馈历史|我的反馈/.test(profileKb)) {
+    errs.push('07-profile-message.md 必须说明可以查看反馈历史或我的反馈')
+  }
+} else {
+  errs.push('意见反馈已不再进入 /packageC/feedback/list，请同步改知识库契约')
+}
+
 // ---------- 4) 落库字段完整 ----------
 if (!/INSERT INTO `knowledge_doc`[\s\S]{0,200}`content`/.test(patch)) {
   errs.push('patch-builtin-knowledge.sql 未写入 content 列，后台编辑时正文会回填成空白')

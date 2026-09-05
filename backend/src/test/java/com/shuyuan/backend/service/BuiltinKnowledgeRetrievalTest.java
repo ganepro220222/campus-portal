@@ -149,7 +149,11 @@ class BuiltinKnowledgeRetrievalTest {
                 new Case("怎么收藏一篇动态", "动态展馆与搜索"),
                 new Case("展馆有多少个", "动态展馆与搜索"),
                 new Case("消息中心在哪里", "个人中心与消息"),
+                new Case("怎么看未读消息", "个人中心与消息"),
+                new Case("首页铃铛为什么有红点", "个人中心与消息"),
                 new Case("怎么提交意见反馈", "个人中心与消息"),
+                new Case("反馈历史在哪里", "个人中心与消息"),
+                new Case("在哪里查看反馈处理进度", "个人中心与消息"),
                 new Case("书院助手每天能问多少次", "知识问答使用说明"),
                 new Case("这个小程序有什么功能", "小程序总览"),
                 new Case("牙舟陶怎么参观", "牙舟陶数字展厅"),
@@ -161,6 +165,35 @@ class BuiltinKnowledgeRetrievalTest {
             List<String> actual = hitDocTitles(c.question());
             if (actual.stream().noneMatch(t -> t.contains(c.expectDocKeyword()))) {
                 wrong.add("「" + c.question() + "」检索到的是" + actual + "，期望其中包含《" + c.expectDocKeyword() + "》");
+            }
+        }
+        assertTrue(wrong.isEmpty(), String.join("\n", wrong));
+    }
+
+    /**
+     * 命中哪一篇不够：学生看到的是 pickBest 那一段原文。
+     * 消息/反馈这类导航问题必须把人领到「我的」，不能再把首页铃铛说成站内消息。
+     */
+    @Test
+    void 消息与反馈摘录必须符合真实入口() {
+        record Expect(String question, String mustContain, String mustNotContain) {}
+        List<Expect> cases = List.of(
+                new Expect("消息中心在哪里", "我的", "未读消息时会显示红点"),
+                new Expect("怎么看未读消息", "消息中心", "首页右上角的铃铛图标有未读消息"),
+                new Expect("首页铃铛为什么有红点", "动态", "消息中心入口"),
+                new Expect("怎么提交意见反馈", "反馈历史", "不展示反馈历史"),
+                new Expect("反馈历史在哪里", "反馈历史", "不展示反馈历史"));
+
+        List<String> wrong = new ArrayList<>();
+        for (Expect c : cases) {
+            assertTrue(substantial(c.question()), "「" + c.question() + "」应算实质命中");
+            KnowledgeChunk best = knowledgeService.pickBest(c.question(), ask(c.question()));
+            String text = best == null || best.getChunkText() == null ? "" : best.getChunkText();
+            if (!text.contains(c.mustContain())) {
+                wrong.add("「" + c.question() + "」摘录未包含「" + c.mustContain() + "」：" + text);
+            }
+            if (text.contains(c.mustNotContain())) {
+                wrong.add("「" + c.question() + "」摘录仍含错误指引「" + c.mustNotContain() + "」");
             }
         }
         assertTrue(wrong.isEmpty(), String.join("\n", wrong));

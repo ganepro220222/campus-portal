@@ -116,8 +116,10 @@ export function panoramaRevealTimeoutMs(cfg, player, testHook) {
   ], 8000)
 }
 
-/** Safari/微信：5000/8042 先解码再缩到 2048 仍会 context-lost；默认 1024。 */
+/** Safari/微信：环境立方体仍按 1024 烤，避免 PMREM 后再 context-lost。 */
 export const DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH = 1024
+/** 可见背景按 2048 解码（createImageBitmap 缩小，不再解开 5000 原图像素）。 */
+export const DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH = 2048
 
 /** Max equirect width before PMREM; 0 = no downscale. URL override wins, then config, then strict default. */
 export function strictWebKitPanoramaMaxWidth(cfg, strictWebKit, urlOverride = 0) {
@@ -126,6 +128,15 @@ export function strictWebKitPanoramaMaxWidth(cfg, strictWebKit, urlOverride = 0)
   const cfgVal = cfg?.performance?.strictWebKitPanoramaMaxWidth
   if (typeof cfgVal === 'number' && cfgVal > 0) return cfgVal
   return DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH
+}
+
+/** Max equirect width when decoding the visible background. */
+export function strictWebKitPanoramaDecodeWidth(cfg, strictWebKit, urlOverride = 0) {
+  if (typeof urlOverride === 'number' && urlOverride > 0) return urlOverride
+  if (!strictWebKit) return 0
+  const cfgVal = cfg?.performance?.strictWebKitPanoramaDecodeWidth
+  if (typeof cfgVal === 'number' && cfgVal > 0) return cfgVal
+  return DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH
 }
 
 /** strict WebKit 移动端默认 DPR。旧值 1 是微信/iOS 端锯齿主因（画布像素只有 CSS 视口大小）。 */

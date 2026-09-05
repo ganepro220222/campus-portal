@@ -10,6 +10,8 @@ import {
   configExportFilename,
   strictWebKitPanoramaMaxWidth,
   DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH,
+  DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH,
+  strictWebKitPanoramaDecodeWidth,
   resolveRendererQuality,
   panoramaRevealTimeoutMs,
   fitCameraDistance,
@@ -61,6 +63,13 @@ test('strictWebKitPanoramaMaxWidth defaults to 1024 on strict hosts only', () =>
   assert.equal(strictWebKitPanoramaMaxWidth(null, false, 0), 0)
   assert.equal(strictWebKitPanoramaMaxWidth({ performance: { strictWebKitPanoramaMaxWidth: 1024 } }, true, 0), 1024)
   assert.equal(strictWebKitPanoramaMaxWidth(null, true, 4096), 4096)
+})
+
+test('strictWebKit 可见背景按 2048 解码，与 PMREM 1024 分开', () => {
+  assert.equal(DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH, 2048)
+  assert.equal(strictWebKitPanoramaDecodeWidth(null, true, 0), 2048)
+  assert.equal(strictWebKitPanoramaDecodeWidth(null, false, 0), 0)
+  assert.equal(strictWebKitPanoramaDecodeWidth({ performance: { strictWebKitPanoramaDecodeWidth: 1536 } }, true, 0), 1536)
 })
 
 const craftLikeCfg = { performance: { mobilePixelRatio: 1.5, desktopPixelRatio: 2 }, renderer: { maxPixelRatio: 2 } }

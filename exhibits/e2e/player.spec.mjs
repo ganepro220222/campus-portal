@@ -689,9 +689,9 @@ test.describe('strict WebKit startup', () => {
     expect(snap.flags.panoramaPmremMaxWidth).toBe(1024)
     const decoded = snap.log.find(e => e.tag === 'pano:decoded')
     const down = snap.log.find(e => e.tag === 'pano:downscaled')
-    const readyW = decoded?.detail?.w || down?.detail?.w
-    expect(readyW).toBe(1024)
-    if (down) expect(down.detail.maxWidth).toBe(1024)
+    expect(decoded?.detail?.w || down?.detail?.displayW).toBe(2048)
+    expect(down?.detail?.w).toBe(1024)
+    expect(down?.detail?.maxWidth).toBe(1024)
     const done = snap.log.find(e => e.tag === 'pano:pmrem-done')
     expect(done?.detail?.w).toBe(1024)
     const shading = await p.evaluate(() => window.__SY_TEST__.shadingSnapshot())

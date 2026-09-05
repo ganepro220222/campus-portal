@@ -422,7 +422,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, PREVIEW_DEVICES, DEFAULT_PREVIEW_DEVICE, previewDevice, framingCoverage, devicePreviewFit, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, resolveRendererQuality } from './player-persist.mjs'
+import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, PREVIEW_DEVICES, DEFAULT_PREVIEW_DEVICE, previewDevice, framingCoverage, devicePreviewFit, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, strictWebKitPanoramaDecodeWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH, resolveRendererQuality } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
@@ -457,20 +457,30 @@ function loadTextureWithFallback(url, onOk, onErr) {
 }
 function panoramaDecodeMaxWidth() {
   if (panoDiag.loadOnly) return 0
-  const maxW = strictWebKitPanoramaMaxWidth(cfg, strictWebKit, panoDiag.urlMaxWidth)
-  if (maxW > 0) return maxW
-  return strictWebKit ? DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH : 0
+  return strictWebKitPanoramaDecodeWidth(cfg, strictWebKit, panoDiag.urlMaxWidth)
+}
+function preparePanoramaTexture(tex) {
+  tex.mapping = THREE.EquirectangularReflectionMapping
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.flipY = true
+  tex.generateMipmaps = true
+  tex.minFilter = THREE.LinearMipmapLinearFilter
+  tex.magFilter = THREE.LinearFilter
+  tex.needsUpdate = true
+  return tex
+}
+/** ImageBitmap 在 three 里不走 TextureLoader 的 flipY，直接当贴图会上下颠倒。画到 canvas 再按旧路径上传。 */
+function textureFromImageBitmap(bitmap) {
+  const cv = document.createElement('canvas')
+  cv.width = bitmap.width
+  cv.height = bitmap.height
+  cv.getContext('2d').drawImage(bitmap, 0, 0)
+  if (typeof bitmap.close === 'function') bitmap.close()
+  return preparePanoramaTexture(new THREE.CanvasTexture(cv))
 }
 function loadPanoramaTexture(url, onOk, onErr) {
   const maxW = panoramaDecodeMaxWidth()
   const fallback = sameOriginFallbackUrl(url)
-  const finishErr = () => {
-    if (fallback && fallback !== url) {
-      loadPanoramaTexture(fallback, onOk, onErr)
-      return
-    }
-    onErr()
-  }
   if (!(maxW > 0) || typeof createImageBitmap !== 'function' || typeof fetch !== 'function') {
     loadTextureWithFallback(url, onOk, onErr)
     return
@@ -482,18 +492,17 @@ function loadPanoramaTexture(url, onOk, onErr) {
     const head = new Uint8Array(await blob.slice(0, 262144).arrayBuffer())
     const sz = readPngOrJpegSize(head)
     const target = resizeToMaxWidth(sz?.w || 0, sz?.h || 0, maxW)
-    const opts = target.scaled
-      ? { resizeWidth: target.w, resizeHeight: target.h, resizeQuality: 'high' }
-      : undefined
-    const bitmap = opts ? await createImageBitmap(blob, opts) : await createImageBitmap(blob)
-    const tex = new THREE.Texture(bitmap)
-    tex.needsUpdate = true
-    tex.colorSpace = THREE.SRGBColorSpace
+    const opts = {
+      imageOrientation: 'none',
+      ...(target.scaled ? { resizeWidth: target.w, resizeHeight: target.h, resizeQuality: 'high' } : {}),
+    }
+    const bitmap = await createImageBitmap(blob, opts)
+    const tex = textureFromImageBitmap(bitmap)
     panoDiagEvent('pano:decoded', {
       srcW: sz?.w || 0,
       srcH: sz?.h || 0,
-      w: bitmap.width,
-      h: bitmap.height,
+      w: tex.image?.width,
+      h: tex.image?.height,
       resized: !!target.scaled,
     })
     onOk(tex)
@@ -564,7 +573,7 @@ function panoDiagEvent(tag, detail) {
   panel.textContent = [...fatals, ...rest].map(line).join('\n')
   panel.style.color = fatals.length ? '#ffcc66' : '#9f9'
 }
-function downscalePanoramaTexture(tex, maxWidth) {
+function copyPanoramaDownscale(tex, maxWidth) {
   const img = tex.image
   if (!maxWidth || !img?.width || img.width <= maxWidth) return tex
   const w = maxWidth
@@ -576,32 +585,33 @@ function downscalePanoramaTexture(tex, maxWidth) {
   const out = new THREE.CanvasTexture(cv)
   out.mapping = tex.mapping
   out.colorSpace = tex.colorSpace
-  tex.image = null
-  tex.dispose()
+  out.flipY = tex.flipY
   return out
 }
 function applyPanoramaFromTexture(tex) {
+  preparePanoramaTexture(tex)
   const orig = { w: tex.image?.width, h: tex.image?.height }
   panoDiagEvent('pano:texture-loaded', orig)
+  const keepBg = !panoDiag.skipVisibleBg && cfg.environment?.visibleBackground
   const maxW = panoramaPmremMaxWidth()
-  if (maxW > 0) {
-    const before = orig
-    tex = downscalePanoramaTexture(tex, maxW)
-    if (tex.image?.width !== before.w) {
-      panoDiagEvent('pano:downscaled', { w: tex.image.width, h: tex.image.height, maxWidth: maxW })
-    }
+  let pmremTex = tex
+  if (maxW > 0 && tex.image?.width > maxW) {
+    pmremTex = copyPanoramaDownscale(tex, maxW)
+    panoDiagEvent('pano:downscaled', { w: pmremTex.image.width, h: pmremTex.image.height, maxWidth: maxW, displayW: orig.w })
   }
   if (panoDiag.loadOnly) {
     panoDiagEvent('pano:load-only-done', orig)
+    if (pmremTex !== tex) pmremTex.dispose()
     tex.dispose()
     return
   }
   if (panoDiag.skipPmrem || webglContextLostOnce) {
     panoDiagEvent('pano:skip-pmrem', {
-      keepVisibleBg: !panoDiag.skipVisibleBg && !!cfg.environment?.visibleBackground,
+      keepVisibleBg: keepBg,
       afterContextLost: webglContextLostOnce,
     })
-    if (!panoDiag.skipVisibleBg && cfg.environment?.visibleBackground) {
+    if (pmremTex !== tex) pmremTex.dispose()
+    if (keepBg) {
       if (envBg && envBg !== tex) envBg.dispose()
       envBg = tex
       scene.background = tex
@@ -609,13 +619,14 @@ function applyPanoramaFromTexture(tex) {
     panoDiagEvent('shading:after-skip-pmrem', compactShadingFacts())
     return
   }
-  panoDiagEvent('pano:pmrem-start', { w: tex.image?.width, h: tex.image?.height })
+  panoDiagEvent('pano:pmrem-start', { w: pmremTex.image?.width, h: pmremTex.image?.height })
   let rt
   try {
-    rt = pmremGen().fromEquirectangular(tex)
+    rt = pmremGen().fromEquirectangular(pmremTex)
   } catch (e) {
     panoDiagEvent('pano:pmrem-fail', { message: e?.message || String(e) })
-    if (!panoDiag.skipVisibleBg && cfg.environment?.visibleBackground) {
+    if (pmremTex !== tex) pmremTex.dispose()
+    if (keepBg) {
       if (envBg && envBg !== tex) envBg.dispose()
       envBg = tex
       scene.background = tex
@@ -624,8 +635,8 @@ function applyPanoramaFromTexture(tex) {
     panoDiagEvent('shading:after-pmrem-fail', compactShadingFacts())
     return
   }
-  panoDiagEvent('pano:pmrem-done', { w: tex.image?.width, h: tex.image?.height })
-  const keepBg = !panoDiag.skipVisibleBg && cfg.environment?.visibleBackground
+  panoDiagEvent('pano:pmrem-done', { w: pmremTex.image?.width, h: pmremTex.image?.height, displayW: orig.w })
+  if (pmremTex !== tex) pmremTex.dispose()
   setEnvFromRT(rt, keepBg ? tex : null)
   if (!keepBg) tex.dispose()
   panoDiagEvent('shading:after-pmrem', compactShadingFacts())
@@ -637,6 +648,7 @@ if (panoDiag.enabled) {
     panoDeferOverride,
     urlMaxWidth: panoDiag.urlMaxWidth,
     strictWebKitPanoMaxDefault: strictWebKit ? DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH : 0,
+    strictWebKitPanoDecodeDefault: strictWebKit ? DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH : 0,
     skipPmrem: panoDiag.skipPmrem,
     skipVisibleBg: panoDiag.skipVisibleBg,
     loadOnly: panoDiag.loadOnly,

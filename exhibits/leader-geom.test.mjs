@@ -1319,7 +1319,7 @@ test('viewer output imports boot timeouts from player-persist', () => {
   const view = buildViewerSrc()
   assert.match(view, /import \{[^}]+\} from '\.\/player-persist\.mjs'/)
   assert.match(view, /configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, createModelLoadTimers/)
-  assert.match(view, /strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, resolveRendererQuality/)
+  assert.match(view, /strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, strictWebKitPanoramaDecodeWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH, resolveRendererQuality/)
   assert.doesNotMatch(view, /applyExposureToCfg/)
   assert.doesNotMatch(view, /configExportFilename/)
 })

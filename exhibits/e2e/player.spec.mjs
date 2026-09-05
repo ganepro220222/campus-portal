@@ -706,6 +706,78 @@ test.describe('strict WebKit startup', () => {
     await p.close()
   })
 
+  test('createImageBitmap 失败时不得退回原尺寸 TextureLoader', async ({ browser }) => {
+    const p = await browser.newPage()
+    await p.addInitScript(() => {
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.42',
+      })
+      window.createImageBitmap = () => Promise.reject(new Error('bitmap-denied'))
+    })
+    await injectCfg(p, {
+      assets: {
+        model: '../e2e/fixtures/two-material.gltf',
+        panorama: '../e2e/fixtures/tiny-pano.jpg',
+      },
+      environment: { mode: 'panorama', visibleBackground: true, preset: 'studio' },
+    })
+    await p.setViewportSize({ width: 390, height: 844 })
+    await p.goto('/player.html?ex=craft-001&syDiag=1&panoDefer=0', { waitUntil: 'domcontentloaded' })
+    await waitForPlayerReady(p)
+    const snap = await p.evaluate(() => ({
+      ready: window.__SY_PLAYER?.ready === true,
+      kind: window.__SY_TEST__.envSourceKind(),
+      texLoads: window.__SY_TEST__.unrestrictedPanoTextureLoads(),
+      tags: (window.__SY_PANO_DIAG__ || []).map(e => e.tag),
+    }))
+    expect(snap.ready).toBe(true)
+    expect(snap.texLoads).toBe(0)
+    expect(['preset', 'room']).toContain(snap.kind)
+    expect(snap.tags).toContain('pano:constrained-fail')
+    expect(snap.tags).not.toContain('pano:decoded')
+    expect(snap.tags).not.toContain('pano:texture-loaded')
+    await releaseWebGL(p)
+    await p.close()
+  })
+
+  test('CDN 失败时同源全景仍走受限解码，不经 TextureLoader', async ({ browser }) => {
+    const p = await browser.newPage()
+    await p.addInitScript(() => {
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.42',
+      })
+    })
+    await injectCfg(p, {
+      assets: {
+        model: '../e2e/fixtures/two-material.gltf',
+        panorama: 'https://cdn.yunmanvr.com/exhibits/e2e/fixtures/tiny-pano.jpg',
+      },
+      environment: { mode: 'panorama', visibleBackground: true },
+    })
+    await p.route('https://cdn.yunmanvr.com/**', route => route.abort())
+    await p.setViewportSize({ width: 390, height: 844 })
+    await p.goto('/player.html?ex=craft-001&syDiag=1&panoDefer=0', { waitUntil: 'domcontentloaded' })
+    await waitForPlayerReady(p)
+    await p.waitForFunction(() => {
+      const log = window.__SY_PANO_DIAG__ || []
+      return log.some(e => e.tag === 'pano:pmrem-done')
+    }, { timeout: 60_000 })
+    const snap = await p.evaluate(() => window.__SY_TEST__.panoDiagSnapshot())
+    const decoded = snap.log.find(e => e.tag === 'pano:decoded')
+    const down = snap.log.find(e => e.tag === 'pano:downscaled')
+    const done = snap.log.find(e => e.tag === 'pano:pmrem-done')
+    expect(await p.evaluate(() => window.__SY_TEST__.unrestrictedPanoTextureLoads())).toBe(0)
+    expect(decoded?.detail?.w).toBeGreaterThan(0)
+    expect(decoded.detail.w).toBeLessThanOrEqual(2048)
+    expect((down?.detail?.w ?? done?.detail?.w)).toBeLessThanOrEqual(1024)
+    expect(done?.detail?.w).toBeLessThanOrEqual(1024)
+    expect(await p.evaluate(() => window.__SY_TEST__.envSourceKind())).toBe('panorama')
+    await releaseWebGL(p)
+    await p.close()
+  })
+
   for (const [name, ua] of [
     ['iOS Edge', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 EdgiOS/121.0.2277.99 Mobile/15E148 Safari/604.1'],
     ['iOS Chrome', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/121.0.6167.66 Mobile/15E148 Safari/604.1'],

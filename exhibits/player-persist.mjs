@@ -139,6 +139,28 @@ export function strictWebKitPanoramaDecodeWidth(cfg, strictWebKit, urlOverride =
   return DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH
 }
 
+/**
+ * strict WebKit 全景加载策略：有解码上限时禁止退回原尺寸 TextureLoader。
+ * 宁可 preset/room，也不完整解码 8K。CDN 失败可再试同源，但仍走受限解码。
+ */
+export function constrainedPanoramaRetryPlan({
+  maxWidth,
+  hasImageBitmap,
+  hasFetch,
+  primaryUrl,
+  originFallbackUrl = '',
+} = {}) {
+  if (!(Number(maxWidth) > 0)) return { mode: 'unrestricted' }
+  if (!hasImageBitmap || !hasFetch) return { mode: 'env-fallback', reason: 'no-api' }
+  const urls = []
+  const primary = String(primaryUrl || '')
+  if (primary) urls.push(primary)
+  const origin = String(originFallbackUrl || '')
+  if (origin && origin !== primary) urls.push(origin)
+  if (!urls.length) return { mode: 'env-fallback', reason: 'no-url' }
+  return { mode: 'constrained', urls }
+}
+
 /** strict WebKit 移动端默认 DPR。旧值 1 是微信/iOS 端锯齿主因（画布像素只有 CSS 视口大小）。 */
 export const STRICT_WEBKIT_DEFAULT_PIXEL_RATIO = 1.5
 /** strict WebKit 的 DPR 硬上限：防止单件展品误配 3/4 后在高 DPR 设备上创建超大画布。 */

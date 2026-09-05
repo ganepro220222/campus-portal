@@ -40,6 +40,7 @@ export const VIEWER_PERSIST_IMPORTS = [
   'DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH',
   'strictWebKitPanoramaDecodeWidth',
   'DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH',
+  'constrainedPanoramaRetryPlan',
   'resolveRendererQuality',
 ]
 

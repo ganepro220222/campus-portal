@@ -633,6 +633,7 @@ test('production viewer is bundled without import map', () => {
   const bundle = fs.readFileSync(path.join(ROOT, VIEWER_BUNDLE_FILE), 'utf8')
   assert.ok(bundle.includes('__SY_PLAYER'), 'bundle must include viewer boot logic')
   assert.ok(bundle.includes('strictWebKitPanoramaMaxWidth'), 'bundle must include viewer runtime helpers')
+  assert.ok(bundle.includes('pano:constrained-fail'), 'bundle must keep constrained-fail path')
 })
 
 test('upload pack includes player.bundle.js and resolves viewer deps', () => {
@@ -1319,7 +1320,7 @@ test('viewer output imports boot timeouts from player-persist', () => {
   const view = buildViewerSrc()
   assert.match(view, /import \{[^}]+\} from '\.\/player-persist\.mjs'/)
   assert.match(view, /configFetchUrl, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, createModelLoadTimers/)
-  assert.match(view, /strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, strictWebKitPanoramaDecodeWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH, resolveRendererQuality/)
+  assert.match(view, /strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, strictWebKitPanoramaDecodeWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH, constrainedPanoramaRetryPlan, resolveRendererQuality/)
   assert.doesNotMatch(view, /applyExposureToCfg/)
   assert.doesNotMatch(view, /configExportFilename/)
 })

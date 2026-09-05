@@ -164,6 +164,67 @@ test('handoffExhibitContentOwner skips on win32 or without owner uid', () => {
   }
 })
 
+test('createExhibit rolls back dest when required owner handoff fails', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-new-'))
+  try {
+    fs.cpSync(path.join(ROOT, '_template'), path.join(tmp, '_template'), { recursive: true })
+    assert.throws(
+      () => createExhibit(tmp, {
+        dir: '012',
+        title: 'X',
+        handoffOwner: true,
+        handoffFn: () => { throw new Error('无法把新建展品目录交给 File Browser：test') },
+      }),
+      /无法把新建展品目录交给 File Browser/,
+    )
+    assert.equal(fs.existsSync(path.join(tmp, 'craft-012')), false)
+    const leftovers = fs.readdirSync(tmp).filter(n => n.startsWith('._creating') || n.startsWith('craft-'))
+    assert.equal(leftovers.length, 0)
+    createExhibit(tmp, { dir: '012', title: 'X', handoffOwner: false })
+    assert.equal(fs.existsSync(path.join(tmp, 'craft-012', 'config.json')), true)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('optional owner handoff failure keeps dest and does not block retry skip', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-new-'))
+  try {
+    fs.cpSync(path.join(ROOT, '_template'), path.join(tmp, '_template'), { recursive: true })
+    const r = createExhibit(tmp, {
+      dir: '013',
+      title: 'Y',
+      handoffFn: () => { throw new Error('无法把新建展品目录交给 File Browser：test') },
+    })
+    assert.equal(r.dir, 'craft-013')
+    assert.equal(fs.existsSync(path.join(tmp, 'craft-013', 'config.json')), true)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('handoff rollback never deletes a directory that already existed', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-new-'))
+  try {
+    fs.cpSync(path.join(ROOT, '_template'), path.join(tmp, '_template'), { recursive: true })
+    createExhibit(tmp, { dir: '014', title: 'Keep', handoffOwner: false })
+    assert.throws(
+      () => createExhibit(tmp, {
+        dir: '014',
+        title: 'Again',
+        handoffOwner: true,
+        handoffFn: () => { throw new Error('不应执行到移交') },
+      }),
+      /已存在/,
+    )
+    assert.equal(fs.existsSync(path.join(tmp, 'craft-014', 'config.json')), true)
+    const cfg = JSON.parse(fs.readFileSync(path.join(tmp, 'craft-014', 'config.json'), 'utf8'))
+    assert.equal(cfg.i18n.zh.title, 'Keep')
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
 test('createExhibit rolls back on bad template and allows retry', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-new-'))
   try {

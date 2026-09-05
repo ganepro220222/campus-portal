@@ -12,6 +12,7 @@ import {
   DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH,
   DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH,
   strictWebKitPanoramaDecodeWidth,
+  constrainedPanoramaRetryPlan,
   resolveRendererQuality,
   panoramaRevealTimeoutMs,
   fitCameraDistance,
@@ -70,6 +71,24 @@ test('strictWebKit 可见背景按 2048 解码，与 PMREM 1024 分开', () => {
   assert.equal(strictWebKitPanoramaDecodeWidth(null, true, 0), 2048)
   assert.equal(strictWebKitPanoramaDecodeWidth(null, false, 0), 0)
   assert.equal(strictWebKitPanoramaDecodeWidth({ performance: { strictWebKitPanoramaDecodeWidth: 1536 } }, true, 0), 1536)
+})
+
+test('constrainedPanoramaRetryPlan never falls back to unrestricted on strict hosts', () => {
+  assert.equal(constrainedPanoramaRetryPlan({ maxWidth: 0, hasImageBitmap: true, hasFetch: true, primaryUrl: '/a.jpg' }).mode, 'unrestricted')
+  assert.deepEqual(
+    constrainedPanoramaRetryPlan({ maxWidth: 2048, hasImageBitmap: false, hasFetch: true, primaryUrl: '/a.jpg' }),
+    { mode: 'env-fallback', reason: 'no-api' },
+  )
+  assert.deepEqual(
+    constrainedPanoramaRetryPlan({
+      maxWidth: 2048,
+      hasImageBitmap: true,
+      hasFetch: true,
+      primaryUrl: 'https://cdn.example/8.jpg',
+      originFallbackUrl: '../共享背景/8.jpg',
+    }),
+    { mode: 'constrained', urls: ['https://cdn.example/8.jpg', '../共享背景/8.jpg'] },
+  )
 })
 
 const craftLikeCfg = { performance: { mobilePixelRatio: 1.5, desktopPixelRatio: 2 }, renderer: { maxPixelRatio: 2 } }

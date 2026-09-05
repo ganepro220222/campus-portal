@@ -422,7 +422,7 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import * as LG from './leader-geom.js'
 import { nextHotspotId, ensureHotspotIds, auditHotspotIds, bootstrapHotspotIds, formatHotspotIdChanges, mergeHotspotIdChanges, hotspotBootAuditHadIssues, hotspotAuditSummaryParts } from './hotspot-id.mjs'
-import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, PREVIEW_DEVICES, DEFAULT_PREVIEW_DEVICE, previewDevice, framingCoverage, devicePreviewFit, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, strictWebKitPanoramaDecodeWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH, resolveRendererQuality } from './player-persist.mjs'
+import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeoutMs, modelIdleTimeoutMs, modelTotalTimeoutMs, panoramaRevealTimeoutMs, fitCameraDistance, portraitFillTarget, shouldAutoFitCamera, DEFAULT_PORTRAIT_FILL, PREVIEW_DEVICES, DEFAULT_PREVIEW_DEVICE, previewDevice, framingCoverage, devicePreviewFit, createModelLoadTimers, strictWebKitPanoramaMaxWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH, strictWebKitPanoramaDecodeWidth, DEFAULT_STRICT_WEBKIT_PANORAMA_DECODE_WIDTH, constrainedPanoramaRetryPlan, resolveRendererQuality } from './player-persist.mjs'
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
@@ -444,11 +444,14 @@ function sameOriginFallbackUrl(stored) {
   const next = asset(localized)
   return next && next !== stored ? next : ''
 }
+let unrestrictedPanoTextureLoads = 0
 function loadTextureWithFallback(url, onOk, onErr) {
+  unrestrictedPanoTextureLoads++
   const fallback = sameOriginFallbackUrl(url)
   const loader = new THREE.TextureLoader()
   loader.load(url, onOk, undefined, () => {
     if (fallback && fallback !== url) {
+      unrestrictedPanoTextureLoads++
       loader.load(fallback, onOk, undefined, onErr)
       return
     }
@@ -478,19 +481,9 @@ function textureFromImageBitmap(bitmap) {
   if (typeof bitmap.close === 'function') bitmap.close()
   return preparePanoramaTexture(new THREE.CanvasTexture(cv))
 }
-function loadPanoramaTexture(url, onOk, onErr) {
-  const maxW = panoramaDecodeMaxWidth()
-  const fallback = sameOriginFallbackUrl(url)
-  if (!(maxW > 0) || typeof createImageBitmap !== 'function' || typeof fetch !== 'function') {
-    loadTextureWithFallback(url, onOk, onErr)
-    return
-  }
-  fetch(url, { cache: 'force-cache' }).then(res => {
-    if (!res.ok) throw new Error('http ' + res.status)
-    return res.blob()
-  }).then(async blob => {
-    const head = new Uint8Array(await blob.slice(0, 262144).arrayBuffer())
-    const sz = readPngOrJpegSize(head)
+function decodePanoramaBlob(blob, maxW) {
+  return blob.slice(0, 262144).arrayBuffer().then(async buf => {
+    const sz = readPngOrJpegSize(new Uint8Array(buf))
     const target = resizeToMaxWidth(sz?.w || 0, sz?.h || 0, maxW)
     const opts = {
       imageOrientation: 'none',
@@ -505,8 +498,44 @@ function loadPanoramaTexture(url, onOk, onErr) {
       h: tex.image?.height,
       resized: !!target.scaled,
     })
-    onOk(tex)
-  }).catch(() => loadTextureWithFallback(url, onOk, onErr))
+    return tex
+  })
+}
+function loadConstrainedPanorama(url, maxW) {
+  return fetch(url, { cache: 'force-cache' }).then(res => {
+    if (!res.ok) throw new Error('http ' + res.status)
+    return res.blob()
+  }).then(blob => decodePanoramaBlob(blob, maxW))
+}
+function loadPanoramaTexture(url, onOk, onErr) {
+  const maxW = panoramaDecodeMaxWidth()
+  const plan = constrainedPanoramaRetryPlan({
+    maxWidth: maxW,
+    hasImageBitmap: typeof createImageBitmap === 'function',
+    hasFetch: typeof fetch === 'function',
+    primaryUrl: url,
+    originFallbackUrl: sameOriginFallbackUrl(url),
+  })
+  if (plan.mode === 'unrestricted') {
+    loadTextureWithFallback(url, onOk, onErr)
+    return
+  }
+  if (plan.mode !== 'constrained') {
+    panoDiagEvent('pano:constrained-unavailable', { reason: plan.reason || plan.mode })
+    onErr()
+    return
+  }
+  const tryAt = (i) => {
+    loadConstrainedPanorama(plan.urls[i], maxW).then(onOk, err => {
+      if (i + 1 < plan.urls.length) {
+        tryAt(i + 1)
+        return
+      }
+      panoDiagEvent('pano:constrained-fail', { reason: err?.message || 'decode' })
+      onErr()
+    })
+  }
+  tryAt(0)
 }
 function applyPoster(stored) {
   const href = asset(stored)
@@ -3560,6 +3589,7 @@ window.__SY_TEST__ = {
   },
   envPanoPrefetchCleared: () => envPanoPrefetch == null,
   envSourceKind: () => effectiveEnvSource().kind,
+  unrestrictedPanoTextureLoads: () => unrestrictedPanoTextureLoads,
   shadingSnapshot: () => shadingSnapshot(),
   applyPresetById: (id) => {
     const p = (cfg.presets || []).find(x => x.id === id)

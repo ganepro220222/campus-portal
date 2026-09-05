@@ -37,10 +37,15 @@ if (!bash) {
 }
 
 assert.ok(fs.existsSync(script), 'missing chown-exhibit-content-dir.test.sh')
+const shellText = fs.readFileSync(script, 'utf8')
+assert.doesNotMatch(shellText, /chmod \+x "\$HELPER"/)
+assert.match(shellText, /cp "\$HELPER_SRC"/)
+const modeBefore = fs.statSync(helper).mode
 const result = spawnSync(bash, [script], { encoding: 'utf8', cwd: ROOT })
 if (result.status !== 0) {
   console.error(result.stdout)
   console.error(result.stderr)
 }
 assert.equal(result.status, 0, 'chown-exhibit-content-dir.test.sh failed')
+assert.equal(fs.statSync(helper).mode, modeBefore, 'helper test must not chmod the repo script')
 console.log('chown-exhibit-content-dir.test: PASS')

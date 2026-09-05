@@ -181,7 +181,7 @@ function buildIndexHtml(templateIdx, ex, title) {
   return templateIdx.replaceAll('__EX__', ex).replaceAll('__TITLE__', escapeHtml(title))
 }
 
-export function createExhibit(root, { dir, title, subtitle = '', handoffOwner } = {}) {
+export function createExhibit(root, { dir, title, subtitle = '', handoffOwner, handoffFn, handoffOpts } = {}) {
   const ex = normalizeExhibitDir(dir)
   const name = String(title ?? '').trim()
   if (!name) throw new Error('展品名称不能为空')
@@ -202,26 +202,28 @@ export function createExhibit(root, { dir, title, subtitle = '', handoffOwner } 
   templateCfg.i18n.zh.subtitle = sub
 
   const tmp = path.join(root, `._creating-${ex}-${crypto.randomBytes(4).toString('hex')}`)
+  let destCreated = false
   try {
     fs.cpSync(templateDir, tmp, { recursive: true })
     fs.writeFileSync(path.join(tmp, 'config.json'), JSON.stringify(templateCfg, null, 2) + '\n', 'utf8')
     fs.writeFileSync(path.join(tmp, 'index.html'), buildIndexHtml(templateIdx, ex, name), 'utf8')
     fs.renameSync(tmp, dest)
+    destCreated = true
+    applyNewContentModes(dest)
+    if (handoffOwner !== false) {
+      try {
+        const runHandoff = handoffFn || handoffExhibitContentOwner
+        runHandoff(root, ex, handoffOpts)
+      } catch (e) {
+        const required = process.env.EXHIBITS_CHOWN_REQUIRED === '1' || handoffOwner === true
+        if (required) throw e
+        console.error('[exhibit-create]', e.message)
+      }
+    }
+    return { dir: ex, title: name, subtitle: sub, assetsDir: `${ex}/assets` }
   } catch (e) {
     fs.rmSync(tmp, { recursive: true, force: true })
+    if (destCreated) fs.rmSync(dest, { recursive: true, force: true })
     throw e
   }
-
-  applyNewContentModes(dest)
-  if (handoffOwner !== false) {
-    try {
-      handoffExhibitContentOwner(root, ex)
-    } catch (e) {
-      const required = process.env.EXHIBITS_CHOWN_REQUIRED === '1' || handoffOwner === true
-      if (required) throw e
-      console.error('[exhibit-create]', e.message)
-    }
-  }
-
-  return { dir: ex, title: name, subtitle: sub, assetsDir: `${ex}/assets` }
 }

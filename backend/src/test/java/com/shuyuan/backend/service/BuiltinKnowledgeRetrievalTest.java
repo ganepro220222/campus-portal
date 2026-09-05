@@ -147,6 +147,13 @@ class BuiltinKnowledgeRetrievalTest {
                 new Case("怎么解绑微信", "登录与账号"),
                 new Case("微信能解绑吗", "登录与账号"),
                 new Case("解绑", "登录与账号"),
+                new Case("积分", "积分与徽章"),
+                new Case("收藏", "动态展馆与搜索"),
+                new Case("密码", "登录与账号"),
+                new Case("字幕", "课程与学习资源"),
+                new Case("能取消吗", "活动报名"),
+                new Case("换手机了怎么办", "登录与账号"),
+                new Case("微信掉了怎么办", "登录与账号"),
                 new Case("课程看到多少算完成", "课程与学习资源"),
                 new Case("学习资源在哪里下载", "课程与学习资源"),
                 new Case("怎么收藏一篇动态", "动态展馆与搜索"),
@@ -214,6 +221,38 @@ class BuiltinKnowledgeRetrievalTest {
             assertTrue(text.contains("管理员") || text.contains("不能"),
                     "「" + q + "」摘录应说明找管理员或不能自己解绑：" + text);
         }
+    }
+
+    @Test
+    void 短词和口语问法要选对篇不能答偏() {
+        record Case(String question, String expectDoc, String mustContain) {}
+        List<Case> cases = List.of(
+                new Case("积分", "积分与徽章", "积分"),
+                new Case("收藏", "动态展馆与搜索", "收藏"),
+                new Case("密码", "登录与账号", "密码"),
+                new Case("字幕", "课程与学习资源", "字幕"),
+                new Case("能取消吗", "活动报名", "取消"),
+                new Case("点赞", "动态展馆与搜索", "点赞"),
+                new Case("下载", "课程与学习资源", "下载"),
+                new Case("铃铛", "个人中心与消息", "铃铛"),
+                new Case("换手机了怎么办", "登录与账号", "换手机"),
+                new Case("微信掉了怎么办", "登录与账号", "微信"));
+        List<String> wrong = new ArrayList<>();
+        for (Case c : cases) {
+            if (!substantial(c.question())) {
+                wrong.add("「" + c.question() + "」应算实质命中");
+                continue;
+            }
+            KnowledgeChunk best = knowledgeService.pickBest(c.question(), ask(c.question()));
+            String owner = chunkOwner.get(best.getChunkIndex());
+            if (!owner.contains(c.expectDoc())) {
+                wrong.add("「" + c.question() + "」选中《" + owner + "》，期望《" + c.expectDoc() + "》");
+            }
+            if (best.getChunkText() == null || !best.getChunkText().contains(c.mustContain())) {
+                wrong.add("「" + c.question() + "」摘录未包含「" + c.mustContain() + "」");
+            }
+        }
+        assertTrue(wrong.isEmpty(), String.join("\n", wrong));
     }
 
     @Test
@@ -325,16 +364,12 @@ class BuiltinKnowledgeRetrievalTest {
     }
 
     /**
-     * chunks.isEmpty() 不能用来判断「有没有捞到有用的东西」——这是实测结论，不是猜测。
-     *
-     * <p>打分是 2–4 字 n-gram 的重合数，一个 gram 重合分数就大于 0。
-     * 「比利时的首都在哪」实测能命中 5 段，靠的全是「怎么」「么样」这类到处都有的短词。
-     * 所以判定必须走加权分 + 疑问词剔除，不能图省事用 isEmpty。
+     * 去壳之后，「比利时的首都在哪」不再靠「在哪」蹭到使用说明。
+     * 捞没捞到片段都可以，但不能当成实质命中。
      */
     @Test
-    void 无关问题照样能命中片段所以不能用isEmpty判断() {
-        assertFalse(ask("比利时的首都在哪").isEmpty(),
-                "这里若变成空，说明分词或语料变了，hasSubstantialMatch 的必要性需重新评估");
+    void 完全无关的问题不能当成实质命中() {
+        assertFalse(substantial("比利时的首都在哪"));
     }
 
     /**
@@ -365,7 +400,7 @@ class BuiltinKnowledgeRetrievalTest {
     @Test
     void 常见的真实问题都算实质命中() {
         List<String> real = List.of(
-                "怎么报名活动", "怎么参加活动", "积分怎么获得", "忘记密码怎么办", "微信能解绑吗", "课程看到多少算完成",
+                "怎么报名活动", "怎么参加活动", "积分怎么获得", "忘记密码怎么办", "微信能解绑吗", "积分", "字幕", "课程看到多少算完成",
                 "展馆有多少个", "书院助手每天能问多少次", "怎么收藏一篇动态",
                 "牙舟陶怎么参观", "交通博物馆是什么",
                 // 以下措辞未在语料里出现过
@@ -382,16 +417,12 @@ class BuiltinKnowledgeRetrievalTest {
         assertTrue(missed.isEmpty(), "以下真实问题没被判成实质命中：\n" + String.join("\n", missed));
     }
 
-    /**
-     * 已知边界：措辞离语料较远的真问题会落在阈值下方（实测 2 分，阈值 4）。
-     *
-     * <p>如实记在这里而不是假装不存在。这一次不计入次数，学生看到固定引导语，
-     * 而不是一段弱相关摘录。
-     */
     @Test
-    void 已知边界用例记录在案() {
+    void 把资料保存下来应落到学习资源() {
         String q = "手机上怎么把资料保存下来";
-        assertFalse(substantial(q), "这条若变成实质命中是好事，说明语料更贴口语了，可更新本用例");
-        assertFalse(ask(q).isEmpty(), "检索仍应能捞到片段；答不答由实质命中闸门决定");
+        assertTrue(substantial(q), "「保存资料」应能对上学习资源下载");
+        KnowledgeChunk best = knowledgeService.pickBest(q, ask(q));
+        assertTrue(chunkOwner.get(best.getChunkIndex()).contains("课程与学习资源"),
+                "应选中《课程与学习资源》，实际是《" + chunkOwner.get(best.getChunkIndex()) + "》");
     }
 }

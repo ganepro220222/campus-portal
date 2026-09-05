@@ -19,9 +19,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -214,7 +212,7 @@ public class KnowledgeService {
         ossMediaCleanupService.releaseStored(media);
     }
 
-    /** 检索知识片段：关键词匹配打分，取 topK */
+    /** 检索知识片段：标准问/主题词优先，再按内容词打分，取 topK */
     public List<KnowledgeChunk> retrieve(String question, int topK) {
         if (question == null || question.isBlank()) {
             return List.of();
@@ -231,9 +229,13 @@ public class KnowledgeService {
         Set<Long> docIds = readyDocs.stream().map(KnowledgeDoc::getId).collect(Collectors.toSet());
         List<KnowledgeChunk> candidates = knowledgeChunkMapper.selectList(
                 new LambdaQueryWrapper<KnowledgeChunk>().in(KnowledgeChunk::getDocId, docIds));
+        Long faqDocId = KnowledgeQueryLexicon.matchFaqDocId(question, readyDocs, candidates);
         List<KnowledgeChunk> scored = new ArrayList<>();
         for (KnowledgeChunk chunk : candidates) {
             double score = scoreChunk(chunk, queryTokens);
+            if (faqDocId != null && faqDocId.equals(chunk.getDocId())) {
+                score += 100;
+            }
             if (score > 0) {
                 chunk.setScore(score);
                 scored.add(chunk);
@@ -248,7 +250,7 @@ public class KnowledgeService {
     }
 
     /**
-     * 在已检索的片段里挑最能回答的一篇：先比加权分，再比原始命中数。
+     * 在已检索的片段里挑最能回答的一篇：先对标准问所属文档，再比正文、加权分。
      * 学生问答只展示这一篇，避免把三篇弱相关拼成一段「整理如下」。
      */
     public KnowledgeChunk pickBest(String question, List<KnowledgeChunk> chunks) {
@@ -256,9 +258,12 @@ public class KnowledgeService {
             return null;
         }
         Set<String> tokens = queryTokens(question);
+        Long faqDocId = KnowledgeQueryLexicon.matchFaqDocId(question, null, chunks);
         return chunks.stream()
                 .max(Comparator
-                        .comparingInt((KnowledgeChunk c) -> weightedScore(c, tokens))
+                        .comparingInt((KnowledgeChunk c) -> faqDocId != null && faqDocId.equals(c.getDocId()) ? 1 : 0)
+                        .thenComparingInt((KnowledgeChunk c) -> KnowledgeQueryLexicon.looksLikeContent(c.getChunkText()) ? 1 : 0)
+                        .thenComparingInt((KnowledgeChunk c) -> weightedScore(c, tokens))
                         .thenComparingDouble(KnowledgeChunk::getScore))
                 .orElse(chunks.get(0));
     }
@@ -293,9 +298,20 @@ public class KnowledgeService {
         if (chunks == null || chunks.isEmpty() || question == null || question.isBlank()) {
             return false;
         }
+        if (KnowledgeQueryLexicon.matchFaqDocId(question, null, chunks) != null) {
+            return true;
+        }
         Set<String> queryTokens = queryTokens(question);
         if (queryTokens.isEmpty()) {
             return false;
+        }
+        if (KnowledgeQueryLexicon.isTopicQuery(question)) {
+            String topic = KnowledgeQueryLexicon.normalize(question);
+            for (KnowledgeChunk chunk : chunks) {
+                if (chunk.getChunkText() != null && chunk.getChunkText().contains(topic)) {
+                    return true;
+                }
+            }
         }
         for (KnowledgeChunk chunk : chunks) {
             if (weightedScore(chunk, queryTokens) >= minScore) {
@@ -305,50 +321,16 @@ public class KnowledgeService {
         return false;
     }
 
-    /**
-     * 疑问词与功能词：出现在任何一句中文提问里，和问的是什么毫无关系。
-     *
-     * <p>实测「我心情不好怎么办」能拿到 5 分、「附近有什么好吃的」4 分，靠的全是
-     * 「怎么办」「有什么」这种词——分数比真问题「手机上怎么把资料保存下来」（3 分）还高，
-     * 光调阈值永远分不开。计「够不够格」时把这些词剔掉，剩下的才是话题信号。
-     *
-     * <p>只用于 {@link #hasSubstantialMatch}，不影响 {@link #retrieve} 的排序。
-     */
-
-    /**
-     * 问法侧的小同义表，只扩查询词，不改文档正文。
-     * 成对出现：参加↔报名、展厅↔展馆、全景↔VR、退掉↔取消、解绑→解绑微信。
-     */
-    private static final Map<String, List<String>> QUERY_SYNONYMS = Map.of(
-            "参加", List.of("报名"),
-            "报名", List.of("参加"),
-            "展厅", List.of("展馆"),
-            "展馆", List.of("展厅"),
-            "全景", List.of("VR", "vr"),
-            "VR", List.of("全景"),
-            "vr", List.of("全景"),
-            "退掉", List.of("取消"),
-            "取消", List.of("退掉"),
-            "解绑", List.of("解绑微信"));
-
-    private static final Set<String> QUESTION_STOP_GRAMS = Set.of(
-            "怎么", "怎样", "么样", "怎么样", "怎么办", "么办", "如何",
-            "什么", "为什", "什么的", "为什么", "是什", "什么时",
-            "哪里", "在哪", "哪儿", "哪个", "在哪里",
-            "可以", "能不", "不能", "能不能", "是不", "不是", "是不是",
-            "有没", "没有", "有没有", "多少", "几个", "一下", "一点",
-            "我想", "帮我", "请问", "麻烦", "谢谢",
-            "这个", "那个", "这些", "那些", "怎么才", "才能");
-
-    /** 命中 gram 越长权重越高：2 字记 1 分、3 字记 2 分、4 字记 3 分；疑问词不计分 */
+    /** 命中 gram 越长权重越高：2 字记 1 分、3 字记 2 分、4 字记 3 分；疑问粘连片不计分 */
     int weightedScore(KnowledgeChunk chunk, Set<String> queryTokens) {
-        Set<String> hay = tokenize(chunk.getChunkText());
+        Set<String> hay = KnowledgeQueryLexicon.tokenize(chunk.getChunkText());
         if (chunk.getKeywords() != null) {
-            hay.addAll(tokenize(chunk.getKeywords()));
+            hay.addAll(KnowledgeQueryLexicon.tokenize(chunk.getKeywords()));
         }
         int score = 0;
         for (String token : queryTokens) {
-            if (QUESTION_STOP_GRAMS.contains(token)) {
+            if (KnowledgeQueryLexicon.isGlueToken(token)
+                    || KnowledgeQueryLexicon.QUESTION_STOP_GRAMS.contains(token)) {
                 continue;
             }
             if (hay.contains(token)) {
@@ -363,54 +345,19 @@ public class KnowledgeService {
     }
 
     private double scoreChunk(KnowledgeChunk chunk, Set<String> queryTokens) {
-        Set<String> hay = tokenize(chunk.getChunkText());
+        Set<String> hay = KnowledgeQueryLexicon.tokenize(chunk.getChunkText());
         if (chunk.getKeywords() != null) {
-            hay.addAll(tokenize(chunk.getKeywords()));
+            hay.addAll(KnowledgeQueryLexicon.tokenize(chunk.getKeywords()));
         }
-        long hits = queryTokens.stream().filter(hay::contains).count();
+        long hits = queryTokens.stream()
+                .filter(token -> !KnowledgeQueryLexicon.isGlueToken(token))
+                .filter(hay::contains)
+                .count();
         return hits;
     }
 
     private Set<String> queryTokens(String question) {
-        return expandSynonyms(tokenize(question));
-    }
-
-    private Set<String> expandSynonyms(Set<String> tokens) {
-        Set<String> out = new HashSet<>(tokens);
-        for (String token : tokens) {
-            for (Map.Entry<String, List<String>> entry : QUERY_SYNONYMS.entrySet()) {
-                String src = entry.getKey();
-                if (!token.equals(src) && !token.contains(src)) {
-                    continue;
-                }
-                for (String dst : entry.getValue()) {
-                    out.add(token.equals(src) ? dst : token.replace(src, dst));
-                }
-            }
-        }
-        return out;
-    }
-
-    private Set<String> tokenize(String text) {
-        Set<String> tokens = new HashSet<>();
-        if (text == null) {
-            return tokens;
-        }
-        String cleaned = text.toLowerCase(Locale.ROOT)
-                .replaceAll("[\\p{Punct}\\s]+", " ");
-        for (String part : cleaned.split(" ")) {
-            if (part.length() >= 2) {
-                tokens.add(part);
-            }
-        }
-        for (int i = 0; i < text.length(); i++) {
-            if (!Character.isWhitespace(text.charAt(i))) {
-                for (int len = 2; len <= 4 && i + len <= text.length(); len++) {
-                    tokens.add(text.substring(i, i + len));
-                }
-            }
-        }
-        return tokens;
+        return KnowledgeQueryLexicon.expandQuery(question);
     }
 
     private String extractKeywords(String text) {

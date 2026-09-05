@@ -317,7 +317,7 @@ public class KnowledgeService {
 
     /**
      * 问法侧的小同义表，只扩查询词，不改文档正文。
-     * 成对出现：参加↔报名、展厅↔展馆、全景↔VR、退掉↔取消。
+     * 成对出现：参加↔报名、展厅↔展馆、全景↔VR、退掉↔取消、解绑→解绑微信。
      */
     private static final Map<String, List<String>> QUERY_SYNONYMS = Map.of(
             "参加", List.of("报名"),
@@ -328,7 +328,8 @@ public class KnowledgeService {
             "VR", List.of("全景"),
             "vr", List.of("全景"),
             "退掉", List.of("取消"),
-            "取消", List.of("退掉"));
+            "取消", List.of("退掉"),
+            "解绑", List.of("解绑微信"));
 
     private static final Set<String> QUESTION_STOP_GRAMS = Set.of(
             "怎么", "怎样", "么样", "怎么样", "怎么办", "么办", "如何",

@@ -144,6 +144,9 @@ class BuiltinKnowledgeRetrievalTest {
                 new Case("忘记密码怎么办", "登录与账号"),
                 new Case("怎么登录", "登录与账号"),
                 new Case("学号可以绑定几个微信", "登录与账号"),
+                new Case("怎么解绑微信", "登录与账号"),
+                new Case("微信能解绑吗", "登录与账号"),
+                new Case("解绑", "登录与账号"),
                 new Case("课程看到多少算完成", "课程与学习资源"),
                 new Case("学习资源在哪里下载", "课程与学习资源"),
                 new Case("怎么收藏一篇动态", "动态展馆与搜索"),
@@ -197,6 +200,20 @@ class BuiltinKnowledgeRetrievalTest {
             }
         }
         assertTrue(wrong.isEmpty(), String.join("\n", wrong));
+    }
+
+    @Test
+    void 解绑问法能命中登录篇并且说明不能自己解绑() {
+        for (String q : List.of("微信能解绑吗", "解绑", "怎么解绑微信")) {
+            assertTrue(substantial(q), "「" + q + "」应算实质命中");
+            KnowledgeChunk best = knowledgeService.pickBest(q, ask(q));
+            assertTrue(chunkOwner.get(best.getChunkIndex()).contains("登录与账号"),
+                    "「" + q + "」应选中《登录与账号》，实际是《" + chunkOwner.get(best.getChunkIndex()) + "》");
+            String text = best.getChunkText();
+            assertTrue(text.contains("解绑"), "「" + q + "」摘录应谈到解绑");
+            assertTrue(text.contains("管理员") || text.contains("不能"),
+                    "「" + q + "」摘录应说明找管理员或不能自己解绑：" + text);
+        }
     }
 
     @Test
@@ -348,7 +365,7 @@ class BuiltinKnowledgeRetrievalTest {
     @Test
     void 常见的真实问题都算实质命中() {
         List<String> real = List.of(
-                "怎么报名活动", "怎么参加活动", "积分怎么获得", "忘记密码怎么办", "课程看到多少算完成",
+                "怎么报名活动", "怎么参加活动", "积分怎么获得", "忘记密码怎么办", "微信能解绑吗", "课程看到多少算完成",
                 "展馆有多少个", "书院助手每天能问多少次", "怎么收藏一篇动态",
                 "牙舟陶怎么参观", "交通博物馆是什么",
                 // 以下措辞未在语料里出现过

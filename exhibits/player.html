@@ -426,7 +426,7 @@ import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeout
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
-import { classifyIosBlackLook } from './shading-risk.mjs'
+import { classifyIosBlackLook, webglContextRestorePlan } from './shading-risk.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -498,6 +498,7 @@ function panoramaPmremMaxWidth() {
   return strictWebKitPanoramaMaxWidth(cfg, strictWebKit, panoDiag.urlMaxWidth)
 }
 window.__SY_PANO_DIAG__ = window.__SY_PANO_DIAG__ || []
+const PANO_DIAG_FATAL = new Set(['webgl:context-lost', 'pano:pmrem-fail', 'webgl:restore-pmrem-fail'])
 function panoDiagEvent(tag, detail) {
   if (!panoDiag.enabled) return
   const entry = { t: Date.now(), tag, detail: detail ?? null }
@@ -510,10 +511,14 @@ function panoDiagEvent(tag, detail) {
     panel.style.cssText = 'position:fixed;left:0;bottom:0;right:0;max-height:32vh;overflow:auto;font:10px/1.35 ui-monospace,monospace;background:rgba(0,0,0,.78);color:#9f9;z-index:99999;margin:0;padding:6px 8px;pointer-events:none;white-space:pre-wrap;'
     document.body.appendChild(panel)
   }
-  panel.textContent = window.__SY_PANO_DIAG__.slice(-28).map(e => {
+  const fatals = window.__SY_PANO_DIAG__.filter(e => PANO_DIAG_FATAL.has(e.tag))
+  const rest = window.__SY_PANO_DIAG__.filter(e => !PANO_DIAG_FATAL.has(e.tag)).slice(-20)
+  const line = e => {
     const d = e.detail != null ? ' ' + JSON.stringify(e.detail) : ''
-    return e.tag + d
-  }).join('\n')
+    return (PANO_DIAG_FATAL.has(e.tag) ? '!! ' : '') + e.tag + d
+  }
+  panel.textContent = [...fatals, ...rest].map(line).join('\n')
+  panel.style.color = fatals.length ? '#ffcc66' : '#9f9'
 }
 function downscalePanoramaTexture(tex, maxWidth) {
   const img = tex.image
@@ -768,18 +773,15 @@ function initRenderer() {
       isMobile,
       antialias: quality.antialias,
     })
-    renderer.domElement.addEventListener('webglcontextlost', ev => {
-      panoDiagEvent('webgl:context-lost', { type: ev.type })
-    }, false)
-    renderer.domElement.addEventListener('webglcontextrestored', () => {
-      panoDiagEvent('webgl:context-restored', {})
-      if (scene && cfg) {
-        applyEnvironmentIBL()
-        applyEnvironment()
-        if (model) applyMaterial()
-      }
-    }, false)
   }
+  renderer.domElement.addEventListener('webglcontextlost', ev => {
+    ev.preventDefault()
+    panoDiagEvent('webgl:context-lost', { type: ev.type })
+  }, false)
+  renderer.domElement.addEventListener('webglcontextrestored', () => {
+    panoDiagEvent('webgl:context-restored', {})
+    if (scene && cfg) rebuildEnvironmentAfterContextRestore()
+  }, false)
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = num(cfg.renderer?.exposure, 1.05)
   renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -1129,6 +1131,41 @@ function setEnvFromRT(rt, bg) {
     ? envBg : new THREE.Color(cfg.renderer?.background || '#0f1118')
   syncMaterialsAfterEnvironmentChange()
   if (prev && prev !== rt) prev.dispose()
+}
+function hasCpuEnvBackground() {
+  const img = envBg?.image
+  return !!(img && (img.width || img.videoWidth || img.height))
+}
+function disposeGpuEnvironment() {
+  try { envRT?.dispose() } catch (_) {}
+  envRT = null
+  try { _pmrem?.dispose() } catch (_) {}
+  _pmrem = null
+  if (scene) scene.environment = null
+}
+/** 上下文恢复后只用内存里已缩小的全景重建 IBL，禁止再拉 5000 宽原图。 */
+function rebuildEnvironmentAfterContextRestore() {
+  const plan = webglContextRestorePlan({ hasCpuEnvBackground: hasCpuEnvBackground() })
+  panoDiagEvent('webgl:restore-plan', plan)
+  envLoadGuard.invalidate()
+  invalidatePanoInflight()
+  envPanoramaBootPromise = null
+  envPanoPrefetch = null
+  disposeGpuEnvironment()
+  if (plan.action === 'pmrem-from-cpu-bg') {
+    try {
+      const rt = pmremGen().fromEquirectangular(envBg)
+      setEnvFromRT(rt, envBg)
+    } catch (e) {
+      panoDiagEvent('webgl:restore-pmrem-fail', { message: e?.message || String(e) })
+      applyEnvFallback()
+    }
+  } else {
+    applyEnvFallback()
+  }
+  applyEnvironment()
+  if (model) applyMaterial()
+  if (panoDiag.enabled) panoDiagEvent('shading:after-restore', compactShadingFacts())
 }
 function roomIBL() {
   envLoadGuard.invalidate()

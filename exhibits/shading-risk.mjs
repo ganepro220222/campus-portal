@@ -18,6 +18,17 @@ function n(v, d = 0) {
  * @param {boolean} [s.mapImageMissing]
  * @param {number} [s.maxAlbedoEdge]
  */
+/**
+ * GPU 上下文丢了之后不能再拉一次全景原图。
+ * 图1 的绿字已经证明：restore 后立刻 kick 5000 宽 JPEG，下一次就是 Safari「重複發生問題」。
+ */
+export function webglContextRestorePlan(s = {}) {
+  return {
+    refetchPanorama: false,
+    action: s.hasCpuEnvBackground === true ? 'pmrem-from-cpu-bg' : 'preset-or-room',
+  }
+}
+
 export function classifyIosBlackLook(s = {}) {
   const metal = Math.max(n(s.configMetalness), n(s.materialMetalnessMax))
   const envOk = s.hasSceneEnvironment === true

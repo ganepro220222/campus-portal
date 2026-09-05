@@ -8,6 +8,7 @@ import {
   parseGlbJson,
   inspectExhibit,
   readPngOrJpegSize,
+  webglContextRestorePlan,
 } from './shading-risk.mjs'
 
 let pass = 0
@@ -18,6 +19,15 @@ function test(name, fn) {
 }
 
 console.log('shading-risk tests')
+
+test('上下文恢复禁止再拉全景原图', () => {
+  const withBg = webglContextRestorePlan({ hasCpuEnvBackground: true })
+  assert.equal(withBg.refetchPanorama, false)
+  assert.equal(withBg.action, 'pmrem-from-cpu-bg')
+  const noBg = webglContextRestorePlan({ hasCpuEnvBackground: false })
+  assert.equal(noBg.refetchPanorama, false)
+  assert.equal(noBg.action, 'preset-or-room')
+})
 
 test('全景背景在、环境立方体不在、金属度高 → 对得上截图', () => {
   const r = classifyIosBlackLook({

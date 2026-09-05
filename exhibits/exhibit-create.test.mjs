@@ -7,7 +7,10 @@ import { fileURLToPath } from 'node:url'
 import {
   createExhibit,
   escapeHtml,
+  handoffExhibitContentOwner,
+  isHandoffContentDirName,
   normalizeExhibitDir,
+  resolveContentOwnerSpec,
   suggestNextExhibitDir,
 } from './exhibit-create.mjs'
 
@@ -115,6 +118,49 @@ test('createExhibit rejects duplicate dir', () => {
     assert.throws(() => createExhibit(tmp, { dir: '008', title: 'B' }), /已存在/)
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('content owner spec rejects root and accepts File Browser uid', () => {
+  assert.equal(resolveContentOwnerSpec({}), null)
+  assert.deepEqual(resolveContentOwnerSpec({ FILEBROWSER_UID: '1000', EXHIBITS_GROUP: '1000' }), { uid: 1000, gid: 1000 })
+  assert.deepEqual(resolveContentOwnerSpec({ CONTENT_OWNER_UID: '1001' }), { uid: 1001, gid: null })
+  assert.throws(() => resolveContentOwnerSpec({ FILEBROWSER_UID: '0' }), /root|非法/)
+  assert.throws(() => resolveContentOwnerSpec({ EXHIBITS_GROUP: '0', FILEBROWSER_UID: '1000' }), /非法|0/)
+})
+
+test('handoff content dir names match File Browser delete targets', () => {
+  assert.equal(isHandoffContentDirName('craft-012'), true)
+  assert.equal(isHandoffContentDirName('craft-abc_1'), true)
+  assert.equal(isHandoffContentDirName('共享背景'), true)
+  assert.equal(isHandoffContentDirName('_server'), false)
+  assert.equal(isHandoffContentDirName('player.html'), false)
+  assert.equal(isHandoffContentDirName('vendor'), false)
+  assert.equal(isHandoffContentDirName('../craft-001'), false)
+})
+
+test('createExhibit can skip owner handoff', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exhibits-new-'))
+  try {
+    fs.cpSync(path.join(ROOT, '_template'), path.join(tmp, '_template'), { recursive: true })
+    const r = createExhibit(tmp, { dir: '910', title: '无移交', handoffOwner: false })
+    assert.equal(r.dir, 'craft-910')
+    assert.equal(fs.existsSync(path.join(tmp, 'craft-910', 'config.json')), true)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+})
+
+test('handoffExhibitContentOwner skips on win32 or without owner uid', () => {
+  const skipped = handoffExhibitContentOwner(os.tmpdir(), 'craft-001', { spec: null })
+  assert.equal(skipped.ok, true)
+  if (process.platform === 'win32') {
+    assert.equal(handoffExhibitContentOwner(os.tmpdir(), 'craft-001', { spec: { uid: 1000, gid: 1000 } }).skipped, 'win32')
+  } else {
+    assert.throws(
+      () => handoffExhibitContentOwner(os.tmpdir(), '_server', { spec: { uid: 1000, gid: 1000 } }),
+      /非法/,
+    )
   }
 })
 

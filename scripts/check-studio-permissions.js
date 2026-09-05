@@ -13,6 +13,8 @@ const unit = read('scripts/studio-server.service.example')
 const fb = read('scripts/filebrowser.service.example')
 const fbDocker = read('deploy/filebrowser-docker.md')
 const perms = read('scripts/fix-exhibits-permissions.sh')
+const helper = read('scripts/chown-exhibit-content-dir.sh')
+const sudoers = read('scripts/studio-exhibits-chown.sudoers.example')
 
 if (/^Group=shuyuan-exhibits/m.test(unit)) {
   errs.push('studio-server.service.example 不应写死 Group=shuyuan-exhibits（GID 1000 在云主机常已是 ubuntu）')
@@ -26,11 +28,41 @@ if (!/^Group=studio/m.test(unit)) {
 if (!/groupadd --system studio/.test(unit)) {
   errs.push('studio-server.service.example 应说明 groupadd --system studio')
 }
+if (/^NoNewPrivileges=true/m.test(unit)) {
+  errs.push('studio-server.service.example 不能 NoNewPrivileges=true（否则无法 sudo 移交新建展品属主）')
+}
+if (!/^NoNewPrivileges=false/m.test(unit)) {
+  errs.push('studio-server.service.example 应写 NoNewPrivileges=false 并说明原因')
+}
+if (!/FILEBROWSER_UID=1000/.test(unit)) {
+  errs.push('studio-server.service.example 应设置 FILEBROWSER_UID（与 File Browser 内容属主一致）')
+}
+if (!/EXHIBITS_CHOWN_HELPER=\/usr\/local\/sbin\/chown-exhibit-content-dir/.test(unit)) {
+  errs.push('studio-server.service.example 应指向固定 chown helper')
+}
+if (!/^ProtectHome=yes/m.test(unit)) {
+  errs.push('studio-server.service.example 在允许 sudo helper 时应 ProtectHome=yes')
+}
+if (!/chown "\$UID_NUM:\$GID_NUM" "\$TARGET"/.test(helper) || /chown\s+-R/.test(helper)) {
+  errs.push('chown-exhibit-content-dir.sh 只能 chown 单个内容目录 inode，禁止 chown -R')
+}
+if (!/只允许 craft-\* 或 共享背景/.test(helper)) {
+  errs.push('chown-exhibit-content-dir.sh 必须限制目录名为 craft-* / 共享背景')
+}
+if (!/NOPASSWD: \/usr\/local\/sbin\/chown-exhibit-content-dir/.test(sudoers)) {
+  errs.push('studio-exhibits-chown.sudoers.example 只能放行固定 helper')
+}
+if (/NOPASSWD:\s+ALL/.test(sudoers)) {
+  errs.push('studio-exhibits-chown.sudoers.example 不得 NOPASSWD: ALL')
+}
 if (!/staging ECS 用 Docker/.test(fb)) {
   errs.push('filebrowser.service.example 须注明 staging 用 Docker（勿误装 systemd unit）')
 }
 if (!/staging.*Docker|Docker.*staging/i.test(fbDocker)) {
   errs.push('deploy/filebrowser-docker.md 应描述 staging Docker 部署')
+}
+if (!/chown-exhibit-content-dir|Studio 新建/.test(fbDocker)) {
+  errs.push('deploy/filebrowser-docker.md 应说明 Studio 新建展品后 File Browser 如何删除')
 }
 if (!/proxy_pass http:\/\/127\.0\.0\.1:8081;/.test(fbDocker)) {
   errs.push('deploy/filebrowser-docker.md 应含正确的 /fm/ Nginx proxy_pass')
@@ -82,6 +114,12 @@ if (!/FILEBROWSER_UID/.test(perms)) {
 }
 if (!/verify_content_delete_gate/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh 应验证可删除 craft-* / 共享背景且不能删代码')
+}
+if (!/install_content_handoff_helper/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 应安装 Studio→File Browser 属主移交 helper')
+}
+if (!/verify_studio_handoff_gate/.test(perms)) {
+  errs.push('fix-exhibits-permissions.sh 应验证 Studio 新建目录可被 File Browser 删除')
 }
 if (!/chmod 3775 "\$EX"/.test(perms)) {
   errs.push('fix-exhibits-permissions.sh 应将 exhibits 根设为 3775（组写+sticky，才能删展品夹）')

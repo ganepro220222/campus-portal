@@ -1,0 +1,11 @@
+# studio-server 新建展品后，只允许调用固定 helper 移交 craft-* / 共享背景 顶层 inode。
+# 安装（由 fix-exhibits-permissions.sh 写入，勿手改扩权）：
+#   install -o root -g root -m 755 scripts/chown-exhibit-content-dir.sh \
+#     /usr/local/sbin/chown-exhibit-content-dir
+#   cp 本文件为 /etc/sudoers.d/studio-exhibits-chown && chmod 440 ...
+#   visudo -cf /etc/sudoers.d/studio-exhibits-chown
+#
+# 不要改成 ALL 或任意 chown；不要给 studio 完整 root shell。
+
+Defaults:studio !requiretty
+studio ALL=(root) NOPASSWD: /usr/local/sbin/chown-exhibit-content-dir

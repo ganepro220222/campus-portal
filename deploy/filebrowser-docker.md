@@ -124,6 +124,7 @@ EXHIBITS_GROUP=1000 FILEBROWSER_UID=1000 bash scripts/fix-exhibits-permissions.s
 - `FILEBROWSER_USER=filebrowser` 仅在使用 **systemd 原生** unit 时需要；Docker staging **不必**设。
 - 脚本会：exhibits 根 `3775`（写组可建/删自己的子目录，sticky 保护 `player.html` / `_server`）、代码 `root:root 755/644`、内容目录属主为 File Browser UID（Docker 默认 1000）+ `2775/664`、default ACL `www-data:rX`、必要时 restart `studio-server`。
 - 跑完后 File Browser 应能删除整个 `craft-*` 和 `共享背景`；不能删 `player.html`、`studio.html`、`_server`、`vendor`。
+- 工作台（`studio-server`，用户 `studio`）新建的 `craft-*` 顶层 inode 初始属主是 `studio`。sticky 根下 File Browser 只能删除**自己拥有**的子目录，因此新建后会经固定 helper `/usr/local/sbin/chown-exhibit-content-dir` 把该目录 inode 交给 `FILEBROWSER_UID`（不要去掉 sticky，也不要让 Studio 跑整个权限脚本）。脚本会安装 helper、写入 `/etc/sudoers.d/studio-exhibits-chown`，并用 drop-in 把旧 unit 的 `NoNewPrivileges=true` 改为 `false`。然后应 `systemctl restart studio-server`。
 
 上传后 Nginx 静态读验收：
 
@@ -179,6 +180,7 @@ docker logs filebrowser 2>&1 | tail -20
 | systemd `203/EXEC` | 误装了 native unit，host 无二进制 | `rm /etc/systemd/system/filebrowser.service && systemctl daemon-reload` |
 | 新上传 Nginx 403 | umask 过严或 ACL 未刷 | 跑 `fix-exhibits-permissions.sh`；确认 `apt install acl` |
 | 删光 craft-* 再上传后播放整页 403 | 新目录没有 Nginx 可读权限（不是没同步 OSS） | 立刻跑 `EXHIBITS_GROUP=1000 FILEBROWSER_UID=1000 bash scripts/fix-exhibits-permissions.sh`；页面能开后再视需要同步 OSS |
+| Studio 刚新建的展品 FM 删不掉整个夹 | sticky 要求顶层目录属主是 File Browser UID，Studio 以 `studio` 用户创建 | 确认已跑权限脚本（安装 `chown-exhibit-content-dir` + sudoers），且 `studio-server` 已 restart（`NoNewPrivileges` 必须为 no）；不要去掉 sticky |
 | FM「服务器内部错误」 | Rules 正则被 UI 截断（非法 regex） | 删光 Rules 后改用**路径 Deny**（见上文） |
 
 ---

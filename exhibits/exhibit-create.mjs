@@ -2,6 +2,7 @@
  * Create a new craft-XXX exhibit from _template/ (shared by CLI, API, tests).
  */
 import crypto from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -67,6 +68,107 @@ export function suggestNextExhibitDir(root) {
   return `craft-${incrementNumericSuffix(max)}`
 }
 
+export const CONTENT_DIR_SHARED_BG = '共享背景'
+const DEFAULT_CHOWN_HELPER = '/usr/local/sbin/chown-exhibit-content-dir'
+
+/** Top-level dirs File Browser may delete (sticky exhibits root). */
+export function isHandoffContentDirName(name) {
+  const s = String(name ?? '')
+  return s === CONTENT_DIR_SHARED_BG || /^craft-[A-Za-z0-9_-]+$/.test(s)
+}
+
+export function resolveContentOwnerSpec(env = process.env) {
+  const uidRaw = String(env.CONTENT_OWNER_UID || env.FILEBROWSER_UID || '').trim()
+  if (!uidRaw) return null
+  if (!/^[1-9][0-9]*$/.test(uidRaw)) throw new Error('非法 CONTENT_OWNER_UID / FILEBROWSER_UID')
+  const uid = Number(uidRaw)
+  if (!Number.isSafeInteger(uid) || uid === 0) throw new Error('内容目录属主不能为 root')
+  const gidRaw = String(env.EXHIBITS_GROUP || '').trim()
+  let gid = null
+  if (gidRaw) {
+    if (!/^[1-9][0-9]*$/.test(gidRaw)) throw new Error('非法 EXHIBITS_GROUP')
+    gid = Number(gidRaw)
+    if (!Number.isSafeInteger(gid) || gid === 0) throw new Error('EXHIBITS_GROUP 不能为 0')
+  }
+  return { uid, gid }
+}
+
+function applyNewContentModes(dest) {
+  if (process.platform !== 'linux') return
+  const walk = (p) => {
+    let st
+    try { st = fs.lstatSync(p) } catch { return }
+    if (st.isSymbolicLink()) return
+    try {
+      if (st.isDirectory()) {
+        fs.chmodSync(p, 0o2775)
+        for (const name of fs.readdirSync(p)) walk(path.join(p, name))
+      } else if (st.isFile()) {
+        fs.chmodSync(p, 0o664)
+      }
+    } catch {
+      /* Windows-like FS or no chmod; ownership handoff still matters on Linux */
+    }
+  }
+  walk(dest)
+}
+
+function assertDirectContentChild(root, name) {
+  if (!isHandoffContentDirName(name)) throw new Error('非法内容目录名：' + name)
+  if (name.includes('/') || name.includes('\\') || name.includes('..')) {
+    throw new Error('非法内容目录名：' + name)
+  }
+  const rootAbs = path.resolve(root)
+  const dest = path.resolve(rootAbs, name)
+  if (path.dirname(dest) !== rootAbs) throw new Error('内容目录必须在 exhibits 根下')
+  return dest
+}
+
+/**
+ * After Studio creates a craft-* dir, sticky exhibits root only lets File Browser
+ * unlink it if the inode owner is FILEBROWSER_UID. Try fs.chown, else sudo helper.
+ */
+export function handoffExhibitContentOwner(root, name, opts = {}) {
+  if (process.platform === 'win32') return { ok: true, skipped: 'win32' }
+  const env = opts.env ?? process.env
+  const spec = opts.spec !== undefined ? opts.spec : resolveContentOwnerSpec(env)
+  if (!spec) return { ok: true, skipped: 'no-owner' }
+
+  const dest = assertDirectContentChild(root, name)
+  const st = fs.lstatSync(dest)
+  if (st.isSymbolicLink() || !st.isDirectory()) throw new Error('拒绝移交非目录或符号链接')
+
+  const rootReal = fs.realpathSync(root)
+  const destReal = fs.realpathSync(dest)
+  if (path.dirname(destReal) !== rootReal) throw new Error('内容目录必须在 exhibits 根下')
+
+  const gid = spec.gid ?? st.gid
+  if (st.uid === spec.uid && st.gid === gid) return { ok: true, skipped: 'already-owner' }
+
+  try {
+    fs.chownSync(dest, spec.uid, gid)
+    fs.chmodSync(dest, 0o2775)
+    return { ok: true, method: 'chown' }
+  } catch (e) {
+    const denied = e && (e.code === 'EPERM' || e.code === 'EACCES')
+    if (!denied) throw e
+  }
+
+  const helper = opts.helper || env.EXHIBITS_CHOWN_HELPER || DEFAULT_CHOWN_HELPER
+  const sudoBin = opts.sudo || env.EXHIBITS_CHOWN_SUDO || 'sudo'
+  const args = [
+    '-n', '--', helper,
+    '--root', rootReal,
+    '--name', name,
+    '--uid', String(spec.uid),
+    '--gid', String(gid),
+  ]
+  const r = spawnSync(sudoBin, args, { encoding: 'utf8' })
+  if (r.status === 0) return { ok: true, method: 'sudo-helper' }
+  const detail = String(r.stderr || r.stdout || `exit ${r.status}`).trim()
+  throw new Error('无法把新建展品目录交给 File Browser：' + detail)
+}
+
 function validateTemplate(templateDir) {
   const cfgPath = path.join(templateDir, 'config.json')
   const idxPath = path.join(templateDir, 'index.html')
@@ -79,7 +181,7 @@ function buildIndexHtml(templateIdx, ex, title) {
   return templateIdx.replaceAll('__EX__', ex).replaceAll('__TITLE__', escapeHtml(title))
 }
 
-export function createExhibit(root, { dir, title, subtitle = '' }) {
+export function createExhibit(root, { dir, title, subtitle = '', handoffOwner } = {}) {
   const ex = normalizeExhibitDir(dir)
   const name = String(title ?? '').trim()
   if (!name) throw new Error('展品名称不能为空')
@@ -108,6 +210,17 @@ export function createExhibit(root, { dir, title, subtitle = '' }) {
   } catch (e) {
     fs.rmSync(tmp, { recursive: true, force: true })
     throw e
+  }
+
+  applyNewContentModes(dest)
+  if (handoffOwner !== false) {
+    try {
+      handoffExhibitContentOwner(root, ex)
+    } catch (e) {
+      const required = process.env.EXHIBITS_CHOWN_REQUIRED === '1' || handoffOwner === true
+      if (required) throw e
+      console.error('[exhibit-create]', e.message)
+    }
   }
 
   return { dir: ex, title: name, subtitle: sub, assetsDir: `${ex}/assets` }

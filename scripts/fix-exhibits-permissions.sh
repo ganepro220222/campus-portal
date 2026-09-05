@@ -8,6 +8,8 @@
 #   - exhibits 根 3775（setgid+sticky+组写）：写组可新建/删除自己拥有的子项
 #     （才能从 File Browser 删掉整个 craft-* / 共享背景），但删不掉 root 属主的代码文件/目录
 #   - 内容目录 inode 属主改为 File Browser UID（Docker 默认 1000），sticky 下才能 unlink 整个夹
+#   - Studio 在线新建的 craft-* 属主是 studio：由固定 helper + sudoers 只 chown 该 inode
+#     （不要让 studio-server 跑整个本脚本，也不要给宽泛 sudo chown）
 #
 # 用法（SSH root）：
 #   bash scripts/fix-exhibits-permissions.sh
@@ -106,6 +108,69 @@ apply_content_tree() {
   chown "$OWNER_UID:$GID" "$dir"
 }
 
+install_content_handoff_helper() {
+  local src="$ROOT/scripts/chown-exhibit-content-dir.sh"
+  local dest="/usr/local/sbin/chown-exhibit-content-dir"
+  local sudoers="/etc/sudoers.d/studio-exhibits-chown"
+  local pin="/etc/shuyuan/exhibits-chown-root"
+  local dropin_dir="/etc/systemd/system/studio-server.service.d"
+  local dropin="$dropin_dir/content-handoff.conf"
+
+  if [ ! -f "$src" ]; then
+    echo "警告: 缺少 $src，跳过 File Browser 属主移交 helper" >&2
+    return 0
+  fi
+  if [ "$(id -u)" != 0 ] || [ ! -d /usr/local/sbin ]; then
+    echo "提示: 非 root 或无 /usr/local/sbin，跳过安装 chown helper"
+    return 0
+  fi
+
+  install -o root -g root -m 755 "$src" "$dest"
+  echo "OK  已安装 $dest"
+
+  mkdir -p /etc/shuyuan
+  chmod 700 /etc/shuyuan
+  printf '%s\n' "$EX" >"$pin"
+  chown root:root "$pin"
+  chmod 600 "$pin"
+  echo "OK  已钉死 helper --root → $EX"
+
+  if id "$STUDIO_USER" &>/dev/null && [ -d /etc/sudoers.d ]; then
+    cat >"$sudoers" <<EOF
+Defaults:${STUDIO_USER} !requiretty
+${STUDIO_USER} ALL=(root) NOPASSWD: ${dest}
+EOF
+    chmod 440 "$sudoers"
+    if command -v visudo >/dev/null && ! visudo -cf "$sudoers"; then
+      rm -f "$sudoers"
+      echo "错误: sudoers 校验失败（$sudoers）" >&2
+      exit 1
+    fi
+    echo "OK  已写入 $sudoers"
+  fi
+
+  if [ -d /etc/systemd/system ] && command -v systemctl >/dev/null; then
+    if systemctl cat studio-server &>/dev/null; then
+      mkdir -p "$dropin_dir"
+      cat >"$dropin" <<EOF
+[Service]
+# 覆盖旧 unit 的 NoNewPrivileges=true，否则新建展品无法 sudo helper
+NoNewPrivileges=false
+Environment=FILEBROWSER_UID=${OWNER_UID}
+Environment=EXHIBITS_GROUP=${GID}
+Environment=EXHIBITS_CHOWN_HELPER=${dest}
+Environment=EXHIBITS_CHOWN_REQUIRED=1
+EOF
+      systemctl daemon-reload
+      echo "OK  已写入 $dropin 并 daemon-reload"
+      if systemctl is-active --quiet studio-server 2>/dev/null; then
+        echo "正在 restart studio-server，使 helper / NoNewPrivileges 生效..."
+        systemctl restart studio-server
+      fi
+    fi
+  fi
+}
+
 remove_nginx_from_write_group() {
   if ! id "$NGX" &>/dev/null; then
     echo "警告: 系统用户 $NGX 不存在，跳过组调整" >&2
@@ -166,6 +231,8 @@ add_user_to_write_group "$FILEBROWSER_USER" "见 filebrowser.service.example"
 if [ -n "$OWNER_NAME" ]; then
   add_user_to_write_group "$OWNER_NAME" "File Browser 宿主机映射用户 (UID $OWNER_UID)"
 fi
+
+install_content_handoff_helper
 
 # exhibits 根：写组可建/删自己拥有的子项（craft-* / 共享背景）；
 # sticky 阻止删除 root 属主的 player.html、_server、vendor 等
@@ -356,6 +423,75 @@ verify_content_delete_gate() {
 }
 verify_content_delete_gate
 
+verify_studio_handoff_gate() {
+  local helper="/usr/local/sbin/chown-exhibit-content-dir"
+  local probe_name="craft-__handoff_probe__"
+  local probe_dir="$EX/$probe_name"
+
+  if ! id "$STUDIO_USER" &>/dev/null; then
+    echo "提示: 跳过 Studio→File Browser 移交门禁（$STUDIO_USER 不存在）"
+    return 0
+  fi
+  if [ ! -x "$helper" ]; then
+    if [ -d /usr/local/sbin ]; then
+      echo "错误: 未安装 $helper（Studio 新建展品后 File Browser 删不掉整个夹）" >&2
+      exit 1
+    fi
+    echo "提示: 跳过移交门禁（无 /usr/local/sbin）"
+    return 0
+  fi
+  if ! as_studio_available; then
+    echo "错误: 缺少 runuser 或 sudo，无法验证属主移交" >&2
+    exit 127
+  fi
+  if [ -z "${OWNER_NAME:-}" ]; then
+    echo "提示: 跳过移交删除断言（UID $OWNER_UID 无 passwd 项）"
+    return 0
+  fi
+
+  rm -rf "$probe_dir"
+  if ! as_studio mkdir "$probe_dir"; then
+    echo "错误: $STUDIO_USER 无法在 exhibits 根下新建目录" >&2
+    exit 1
+  fi
+  if [ "$(stat -c %u "$probe_dir")" = "$OWNER_UID" ]; then
+    echo "提示: $STUDIO_USER 与内容属主 UID 相同，跳过跨用户移交断言"
+    rmdir "$probe_dir"
+    return 0
+  fi
+  if as_content_owner rmdir "$probe_dir" 2>/dev/null; then
+    echo "错误: 未移交时 $OWNER_NAME 不应能删除 $STUDIO_USER 新建的目录（sticky 失效？）" >&2
+    exit 1
+  fi
+  if ! as_studio sudo -n "$helper" --root "$EX" --name "$probe_name" --uid "$OWNER_UID" --gid "$GID"; then
+    echo "错误: $STUDIO_USER 无法 sudo -n $helper 移交 $probe_name" >&2
+    rm -rf "$probe_dir"
+    exit 1
+  fi
+  if [ "$(stat -c %u "$probe_dir")" != "$OWNER_UID" ]; then
+    echo "错误: 移交后 $probe_name 属主不是 uid $OWNER_UID" >&2
+    rm -rf "$probe_dir"
+    exit 1
+  fi
+  if ! as_content_owner rmdir "$probe_dir"; then
+    echo "错误: 移交后 $OWNER_NAME 仍无法删除 Studio 新建目录" >&2
+    rm -rf "$probe_dir"
+    exit 1
+  fi
+  echo "OK  $STUDIO_USER 新建目录可交给 $OWNER_NAME 整夹删除"
+
+  if command -v systemctl >/dev/null && systemctl cat studio-server &>/dev/null; then
+    local nnp
+    nnp="$(systemctl show -p NoNewPrivileges --value studio-server 2>/dev/null || true)"
+    if [ "$nnp" = "yes" ]; then
+      echo "错误: studio-server NoNewPrivileges=yes，进程内无法 sudo helper" >&2
+      exit 1
+    fi
+    echo "OK  studio-server NoNewPrivileges=${nnp:-no}（允许调用 chown helper）"
+  fi
+}
+verify_studio_handoff_gate
+
 studio_pid_groups_line() {
   local pid="$1"
   [ -n "$pid" ] && [ "$pid" != "0" ] && [ -r "/proc/$pid/status" ] || return 1
@@ -422,6 +558,7 @@ echo "  curl -sI -k --resolve api.yunmanvr.com:443:127.0.0.1 https://api.yunmanv
 echo "  ls -ld $EX                 # 应为 root:写组 drwxrwsr-t (3775)"
 echo "  ls -ld $EX/craft-* $EX/共享背景 2>/dev/null | head"
 echo "  ls -la $EX/_server | head -3   # 应为 root root drwxr-xr-x"
-echo "  （File Browser 应能删除整个 craft-* / 共享背景，不能删 player.html / _server）"
+echo "  （File Browser 应能删除整个 craft-* / 共享背景，含 Studio 刚新建的；不能删 player.html / _server）"
+echo "  （新建展品属主移交: /usr/local/sbin/chown-exhibit-content-dir ；须重启 studio-server 使 NoNewPrivileges=false 生效）"
 echo "  （上传后 Nginx 应 200；若 403 请确认 setfacl/acl 已装且本脚本已跑）"
 echo "  （File Browser systemd 建议 UMask=0022 + User=filebrowser，见 scripts/filebrowser.service.example）"

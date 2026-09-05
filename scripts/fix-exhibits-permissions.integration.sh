@@ -5,7 +5,7 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq >/dev/null
-apt-get install -y -qq acl sudo util-linux >/dev/null
+apt-get install -y -qq acl sudo util-linux nodejs >/dev/null
 
 groupadd --system studio 2>/dev/null || true
 useradd --system --gid studio --shell /usr/sbin/nologin --no-create-home studio 2>/dev/null || true
@@ -19,10 +19,12 @@ TMP="$(mktemp -d)"
 chmod 755 "$TMP"
 EX="$TMP/exhibits"
 mkdir -p "$EX/_server" "$EX/craft-001" "$EX/共享背景"
+cp -a /repo/exhibits/_template "$EX/_template"
 printf '// code\n' >"$EX/_server/studio-server.mjs"
 printf '{}\n' >"$EX/craft-001/config.json"
 printf 'bg\n' >"$EX/共享背景/keep.txt"
 printf '<html></html>\n' >"$EX/studio.html"
+printf '<html></html>\n' >"$EX/player.html"
 
 export EXHIBITS_ROOT="$EX"
 export EXHIBITS_GROUP=10001
@@ -78,6 +80,30 @@ runuser -u www-data -- test -x "$EX/craft-001" \
   || { echo "FAIL: www-data cannot enter recreated craft-001 (root default ACL missing)"; exit 1; }
 runuser -u www-data -- test -r "$EX/craft-001/config.json" \
   || { echo "FAIL: www-data cannot read recreated craft-001/config.json"; exit 1; }
+
+# Studio createExhibit() → File Browser 删除整个新 craft-*；仍不能删代码
+fb_uid="$(id -u filebrowser)"
+runuser -u studio -- env \
+  FILEBROWSER_UID="$fb_uid" \
+  EXHIBITS_GROUP=10001 \
+  EXHIBITS_CHOWN_REQUIRED=1 \
+  EXHIBITS_CREATE_ROOT="$EX" \
+  node --input-type=module -e '
+    import { createExhibit } from "/repo/exhibits/exhibit-create.mjs"
+    createExhibit(process.env.EXHIBITS_CREATE_ROOT, { dir: "888", title: "跨用户新建" })
+  ' || { echo "FAIL: studio createExhibit() with handoff"; exit 1; }
+[ -d "$EX/craft-888" ] || { echo "FAIL: craft-888 missing after createExhibit"; exit 1; }
+[ "$(stat -c '%u' "$EX/craft-888")" = "$fb_uid" ] \
+  || { echo "FAIL: craft-888 owner=$(stat -c '%u' "$EX/craft-888") want $fb_uid"; exit 1; }
+runuser -u studio -- test -w "$EX/craft-888/config.json" \
+  || { echo "FAIL: studio cannot write config.json after createExhibit"; exit 1; }
+runuser -u filebrowser -- rm -rf "$EX/craft-888" \
+  || { echo "FAIL: filebrowser cannot delete studio createExhibit() dir"; exit 1; }
+[ ! -d "$EX/craft-888" ] || { echo "FAIL: craft-888 still exists after filebrowser delete"; exit 1; }
+runuser -u filebrowser -- rm -f "$EX/player.html" || true
+[ -f "$EX/player.html" ] || { echo "FAIL: filebrowser must not delete player.html"; exit 1; }
+runuser -u filebrowser -- rm -rf "$EX/_server" || true
+[ -d "$EX/_server" ] || { echo "FAIL: filebrowser must not delete _server"; exit 1; }
 
 rm -rf "$TMP"
 

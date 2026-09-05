@@ -20,6 +20,8 @@
 #   - UMask=0022 使新文件为 644（other 可读），Nginx(www-data) 不在写组也能读
 #   - fix-exhibits-permissions 把 filebrowser 加入写组，内容目录属主设为该用户；
 #     exhibits 根 3775 sticky，才能删除整个 craft-* / 共享背景，同时删不掉 player.html
+#   - Studio（User=studio）新建的 craft-* 会经 chown-exhibit-content-dir helper 把顶层
+#     inode 交给本用户，否则 sticky 下 File Browser 删不掉整个新建文件夹
 #   - default ACL 给 www-data 只读
 #   - File Browser 规则应禁止访问 _server、_launch、vendor 等代码路径（见 Web UI Rules）
 

@@ -7,8 +7,8 @@
 #   sudo mkdir -p /etc/shuyuan && sudo chmod 700 /etc/shuyuan
 #   printf 'STUDIO_USER=admin\nSTUDIO_PASS=换成真实口令\n' | sudo tee /etc/shuyuan/studio.env
 #   sudo chmod 600 /etc/shuyuan/studio.env
-#   sudo EXHIBITS_GROUP=1000 bash scripts/fix-exhibits-permissions.sh
-#     # 把 studio 加入内容写组（可能是 shuyuan-exhibits、ubuntu 等，见脚本输出）
+#   sudo EXHIBITS_GROUP=1000 FILEBROWSER_UID=1000 bash scripts/fix-exhibits-permissions.sh
+#     # 把 studio 加入内容写组；安装 chown helper + sudoers（新建展品才能被 File Browser 整夹删除）
 #   sudo systemctl daemon-reload && sudo systemctl enable --now studio-server
 #
 # 主组固定为 studio；内容协作写权限由 fix-exhibits-permissions.sh 通过 supplementary group 授予，
@@ -37,7 +37,17 @@ Restart=on-failure
 RestartSec=3
 # 只监听回环：公网访问一律经 Nginx，避免有人直连 :8200 绕过反代层
 Environment=STUDIO_BIND=127.0.0.1
-NoNewPrivileges=true
+# 与 Docker File Browser 宿主机 UID/写组一致；新建 craft-* 后 helper 只 chown 该目录 inode
+Environment=FILEBROWSER_UID=1000
+Environment=EXHIBITS_GROUP=1000
+Environment=EXHIBITS_CHOWN_HELPER=/usr/local/sbin/chown-exhibit-content-dir
+Environment=EXHIBITS_CHOWN_REQUIRED=1
+# sticky 根下必须把新建目录交给 File Browser UID。sudo helper 需要能提权，
+# 因此这里不能 NoNewPrivileges=true（否则 sudo / 文件能力全部被挡住）。
+# helper 只接受 craft-* / 共享背景，见 scripts/chown-exhibit-content-dir.sh。
+NoNewPrivileges=false
+ProtectHome=yes
+PrivateTmp=yes
 ProtectSystem=strict
 # 最小权限理想状态是只列 craft-* 内容根；动态目录暂列整个 exhibits，靠 Unix 权限保护代码只读
 ReadWritePaths=/opt/shuyuan/exhibits

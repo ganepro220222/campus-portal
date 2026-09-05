@@ -27,10 +27,11 @@ try {
     checkout.includes('exhibits/brand-new-mod.mjs'),
     'checkout list must keep player.html imports that git still has to fetch',
   )
-  assert.ok(checkout.includes('exhibits/shading-risk.mjs'), 'EXTRA modules stay on checkout list even if absent')
+  assert.ok(!checkout.includes('exhibits/pano-check.py'), 'ghost EXTRA files must not enter checkout list')
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true })
 }
 
 assert.ok(!live.some(p => /^craft-/.test(p)), 'must not include exhibit content')
+assert.ok(!collectStagingExhibitsCheckoutPaths().includes('exhibits/pano-check.py'))
 console.log('staging-editor-paths: PASS')

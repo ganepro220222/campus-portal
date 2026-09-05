@@ -32,7 +32,19 @@ if [ "${#EXHIBITS_PATHS[@]}" -eq 0 ]; then
   echo "错误: collect-staging-editor-files.mjs 未输出路径" >&2
   exit 1
 fi
-git checkout "$REF" -- "${EXHIBITS_PATHS[@]}"
+existing=()
+for p in "${EXHIBITS_PATHS[@]}"; do
+  if git cat-file -e "$REF:$p" 2>/dev/null; then
+    existing+=("$p")
+  else
+    echo "跳过（Git 中无此路径，保留服务器本地文件）: $p"
+  fi
+done
+if [ "${#existing[@]}" -eq 0 ]; then
+  echo "错误: collector 清单在 Git 中没有任何可检出路径" >&2
+  exit 1
+fi
+git checkout "$REF" -- "${existing[@]}"
 
 PLAYER="$EXHIBITS/player.html"
 if [ -f "$PLAYER" ]; then

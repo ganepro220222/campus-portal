@@ -34,6 +34,8 @@ assert.doesNotMatch(sh, /REPLACE_CONTENT_FROM_GIT/, 'misleading REPLACE_CONTENT_
 assert.doesNotMatch(sh, /拒绝 git checkout 覆盖/, 'must not block on dirty craft config')
 assert.doesNotMatch(sh, /verify_craft_configs_unchanged/, 'post-restore verify removed')
 assert.match(sh, /assert_exhibits_paths_safe/, 'must reject craft paths in collector list')
+assert.match(sh, /checkout_ref_paths "\$REF" "\$\{EXHIBITS_PATHS\[@\]\}"/, 'exhibits checkout must skip paths not in git')
+assert.doesNotMatch(sh, /git checkout "\$REF" -- "\$\{EXHIBITS_PATHS\[@\]\}"/, 'must not fail whole update on one missing EXTRA path')
 assert.match(sh, /record_studio_was_active/, 'must record studio-server active state before update')
 assert.match(sh, /source "\$SCRIPT_DIR\/staging-studio-rollback.sh"/, 'must source studio rollback helpers')
 

@@ -387,7 +387,7 @@ for p in "${EXHIBITS_PATHS[@]}"; do
   backup_path_into_code_backup "$p"
 done
 
-git checkout "$REF" -- "${EXHIBITS_PATHS[@]}"
+checkout_ref_paths "$REF" "${EXHIBITS_PATHS[@]}"
 
 detect_craft_configs_changed_by_checkout
 restore_craft_configs

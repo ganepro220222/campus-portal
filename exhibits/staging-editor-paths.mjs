@@ -30,7 +30,6 @@ export const STAGING_EXHIBITS_CODE_EXTRA = [
   'serve.py',
   'manifest.json',
   'pano-check.mjs',
-  'pano-check.py',
   'studio-port.mjs',
   'studio-static-path.mjs',
   'exhibit-create.mjs',
@@ -150,7 +149,7 @@ export function collectStagingEditorRelPaths(root = ROOT, { includeMissing = fal
   }
   for (const rel of UPLOAD_VENDOR_REQUIRED) rels.add(rel)
   for (const rel of STAGING_EXHIBITS_CODE_EXTRA) {
-    if (includeMissing || fs.existsSync(path.join(root, rel))) rels.add(rel)
+    if (fs.existsSync(path.join(root, rel))) rels.add(rel)
   }
   for (const dir of STAGING_EDITOR_STATIC_DIRS) {
     if (fs.existsSync(path.join(root, dir))) rels.add(dir)

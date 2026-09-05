@@ -426,6 +426,7 @@ import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeout
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
+import { classifyIosBlackLook } from './shading-risk.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -553,6 +554,7 @@ function applyPanoramaFromTexture(tex) {
       envBg = tex
       scene.background = tex
     } else tex.dispose()
+    panoDiagEvent('shading:after-skip-pmrem', compactShadingFacts())
     return
   }
   panoDiagEvent('pano:pmrem-start', { w: tex.image?.width, h: tex.image?.height })
@@ -567,12 +569,14 @@ function applyPanoramaFromTexture(tex) {
       scene.background = tex
     } else tex.dispose()
     applyEnvFallback()
+    panoDiagEvent('shading:after-pmrem-fail', compactShadingFacts())
     return
   }
   panoDiagEvent('pano:pmrem-done', { w: tex.image?.width, h: tex.image?.height })
   const keepBg = !panoDiag.skipVisibleBg && cfg.environment?.visibleBackground
   setEnvFromRT(rt, keepBg ? tex : null)
   if (!keepBg) tex.dispose()
+  panoDiagEvent('shading:after-pmrem', compactShadingFacts())
 }
 if (panoDiag.enabled) {
   panoDiagEvent('pano:boot', {
@@ -642,9 +646,76 @@ function bootTimeoutMs() {
   return (typeof t === 'number' && t > 0) ? t : 12000
 }
 
+function shadingSnapshot() {
+  const mats = []
+  let maxAlbedoEdge = 0
+  let hasBaseColorTexture = false
+  let mapImageMissing = false
+  model?.traverse((o) => {
+    if (!o.isMesh) return
+    ;[].concat(o.material).forEach((m) => {
+      if (!m || !('roughness' in m)) return
+      const img = m.map?.image
+      const w = img?.width || img?.videoWidth || 0
+      const h = img?.height || img?.videoHeight || 0
+      if (m.map) {
+        hasBaseColorTexture = true
+        if (!w || !h) mapImageMissing = true
+        maxAlbedoEdge = Math.max(maxAlbedoEdge, w, h)
+      }
+      const col = m.color
+      mats.push({
+        name: m.name || '',
+        metalness: m.metalness,
+        roughness: m.roughness,
+        hasMap: !!m.map,
+        mapW: w,
+        mapH: h,
+        color: col ? [col.r, col.g, col.b] : null,
+      })
+    })
+  })
+  const facts = {
+    strictWebKit,
+    envKind: effectiveEnvSource().kind,
+    hasSceneEnvironment: !!(scene && scene.environment),
+    hasEnvRt: !!envRT,
+    envRtW: envRT?.width || 0,
+    envRtH: envRT?.height || 0,
+    backgroundIsTexture: !!(scene?.background && scene.background.isTexture),
+    envPanoFailed: envPanoFailed || '',
+    configMetalness: num(cfg?.materials?.global?.metalness, 0),
+    materialMetalnessMax: mats.reduce((a, m) => Math.max(a, Number(m.metalness) || 0), 0),
+    hasBaseColorTexture,
+    mapImageMissing,
+    maxAlbedoEdge,
+    materials: mats,
+  }
+  facts.risks = classifyIosBlackLook(facts)
+  return facts
+}
+
+function compactShadingFacts(s = shadingSnapshot()) {
+  return {
+    risks: (s.risks || []).map((r) => r.id),
+    envKind: s.envKind,
+    hasSceneEnvironment: s.hasSceneEnvironment,
+    hasEnvRt: s.hasEnvRt,
+    envRtW: s.envRtW,
+    envRtH: s.envRtH,
+    backgroundIsTexture: s.backgroundIsTexture,
+    envPanoFailed: s.envPanoFailed || '',
+    metal: s.materialMetalnessMax,
+    configMetal: s.configMetalness,
+    mapMissing: s.mapImageMissing,
+    maxAlbedoEdge: s.maxAlbedoEdge,
+  }
+}
+
 function markPlayerReady() {
   window.__SY_PLAYER.ready = true
   clearTimeout(_bootWatchdog)
+  if (panoDiag.enabled) panoDiagEvent('shading:snapshot', compactShadingFacts())
 }
 
 function abortPendingBoot(msg) {
@@ -3355,6 +3426,7 @@ window.__SY_TEST__ = {
   },
   envPanoPrefetchCleared: () => envPanoPrefetch == null,
   envSourceKind: () => effectiveEnvSource().kind,
+  shadingSnapshot: () => shadingSnapshot(),
   applyPresetById: (id) => {
     const p = (cfg.presets || []).find(x => x.id === id)
     if (!p) return false

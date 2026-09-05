@@ -668,7 +668,7 @@ test.describe('strict WebKit startup', () => {
     await p.close()
   })
 
-  test('WeChat UA downscales panorama to 2048 before PMREM by default', async ({ browser }) => {
+  test('WeChat UA downscales panorama to 1024 before PMREM by default', async ({ browser }) => {
     const p = await browser.newPage()
     await p.addInitScript(() => {
       Object.defineProperty(navigator, 'userAgent', {
@@ -686,12 +686,14 @@ test.describe('strict WebKit startup', () => {
     }, { timeout: 60_000 })
     const snap = await p.evaluate(() => window.__SY_TEST__.panoDiagSnapshot())
     expect(snap.flags.strictWebKit).toBe(true)
-    expect(snap.flags.panoramaPmremMaxWidth).toBe(2048)
+    expect(snap.flags.panoramaPmremMaxWidth).toBe(1024)
+    const decoded = snap.log.find(e => e.tag === 'pano:decoded')
     const down = snap.log.find(e => e.tag === 'pano:downscaled')
-    expect(down?.detail?.maxWidth).toBe(2048)
-    expect(down?.detail?.w).toBe(2048)
+    const readyW = decoded?.detail?.w || down?.detail?.w
+    expect(readyW).toBe(1024)
+    if (down) expect(down.detail.maxWidth).toBe(1024)
     const done = snap.log.find(e => e.tag === 'pano:pmrem-done')
-    expect(done?.detail?.w).toBe(2048)
+    expect(done?.detail?.w).toBe(1024)
     const shading = await p.evaluate(() => window.__SY_TEST__.shadingSnapshot())
     expect(shading.hasSceneEnvironment).toBe(true)
     expect(shading.backgroundIsTexture).toBe(true)
@@ -724,7 +726,7 @@ test.describe('strict WebKit startup', () => {
       }))
       expect(flags.strict).toBe(true)
       expect(flags.defer).toBe(true)
-      expect(flags.maxW).toBe(2048)
+      expect(flags.maxW).toBe(1024)
       await releaseWebGL(p)
       await p.close()
     })

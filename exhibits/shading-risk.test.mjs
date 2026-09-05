@@ -9,6 +9,7 @@ import {
   inspectExhibit,
   readPngOrJpegSize,
   webglContextRestorePlan,
+  resizeToMaxWidth,
 } from './shading-risk.mjs'
 
 let pass = 0
@@ -20,13 +21,20 @@ function test(name, fn) {
 
 console.log('shading-risk tests')
 
-test('上下文恢复禁止再拉全景原图', () => {
+test('上下文恢复禁止再拉全景、也不再烤 PMREM', () => {
   const withBg = webglContextRestorePlan({ hasCpuEnvBackground: true })
   assert.equal(withBg.refetchPanorama, false)
-  assert.equal(withBg.action, 'pmrem-from-cpu-bg')
+  assert.equal(withBg.rebuildPmrem, false)
+  assert.equal(withBg.keepCpuBackground, true)
+  assert.equal(withBg.action, 'preset-or-room')
   const noBg = webglContextRestorePlan({ hasCpuEnvBackground: false })
-  assert.equal(noBg.refetchPanorama, false)
+  assert.equal(noBg.rebuildPmrem, false)
   assert.equal(noBg.action, 'preset-or-room')
+})
+
+test('5000 宽全景按 1024 封顶', () => {
+  assert.deepEqual(resizeToMaxWidth(5000, 2500, 1024), { w: 1024, h: 512, scaled: true })
+  assert.deepEqual(resizeToMaxWidth(1024, 512, 1024), { w: 1024, h: 512, scaled: false })
 })
 
 test('全景背景在、环境立方体不在、金属度高 → 对得上截图', () => {

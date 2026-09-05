@@ -116,8 +116,8 @@ export function panoramaRevealTimeoutMs(cfg, player, testHook) {
   ], 8000)
 }
 
-/** Safari/微信：8042 全景客户端 PMREM 易触发 WebContent 被杀；A/B 验证 2048 稳定。 */
-export const DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH = 2048
+/** Safari/微信：5000/8042 先解码再缩到 2048 仍会 context-lost；默认 1024。 */
+export const DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH = 1024
 
 /** Max equirect width before PMREM; 0 = no downscale. URL override wins, then config, then strict default. */
 export function strictWebKitPanoramaMaxWidth(cfg, strictWebKit, urlOverride = 0) {

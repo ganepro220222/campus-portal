@@ -426,7 +426,7 @@ import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeout
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
-import { classifyIosBlackLook, webglContextRestorePlan } from './shading-risk.mjs'
+import { classifyIosBlackLook, webglContextRestorePlan, readPngOrJpegSize, resizeToMaxWidth } from './shading-risk.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -455,6 +455,50 @@ function loadTextureWithFallback(url, onOk, onErr) {
     onErr()
   })
 }
+function panoramaDecodeMaxWidth() {
+  if (panoDiag.loadOnly) return 0
+  const maxW = strictWebKitPanoramaMaxWidth(cfg, strictWebKit, panoDiag.urlMaxWidth)
+  if (maxW > 0) return maxW
+  return strictWebKit ? DEFAULT_STRICT_WEBKIT_PANORAMA_MAX_WIDTH : 0
+}
+function loadPanoramaTexture(url, onOk, onErr) {
+  const maxW = panoramaDecodeMaxWidth()
+  const fallback = sameOriginFallbackUrl(url)
+  const finishErr = () => {
+    if (fallback && fallback !== url) {
+      loadPanoramaTexture(fallback, onOk, onErr)
+      return
+    }
+    onErr()
+  }
+  if (!(maxW > 0) || typeof createImageBitmap !== 'function' || typeof fetch !== 'function') {
+    loadTextureWithFallback(url, onOk, onErr)
+    return
+  }
+  fetch(url, { cache: 'force-cache' }).then(res => {
+    if (!res.ok) throw new Error('http ' + res.status)
+    return res.blob()
+  }).then(async blob => {
+    const head = new Uint8Array(await blob.slice(0, 262144).arrayBuffer())
+    const sz = readPngOrJpegSize(head)
+    const target = resizeToMaxWidth(sz?.w || 0, sz?.h || 0, maxW)
+    const opts = target.scaled
+      ? { resizeWidth: target.w, resizeHeight: target.h, resizeQuality: 'high' }
+      : undefined
+    const bitmap = opts ? await createImageBitmap(blob, opts) : await createImageBitmap(blob)
+    const tex = new THREE.Texture(bitmap)
+    tex.needsUpdate = true
+    tex.colorSpace = THREE.SRGBColorSpace
+    panoDiagEvent('pano:decoded', {
+      srcW: sz?.w || 0,
+      srcH: sz?.h || 0,
+      w: bitmap.width,
+      h: bitmap.height,
+      resized: !!target.scaled,
+    })
+    onOk(tex)
+  }).catch(() => loadTextureWithFallback(url, onOk, onErr))
+}
 function applyPoster(stored) {
   const href = asset(stored)
   if (!href) return
@@ -468,7 +512,7 @@ function applyPoster(stored) {
   img.src = href
 }
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
-/** Safari / 微信 / iOS 全系 WebKit（含 Edge·Chrome·Telegram 内置）：延迟全景 PMREM，8042→2048。 */
+/** Safari / 微信 / iOS 全系 WebKit（含 Edge·Chrome·Telegram 内置）：延迟全景 PMREM，大图解码时按上限缩小。 */
 function isStrictWebKitHost() {
   const ua = navigator.userAgent || ''
   if (/MicroMessenger/i.test(ua)) return true
@@ -552,8 +596,11 @@ function applyPanoramaFromTexture(tex) {
     tex.dispose()
     return
   }
-  if (panoDiag.skipPmrem) {
-    panoDiagEvent('pano:skip-pmrem', { keepVisibleBg: !panoDiag.skipVisibleBg && !!cfg.environment?.visibleBackground })
+  if (panoDiag.skipPmrem || webglContextLostOnce) {
+    panoDiagEvent('pano:skip-pmrem', {
+      keepVisibleBg: !panoDiag.skipVisibleBg && !!cfg.environment?.visibleBackground,
+      afterContextLost: webglContextLostOnce,
+    })
     if (!panoDiag.skipVisibleBg && cfg.environment?.visibleBackground) {
       if (envBg && envBg !== tex) envBg.dispose()
       envBg = tex
@@ -746,7 +793,7 @@ async function fetchWithTimeout(url, ms) {
 
 function initRenderer() {
   const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth < 768
-  // 画质（DPR/MSAA）与全景安全解耦：strictWebKit 仍控制全景延迟 + PMREM 2048，
+  // 画质（DPR/MSAA）与全景安全解耦：strictWebKit 仍控制全景延迟 + PMREM 上限，
   // 画布清晰度由 resolveRendererQuality 独立决定（strict 移动端默认 DPR 1.5 + 抗锯齿）
   const quality = resolveRendererQuality({
     isMobile,
@@ -776,6 +823,7 @@ function initRenderer() {
   }
   renderer.domElement.addEventListener('webglcontextlost', ev => {
     ev.preventDefault()
+    webglContextLostOnce = true
     panoDiagEvent('webgl:context-lost', { type: ev.type })
   }, false)
   renderer.domElement.addEventListener('webglcontextrestored', () => {
@@ -826,6 +874,46 @@ function applyMaterial() {
       m.needsUpdate = true
     })
   })
+  downscaleHugeAlbedoMaps()
+}
+function downscaleMapIfHuge(tex, maxEdge) {
+  const img = tex?.image
+  const w = img?.width || img?.videoWidth || 0
+  const h = img?.height || img?.videoHeight || 0
+  const edge = Math.max(w, h)
+  if (!maxEdge || !edge || edge <= maxEdge) return tex
+  const scale = maxEdge / edge
+  const nw = Math.max(1, Math.round(w * scale))
+  const nh = Math.max(1, Math.round(h * scale))
+  const cv = document.createElement('canvas')
+  cv.width = nw
+  cv.height = nh
+  cv.getContext('2d').drawImage(img, 0, 0, nw, nh)
+  const out = new THREE.CanvasTexture(cv)
+  out.colorSpace = tex.colorSpace
+  out.wrapS = tex.wrapS
+  out.wrapT = tex.wrapT
+  out.flipY = tex.flipY
+  tex.image = null
+  tex.dispose()
+  return out
+}
+function downscaleHugeAlbedoMaps() {
+  if (!strictWebKit || !model) return
+  let changed = 0
+  model.traverse(o => {
+    if (!o.isMesh) return
+    ;[].concat(o.material).forEach(m => {
+      if (!m?.map) return
+      const next = downscaleMapIfHuge(m.map, 2048)
+      if (next !== m.map) {
+        m.map = next
+        m.needsUpdate = true
+        changed++
+      }
+    })
+  })
+  if (changed) panoDiagEvent('shading:albedo-downscaled', { count: changed, maxEdge: 2048 })
 }
 /** 环境 IBL 切换后刷新材质绑定（部分 iOS WebKit 驱动不会自动拾取 scene.environment 变更） */
 function syncMaterialsAfterEnvironmentChange() {
@@ -1107,6 +1195,7 @@ function applyEnvironment() {
    注意释放的是 renderTarget 而不是它的 texture：只 dispose 贴图会漏掉帧缓冲，
    编辑器里反复切换环境预设时显存会一路涨上去。 */
 let _pmrem = null, envRT = null, envBg = null
+let webglContextLostOnce = false
 const envLoadGuard = createEnvLoadGuard()
 let envPanoFailed = ''   // 记下加载失败的全景地址，供编辑器如实显示当前环境
 /** 同一全景 URL 在途加载：共享 Promise，避免重复请求与假成功 */
@@ -1143,25 +1232,21 @@ function disposeGpuEnvironment() {
   _pmrem = null
   if (scene) scene.environment = null
 }
-/** 上下文恢复后只用内存里已缩小的全景重建 IBL，禁止再拉 5000 宽原图。 */
+/** 上下文恢复后只用小预设 IBL，保留已缩小的 2D 全景当背景，不再烤 PMREM。 */
 function rebuildEnvironmentAfterContextRestore() {
+  const keepBg = envBg
   const plan = webglContextRestorePlan({ hasCpuEnvBackground: hasCpuEnvBackground() })
   panoDiagEvent('webgl:restore-plan', plan)
   envLoadGuard.invalidate()
   invalidatePanoInflight()
   envPanoramaBootPromise = null
   envPanoPrefetch = null
+  envBg = null
   disposeGpuEnvironment()
-  if (plan.action === 'pmrem-from-cpu-bg') {
-    try {
-      const rt = pmremGen().fromEquirectangular(envBg)
-      setEnvFromRT(rt, envBg)
-    } catch (e) {
-      panoDiagEvent('webgl:restore-pmrem-fail', { message: e?.message || String(e) })
-      applyEnvFallback()
-    }
-  } else {
-    applyEnvFallback()
+  applyEnvFallback()
+  if (keepBg) {
+    envBg = keepBg
+    if (cfg.environment?.visibleBackground && !panoDiag.skipVisibleBg) scene.background = keepBg
   }
   applyEnvironment()
   if (model) applyMaterial()
@@ -1244,7 +1329,7 @@ function prefetchPanoramaTexture(url) {
   if (envPanoPrefetch?.url === url) return envPanoPrefetch.promise
   panoDiagEvent('pano:prefetch-start', { url })
   const promise = new Promise((resolve, reject) => {
-    loadTextureWithFallback(url, tex => {
+    loadPanoramaTexture(url, tex => {
       tex.mapping = THREE.EquirectangularReflectionMapping
       tex.colorSpace = THREE.SRGBColorSpace
       panoDiagEvent('pano:prefetch-done', { w: tex.image?.width, h: tex.image?.height })
@@ -1298,7 +1383,7 @@ function panoramaIBL(url, opts = {}) {
       prefetched.promise.then(tex => finishOk(tex)).catch(finishErr)
       return
     }
-    loadTextureWithFallback(url, finishOk, finishErr)
+    loadPanoramaTexture(url, finishOk, finishErr)
   })
   envPanoInflight = entry
   return entry.promise

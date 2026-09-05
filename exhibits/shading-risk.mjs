@@ -8,24 +8,19 @@ function n(v, d = 0) {
   return Number.isFinite(x) ? x : d
 }
 
-/**
- * @param {object} s
- * @param {number} [s.configMetalness]
- * @param {number} [s.materialMetalnessMax]
- * @param {boolean} [s.hasSceneEnvironment]
- * @param {boolean} [s.backgroundIsTexture]
- * @param {boolean} [s.hasBaseColorTexture]
- * @param {boolean} [s.mapImageMissing]
- * @param {number} [s.maxAlbedoEdge]
- */
-/**
- * GPU 上下文丢了之后不能再拉一次全景原图。
- * 图1 的绿字已经证明：restore 后立刻 kick 5000 宽 JPEG，下一次就是 Safari「重複發生問題」。
- */
+/** 全景/贴图按最大边缩小；未超限则原样返回。 */
+export function resizeToMaxWidth(w, h, maxWidth) {
+  const W = n(w), H = n(h), M = n(maxWidth)
+  if (!M || !W || W <= M) return { w: W, h: H, scaled: false }
+  return { w: M, h: Math.max(1, Math.round(H * (M / W))), scaled: true }
+}
+
 export function webglContextRestorePlan(s = {}) {
   return {
     refetchPanorama: false,
-    action: s.hasCpuEnvBackground === true ? 'pmrem-from-cpu-bg' : 'preset-or-room',
+    rebuildPmrem: false,
+    keepCpuBackground: s.hasCpuEnvBackground === true,
+    action: 'preset-or-room',
   }
 }
 

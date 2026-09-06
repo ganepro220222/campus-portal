@@ -30,7 +30,7 @@ function test(name, fn) {
 
 test('collectStagingEditorRelPaths includes editor and server deps', () => {
   const paths = collectStagingEditorRelPaths()
-  for (const need of ['player.html', 'studio.html', 'pano-check.mjs', 'exhibit-create.mjs', 'leader-geom.js', 'shading-risk.mjs']) {
+  for (const need of ['player.html', 'studio.html', 'pano-check.mjs', 'exhibit-create.mjs', 'leader-geom.js', 'shading-risk.mjs', 'image-head.mjs']) {
     assert.ok(paths.includes(need), `missing ${need}`)
   }
   assert.ok(!paths.some(p => /^craft-/.test(p)), 'must not include exhibit content dirs')

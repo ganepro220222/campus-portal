@@ -437,11 +437,26 @@ function webpVP8X(w, h) {
   b.writeUIntLE(w - 1, 24, 3); b.writeUIntLE(h - 1, 27, 3)
   return b
 }
+function webpVP8(w, h) {
+  const b = Buffer.alloc(30)
+  b.write('RIFF', 0); b.writeUInt32LE(22, 4); b.write('WEBP', 8); b.write('VP8 ', 12)
+  b.writeUInt16LE(w & 0x3fff, 26); b.writeUInt16LE(h & 0x3fff, 28)
+  return b
+}
+function webpVP8L(w, h) {
+  const b = Buffer.alloc(25)
+  b.write('RIFF', 0); b.writeUInt32LE(17, 4); b.write('WEBP', 8); b.write('VP8L', 12)
+  b[20] = 0x2f
+  b.writeUInt32LE(((w - 1) & 0x3fff) | (((h - 1) & 0x3fff) << 14), 21)
+  return b
+}
 
 test('imageSize：PNG / JPEG / WebP 三种图头都能读出尺寸', () => {
   assert.deepEqual(imageSize(pngHeader(2048, 1024)), { width: 2048, height: 1024 })
   assert.deepEqual(imageSize(jpegHeader(4096, 2048)), { width: 4096, height: 2048 })
   assert.deepEqual(imageSize(webpVP8X(3000, 1500)), { width: 3000, height: 1500 })
+  assert.deepEqual(imageSize(webpVP8(4096, 2048)), { width: 4096, height: 2048 })
+  assert.deepEqual(imageSize(webpVP8L(8000, 4000)), { width: 8000, height: 4000 })
 })
 
 test('imageSize：认不出的字节一律返回 null（宁可漏，不可错）', () => {

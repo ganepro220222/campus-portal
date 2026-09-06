@@ -3,6 +3,10 @@
  * 不猜设备，只根据当时能读到的材质 / 环境 / 贴图事实分类。
  */
 
+import { readImageSize } from './image-head.mjs'
+
+export { readImageSize }
+
 function n(v, d = 0) {
   const x = Number(v)
   return Number.isFinite(x) ? x : d
@@ -13,6 +17,66 @@ export function resizeToMaxWidth(w, h, maxWidth) {
   const W = n(w), H = n(h), M = n(maxWidth)
   if (!M || !W || W <= M) return { w: W, h: H, scaled: false }
   return { w: M, h: Math.max(1, Math.round(H * (M / W))), scaled: true }
+}
+
+/**
+ * strict 受限解码：尺寸未知不得完整解码。
+ * size 可用 { w, h } 或 { width, height }。
+ */
+export function constrainedDecodeTarget(size, maxWidth) {
+  const maxW = n(maxWidth)
+  if (!(maxW > 0)) return { action: 'unrestricted' }
+  const w = n(size?.w ?? size?.width)
+  const h = n(size?.h ?? size?.height)
+  if (!(w > 0)) return { action: 'env-fallback', reason: 'unknown-size' }
+  return { action: 'decode', ...resizeToMaxWidth(w, h, maxW) }
+}
+
+const TEXTURE_SCALAR_KEYS = [
+  'colorSpace', 'wrapS', 'wrapT', 'flipY', 'rotation', 'matrixAutoUpdate',
+  'channel', 'anisotropy', 'minFilter', 'magFilter', 'generateMipmaps', 'mapping',
+  'premultiplyAlpha',
+]
+const TEXTURE_VEC2_KEYS = ['offset', 'repeat', 'center']
+
+/** 复制采样/UV，避免 canvas 降采样丢掉 KHR_texture_transform。 */
+export function copyTextureSampling(src, dst) {
+  if (!src || !dst) return dst
+  for (const k of TEXTURE_SCALAR_KEYS) {
+    if (src[k] !== undefined) dst[k] = src[k]
+  }
+  for (const k of TEXTURE_VEC2_KEYS) {
+    const v = src[k]
+    if (!v) continue
+    if (dst[k] && typeof dst[k].copy === 'function') dst[k].copy(v)
+    else if (typeof v.clone === 'function') dst[k] = v.clone()
+    else dst[k] = { x: v.x, y: v.y }
+  }
+  if (typeof dst.updateMatrix === 'function') dst.updateMatrix()
+  dst.needsUpdate = true
+  return dst
+}
+
+/**
+ * 多材质共享同一贴图时只降采样一次，返回应 dispose 的原纹理。
+ * downscale(tex) 不得 dispose。
+ */
+export function applySharedMapDownscale(materials, downscale) {
+  const seen = new Map()
+  const toDispose = []
+  for (const m of materials || []) {
+    const tex = m?.map
+    if (!tex) continue
+    if (seen.has(tex)) {
+      m.map = seen.get(tex)
+      continue
+    }
+    const next = downscale(tex) || tex
+    seen.set(tex, next)
+    if (next !== tex) toDispose.push(tex)
+    m.map = next
+  }
+  return toDispose
 }
 
 export function webglContextRestorePlan(s = {}) {
@@ -97,25 +161,7 @@ export function summarizeGltfMaterials(json) {
 }
 
 export function readPngOrJpegSize(bytes) {
-  if (!bytes || bytes.length < 24) return null
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
-    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-    return { w: dv.getUint32(16), h: dv.getUint32(20), kind: 'png' }
-  }
-  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
-    let i = 2
-    while (i + 9 < bytes.length) {
-      if (bytes[i] !== 0xff) break
-      const marker = bytes[i + 1]
-      const len = (bytes[i + 2] << 8) | bytes[i + 3]
-      if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
-        return { w: (bytes[i + 7] << 8) | bytes[i + 8], h: (bytes[i + 5] << 8) | bytes[i + 6], kind: 'jpeg' }
-      }
-      if (len < 2) break
-      i += 2 + len
-    }
-  }
-  return null
+  return readImageSize(bytes)
 }
 
 export function parseGlbJson(buf) {

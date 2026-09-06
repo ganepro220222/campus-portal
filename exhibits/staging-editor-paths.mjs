@@ -36,6 +36,7 @@ export const STAGING_EXHIBITS_CODE_EXTRA = [
   'exhibit_create.py',
   'new-exhibit.mjs',
   'shading-risk.mjs',
+  'image-head.mjs',
 ]
 
 export const STAGING_EDITOR_STATIC_DIRS = ['_template', '_server']

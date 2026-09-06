@@ -426,7 +426,7 @@ import { applyExposureToCfg, configFetchUrl, configExportFilename, configTimeout
 import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, ENV_PRESET_KEYS, defaultPosition, isLightOn, effectiveIntensity, positionToAngles, withAngle, defaultLights, diagnoseBrightness, brightnessInputs, resolveShadow, shadowWillLand, resolveEnvSource, supportsVisibleBackgroundForSource, createEnvLoadGuard } from './light-rig.mjs'
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
-import { classifyIosBlackLook, webglContextRestorePlan, readPngOrJpegSize, resizeToMaxWidth } from './shading-risk.mjs'
+import { classifyIosBlackLook, webglContextRestorePlan, readImageSize, constrainedDecodeTarget, applySharedMapDownscale, copyTextureSampling } from './shading-risk.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -483,8 +483,9 @@ function textureFromImageBitmap(bitmap) {
 }
 function decodePanoramaBlob(blob, maxW) {
   return blob.slice(0, 262144).arrayBuffer().then(async buf => {
-    const sz = readPngOrJpegSize(new Uint8Array(buf))
-    const target = resizeToMaxWidth(sz?.w || 0, sz?.h || 0, maxW)
+    const sz = readImageSize(new Uint8Array(buf))
+    const target = constrainedDecodeTarget(sz, maxW)
+    if (target.action === 'env-fallback') throw new Error(target.reason || 'unknown-image-size')
     const opts = {
       imageOrientation: 'none',
       ...(target.scaled ? { resizeWidth: target.w, resizeHeight: target.h, resizeQuality: 'high' } : {}),
@@ -931,30 +932,25 @@ function downscaleMapIfHuge(tex, maxEdge) {
   cv.height = nh
   cv.getContext('2d').drawImage(img, 0, 0, nw, nh)
   const out = new THREE.CanvasTexture(cv)
-  out.colorSpace = tex.colorSpace
-  out.wrapS = tex.wrapS
-  out.wrapT = tex.wrapT
-  out.flipY = tex.flipY
-  tex.image = null
-  tex.dispose()
+  copyTextureSampling(tex, out)
   return out
 }
 function downscaleHugeAlbedoMaps() {
   if (!strictWebKit || !model) return
-  let changed = 0
+  const materials = []
   model.traverse(o => {
     if (!o.isMesh) return
-    ;[].concat(o.material).forEach(m => {
-      if (!m?.map) return
-      const next = downscaleMapIfHuge(m.map, 2048)
-      if (next !== m.map) {
-        m.map = next
-        m.needsUpdate = true
-        changed++
-      }
-    })
+    ;[].concat(o.material).forEach(m => { if (m?.map) materials.push(m) })
   })
-  if (changed) panoDiagEvent('shading:albedo-downscaled', { count: changed, maxEdge: 2048 })
+  const originals = applySharedMapDownscale(materials, tex => downscaleMapIfHuge(tex, 2048))
+  for (const tex of originals) {
+    tex.image = null
+    tex.dispose()
+  }
+  if (originals.length) {
+    for (const m of materials) m.needsUpdate = true
+    panoDiagEvent('shading:albedo-downscaled', { count: originals.length, maxEdge: 2048 })
+  }
 }
 /** 环境 IBL 切换后刷新材质绑定（部分 iOS WebKit 驱动不会自动拾取 scene.environment 变更） */
 function syncMaterialsAfterEnvironmentChange() {

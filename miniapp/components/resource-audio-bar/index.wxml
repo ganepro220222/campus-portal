@@ -29,6 +29,7 @@
         <text class="rab-time">{{durationText}}</text>
       </view>
       <text wx:if="{{error}}" class="rab-error">{{error}}</text>
+      <text wx:elif="{{hint}}" class="rab-hint">{{hint}}</text>
     </view>
   </view>
 </view>

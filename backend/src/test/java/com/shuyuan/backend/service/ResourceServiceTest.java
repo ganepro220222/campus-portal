@@ -16,7 +16,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,6 +62,9 @@ class ResourceServiceTest {
     @AfterEach
     void clear() {
         MemberContext.clear();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clear();
+        }
     }
 
     @Test
@@ -122,6 +128,14 @@ class ResourceServiceTest {
         verify(eventLogService).record("download", "resource", RESOURCE_ID);
         verify(pointService).award(MEMBER_ID, "download_resource");
         verify(resourceMapper).incrDownloadCount(RESOURCE_ID);
+        verify(valueOps).set(
+                eq(ResourceService.DOWNLOAD_TICKET_PENDING_PREFIX + "a".repeat(32)),
+                eq(MEMBER_ID + ":" + RESOURCE_ID),
+                eq(ResourceService.DOWNLOAD_TICKET_PENDING_TTL));
+        verify(valueOps).set(
+                eq(ResourceService.DOWNLOAD_TICKET_USED_PREFIX + "a".repeat(32)),
+                eq("1"),
+                eq(ResourceService.DOWNLOAD_TICKET_USED_TTL));
     }
 
     @Test
@@ -228,6 +242,71 @@ class ResourceServiceTest {
         ArgumentCaptor<DownloadRecord> captor = ArgumentCaptor.forClass(DownloadRecord.class);
         verify(downloadRecordMapper).insert(captor.capture());
         assertEquals(MEMBER_ID, captor.getValue().getMemberId());
+        verify(valueOps).set(
+                eq(ResourceService.DOWNLOAD_TICKET_PREFIX + "e".repeat(32)),
+                eq(MEMBER_ID + ":" + RESOURCE_ID),
+                eq(ResourceService.DOWNLOAD_TICKET_TTL));
+        verify(valueOps, never()).set(
+                eq(ResourceService.DOWNLOAD_TICKET_USED_PREFIX + "e".repeat(32)),
+                anyString(),
+                any());
+    }
+
+    @Test
+    void completeDownload_marksUsedOnlyAfterCommit() {
+        TransactionSynchronizationManager.initSynchronization();
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(activeResource());
+        when(resourceMapper.incrDownloadCount(RESOURCE_ID)).thenReturn(1);
+        stubTicket("f".repeat(32), MEMBER_ID + ":" + RESOURCE_ID);
+
+        Map<String, Object> result = resourceService.completeDownload(RESOURCE_ID, "f".repeat(32));
+        assertEquals(Boolean.TRUE, result.get("recorded"));
+        verify(valueOps, never()).set(
+                eq(ResourceService.DOWNLOAD_TICKET_USED_PREFIX + "f".repeat(32)),
+                anyString(),
+                any());
+
+        triggerAfterCompletion(TransactionSynchronization.STATUS_COMMITTED);
+        verify(valueOps).set(
+                eq(ResourceService.DOWNLOAD_TICKET_USED_PREFIX + "f".repeat(32)),
+                eq("1"),
+                eq(ResourceService.DOWNLOAD_TICKET_USED_TTL));
+    }
+
+    @Test
+    void completeDownload_restoresTicketWhenTransactionRollsBack() {
+        TransactionSynchronizationManager.initSynchronization();
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(activeResource());
+        stubTicket("9".repeat(32), MEMBER_ID + ":" + RESOURCE_ID);
+        doThrow(new RuntimeException("db")).when(downloadRecordMapper).insert(any(DownloadRecord.class));
+
+        assertThrows(RuntimeException.class,
+                () -> resourceService.completeDownload(RESOURCE_ID, "9".repeat(32)));
+        triggerAfterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+        verify(valueOps).set(
+                eq(ResourceService.DOWNLOAD_TICKET_PREFIX + "9".repeat(32)),
+                eq(MEMBER_ID + ":" + RESOURCE_ID),
+                eq(ResourceService.DOWNLOAD_TICKET_TTL));
+        verify(valueOps, never()).set(
+                eq(ResourceService.DOWNLOAD_TICKET_USED_PREFIX + "9".repeat(32)),
+                anyString(),
+                any());
+        verify(pointService, never()).award(any(), anyString());
+    }
+
+    @Test
+    void completeDownload_pendingInFlightAsksClientToRetry() {
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(activeResource());
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.getAndDelete(ResourceService.DOWNLOAD_TICKET_PREFIX + "8".repeat(32))).thenReturn(null);
+        when(redis.hasKey(ResourceService.DOWNLOAD_TICKET_USED_PREFIX + "8".repeat(32))).thenReturn(false);
+        when(redis.hasKey(ResourceService.DOWNLOAD_TICKET_PENDING_PREFIX + "8".repeat(32))).thenReturn(true);
+
+        var ex = assertThrows(BusinessException.class,
+                () -> resourceService.completeDownload(RESOURCE_ID, "8".repeat(32)));
+        assertEquals(503, ex.getCode());
+        verify(downloadRecordMapper, never()).insert(any(DownloadRecord.class));
     }
 
     @Test
@@ -242,6 +321,13 @@ class ResourceServiceTest {
     private void stubTicket(String token, String bound) {
         when(redis.opsForValue()).thenReturn(valueOps);
         when(valueOps.getAndDelete(ResourceService.DOWNLOAD_TICKET_PREFIX + token)).thenReturn(bound);
+    }
+
+    private static void triggerAfterCompletion(int status) {
+        List<TransactionSynchronization> syncs = TransactionSynchronizationManager.getSynchronizations();
+        for (TransactionSynchronization sync : syncs) {
+            sync.afterCompletion(status);
+        }
     }
 
     private Resource activeResource() {

@@ -76,3 +76,9 @@
   font-size: 20rpx;
   color: #C0392B;
 }
+.rab-hint {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: var(--muted);
+}

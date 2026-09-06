@@ -17,7 +17,8 @@ function emptyState() {
     progress: 0,
     currentText: '00:00',
     durationText: '00:00',
-    error: ''
+    error: '',
+    hint: ''
   }
 }
 
@@ -26,6 +27,14 @@ let _state = emptyState()
 let _listeners = []
 let _seeking = false
 let _onUnplayable = null
+let _pendingSettle = null
+
+const AUDIO_SLOW_HINT_MS = 15000
+const AUDIO_GIVE_UP_MS = 90000
+const _timeouts = {
+  slowMs: AUDIO_SLOW_HINT_MS,
+  giveUpMs: AUDIO_GIVE_UP_MS
+}
 
 function snapshot() {
   return { ..._state }
@@ -79,28 +88,49 @@ function subscribe(fn) {
   }
 }
 
-const AUDIO_READY_TIMEOUT_MS = 15000
-
 function play(opts = {}) {
   return new Promise((resolve, reject) => {
     let settled = false
-    let timer = null
+    let slowTimer = null
+    let giveUpTimer = null
+    const clearTimers = () => {
+      if (slowTimer) clearTimeout(slowTimer)
+      if (giveUpTimer) clearTimeout(giveUpTimer)
+      slowTimer = null
+      giveUpTimer = null
+    }
     const succeed = () => {
       if (settled) return
       settled = true
-      if (timer) clearTimeout(timer)
+      _pendingSettle = null
+      clearTimers()
+      _state.hint = ''
+      _state.error = ''
+      emit()
       resolve()
     }
-    const fail = (err) => {
+    const fail = (err, options = {}) => {
       if (settled) return
       settled = true
-      if (timer) clearTimeout(timer)
-      if (_onUnplayable) _onUnplayable()
+      _pendingSettle = null
+      clearTimers()
+      if (options.destroy !== false) {
+        destroyCtx()
+      }
+      _state.playing = false
+      _state.hint = ''
+      if (options.error != null) {
+        _state.error = options.error
+      }
+      emit()
+      if (options.copy !== false && _onUnplayable) _onUnplayable()
       reject(err instanceof Error ? err : new Error('audio-unplayable'))
     }
+    _pendingSettle = { succeed, fail }
 
     const url = opts.url
     if (!url) {
+      _pendingSettle = null
       reject(new Error('no-url'))
       return
     }
@@ -114,7 +144,7 @@ function play(opts = {}) {
         error: '当前环境无法播放音频'
       }
       emit()
-      fail(new Error('audio-unavailable'))
+      fail(new Error('audio-unavailable'), { destroy: false, error: '当前环境无法播放音频' })
       return
     }
     destroyCtx()
@@ -141,6 +171,7 @@ function play(opts = {}) {
       succeed()
     })
     _ctx.onPlay(() => {
+      if (!_ctx) return
       succeed()
     })
     _ctx.onEnded(() => {
@@ -155,10 +186,19 @@ function play(opts = {}) {
     _ctx.onError(() => {
       _state.playing = false
       _state.error = '无法播放该音频'
+      _state.hint = ''
       emit()
-      fail(new Error('audio-unplayable'))
+      fail(new Error('audio-unplayable'), { destroy: false, error: '无法播放该音频' })
     })
-    timer = setTimeout(() => fail(new Error('audio-timeout')), AUDIO_READY_TIMEOUT_MS)
+    // 15 秒只是弱网提示：继续等 canplay/onPlay，避免「已失败但稍后突然出声且永不记账」
+    slowTimer = setTimeout(() => {
+      if (settled) return
+      _state.hint = '加载较慢，仍在尝试'
+      emit()
+    }, _timeouts.slowMs)
+    giveUpTimer = setTimeout(() => {
+      fail(new Error('audio-timeout'), { error: '音频加载超时，请重试' })
+    }, _timeouts.giveUpMs)
     _ctx.play()
     emit()
   })
@@ -201,6 +241,9 @@ function seekPercent(percent) {
 }
 
 function stop() {
+  if (_pendingSettle) {
+    _pendingSettle.fail(new Error('audio-cancelled'), { copy: false, error: '' })
+  }
   destroyCtx()
   _onUnplayable = null
   _seeking = false
@@ -210,6 +253,11 @@ function stop() {
 
 function destroy() {
   stop()
+}
+
+function _setReadyTimeouts(slowMs, giveUpMs) {
+  _timeouts.slowMs = slowMs == null ? AUDIO_SLOW_HINT_MS : slowMs
+  _timeouts.giveUpMs = giveUpMs == null ? AUDIO_GIVE_UP_MS : giveUpMs
 }
 
 module.exports = {
@@ -223,5 +271,8 @@ module.exports = {
   beginSeek,
   seekPercent,
   stop,
-  destroy
+  destroy,
+  AUDIO_SLOW_HINT_MS,
+  AUDIO_GIVE_UP_MS,
+  _setReadyTimeouts
 }

@@ -96,11 +96,16 @@ async function run() {
   pendingPosts[2].reject(new Error('network'))
   await flushPromises()
   await flushPromises()
+  assert.strictEqual(posts.length, 4, '确认失败应再用同一 token 重试一次')
+  assert.match(posts[3].url, /\/resources\/4\/download-complete$/)
+  pendingPosts[3].reject(new Error('network'))
+  await flushPromises()
+  await flushPromises()
   assert.strictEqual(recorded, 0, '确认失败不得把列表次数加一')
   assert.ok(toasts.includes('文件已打开，但下载记录同步失败'))
 
   downloadResource(5, { onRecorded: () => { recorded += 1 } })
-  pendingPosts[3].resolve({
+  pendingPosts[4].resolve({
     fileUrl: 'https://cdn.yunmanvr.com/videos/ok2.mp4',
     fileType: 'mp4',
     name: '好视频2',
@@ -108,10 +113,13 @@ async function run() {
   })
   await flushPromises()
   await flushPromises()
-  pendingPosts[4].resolve({ recorded: true })
+  pendingPosts[5].reject(new Error('network'))
   await flushPromises()
   await flushPromises()
-  assert.strictEqual(recorded, 1)
+  pendingPosts[6].resolve({ recorded: true })
+  await flushPromises()
+  await flushPromises()
+  assert.strictEqual(recorded, 1, '第一次确认失败、重试成功应记账')
 
   console.log('[resourceDownloadConfirm.test] PASS')
 }

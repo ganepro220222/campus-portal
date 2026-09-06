@@ -9,7 +9,8 @@ Component({
     durationText: '00:00',
     progress: 0,
     duration: 0,
-    error: ''
+    error: '',
+    hint: ''
   },
 
   lifetimes: {
@@ -23,7 +24,8 @@ Component({
           durationText: snap.durationText || '00:00',
           progress: snap.progress || 0,
           duration: snap.duration || 0,
-          error: snap.error || ''
+          error: snap.error || '',
+          hint: snap.hint || ''
         })
       })
     },

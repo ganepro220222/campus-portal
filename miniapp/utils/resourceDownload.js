@@ -389,7 +389,13 @@ async function confirmDownloadRecord(resourceId, token) {
   if (!token) {
     throw new Error('download-token-missing')
   }
-  return post(`/resources/${resourceId}/download-complete`, { token })
+  const url = `/resources/${resourceId}/download-complete`
+  try {
+    return await post(url, { token })
+  } catch (first) {
+    // 服务端失败会把凭证放回，同 token 再试一次即可补上漏记
+    return post(url, { token })
+  }
 }
 
 function copyUrlFallback(url, name) {

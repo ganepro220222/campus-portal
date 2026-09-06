@@ -12,6 +12,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
@@ -29,8 +31,10 @@ public class ResourceService {
     static final int MAX_FILE_CHUNK_BYTES = 4 * 1024 * 1024;
     static final Duration DOWNLOAD_TICKET_TTL = Duration.ofMinutes(30);
     static final Duration DOWNLOAD_TICKET_USED_TTL = Duration.ofHours(24);
+    static final Duration DOWNLOAD_TICKET_PENDING_TTL = Duration.ofMinutes(2);
     static final String DOWNLOAD_TICKET_PREFIX = "download:ticket:";
     static final String DOWNLOAD_TICKET_USED_PREFIX = "download:ticket:used:";
+    static final String DOWNLOAD_TICKET_PENDING_PREFIX = "download:ticket:pending:";
 
     private final ResourceMapper resourceMapper;
     private final DownloadRecordMapper downloadRecordMapper;
@@ -95,33 +99,47 @@ public class ResourceService {
 
     /**
      * 客户端在文档打开成功或音视频进入可播放后调用。同一凭证只确认一次。
+     *
+     * <p>Redis 的 used 标记只在数据库事务提交后写入；写入失败则把原 ticket 放回，
+     * 同一 token 可以再确认一次。否则会出现「库已回滚、凭证却已作废」的永久漏记。
      */
     @Transactional
     public Map<String, Object> completeDownload(Long id, String token) {
         Long memberId = requireMemberId();
         Resource resource = requireResource(id);
-        TicketConsume consume = consumeDownloadTicket(token, memberId, id);
-        if (consume == TicketConsume.ALREADY) {
+        TicketTake take = takeDownloadTicket(token, memberId, id);
+        if (take.consume() == TicketConsume.ALREADY) {
             return Map.of("recorded", false);
         }
-        if (consume != TicketConsume.OK) {
+        if (take.consume() != TicketConsume.OK) {
             throw new BusinessException(400, "下载凭证无效或已过期");
         }
 
-        DownloadRecord record = new DownloadRecord();
-        record.setMemberId(memberId);
-        record.setResourceId(id);
-        record.setFileName(resource.getName());
-        record.setDownloadedAt(LocalDateTime.now());
-        downloadRecordMapper.insert(record);
-        eventLogService.record("download", "resource", id);
-        pointService.award(memberId, "download_resource");
+        boolean sync = TransactionSynchronizationManager.isSynchronizationActive();
+        try {
+            DownloadRecord record = new DownloadRecord();
+            record.setMemberId(memberId);
+            record.setResourceId(id);
+            record.setFileName(resource.getName());
+            record.setDownloadedAt(LocalDateTime.now());
+            downloadRecordMapper.insert(record);
+            eventLogService.record("download", "resource", id);
+            pointService.award(memberId, "download_resource");
 
-        int affected = resourceMapper.incrDownloadCount(id);
-        if (affected == 0) {
-            throw new BusinessException(404, "资源不存在");
+            int affected = resourceMapper.incrDownloadCount(id);
+            if (affected == 0) {
+                throw new BusinessException(404, "资源不存在");
+            }
+            if (!sync) {
+                markDownloadTicketUsed(take.token());
+            }
+            return Map.of("recorded", true);
+        } catch (RuntimeException e) {
+            if (!sync) {
+                restoreDownloadTicket(take.token(), take.bound());
+            }
+            throw e;
         }
-        return Map.of("recorded", true);
     }
 
     private String issueDownloadTicket(Long memberId, Long resourceId) {
@@ -137,23 +155,82 @@ public class ResourceService {
         return token;
     }
 
-    private TicketConsume consumeDownloadTicket(String token, Long memberId, Long resourceId) {
+    private TicketTake takeDownloadTicket(String token, Long memberId, Long resourceId) {
         if (token == null || !token.matches("[a-fA-F0-9]{32}")) {
-            return TicketConsume.INVALID;
+            return new TicketTake(TicketConsume.INVALID, token, null);
         }
         String expected = memberId + ":" + resourceId;
         String ticketKey = DOWNLOAD_TICKET_PREFIX + token;
         String usedKey = DOWNLOAD_TICKET_USED_PREFIX + token;
+        String pendingKey = DOWNLOAD_TICKET_PENDING_PREFIX + token;
         try {
             String bound = redis.opsForValue().getAndDelete(ticketKey);
             if (bound != null) {
-                redis.opsForValue().set(usedKey, "1", DOWNLOAD_TICKET_USED_TTL);
-                return expected.equals(bound) ? TicketConsume.OK : TicketConsume.INVALID;
+                if (!expected.equals(bound)) {
+                    redis.opsForValue().set(usedKey, "1", DOWNLOAD_TICKET_USED_TTL);
+                    return new TicketTake(TicketConsume.INVALID, token, bound);
+                }
+                redis.opsForValue().set(pendingKey, bound, DOWNLOAD_TICKET_PENDING_TTL);
+                registerTicketAfterCompletion(token, bound);
+                return new TicketTake(TicketConsume.OK, token, bound);
             }
-            return Boolean.TRUE.equals(redis.hasKey(usedKey)) ? TicketConsume.ALREADY : TicketConsume.INVALID;
+            if (Boolean.TRUE.equals(redis.hasKey(usedKey))) {
+                return new TicketTake(TicketConsume.ALREADY, token, null);
+            }
+            if (Boolean.TRUE.equals(redis.hasKey(pendingKey))) {
+                throw new BusinessException(503, "下载记录正在同步，请稍后重试");
+            }
+            return new TicketTake(TicketConsume.INVALID, token, null);
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             throw new BusinessException(503, "服务繁忙，请稍后重试");
         }
+    }
+
+    private void registerTicketAfterCompletion(String token, String bound) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_COMMITTED) {
+                    markDownloadTicketUsed(token);
+                } else {
+                    restoreDownloadTicket(token, bound);
+                }
+            }
+        });
+    }
+
+    private void markDownloadTicketUsed(String token) {
+        if (token == null) {
+            return;
+        }
+        try {
+            redis.opsForValue().set(
+                    DOWNLOAD_TICKET_USED_PREFIX + token, "1", DOWNLOAD_TICKET_USED_TTL);
+            redis.delete(DOWNLOAD_TICKET_PENDING_PREFIX + token);
+        } catch (Exception ignored) {
+            // 库已提交时不再因 Redis 标记失败把成功响应打成 500
+        }
+    }
+
+    private void restoreDownloadTicket(String token, String bound) {
+        if (token == null || bound == null) {
+            return;
+        }
+        try {
+            redis.opsForValue().set(
+                    DOWNLOAD_TICKET_PREFIX + token, bound, DOWNLOAD_TICKET_TTL);
+            redis.delete(DOWNLOAD_TICKET_PENDING_PREFIX + token);
+        } catch (Exception e) {
+            throw new BusinessException(503, "服务繁忙，请稍后重试");
+        }
+    }
+
+    private record TicketTake(TicketConsume consume, String token, String bound) {
     }
 
     private enum TicketConsume {

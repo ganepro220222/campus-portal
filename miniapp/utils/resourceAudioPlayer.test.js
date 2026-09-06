@@ -212,6 +212,37 @@ async function testTimeoutToggleCallsRetry() {
   delete require.cache[require.resolve('./resourceAudioPlayer')]
 }
 
+async function testMidplayErrorShowsRetry() {
+  const { handlers, ctx, originalWx } = installAudioWx()
+  delete require.cache[require.resolve('./resourceAudioPlayer')]
+  const live = require('./resourceAudioPlayer')
+  let retried = 0
+  const ready = live.play({
+    id: 8,
+    url: 'https://cdn.example.com/a.mp3',
+    name: '导览',
+    onRetry: () => { retried += 1 }
+  })
+  handlers.canplay()
+  await ready
+  assert.strictEqual(live.snapshot().playing, true)
+  assert.strictEqual(ctx.destroyed, false)
+  handlers.error()
+  const after = live.snapshot()
+  assert.strictEqual(after.playing, false, '开播后中途错误不得继续显示播放中')
+  assert.strictEqual(after.error, '播放中断，点击重试')
+  assert.strictEqual(after.canRetry, true)
+  assert.strictEqual(ctx.destroyed, true)
+  const playCount = ctx.playCount
+  live.resume()
+  assert.strictEqual(ctx.playCount, playCount, '中途错误后 resume 不得复用旧 ctx')
+  live.toggle()
+  assert.strictEqual(retried, 1, '中途错误后点击应走完整重试')
+  live.stop()
+  global.wx = originalWx
+  delete require.cache[require.resolve('./resourceAudioPlayer')]
+}
+
 async function testTimeoutWithoutRetryToasts() {
   const { originalWx, toasts } = installAudioWx()
   delete require.cache[require.resolve('./resourceAudioPlayer')]
@@ -240,6 +271,7 @@ testReadyPromise()
   .then(testStopCancelsPending)
   .then(testErrorDestroysAndToggleDoesNotReplay)
   .then(testTimeoutToggleCallsRetry)
+  .then(testMidplayErrorShowsRetry)
   .then(testTimeoutWithoutRetryToasts)
   .then(() => console.log('resourceAudioPlayer.test.js ok'))
   .catch((error) => {

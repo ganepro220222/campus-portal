@@ -113,6 +113,14 @@ function play(opts = {}) {
       emit()
       resolve()
     }
+    const markPlaybackError = (errorText) => {
+      clearTimers()
+      _state.playing = false
+      _state.hint = ''
+      _state.error = errorText
+      destroyCtx()
+      emit()
+    }
     const fail = (err, options = {}) => {
       if (settled) return
       settled = true
@@ -189,7 +197,12 @@ function play(opts = {}) {
       emit()
     })
     _ctx.onError(() => {
-      fail(new Error('audio-unplayable'), { error: '无法播放该音频，点击重试' })
+      if (!settled) {
+        fail(new Error('audio-unplayable'), { error: '无法播放该音频，点击重试' })
+        return
+      }
+      // 已开播后的中途错误不能反向 reject，但必须把栏切到可重试，避免假播放
+      markPlaybackError('播放中断，点击重试')
     })
     // 15 秒只是弱网提示：继续等 canplay/onPlay，避免「已失败但稍后突然出声且永不记账」
     slowTimer = setTimeout(() => {

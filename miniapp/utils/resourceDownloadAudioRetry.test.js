@@ -122,6 +122,31 @@ async function run() {
   await flushPromises()
   assert.strictEqual(recorded, 1, '重试成功后只记一次下载')
 
+  playJobs[1].opts.onRetry()
+  await flushPromises()
+  await flushPromises()
+  assert.strictEqual(posts.length, 4, '已记账后再重试必须再取新 ticket')
+  assert.match(posts[3].url, /\/resources\/8\/download$/)
+  pendingPosts[3].resolve({
+    fileUrl: 'https://cdn.yunmanvr.com/audios/again.mp3?auth_key=third',
+    fileType: 'mp3',
+    name: '导览',
+    token: 'c'.repeat(32)
+  })
+  await flushPromises()
+  await flushPromises()
+  assert.strictEqual(playJobs.length, 3)
+  assert.strictEqual(playJobs[2].opts.url, 'https://cdn.yunmanvr.com/audios/again.mp3?auth_key=third')
+  playJobs[2].resolve()
+  await flushPromises()
+  await flushPromises()
+  assert.match(posts[4].url, /\/resources\/8\/download-complete$/)
+  assert.deepStrictEqual(posts[4].body, { token: 'c'.repeat(32) })
+  pendingPosts[4].resolve({ recorded: true })
+  await flushPromises()
+  await flushPromises()
+  assert.strictEqual(recorded, 2, '开播后再次完整重试只多记这一次')
+
   console.log('[resourceDownloadAudioRetry.test] PASS')
 }
 

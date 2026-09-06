@@ -87,6 +87,30 @@ if (patch.includes('新闻')) {
   errs.push('sql/patch-builtin-knowledge.sql 出现「新闻」，请改源文件后重新生成')
 }
 
+const hallContentLeaks = ['窑变釉色', '国家级非物质文化遗产牙舟陶', '办学历程、重要里程碑']
+for (const name of sources) {
+  const text = read(path.join('sql/knowledge', name))
+  const leak = hallContentLeaks.find((s) => text.includes(s))
+  if (leak) {
+    errs.push(`sql/knowledge/${name} 在介绍具体展陈（「${leak}」）；馆名问法应引导去详情页参观，不要代写展陈`)
+  }
+}
+
+const retiredTitles = ['使用指南 · 牙舟陶数字展厅', '使用指南 · 交通博物馆与校史馆']
+const updatePatch = read('sql/patch-update-builtin-knowledge-kb-qa.sql')
+if (!/下线已撤回的内置篇/.test(updatePatch)) {
+  errs.push('更新补丁缺少下线已撤回内置篇的删除段')
+}
+if (fs.existsSync(path.join(root, 'sql/knowledge/10-yachou-tao.md'))
+    || fs.existsSync(path.join(root, 'sql/knowledge/11-traffic-campus-halls.md'))) {
+  errs.push('已撤回的分馆使用指南源文件还在 sql/knowledge/，请删掉后重新生成')
+}
+for (const title of retiredTitles) {
+  if (!updatePatch.includes(title)) {
+    errs.push(`更新补丁未下线「${title}」，旧库会继续检索到分馆介绍`)
+  }
+}
+
 // ---------- 3b) 入口说明必须跟小程序真实路由走 ----------
 // 问答会把最佳片段原样返回，写错入口比「没有找到答案」更误导。
 const allSrc = sources.map((name) => read(path.join('sql/knowledge', name))).join('\n')

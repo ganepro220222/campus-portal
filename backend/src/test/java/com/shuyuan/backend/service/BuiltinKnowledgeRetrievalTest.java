@@ -166,8 +166,9 @@ class BuiltinKnowledgeRetrievalTest {
                 new Case("在哪里查看反馈处理进度", "个人中心与消息"),
                 new Case("书院助手每天能问多少次", "知识问答使用说明"),
                 new Case("这个小程序有什么功能", "小程序总览"),
-                new Case("牙舟陶怎么参观", "牙舟陶数字展厅"),
-                new Case("交通博物馆是什么", "交通博物馆与校史馆"),
+                new Case("牙舟陶怎么参观", "线上展馆导览"),
+                new Case("交通博物馆是什么", "线上展馆导览"),
+                new Case("校史馆有哪些章节", "线上展馆导览"),
                 new Case("哪些展馆没有全景", "线上展馆导览"));
 
         List<String> wrong = new ArrayList<>();
@@ -415,6 +416,21 @@ class BuiltinKnowledgeRetrievalTest {
             }
         }
         assertTrue(missed.isEmpty(), "以下真实问题没被判成实质命中：\n" + String.join("\n", missed));
+    }
+
+    @Test
+    void 问具体展馆应落到导览并引导自行参观() {
+        for (String q : List.of("牙舟陶怎么参观", "交通博物馆是什么", "校史馆有哪些章节")) {
+            assertTrue(substantial(q), "「" + q + "」应算实质命中");
+            KnowledgeChunk best = knowledgeService.pickBest(q, ask(q));
+            assertTrue(chunkOwner.get(best.getChunkIndex()).contains("线上展馆导览"),
+                    "「" + q + "」应选中《线上展馆导览》，实际是《" + chunkOwner.get(best.getChunkIndex()) + "》");
+            String text = best.getChunkText();
+            assertTrue(text.contains("自行参观了解") || text.contains("详情页参观了解"),
+                    "「" + q + "」摘录应引导去展馆页参观：" + text);
+            assertFalse(text.contains("窑变釉色"), "不得代写牙舟陶展陈");
+            assertFalse(text.contains("办学历程"), "不得把测试用章节写成某馆特色");
+        }
     }
 
     @Test

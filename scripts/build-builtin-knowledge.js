@@ -26,6 +26,12 @@ const TITLE_ALIASES = {
   '08-ai-assistant.md': ['使用指南 · 书院助手使用说明']
 }
 
+/** 源文件已删、旧库里还在的内置篇。更新补丁必须删掉，否则还会被检索到。 */
+const RETIRED_TITLES = [
+  '使用指南 · 牙舟陶数字展厅',
+  '使用指南 · 交通博物馆与校史馆'
+]
+
 /** 与后端保持一致：TextChunker.CHUNK_SIZE / OVERLAP */
 const CHUNK_SIZE = 500
 const OVERLAP = 50
@@ -202,6 +208,18 @@ function renderUpdate(docs) {
       lines.push(`SELECT @doc_id, ${sqlStr(part)}, ${i}, ${sqlStr(keywords)}, ${part.length}`)
       lines.push('FROM DUAL WHERE @doc_id IS NOT NULL;')
     })
+    lines.push('')
+  }
+
+  if (RETIRED_TITLES.length) {
+    const titleList = RETIRED_TITLES.map(sqlStr).join(', ')
+    const urlList = RETIRED_TITLES.map((t) => sqlStr('builtin://' + t)).join(', ')
+    lines.push('-- 下线已撤回的内置篇（源文件已删除，避免旧库继续被检索到）')
+    lines.push('DELETE c FROM `knowledge_chunk` c')
+    lines.push('INNER JOIN `knowledge_doc` d ON d.`id` = c.`doc_id`')
+    lines.push(`WHERE d.\`title\` IN (${titleList}) OR d.\`file_url\` IN (${urlList});`)
+    lines.push('DELETE FROM `knowledge_doc`')
+    lines.push(`WHERE \`title\` IN (${titleList}) OR \`file_url\` IN (${urlList});`)
     lines.push('')
   }
 

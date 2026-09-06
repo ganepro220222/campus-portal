@@ -18,6 +18,7 @@ const {
   formatResumeClock,
   resolvePlayerProgressStatusText,
   buildProgressResponsePatch,
+  shouldRecoverProgressFromReport,
   shouldNotifyProgressCompletion,
   buildPlayerProgressView,
   shouldAutoSeekOnProgressRetry,
@@ -139,6 +140,54 @@ assert.strictEqual(resolvePlayerProgressStatusText({ progressPercent: 0 }), '开
   )
   assert.strictEqual(keepPrev.progressPercent, 40)
   assert.strictEqual(keepPrev.progressStatusText, '已学习 40%')
+  assert.strictEqual(keepPrev.savedPosition, undefined, '正常上报不得改写续播位置')
+}
+
+{
+  const stillFailed = buildProgressResponsePatch(
+    { progressPercent: 50, completed: false },
+    { progressLoadError: true, progressPercent: 0, completed: false }
+  )
+  assert.strictEqual(stillFailed.progressLoadError, true)
+  assert.strictEqual(stillFailed.progressKnown, false)
+  assert.strictEqual(stillFailed.progressStatusText, '学习进度暂未加载')
+  assert.strictEqual(shouldRecoverProgressFromReport(
+    { progressLoadError: true },
+    { progressPercent: 50 }
+  ), false)
+}
+
+{
+  const recovered = buildProgressResponsePatch(
+    {
+      lastPositionSeconds: 300,
+      progressPercent: 50,
+      completed: false,
+      totalDurationSeconds: 600
+    },
+    { progressLoadError: true, progressPercent: 0, completed: false }
+  )
+  assert.strictEqual(recovered.progressLoadError, false)
+  assert.strictEqual(recovered.progressKnown, true)
+  assert.strictEqual(recovered.progressStatusText, '已学习 50%')
+  assert.strictEqual(recovered.savedPosition, 300)
+  assert.strictEqual(recovered.savedPositionLabel, '5:00')
+  assert.strictEqual(recovered.initialTime, 300)
+  assert.strictEqual(recovered.offerResumeJump, false)
+  assert.strictEqual(shouldRecoverProgressFromReport(
+    { progressLoadError: true },
+    { lastPositionSeconds: 300 }
+  ), true)
+}
+
+{
+  const recoveredZero = buildProgressResponsePatch(
+    { lastPositionSeconds: 0, progressPercent: 0, completed: false },
+    { progressLoadError: true }
+  )
+  assert.strictEqual(recoveredZero.progressLoadError, false)
+  assert.strictEqual(recoveredZero.savedPosition, 0)
+  assert.strictEqual(recoveredZero.progressStatusText, '开始学习')
 }
 
 assert.strictEqual(shouldNotifyProgressCompletion({
@@ -314,6 +363,8 @@ assert.strictEqual(
   assert.match(playerJs, /shouldNotifyProgressCompletion/)
   assert.match(playerJs, /notifyCompletion/)
   assert.match(playerJs, /onHide\(\)\s*\{\s*this\._pageActive = false/s)
+  assert.match(playerJs, /_progressResumeFromReport/)
+  assert.match(playerJs, /_applyResumeFromRecoveredProgress/)
   assert.doesNotMatch(playerJs, /\/progress`\)\.catch\(\(\) => null\)/)
   const playerWxml = fs.readFileSync(path.join(__dirname, '../packageB/course/player.wxml'), 'utf8')
   assert.match(playerWxml, /onRetryProgress/)

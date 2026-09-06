@@ -31,8 +31,14 @@ class KnowledgeQueryLexiconTest {
         assertTrue(KnowledgeQueryLexicon.faqMatches("登录", "怎么登录"));
         assertTrue(KnowledgeQueryLexicon.faqMatches("文创", "文创在哪里看"));
         assertTrue(KnowledgeQueryLexicon.faqMatches("提意见", "提意见"));
+        assertTrue(KnowledgeQueryLexicon.faqMatches("资料在哪", "资料在哪"));
+        assertTrue(KnowledgeQueryLexicon.faqMatches("VR怎么看", "VR怎么看"));
+        assertTrue(KnowledgeQueryLexicon.faqMatches("通知在哪", "通知在哪"));
         assertFalse(KnowledgeQueryLexicon.faqMatches("提意见", "提交意见反馈"));
         assertFalse(KnowledgeQueryLexicon.faqMatches("几个", "展馆有几个"));
         assertFalse(KnowledgeQueryLexicon.faqMatches("天气", "怎么报名"));
+        assertFalse(KnowledgeQueryLexicon.faqMatches("资料在哪", "资源怎么下载"));
+        assertFalse(KnowledgeQueryLexicon.faqMatches("VR怎么看", "怎么进入 VR"));
+        assertFalse(KnowledgeQueryLexicon.faqMatches("通知在哪", "怎么看通知"));
     }
 }

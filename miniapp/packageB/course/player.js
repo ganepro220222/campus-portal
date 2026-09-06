@@ -61,6 +61,7 @@ Page({
     this._progressBaselineSent = false
     this._progressInteracted = false
     this._progressRetrying = false
+    this._progressResumeFromReport = false
     this._completionNotified = false
     this._pageActive = true
 
@@ -71,6 +72,7 @@ Page({
     this._videoRetryCount = 0
     this._progressInteracted = false
     this._progressRetrying = false
+    this._progressResumeFromReport = false
     this._completionNotified = false
     this.setData({
       loadError: false,
@@ -139,6 +141,32 @@ Page({
       return
     }
     this.setData(view)
+  },
+
+  _applyResumeFromRecoveredProgress(patch) {
+    const savedPosition = Math.floor(Number(patch && patch.savedPosition) || 0)
+    const view = {
+      progressLoadError: false,
+      initialTime: savedPosition,
+      savedPosition,
+      savedPositionLabel: (patch && patch.savedPositionLabel) || '',
+      progressPercent: patch && patch.progressPercent,
+      completed: !!(patch && patch.completed)
+    }
+    const action = resolveProgressRetryAction({
+      view,
+      interacted: this._progressInteracted,
+      currentPosition: this._currentPosition
+    })
+    if (action.kind === 'auto-seek') {
+      this._seekToSaved(action.position)
+      wx.showToast({ title: '已恢复至 ' + action.label, icon: 'none' })
+      return
+    }
+    if (action.kind === 'offer-jump') {
+      this.setData({ offerResumeJump: true })
+      wx.showToast({ title: '已找到上次位置 ' + action.label, icon: 'none' })
+    }
   },
 
   _seekToSaved(pos) {
@@ -389,6 +417,7 @@ Page({
         }).then(res => {
           if (res) {
             const wasCompleted = !!this.data.completed
+            const hadLoadError = !!this.data.progressLoadError
             const patch = buildProgressResponsePatch(res, this.data)
             const shouldNotify = shouldNotifyProgressCompletion({
               notifyCompletion,
@@ -398,6 +427,10 @@ Page({
               pageActive: this._pageActive
             })
             this.setData(patch)
+            if (hadLoadError && !patch.progressLoadError && !this._progressResumeFromReport) {
+              this._progressResumeFromReport = true
+              this._applyResumeFromRecoveredProgress(patch)
+            }
             if (patch.completed) {
               this._completionNotified = true
             }

@@ -113,8 +113,13 @@ function readReportedNumber(value, fallback) {
   return Number.isFinite(prev) ? prev : 0
 }
 
+function shouldRecoverProgressFromReport(previous, res) {
+  return !!(previous && previous.progressLoadError && res && res.lastPositionSeconds != null)
+}
+
 /**
  * 把进度接口响应收成页面完整补丁，避免只更新 percent/completed、文案仍停在进入时。
+ * GET 进度失败后，只有上报带回 lastPositionSeconds 才清掉失败条，并带上续播位置。
  */
 function buildProgressResponsePatch(res, previous = {}) {
   const progressPercent = readReportedNumber(
@@ -124,7 +129,17 @@ function buildProgressResponsePatch(res, previous = {}) {
   const completed = res && res.completed != null
     ? !!res.completed
     : !!previous.completed
-  return {
+  const recoveredFromReport = shouldRecoverProgressFromReport(previous, res)
+  if (previous.progressLoadError && !recoveredFromReport) {
+    return {
+      progressPercent,
+      completed,
+      progressKnown: false,
+      progressLoadError: true,
+      progressStatusText: resolvePlayerProgressStatusText({ progressLoadError: true })
+    }
+  }
+  const patch = {
     progressPercent,
     completed,
     progressKnown: true,
@@ -135,6 +150,18 @@ function buildProgressResponsePatch(res, previous = {}) {
       progressPercent
     })
   }
+  if (recoveredFromReport) {
+    const savedPosition = resolveResumeInitialTime({
+      lastPositionSeconds: res.lastPositionSeconds,
+      completed,
+      totalDurationSeconds: res.totalDurationSeconds
+    })
+    patch.initialTime = savedPosition
+    patch.savedPosition = savedPosition
+    patch.savedPositionLabel = formatResumeClock(savedPosition)
+    patch.offerResumeJump = false
+  }
+  return patch
 }
 
 function shouldNotifyProgressCompletion({
@@ -312,6 +339,7 @@ module.exports = {
   formatResumeClock,
   resolvePlayerProgressStatusText,
   buildProgressResponsePatch,
+  shouldRecoverProgressFromReport,
   shouldNotifyProgressCompletion,
   buildPlayerProgressView,
   PROGRESS_AUTO_SEEK_GRACE_SECONDS,

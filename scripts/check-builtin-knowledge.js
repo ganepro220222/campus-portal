@@ -174,6 +174,24 @@ if (hallKb && !hallKb.includes('文创在哪里看')) {
   errs.push('03-news-hall-search.md 常见问法必须包含「文创在哪里看」，否则文创口语问法走不到该篇')
 }
 
+const courseKb = sources.includes('04-course-resource.md')
+  ? read('sql/knowledge/04-course-resource.md')
+  : ''
+if (courseKb && !courseKb.includes('资料在哪')) {
+  errs.push('04-course-resource.md 常见问法必须包含「资料在哪」，否则口语问法过不了 FAQ 匹配')
+}
+
+const hallGuideKb = sources.includes('09-online-halls.md')
+  ? read('sql/knowledge/09-online-halls.md')
+  : ''
+if (hallGuideKb && !hallGuideKb.includes('VR怎么看')) {
+  errs.push('09-online-halls.md 常见问法必须包含「VR怎么看」，否则口语问法过不了 FAQ 匹配')
+}
+
+if (profileKb && !profileKb.includes('通知在哪')) {
+  errs.push('07-profile-message.md 常见问法必须包含「通知在哪」，否则口语问法过不了 FAQ 匹配')
+}
+
 // ---------- 4) 落库字段完整 ----------
 if (!/INSERT INTO `knowledge_doc`[\s\S]{0,200}`content`/.test(patch)) {
   errs.push('patch-builtin-knowledge.sql 未写入 content 列，后台编辑时正文会回填成空白')

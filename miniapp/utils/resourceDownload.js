@@ -571,7 +571,7 @@ async function openDownloadedResource(data, retryOptions, task) {
  * onRecorded 只在确认成功后触发，避免失败下载把列表次数加一。
  * 返回可取消 handle：页面离开或关闭播放栏后必须 cancel，避免弱网响应回来后自动打开。
  * @param {number|string} resourceId
- * @param {{ onStart?: Function, onRecorded?: Function, onComplete?: Function }} options
+ * @param {{ onStart?: Function, onRecorded?: Function, onComplete?: Function, skipConfirm?: boolean }} options
  */
 function downloadResource(resourceId, options = {}) {
   const downloadKey = String(resourceId)
@@ -595,16 +595,19 @@ function downloadResource(resourceId, options = {}) {
       throwIfCancelled(task)
       await openDownloadedResource({ ...data, id: resourceId }, options, task)
       throwIfCancelled(task)
-      try {
-        await confirmDownloadRecord(resourceId, data && data.token)
-      } catch (syncErr) {
+      if (!options.skipConfirm) {
+        try {
+          await confirmDownloadRecord(resourceId, data && data.token)
+        } catch (syncErr) {
+          throwIfCancelled(task)
+          wx.showToast({ title: '文件已打开，但下载记录同步失败', icon: 'none', duration: 2500 })
+          throw syncErr
+        }
         throwIfCancelled(task)
-        wx.showToast({ title: '文件已打开，但下载记录同步失败', icon: 'none', duration: 2500 })
-        throw syncErr
-      }
-      throwIfCancelled(task)
-      if (typeof options.onRecorded === 'function') {
-        options.onRecorded(data)
+        if (typeof options.onRecorded === 'function') {
+          options.onRecorded(data)
+        }
+        options.skipConfirm = true
       }
     } catch (e) {
       if (isDownloadCancelled(e)) return

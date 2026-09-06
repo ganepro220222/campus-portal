@@ -1,6 +1,6 @@
 /**
- * 音频报错或超时后，重试必须重新走 downloadResource：新签名 URL、新 ticket，
- * canplay/onPlay 成功后再 download-complete，且只记一次。
+ * 音频报错或超时后，重试必须重新走 downloadResource：新签名 URL、新 ticket。
+ * 首次开播成功后再 download-complete；中途失败再重试只换地址，不得再记账。
  * 运行：node miniapp/utils/resourceDownloadAudioRetry.test.js
  */
 const assert = require('assert')
@@ -140,12 +140,8 @@ async function run() {
   playJobs[2].resolve()
   await flushPromises()
   await flushPromises()
-  assert.match(posts[4].url, /\/resources\/8\/download-complete$/)
-  assert.deepStrictEqual(posts[4].body, { token: 'c'.repeat(32) })
-  pendingPosts[4].resolve({ recorded: true })
-  await flushPromises()
-  await flushPromises()
-  assert.strictEqual(recorded, 2, '开播后再次完整重试只多记这一次')
+  assert.strictEqual(posts.length, 4, '已记账的中途重试不得再 download-complete')
+  assert.strictEqual(recorded, 1, '开播后再次重试不得重复记账')
 
   let recordedB = 0
   downloadResource(9, { onRecorded: () => { recordedB += 1 } })
@@ -168,7 +164,7 @@ async function run() {
   pendingPosts[pendingPosts.length - 1].resolve({ recorded: true })
   await flushPromises()
   await flushPromises()
-  assert.strictEqual(recorded, 2, '切换到 B 不得重复确认 A')
+  assert.strictEqual(recorded, 1, '切换到 B 不得重复确认 A')
   assert.strictEqual(recordedB, 1, 'B 应独立确认一次')
 
   console.log('[resourceDownloadAudioRetry.test] PASS')

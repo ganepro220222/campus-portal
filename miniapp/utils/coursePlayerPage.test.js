@@ -75,7 +75,9 @@ function createPage(overrides = {}) {
     _pageActive: true,
     _currentDuration: 600,
     _currentPosition: 0,
-    _lastReportSec: 0
+    _lastReportSec: 0,
+    _progressInteracted: false,
+    _progressResumeFromReport: false
   }
   Object.keys(pageDef).forEach((key) => {
     if (typeof pageDef[key] === 'function') {
@@ -218,6 +220,68 @@ async function run() {
   await flushTurns()
   assert.strictEqual(pauseThenHide.data.completed, true)
   assert.strictEqual(completionToasts().length, pauseThenHideBefore, '先 pause 再 hide 也不得在离页后弹提示')
+
+  const recoverPage = createPage({
+    progressPercent: 0,
+    completed: false,
+    progressLoadError: true,
+    progressKnown: false,
+    progressStatusText: '学习进度暂未加载',
+    offerResumeJump: false,
+    savedPosition: 0
+  })
+  const seeksBeforeRecover = seeks.length
+  const recover = recoverPage._reportProgress(0, 600)
+  pendingPosts.at(-1).resolve({
+    lastPositionSeconds: 300,
+    progressPercent: 50,
+    completed: false,
+    totalDurationSeconds: 600
+  })
+  await recover
+  assert.strictEqual(recoverPage.data.progressLoadError, false, '上报带回上次位置后应去掉失败条')
+  assert.strictEqual(recoverPage.data.progressStatusText, '已学习 50%')
+  assert.strictEqual(recoverPage.data.savedPosition, 300)
+  assert.strictEqual(seeks.at(-1), 300, '未操作时应自动跳到上次位置')
+  assert.strictEqual(seeks.length, seeksBeforeRecover + 1)
+  assert.ok(toasts.includes('已恢复至 5:00'))
+  assert.strictEqual(recoverPage._progressResumeFromReport, true)
+
+  const secondReport = recoverPage._reportProgress(20, 600)
+  pendingPosts.at(-1).resolve({
+    lastPositionSeconds: 300,
+    progressPercent: 50,
+    completed: false,
+    totalDurationSeconds: 600
+  })
+  await secondReport
+  assert.strictEqual(seeks.length, seeksBeforeRecover + 1, '后续周期上报不得再次跳转')
+  assert.strictEqual(recoverPage.data.offerResumeJump, false)
+
+  const offerPage = createPage({
+    progressPercent: 0,
+    completed: false,
+    progressLoadError: true,
+    progressKnown: false,
+    progressStatusText: '学习进度暂未加载',
+    offerResumeJump: false,
+    savedPosition: 0
+  })
+  offerPage._progressInteracted = true
+  offerPage._currentPosition = 40
+  const offerSeeksBefore = seeks.length
+  const offer = offerPage._reportProgress(40, 600)
+  pendingPosts.at(-1).resolve({
+    lastPositionSeconds: 300,
+    progressPercent: 50,
+    completed: false,
+    totalDurationSeconds: 600
+  })
+  await offer
+  assert.strictEqual(offerPage.data.progressLoadError, false)
+  assert.strictEqual(offerPage.data.offerResumeJump, true, '已经在看时应只提示跳转')
+  assert.strictEqual(seeks.length, offerSeeksBefore)
+  assert.ok(toasts.includes('已找到上次位置 5:00'))
 
   console.log('[coursePlayerPage.test] PASS')
 }

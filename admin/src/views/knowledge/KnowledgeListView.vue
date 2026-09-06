@@ -6,7 +6,7 @@
     </div>
 
     <p class="text-muted">
-      录入书院文化文本后自动切分入库，小程序知识问答将基于这些资料作答。状态为「已就绪」后可被检索；
+      录入使用说明或书院资料后自动切分入库，小程序知识问答将基于这些资料作答。状态为「已就绪」后可被检索；
       编辑后会重新切分入库。
     </p>
 
@@ -15,7 +15,7 @@
       <div class="kb-test-bar">
         <el-input
           v-model="testQuery"
-          placeholder="输入一个问题，测试会命中哪些资料片段（如：什么是知行合一？）"
+          placeholder="输入一个问题，看会命中哪些资料片段（如：怎么报名活动？）"
           clearable
           @keyup.enter="onTest"
         >

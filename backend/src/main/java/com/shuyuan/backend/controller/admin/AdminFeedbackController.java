@@ -35,4 +35,10 @@ public class AdminFeedbackController {
     public Result<Map<String, Object>> reply(@PathVariable Long id, @RequestBody FeedbackReplyRequest req) {
         return Result.ok(adminFeedbackService.reply(id, req));
     }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        adminFeedbackService.delete(id);
+        return Result.ok();
+    }
 }

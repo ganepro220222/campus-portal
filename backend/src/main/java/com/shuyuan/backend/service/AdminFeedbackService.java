@@ -86,6 +86,20 @@ public class AdminFeedbackService {
         return toVo(feedbackMapper.selectById(id), member);
     }
 
+    /**
+     * 物理删除一条反馈。不进回收站：这是学生来信，不是发布错的内容。
+     * 站内消息原文保留，原单链接打开会显示不存在。
+     */
+    @Transactional
+    public void delete(Long id) {
+        adminPermissionService.require("admin:super");
+        requireFeedback(id);
+        int n = feedbackMapper.purgeById(id);
+        if (n == 0) {
+            throw new BusinessException(404, "反馈不存在");
+        }
+    }
+
     private Feedback requireFeedback(Long id) {
         Feedback feedback = feedbackMapper.selectById(id);
         if (feedback == null) {

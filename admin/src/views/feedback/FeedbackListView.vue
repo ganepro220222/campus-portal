@@ -8,7 +8,10 @@
       </el-select>
     </div>
 
-    <p class="text-muted">查看小程序用户提交的意见反馈及附图。提交回复后，用户会在小程序消息中心收到通知。</p>
+    <p class="text-muted">
+      查看小程序用户提交的意见反馈及附图。提交回复后，用户会在小程序消息中心收到通知。
+      测试或误提交的条目可以删除，不会进入回收站。
+    </p>
 
     <el-table v-loading="loading" :data="list" stripe border>
       <el-table-column prop="createTime" label="提交时间" width="150" />
@@ -23,11 +26,12 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right" align="center">
+      <el-table-column label="操作" width="160" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click="openReply(row)">
             {{ row.status === 'replied' ? '查看' : '回复' }}
           </el-button>
+          <el-button link type="danger" @click="onDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -79,6 +83,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
+        <el-button type="danger" plain :loading="deleting" @click="current && onDelete(current)">删除</el-button>
         <el-button @click="dialogVisible = false">关闭</el-button>
         <el-button v-if="canReply" type="primary" :loading="saving" @click="onSaveReply">提交回复</el-button>
       </template>
@@ -89,12 +94,14 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage } from 'element-plus'
-import { fetchFeedbacks, replyFeedback } from '@/api/feedback'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { deleteFeedback, fetchFeedbacks, replyFeedback } from '@/api/feedback'
 import type { FeedbackItem } from '@/types/api'
+import { normalizeListPage } from '@/utils/listPageNormalize'
 
 const loading = ref(false)
 const saving = ref(false)
+const deleting = ref(false)
 const list = ref<FeedbackItem[]>([])
 const page = ref(1)
 const pageSize = ref(20)
@@ -116,7 +123,12 @@ const dialogTitle = computed(() => (canReply.value ? '回复反馈' : '反馈详
 async function loadData() {
   loading.value = true
   try {
-    const res = await fetchFeedbacks(page.value, pageSize.value, statusFilter.value)
+    let res = await fetchFeedbacks(page.value, pageSize.value, statusFilter.value)
+    const nextPage = normalizeListPage(page.value, res.total, pageSize.value)
+    if (nextPage !== page.value) {
+      page.value = nextPage
+      res = await fetchFeedbacks(page.value, pageSize.value, statusFilter.value)
+    }
     list.value = res.records
     total.value = res.total
   } finally {
@@ -133,6 +145,26 @@ function openReply(row: FeedbackItem) {
   current.value = row
   form.reply = row.reply || ''
   dialogVisible.value = true
+}
+
+async function onDelete(row: FeedbackItem) {
+  await ElMessageBox.confirm(
+    '删除这条反馈？管理端和学生的「我的反馈」都不再显示。已发出的站内消息会保留，但不能再打开原单。',
+    '删除确认',
+    { type: 'warning', confirmButtonText: '确定删除', confirmButtonClass: 'el-button--danger' }
+  )
+  deleting.value = true
+  try {
+    await deleteFeedback(row.id)
+    ElMessage.success('已删除')
+    if (current.value?.id === row.id) {
+      dialogVisible.value = false
+      current.value = null
+    }
+    await loadData()
+  } finally {
+    deleting.value = false
+  }
 }
 
 async function onSaveReply() {

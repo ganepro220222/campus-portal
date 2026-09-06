@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -92,6 +94,52 @@ class AdminFeedbackServiceTest {
                 () -> adminFeedbackService.reply(7L, request));
 
         verifyNoInteractions(messageService);
+    }
+
+    @Test
+    void delete_pendingPurgesWithoutTouchingMessages() {
+        when(feedbackMapper.selectById(7L)).thenReturn(feedback(7L, 88L, "pending", null));
+        when(feedbackMapper.purgeById(7L)).thenReturn(1);
+
+        adminFeedbackService.delete(7L);
+
+        verify(feedbackMapper).purgeById(7L);
+        verify(feedbackMapper, never()).deleteById(7L);
+        verifyNoInteractions(messageService);
+    }
+
+    @Test
+    void delete_repliedPurgesWithoutTouchingMessages() {
+        when(feedbackMapper.selectById(7L)).thenReturn(feedback(7L, 88L, "replied", "已处理"));
+        when(feedbackMapper.purgeById(7L)).thenReturn(1);
+
+        adminFeedbackService.delete(7L);
+
+        verify(feedbackMapper).purgeById(7L);
+        verify(feedbackMapper, never()).deleteById(7L);
+        verifyNoInteractions(messageService);
+    }
+
+    @Test
+    void delete_purgeMissThrows404() {
+        when(feedbackMapper.selectById(7L)).thenReturn(feedback(7L, 88L, "pending", null));
+        when(feedbackMapper.purgeById(7L)).thenReturn(0);
+
+        com.shuyuan.backend.common.exception.BusinessException ex = assertThrows(
+                com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> adminFeedbackService.delete(7L));
+        assertEquals(404, ex.getCode());
+    }
+
+    @Test
+    void delete_missingThrows404() {
+        when(feedbackMapper.selectById(7L)).thenReturn(null);
+
+        com.shuyuan.backend.common.exception.BusinessException ex = assertThrows(
+                com.shuyuan.backend.common.exception.BusinessException.class,
+                () -> adminFeedbackService.delete(7L));
+        assertEquals(404, ex.getCode());
+        verify(feedbackMapper, never()).purgeById(7L);
     }
 
     private static Feedback feedback(Long id, Long memberId, String status, String reply) {

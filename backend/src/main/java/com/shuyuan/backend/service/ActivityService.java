@@ -57,7 +57,7 @@ public class ActivityService {
         m.put("startTime", FormatUtils.formatDateTime(activity.getStartTime()));
         m.put("endTime", FormatUtils.formatDateTime(activity.getEndTime()));
         m.put("enrollStartTime", FormatUtils.formatDateTime(activity.getEnrollStartTime()));
-        m.put("enrollEndTime", FormatUtils.formatDateTime(activity.getEnrollEndTime()));
+        m.put("enrollEndTime", FormatUtils.formatDateTime(ActivitySchedule.effectiveEnrollEnd(activity)));
         m.put("quota", activity.getQuota());
         m.put("enrolledCount", activity.getEnrolledCount());
         m.put("needReview", activity.getNeedReview() != null && activity.getNeedReview() == 1);

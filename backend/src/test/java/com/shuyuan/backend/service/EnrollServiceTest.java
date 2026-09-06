@@ -73,6 +73,67 @@ class EnrollServiceTest {
     }
 
     @Test
+    void enroll_emptyWindow_allowsBeforeStartAndCanCancel() {
+        Activity activity = publishedEmptyWindow(LocalDateTime.now().plusDays(1));
+        EnrollRequest req = enrollRequest();
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(null);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
+        when(activityMapper.incrEnrolledCount(ACTIVITY_ID)).thenReturn(1);
+
+        assertTrue(enrollService.isEnrollOpen(activity));
+        assertTrue(enrollService.canMemberCancel(activity));
+        Map<String, Object> result = enrollService.enroll(ACTIVITY_ID, req);
+
+        assertNotNull(result);
+        verify(subscribeOutboxService).enqueueEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
+    }
+
+    @Test
+    void enroll_emptyWindow_rejectsAfterStart_noOutbox() {
+        Activity activity = publishedEmptyWindow(LocalDateTime.now().minusMinutes(1));
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+
+        assertFalse(enrollService.isEnrollOpen(activity));
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.enroll(ACTIVITY_ID, enrollRequest()));
+        assertEquals(409, ex.getCode());
+        assertTrue(ex.getMessage().contains("已经开始"));
+        verify(activityMapper, never()).incrEnrolledCount(anyLong());
+        verify(enrollMapper, never()).insert(any(Enroll.class));
+        verify(subscribeOutboxService, never()).enqueueEnrollSuccess(anyLong(), any(), any());
+    }
+
+    @Test
+    void enroll_emptyWindow_rejectsAfterActivityEnded() {
+        Activity activity = publishedEmptyWindow(LocalDateTime.now().minusDays(1));
+        activity.setEndTime(LocalDateTime.now().minusHours(1));
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+
+        assertFalse(enrollService.isEnrollOpen(activity));
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> enrollService.enroll(ACTIVITY_ID, enrollRequest()));
+        assertEquals(409, ex.getCode());
+        verify(subscribeOutboxService, never()).enqueueEnrollSuccess(anyLong(), any(), any());
+    }
+
+    @Test
+    void enroll_emptyEnrollEnd_usesActivityStartAsDeadline() {
+        LocalDateTime start = LocalDateTime.now().plusHours(2);
+        Activity activity = publishedEmptyWindow(start);
+        activity.setEnrollStartTime(LocalDateTime.now().minusDays(1));
+
+        assertEquals(start, ActivitySchedule.effectiveEnrollEnd(activity));
+        assertTrue(enrollService.isEnrollOpen(activity));
+
+        activity.setStartTime(LocalDateTime.now().minusMinutes(1));
+        assertFalse(enrollService.isEnrollOpen(activity));
+    }
+
+    @Test
     void enroll_success_whenQuotaAvailable() {
         Activity activity = publishedActivity(10, 3);
         EnrollRequest req = enrollRequest();
@@ -413,6 +474,14 @@ class EnrollServiceTest {
         activity.setNeedReview(0);
         activity.setEnrollStartTime(LocalDateTime.now().minusDays(1));
         activity.setEnrollEndTime(LocalDateTime.now().plusDays(1));
+        return activity;
+    }
+
+    private Activity publishedEmptyWindow(LocalDateTime startTime) {
+        Activity activity = publishedActivity(10, 3);
+        activity.setStartTime(startTime);
+        activity.setEnrollStartTime(null);
+        activity.setEnrollEndTime(null);
         return activity;
     }
 

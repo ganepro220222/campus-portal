@@ -146,7 +146,7 @@
               style="width: 100%"
             />
           </div>
-          <div class="form-tip">不填则默认与活动时间一致，由后端校验</div>
+          <div class="form-tip">报名开始不填则发布后即可报名；报名截止不填则到活动开始为止。活动开始后不再接受新报名。</div>
         </el-form-item>
         <el-form-item label="名额">
           <el-input-number v-model="form.quota" :min="0" :max="99999" />
@@ -294,9 +294,31 @@ function openDialog(row?: ActivityItem) {
   dialogVisible.value = true
 }
 
+function scheduleError() {
+  const { startTime, endTime, enrollStartTime, enrollEndTime } = form
+  if (endTime && startTime && endTime <= startTime) {
+    return '活动结束时间必须晚于开始时间'
+  }
+  if (enrollStartTime && enrollEndTime && enrollEndTime <= enrollStartTime) {
+    return '报名截止时间必须晚于报名开始时间'
+  }
+  if (enrollStartTime && startTime && enrollStartTime >= startTime) {
+    return '报名开始时间必须早于活动开始时间'
+  }
+  if (enrollEndTime && startTime && enrollEndTime > startTime) {
+    return '报名截止时间不能晚于活动开始时间'
+  }
+  return ''
+}
+
 async function onSave() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  const timeError = scheduleError()
+  if (timeError) {
+    ElMessage.error(timeError)
+    return
+  }
   try {
     await confirmCoverClearIfNeeded(coverSavedUrl.value, form.cover, ({ message, title }) =>
       ElMessageBox.confirm(message, title, { type: 'warning', confirmButtonText: '确定清空', cancelButtonText: '取消' })
@@ -330,7 +352,7 @@ async function onPublish(row: ActivityItem) {
 
 async function onCancel(row: ActivityItem) {
   await ElMessageBox.confirm(
-    `取消「${row.title}」？取消后不可再编辑，已有报名需另行处理。`,
+    `取消「${row.title}」？取消后不可恢复，待审核和已通过的报名将同步取消、释放名额，并向学员发送站内通知。`,
     '取消活动',
     { type: 'warning' }
   )

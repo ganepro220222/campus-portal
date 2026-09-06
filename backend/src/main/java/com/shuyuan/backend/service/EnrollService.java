@@ -230,7 +230,8 @@ public class EnrollService {
             return "活动已取消或不可用";
         }
         LocalDateTime now = LocalDateTime.now();
-        if (activity.getEnrollEndTime() != null && now.isAfter(activity.getEnrollEndTime())) {
+        LocalDateTime enrollEnd = ActivitySchedule.effectiveEnrollEnd(activity);
+        if (enrollEnd != null && now.isAfter(enrollEnd)) {
             return "报名已截止，无法自行取消，请联系活动负责人";
         }
         if (activity.getStartTime() != null && !now.isBefore(activity.getStartTime())) {
@@ -241,14 +242,7 @@ public class EnrollService {
 
     /** 判断活动当前是否开放报名 */
     public boolean isEnrollOpen(Activity activity) {
-        if (activity == null || !"published".equals(activity.getStatus())) {
-            return false;
-        }
-        LocalDateTime now = LocalDateTime.now();
-        if (activity.getEnrollStartTime() != null && now.isBefore(activity.getEnrollStartTime())) {
-            return false;
-        }
-        if (activity.getEnrollEndTime() != null && now.isAfter(activity.getEnrollEndTime())) {
+        if (!ActivitySchedule.isEnrollWindowOpen(activity, LocalDateTime.now())) {
             return false;
         }
         if (activity.getQuota() != null && activity.getQuota() > 0
@@ -267,15 +261,9 @@ public class EnrollService {
     }
 
     private void assertCanEnroll(Activity activity) {
-        if (!"published".equals(activity.getStatus())) {
-            throw new BusinessException(409, "当前活动不可报名");
-        }
-        LocalDateTime now = LocalDateTime.now();
-        if (activity.getEnrollStartTime() != null && now.isBefore(activity.getEnrollStartTime())) {
-            throw new BusinessException(409, "报名尚未开始");
-        }
-        if (activity.getEnrollEndTime() != null && now.isAfter(activity.getEnrollEndTime())) {
-            throw new BusinessException(409, "报名已截止");
+        String reason = ActivitySchedule.enrollClosedReason(activity, LocalDateTime.now());
+        if (reason != null) {
+            throw new BusinessException(409, reason);
         }
     }
 

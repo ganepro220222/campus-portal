@@ -1,6 +1,7 @@
 package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.context.AdminContext;
@@ -47,6 +48,7 @@ public class AdminActivityService {
         adminPermissionService.require("admin:super");
         validateTitle(req);
         Activity activity = fromRequest(new Activity(), req);
+        ActivitySchedule.validate(activity);
         activity.setStatus("draft");
         activity.setEnrolledCount(0);
         activity.setCreatedBy(AdminContext.getAdminId());
@@ -54,6 +56,7 @@ public class AdminActivityService {
         return toVo(activityMapper.selectById(activity.getId()));
     }
 
+    @Transactional
     public Map<String, Object> update(Long id, ActivitySaveRequest req) {
         adminPermissionService.require("admin:super");
         Activity activity = requireActivity(id);
@@ -62,7 +65,9 @@ public class AdminActivityService {
         }
         String oldCover = activity.getCover();
         fromRequest(activity, req);
+        ActivitySchedule.validate(activity);
         activityMapper.updateById(activity);
+        writeOptionalTimes(id, req);
         Activity saved = activityMapper.selectById(id);
         ossMediaCleanupService.afterReplace(oldCover, saved.getCover());
         return toVo(saved);
@@ -84,6 +89,7 @@ public class AdminActivityService {
         if (activity.getStartTime() == null) {
             throw new BusinessException(400, "请填写活动开始时间后再发布");
         }
+        ActivitySchedule.validate(activity);
         activity.setStatus("published");
         activityMapper.updateById(activity);
         return toVo(activityMapper.selectById(id));
@@ -165,6 +171,28 @@ public class AdminActivityService {
             activity.setNeedReview(0);
         }
         return activity;
+    }
+
+    /**
+     * updateById 默认跳过 null；空字符串表示显式清空可选时间，必须用 wrapper 写 NULL。
+     * startTime 为必填，不允许清空。
+     */
+    private void writeOptionalTimes(Long id, ActivitySaveRequest req) {
+        if (req.getEndTime() == null && req.getEnrollStartTime() == null && req.getEnrollEndTime() == null) {
+            return;
+        }
+        LambdaUpdateWrapper<Activity> schedule = new LambdaUpdateWrapper<Activity>()
+                .eq(Activity::getId, id);
+        if (req.getEndTime() != null) {
+            schedule.set(Activity::getEndTime, FormatUtils.parseDateTime(req.getEndTime()));
+        }
+        if (req.getEnrollStartTime() != null) {
+            schedule.set(Activity::getEnrollStartTime, FormatUtils.parseDateTime(req.getEnrollStartTime()));
+        }
+        if (req.getEnrollEndTime() != null) {
+            schedule.set(Activity::getEnrollEndTime, FormatUtils.parseDateTime(req.getEnrollEndTime()));
+        }
+        activityMapper.update(null, schedule);
     }
 
     private Map<String, Object> toVo(Activity a) {

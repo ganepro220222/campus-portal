@@ -97,10 +97,6 @@ function destroyPageResourceSession() {
   audioPlayer.destroy()
 }
 
-if (typeof audioPlayer.setOuterCancel === 'function') {
-  audioPlayer.setOuterCancel(cancelActiveResourceDownload)
-}
-
 function normalizeType(fileType) {
   const t = String(fileType || '').toLowerCase()
   if (t === 'word') return 'doc'

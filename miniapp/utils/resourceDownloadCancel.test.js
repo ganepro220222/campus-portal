@@ -162,6 +162,12 @@ function completePosts() {
   assert.ok(src.includes('destroyPageResourceSession'), `${rel} 卸载时必须取消 pending 下载`)
 })
 
+const playerSrc = fs.readFileSync(path.join(__dirname, 'resourceAudioPlayer.js'), 'utf8')
+const downloadSrc = fs.readFileSync(path.join(__dirname, 'resourceDownload.js'), 'utf8')
+assert.ok(!playerSrc.includes('setOuterCancel'), '播放器不得再暴露全局取消下载回调')
+assert.ok(!playerSrc.includes('cancelOuterDownload'), '关闭播放栏不得取消任意活动下载')
+assert.ok(!downloadSrc.includes('setOuterCancel'), '下载模块不得把全局锁绑到播放器')
+
 async function run() {
   const player = require('./resourceAudioPlayer')
   const {
@@ -365,6 +371,130 @@ async function run() {
   await flushTurns()
   assert.strictEqual(openedDocs.length, openedBeforeHideDoc, '文档分块时 onHide 不得 openDocument')
   assert.ok(!completePosts().some((item) => /\/resources\/17\//.test(item.url)))
+
+  async function playAndConfirmAudio(id, name, token) {
+    let recorded = 0
+    downloadResource(id, { onRecorded: () => { recorded += 1 } })
+    resolvePrepare({
+      fileUrl: `https://cdn.yunmanvr.com/audios/${id}.mp3?auth_key=${id}`,
+      fileType: 'mp3',
+      name,
+      token
+    })
+    await flushTurns()
+    created.at(-1).handlers.canplay()
+    await flushTurns()
+    pendingPosts.at(-1).resolve({ recorded: true })
+    await flushTurns()
+    assert.strictEqual(player.snapshot().visible, true)
+    assert.strictEqual(player.snapshot().playing, true)
+    assert.strictEqual(player.snapshot().id, String(id))
+    assert.strictEqual(_getActiveDownloadId(), null)
+    assert.strictEqual(recorded, 1)
+  }
+
+  function resolveCompleteChunk() {
+    pendingChunks.at(-1).resolve({
+      data: new Uint8Array([1, 2, 3, 4]).buffer,
+      header: { 'Content-Range': 'bytes 0-3/4' },
+      statusCode: 206
+    })
+  }
+
+  await playAndConfirmAudio(21, '讲解A', 'k'.repeat(32))
+  let recordedDocB = 0
+  const docB = downloadResource(22, { onRecorded: () => { recordedDocB += 1 } })
+  assert.strictEqual(_getActiveDownloadId(), '22')
+  assert.strictEqual(docB.cancelled, false)
+  const openedBeforeCloseA = openedDocs.length
+  player.stop()
+  assert.strictEqual(player.snapshot().visible, false)
+  assert.strictEqual(docB.cancelled, false, '关闭已开播的 A 不得取消文档 B')
+  assert.strictEqual(_getActiveDownloadId(), '22')
+  resolvePrepare({
+    fileUrl: 'https://cdn.yunmanvr.com/files/b.pdf?auth_key=b',
+    fileType: 'pdf',
+    name: '课件B',
+    token: 'l'.repeat(32)
+  })
+  await flushTurns()
+  assert.ok(pendingChunks.length > 0)
+  resolveCompleteChunk()
+  await flushTurns()
+  assert.ok(openedDocs.length > openedBeforeCloseA, '关闭 A 后文档 B 仍应打开')
+  assert.match(completePosts().at(-1).url, /\/resources\/22\/download-complete$/)
+  pendingPosts.at(-1).resolve({ recorded: true })
+  await flushTurns()
+  assert.strictEqual(recordedDocB, 1)
+
+  await playAndConfirmAudio(23, '讲解A', 'm'.repeat(32))
+  let recordedVideoB = 0
+  const videoB = downloadResource(24, { onRecorded: () => { recordedVideoB += 1 } })
+  const previewBeforeCloseA = previews.length
+  player.stop()
+  assert.strictEqual(videoB.cancelled, false, '关闭已开播的 A 不得取消视频 B')
+  assert.strictEqual(_getActiveDownloadId(), '24')
+  resolvePrepare({
+    fileUrl: 'https://cdn.yunmanvr.com/videos/b.mp4?auth_key=b',
+    fileType: 'mp4',
+    name: '视频B',
+    token: 'n'.repeat(32)
+  })
+  await flushTurns()
+  assert.strictEqual(previews.length, previewBeforeCloseA + 1)
+  assert.match(completePosts().at(-1).url, /\/resources\/24\/download-complete$/)
+  pendingPosts.at(-1).resolve({ recorded: true })
+  await flushTurns()
+  assert.strictEqual(recordedVideoB, 1)
+
+  await playAndConfirmAudio(25, '讲解A', 'o'.repeat(32))
+  let recordedAudioB = 0
+  const audioB = downloadResource(26, { onRecorded: () => { recordedAudioB += 1 } })
+  const createdBeforeAudioB = created.length
+  player.stop()
+  assert.strictEqual(audioB.cancelled, false, '关闭已开播的 A 不得取消另一段音频 B')
+  assert.strictEqual(_getActiveDownloadId(), '26')
+  resolvePrepare({
+    fileUrl: 'https://cdn.yunmanvr.com/audios/26.mp3?auth_key=b',
+    fileType: 'mp3',
+    name: '导览B',
+    token: 'p'.repeat(32)
+  })
+  await flushTurns()
+  assert.strictEqual(created.length, createdBeforeAudioB + 1)
+  created.at(-1).handlers.canplay()
+  await flushTurns()
+  assert.strictEqual(player.snapshot().id, '26')
+  assert.strictEqual(player.snapshot().playing, true)
+  assert.match(completePosts().at(-1).url, /\/resources\/26\/download-complete$/)
+  pendingPosts.at(-1).resolve({ recorded: true })
+  await flushTurns()
+  assert.strictEqual(recordedAudioB, 1)
+  player.stop()
+
+  await playAndConfirmAudio(27, '讲解A', 'q'.repeat(32))
+  let recordedChunkB = 0
+  const chunkB = downloadResource(28, { onRecorded: () => { recordedChunkB += 1 } })
+  resolvePrepare({
+    fileUrl: 'https://cdn.yunmanvr.com/files/chunk-b.pdf?auth_key=b',
+    fileType: 'pdf',
+    name: '分块课件',
+    token: 'r'.repeat(32)
+  })
+  await flushTurns()
+  const chunkPending = pendingChunks.length
+  assert.ok(chunkPending > 0, 'B 应已进入分块下载')
+  const openedBeforeChunkClose = openedDocs.length
+  player.stop()
+  assert.strictEqual(chunkB.cancelled, false, '关闭已开播的 A 不得取消 B 的分块下载')
+  assert.strictEqual(_getActiveDownloadId(), '28')
+  resolveCompleteChunk()
+  await flushTurns()
+  assert.ok(openedDocs.length > openedBeforeChunkClose)
+  assert.match(completePosts().at(-1).url, /\/resources\/28\/download-complete$/)
+  pendingPosts.at(-1).resolve({ recorded: true })
+  await flushTurns()
+  assert.strictEqual(recordedChunkB, 1)
 
   console.log('[resourceDownloadCancel.test] PASS')
 }

@@ -29,7 +29,6 @@ let _seeking = false
 let _onUnplayable = null
 let _onRetry = null
 let _retryTask = null
-let _outerCancel = null
 let _pendingSettle = null
 
 const AUDIO_SLOW_HINT_MS = 15000
@@ -80,16 +79,6 @@ function cancelRetryTask() {
     _retryTask.cancel()
   }
   _retryTask = null
-}
-
-function setOuterCancel(fn) {
-  _outerCancel = typeof fn === 'function' ? fn : null
-}
-
-function cancelOuterDownload() {
-  if (typeof _outerCancel === 'function') {
-    _outerCancel()
-  }
 }
 
 function destroyCtx() {
@@ -304,7 +293,6 @@ function seekPercent(percent) {
 
 function stop() {
   cancelRetryTask()
-  cancelOuterDownload()
   if (_pendingSettle) {
     _pendingSettle.fail(new Error('audio-cancelled'), { copy: false, error: '' })
   }
@@ -338,7 +326,6 @@ module.exports = {
   seekPercent,
   stop,
   destroy,
-  setOuterCancel,
   AUDIO_SLOW_HINT_MS,
   AUDIO_GIVE_UP_MS,
   _setReadyTimeouts

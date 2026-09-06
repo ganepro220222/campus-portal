@@ -16,6 +16,8 @@ const {
   shouldGiveUpVideoReload,
   settlePromise,
   buildPlayerProgressView,
+  buildProgressResponsePatch,
+  shouldNotifyProgressCompletion,
   resolveProgressRetryAction,
   PROGRESS_AUTO_SEEK_GRACE_SECONDS
 } = require('../../utils/coursePlayerProgress')
@@ -59,6 +61,8 @@ Page({
     this._progressBaselineSent = false
     this._progressInteracted = false
     this._progressRetrying = false
+    this._completionNotified = false
+    this._pageActive = true
 
     this._loadCourse()
   },
@@ -67,6 +71,7 @@ Page({
     this._videoRetryCount = 0
     this._progressInteracted = false
     this._progressRetrying = false
+    this._completionNotified = false
     this.setData({
       loadError: false,
       videoFailed: false,
@@ -112,6 +117,7 @@ Page({
       interacted: this._progressInteracted,
       currentPosition: this._currentPosition
     })
+    if (view.completed) this._completionNotified = true
     if (action.kind === 'auto-seek') {
       this.setData(view)
       this._seekToSaved(action.position)
@@ -162,6 +168,7 @@ Page({
           failed: progressFailed
         })
         const media = play || {}
+        if (progressView.completed) this._completionNotified = true
         this.setData({
           course,
           videoUrl: media.videoUrl || '',
@@ -183,7 +190,12 @@ Page({
     })
   },
 
+  onShow() {
+    this._pageActive = true
+  },
+
   onUnload() {
+    this._pageActive = false
     this._flushProgress(true)
   },
 
@@ -197,7 +209,7 @@ Page({
 
   onPause() {
     this.setData({ playing: false })
-    this._flushProgress(true)
+    this._flushProgress(true, { notifyCompletion: true })
   },
 
   onSeekComplete(e) {
@@ -260,7 +272,7 @@ Page({
     }
     if (shouldReportByInterval(cur, this._lastReportSec, REPORT_INTERVAL_SEC)) {
       this._lastReportSec = cur
-      this._reportProgress(cur, total).catch(() => {})
+      this._reportProgress(cur, total, { notifyCompletion: true }).catch(() => {})
     }
   },
 
@@ -284,17 +296,9 @@ Page({
       return
     }
     try {
-      const res = await this._reportProgress(position, total)
+      const res = await this._reportProgress(position, total, { notifyCompletion: true })
       if (!res) {
         wx.showToast({ title: '进度保存失败，请稍后重试', icon: 'none' })
-        return
-      }
-      this.setData({
-        progressPercent: res.progressPercent ? Number(res.progressPercent) : this.data.progressPercent,
-        completed: !!res.completed
-      })
-      if (res.completed && !alreadyCompleted) {
-        wx.showToast({ title: '课程学习完成', icon: 'none' })
       }
     } catch (err) {
       console.warn('[course/player] 结束上报失败', err)
@@ -374,7 +378,10 @@ Page({
     wx.showToast({ title: this.data.cc ? '字幕已开启' : '字幕已关闭', icon: 'none' })
   },
 
-  _reportProgress(position, total) {
+  _reportProgress(position, total, options = {}) {
+    const notifyCompletion = options.notifyCompletion === true
+    const wasCompleted = !!this.data.completed
+    const alreadyNotified = !!this._completionNotified
     return new Promise((resolve, reject) => {
       requireLogin(() => {
         post(`/courses/${this._courseId}/progress`, {
@@ -382,10 +389,20 @@ Page({
           totalDurationSeconds: total
         }).then(res => {
           if (res) {
-            this.setData({
-              progressPercent: res.progressPercent ? Number(res.progressPercent) : this.data.progressPercent,
-              completed: !!res.completed
-            })
+            const patch = buildProgressResponsePatch(res, this.data)
+            this.setData(patch)
+            if (patch.completed && !wasCompleted) {
+              this._completionNotified = true
+            }
+            if (shouldNotifyProgressCompletion({
+              notifyCompletion,
+              completed: patch.completed,
+              wasCompleted,
+              alreadyNotified,
+              pageActive: this._pageActive
+            })) {
+              wx.showToast({ title: '课程学习完成', icon: 'none' })
+            }
           }
           resolve(res)
         }).catch(reject)
@@ -393,12 +410,12 @@ Page({
     })
   },
 
-  _flushProgress(force) {
+  _flushProgress(force, options = {}) {
     if (!force || !this._courseId) return
     const total = this._currentDuration || 0
     if (total <= 0) return
     const pos = this._currentPosition != null ? this._currentPosition : (this.data.initialTime || 0)
-    this._reportProgress(pos, total).catch(() => {})
+    this._reportProgress(pos, total, options).catch(() => {})
   },
 
   _handleSubtitleFailure() {

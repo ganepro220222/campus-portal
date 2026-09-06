@@ -17,6 +17,8 @@ const {
   settlePromise,
   formatResumeClock,
   resolvePlayerProgressStatusText,
+  buildProgressResponsePatch,
+  shouldNotifyProgressCompletion,
   buildPlayerProgressView,
   shouldAutoSeekOnProgressRetry,
   resolveProgressRetryAction
@@ -107,6 +109,66 @@ assert.strictEqual(resolvePlayerProgressStatusText({ progressLoadError: true }),
 assert.strictEqual(resolvePlayerProgressStatusText({ completed: true, progressPercent: 0 }), '已完成学习')
 assert.strictEqual(resolvePlayerProgressStatusText({ progressPercent: 45 }), '已学习 45%')
 assert.strictEqual(resolvePlayerProgressStatusText({ progressPercent: 0 }), '开始学习')
+
+{
+  const mid = buildProgressResponsePatch(
+    { progressPercent: 40, completed: false },
+    { progressPercent: 0, completed: false, progressStatusText: '开始学习' }
+  )
+  assert.strictEqual(mid.progressPercent, 40)
+  assert.strictEqual(mid.completed, false)
+  assert.strictEqual(mid.progressLoadError, false)
+  assert.strictEqual(mid.progressKnown, true)
+  assert.strictEqual(mid.progressStatusText, '已学习 40%')
+}
+
+{
+  const done = buildProgressResponsePatch(
+    { progressPercent: 100, completed: true },
+    { progressPercent: 0, completed: false, progressStatusText: '开始学习' }
+  )
+  assert.strictEqual(done.progressPercent, 100)
+  assert.strictEqual(done.completed, true)
+  assert.strictEqual(done.progressStatusText, '已完成学习')
+}
+
+{
+  const keepPrev = buildProgressResponsePatch(
+    { completed: false },
+    { progressPercent: 40, completed: false }
+  )
+  assert.strictEqual(keepPrev.progressPercent, 40)
+  assert.strictEqual(keepPrev.progressStatusText, '已学习 40%')
+}
+
+assert.strictEqual(shouldNotifyProgressCompletion({
+  notifyCompletion: true,
+  completed: true,
+  wasCompleted: false,
+  alreadyNotified: false,
+  pageActive: true
+}), true)
+assert.strictEqual(shouldNotifyProgressCompletion({
+  notifyCompletion: true,
+  completed: true,
+  wasCompleted: true,
+  alreadyNotified: true,
+  pageActive: true
+}), false)
+assert.strictEqual(shouldNotifyProgressCompletion({
+  notifyCompletion: false,
+  completed: true,
+  wasCompleted: false,
+  alreadyNotified: false,
+  pageActive: true
+}), false)
+assert.strictEqual(shouldNotifyProgressCompletion({
+  notifyCompletion: true,
+  completed: true,
+  wasCompleted: false,
+  alreadyNotified: false,
+  pageActive: false
+}), false)
 
 {
   const failed = buildPlayerProgressView({ progress: null, failed: true })
@@ -248,6 +310,9 @@ assert.strictEqual(
   assert.match(playerJs, /settlePromise/)
   assert.match(playerJs, /onRetryProgress/)
   assert.match(playerJs, /progressLoadError/)
+  assert.match(playerJs, /buildProgressResponsePatch/)
+  assert.match(playerJs, /shouldNotifyProgressCompletion/)
+  assert.match(playerJs, /notifyCompletion/)
   assert.doesNotMatch(playerJs, /\/progress`\)\.catch\(\(\) => null\)/)
   const playerWxml = fs.readFileSync(path.join(__dirname, '../packageB/course/player.wxml'), 'utf8')
   assert.match(playerWxml, /onRetryProgress/)

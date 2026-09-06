@@ -104,6 +104,55 @@ function resolvePlayerProgressStatusText({ progressLoadError, completed, progres
   return '开始学习'
 }
 
+function readReportedNumber(value, fallback) {
+  if (value != null && value !== '') {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  const prev = Number(fallback)
+  return Number.isFinite(prev) ? prev : 0
+}
+
+/**
+ * 把进度接口响应收成页面完整补丁，避免只更新 percent/completed、文案仍停在进入时。
+ */
+function buildProgressResponsePatch(res, previous = {}) {
+  const progressPercent = readReportedNumber(
+    res && res.progressPercent,
+    previous.progressPercent
+  )
+  const completed = res && res.completed != null
+    ? !!res.completed
+    : !!previous.completed
+  return {
+    progressPercent,
+    completed,
+    progressKnown: true,
+    progressLoadError: false,
+    progressStatusText: resolvePlayerProgressStatusText({
+      progressLoadError: false,
+      completed,
+      progressPercent
+    })
+  }
+}
+
+function shouldNotifyProgressCompletion({
+  notifyCompletion,
+  completed,
+  wasCompleted,
+  alreadyNotified,
+  pageActive
+}) {
+  return !!(
+    notifyCompletion
+    && completed
+    && !wasCompleted
+    && !alreadyNotified
+    && pageActive !== false
+  )
+}
+
 function buildPlayerProgressView({ progress, failed }) {
   if (failed) {
     return {
@@ -262,6 +311,8 @@ module.exports = {
   settlePromise,
   formatResumeClock,
   resolvePlayerProgressStatusText,
+  buildProgressResponsePatch,
+  shouldNotifyProgressCompletion,
   buildPlayerProgressView,
   PROGRESS_AUTO_SEEK_GRACE_SECONDS,
   shouldAutoSeekOnProgressRetry,

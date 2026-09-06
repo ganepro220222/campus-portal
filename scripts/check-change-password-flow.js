@@ -12,6 +12,8 @@ const pageJs = fs.readFileSync(
   'utf8'
 )
 const flowJs = fs.readFileSync(path.join(root, 'miniapp/utils/changePasswordFlow.js'), 'utf8')
+const loginJs = fs.readFileSync(path.join(root, 'miniapp/pages/login/index.js'), 'utf8')
+const loginWxml = fs.readFileSync(path.join(root, 'miniapp/pages/login/index.wxml'), 'utf8')
 
 const errs = []
 
@@ -38,6 +40,13 @@ if (pageJs.includes('setTimeout(() => getApp().logout()')) {
 
 if (!flowJs.includes('module.exports')) {
   errs.push('changePasswordFlow.js 缺少 module.exports')
+}
+
+if (loginJs.includes('_enterChangePasswordMode') || loginJs.includes('changePasswordMode')) {
+  errs.push('登录页不得再保留内嵌改密 changePasswordMode / _enterChangePasswordMode')
+}
+if (loginWxml.includes('changePasswordMode') || loginWxml.includes('bindtap="onChangePassword"')) {
+  errs.push('登录页 WXML 不得再包含内嵌改密表单，正式流程只走 packageC/profile/change-password')
 }
 
 if (errs.length) {

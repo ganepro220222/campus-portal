@@ -376,12 +376,13 @@ function playVideo(url, name) {
   })
 }
 
-function playAudio(url, name, id) {
+function playAudio(url, name, id, retryOptions) {
   return audioPlayer.play({
     id,
     url,
     name: name || '音频',
-    onUnplayable: () => copyUrlFallback(url, name)
+    onUnplayable: () => copyUrlFallback(url, name),
+    onRetry: () => downloadResource(id, retryOptions || {})
   })
 }
 
@@ -411,7 +412,7 @@ function copyUrlFallback(url, name) {
   })
 }
 
-async function openDownloadedResource(data) {
+async function openDownloadedResource(data, retryOptions) {
   const url = pickUrl(data)
   if (!url) {
     wx.showToast({ title: '文件地址不可用', icon: 'none' })
@@ -424,7 +425,7 @@ async function openDownloadedResource(data) {
   } else if (VIDEO_TYPES.has(fileType)) {
     await playVideo(url, data.name)
   } else if (AUDIO_TYPES.has(fileType)) {
-    await playAudio(url, data.name, data.id)
+    await playAudio(url, data.name, data.id, retryOptions)
   } else {
     await openDocument(url, data.fileType, data.id)
   }
@@ -452,7 +453,7 @@ function downloadResource(resourceId, options = {}) {
         options.onStart()
       }
       const data = await post(`/resources/${resourceId}/download`, {})
-      await openDownloadedResource({ ...data, id: resourceId })
+      await openDownloadedResource({ ...data, id: resourceId }, options)
       try {
         await confirmDownloadRecord(resourceId, data && data.token)
       } catch (syncErr) {

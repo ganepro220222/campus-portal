@@ -27,6 +27,7 @@ let _state = emptyState()
 let _listeners = []
 let _seeking = false
 let _onUnplayable = null
+let _onRetry = null
 let _pendingSettle = null
 
 const AUDIO_SLOW_HINT_MS = 15000
@@ -37,7 +38,10 @@ const _timeouts = {
 }
 
 function snapshot() {
-  return { ..._state }
+  return {
+    ..._state,
+    canRetry: !!(_state.error && _onRetry)
+  }
 }
 
 function emit() {
@@ -135,6 +139,7 @@ function play(opts = {}) {
       return
     }
     _onUnplayable = typeof opts.onUnplayable === 'function' ? opts.onUnplayable : null
+    _onRetry = typeof opts.onRetry === 'function' ? opts.onRetry : null
     if (typeof wx === 'undefined' || typeof wx.createInnerAudioContext !== 'function') {
       _state = {
         ...emptyState(),
@@ -184,11 +189,7 @@ function play(opts = {}) {
       emit()
     })
     _ctx.onError(() => {
-      _state.playing = false
-      _state.error = '无法播放该音频'
-      _state.hint = ''
-      emit()
-      fail(new Error('audio-unplayable'), { destroy: false, error: '无法播放该音频' })
+      fail(new Error('audio-unplayable'), { error: '无法播放该音频，点击重试' })
     })
     // 15 秒只是弱网提示：继续等 canplay/onPlay，避免「已失败但稍后突然出声且永不记账」
     slowTimer = setTimeout(() => {
@@ -197,7 +198,7 @@ function play(opts = {}) {
       emit()
     }, _timeouts.slowMs)
     giveUpTimer = setTimeout(() => {
-      fail(new Error('audio-timeout'), { error: '音频加载超时，请重试' })
+      fail(new Error('audio-timeout'), { error: '音频加载超时，点击重试' })
     }, _timeouts.giveUpMs)
     _ctx.play()
     emit()
@@ -213,15 +214,31 @@ function pause() {
 }
 
 function resume() {
-  if (!_ctx || !_state.visible) return
+  if (!_ctx || !_state.visible || _state.error) return
   _state.error = ''
   _ctx.play()
   _state.playing = true
   emit()
 }
 
+function retry() {
+  if (!_state.error) return false
+  if (typeof _onRetry === 'function') {
+    _onRetry()
+    return true
+  }
+  if (typeof wx !== 'undefined' && typeof wx.showToast === 'function') {
+    wx.showToast({ title: '请关闭后重新点击资源', icon: 'none' })
+  }
+  return false
+}
+
 function toggle() {
   if (!_state.visible) return
+  if (_state.error) {
+    retry()
+    return
+  }
   if (_state.playing) pause()
   else resume()
 }
@@ -246,6 +263,7 @@ function stop() {
   }
   destroyCtx()
   _onUnplayable = null
+  _onRetry = null
   _seeking = false
   _state = emptyState()
   emit()
@@ -267,6 +285,7 @@ module.exports = {
   play,
   pause,
   resume,
+  retry,
   toggle,
   beginSeek,
   seekPercent,

@@ -6,7 +6,8 @@
       <icon name="close" size="18" color="#5A648A" />
     </view>
     <view class="rab-btn {{playing ? 'rab-btn-on' : ''}}" catchtap="onToggle" hover-class="rab-btn-hover">
-      <icon wx:if="{{playing}}" name="pause" size="18" color="#ffffff" />
+      <icon wx:if="{{error}}" name="refresh" size="18" color="#2B356E" />
+      <icon wx:elif="{{playing}}" name="pause" size="18" color="#ffffff" />
       <icon wx:else name="play" size="18" color="#2B356E" />
     </view>
     <view class="rab-main">
@@ -22,7 +23,7 @@
           activeColor="#2B356E"
           backgroundColor="#D5DCEC"
           block-size="12"
-          disabled="{{duration <= 0}}"
+          disabled="{{duration <= 0 || error}}"
           bindchanging="onSeekChanging"
           bindchange="onSeekChange"
         />

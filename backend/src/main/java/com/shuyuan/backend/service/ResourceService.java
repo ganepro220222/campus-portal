@@ -9,21 +9,28 @@ import com.shuyuan.backend.mapper.DownloadRecordMapper;
 import com.shuyuan.backend.mapper.ResourceMapper;
 import lombok.RequiredArgsConstructor;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ResourceService {
 
     static final int MAX_FILE_CHUNK_BYTES = 4 * 1024 * 1024;
+    static final Duration DOWNLOAD_TICKET_TTL = Duration.ofMinutes(30);
+    static final Duration DOWNLOAD_TICKET_USED_TTL = Duration.ofHours(24);
+    static final String DOWNLOAD_TICKET_PREFIX = "download:ticket:";
+    static final String DOWNLOAD_TICKET_USED_PREFIX = "download:ticket:used:";
 
     private final ResourceMapper resourceMapper;
     private final DownloadRecordMapper downloadRecordMapper;
@@ -32,6 +39,7 @@ public class ResourceService {
     private final PointService pointService;
     private final OssService ossService;
     private final FavoriteService favoriteService;
+    private final StringRedisTemplate redis;
 
     public List<Map<String, Object>> list(String category, String fileType) {
         CategoryService.CategoryFilter filter = categoryService.resolveFilter("resource", category);
@@ -65,11 +73,40 @@ public class ResourceService {
         return m;
     }
 
-    /** 记录下载并返回文件地址（需登录；调用本接口即记下载，与文件是否成功打开无关） */
-    @Transactional
+    /**
+     * 准备下载：签发短时一次性凭证并返回签名地址。
+     * 此时不写下载记录、不加次数、不发积分；等客户端确认打开或开播成功后再 complete。
+     */
     public Map<String, Object> download(Long id) {
         Long memberId = requireMemberId();
         Resource resource = requireResource(id);
+        String token = issueDownloadTicket(memberId, id);
+
+        Map<String, Object> m = new HashMap<>();
+        m.put("fileUrl", ossService.signMediaUrl(resource.getFileUrl()));
+        m.put("previewUrl", ossService.signMediaUrl(resource.getPreviewUrl()));
+        m.put("fileType", resource.getFileType());
+        m.put("name", resource.getName());
+        m.put("id", id);
+        m.put("fileSizeKb", resource.getFileSizeKb());
+        m.put("token", token);
+        return m;
+    }
+
+    /**
+     * 客户端在文档打开成功或音视频进入可播放后调用。同一凭证只确认一次。
+     */
+    @Transactional
+    public Map<String, Object> completeDownload(Long id, String token) {
+        Long memberId = requireMemberId();
+        Resource resource = requireResource(id);
+        TicketConsume consume = consumeDownloadTicket(token, memberId, id);
+        if (consume == TicketConsume.ALREADY) {
+            return Map.of("recorded", false);
+        }
+        if (consume != TicketConsume.OK) {
+            throw new BusinessException(400, "下载凭证无效或已过期");
+        }
 
         DownloadRecord record = new DownloadRecord();
         record.setMemberId(memberId);
@@ -84,15 +121,45 @@ public class ResourceService {
         if (affected == 0) {
             throw new BusinessException(404, "资源不存在");
         }
+        return Map.of("recorded", true);
+    }
 
-        Map<String, Object> m = new HashMap<>();
-        m.put("fileUrl", ossService.signMediaUrl(resource.getFileUrl()));
-        m.put("previewUrl", ossService.signMediaUrl(resource.getPreviewUrl()));
-        m.put("fileType", resource.getFileType());
-        m.put("name", resource.getName());
-        m.put("id", id);
-        m.put("fileSizeKb", resource.getFileSizeKb());
-        return m;
+    private String issueDownloadTicket(Long memberId, Long resourceId) {
+        String token = UUID.randomUUID().toString().replace("-", "");
+        try {
+            redis.opsForValue().set(
+                    DOWNLOAD_TICKET_PREFIX + token,
+                    memberId + ":" + resourceId,
+                    DOWNLOAD_TICKET_TTL);
+        } catch (Exception e) {
+            throw new BusinessException(503, "服务繁忙，请稍后重试");
+        }
+        return token;
+    }
+
+    private TicketConsume consumeDownloadTicket(String token, Long memberId, Long resourceId) {
+        if (token == null || !token.matches("[a-fA-F0-9]{32}")) {
+            return TicketConsume.INVALID;
+        }
+        String expected = memberId + ":" + resourceId;
+        String ticketKey = DOWNLOAD_TICKET_PREFIX + token;
+        String usedKey = DOWNLOAD_TICKET_USED_PREFIX + token;
+        try {
+            String bound = redis.opsForValue().getAndDelete(ticketKey);
+            if (bound != null) {
+                redis.opsForValue().set(usedKey, "1", DOWNLOAD_TICKET_USED_TTL);
+                return expected.equals(bound) ? TicketConsume.OK : TicketConsume.INVALID;
+            }
+            return Boolean.TRUE.equals(redis.hasKey(usedKey)) ? TicketConsume.ALREADY : TicketConsume.INVALID;
+        } catch (Exception e) {
+            throw new BusinessException(503, "服务繁忙，请稍后重试");
+        }
+    }
+
+    private enum TicketConsume {
+        OK,
+        ALREADY,
+        INVALID
     }
 
     /** 登录后按资源 ID 读文件字节（不重复记下载次数） */

@@ -1,6 +1,7 @@
 package com.shuyuan.backend.controller.api;
 
 import com.shuyuan.backend.common.Result;
+import com.shuyuan.backend.dto.DownloadCompleteRequest;
 import com.shuyuan.backend.service.ResourceService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,13 @@ public class ResourceController {
     @PostMapping("/{id}/download")
     public Result<Map<String, Object>> download(@PathVariable Long id) {
         return Result.ok(resourceService.download(id));
+    }
+
+    @PostMapping("/{id}/download-complete")
+    public Result<Map<String, Object>> completeDownload(
+            @PathVariable Long id,
+            @RequestBody(required = false) DownloadCompleteRequest req) {
+        return Result.ok(resourceService.completeDownload(id, req == null ? null : req.getToken()));
     }
 
     @GetMapping("/{id}/file")

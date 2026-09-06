@@ -1,4 +1,4 @@
-// utils/resourceDownload.js — 资源下载：调后端记录 + 按类型打开
+// utils/resourceDownload.js — 资源下载：先取签名地址，打开或开播成功后再确认记账
 const { post, getArrayBufferChunk, getUrlArrayBufferChunk } = require('./request')
 const { requireLogin } = require('./auth')
 const audioPlayer = require('./resourceAudioPlayer')
@@ -359,23 +359,37 @@ async function openDocument(url, fileType, resourceId) {
 }
 
 function playVideo(url, name) {
-  if (wx.previewMedia) {
+  return new Promise((resolve, reject) => {
+    if (!wx.previewMedia) {
+      copyUrlFallback(url, name)
+      reject(new Error('preview-unavailable'))
+      return
+    }
     wx.previewMedia({
       sources: [{ url, type: 'video' }],
-      fail: () => copyUrlFallback(url, name)
+      success: resolve,
+      fail(err) {
+        copyUrlFallback(url, name)
+        reject(err || new Error('preview-failed'))
+      }
     })
-    return
-  }
-  copyUrlFallback(url, name)
+  })
 }
 
 function playAudio(url, name, id) {
-  audioPlayer.play({
+  return audioPlayer.play({
     id,
     url,
     name: name || '音频',
     onUnplayable: () => copyUrlFallback(url, name)
   })
+}
+
+async function confirmDownloadRecord(resourceId, token) {
+  if (!token) {
+    throw new Error('download-token-missing')
+  }
+  return post(`/resources/${resourceId}/download-complete`, { token })
 }
 
 function copyUrlFallback(url, name) {
@@ -402,17 +416,17 @@ async function openDownloadedResource(data) {
   if (DOC_TYPES.has(fileType) || DOC_TYPES.has(rawType)) {
     await openDocument(url, data.fileType, data.id)
   } else if (VIDEO_TYPES.has(fileType)) {
-    playVideo(url, data.name)
+    await playVideo(url, data.name)
   } else if (AUDIO_TYPES.has(fileType)) {
-    playAudio(url, data.name, data.id)
+    await playAudio(url, data.name, data.id)
   } else {
     await openDocument(url, data.fileType, data.id)
   }
 }
 
 /**
- * 登录后请求下载接口并打开文件
- * 口径：POST /download 成功即记下载记录；onRecorded 在客户端打开流程成功后触发（用于列表计数 UI）
+ * 登录后先取签名地址，打开或开播成功后再确认记账。
+ * onRecorded 只在确认成功后触发，避免失败下载把列表次数加一。
  * @param {number|string} resourceId
  * @param {{ onStart?: Function, onRecorded?: Function, onComplete?: Function }} options
  */
@@ -433,11 +447,17 @@ function downloadResource(resourceId, options = {}) {
       }
       const data = await post(`/resources/${resourceId}/download`, {})
       await openDownloadedResource({ ...data, id: resourceId })
+      try {
+        await confirmDownloadRecord(resourceId, data && data.token)
+      } catch (syncErr) {
+        wx.showToast({ title: '文件已打开，但下载记录同步失败', icon: 'none', duration: 2500 })
+        throw syncErr
+      }
       if (typeof options.onRecorded === 'function') {
         options.onRecorded(data)
       }
     } catch (e) {
-      // 下载/打开流程已经向用户提示；此处仅吞掉未处理异常
+      // 下载/打开/同步失败已经向用户提示；此处仅吞掉未处理异常
     } finally {
       _activeDownloadId = null
       if (typeof options.onComplete === 'function') {
@@ -450,6 +470,9 @@ function downloadResource(resourceId, options = {}) {
 module.exports = {
   downloadResource,
   openDownloadedResource,
+  confirmDownloadRecord,
+  playVideo,
+  playAudio,
   normalizeType,
   extFromUrl,
   documentOpenType,

@@ -14,6 +14,7 @@ const originalWx = global.wx
 
 let postCalls = 0
 const pendingPosts = []
+const posts = []
 const toasts = []
 const previews = []
 
@@ -22,8 +23,9 @@ require.cache[requestPath] = {
   filename: requestPath,
   loaded: true,
   exports: {
-    post() {
+    post(url, body) {
       postCalls += 1
+      posts.push({ url, body })
       return new Promise((resolve) => pendingPosts.push(resolve))
     },
     getArrayBufferChunk() {
@@ -52,6 +54,7 @@ global.wx = {
   },
   previewMedia(options) {
     previews.push(options.sources[0].url)
+    if (typeof options.success === 'function') options.success()
   }
 }
 
@@ -86,8 +89,15 @@ async function run() {
   pendingPosts[0]({
     fileUrl: 'https://cdn.yunmanvr.com/videos/a.mp4?auth_key=one',
     fileType: 'mp4',
-    name: '视频'
+    name: '视频',
+    token: 'a'.repeat(32)
   })
+  await flushPromises()
+  await flushPromises()
+  assert.strictEqual(postCalls, 2, '打开成功后应确认记账')
+  assert.match(posts[1].url, /\/resources\/9\/download-complete$/)
+  assert.deepStrictEqual(posts[1].body, { token: 'a'.repeat(32) })
+  pendingPosts[1]({ recorded: true })
   await flushPromises()
   await flushPromises()
 
@@ -96,12 +106,16 @@ async function run() {
   assert.deepStrictEqual(previews, ['https://cdn.yunmanvr.com/videos/a.mp4?auth_key=one'])
 
   downloadResource(10)
-  assert.strictEqual(postCalls, 2, '上一任务完成后应允许下一次下载')
-  pendingPosts[1]({
+  assert.strictEqual(postCalls, 3, '上一任务完成后应允许下一次下载')
+  pendingPosts[2]({
     fileUrl: 'https://cdn.yunmanvr.com/audios/a.mp3?auth_key=two',
     fileType: 'mp4',
-    name: '第二份'
+    name: '第二份',
+    token: 'b'.repeat(32)
   })
+  await flushPromises()
+  await flushPromises()
+  pendingPosts[3]({ recorded: true })
   await flushPromises()
   await flushPromises()
   assert.strictEqual(_getActiveDownloadId(), null)

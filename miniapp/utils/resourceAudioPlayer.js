@@ -79,60 +79,89 @@ function subscribe(fn) {
   }
 }
 
+const AUDIO_READY_TIMEOUT_MS = 15000
+
 function play(opts = {}) {
-  const url = opts.url
-  if (!url) return
-  if (typeof wx === 'undefined' || typeof wx.createInnerAudioContext !== 'function') {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    let timer = null
+    const succeed = () => {
+      if (settled) return
+      settled = true
+      if (timer) clearTimeout(timer)
+      resolve()
+    }
+    const fail = (err) => {
+      if (settled) return
+      settled = true
+      if (timer) clearTimeout(timer)
+      if (_onUnplayable) _onUnplayable()
+      reject(err instanceof Error ? err : new Error('audio-unplayable'))
+    }
+
+    const url = opts.url
+    if (!url) {
+      reject(new Error('no-url'))
+      return
+    }
+    _onUnplayable = typeof opts.onUnplayable === 'function' ? opts.onUnplayable : null
+    if (typeof wx === 'undefined' || typeof wx.createInnerAudioContext !== 'function') {
+      _state = {
+        ...emptyState(),
+        visible: true,
+        id: String(opts.id || ''),
+        name: opts.name || '音频',
+        error: '当前环境无法播放音频'
+      }
+      emit()
+      fail(new Error('audio-unavailable'))
+      return
+    }
+    destroyCtx()
+    _seeking = false
     _state = {
       ...emptyState(),
       visible: true,
       id: String(opts.id || ''),
       name: opts.name || '音频',
-      error: '当前环境无法播放音频'
+      playing: true
     }
-    emit()
-    return
-  }
-  destroyCtx()
-  _onUnplayable = typeof opts.onUnplayable === 'function' ? opts.onUnplayable : null
-  _seeking = false
-  _state = {
-    ...emptyState(),
-    visible: true,
-    id: String(opts.id || ''),
-    name: opts.name || '音频',
-    playing: true
-  }
-  _ctx = wx.createInnerAudioContext()
-  _ctx.obeyMuteSwitch = false
-  _ctx.src = url
-  _ctx.onTimeUpdate(() => {
-    if (_seeking || !_ctx) return
-    applyTime(_ctx.currentTime, _ctx.duration)
+    _ctx = wx.createInnerAudioContext()
+    _ctx.obeyMuteSwitch = false
+    _ctx.src = url
+    _ctx.onTimeUpdate(() => {
+      if (_seeking || !_ctx) return
+      applyTime(_ctx.currentTime, _ctx.duration)
+      emit()
+    })
+    _ctx.onCanplay(() => {
+      if (!_ctx) return
+      applyTime(_ctx.currentTime, _ctx.duration)
+      emit()
+      succeed()
+    })
+    _ctx.onPlay(() => {
+      succeed()
+    })
+    _ctx.onEnded(() => {
+      _state.playing = false
+      if (_ctx) applyTime(_ctx.duration, _ctx.duration)
+      emit()
+    })
+    _ctx.onStop(() => {
+      _state.playing = false
+      emit()
+    })
+    _ctx.onError(() => {
+      _state.playing = false
+      _state.error = '无法播放该音频'
+      emit()
+      fail(new Error('audio-unplayable'))
+    })
+    timer = setTimeout(() => fail(new Error('audio-timeout')), AUDIO_READY_TIMEOUT_MS)
+    _ctx.play()
     emit()
   })
-  _ctx.onCanplay(() => {
-    if (!_ctx) return
-    applyTime(_ctx.currentTime, _ctx.duration)
-    emit()
-  })
-  _ctx.onEnded(() => {
-    _state.playing = false
-    if (_ctx) applyTime(_ctx.duration, _ctx.duration)
-    emit()
-  })
-  _ctx.onStop(() => {
-    _state.playing = false
-    emit()
-  })
-  _ctx.onError(() => {
-    _state.playing = false
-    _state.error = '无法播放该音频'
-    emit()
-    if (_onUnplayable) _onUnplayable()
-  })
-  _ctx.play()
-  emit()
 }
 
 function pause() {

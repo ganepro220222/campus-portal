@@ -130,7 +130,7 @@
         </el-form-item>
         <p class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
         <el-form-item v-if="editingId" label="下载次数">
-          <span>{{ form.downloadCount }} 次（只读，由学员下载自动累计）</span>
+          <span>{{ form.downloadCount }} 次（只读，学员成功打开或播放后自动累计）</span>
         </el-form-item>
       </el-form>
       <template #footer>

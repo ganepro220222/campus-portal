@@ -14,6 +14,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.util.Map;
 
@@ -38,6 +40,10 @@ class ResourceServiceTest {
     private OssService ossService;
     @Mock
     private FavoriteService favoriteService;
+    @Mock
+    private StringRedisTemplate redis;
+    @Mock
+    private ValueOperations<String, String> valueOps;
 
     @InjectMocks
     private ResourceService resourceService;
@@ -80,10 +86,10 @@ class ResourceServiceTest {
     }
 
     @Test
-    void download_recordsAndIncrementsAtomically() {
+    void download_issuesTicketWithoutRecording() {
         Resource resource = activeResource();
         when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(resource);
-        when(resourceMapper.incrDownloadCount(RESOURCE_ID)).thenReturn(1);
+        when(redis.opsForValue()).thenReturn(valueOps);
         when(ossService.signMediaUrl(anyString())).thenAnswer(inv -> inv.getArgument(0));
 
         Map<String, Object> result = resourceService.download(RESOURCE_ID);
@@ -91,11 +97,70 @@ class ResourceServiceTest {
         assertEquals("pdf", result.get("fileType"));
         assertEquals(RESOURCE_ID, result.get("id"));
         assertEquals(12, result.get("fileSizeKb"));
+        String token = String.valueOf(result.get("token"));
+        assertEquals(32, token.length());
+        verify(valueOps).set(
+                eq(ResourceService.DOWNLOAD_TICKET_PREFIX + token),
+                eq(MEMBER_ID + ":" + RESOURCE_ID),
+                eq(ResourceService.DOWNLOAD_TICKET_TTL));
+        verify(downloadRecordMapper, never()).insert(any(DownloadRecord.class));
+        verify(eventLogService, never()).record(anyString(), anyString(), any());
+        verify(pointService, never()).award(any(), anyString());
+        verify(resourceMapper, never()).incrDownloadCount(any());
+    }
+
+    @Test
+    void completeDownload_recordsOnceAfterOpen() {
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(activeResource());
+        when(resourceMapper.incrDownloadCount(RESOURCE_ID)).thenReturn(1);
+        stubTicket("a".repeat(32), MEMBER_ID + ":" + RESOURCE_ID);
+
+        Map<String, Object> result = resourceService.completeDownload(RESOURCE_ID, "a".repeat(32));
+
+        assertEquals(Boolean.TRUE, result.get("recorded"));
         verify(downloadRecordMapper).insert(any(DownloadRecord.class));
         verify(eventLogService).record("download", "resource", RESOURCE_ID);
         verify(pointService).award(MEMBER_ID, "download_resource");
         verify(resourceMapper).incrDownloadCount(RESOURCE_ID);
-        verify(resourceMapper, never()).updateById(any(Resource.class));
+    }
+
+    @Test
+    void completeDownload_replayIsIdempotent() {
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(activeResource());
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.getAndDelete(ResourceService.DOWNLOAD_TICKET_PREFIX + "b".repeat(32))).thenReturn(null);
+        when(redis.hasKey(ResourceService.DOWNLOAD_TICKET_USED_PREFIX + "b".repeat(32))).thenReturn(true);
+
+        Map<String, Object> result = resourceService.completeDownload(RESOURCE_ID, "b".repeat(32));
+
+        assertEquals(Boolean.FALSE, result.get("recorded"));
+        verify(downloadRecordMapper, never()).insert(any(DownloadRecord.class));
+        verify(pointService, never()).award(any(), anyString());
+        verify(resourceMapper, never()).incrDownloadCount(any());
+    }
+
+    @Test
+    void completeDownload_rejectsUnknownToken() {
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(activeResource());
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.getAndDelete(anyString())).thenReturn(null);
+        when(redis.hasKey(anyString())).thenReturn(false);
+
+        var ex = assertThrows(BusinessException.class,
+                () -> resourceService.completeDownload(RESOURCE_ID, "c".repeat(32)));
+        assertEquals(400, ex.getCode());
+        verify(downloadRecordMapper, never()).insert(any(DownloadRecord.class));
+    }
+
+    @Test
+    void completeDownload_rejectsWrongResource() {
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(activeResource());
+        stubTicket("d".repeat(32), MEMBER_ID + ":99");
+
+        var ex = assertThrows(BusinessException.class,
+                () -> resourceService.completeDownload(RESOURCE_ID, "d".repeat(32)));
+        assertEquals(400, ex.getCode());
+        verify(downloadRecordMapper, never()).insert(any(DownloadRecord.class));
     }
 
     @Test
@@ -150,18 +215,33 @@ class ResourceServiceTest {
     }
 
     @Test
-    void download_failsWhenIncrReturnsZero() {
-        Resource resource = activeResource();
-        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(resource);
+    void completeDownload_failsWhenIncrReturnsZero() {
+        when(resourceMapper.selectById(RESOURCE_ID)).thenReturn(activeResource());
         when(resourceMapper.incrDownloadCount(RESOURCE_ID)).thenReturn(0);
+        stubTicket("e".repeat(32), MEMBER_ID + ":" + RESOURCE_ID);
 
-        var ex = assertThrows(BusinessException.class, () -> resourceService.download(RESOURCE_ID));
+        var ex = assertThrows(BusinessException.class,
+                () -> resourceService.completeDownload(RESOURCE_ID, "e".repeat(32)));
         assertEquals(404, ex.getCode());
         assertTrue(ex.getMessage().contains("资源不存在"));
 
         ArgumentCaptor<DownloadRecord> captor = ArgumentCaptor.forClass(DownloadRecord.class);
         verify(downloadRecordMapper).insert(captor.capture());
         assertEquals(MEMBER_ID, captor.getValue().getMemberId());
+    }
+
+    @Test
+    void completeDownload_requiresLogin() {
+        MemberContext.clear();
+        var ex = assertThrows(BusinessException.class,
+                () -> resourceService.completeDownload(RESOURCE_ID, "a".repeat(32)));
+        assertEquals(401, ex.getCode());
+        verifyNoInteractions(downloadRecordMapper);
+    }
+
+    private void stubTicket(String token, String bound) {
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.getAndDelete(ResourceService.DOWNLOAD_TICKET_PREFIX + token)).thenReturn(bound);
     }
 
     private Resource activeResource() {

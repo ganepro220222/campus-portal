@@ -57,14 +57,68 @@ export function copyTextureSampling(src, dst) {
   return dst
 }
 
+/** Three 材质上可能指向同一 Texture 的槽位；dispose 前必须先扫完。 */
+export const MATERIAL_TEXTURE_SLOTS = [
+  'map',
+  'envMap',
+  'emissiveMap',
+  'normalMap',
+  'roughnessMap',
+  'metalnessMap',
+  'aoMap',
+  'alphaMap',
+  'lightMap',
+  'bumpMap',
+  'displacementMap',
+  'clearcoatMap',
+  'clearcoatNormalMap',
+  'clearcoatRoughnessMap',
+  'transmissionMap',
+  'thicknessMap',
+  'specularMap',
+  'specularColorMap',
+  'specularIntensityMap',
+  'sheenColorMap',
+  'sheenRoughnessMap',
+  'iridescenceMap',
+  'iridescenceThicknessMap',
+  'anisotropyMap',
+]
+
+export function collectMaterialTextures(material) {
+  const out = []
+  if (!material) return out
+  const seen = new Set()
+  for (const key of MATERIAL_TEXTURE_SLOTS) {
+    const tex = material[key]
+    if (tex && !seen.has(tex)) {
+      seen.add(tex)
+      out.push(tex)
+    }
+  }
+  return out
+}
+
+export function textureStillReferenced(tex, materials) {
+  if (!tex) return false
+  for (const m of materials || []) {
+    for (const ref of collectMaterialTextures(m)) {
+      if (ref === tex) return true
+    }
+  }
+  return false
+}
+
 /**
  * 多材质共享同一贴图时只降采样一次，返回应 dispose 的原纹理。
+ * 只替换 map；若 emissiveMap 等槽位仍引用原纹理，则不列入 dispose。
  * downscale(tex) 不得 dispose。
  */
 export function applySharedMapDownscale(materials, downscale) {
+  const list = materials || []
   const seen = new Map()
-  const toDispose = []
-  for (const m of materials || []) {
+  const candidates = []
+  for (const m of list) {
     const tex = m?.map
     if (!tex) continue
     if (seen.has(tex)) {
@@ -73,10 +127,10 @@ export function applySharedMapDownscale(materials, downscale) {
     }
     const next = downscale(tex) || tex
     seen.set(tex, next)
-    if (next !== tex) toDispose.push(tex)
+    if (next !== tex) candidates.push(tex)
     m.map = next
   }
-  return toDispose
+  return candidates.filter((tex) => !textureStillReferenced(tex, list))
 }
 
 export function webglContextRestorePlan(s = {}) {

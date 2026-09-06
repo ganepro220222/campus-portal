@@ -12,6 +12,7 @@ import {
   constrainedDecodeTarget,
   applySharedMapDownscale,
   copyTextureSampling,
+  textureStillReferenced,
   webglContextRestorePlan,
   resizeToMaxWidth,
 } from './shading-risk.mjs'
@@ -195,6 +196,48 @@ test('共享大贴图只降采样一次，原纹理最后才 dispose', () => {
   assert.equal(shared.disposed, 0)
   for (const tex of toDispose) tex.dispose()
   assert.equal(shared.disposed, 1)
+})
+
+test('map 与 emissiveMap 共用原纹理时不得 dispose', () => {
+  const shared = { id: 'orig', image: { width: 4096, height: 2048 }, disposed: 0, dispose() { this.disposed++ } }
+  const small = { id: 'small', image: { width: 2048, height: 1024 } }
+  const material = { map: shared, emissiveMap: shared }
+  const toDispose = applySharedMapDownscale([material], () => small)
+  assert.equal(material.map, small)
+  assert.equal(material.emissiveMap, shared)
+  assert.ok(material.emissiveMap.image)
+  assert.equal(material.emissiveMap.image.width, 4096)
+  assert.deepEqual(toDispose, [])
+  assert.equal(textureStillReferenced(shared, [material]), true)
+  assert.equal(shared.disposed, 0)
+})
+
+test('材质 A 的 map 与材质 B 的 emissiveMap 共用时不得 dispose', () => {
+  const shared = { id: 'orig', image: { width: 4096, height: 4096 } }
+  const small = { id: 'small', image: { width: 2048, height: 2048 } }
+  const materialA = { map: shared }
+  const materialB = { emissiveMap: shared }
+  const toDispose = applySharedMapDownscale([materialA, materialB], () => small)
+  assert.equal(materialA.map, small)
+  assert.equal(materialB.emissiveMap, shared)
+  assert.ok(shared.image)
+  assert.deepEqual(toDispose, [])
+})
+
+test('仅 map 引用被替换后才允许 dispose', () => {
+  const shared = { id: 'orig', image: { width: 4096 } }
+  const small = { id: 'small', image: { width: 2048 } }
+  const material = { map: shared, roughnessMap: { id: 'other' } }
+  const toDispose = applySharedMapDownscale([material], () => small)
+  assert.equal(material.map, small)
+  assert.deepEqual(toDispose, [shared])
+  assert.equal(textureStillReferenced(shared, [material]), false)
+})
+
+test('player 降采样收集全部材质以便发现跨槽位引用', () => {
+  const src = fs.readFileSync(new URL('./player.html', import.meta.url), 'utf8')
+  assert.match(src, /if \(m\) materials\.push\(m\)/)
+  assert.doesNotMatch(src, /if \(m\?\.map\) materials\.push/)
 })
 
 test('copyTextureSampling 保留 UV transform', () => {

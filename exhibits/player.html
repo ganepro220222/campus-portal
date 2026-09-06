@@ -940,7 +940,8 @@ function downscaleHugeAlbedoMaps() {
   const materials = []
   model.traverse(o => {
     if (!o.isMesh) return
-    ;[].concat(o.material).forEach(m => { if (m?.map) materials.push(m) })
+    // 必须收集全部材质：emissiveMap 等可能复用 map 的原纹理，漏扫会误 dispose
+    ;[].concat(o.material).forEach(m => { if (m) materials.push(m) })
   })
   const originals = applySharedMapDownscale(materials, tex => downscaleMapIfHuge(tex, 2048))
   for (const tex of originals) {

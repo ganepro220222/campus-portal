@@ -173,6 +173,25 @@ if (!/source_type[\s\S]{0,200}'manual'/.test(patch)) {
   errs.push("内置文档的 source_type 应为 manual，否则后台按手工录入的那套增删改查管不了它")
 }
 
+// ---------- 5) 运维文档篇数必须跟源文件走 ----------
+const countDocs = [
+  'docs/运维/管理员操作手册_V1.0.md',
+  'docs/运维/上线分工checklist_V1.0.md',
+]
+for (const rel of countDocs) {
+  const text = read(rel)
+  const hits = [...text.matchAll(/(\d+)\s*篇(?:标题以|使用指南)/g)]
+  if (!hits.length) {
+    errs.push(`${rel} 未写明内置使用指南篇数，部署时无法按 sql/knowledge 核对`)
+    continue
+  }
+  for (const hit of hits) {
+    if (Number(hit[1]) !== sources.length) {
+      errs.push(`${rel} 写「${hit[0]}」，但 sql/knowledge 现有 ${sources.length} 篇源文件`)
+    }
+  }
+}
+
 if (errs.length) {
   console.error('check-builtin-knowledge 失败：')
   for (const e of errs) console.error('  ✖ ' + e)

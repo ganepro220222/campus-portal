@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,42 @@ class OssMediaCleanupServiceTest {
         cleanup.afterReplace("craft-demo/model.glb", "images/202608/cover.jpg");
         verify(refMapper, never()).countReferences(anyString());
         verify(ossService, never()).deleteObjectQuietly(anyString());
+    }
+
+    @Test
+    void releaseStored_extractsKeysFromFeedbackJson() {
+        when(refMapper.countReferences("images/202609/a.jpg")).thenReturn(0L);
+        when(refMapper.countReferences("images/202609/b.jpg")).thenReturn(0L);
+        when(ossService.deleteObjectQuietly("images/202609/a.jpg")).thenReturn(true);
+        when(ossService.deleteObjectQuietly("images/202609/b.jpg")).thenReturn(true);
+
+        cleanup.releaseStored(List.of(
+                "[\"https://cdn.yunmanvr.com/images/202609/a.jpg\",\"https://cdn.yunmanvr.com/images/202609/b.jpg\"]"));
+
+        verify(ossService).deleteObjectQuietly("images/202609/a.jpg");
+        verify(ossService).deleteObjectQuietly("images/202609/b.jpg");
+    }
+
+    @Test
+    void releaseStored_skipsWhenStillReferenced() {
+        when(refMapper.countReferences("images/202609/a.jpg")).thenReturn(1L);
+
+        cleanup.releaseStored(List.of("[\"https://cdn.yunmanvr.com/images/202609/a.jpg\"]"));
+
+        verify(ossService, never()).deleteObjectQuietly(anyString());
+    }
+
+    @Test
+    void releaseStored_ignoresNullBlankAndOssFailure() {
+        cleanup.releaseStored(null);
+        cleanup.releaseStored(List.of());
+        cleanup.releaseStored(Arrays.asList(null, "  "));
+        verify(refMapper, never()).countReferences(anyString());
+        verify(ossService, never()).deleteObjectQuietly(anyString());
+
+        when(refMapper.countReferences("images/202609/a.jpg")).thenReturn(0L);
+        when(ossService.deleteObjectQuietly("images/202609/a.jpg")).thenReturn(false);
+        assertDoesNotThrow(() -> cleanup.releaseStored(List.of("images/202609/a.jpg")));
     }
 
     @Test

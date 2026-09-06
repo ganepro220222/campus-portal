@@ -35,6 +35,7 @@ public class AdminFeedbackService {
     private final MemberMapper memberMapper;
     private final AdminPermissionService adminPermissionService;
     private final MessageService messageService;
+    private final OssMediaCleanupService ossMediaCleanupService;
     private final ObjectMapper objectMapper;
 
     public PageResult<Map<String, Object>> list(int page, int size, String status) {
@@ -89,15 +90,26 @@ public class AdminFeedbackService {
     /**
      * 物理删除一条反馈。不进回收站：这是学生来信，不是发布错的内容。
      * 站内消息原文保留，原单链接打开会显示不存在。
+     * 附图走统一 OSS 释放：提交成功后再删仍无引用的对象，失败不回滚本条删除。
      */
     @Transactional
     public void delete(Long id) {
         adminPermissionService.require("admin:super");
-        requireFeedback(id);
+        Feedback feedback = requireFeedback(id);
+        List<String> media = storedImages(feedback);
         int n = feedbackMapper.purgeById(id);
         if (n == 0) {
             throw new BusinessException(404, "反馈不存在");
         }
+        ossMediaCleanupService.releaseStored(media);
+    }
+
+    private static List<String> storedImages(Feedback feedback) {
+        String images = feedback.getImages();
+        if (images == null || images.isBlank()) {
+            return List.of();
+        }
+        return List.of(images);
     }
 
     private Feedback requireFeedback(Long id) {

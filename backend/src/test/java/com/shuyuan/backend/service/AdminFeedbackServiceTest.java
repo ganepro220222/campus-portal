@@ -14,12 +14,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.mockito.InOrder;
+
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -36,6 +41,8 @@ class AdminFeedbackServiceTest {
     private AdminPermissionService adminPermissionService;
     @Mock
     private MessageService messageService;
+    @Mock
+    private OssMediaCleanupService ossMediaCleanupService;
 
     private AdminFeedbackService adminFeedbackService;
 
@@ -47,6 +54,7 @@ class AdminFeedbackServiceTest {
                 memberMapper,
                 adminPermissionService,
                 messageService,
+                ossMediaCleanupService,
                 new ObjectMapper());
     }
 
@@ -105,6 +113,7 @@ class AdminFeedbackServiceTest {
 
         verify(feedbackMapper).purgeById(7L);
         verify(feedbackMapper, never()).deleteById(7L);
+        verify(ossMediaCleanupService).releaseStored(List.of());
         verifyNoInteractions(messageService);
     }
 
@@ -116,6 +125,23 @@ class AdminFeedbackServiceTest {
         adminFeedbackService.delete(7L);
 
         verify(feedbackMapper).purgeById(7L);
+        verify(feedbackMapper, never()).deleteById(7L);
+        verify(ossMediaCleanupService).releaseStored(List.of());
+        verifyNoInteractions(messageService);
+    }
+
+    @Test
+    void delete_withImagesReleasesStoredAfterPurge() {
+        Feedback row = feedback(7L, 88L, "pending", null);
+        row.setImages("[\"https://cdn.example.com/images/202609/a.jpg\",\"https://cdn.example.com/images/202609/b.jpg\"]");
+        when(feedbackMapper.selectById(7L)).thenReturn(row);
+        when(feedbackMapper.purgeById(7L)).thenReturn(1);
+
+        adminFeedbackService.delete(7L);
+
+        InOrder order = inOrder(feedbackMapper, ossMediaCleanupService);
+        order.verify(feedbackMapper).purgeById(7L);
+        order.verify(ossMediaCleanupService).releaseStored(List.of(row.getImages()));
         verify(feedbackMapper, never()).deleteById(7L);
         verifyNoInteractions(messageService);
     }
@@ -129,6 +155,7 @@ class AdminFeedbackServiceTest {
                 com.shuyuan.backend.common.exception.BusinessException.class,
                 () -> adminFeedbackService.delete(7L));
         assertEquals(404, ex.getCode());
+        verify(ossMediaCleanupService, never()).releaseStored(any());
     }
 
     @Test
@@ -140,6 +167,7 @@ class AdminFeedbackServiceTest {
                 () -> adminFeedbackService.delete(7L));
         assertEquals(404, ex.getCode());
         verify(feedbackMapper, never()).purgeById(7L);
+        verify(ossMediaCleanupService, never()).releaseStored(any());
     }
 
     private static Feedback feedback(Long id, Long memberId, String status, String reply) {

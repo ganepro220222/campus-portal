@@ -57,6 +57,8 @@ final class KnowledgeQueryLexicon {
             Map.entry("退出", List.of("退出登录")),
             Map.entry("消息", List.of("消息中心")),
             Map.entry("反馈", List.of("意见反馈", "反馈历史")),
+            Map.entry("意见", List.of("意见反馈", "怎么提意见")),
+            Map.entry("文创", List.of("文创在哪里看", "文创产品")),
             Map.entry("字幕", List.of("课程字幕", "课程有字幕吗")),
             Map.entry("铃铛", List.of("首页铃铛", "铃铛红点")),
             Map.entry("红点", List.of("首页铃铛", "铃铛红点")),

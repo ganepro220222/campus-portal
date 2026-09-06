@@ -162,6 +162,13 @@ class BuiltinKnowledgeRetrievalTest {
                 new Case("怎么看未读消息", "个人中心与消息"),
                 new Case("首页铃铛为什么有红点", "个人中心与消息"),
                 new Case("怎么提交意见反馈", "个人中心与消息"),
+                new Case("怎么提意见", "个人中心与消息"),
+                new Case("意见反馈在哪", "个人中心与消息"),
+                new Case("反馈在哪", "个人中心与消息"),
+                new Case("文创在哪里看", "动态展馆与搜索"),
+                new Case("文创能买吗", "动态展馆与搜索"),
+                new Case("怎么联系文创", "动态展馆与搜索"),
+                new Case("文创", "动态展馆与搜索"),
                 new Case("反馈历史在哪里", "个人中心与消息"),
                 new Case("在哪里查看反馈处理进度", "个人中心与消息"),
                 new Case("书院助手每天能问多少次", "知识问答使用说明"),
@@ -193,6 +200,9 @@ class BuiltinKnowledgeRetrievalTest {
                 new Expect("怎么看未读消息", "消息中心", "首页右上角的铃铛图标有未读消息"),
                 new Expect("首页铃铛为什么有红点", "动态", "消息中心入口"),
                 new Expect("怎么提交意见反馈", "反馈历史", "不展示反馈历史"),
+                new Expect("怎么提意见", "反馈历史", "不展示反馈历史"),
+                new Expect("意见反馈在哪", "我的", "不展示反馈历史"),
+                new Expect("反馈在哪", "我的", "不展示反馈历史"),
                 new Expect("反馈历史在哪里", "反馈历史", "不展示反馈历史"));
 
         List<String> wrong = new ArrayList<>();
@@ -208,6 +218,20 @@ class BuiltinKnowledgeRetrievalTest {
             }
         }
         assertTrue(wrong.isEmpty(), String.join("\n", wrong));
+    }
+
+    @Test
+    void 文创口语问法应落到展馆搜索篇() {
+        for (String q : List.of("文创在哪里看", "文创能买吗", "怎么联系文创", "文创")) {
+            assertTrue(substantial(q), "「" + q + "」应算实质命中");
+            KnowledgeChunk best = knowledgeService.pickBest(q, ask(q));
+            assertTrue(chunkOwner.get(best.getChunkIndex()).contains("动态展馆与搜索"),
+                    "「" + q + "」应选中《动态展馆与搜索》，实际是《" + chunkOwner.get(best.getChunkIndex()) + "》");
+            String text = best.getChunkText();
+            assertTrue(text.contains("文创"), "「" + q + "」摘录应谈到文创");
+            assertTrue(text.contains("咨询") || text.contains("列表"),
+                    "「" + q + "」摘录应说明文创入口或咨询方式：" + text);
+        }
     }
 
     @Test
@@ -236,6 +260,7 @@ class BuiltinKnowledgeRetrievalTest {
                 new Case("点赞", "动态展馆与搜索", "点赞"),
                 new Case("下载", "课程与学习资源", "下载"),
                 new Case("铃铛", "个人中心与消息", "铃铛"),
+                new Case("文创", "动态展馆与搜索", "文创"),
                 new Case("换手机了怎么办", "登录与账号", "换手机"),
                 new Case("微信掉了怎么办", "登录与账号", "微信"));
         List<String> wrong = new ArrayList<>();
@@ -403,6 +428,7 @@ class BuiltinKnowledgeRetrievalTest {
         List<String> real = List.of(
                 "怎么报名活动", "怎么参加活动", "积分怎么获得", "忘记密码怎么办", "微信能解绑吗", "积分", "字幕", "课程看到多少算完成",
                 "展馆有多少个", "书院助手每天能问多少次", "怎么收藏一篇动态",
+                "怎么提意见", "文创在哪里看", "文创能买吗", "怎么联系文创", "文创",
                 "牙舟陶怎么参观", "交通博物馆是什么",
                 // 以下措辞未在语料里出现过
                 "报名成功之后去哪里看凭证码", "我想退掉已经报名的活动", "视频看完了但是没有显示完成",

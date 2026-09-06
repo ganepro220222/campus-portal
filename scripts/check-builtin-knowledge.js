@@ -160,8 +160,18 @@ if (feedbackGoesToList && feedbackListPage) {
   if (profileKb && !/反馈历史|我的反馈/.test(profileKb)) {
     errs.push('07-profile-message.md 必须说明可以查看反馈历史或我的反馈')
   }
+  if (profileKb && !profileKb.includes('怎么提意见')) {
+    errs.push('07-profile-message.md 常见问法必须包含「怎么提意见」，否则口语问法过不了包含匹配')
+  }
 } else {
   errs.push('意见反馈已不再进入 /packageC/feedback/list，请同步改知识库契约')
+}
+
+const hallKb = sources.includes('03-news-hall-search.md')
+  ? read('sql/knowledge/03-news-hall-search.md')
+  : ''
+if (hallKb && !hallKb.includes('文创在哪里看')) {
+  errs.push('03-news-hall-search.md 常见问法必须包含「文创在哪里看」，否则文创口语问法走不到该篇')
 }
 
 // ---------- 4) 落库字段完整 ----------

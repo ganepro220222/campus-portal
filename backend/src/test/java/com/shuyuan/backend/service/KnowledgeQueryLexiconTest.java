@@ -29,6 +29,9 @@ class KnowledgeQueryLexiconTest {
     void 短主题词能对上标准问() {
         assertTrue(KnowledgeQueryLexicon.faqMatches("积分", "积分怎么获得"));
         assertTrue(KnowledgeQueryLexicon.faqMatches("登录", "怎么登录"));
+        assertTrue(KnowledgeQueryLexicon.faqMatches("文创", "文创在哪里看"));
+        assertTrue(KnowledgeQueryLexicon.faqMatches("提意见", "提意见"));
+        assertFalse(KnowledgeQueryLexicon.faqMatches("提意见", "提交意见反馈"));
         assertFalse(KnowledgeQueryLexicon.faqMatches("几个", "展馆有几个"));
         assertFalse(KnowledgeQueryLexicon.faqMatches("天气", "怎么报名"));
     }

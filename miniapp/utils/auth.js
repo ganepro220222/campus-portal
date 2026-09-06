@@ -54,7 +54,7 @@ function redirectToChangePassword() {
   }
   redirectingToChangePassword = true
   wx.reLaunch({
-    url: CHANGE_PASSWORD_PAGE,
+    url: CHANGE_PASSWORD_PAGE + '?mode=forced',
     complete() {
       redirectingToChangePassword = false
     }

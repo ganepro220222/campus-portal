@@ -23,7 +23,9 @@ if (!pageJs.includes("require('../../../utils/changePasswordFlow')")
 for (const fn of [
   'shouldApplyChangePasswordSuccess',
   'changePassword401PageAction',
-  'canLogoutDuringChangePassword'
+  'canLogoutDuringChangePassword',
+  'resolveChangePasswordMode',
+  'buildChangePasswordPayload'
 ]) {
   if (!pageJs.includes(fn)) {
     errs.push(`改密页未调用 changePasswordFlow.${fn}`)

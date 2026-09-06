@@ -1,5 +1,12 @@
 @import "../../../pages/login/index.wxss";
 
+.brand.compact .brand-sub {
+  letter-spacing: 1rpx;
+  line-height: 1.55;
+  padding: 0 20rpx;
+  text-align: center;
+}
+
 .cp-logout {
   margin-top: 8rpx;
   color: rgba(214, 224, 248, 0.72);
@@ -9,4 +16,9 @@
 .cp-logout-disabled {
   opacity: 0.45;
   pointer-events: none;
+}
+
+.cp-link {
+  margin-top: 20rpx;
+  text-decoration: underline;
 }

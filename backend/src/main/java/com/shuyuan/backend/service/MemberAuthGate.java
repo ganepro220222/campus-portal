@@ -117,4 +117,23 @@ public class MemberAuthGate {
                 || "/api/v1/auth/wx-login".equals(uri)
                 || "/api/v1/auth/wx-bind".equals(uri);
     }
+
+    /**
+     * 重新登录 / 微信改密：本地若还挂着已失效的 JWT，不能挡在凭证校验前面。
+     *
+     * <p>典型场景：管理员刚重置过密码（tokenVersion 已加一），学生手机里还留着旧 token。
+     * 这时点「学号登录」「微信登录」或「忘记密码」，请求仍会带上 Authorization。
+     * 若按普通接口那样直接 401，学生既登不进去，也清不掉本地 token（登录接口的 401
+     * 在小程序里被当成「账号密码错」，不会 logout）。
+     */
+    public static boolean ignoresInvalidBearer(HttpServletRequest request) {
+        if (!"POST".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String uri = request.getRequestURI();
+        return "/api/v1/auth/account-login".equals(uri)
+                || "/api/v1/auth/wx-login".equals(uri)
+                || "/api/v1/auth/wx-bind".equals(uri)
+                || "/api/v1/auth/change-password".equals(uri);
+    }
 }

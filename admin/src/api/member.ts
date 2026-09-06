@@ -116,15 +116,18 @@ export function unbindMemberWechat(id: number) {
 export interface MemberResetPasswordResult {
   memberId: number
   studentNo: string
-  /** 一次性明文，仅本次响应返回，服务端不再保存 */
-  temporaryPassword: string
+  wxBound: boolean
+  /** 是否把明文交给管理员转告；已绑定微信且未指定密码时为 false */
+  issuedTemporaryPassword: boolean
+  /** 一次性明文，仅本次响应返回；未发放时为 null */
+  temporaryPassword?: string | null
   /** true = 系统生成的临时密码 */
   generated: boolean
 }
 
 /**
- * 重置师生密码。留空 newPassword 由系统生成临时密码（推荐）。
- * 重置后该账号须在下次登录时自行改密，其他设备上的登录态立即失效。
+ * 重置师生密码。未绑定微信时生成可转告的临时密码；已绑定则只作废旧密码，
+ * 通知学生用微信打开小程序设置新密码。
  */
 export function resetMemberPassword(id: number, newPassword?: string) {
   return put<MemberResetPasswordResult>(`/admin/members/${id}/reset-password`, { newPassword })

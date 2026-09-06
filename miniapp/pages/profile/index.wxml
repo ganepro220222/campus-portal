@@ -57,6 +57,11 @@
       <text class="mi-tx">个人资料</text>
       <icon name="chevron-right" size="16" color="#C3CCE0" />
     </view>
+    <view wx:if="{{isLoggedIn}}" class="menu-item" bindtap="onChangePassword">
+      <view class="mi-ic mi-blue"><icon name="lock" size="20" color="#ffffff" /></view>
+      <text class="mi-tx">修改密码</text>
+      <icon name="chevron-right" size="16" color="#C3CCE0" />
+    </view>
     <view class="menu-item" bindtap="onMessages">
       <view class="mi-ic mi-blue"><icon name="bell" size="20" color="#ffffff" /></view>
       <text class="mi-tx">消息中心</text>

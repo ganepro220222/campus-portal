@@ -32,6 +32,8 @@ assert.equal(request.PASSWORD_CHANGE_REQUIRED, 'MEMBER_PASSWORD_CHANGE_REQUIRED'
 global._reLaunchUrl = ''
 request._handlePasswordChangeRequired({ message: '请先修改初始密码' }, true)
 assert.equal(wx.getStorageSync(auth.MUST_CHANGE_PWD_KEY), true)
-assert.equal(global._reLaunchUrl, auth.CHANGE_PASSWORD_PAGE)
+assert.ok(String(global._reLaunchUrl).startsWith(auth.CHANGE_PASSWORD_PAGE),
+  '须改密应跳到独立改密页')
+assert.match(String(global._reLaunchUrl), /mode=forced/)
 
 console.log('memberPasswordGate.test.js OK')

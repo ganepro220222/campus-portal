@@ -24,7 +24,8 @@
       零星一两个人用「新增账号」，整批入学用「Excel 批量导入」——两条路建出来的账号完全一致。
       初始密码默认身份证后 6 位（无身份证则取学号后 6 位）；<strong>身份证号仅用于生成初始密码，不会存入系统</strong>，所以下表里也查不到它。
       学生首次登录须修改初始密码；微信登录须绑定学号。
-      本人忘记密码时，用该行的「重置密码」生成一个临时密码转告即可，不必找技术人员。
+      忘记密码：已绑定微信的学生可在小程序用微信验证后自助设置；未绑定，或微信号也丢了，
+      用该行的「重置密码」（后者须先「解绑微信」再重置，才能得到可电话告知的临时密码）。
     </p>
 
     <el-alert type="info" :closable="false" show-icon class="import-hint">
@@ -332,22 +333,42 @@ async function onToggleStatus(row: MemberItem, status: number) {
 }
 
 /**
- * 重置密码。临时密码只在这一次响应里出现，服务端不再保存，所以必须让管理员当场记下。
- * 用 alert 而不是 message：message 会自动消失，错过就再也拿不到，只能再重置一次。
+ * 重置密码。未绑定微信时临时密码只出现这一次，必须当场记下；
+ * 已绑定则不生成可转告的明文，通知学生用微信打开小程序设置。
  */
 async function onResetPassword(row: MemberItem) {
-  await ElMessageBox.confirm(
-    `将为「${row.realName}（${row.studentNo}）」生成一个新的临时密码，` +
-      `其本人须在下次登录时自行修改；该账号在其他设备上的登录状态会立即失效。确定重置吗？`,
-    '重置密码',
-    { type: 'warning', confirmButtonText: '确定重置' }
-  )
+  const who = `「${row.realName}（${row.studentNo}）」`
+  if (row.wxBound) {
+    await ElMessageBox.confirm(
+      `${who}已绑定微信。重置后旧密码立即失效，不会生成可转告的临时密码。\n\n` +
+        `请通知学生用已绑定的微信打开小程序，系统会要求设置新密码。在此之前，学号+旧密码无法登录。\n\n` +
+        `若微信号也丢失，请先点「解绑微信」，再重置一次，才能得到可电话告知的临时密码。`,
+      '重置密码',
+      { type: 'warning', confirmButtonText: '确定重置' }
+    )
+  } else {
+    await ElMessageBox.confirm(
+      `将为${who}生成一个新的临时密码，` +
+        `其本人须在下次登录时自行修改；该账号在其他设备上的登录状态会立即失效。确定重置吗？`,
+      '重置密码',
+      { type: 'warning', confirmButtonText: '确定重置' }
+    )
+  }
   const res = await resetMemberPassword(row.id)
+  if (res.issuedTemporaryPassword && res.temporaryPassword) {
+    await ElMessageBox.alert(
+      `请当面或电话告知本人，此密码仅显示这一次：\n\n${res.temporaryPassword}\n\n` +
+        `对应学号：${res.studentNo}。TA 登录后会被要求立即修改。`,
+      '临时密码已生成',
+      { type: 'warning', confirmButtonText: '我已记录' }
+    )
+    return
+  }
   await ElMessageBox.alert(
-    `请当面或电话告知本人，此密码仅显示这一次：\n\n${res.temporaryPassword}\n\n` +
-      `对应学号：${res.studentNo}。TA 登录后会被要求立即修改。`,
-    '临时密码已生成',
-    { type: 'warning', confirmButtonText: '我已记录' }
+    `已重置${who}。请通知对方用已绑定的微信打开小程序并设置新密码。\n\n` +
+      `未改密前学号登录不可用。若微信号也丢失，请先解绑微信，再重置一次以生成临时密码。`,
+    '已重置，请通知学生用微信设置新密码',
+    { type: 'success', confirmButtonText: '知道了' }
   )
 }
 

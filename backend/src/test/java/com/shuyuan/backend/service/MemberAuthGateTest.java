@@ -51,6 +51,24 @@ class MemberAuthGateTest {
     }
 
     @Test
+    void ignoresInvalidBearer_onLoginAndChangePasswordOnly() {
+        assertTrue(MemberAuthGate.ignoresInvalidBearer(
+                new MockHttpServletRequest("POST", "/api/v1/auth/account-login")));
+        assertTrue(MemberAuthGate.ignoresInvalidBearer(
+                new MockHttpServletRequest("POST", "/api/v1/auth/wx-login")));
+        assertTrue(MemberAuthGate.ignoresInvalidBearer(
+                new MockHttpServletRequest("POST", "/api/v1/auth/wx-bind")));
+        assertTrue(MemberAuthGate.ignoresInvalidBearer(
+                new MockHttpServletRequest("POST", "/api/v1/auth/change-password")));
+        assertFalse(MemberAuthGate.ignoresInvalidBearer(
+                new MockHttpServletRequest("POST", "/api/v1/auth/wx-bind-authenticated")));
+        assertFalse(MemberAuthGate.ignoresInvalidBearer(
+                new MockHttpServletRequest("GET", "/api/v1/profile")));
+        assertFalse(MemberAuthGate.ignoresInvalidBearer(
+                new MockHttpServletRequest("GET", "/api/v1/auth/session")));
+    }
+
+    @Test
     void normalSession_neverBlocks() {
         MemberSession session = new MemberSession(9L, false);
         assertFalse(memberAuthGate.blocksForMustChangePassword(

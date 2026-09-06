@@ -89,6 +89,14 @@ Page({
     wx.navigateTo({ url: '/packageC/profile/edit' })
   },
 
+  onChangePassword() {
+    if (!this.data.isLoggedIn) {
+      this.onLoginTap()
+      return
+    }
+    wx.navigateTo({ url: '/packageC/profile/change-password/index?mode=voluntary' })
+  },
+
   /** 跳转个人中心子列表（收藏/报名/下载/足迹/徽章） */
   onStatTap(e) {
     if (!this.data.isLoggedIn) {

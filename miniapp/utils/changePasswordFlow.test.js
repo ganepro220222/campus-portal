@@ -8,7 +8,12 @@ const path = require('path')
 const {
   shouldApplyChangePasswordSuccess,
   changePassword401PageAction,
-  canLogoutDuringChangePassword
+  canLogoutDuringChangePassword,
+  resolveChangePasswordMode,
+  needsOldPassword,
+  requiresLoginForChangePasswordPage,
+  buildChangePasswordPayload,
+  validateNewPasswordPair
 } = require('./changePasswordFlow')
 
 const pageJs = fs.readFileSync(
@@ -17,7 +22,13 @@ const pageJs = fs.readFileSync(
 )
 assert.match(pageJs, /require\(['"]\.\.\/\.\.\/\.\.\/utils\/changePasswordFlow['"]\)/,
   '改密页须 require changePasswordFlow')
-for (const fn of ['shouldApplyChangePasswordSuccess', 'changePassword401PageAction', 'canLogoutDuringChangePassword']) {
+for (const fn of [
+  'shouldApplyChangePasswordSuccess',
+  'changePassword401PageAction',
+  'canLogoutDuringChangePassword',
+  'resolveChangePasswordMode',
+  'buildChangePasswordPayload'
+]) {
   assert.match(pageJs, new RegExp(fn), `改密页须调用 ${fn}`)
 }
 assert.doesNotMatch(pageJs, /setTimeout\(\(\) => getApp\(\)\.logout\(\)/,
@@ -35,6 +46,32 @@ assert.strictEqual(legacy401.callLogout, true)
 
 assert.strictEqual(canLogoutDuringChangePassword(true), false)
 assert.strictEqual(canLogoutDuringChangePassword(false), true)
+
+assert.strictEqual(resolveChangePasswordMode('wx', false), 'wx')
+assert.strictEqual(resolveChangePasswordMode('voluntary', false), 'voluntary')
+assert.strictEqual(resolveChangePasswordMode('voluntary', true), 'forced')
+assert.strictEqual(resolveChangePasswordMode('wx', true), 'wx')
+assert.strictEqual(resolveChangePasswordMode('', true), 'forced')
+assert.strictEqual(resolveChangePasswordMode('', false), 'voluntary')
+assert.strictEqual(needsOldPassword('voluntary'), true)
+assert.strictEqual(needsOldPassword('forced'), false)
+assert.strictEqual(needsOldPassword('wx'), false)
+assert.strictEqual(requiresLoginForChangePasswordPage('wx'), false)
+assert.strictEqual(requiresLoginForChangePasswordPage('forced'), true)
+assert.deepStrictEqual(
+  buildChangePasswordPayload({ mode: 'forced', newPassword: 'NewPass1' }),
+  { newPassword: 'NewPass1' }
+)
+assert.deepStrictEqual(
+  buildChangePasswordPayload({ mode: 'voluntary', oldPassword: 'old', newPassword: 'NewPass1' }),
+  { oldPassword: 'old', newPassword: 'NewPass1' }
+)
+assert.deepStrictEqual(
+  buildChangePasswordPayload({ mode: 'wx', newPassword: 'NewPass1', wxCode: 'abc' }),
+  { newPassword: 'NewPass1', wxCode: 'abc' }
+)
+assert.strictEqual(validateNewPasswordPair('NewPass1', 'NewPass1'), '')
+assert.ok(validateNewPasswordPair('short', 'short'))
 
 let logoutCalls = 0
 const request = require('./request')

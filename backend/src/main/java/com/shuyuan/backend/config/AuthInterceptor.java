@@ -33,6 +33,9 @@ public class AuthInterceptor implements HandlerInterceptor {
                 memberAuthGate.ensureAllowedOrThrow(request, session);
             }
         } catch (BusinessException e) {
+            if (MemberAuthGate.ignoresInvalidBearer(request)) {
+                return true;
+            }
             throw e;
         } catch (Exception ignored) {
             // 非会员 token 或解析失败：不阻断公开读接口

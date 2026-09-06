@@ -217,11 +217,11 @@ public class AdminMemberService {
     }
 
     /**
-     * 重置师生账号密码，返回一次性明文供管理员转告本人。
+     * 重置师生账号密码。
      *
-     * <p>在此之前，学生首次登录改完密码后一旦忘记就没有任何出路：小程序没有自助找回
-     * （不接短信，也不该为此付费），后台也没有入口，只能连数据库改 password_hash。
-     * 一个只能上服务器执行命令才能做的事，不该出现在日常运维里。
+     * <p>未绑定微信：生成一次性临时密码供管理员当面或电话转告，对方用学号登录后再改一次。
+     * 已绑定微信：旧密码必须立刻失效（否则「忘记的密码」还能登），但不把随机串交给管理员——
+     * 学生用微信打开小程序即可设置新密码。微信号也丢了，应先解绑再重置，才会得到可口述的临时密码。
      *
      * <p>默认发随机临时密码，而不是回到「学号后 6 位」那条初始密码规则：一个学院三四百人，
      * 学号在同学之间是公开的，用它做重置密码，等于在本人登录之前把账号敞开给所有认识他的人。
@@ -241,13 +241,21 @@ public class AdminMemberService {
             throw new BusinessException(400, "该用户没有学号账号，无法重置密码");
         }
 
-        String plain = req == null ? null : trim(req.getNewPassword());
-        boolean generated = plain == null || plain.isBlank();
-        if (generated) {
-            plain = MemberPasswordPolicy.generateTemporary();
+        boolean wxBound = !StudentPasswordPolicy.isPlaceholderOpenid(member.getOpenid());
+        String specified = req == null ? null : trim(req.getNewPassword());
+        boolean adminSpecified = specified != null && !specified.isBlank();
+        String plain;
+        boolean generated;
+        if (adminSpecified) {
+            MemberPasswordPolicy.validate(specified);
+            plain = specified;
+            generated = false;
         } else {
-            MemberPasswordPolicy.validate(plain);
+            plain = MemberPasswordPolicy.generateTemporary();
+            generated = true;
         }
+        // 已绑定且管理员没指定明文：哈希仍然换成随机值（旧密码必须失效），但不回传明文
+        boolean issuedTemporaryPassword = adminSpecified || !wxBound;
 
         memberAccountMapper.update(null, new LambdaUpdateWrapper<MemberAccount>()
                 .eq(MemberAccount::getId, account.getId())
@@ -265,8 +273,10 @@ public class AdminMemberService {
         Map<String, Object> vo = new HashMap<>();
         vo.put("memberId", memberId);
         vo.put("studentNo", account.getStudentNo());
-        vo.put("temporaryPassword", plain);
+        vo.put("wxBound", wxBound);
         vo.put("generated", generated);
+        vo.put("issuedTemporaryPassword", issuedTemporaryPassword);
+        vo.put("temporaryPassword", issuedTemporaryPassword ? plain : null);
         return vo;
     }
 

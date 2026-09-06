@@ -28,6 +28,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -195,7 +196,7 @@ class AdminMemberServiceDeleteTest {
     }
 
     /**
-     * 学生忘记密码后，此前只能连数据库改 password_hash——后台没有入口，小程序也没有自助找回。
+     * 未绑定微信时，管理员重置仍返回一次性明文；已绑定则只作废旧哈希、不把随机串交给管理员。
      */
     @Test
     void 重置密码返回一次性明文并强制下次改密() {
@@ -208,6 +209,8 @@ class AdminMemberServiceDeleteTest {
         String plain = (String) vo.get("temporaryPassword");
         assertEquals(Boolean.TRUE, vo.get("generated"));
         assertEquals("2024001", vo.get("studentNo"));
+        assertEquals(Boolean.FALSE, vo.get("wxBound"));
+        assertEquals(Boolean.TRUE, vo.get("issuedTemporaryPassword"));
         assertNotNull(plain);
         // 生成的临时密码本身必须过得了师生密码策略，否则学生下次改密时无从对照
         MemberPasswordPolicy.validate(plain);
@@ -274,6 +277,30 @@ class AdminMemberServiceDeleteTest {
         String a = (String) adminMemberService.resetPassword(24L, null).get("temporaryPassword");
         String b = (String) adminMemberService.resetPassword(24L, null).get("temporaryPassword");
         assertTrue(!a.equals(b), "临时密码必须是随机的，不能可预测");
+    }
+
+    @Test
+    void 已绑定微信重置不回传临时密码但旧密码必须失效() {
+        Member m = existingMember(25L);
+        m.setOpenid("wx_openid_abc");
+        m.setTokenVersion(2);
+        accountOf(25L, "2024004");
+
+        Map<String, Object> vo = adminMemberService.resetPassword(25L, null);
+
+        assertEquals(Boolean.TRUE, vo.get("wxBound"));
+        assertEquals(Boolean.FALSE, vo.get("issuedTemporaryPassword"));
+        assertEquals(Boolean.TRUE, vo.get("generated"));
+        assertNull(vo.get("temporaryPassword"));
+
+        ArgumentCaptor<LambdaUpdateWrapper<MemberAccount>> accountCap = UpdateWrapperAssertions.updateCaptor();
+        verify(memberAccountMapper).update(isNull(), accountCap.capture());
+        UpdateWrapperAssertions.assertSetsColumn(accountCap.getValue(), "must_change_password", 1);
+        UpdateWrapperAssertions.assertSetsNonNullColumn(accountCap.getValue(), "password_hash");
+
+        ArgumentCaptor<LambdaUpdateWrapper<Member>> memberCap = UpdateWrapperAssertions.updateCaptor();
+        verify(memberMapper).update(isNull(), memberCap.capture());
+        UpdateWrapperAssertions.assertSetsColumn(memberCap.getValue(), "token_version", 3);
     }
 
     // ---------- 单个新增 ----------

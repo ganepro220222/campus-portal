@@ -81,6 +81,27 @@ Page({
     this.setData({ ['pwdVisible.' + field]: !this.data.pwdVisible[field] })
   },
 
+  onForgotPassword() {
+    if (this.data.bindMode) {
+      wx.showModal({
+        title: '无法自助找回',
+        content: '该微信尚未绑定学号。请联系学院管理员重置密码，用学号和临时密码登录后再绑定微信。',
+        showCancel: false
+      })
+      return
+    }
+    wx.showModal({
+      title: '忘记密码',
+      content: '若这个微信已绑定学号，可验证后直接设置新密码。尚未绑定请联系学院管理员重置。',
+      confirmText: '微信验证',
+      success: (res) => {
+        if (res.confirm) {
+          wx.navigateTo({ url: '/packageC/profile/change-password/index?mode=wx' })
+        }
+      }
+    })
+  },
+
   async onWxLogin() {
     if (this.data.loading) return
     this.setData({ loading: true })

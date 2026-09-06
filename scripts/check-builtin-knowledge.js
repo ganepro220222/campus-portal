@@ -139,6 +139,12 @@ if (!bellTap) {
   errs.push(`首页 onBellTap 已改跳 ${bellTap[1]}，请同步改知识库契约`)
 }
 
+if (profileJs.includes('onChangePassword') && /change-password/.test(profileJs)) {
+  if (profileKb && !/修改密码/.test(profileKb)) {
+    errs.push('07-profile-message.md 必须说明可以修改密码（个人中心已有入口）')
+  }
+}
+
 if (!profileJs.includes("/packageC/message/index")) {
   errs.push('个人中心消息入口已不在 /packageC/message/index，请同步改知识库契约')
 } else if (profileKb && !/我的|个人中心/.test(profileKb)) {

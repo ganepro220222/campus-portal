@@ -4,6 +4,16 @@
   <view class="stars"></view>
   <view class="wave-deco"></view>
 
+  <view
+    wx:if="{{canLeave}}"
+    class="login-back"
+    style="top: calc({{statusBarHeight}}px + 12rpx);"
+    bindtap="onBack"
+    hover-class="login-back-hover"
+  >
+    <icon name="chevron-left" size="22" color="#ffffff" sw="2.6" />
+  </view>
+
   <view class="login-inner">
     <view style="height: {{statusBarHeight}}px; flex-shrink: 0;"></view>
 
@@ -11,16 +21,16 @@
       <icon name="lock" size="32" color="#ECCF82" />
     </view>
     <view class="brand compact">
-      <view class="brand-zh serif">修改初始密码</view>
-      <view class="brand-sub serif">为保障账号安全，首次登录须设置新密码</view>
+      <view class="brand-zh serif">{{title}}</view>
+      <view class="brand-sub serif">{{subtitle}}</view>
     </view>
 
     <view class="login-form cp-form">
-      <view class="field">
+      <view class="field" wx:if="{{showOldPassword}}">
         <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
         <input
           class="field-input has-eye {{focusField === 'oldPassword' ? 'on' : ''}}"
-          placeholder="请输入当前密码（初始密码）"
+          placeholder="请输入当前密码"
           placeholder-class="field-ph"
           password="{{!pwdVisible.oldPassword}}"
           value="{{oldPassword}}"
@@ -74,11 +84,15 @@
       <view class="cp-policy">新密码须至少 8 位，且包含字母与数字</view>
 
       <button class="lbtn lbtn-primary" bindtap="onChangePassword" loading="{{loading}}" disabled="{{loading}}">
-        <text class="lbtn-tx">确认修改</text>
+        <text class="lbtn-tx">{{mode === 'wx' ? '微信验证并设置' : '确认修改'}}</text>
       </button>
 
-      <view class="bind-tip muted">修改完成后即可正常使用小程序</view>
-      <view class="bind-tip muted cp-logout {{loading ? 'cp-logout-disabled' : ''}}" bindtap="onLogout">退出并切换账号</view>
+      <view wx:if="{{mode === 'voluntary'}}" class="bind-tip muted cp-link {{loading ? 'cp-logout-disabled' : ''}}" bindtap="onForgotViaWx">
+        忘记当前密码？已绑定微信可验证后设置
+      </view>
+      <view wx:if="{{mode === 'forced'}}" class="bind-tip muted">设置完成后即可正常使用小程序</view>
+      <view wx:if="{{mode === 'wx'}}" class="bind-tip muted">未绑定微信的账号请联系学院管理员重置</view>
+      <view wx:if="{{showLogout}}" class="bind-tip muted cp-logout {{loading ? 'cp-logout-disabled' : ''}}" bindtap="onLogout">退出并切换账号</view>
     </view>
   </view>
 </view>

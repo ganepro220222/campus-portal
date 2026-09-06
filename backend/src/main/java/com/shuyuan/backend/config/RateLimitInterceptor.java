@@ -60,7 +60,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        if (uri.endsWith("/api/v1/auth/account-login")) {
+        if (uri.endsWith("/api/v1/auth/account-login")
+                || uri.endsWith("/api/v1/auth/change-password")) {
             occupy(request, rateLimitService.checkIp("login", ip, cfg.getLoginPerMinute(), Duration.ofMinutes(1)));
             return true;
         }

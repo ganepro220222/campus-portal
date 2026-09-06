@@ -5,6 +5,7 @@ import com.shuyuan.backend.config.AuthInterceptor;
 import com.shuyuan.backend.controller.api.ActivityController;
 import com.shuyuan.backend.controller.api.AuthController;
 import com.shuyuan.backend.controller.api.ProfileController;
+import com.shuyuan.backend.dto.MemberChangePasswordRequest;
 import com.shuyuan.backend.entity.Member;
 import com.shuyuan.backend.entity.MemberAccount;
 import com.shuyuan.backend.mapper.MemberAccountMapper;
@@ -28,7 +29,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -108,7 +108,7 @@ class MemberAuthMvcTest {
     @Test
     void mustChangePassword_allowsChangePasswordEndpoint() throws Exception {
         stubActiveMemberWithMustChange(9L);
-        when(authService.changePassword(eq("old"), eq("NewPass1")))
+        when(authService.changePassword(any(MemberChangePasswordRequest.class)))
                 .thenReturn(LoginVO.builder().token("new").mustChangePassword(false).build());
 
         authMockMvc.perform(post("/api/v1/auth/change-password")
@@ -129,6 +129,52 @@ class MemberAuthMvcTest {
                 .andExpect(jsonPath("$.errorKey").value("MEMBER_PASSWORD_CHANGE_REQUIRED"));
 
         verify(profileService, never()).profile();
+    }
+
+    @Test
+    void mustChangePassword_allowsChangePasswordWithoutOldPassword() throws Exception {
+        stubActiveMemberWithMustChange(9L);
+        when(authService.changePassword(any(MemberChangePasswordRequest.class)))
+                .thenReturn(LoginVO.builder().token("new").mustChangePassword(false).build());
+
+        authMockMvc.perform(post("/api/v1/auth/change-password")
+                        .header("Authorization", "Bearer token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newPassword\":\"NewPass1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    void staleToken_doesNotBlockAccountLogin() throws Exception {
+        when(jwtUtils.getMemberId("stale")).thenReturn(9L);
+        when(jwtUtils.getTokenVersion("stale")).thenReturn(0);
+        Member member = new Member();
+        member.setId(9L);
+        member.setStatus(1);
+        member.setTokenVersion(3);
+        when(memberMapper.selectById(9L)).thenReturn(member);
+        when(authService.accountLogin(any()))
+                .thenReturn(LoginVO.builder().token("fresh").mustChangePassword(false).build());
+
+        authMockMvc.perform(post("/api/v1/auth/account-login")
+                        .header("Authorization", "Bearer stale")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"studentNo\":\"2024001\",\"password\":\"x\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    void changePassword_withoutLogin_reachesService() throws Exception {
+        when(authService.changePassword(any(MemberChangePasswordRequest.class)))
+                .thenReturn(LoginVO.builder().token("fresh").mustChangePassword(false).build());
+
+        authMockMvc.perform(post("/api/v1/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"wxCode\":\"code\",\"newPassword\":\"NewPass1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
     }
 
     @Test

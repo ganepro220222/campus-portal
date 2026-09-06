@@ -55,6 +55,6 @@ public class AuthController {
 
     @PostMapping("/change-password")
     public Result<LoginVO> changePassword(@Valid @RequestBody MemberChangePasswordRequest req) {
-        return Result.ok(authService.changePassword(req.getOldPassword(), req.getNewPassword()));
+        return Result.ok(authService.changePassword(req));
     }
 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.AccountLoginRequest;
+import com.shuyuan.backend.dto.MemberChangePasswordRequest;
 import com.shuyuan.backend.dto.WxBindRequest;
 import com.shuyuan.backend.dto.WxLoginRequest;
 import com.shuyuan.backend.entity.Member;
@@ -117,35 +118,47 @@ public class AuthService {
         return buildLogin(member);
     }
 
-    /** 师生自助改密（导入账号首次登录须完成） */
+    /**
+     * 师生改密，三条互不替代的入口：
+     * <ol>
+     *   <li>微信 jscode：openid 已绑定该学号，可不再校验原密码（登录页「忘记密码」）；</li>
+     *   <li>已登录且 {@code mustChangePassword}：刚用初始/临时密码或微信进过门，不再重复要原密码；</li>
+     *   <li>已登录日常改密：必须原密码正确。只持有普通微信 JWT 不能跳过——
+     *       防止别人拿着未锁的手机直接改掉密码。</li>
+     * </ol>
+     */
     @Transactional
-    public LoginVO changePassword(String oldPassword, String newPassword) {
-        Long memberId = MemberContext.getMemberId();
-        if (memberId == null) {
-            throw new BusinessException(401, "请先登录");
+    public LoginVO changePassword(MemberChangePasswordRequest req) {
+        if (req == null || req.getNewPassword() == null || req.getNewPassword().isBlank()) {
+            throw new BusinessException(400, "请填写新密码");
         }
-        if (oldPassword == null || oldPassword.isBlank() || newPassword == null || newPassword.isBlank()) {
-            throw new BusinessException(400, "请填写原密码与新密码");
-        }
+        String newPassword = req.getNewPassword();
         MemberPasswordPolicy.validate(newPassword);
-        if (oldPassword.equals(newPassword)) {
-            throw new BusinessException(400, "新密码不能与原密码相同");
+
+        String wxCode = trimToNull(req.getWxCode());
+        Member member;
+        MemberAccount account;
+        if (wxCode != null) {
+            member = resolveBoundMemberByWxCode(wxCode);
+            account = requireActiveAccount(member.getId());
+        } else {
+            Long memberId = MemberContext.getMemberId();
+            if (memberId == null) {
+                throw new BusinessException(401, "请先登录");
+            }
+            member = memberMapper.selectById(memberId);
+            if (member == null) {
+                throw new BusinessException(401, "请先登录");
+            }
+            checkMemberActive(member);
+            account = requireActiveAccount(memberId);
+            if (!MemberContext.mustChangePassword()) {
+                verifyCurrentPassword(account, trimToNull(req.getOldPassword()), newPassword);
+            }
         }
 
-        Member member = memberMapper.selectById(memberId);
-        if (member == null) {
-            throw new BusinessException(401, "请先登录");
-        }
-        checkMemberActive(member);
-
-        MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
-                .eq(MemberAccount::getMemberId, memberId)
-                .last("LIMIT 1"));
-        if (account == null || account.getStatus() == null || account.getStatus() != 1) {
-            throw new BusinessException(403, "账号不可用");
-        }
-        if (!passwordEncoder.matches(oldPassword, account.getPasswordHash())) {
-            throw new BusinessException(400, "原密码不正确");
+        if (passwordEncoder.matches(newPassword, account.getPasswordHash())) {
+            throw new BusinessException(400, "新密码不能与当前密码相同");
         }
 
         account.setPasswordHash(passwordEncoder.encode(newPassword));
@@ -155,7 +168,70 @@ public class AuthService {
         member.setTokenVersion(TokenVersionSupport.bump(member.getTokenVersion()));
         memberMapper.updateById(member);
 
-        return buildLogin(memberMapper.selectById(memberId));
+        return buildLogin(memberMapper.selectById(member.getId()));
+    }
+
+    /** 用当场取得的 wx.login code 认定「就是这个微信的主人」 */
+    private Member resolveBoundMemberByWxCode(String wxCode) {
+        String openid = wxSessionService.resolveOpenid(wxCode);
+        Member member = memberMapper.selectOne(new LambdaQueryWrapper<Member>()
+                .eq(Member::getOpenid, openid)
+                .last("LIMIT 1"));
+        if (member == null || StudentPasswordPolicy.isPlaceholderOpenid(member.getOpenid())) {
+            throw new BusinessException(400, "该微信尚未绑定学号账号，请联系学院管理员重置密码");
+        }
+        Long currentId = MemberContext.getMemberId();
+        if (currentId != null && !currentId.equals(member.getId())) {
+            throw new BusinessException(400, "微信与当前登录账号不一致，请先退出后再试");
+        }
+        checkMemberActive(member);
+        return member;
+    }
+
+    private void verifyCurrentPassword(MemberAccount account, String oldPassword, String newPassword) {
+        if (oldPassword == null) {
+            throw new BusinessException(400, "请填写原密码");
+        }
+        if (oldPassword.equals(newPassword)) {
+            throw new BusinessException(400, "新密码不能与原密码相同");
+        }
+        String lockKey = accountLockKey(account);
+        loginLockService.ensureNotLocked(LoginLockService.SCENE_MEMBER, lockKey);
+        if (!passwordEncoder.matches(oldPassword, account.getPasswordHash())) {
+            LoginLockService.FailureState state =
+                    loginLockService.registerFailure(LoginLockService.SCENE_MEMBER, lockKey);
+            if (state.locked()) {
+                throw new BusinessException(429,
+                        "连续登录失败次数过多，请" + state.lockMinutes() + "分钟后再试");
+            }
+            throw new BusinessException(400, "原密码不正确");
+        }
+        loginLockService.onSuccess(LoginLockService.SCENE_MEMBER, lockKey);
+    }
+
+    private MemberAccount requireActiveAccount(Long memberId) {
+        MemberAccount account = memberAccountMapper.selectOne(new LambdaQueryWrapper<MemberAccount>()
+                .eq(MemberAccount::getMemberId, memberId)
+                .last("LIMIT 1"));
+        if (account == null || account.getStatus() == null || account.getStatus() != 1) {
+            throw new BusinessException(403, "账号不可用");
+        }
+        return account;
+    }
+
+    private static String accountLockKey(MemberAccount account) {
+        if (account.getStudentNo() != null && !account.getStudentNo().isBlank()) {
+            return account.getStudentNo();
+        }
+        return "id:" + account.getMemberId();
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private MemberAccount verifyAccountCredentials(String accountKey, String password) {

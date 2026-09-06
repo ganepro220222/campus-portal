@@ -63,9 +63,8 @@ public class AdminMemberController {
     }
 
     /**
-     * 重置密码：返回一次性明文供管理员转告本人，并强制其下次登录再改一次。
-     *
-     * <p>小程序没有自助找回密码（不接短信），此前学生忘记密码只能连数据库改。
+     * 重置密码：未绑定微信时返回一次性明文供转告；已绑定则只作废旧密码，
+     * 通知学生用微信打开小程序设置新密码。两种情况都会强制下次登录再改一次。
      */
     @PutMapping("/{id}/reset-password")
     public Result<Map<String, Object>> resetPassword(@PathVariable Long id,

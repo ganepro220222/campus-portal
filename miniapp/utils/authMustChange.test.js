@@ -31,7 +31,9 @@ const redirected = auth.handlePostLogin({ token: 't', mustChangePassword: true }
 })
 assert.equal(redirected, true)
 assert.equal(auth.isMustChangePasswordRequired(), true)
-assert.equal(global._reLaunchUrl, auth.CHANGE_PASSWORD_PAGE)
+assert.ok(String(global._reLaunchUrl).startsWith(auth.CHANGE_PASSWORD_PAGE),
+  '须改密应跳到独立改密页')
+assert.match(String(global._reLaunchUrl), /mode=forced/)
 
 Object.keys(store).forEach((k) => delete store[k])
 global._reLaunchUrl = ''

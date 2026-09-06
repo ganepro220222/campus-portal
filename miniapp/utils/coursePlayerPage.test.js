@@ -137,6 +137,7 @@ async function run() {
   })
   hidePage._currentPosition = 600
   hidePage.onHide()
+  assert.strictEqual(hidePage._pageActive, false)
   assert.match(posts.at(-1).url, /\/courses\/7\/progress$/)
   pendingPosts.at(-1).resolve({ progressPercent: 100, completed: true })
   await flushTurns()
@@ -169,6 +170,54 @@ async function run() {
   await flushTurns()
   assert.strictEqual(pausePage.data.progressStatusText, '已完成学习')
   assert.strictEqual(completionToasts().length, 2, '暂停时首次完成仍应提示')
+
+  const concurrentPage = createPage({
+    progressPercent: 90,
+    completed: false,
+    progressStatusText: '已学习 90%'
+  })
+  const concurrentBefore = completionToasts().length
+  const first = concurrentPage._reportProgress(599, 600, { notifyCompletion: true })
+  const second = concurrentPage._reportProgress(600, 600, { notifyCompletion: true })
+  pendingPosts.at(-2).resolve({ progressPercent: 100, completed: true })
+  pendingPosts.at(-1).resolve({ progressPercent: 100, completed: true })
+  await Promise.all([first, second])
+  assert.strictEqual(concurrentPage.data.completed, true)
+  assert.strictEqual(concurrentPage.data.progressStatusText, '已完成学习')
+  assert.strictEqual(completionToasts().length, concurrentBefore + 1, '并发完成上报只提示一次')
+
+  const leavePage = createPage({
+    progressPercent: 90,
+    completed: false,
+    progressStatusText: '已学习 90%'
+  })
+  const leaveBefore = completionToasts().length
+  leavePage._currentPosition = 600
+  leavePage.onHide()
+  leavePage.onPause()
+  assert.strictEqual(leavePage._pageActive, false, 'onHide 必须先把页面标成非活动')
+  pendingPosts.at(-2).resolve({ progressPercent: 100, completed: true })
+  pendingPosts.at(-1).resolve({ progressPercent: 100, completed: true })
+  await flushTurns()
+  assert.strictEqual(leavePage.data.completed, true)
+  assert.strictEqual(leavePage.data.progressStatusText, '已完成学习')
+  assert.strictEqual(completionToasts().length, leaveBefore, '离开页后的 hide+pause 不得弹完成提示')
+
+  const pauseThenHide = createPage({
+    progressPercent: 90,
+    completed: false,
+    progressStatusText: '已学习 90%'
+  })
+  const pauseThenHideBefore = completionToasts().length
+  pauseThenHide._currentPosition = 600
+  pauseThenHide.onPause()
+  pauseThenHide.onHide()
+  assert.strictEqual(pauseThenHide._pageActive, false)
+  pendingPosts.at(-2).resolve({ progressPercent: 100, completed: true })
+  pendingPosts.at(-1).resolve({ progressPercent: 100, completed: true })
+  await flushTurns()
+  assert.strictEqual(pauseThenHide.data.completed, true)
+  assert.strictEqual(completionToasts().length, pauseThenHideBefore, '先 pause 再 hide 也不得在离页后弹提示')
 
   console.log('[coursePlayerPage.test] PASS')
 }

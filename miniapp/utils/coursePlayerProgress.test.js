@@ -313,6 +313,7 @@ assert.strictEqual(
   assert.match(playerJs, /buildProgressResponsePatch/)
   assert.match(playerJs, /shouldNotifyProgressCompletion/)
   assert.match(playerJs, /notifyCompletion/)
+  assert.match(playerJs, /onHide\(\)\s*\{\s*this\._pageActive = false/s)
   assert.doesNotMatch(playerJs, /\/progress`\)\.catch\(\(\) => null\)/)
   const playerWxml = fs.readFileSync(path.join(__dirname, '../packageB/course/player.wxml'), 'utf8')
   assert.match(playerWxml, /onRetryProgress/)

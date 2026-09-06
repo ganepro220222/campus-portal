@@ -200,6 +200,7 @@ Page({
   },
 
   onHide() {
+    this._pageActive = false
     this._flushProgress(true)
   },
 
@@ -380,8 +381,6 @@ Page({
 
   _reportProgress(position, total, options = {}) {
     const notifyCompletion = options.notifyCompletion === true
-    const wasCompleted = !!this.data.completed
-    const alreadyNotified = !!this._completionNotified
     return new Promise((resolve, reject) => {
       requireLogin(() => {
         post(`/courses/${this._courseId}/progress`, {
@@ -389,18 +388,20 @@ Page({
           totalDurationSeconds: total
         }).then(res => {
           if (res) {
+            const wasCompleted = !!this.data.completed
             const patch = buildProgressResponsePatch(res, this.data)
-            this.setData(patch)
-            if (patch.completed && !wasCompleted) {
-              this._completionNotified = true
-            }
-            if (shouldNotifyProgressCompletion({
+            const shouldNotify = shouldNotifyProgressCompletion({
               notifyCompletion,
               completed: patch.completed,
               wasCompleted,
-              alreadyNotified,
+              alreadyNotified: !!this._completionNotified,
               pageActive: this._pageActive
-            })) {
+            })
+            this.setData(patch)
+            if (patch.completed) {
+              this._completionNotified = true
+            }
+            if (shouldNotify) {
               wx.showToast({ title: '课程学习完成', icon: 'none' })
             }
           }

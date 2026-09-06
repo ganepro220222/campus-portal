@@ -48,7 +48,14 @@
           <view class="ccard-meta">
             <view class="meta-i"><icon name="users" size="13" color="#67708C" /><text>{{item.audience}}</text></view>
             <view class="meta-i"><icon name="clock" size="13" color="#67708C" /><text>{{item.lessonCount}} 课时</text></view>
-            <text class="pill {{item.tagGold ? 'gold' : ''}}">{{item.tag}}</text>
+            <view class="ccard-tags">
+              <text
+                wx:for="{{item.tags}}"
+                wx:for-item="tagName"
+                wx:key="*this"
+                class="pill {{tagName === '字幕' ? 'gold' : ''}}"
+              >{{tagName}}</text>
+            </view>
           </view>
         </view>
       </view>

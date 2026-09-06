@@ -155,8 +155,10 @@ public class CourseService {
         m.put("audience", c.getTargetAudience());
         m.put("targetAudience", c.getTargetAudience());
         m.put("lessonCount", c.getDurationMinutes() != null ? Math.max(1, c.getDurationMinutes() / 45) : 0);
-        m.put("tag", hasSubtitle ? "字幕" : categoryName);
-        m.put("tagGold", hasSubtitle);
+        m.put("tag", categoryName);
+        m.put("tagGold", false);
+        m.put("hasSubtitle", hasSubtitle);
+        m.put("tags", hasSubtitle ? List.of(categoryName, "字幕") : List.of(categoryName));
         m.put("desc", c.getIntro());
         return m;
     }

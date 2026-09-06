@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -79,6 +80,33 @@ class CourseServiceTest {
 
         assertTrue(courseService.list("已停用").isEmpty());
         verifyNoInteractions(courseMapper);
+    }
+
+    @Test
+    void list_keepsCategoryAndAddsSubtitleTag() {
+        Course course = publishedCourse();
+        course.setCategoryId(9L);
+        course.setDurationMinutes(90);
+        course.setIntro("沟通入门");
+        course.setTargetAudience("全校学生");
+
+        when(categoryService.resolveFilter("course", null))
+                .thenReturn(CategoryService.CategoryFilter.unfiltered());
+        when(categoryService.nameMap("course")).thenReturn(Map.of(9L, "通识必修"));
+        when(categoryService.getName(eq(9L), any())).thenReturn("通识必修");
+        when(courseMapper.selectList(any())).thenReturn(List.of(course));
+        when(ossService.signUrl("cover.jpg")).thenReturn("https://cdn/cover.jpg");
+
+        var result = courseService.list(null);
+
+        assertEquals(1, result.size());
+        Map<String, Object> item = result.get(0);
+        assertEquals("通识必修", item.get("tag"));
+        assertEquals("通识必修", item.get("categoryName"));
+        assertEquals("通识必修", item.get("cat"));
+        assertEquals(false, item.get("tagGold"));
+        assertEquals(true, item.get("hasSubtitle"));
+        assertEquals(List.of("通识必修", "字幕"), item.get("tags"));
     }
 
     @Test

@@ -106,6 +106,7 @@
   flex-wrap: wrap;
 }
 .meta-i { display: flex; align-items: center; gap: 6rpx; font-size: 22rpx; color: var(--muted); }
+.ccard-tags { display: inline-flex; align-items: center; gap: 8rpx; flex-wrap: wrap; }
 
 .list-bottom { height: calc(150rpx + env(safe-area-inset-bottom)); }
 

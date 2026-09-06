@@ -206,7 +206,12 @@
           <view class="ccard-body">
             <view class="ccard-title serif">{{item.name}}</view>
             <view class="ccard-meta">
-              <text class="pill {{item.tagGold ? 'gold' : ''}}">{{item.tag || item.categoryName}}</text>
+              <text
+                wx:for="{{item.tags}}"
+                wx:for-item="tagName"
+                wx:key="*this"
+                class="pill {{tagName === '字幕' ? 'gold' : ''}}"
+              >{{tagName}}</text>
               <text class="ccard-sub">{{item.lessonCount || 0}} 课时</text>
             </view>
           </view>

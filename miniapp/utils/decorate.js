@@ -57,10 +57,29 @@ function decorateNewsFeed(list) {
   }))
 }
 
+function resolveCourseCardTags(it) {
+  const rawTags = Array.isArray(it.tags) ? it.tags.filter(Boolean) : []
+  const categoryFromTags = rawTags.find((t) => t !== '字幕' && t !== '在线课程')
+  const categoryName = [it.categoryName, it.cat, categoryFromTags, it.tag]
+    .find((v) => v && String(v).trim() && v !== '字幕') || '精品课程'
+  const hasSubtitle = it.hasSubtitle === true
+    || it.tagGold === true
+    || it.tag === '字幕'
+    || rawTags.includes('字幕')
+  return {
+    categoryName,
+    cat: it.cat || categoryName,
+    hasSubtitle,
+    tags: hasSubtitle ? [categoryName, '字幕'] : [categoryName],
+    tag: categoryName,
+    tagGold: false
+  }
+}
+
 function decorateCourses(list) {
   return (list || []).map((it, i) => withCoverFields({
     ...it,
-    categoryName: it.categoryName || '精品课程',
+    ...resolveCourseCardTags(it),
     colorClass: it.colorClass || HALL_COLORS[i % HALL_COLORS.length],
     icon: it.icon || COURSE_ICONS[i % COURSE_ICONS.length]
   }))
@@ -69,11 +88,10 @@ function decorateCourses(list) {
 function decorateCourseCards(list) {
   return (list || []).map((it, i) => withCoverFields({
     ...it,
+    ...resolveCourseCardTags(it),
     colorClass: it.colorClass || COURSE_COLORS[i % COURSE_COLORS.length],
     icon: it.icon || COURSE_CARD_ICONS[i % COURSE_CARD_ICONS.length],
-    audience: it.audience || it.targetAudience || '全校学生',
-    tag: it.tag || it.categoryName || '精品课程',
-    tagGold: it.tagGold === true || it.hasSubtitle === true || it.tag === '字幕'
+    audience: it.audience || it.targetAudience || '全校学生'
   }))
 }
 
@@ -126,6 +144,7 @@ function decorateCrafts(list) {
 module.exports = {
   HALL_COLORS,
   resolveCoverImageMode,
+  resolveCourseCardTags,
   decorateHalls,
   decorateCrafts,
   decorateNews,

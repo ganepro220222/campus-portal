@@ -442,5 +442,6 @@
   align-items: center;
   gap: 14rpx;
   margin-top: 14rpx;
+  flex-wrap: wrap;
 }
 .ncard-date, .ccard-sub { font-size: 22rpx; color: #67708C; }

@@ -374,6 +374,34 @@ async function testTimeoutWithoutRetryToasts() {
   delete require.cache[require.resolve('./resourceAudioPlayer')]
 }
 
+async function testStopCancelsRetryTask() {
+  const { handlers, originalWx } = installAudioWx()
+  delete require.cache[require.resolve('./resourceAudioPlayer')]
+  const live = require('./resourceAudioPlayer')
+  let cancelled = 0
+  const pending = live.play({
+    id: 9,
+    url: 'https://cdn.example.com/bad.mp3',
+    name: '坏',
+    onRetry: () => ({
+      cancel() { cancelled += 1 }
+    })
+  })
+  handlers.error()
+  await pending.then(
+    () => { throw new Error('error 后不应视为播放成功') },
+    (err) => { assert.strictEqual(err.message, 'audio-unplayable') }
+  )
+  live.retry()
+  assert.strictEqual(cancelled, 0, '重试任务在关闭前应保持有效')
+  live.stop()
+  assert.strictEqual(cancelled, 1, '关闭错误栏必须取消进行中的重试')
+  live.stop()
+  assert.strictEqual(cancelled, 1, '重复关闭不得再次 cancel')
+  global.wx = originalWx
+  delete require.cache[require.resolve('./resourceAudioPlayer')]
+}
+
 testReadyPromise()
   .then(testSlowLoadThenReady)
   .then(testGiveUpStopsPlayer)
@@ -384,6 +412,7 @@ testReadyPromise()
   .then(testStaleEventsDoNotPolluteNextTrack)
   .then(testSwitchCancelsUnreadyTrack)
   .then(testTimeoutWithoutRetryToasts)
+  .then(testStopCancelsRetryTask)
   .then(() => console.log('resourceAudioPlayer.test.js ok'))
   .catch((error) => {
     console.error(error)

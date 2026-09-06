@@ -1,7 +1,10 @@
 // packageC/profile/list.js — 个人中心通用列表（收藏/报名/下载/足迹/徽章）
 const { get } = require('../../utils/request')
-const { downloadResource } = require('../../utils/resourceDownload')
-const audioPlayer = require('../../utils/resourceAudioPlayer')
+const {
+  downloadResource,
+  pausePageResourceSession,
+  destroyPageResourceSession
+} = require('../../utils/resourceDownload')
 const {
   buildLoadedViewState,
   buildErrorViewState,
@@ -52,11 +55,11 @@ Page({
   },
 
   onHide() {
-    audioPlayer.pause()
+    pausePageResourceSession()
   },
 
   onUnload() {
-    audioPlayer.destroy()
+    destroyPageResourceSession()
   },
 
   onShow() {

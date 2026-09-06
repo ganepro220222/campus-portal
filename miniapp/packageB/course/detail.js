@@ -2,8 +2,11 @@
 const { get } = require('../../utils/request')
 const { mergeCourseDetail } = require('../../utils/content')
 const { requireLogin } = require('../../utils/auth')
-const { downloadResource } = require('../../utils/resourceDownload')
-const audioPlayer = require('../../utils/resourceAudioPlayer')
+const {
+  downloadResource,
+  pausePageResourceSession,
+  destroyPageResourceSession
+} = require('../../utils/resourceDownload')
 const { formatDuration } = require('../../utils/format')
 const { mapCollectedFromDetail, applyCollectedToggle, toggleFavorite } = require('../../utils/favoriteToggle')
 const {
@@ -90,11 +93,11 @@ Page({
   },
 
   onHide() {
-    audioPlayer.pause()
+    pausePageResourceSession()
   },
 
   onUnload() {
-    audioPlayer.destroy()
+    destroyPageResourceSession()
   },
 
   async _loadDetail(id, options = {}) {

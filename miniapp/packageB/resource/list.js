@@ -1,8 +1,11 @@
 // packageB/resource/list.js — 资源下载列表逻辑
 const { get } = require('../../utils/request')
 const { mergeResourceList } = require('../../utils/content')
-const { downloadResource } = require('../../utils/resourceDownload')
-const audioPlayer = require('../../utils/resourceAudioPlayer')
+const {
+  downloadResource,
+  pausePageResourceSession,
+  destroyPageResourceSession
+} = require('../../utils/resourceDownload')
 const { requireLogin } = require('../../utils/auth')
 const { applyListCollected, patchListItemCollected, toggleFavorite } = require('../../utils/favoriteToggle')
 const {
@@ -63,11 +66,11 @@ Page({
   },
 
   onHide() {
-    audioPlayer.pause()
+    pausePageResourceSession()
   },
 
   onUnload() {
-    audioPlayer.destroy()
+    destroyPageResourceSession()
   },
 
   onRetry() {

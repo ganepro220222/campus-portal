@@ -13,7 +13,93 @@ const FILE_CHUNK_BYTES = 4 * 1024 * 1024
 const MAX_CHUNK_FILE_BYTES = 180 * 1024 * 1024
 
 // 下载流程共享 loading、缓存清理和 openDocument；同一时刻只能安全执行一个。
-let _activeDownloadId = null
+let _activeTask = null
+
+function createDownloadCancelledError() {
+  const err = new Error('download-cancelled')
+  err.code = 'download-cancelled'
+  return err
+}
+
+function isDownloadCancelled(error) {
+  return !!(error && (error.code === 'download-cancelled' || error.message === 'download-cancelled'))
+}
+
+function throwIfCancelled(task) {
+  if (task && task.cancelled) {
+    throw createDownloadCancelledError()
+  }
+}
+
+function hideLoadingQuietly() {
+  try {
+    if (typeof wx !== 'undefined' && typeof wx.hideLoading === 'function') {
+      wx.hideLoading({ fail() {} })
+    }
+  } catch (e) {
+    // 没有正在展示的 loading 时微信可能回调 fail，忽略即可
+  }
+}
+
+function notifyTaskComplete(task, options) {
+  if (!task || task.completedNotified) return
+  task.completedNotified = true
+  if (options && typeof options.onComplete === 'function') {
+    options.onComplete()
+  }
+}
+
+function createDownloadTask(downloadKey, options) {
+  const aborts = []
+  const task = {
+    cancelled: false,
+    completedNotified: false,
+    ignoreHideCancel: false,
+    downloadKey,
+    attachAbort(fn) {
+      if (typeof fn !== 'function') return
+      if (task.cancelled) {
+        try { fn() } catch (e) { /* ignore */ }
+        return
+      }
+      aborts.push(fn)
+    },
+    cancel() {
+      if (task.cancelled) return
+      task.cancelled = true
+      while (aborts.length) {
+        const fn = aborts.pop()
+        try { fn() } catch (e) { /* ignore */ }
+      }
+      if (_activeTask === task) {
+        _activeTask = null
+      }
+      hideLoadingQuietly()
+      notifyTaskComplete(task, options)
+    }
+  }
+  return task
+}
+
+function cancelActiveResourceDownload() {
+  if (_activeTask) _activeTask.cancel()
+}
+
+function pausePageResourceSession() {
+  if (_activeTask && !_activeTask.ignoreHideCancel) {
+    _activeTask.cancel()
+  }
+  audioPlayer.pause()
+}
+
+function destroyPageResourceSession() {
+  cancelActiveResourceDownload()
+  audioPlayer.destroy()
+}
+
+if (typeof audioPlayer.setOuterCancel === 'function') {
+  audioPlayer.setOuterCancel(cancelActiveResourceDownload)
+}
 
 function normalizeType(fileType) {
   const t = String(fileType || '').toLowerCase()
@@ -195,7 +281,8 @@ async function fetchViaPreferredChunks(
   resourceId,
   ext,
   sourceDownloader = getUrlArrayBufferChunk,
-  apiDownloader = getArrayBufferChunk
+  apiDownloader = getArrayBufferChunk,
+  task
 ) {
   const safeExt = String(ext || 'bin').replace(/[^a-z0-9]/gi, '') || 'bin'
   const filePath = `${wx.env.USER_DATA_PATH}/res_${Date.now()}.${safeExt}`
@@ -205,6 +292,7 @@ async function fetchViaPreferredChunks(
   let sourceError = null
   try {
     while (total === 0 || offset < total) {
+      throwIfCancelled(task)
       let chunk = null
       if (useSignedSource) {
         try {
@@ -244,6 +332,7 @@ async function fetchViaPreferredChunks(
       }
 
       await writeFileData(filePath, chunk.buffer, offset > 0)
+      throwIfCancelled(task)
       offset += chunk.length
       const percent = Math.min(100, Math.floor(offset * 100 / total))
       wx.showLoading({ title: `下载 ${percent}%`, mask: true })
@@ -265,22 +354,38 @@ function fetchViaChunkApi(resourceId, ext, downloader = getArrayBufferChunk) {
   return fetchViaPreferredChunks('', resourceId, ext, null, downloader)
 }
 
-function wxDownloadTemp(url) {
+function wxDownloadTemp(url, task) {
   return new Promise((resolve, reject) => {
+    if (task && task.cancelled) {
+      reject(createDownloadCancelledError())
+      return
+    }
+    const finish = (fn, value) => {
+      if (task && task.cancelled) {
+        reject(createDownloadCancelledError())
+        return
+      }
+      fn(value)
+    }
     const payload = {
       url,
       timeout: 180000,
       success(res) {
         const local = res.tempFilePath || res.filePath
         if (res.statusCode === 200 && local) {
-          resolve(local)
+          finish(resolve, local)
         } else {
-          reject(new Error('download-failed'))
+          finish(reject, new Error('download-failed'))
         }
       },
-      fail: reject
+      fail(err) {
+        finish(reject, err)
+      }
     }
-    wx.downloadFile(payload)
+    const downloadTask = wx.downloadFile(payload)
+    if (task && downloadTask && typeof downloadTask.abort === 'function') {
+      task.attachAbort(() => downloadTask.abort())
+    }
   })
 }
 
@@ -319,22 +424,36 @@ async function tryOpenLocal(path, openType) {
   }
 }
 
-async function openDocument(url, fileType, resourceId) {
+async function openDocument(url, fileType, resourceId, task) {
+  throwIfCancelled(task)
   const openType = documentOpenType(fileType, url)
   wx.showLoading({ title: '下载中…', mask: true })
   try {
+    throwIfCancelled(task)
     await cleanupLegacyDocumentCache()
+    throwIfCancelled(task)
     let path
     if (resourceId) {
-      path = await fetchViaPreferredChunks(url, resourceId, openType)
+      path = await fetchViaPreferredChunks(
+        url,
+        resourceId,
+        openType,
+        getUrlArrayBufferChunk,
+        getArrayBufferChunk,
+        task
+      )
     } else {
-      path = await wxDownloadTemp(url)
+      path = await wxDownloadTemp(url, task)
     }
+    throwIfCancelled(task)
     wx.hideLoading()
+    if (task) task.ignoreHideCancel = true
     await tryOpenLocal(path, openType)
+    throwIfCancelled(task)
     wx.showToast({ title: '已打开', icon: 'success' })
   } catch (e) {
     wx.hideLoading()
+    if (isDownloadCancelled(e)) throw e
     const msg = errText(e)
     const kind = classifyOpenError(msg)
     console.error('[resourceDownload] openDocument failed:', msg)
@@ -358,17 +477,32 @@ async function openDocument(url, fileType, resourceId) {
   }
 }
 
-function playVideo(url, name) {
+function playVideo(url, name, task) {
   return new Promise((resolve, reject) => {
+    if (task && task.cancelled) {
+      reject(createDownloadCancelledError())
+      return
+    }
     if (!wx.previewMedia) {
       copyUrlFallback(url, name)
       reject(new Error('preview-unavailable'))
       return
     }
+    if (task) task.ignoreHideCancel = true
     wx.previewMedia({
       sources: [{ url, type: 'video' }],
-      success: resolve,
+      success() {
+        if (task && task.cancelled) {
+          reject(createDownloadCancelledError())
+          return
+        }
+        resolve()
+      },
       fail(err) {
+        if (task && task.cancelled) {
+          reject(createDownloadCancelledError())
+          return
+        }
         copyUrlFallback(url, name)
         reject(err || new Error('preview-failed'))
       }
@@ -376,12 +510,16 @@ function playVideo(url, name) {
   })
 }
 
-function playAudio(url, name, id, retryOptions) {
+function playAudio(url, name, id, retryOptions, task) {
+  throwIfCancelled(task)
   return audioPlayer.play({
     id,
     url,
     name: name || '音频',
-    onUnplayable: () => copyUrlFallback(url, name),
+    onUnplayable: () => {
+      if (task && task.cancelled) return
+      copyUrlFallback(url, name)
+    },
     onRetry: () => downloadResource(id, retryOptions || {})
   })
 }
@@ -412,7 +550,8 @@ function copyUrlFallback(url, name) {
   })
 }
 
-async function openDownloadedResource(data, retryOptions) {
+async function openDownloadedResource(data, retryOptions, task) {
+  throwIfCancelled(task)
   const url = pickUrl(data)
   if (!url) {
     wx.showToast({ title: '文件地址不可用', icon: 'none' })
@@ -421,61 +560,74 @@ async function openDownloadedResource(data, retryOptions) {
   const rawType = String(data.fileType || '').toLowerCase()
   const fileType = normalizeType(rawType)
   if (DOC_TYPES.has(fileType) || DOC_TYPES.has(rawType)) {
-    await openDocument(url, data.fileType, data.id)
+    await openDocument(url, data.fileType, data.id, task)
   } else if (VIDEO_TYPES.has(fileType)) {
-    await playVideo(url, data.name)
+    await playVideo(url, data.name, task)
   } else if (AUDIO_TYPES.has(fileType)) {
-    await playAudio(url, data.name, data.id, retryOptions)
+    await playAudio(url, data.name, data.id, retryOptions, task)
   } else {
-    await openDocument(url, data.fileType, data.id)
+    await openDocument(url, data.fileType, data.id, task)
   }
 }
 
 /**
  * 登录后先取签名地址，打开或开播成功后再确认记账。
  * onRecorded 只在确认成功后触发，避免失败下载把列表次数加一。
+ * 返回可取消 handle：页面离开或关闭播放栏后必须 cancel，避免弱网响应回来后自动打开。
  * @param {number|string} resourceId
  * @param {{ onStart?: Function, onRecorded?: Function, onComplete?: Function }} options
  */
 function downloadResource(resourceId, options = {}) {
+  const downloadKey = String(resourceId)
+  const task = createDownloadTask(downloadKey, options)
   requireLogin(async () => {
-    const downloadKey = String(resourceId)
-    if (_activeDownloadId !== null) {
+    if (task.cancelled) return
+    if (_activeTask) {
       wx.showToast({
-        title: _activeDownloadId === downloadKey ? '该文件正在下载' : '已有文件正在下载',
+        title: _activeTask.downloadKey === downloadKey ? '该文件正在下载' : '已有文件正在下载',
         icon: 'none'
       })
       return
     }
-    _activeDownloadId = downloadKey
+    _activeTask = task
     try {
+      if (task.cancelled) return
       if (typeof options.onStart === 'function') {
         options.onStart()
       }
       const data = await post(`/resources/${resourceId}/download`, {})
-      await openDownloadedResource({ ...data, id: resourceId }, options)
+      throwIfCancelled(task)
+      await openDownloadedResource({ ...data, id: resourceId }, options, task)
+      throwIfCancelled(task)
       try {
         await confirmDownloadRecord(resourceId, data && data.token)
       } catch (syncErr) {
+        throwIfCancelled(task)
         wx.showToast({ title: '文件已打开，但下载记录同步失败', icon: 'none', duration: 2500 })
         throw syncErr
       }
+      throwIfCancelled(task)
       if (typeof options.onRecorded === 'function') {
         options.onRecorded(data)
       }
     } catch (e) {
+      if (isDownloadCancelled(e)) return
       // 下载/打开/同步失败已经向用户提示；此处仅吞掉未处理异常
     } finally {
-      _activeDownloadId = null
-      if (typeof options.onComplete === 'function') {
-        options.onComplete()
+      if (_activeTask === task) {
+        _activeTask = null
       }
+      notifyTaskComplete(task, options)
     }
   })
+  return task
 }
 
 module.exports = {
   downloadResource,
+  cancelActiveResourceDownload,
+  pausePageResourceSession,
+  destroyPageResourceSession,
   openDownloadedResource,
   confirmDownloadRecord,
   playVideo,
@@ -488,8 +640,9 @@ module.exports = {
   responseHeader,
   parseContentRange,
   isSignedSourceUrl,
-  _getActiveDownloadId: () => _activeDownloadId,
-  _resetActiveDownloadState: () => { _activeDownloadId = null },
+  isDownloadCancelled,
+  _getActiveDownloadId: () => (_activeTask ? _activeTask.downloadKey : null),
+  _resetActiveDownloadState: () => { _activeTask = null },
   _fetchViaChunkApi: fetchViaChunkApi,
   _fetchViaPreferredChunks: fetchViaPreferredChunks,
   FILE_CHUNK_BYTES,

@@ -28,6 +28,8 @@ let _listeners = []
 let _seeking = false
 let _onUnplayable = null
 let _onRetry = null
+let _retryTask = null
+let _outerCancel = null
 let _pendingSettle = null
 
 const AUDIO_SLOW_HINT_MS = 15000
@@ -64,6 +66,30 @@ function applyTime(current, duration) {
   _state.progress = dur > 0 ? Math.min(100, Math.round((cur / dur) * 100)) : 0
   _state.currentText = formatClock(cur)
   _state.durationText = formatClock(dur)
+}
+
+function bindRetryTask(result) {
+  if (_retryTask && _retryTask !== result && typeof _retryTask.cancel === 'function') {
+    _retryTask.cancel()
+  }
+  _retryTask = result && typeof result.cancel === 'function' ? result : null
+}
+
+function cancelRetryTask() {
+  if (_retryTask && typeof _retryTask.cancel === 'function') {
+    _retryTask.cancel()
+  }
+  _retryTask = null
+}
+
+function setOuterCancel(fn) {
+  _outerCancel = typeof fn === 'function' ? fn : null
+}
+
+function cancelOuterDownload() {
+  if (typeof _outerCancel === 'function') {
+    _outerCancel()
+  }
 }
 
 function destroyCtx() {
@@ -243,7 +269,7 @@ function resume() {
 function retry() {
   if (!_state.error) return false
   if (typeof _onRetry === 'function') {
-    _onRetry()
+    bindRetryTask(_onRetry())
     return true
   }
   if (typeof wx !== 'undefined' && typeof wx.showToast === 'function') {
@@ -277,6 +303,8 @@ function seekPercent(percent) {
 }
 
 function stop() {
+  cancelRetryTask()
+  cancelOuterDownload()
   if (_pendingSettle) {
     _pendingSettle.fail(new Error('audio-cancelled'), { copy: false, error: '' })
   }
@@ -310,6 +338,7 @@ module.exports = {
   seekPercent,
   stop,
   destroy,
+  setOuterCancel,
   AUDIO_SLOW_HINT_MS,
   AUDIO_GIVE_UP_MS,
   _setReadyTimeouts

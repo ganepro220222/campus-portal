@@ -67,18 +67,19 @@ function applyTime(current, duration) {
 }
 
 function destroyCtx() {
-  if (!_ctx) return
-  try {
-    _ctx.stop()
-  } catch (e) {
-    // ignore
-  }
-  try {
-    _ctx.destroy()
-  } catch (e) {
-    // ignore
-  }
+  const ctx = _ctx
   _ctx = null
+  if (!ctx) return
+  try {
+    ctx.stop()
+  } catch (e) {
+    // ignore
+  }
+  try {
+    ctx.destroy()
+  } catch (e) {
+    // ignore
+  }
 }
 
 function subscribe(fn) {
@@ -138,14 +139,15 @@ function play(opts = {}) {
       if (options.copy !== false && _onUnplayable) _onUnplayable()
       reject(err instanceof Error ? err : new Error('audio-unplayable'))
     }
-    _pendingSettle = { succeed, fail }
-
     const url = opts.url
     if (!url) {
-      _pendingSettle = null
       reject(new Error('no-url'))
       return
     }
+    if (_pendingSettle) {
+      _pendingSettle.fail(new Error('audio-cancelled'), { copy: false, error: '', destroy: false })
+    }
+    _pendingSettle = { succeed, fail }
     _onUnplayable = typeof opts.onUnplayable === 'function' ? opts.onUnplayable : null
     _onRetry = typeof opts.onRetry === 'function' ? opts.onRetry : null
     if (typeof wx === 'undefined' || typeof wx.createInnerAudioContext !== 'function') {
@@ -169,34 +171,38 @@ function play(opts = {}) {
       name: opts.name || '音频',
       playing: true
     }
-    _ctx = wx.createInnerAudioContext()
-    _ctx.obeyMuteSwitch = false
-    _ctx.src = url
-    _ctx.onTimeUpdate(() => {
-      if (_seeking || !_ctx) return
-      applyTime(_ctx.currentTime, _ctx.duration)
+    const ctx = wx.createInnerAudioContext()
+    _ctx = ctx
+    ctx.obeyMuteSwitch = false
+    ctx.src = url
+    ctx.onTimeUpdate(() => {
+      if (_ctx !== ctx || _seeking) return
+      applyTime(ctx.currentTime, ctx.duration)
       emit()
     })
-    _ctx.onCanplay(() => {
-      if (!_ctx) return
-      applyTime(_ctx.currentTime, _ctx.duration)
+    ctx.onCanplay(() => {
+      if (_ctx !== ctx) return
+      applyTime(ctx.currentTime, ctx.duration)
       emit()
       succeed()
     })
-    _ctx.onPlay(() => {
-      if (!_ctx) return
+    ctx.onPlay(() => {
+      if (_ctx !== ctx) return
       succeed()
     })
-    _ctx.onEnded(() => {
+    ctx.onEnded(() => {
+      if (_ctx !== ctx) return
       _state.playing = false
-      if (_ctx) applyTime(_ctx.duration, _ctx.duration)
+      applyTime(ctx.duration, ctx.duration)
       emit()
     })
-    _ctx.onStop(() => {
+    ctx.onStop(() => {
+      if (_ctx !== ctx) return
       _state.playing = false
       emit()
     })
-    _ctx.onError(() => {
+    ctx.onError(() => {
+      if (_ctx !== ctx) return
       if (!settled) {
         fail(new Error('audio-unplayable'), { error: '无法播放该音频，点击重试' })
         return
@@ -213,7 +219,7 @@ function play(opts = {}) {
     giveUpTimer = setTimeout(() => {
       fail(new Error('audio-timeout'), { error: '音频加载超时，点击重试' })
     }, _timeouts.giveUpMs)
-    _ctx.play()
+    ctx.play()
     emit()
   })
 }

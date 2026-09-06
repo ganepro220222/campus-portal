@@ -147,6 +147,30 @@ async function run() {
   await flushPromises()
   assert.strictEqual(recorded, 2, '开播后再次完整重试只多记这一次')
 
+  let recordedB = 0
+  downloadResource(9, { onRecorded: () => { recordedB += 1 } })
+  await flushPromises()
+  await flushPromises()
+  assert.match(posts[posts.length - 1].url, /\/resources\/9\/download$/)
+  pendingPosts[pendingPosts.length - 1].resolve({
+    fileUrl: 'https://cdn.yunmanvr.com/audios/b.mp3?auth_key=b',
+    fileType: 'mp3',
+    name: '音频B',
+    token: 'd'.repeat(32)
+  })
+  await flushPromises()
+  await flushPromises()
+  playJobs[playJobs.length - 1].resolve()
+  await flushPromises()
+  await flushPromises()
+  assert.match(posts[posts.length - 1].url, /\/resources\/9\/download-complete$/)
+  assert.deepStrictEqual(posts[posts.length - 1].body, { token: 'd'.repeat(32) })
+  pendingPosts[pendingPosts.length - 1].resolve({ recorded: true })
+  await flushPromises()
+  await flushPromises()
+  assert.strictEqual(recorded, 2, '切换到 B 不得重复确认 A')
+  assert.strictEqual(recordedB, 1, 'B 应独立确认一次')
+
   console.log('[resourceDownloadAudioRetry.test] PASS')
 }
 

@@ -49,9 +49,7 @@
           <view wx:if="{{detail.needReview}}" class="review-chip">需审核</view>
         </view>
 
-        <view wx:if="{{detail.enrollStartTime}}" class="enroll-window">
-          报名时间：{{detail.enrollStartTime}} 至 {{detail.enrollEndTime}}
-        </view>
+        <view wx:if="{{detail.enrollWindowText}}" class="enroll-window">{{detail.enrollWindowText}}</view>
 
         <view wx:if="{{statusLabel}}" class="status-banner status-{{detail.enrollStatus}}">
           {{statusLabel}}

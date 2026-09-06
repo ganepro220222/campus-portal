@@ -7,7 +7,8 @@
  * 规则：
  *   - recycleBinCopy.ts 须含「回收站」/「移入回收站」，且不得写「不可恢复」
  *   - 下列 13 个入口须 import recycleBinCopy，并用统一 confirm + MOVED_TO_RECYCLE_BIN
- *   - 上述入口文件里不得出现「不可恢复」
+ *   - 软删除函数（调用 softDeleteConfirm 等）里不得出现「不可恢复」
+ *   - 同文件里取消活动等终态操作可以写「不可恢复」，不得误伤
  */
 const fs = require('node:fs')
 const path = require('node:path')
@@ -38,6 +39,31 @@ const IRREVERSIBLE_OK = [
   'admin/src/views/knowledge/KnowledgeListView.vue',
   'admin/src/components/DangerDeleteDialog.vue',
 ]
+
+function extractFunctionBody(src, name) {
+  const re = new RegExp(`(?:async\\s+)?function\\s+${name}\\s*\\(`)
+  const m = re.exec(src)
+  if (!m) return null
+  const start = src.indexOf('{', m.index)
+  if (start < 0) return null
+  let depth = 0
+  for (let i = start; i < src.length; i++) {
+    if (src[i] === '{') depth++
+    else if (src[i] === '}') {
+      depth--
+      if (depth === 0) return src.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
+function functionsUsingConfirm(src, confirm) {
+  const names = [...src.matchAll(/(?:async\s+)?function\s+(\w+)\s*\(/g)].map((m) => m[1])
+  return names.filter((name) => {
+    const body = extractFunctionBody(src, name)
+    return body && body.includes(confirm)
+  })
+}
 
 const errs = []
 
@@ -73,8 +99,16 @@ for (const { file: rel, confirm } of SOFT_DELETE_SOURCES) {
   if (!/MOVED_TO_RECYCLE_BIN/.test(src)) {
     errs.push(`${rel} 未使用 MOVED_TO_RECYCLE_BIN 成功提示`)
   }
-  if (/不可恢复/.test(src)) {
-    errs.push(`${rel} 误写「不可恢复」——软删除应说明移入回收站`)
+  const softDeleteFns = functionsUsingConfirm(src, confirm)
+  if (softDeleteFns.length === 0) {
+    errs.push(`${rel} 找不到调用 ${confirm}() 的函数，无法校验软删除文案`)
+  } else {
+    for (const name of softDeleteFns) {
+      const body = extractFunctionBody(src, name)
+      if (body && /不可恢复/.test(body)) {
+        errs.push(`${rel} 的 ${name}() 误写「不可恢复」——软删除应说明移入回收站`)
+      }
+    }
   }
 }
 

@@ -42,7 +42,7 @@
             <block wx:if="{{item.quota > 0}}">{{item.enrolledCount}}/{{item.quota}} 人</block>
             <block wx:else>名额不限</block>
           </view>
-          <view class="enroll-btn {{item.full ? 'enroll-off' : ''}}">{{item.full ? '已满' : '报名'}}</view>
+          <view class="enroll-btn {{item.canEnroll ? '' : 'enroll-off'}}">{{item.enrollHint}}</view>
         </view>
       </view>
     </view>

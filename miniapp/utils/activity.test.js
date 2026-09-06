@@ -6,6 +6,7 @@ const assert = require('assert')
 const fs = require('fs')
 const path = require('path')
 const {
+  formatEnrollWindowText,
   resolveEmptyActivityDetail,
   mergeActivityDetail,
   hasActiveEnroll,
@@ -14,6 +15,7 @@ const {
   canStartCancelEnroll,
   cancelEnrollButtonText
 } = require('./activity')
+const { decorateActivities } = require('./decorate')
 
 assert.strictEqual(resolveEmptyActivityDetail(false), null)
 assert.ok(resolveEmptyActivityDetail(true))
@@ -70,5 +72,43 @@ assert.match(detailJs, /this\._cancelling = true/)
 const detailWxml = fs.readFileSync(path.join(__dirname, '../packageC/activity/detail.wxml'), 'utf8')
 assert.match(detailWxml, /取消中…/)
 assert.match(detailWxml, /disabled="\{\{cancelling\}\}"/)
+assert.match(detailWxml, /detail.enrollWindowText/)
+assert.doesNotMatch(detailWxml, /wx:if="\{\{detail.enrollStartTime\}\}"/)
+
+assert.strictEqual(
+  formatEnrollWindowText('', '2026-09-10 14:00'),
+  '报名时间：发布后即可报名，截止至 2026-09-10 14:00'
+)
+assert.strictEqual(
+  formatEnrollWindowText('2026-09-01 09:00', '2026-09-10 14:00'),
+  '报名时间：2026-09-01 09:00 至 2026-09-10 14:00'
+)
+const emptyStart = mergeActivityDetail({
+  id: 5,
+  title: '默认窗口',
+  enrollStartTime: '',
+  enrollEndTime: '2026-09-10 14:00'
+}, {})
+assert.strictEqual(emptyStart.enrollWindowText, '报名时间：发布后即可报名，截止至 2026-09-10 14:00')
+
+const listCards = decorateActivities([
+  { id: 1, canEnroll: true, enrollState: 'open', enrollHint: '立即报名', quota: 10, enrolledCount: 1 },
+  { id: 2, canEnroll: false, enrollState: 'not_started', enrollHint: '报名未开始', quota: 10, enrolledCount: 1 },
+  { id: 3, canEnroll: false, enrollState: 'closed', enrollHint: '报名已截止', quota: 10, enrolledCount: 1 },
+  { id: 4, canEnroll: false, enrollState: 'started', enrollHint: '进行中', quota: 10, enrolledCount: 1 },
+  { id: 5, canEnroll: false, enrollState: 'ended', enrollHint: '已结束', quota: 10, enrolledCount: 1 },
+  { id: 6, canEnroll: false, enrollState: 'full', enrollHint: '已满', full: true, quota: 10, enrolledCount: 10 }
+])
+assert.strictEqual(listCards[0].enrollHint, '立即报名')
+assert.strictEqual(listCards[1].enrollHint, '报名未开始')
+assert.strictEqual(listCards[2].enrollHint, '报名已截止')
+assert.strictEqual(listCards[3].enrollHint, '进行中')
+assert.strictEqual(listCards[4].enrollHint, '已结束')
+assert.strictEqual(listCards[5].enrollHint, '已满')
+
+const listWxml = fs.readFileSync(path.join(__dirname, '../pages/activity/index.wxml'), 'utf8')
+assert.match(listWxml, /item.enrollHint/)
+assert.match(listWxml, /item.canEnroll/)
+assert.doesNotMatch(listWxml, /item.full \? '已满' : '报名'/)
 
 console.log('[activity.test] PASS')

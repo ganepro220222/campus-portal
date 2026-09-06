@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,7 +54,8 @@ class ActivityServiceTest {
         activity.setId(1L);
         activity.setTitle("讲座");
         activity.setStatus("published");
-        activity.setStartTime(LocalDateTime.of(2026, 9, 10, 14, 0));
+        LocalDateTime start = LocalDateTime.now().plusDays(2).withSecond(0).withNano(0);
+        activity.setStartTime(start);
         activity.setQuota(0);
         activity.setEnrolledCount(0);
         when(activityMapper.selectById(1L)).thenReturn(activity);
@@ -62,8 +64,43 @@ class ActivityServiceTest {
 
         Map<String, Object> result = activityService.detail(1L);
 
-        assertEquals("2026-09-10 14:00", result.get("enrollEndTime"));
+        assertEquals(com.shuyuan.backend.util.FormatUtils.formatDateTime(start), result.get("enrollEndTime"));
         assertEquals("", result.get("enrollStartTime"));
         assertEquals(true, result.get("canEnroll"));
+        assertEquals("open", result.get("enrollState"));
+        assertEquals(true, result.get("enrollStartImmediately"));
+    }
+
+    @Test
+    void list_usesServerEnrollStateNotJustQuota() {
+        Activity open = new Activity();
+        open.setId(1L);
+        open.setTitle("未开始可报");
+        open.setStatus("published");
+        open.setStartTime(LocalDateTime.now().plusDays(1));
+        open.setQuota(10);
+        open.setEnrolledCount(2);
+
+        Activity started = new Activity();
+        started.setId(2L);
+        started.setTitle("已经开始");
+        started.setStatus("published");
+        started.setStartTime(LocalDateTime.now().minusHours(1));
+        started.setQuota(10);
+        started.setEnrolledCount(2);
+
+        Page<Activity> page = new Page<>(1, 20);
+        page.setRecords(List.of(open, started));
+        page.setTotal(2);
+        when(activityMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        PageResult<Map<String, Object>> result = activityService.list(1, 20);
+
+        assertEquals("open", result.getRecords().get(0).get("enrollState"));
+        assertEquals(true, result.getRecords().get(0).get("canEnroll"));
+        assertEquals("立即报名", result.getRecords().get(0).get("enrollHint"));
+        assertEquals("started", result.getRecords().get(1).get("enrollState"));
+        assertEquals(false, result.getRecords().get(1).get("canEnroll"));
+        assertEquals("进行中", result.getRecords().get(1).get("enrollHint"));
     }
 }

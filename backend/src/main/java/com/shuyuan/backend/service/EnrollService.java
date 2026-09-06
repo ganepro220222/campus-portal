@@ -245,9 +245,7 @@ public class EnrollService {
         if (!ActivitySchedule.isEnrollWindowOpen(activity, LocalDateTime.now())) {
             return false;
         }
-        if (activity.getQuota() != null && activity.getQuota() > 0
-                && activity.getEnrolledCount() != null
-                && activity.getEnrolledCount() >= activity.getQuota()) {
+        if (ActivitySchedule.isQuotaFull(activity)) {
             return false;
         }
         return true;

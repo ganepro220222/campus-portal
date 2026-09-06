@@ -78,6 +78,48 @@ class ActivityScheduleTest {
         assertTrue(ActivitySchedule.isEnrollWindowOpen(a, START.minusDays(1)));
     }
 
+    @Test
+    void listState_openBeforeStartWhenEmptyWindow() {
+        Activity a = published(START, null, null);
+        assertEquals(ActivitySchedule.STATE_OPEN, ActivitySchedule.enrollListState(a, START.minusHours(2)));
+        assertEquals("立即报名", ActivitySchedule.enrollListLabel(ActivitySchedule.STATE_OPEN));
+    }
+
+    @Test
+    void listState_notStartedBeforeEnrollWindow() {
+        Activity a = published(START, START.minusDays(1), START.minusHours(1));
+        assertEquals(ActivitySchedule.STATE_NOT_STARTED, ActivitySchedule.enrollListState(a, START.minusDays(2)));
+        assertEquals("报名未开始", ActivitySchedule.enrollListLabel(ActivitySchedule.STATE_NOT_STARTED));
+    }
+
+    @Test
+    void listState_closedAfterExplicitDeadline() {
+        Activity a = published(START, null, START.minusDays(1));
+        assertEquals(ActivitySchedule.STATE_CLOSED, ActivitySchedule.enrollListState(a, START.minusHours(1)));
+        assertEquals("报名已截止", ActivitySchedule.enrollListLabel(ActivitySchedule.STATE_CLOSED));
+    }
+
+    @Test
+    void listState_startedAndEndedBeatFull() {
+        Activity a = published(START, null, null);
+        a.setQuota(10);
+        a.setEnrolledCount(10);
+        a.setEndTime(START.plusHours(2));
+        assertEquals(ActivitySchedule.STATE_STARTED, ActivitySchedule.enrollListState(a, START));
+        assertEquals(ActivitySchedule.STATE_ENDED, ActivitySchedule.enrollListState(a, START.plusHours(2)));
+        assertEquals("进行中", ActivitySchedule.enrollListLabel(ActivitySchedule.STATE_STARTED));
+        assertEquals("已结束", ActivitySchedule.enrollListLabel(ActivitySchedule.STATE_ENDED));
+    }
+
+    @Test
+    void listState_fullOnlyWhileWindowOpen() {
+        Activity a = published(START, null, null);
+        a.setQuota(5);
+        a.setEnrolledCount(5);
+        assertEquals(ActivitySchedule.STATE_FULL, ActivitySchedule.enrollListState(a, START.minusHours(1)));
+        assertEquals("已满", ActivitySchedule.enrollListLabel(ActivitySchedule.STATE_FULL));
+    }
+
     private static Activity published(LocalDateTime start, LocalDateTime enrollStart, LocalDateTime enrollEnd) {
         Activity a = new Activity();
         a.setStatus("published");

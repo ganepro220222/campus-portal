@@ -12,6 +12,7 @@ import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,11 +63,13 @@ public class ActivityService {
         m.put("enrolledCount", activity.getEnrolledCount());
         m.put("needReview", activity.getNeedReview() != null && activity.getNeedReview() == 1);
         m.put("tag", activity.getIntro() != null && activity.getIntro().length() <= 6 ? activity.getIntro() : "活动");
+        String enrollState = ActivitySchedule.enrollListState(activity, LocalDateTime.now());
+        m.put("enrollState", enrollState);
+        m.put("enrollHint", ActivitySchedule.enrollListLabel(enrollState));
+        m.put("enrollStartImmediately", activity.getEnrollStartTime() == null);
         m.put("canEnroll", enrollService.isEnrollOpen(activity)
                 && (enroll == null || "cancelled".equals(enroll.getStatus()) || "rejected".equals(enroll.getStatus())));
-        m.put("full", activity.getQuota() != null && activity.getQuota() > 0
-                && activity.getEnrolledCount() != null
-                && activity.getEnrolledCount() >= activity.getQuota());
+        m.put("full", ActivitySchedule.isQuotaFull(activity));
 
         if (enroll != null && !"cancelled".equals(enroll.getStatus())) {
             m.put("enrollStatus", enroll.getStatus());
@@ -87,6 +90,7 @@ public class ActivityService {
     }
 
     private Map<String, Object> toListVo(Activity a) {
+        String enrollState = ActivitySchedule.enrollListState(a, LocalDateTime.now());
         Map<String, Object> m = new HashMap<>();
         m.put("id", a.getId());
         m.put("title", a.getTitle());
@@ -97,6 +101,11 @@ public class ActivityService {
         m.put("enrolledCount", a.getEnrolledCount());
         m.put("quota", a.getQuota());
         m.put("tag", a.getIntro() != null && a.getIntro().length() <= 6 ? a.getIntro() : "活动");
+        m.put("canEnroll", ActivitySchedule.STATE_OPEN.equals(enrollState));
+        m.put("enrollState", enrollState);
+        m.put("enrollHint", ActivitySchedule.enrollListLabel(enrollState));
+        m.put("full", ActivitySchedule.isQuotaFull(a));
+        m.put("enrollEndTime", FormatUtils.formatDateTime(ActivitySchedule.effectiveEnrollEnd(a)));
         return m;
     }
 }

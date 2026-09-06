@@ -35,6 +35,11 @@ function mergeActivityDetail(raw, fallback) {
     endTime: raw.endTime || base.endTime,
     enrollStartTime: raw.enrollStartTime || '',
     enrollEndTime: raw.enrollEndTime || '',
+    enrollWindowText: formatEnrollWindowText(raw.enrollStartTime || '', raw.enrollEndTime || ''),
+    enrollState: raw.enrollState || '',
+    enrollHint: raw.enrollHint || '',
+    enrollStartImmediately: raw.enrollStartImmediately === true
+      || !(raw.enrollStartTime || ''),
     intro: raw.intro || base.intro,
     tag: raw.tag || base.tag,
     quota,
@@ -69,6 +74,15 @@ function mergeEnrollResult(raw) {
 function enrollStatusLabel(status) {
   if (Object.prototype.hasOwnProperty.call(ENROLL_STATUS, status)) return ENROLL_STATUS[status]
   return status || ''
+}
+
+function formatEnrollWindowText(start, end) {
+  const s = start ? String(start).trim() : ''
+  const e = end ? String(end).trim() : ''
+  if (!s && !e) return ''
+  if (!s && e) return `报名时间：发布后即可报名，截止至 ${e}`
+  if (s && e) return `报名时间：${s} 至 ${e}`
+  return `报名时间：${s} 起`
 }
 
 /** 是否已有有效报名（待审/已通过） */
@@ -110,6 +124,7 @@ function resolveDetailAction(detail, isLoggedIn) {
 }
 
 module.exports = {
+  formatEnrollWindowText,
   resolveEmptyActivityDetail,
   mergeActivityDetail,
   mergeEnrollResult,

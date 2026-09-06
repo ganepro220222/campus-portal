@@ -16,6 +16,13 @@ import java.time.LocalDateTime;
  */
 public final class ActivitySchedule {
 
+    public static final String STATE_NOT_STARTED = "not_started";
+    public static final String STATE_OPEN = "open";
+    public static final String STATE_FULL = "full";
+    public static final String STATE_CLOSED = "closed";
+    public static final String STATE_STARTED = "started";
+    public static final String STATE_ENDED = "ended";
+
     private ActivitySchedule() {}
 
     public static LocalDateTime effectiveEnrollStart(Activity activity) {
@@ -89,5 +96,58 @@ public final class ActivitySchedule {
         if (start != null && enrollEnd != null && enrollEnd.isAfter(start)) {
             throw new BusinessException(400, "报名截止时间不能晚于活动开始时间");
         }
+    }
+
+    public static boolean isQuotaFull(Activity activity) {
+        return activity != null
+                && activity.getQuota() != null && activity.getQuota() > 0
+                && activity.getEnrolledCount() != null
+                && activity.getEnrolledCount() >= activity.getQuota();
+    }
+
+    /**
+     * 列表卡片状态。优先于名额：已结束 / 进行中 / 未开始 / 已截止，最后才是已满或开放。
+     */
+    public static String enrollListState(Activity activity, LocalDateTime now) {
+        if (activity == null || !"published".equals(activity.getStatus()) || now == null) {
+            return STATE_CLOSED;
+        }
+        if (activity.getEndTime() != null && !now.isBefore(activity.getEndTime())) {
+            return STATE_ENDED;
+        }
+        if (activity.getStartTime() != null && !now.isBefore(activity.getStartTime())) {
+            return STATE_STARTED;
+        }
+        LocalDateTime enrollStart = effectiveEnrollStart(activity);
+        if (enrollStart != null && now.isBefore(enrollStart)) {
+            return STATE_NOT_STARTED;
+        }
+        LocalDateTime enrollEnd = effectiveEnrollEnd(activity);
+        if (enrollEnd != null && now.isAfter(enrollEnd)) {
+            return STATE_CLOSED;
+        }
+        if (isQuotaFull(activity)) {
+            return STATE_FULL;
+        }
+        return STATE_OPEN;
+    }
+
+    public static String enrollListLabel(String state) {
+        if (STATE_NOT_STARTED.equals(state)) {
+            return "报名未开始";
+        }
+        if (STATE_OPEN.equals(state)) {
+            return "立即报名";
+        }
+        if (STATE_FULL.equals(state)) {
+            return "已满";
+        }
+        if (STATE_STARTED.equals(state)) {
+            return "进行中";
+        }
+        if (STATE_ENDED.equals(state)) {
+            return "已结束";
+        }
+        return "报名已截止";
     }
 }

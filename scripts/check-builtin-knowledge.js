@@ -75,6 +75,10 @@ for (const name of sources) {
   if (text.includes('人工智能生成') || text.includes('内容由 AI 生成') || text.includes('AI 字幕') || text.includes('AI字幕')) {
     errs.push(`sql/knowledge/${name} 仍含学生可见的 AI 表述，请改成知识库 / 字幕口径`)
   }
+  if (text.includes('活动临近时会收到') || text.includes('activity_remind')
+      || (text.includes('活动临近提醒') && !text.includes('暂不提供活动临近提醒'))) {
+    errs.push(`sql/knowledge/${name} 不得把未实现的活动临近提醒写成已上线能力`)
+  }
   if (!/^#\s+\S/m.test(text)) {
     errs.push(`sql/knowledge/${name} 首行不是「# 标题」`)
   }

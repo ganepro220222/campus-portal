@@ -73,12 +73,13 @@
 }
 .quota-full { color: #67708C; background: #F0F3F8; }
 .enroll-btn {
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 700;
   color: #fff;
   background: linear-gradient(135deg, #3F57B5, #2B356E);
   border-radius: 30rpx;
-  padding: 10rpx 30rpx;
+  padding: 10rpx 18rpx;
+  flex-shrink: 0;
 }
 .enroll-off { background: #C3CCE0; }
 

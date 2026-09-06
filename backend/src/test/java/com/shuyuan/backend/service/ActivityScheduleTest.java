@@ -112,6 +112,14 @@ class ActivityScheduleTest {
     }
 
     @Test
+    void listState_noEndTimeAfterStartIsStartedNotOngoing() {
+        Activity a = published(START, null, null);
+        assertEquals(ActivitySchedule.STATE_STARTED_NO_END, ActivitySchedule.enrollListState(a, START));
+        assertEquals(ActivitySchedule.STATE_STARTED_NO_END, ActivitySchedule.enrollListState(a, START.plusYears(1)));
+        assertEquals("已开始", ActivitySchedule.enrollListLabel(ActivitySchedule.STATE_STARTED_NO_END));
+    }
+
+    @Test
     void listState_fullOnlyWhileWindowOpen() {
         Activity a = published(START, null, null);
         a.setQuota(5);

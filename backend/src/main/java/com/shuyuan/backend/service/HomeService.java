@@ -88,9 +88,13 @@ public class HomeService {
         m.put("name", c.getName());
         m.put("cover", c.getCover());
         m.put("coverFitMode", com.shuyuan.backend.util.CoverFitMode.normalize(c.getCoverFitMode()));
-        m.put("categoryName", categoryService.getName(c.getCategoryId(), catMap));
+        String categoryName = categoryService.getName(c.getCategoryId(), catMap);
+        boolean hasSubtitle = "ready".equals(c.getSubtitleStatus());
+        m.put("categoryName", categoryName);
         m.put("lessonCount", c.getDurationMinutes() != null ? Math.max(1, c.getDurationMinutes() / 45) : 0);
         m.put("audience", c.getTargetAudience());
+        m.put("hasSubtitle", hasSubtitle);
+        m.put("tags", hasSubtitle ? List.of(categoryName, "字幕") : List.of(categoryName));
         return m;
     }
 }

@@ -99,10 +99,16 @@ function cancelEnrollButtonText(cancelling) {
   return cancelling ? '取消中…' : '取消报名'
 }
 
-/** 底部操作区类型 */
+function closedActionHint(detail) {
+  if (detail.enrollState === 'full' || (detail.full && !detail.enrollHint)) {
+    return '名额已满'
+  }
+  return detail.enrollHint || '当前不在报名时间'
+}
+
+/** 底部操作区类型：先看已有报名，再看活动能否报名，最后才提示登录 */
 function resolveDetailAction(detail, isLoggedIn) {
   if (!detail) return { actionType: 'loading', hint: '' }
-  if (!isLoggedIn) return { actionType: 'login', hint: '登录后报名' }
 
   const st = detail.enrollStatus || 'none'
   if (st === 'pending') {
@@ -114,12 +120,14 @@ function resolveDetailAction(detail, isLoggedIn) {
   if (st === 'approved') return { actionType: 'approved', hint: '报名成功' }
   if (st === 'rejected') {
     if (detail.full) return { actionType: 'disabled', hint: '名额已满' }
-    if (!detail.canEnroll) return { actionType: 'disabled', hint: '当前不在报名时间' }
+    if (!detail.canEnroll) return { actionType: 'disabled', hint: closedActionHint(detail) }
+    if (!isLoggedIn) return { actionType: 'login', hint: '登录后报名' }
     return { actionType: 'rejected', hint: '审核未通过，可重新报名' }
   }
 
+  if (!detail.canEnroll) return { actionType: 'disabled', hint: closedActionHint(detail) }
   if (detail.full) return { actionType: 'disabled', hint: '名额已满' }
-  if (!detail.canEnroll) return { actionType: 'disabled', hint: '当前不在报名时间' }
+  if (!isLoggedIn) return { actionType: 'login', hint: '登录后报名' }
   return { actionType: 'enroll', hint: '' }
 }
 

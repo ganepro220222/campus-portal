@@ -21,6 +21,8 @@ public final class ActivitySchedule {
     public static final String STATE_FULL = "full";
     public static final String STATE_CLOSED = "closed";
     public static final String STATE_STARTED = "started";
+    /** 已开始但未填结束时间，不能断言仍在进行 */
+    public static final String STATE_STARTED_NO_END = "started_no_end";
     public static final String STATE_ENDED = "ended";
 
     private ActivitySchedule() {}
@@ -106,7 +108,7 @@ public final class ActivitySchedule {
     }
 
     /**
-     * 列表卡片状态。优先于名额：已结束 / 进行中 / 未开始 / 已截止，最后才是已满或开放。
+     * 列表卡片状态。优先于名额：已结束 / 进行中 / 已开始 / 未开始 / 已截止，最后才是已满或开放。
      */
     public static String enrollListState(Activity activity, LocalDateTime now) {
         if (activity == null || !"published".equals(activity.getStatus()) || now == null) {
@@ -116,7 +118,7 @@ public final class ActivitySchedule {
             return STATE_ENDED;
         }
         if (activity.getStartTime() != null && !now.isBefore(activity.getStartTime())) {
-            return STATE_STARTED;
+            return activity.getEndTime() != null ? STATE_STARTED : STATE_STARTED_NO_END;
         }
         LocalDateTime enrollStart = effectiveEnrollStart(activity);
         if (enrollStart != null && now.isBefore(enrollStart)) {
@@ -144,6 +146,9 @@ public final class ActivitySchedule {
         }
         if (STATE_STARTED.equals(state)) {
             return "进行中";
+        }
+        if (STATE_STARTED_NO_END.equals(state)) {
+            return "已开始";
         }
         if (STATE_ENDED.equals(state)) {
             return "已结束";

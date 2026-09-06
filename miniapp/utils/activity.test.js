@@ -47,8 +47,12 @@ assert.strictEqual(hasActiveEnroll(null), false)
 assert.strictEqual(enrollStatusLabel('approved'), '已通过')
 assert.strictEqual(enrollStatusLabel('none'), '')
 
-function action(detail) {
-  return resolveDetailAction(detail, true)
+function action(detail, loggedIn) {
+  return resolveDetailAction(detail, loggedIn !== false)
+}
+
+function guest(detail) {
+  return resolveDetailAction(detail, false)
 }
 
 assert.strictEqual(action({ enrollStatus: 'rejected', full: false, canEnroll: true }).actionType, 'rejected')
@@ -96,15 +100,27 @@ const listCards = decorateActivities([
   { id: 2, canEnroll: false, enrollState: 'not_started', enrollHint: '报名未开始', quota: 10, enrolledCount: 1 },
   { id: 3, canEnroll: false, enrollState: 'closed', enrollHint: '报名已截止', quota: 10, enrolledCount: 1 },
   { id: 4, canEnroll: false, enrollState: 'started', enrollHint: '进行中', quota: 10, enrolledCount: 1 },
-  { id: 5, canEnroll: false, enrollState: 'ended', enrollHint: '已结束', quota: 10, enrolledCount: 1 },
-  { id: 6, canEnroll: false, enrollState: 'full', enrollHint: '已满', full: true, quota: 10, enrolledCount: 10 }
+  { id: 5, canEnroll: false, enrollState: 'started_no_end', enrollHint: '已开始', quota: 10, enrolledCount: 1 },
+  { id: 6, canEnroll: false, enrollState: 'ended', enrollHint: '已结束', quota: 10, enrolledCount: 1 },
+  { id: 7, canEnroll: false, enrollState: 'full', enrollHint: '已满', full: true, quota: 10, enrolledCount: 10 }
 ])
 assert.strictEqual(listCards[0].enrollHint, '立即报名')
 assert.strictEqual(listCards[1].enrollHint, '报名未开始')
 assert.strictEqual(listCards[2].enrollHint, '报名已截止')
 assert.strictEqual(listCards[3].enrollHint, '进行中')
-assert.strictEqual(listCards[4].enrollHint, '已结束')
-assert.strictEqual(listCards[5].enrollHint, '已满')
+assert.strictEqual(listCards[4].enrollHint, '已开始')
+assert.strictEqual(listCards[5].enrollHint, '已结束')
+assert.strictEqual(listCards[6].enrollHint, '已满')
+
+assert.strictEqual(guest({ enrollStatus: 'none', canEnroll: true, full: false }).actionType, 'login')
+assert.strictEqual(guest({ enrollStatus: 'none', canEnroll: true, full: false }).hint, '登录后报名')
+assert.strictEqual(guest({ enrollStatus: 'none', canEnroll: false, full: true, enrollState: 'full', enrollHint: '已满' }).hint, '名额已满')
+assert.strictEqual(guest({ enrollStatus: 'none', canEnroll: false, enrollState: 'closed', enrollHint: '报名已截止' }).hint, '报名已截止')
+assert.strictEqual(guest({ enrollStatus: 'none', canEnroll: false, enrollState: 'not_started', enrollHint: '报名未开始' }).hint, '报名未开始')
+assert.strictEqual(guest({ enrollStatus: 'none', canEnroll: false, enrollState: 'started', enrollHint: '进行中' }).hint, '进行中')
+assert.strictEqual(guest({ enrollStatus: 'none', canEnroll: false, enrollState: 'started_no_end', enrollHint: '已开始' }).hint, '已开始')
+assert.strictEqual(guest({ enrollStatus: 'none', canEnroll: false, enrollState: 'ended', enrollHint: '已结束', full: true }).hint, '已结束')
+assert.strictEqual(guest({ enrollStatus: 'none', canEnroll: false, enrollState: 'ended', enrollHint: '已结束', full: true }).actionType, 'disabled')
 
 const listWxml = fs.readFileSync(path.join(__dirname, '../pages/activity/index.wxml'), 'utf8')
 assert.match(listWxml, /item.enrollHint/)

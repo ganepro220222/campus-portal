@@ -49,6 +49,26 @@ const homeLegacy = decorateCourses([{
 assert.deepStrictEqual(homeLegacy.tags, ['精品课程', '字幕'])
 assert.strictEqual(homeLegacy.categoryName, '精品课程')
 
+const homeApi = decorateCourses([{
+  id: 5,
+  name: '首页接口',
+  categoryName: '通识必修',
+  lessonCount: 8,
+  audience: '全校学生'
+}])[0]
+assert.deepStrictEqual(homeApi.tags, ['通识必修'])
+assert.strictEqual(homeApi.hasSubtitle, false)
+
+const homeApiReady = decorateCourses([{
+  id: 6,
+  name: '首页有字幕',
+  categoryName: '通识必修',
+  hasSubtitle: true,
+  tags: ['通识必修', '字幕'],
+  lessonCount: 8
+}])[0]
+assert.deepStrictEqual(homeApiReady.tags, ['通识必修', '字幕'])
+
 const courseWxml = fs.readFileSync(path.join(__dirname, '../pages/course/index.wxml'), 'utf8')
 assert.match(courseWxml, /wx:for="\{\{item\.tags\}\}"/)
 assert.match(courseWxml, /wx:for-item="tagName"/)

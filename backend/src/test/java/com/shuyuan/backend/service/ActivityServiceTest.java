@@ -99,8 +99,30 @@ class ActivityServiceTest {
         assertEquals("open", result.getRecords().get(0).get("enrollState"));
         assertEquals(true, result.getRecords().get(0).get("canEnroll"));
         assertEquals("立即报名", result.getRecords().get(0).get("enrollHint"));
-        assertEquals("started", result.getRecords().get(1).get("enrollState"));
+        assertEquals("started_no_end", result.getRecords().get(1).get("enrollState"));
         assertEquals(false, result.getRecords().get(1).get("canEnroll"));
-        assertEquals("进行中", result.getRecords().get(1).get("enrollHint"));
+        assertEquals("已开始", result.getRecords().get(1).get("enrollHint"));
+    }
+
+    @Test
+    void list_startedWithEndTimeShowsOngoing() {
+        Activity started = new Activity();
+        started.setId(3L);
+        started.setTitle("有结束时间");
+        started.setStatus("published");
+        started.setStartTime(LocalDateTime.now().minusHours(1));
+        started.setEndTime(LocalDateTime.now().plusHours(2));
+        started.setQuota(10);
+        started.setEnrolledCount(2);
+
+        Page<Activity> page = new Page<>(1, 20);
+        page.setRecords(List.of(started));
+        page.setTotal(1);
+        when(activityMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        PageResult<Map<String, Object>> result = activityService.list(1, 20);
+
+        assertEquals("started", result.getRecords().get(0).get("enrollState"));
+        assertEquals("进行中", result.getRecords().get(0).get("enrollHint"));
     }
 }

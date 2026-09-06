@@ -110,6 +110,7 @@ function resolveActivityEnrollHint(it, full) {
   if (it.enrollState === 'open' || it.canEnroll === true) return '立即报名'
   if (it.enrollState === 'full' || full) return '已满'
   if (it.enrollState === 'started') return '进行中'
+  if (it.enrollState === 'started_no_end') return '已开始'
   if (it.enrollState === 'ended') return '已结束'
   if (it.enrollState === 'closed' || it.canEnroll === false) return '报名已截止'
   return '立即报名'

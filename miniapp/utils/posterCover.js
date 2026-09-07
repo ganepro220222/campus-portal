@@ -18,6 +18,14 @@ function pickHallCover(hall) {
   return (slides[0].imageUrl || '').trim()
 }
 
+function coverPreviewErrorPatch() {
+  return { hasCover: false }
+}
+
+function shouldRetryCoverOnSave({ hasCover, coverUrl }) {
+  return !hasCover && !!coverUrl
+}
+
 function pickCraftCover(detail) {
   const images = detail && detail.images
   if (!images || !images.length) return ''
@@ -164,6 +172,8 @@ module.exports = {
   greedyWrap,
   balanceLines,
   parsePosterCover,
+  coverPreviewErrorPatch,
+  shouldRetryCoverOnSave,
   pickHallCover,
   pickCraftCover,
   buildPosterNavigateUrl,

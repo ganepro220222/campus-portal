@@ -415,6 +415,36 @@ def _():
         ok("import site" in text and "#import site" not in text)
 
 
+@test("obj2glb_gui 注册关窗拦截并清扫 .tmp_")
+def _():
+    text = open(os.path.join(HERE, "obj2glb_gui.py"), encoding="utf-8").read()
+    ok("WM_DELETE_WINDOW" in text)
+    ok("def _on_close" in text)
+    ok("def _sweep_tmp_outputs" in text)
+    ok('name.startswith(".tmp_")' in text)
+
+
+@test("download_url 超时重试耗尽后抛错")
+def _():
+    from unittest.mock import patch
+    from install_glb_deps import download_url
+    calls = {"n": 0}
+
+    def boom(_url, timeout=None):
+        calls["n"] += 1
+        raise TimeoutError("slow")
+
+    with tempfile.TemporaryDirectory() as d:
+        dest = os.path.join(d, "get-pip.py")
+        with patch("install_glb_deps.urllib.request.urlopen", side_effect=boom):
+            try:
+                download_url("https://example.invalid/get-pip.py", dest, timeout=1, retries=3)
+                raise AssertionError("should raise")
+            except TimeoutError:
+                pass
+        eq(calls["n"], 3)
+
+
 @test("enable_site_packages 对完整 Python 无 ._pth 也返回成功")
 def _():
     from install_glb_deps import enable_site_packages

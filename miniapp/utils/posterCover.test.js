@@ -5,6 +5,8 @@
 const assert = require('assert')
 const {
   parsePosterCover,
+  coverPreviewErrorPatch,
+  shouldRetryCoverOnSave,
   pickHallCover,
   pickCraftCover,
   buildPosterNavigateUrl,
@@ -20,6 +22,10 @@ assert.strictEqual(parsePosterCover('https://cdn.example.com/a.jpg'), 'https://c
 assert.strictEqual(parsePosterCover(encodeURIComponent('https://cdn.example.com/b.png')),
   'https://cdn.example.com/b.png')
 assert.strictEqual(parsePosterCover('/local/path.jpg'), '')
+assert.deepStrictEqual(coverPreviewErrorPatch(), { hasCover: false })
+assert.strictEqual(shouldRetryCoverOnSave({ hasCover: false, coverUrl: 'https://cdn/a.jpg' }), true)
+assert.strictEqual(shouldRetryCoverOnSave({ hasCover: true, coverUrl: 'https://cdn/a.jpg' }), false)
+assert.strictEqual(shouldRetryCoverOnSave({ hasCover: false, coverUrl: '' }), false)
 
 assert.strictEqual(pickHallCover({ slides: [{ imageUrl: 'https://cdn/h.jpg' }] }), 'https://cdn/h.jpg')
 assert.strictEqual(pickHallCover({ slides: [] }), '')

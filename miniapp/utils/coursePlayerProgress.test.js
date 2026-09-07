@@ -10,6 +10,7 @@ const {
   resolvePlayerStage,
   resolveResumeInitialTime,
   coerceVttText,
+  parseVttTime,
   withVideoReloadNonce,
   isVttHttpSuccess,
   looksLikeVtt,
@@ -303,6 +304,10 @@ assert.strictEqual(isVttHttpSuccess(403), false)
 
 assert.strictEqual(looksLikeVtt('WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nhi'), true)
 assert.strictEqual(looksLikeVtt('<?xml version="1.0"?><Error>'), false)
+assert.strictEqual(parseVttTime('00:00:04.000'), 4)
+assert.strictEqual(parseVttTime('00:00:04.000 position:0%,line:0'), 4)
+assert.strictEqual(parseVttTime('01:02.500'), 62.5)
+assert.strictEqual(parseVttTime(''), 0)
 
 assert.strictEqual(isVideoPlaybackStable({ recoveryStartPosition: 0, currentSec: 9 }), false)
 assert.strictEqual(isVideoPlaybackStable({ recoveryStartPosition: 0, currentSec: 10 }), true)

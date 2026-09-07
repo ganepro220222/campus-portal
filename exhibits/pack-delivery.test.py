@@ -131,6 +131,16 @@ def test_should_include_excludes_nested_build_artifacts() -> None:
             raise RuntimeError(f'should keep exhibit asset path: {rel}')
 
 
+def test_pack_writes_via_temp_then_replace() -> None:
+    text = (ROOT / 'pack-delivery.py').read_text(encoding='utf-8')
+    if 'def write_zip_atomic' not in text:
+        raise RuntimeError('pack-delivery must write zip atomically')
+    if 'os.replace(tmp, dest)' not in text:
+        raise RuntimeError('pack-delivery must replace dest only after zip verifies')
+    if 'if OUT.exists():\n        OUT.unlink()' in text:
+        raise RuntimeError('pack-delivery must not delete the live zip before writing')
+
+
 def test_pack_delivery_zip() -> None:
     mod = _load_packer()
     with tempfile.TemporaryDirectory(prefix='exhibits-pack-') as td:
@@ -200,6 +210,8 @@ def main() -> int:
     print('ok iter_page_imports accepts bundle cache-bust query')
     test_should_include_excludes_nested_build_artifacts()
     print('ok should_include excludes nested build artifacts')
+    test_pack_writes_via_temp_then_replace()
+    print('ok pack-delivery writes via temp then replace')
     test_pack_delivery_zip()
     print('ok pack-delivery zip contents')
     return 0

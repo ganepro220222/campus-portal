@@ -21,12 +21,6 @@ Page({
   onLoad(options) {
     const sys = wx.getSystemInfoSync()
     this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
-    if (options.mode === 'changePassword') {
-      const { getToken, redirectToChangePassword } = require('../../utils/auth')
-      if (getToken()) {
-        redirectToChangePassword()
-      }
-    }
   },
 
   onBack() {

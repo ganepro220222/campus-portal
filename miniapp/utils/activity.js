@@ -71,6 +71,15 @@ function mergeEnrollResult(raw) {
   }
 }
 
+const ENROLL_SUBMIT_EMPTY_HINT = '提交结果异常，请到「我的报名」确认是否已提交'
+
+function resolveEnrollSubmitOutcome(result) {
+  if (!result) {
+    return { ok: false, message: ENROLL_SUBMIT_EMPTY_HINT }
+  }
+  return { ok: true, result }
+}
+
 function enrollStatusLabel(status) {
   if (Object.prototype.hasOwnProperty.call(ENROLL_STATUS, status)) return ENROLL_STATUS[status]
   return status || ''
@@ -136,6 +145,8 @@ module.exports = {
   resolveEmptyActivityDetail,
   mergeActivityDetail,
   mergeEnrollResult,
+  resolveEnrollSubmitOutcome,
+  ENROLL_SUBMIT_EMPTY_HINT,
   enrollStatusLabel,
   hasActiveEnroll,
   resolveDetailAction,

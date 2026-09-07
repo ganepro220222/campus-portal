@@ -45,6 +45,9 @@ if (!flowJs.includes('module.exports')) {
 if (loginJs.includes('_enterChangePasswordMode') || loginJs.includes('changePasswordMode')) {
   errs.push('登录页不得再保留内嵌改密 changePasswordMode / _enterChangePasswordMode')
 }
+if (loginJs.includes("mode === 'changePassword'") || loginJs.includes('mode === "changePassword"')) {
+  errs.push('登录页不得再保留不可达的 ?mode=changePassword 分支')
+}
 if (loginWxml.includes('changePasswordMode') || loginWxml.includes('bindtap="onChangePassword"')) {
   errs.push('登录页 WXML 不得再包含内嵌改密表单，正式流程只走 packageC/profile/change-password')
 }

@@ -63,6 +63,7 @@ assert.strictEqual(shouldShowLoadError(true, true), false)
 assert.strictEqual(shouldRefreshOnShow(false, 'favorites'), false)
 assert.strictEqual(shouldRefreshOnShow(true, 'favorites'), true)
 assert.strictEqual(shouldRefreshOnShow(true, 'enrolls'), true)
+assert.strictEqual(shouldRefreshOnShow(true, 'footprints'), true)
 assert.strictEqual(shouldRefreshOnShow(true, 'downloads'), false)
 assert.strictEqual(shouldRefreshOnShow(true, 'badges'), false)
 

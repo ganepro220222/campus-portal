@@ -806,11 +806,30 @@ export function compareViewerArtifacts(viewerSrc = assertViewerBuild(buildViewer
   }
 }
 
+export function replaceFileAtomic(dest, data, encoding = 'utf8') {
+  const dir = path.dirname(dest)
+  const tmp = path.join(dir, `.${path.basename(dest)}.${process.pid}.${Date.now()}.tmp`)
+  if (Buffer.isBuffer(data)) fs.writeFileSync(tmp, data)
+  else fs.writeFileSync(tmp, data, encoding)
+  try {
+    fs.renameSync(tmp, dest)
+  } catch {
+    fs.copyFileSync(tmp, dest)
+    fs.rmSync(tmp, { force: true })
+  }
+}
+
+export function writeViewerArtifactsAtomic(html, bundleSrcPath, root = ROOT) {
+  replaceFileAtomic(path.join(root, VIEWER_BUNDLE_FILE), fs.readFileSync(bundleSrcPath))
+  replaceFileAtomic(path.join(root, 'player.view.html'), html, 'utf8')
+}
+
 function usage() {
-  console.log(`Usage: node build-viewer.mjs [--check] [--upload] [--upload-init] [--upload-assets] [--upload-prune] [--upload-player-only]
+  console.log(`Usage: node build-viewer.mjs [--check] [--check-upload] [--upload] [--upload-init] [--upload-assets] [--upload-prune] [--upload-player-only]
 
   (default)       Write player.view.html from player.html (+ semantic validation)
   --check         Exit 1 if player.view.html differs or fails semantic validation
+  --check-upload  Same comparison against ../exhibits-upload/ (not a default CI gate)
   --upload-init   Copy vendor/ into exhibits-upload/ (first-time prerequisite)
   --upload-assets Copy craft assets + shared panoramas (requires --upload; staged atomically)
   --upload-prune  Remove craft-* dirs from upload that no longer exist in source
@@ -843,6 +862,7 @@ const DEPLOY_PLAYER_OUT = path.join(ROOT, 'player.deploy.html')
 const DEPLOY_PLAYER_DIR = path.join(ROOT, 'deploy-test-server')
 
 const check = process.argv.includes('--check')
+const checkUpload = process.argv.includes('--check-upload')
 const deployPlayer = process.argv.includes('--deploy-player')
 const uploadPlayerOnly = process.argv.includes('--upload-player-only')
 const upload = process.argv.includes('--upload') || uploadPlayerOnly
@@ -855,7 +875,7 @@ if (process.argv.includes('-h') || process.argv.includes('--help')) {
   process.exit(0)
 }
 
-if (uploadInit && !upload && !uploadAssets && !check) {
+if (uploadInit && !upload && !uploadAssets && !check && !checkUpload) {
   initUploadVendor()
   console.log('exhibits-upload/vendor/ copied from exhibits/vendor/')
   process.exit(0)
@@ -902,20 +922,42 @@ if (deployPlayer) {
 
 const viewerSrc = assertViewerBuild(buildViewerSrc())
 
-if (check) {
-  const cmp = compareViewerArtifacts(viewerSrc, ROOT)
-  if (!cmp.ok) {
-    for (const e of cmp.errors) console.error(e)
-    console.error('Run: node build-viewer.mjs')
-    process.exit(1)
+if (check || checkUpload) {
+  let failed = false
+  if (check) {
+    const cmp = compareViewerArtifacts(viewerSrc, ROOT)
+    if (!cmp.ok) {
+      for (const e of cmp.errors) console.error(e)
+      console.error('Run: node build-viewer.mjs')
+      failed = true
+    } else {
+      console.log(`player.view.html + ${VIEWER_BUNDLE_FILE} OK (byte-identical + semantics)`)
+    }
   }
-  console.log(`player.view.html + ${VIEWER_BUNDLE_FILE} OK (byte-identical + semantics)`)
-  process.exit(0)
+  if (checkUpload) {
+    const uploadCmp = compareViewerArtifacts(viewerSrc, UPLOAD_DIR)
+    if (!uploadCmp.ok) {
+      for (const e of uploadCmp.errors) console.error(`exhibits-upload: ${e}`)
+      console.error('Run: node build-viewer.mjs --upload-player-only')
+      failed = true
+    } else {
+      console.log(`exhibits-upload player.view.html + ${VIEWER_BUNDLE_FILE} OK`)
+    }
+  }
+  process.exit(failed ? 1 : 0)
 }
 
-const { html: bundledHtml, bundlePath } = buildProductionViewer(viewerSrc)
-fs.writeFileSync(OUT, bundledHtml, 'utf8')
-fs.copyFileSync(bundlePath, path.join(ROOT, VIEWER_BUNDLE_FILE))
+const buildTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-viewer-write-'))
+let bundledHtml
+let bundlePath
+try {
+  const built = buildProductionViewer(viewerSrc, { outDir: buildTmp })
+  bundledHtml = built.html
+  writeViewerArtifactsAtomic(bundledHtml, built.bundlePath, ROOT)
+  bundlePath = path.join(ROOT, VIEWER_BUNDLE_FILE)
+} finally {
+  fs.rmSync(buildTmp, { recursive: true, force: true })
+}
 console.log('player.view.html written')
 console.log(`${VIEWER_BUNDLE_FILE} written`)
 

@@ -116,7 +116,7 @@ function resolveFromSources(remote, cache) {
 function sourceHint(doc) {
   if (doc.source === 'remote' || doc.source === 'baseline') return ''
   if (doc.source === 'cache') {
-    return '当前显示上次成功获取的协议内容，可下拉刷新或点击重新加载以获取最新版本。'
+    return '当前显示上次成功获取的协议内容，点击重新加载以获取最新版本。'
   }
   return ''
 }

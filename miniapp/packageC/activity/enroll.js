@@ -1,6 +1,6 @@
 // packageC/activity/enroll.js — 活动报名
 const { get, post } = require('../../utils/request')
-const { mergeEnrollResult } = require('../../utils/activity')
+const { mergeEnrollResult, resolveEnrollSubmitOutcome } = require('../../utils/activity')
 const { requireLogin } = require('../../utils/auth')
 const { requestSubscribeMany, buildEnrollSubscribeRequests } = require('../../utils/subscribe')
 const { mapEnrollVoucherFields } = require('../../utils/enrollVoucher')
@@ -109,6 +109,12 @@ Page({
       await requestSubscribeMany(buildEnrollSubscribeRequests(this.data.detail.needReview))
       const raw = await post(`/activities/${activityId}/enroll`, validation.payload)
       const result = mergeEnrollResult(raw)
+      const outcome = resolveEnrollSubmitOutcome(result)
+      if (!outcome.ok) {
+        this.setData({ submitting: false })
+        wx.showToast({ title: outcome.message, icon: 'none', duration: 2800 })
+        return
+      }
       const resultHint = result.status === 'pending'
         ? '报名已提交，请等待管理员审核。'
         : '报名成功！请保存凭证码，活动当天签到使用。'

@@ -24,5 +24,6 @@ mustInclude('canSubmitEnroll', 'enroll.js must guard submit with canSubmitEnroll
 mustInclude('requestSubscribeMany(buildEnrollSubscribeRequests(this.data.detail.needReview))',
   'enroll.js must request approval subscription for activities requiring review')
 mustInclude('onRetry', 'enroll.js must expose onRetry')
+mustInclude('resolveEnrollSubmitOutcome', 'enroll.js must guard empty enroll result')
 
 console.log('[enrollPageDeps.test] PASS')

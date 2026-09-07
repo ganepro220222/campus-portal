@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { buildViewerSrc, compareViewerArtifacts, collectStagingEditorRelPaths } from './build-viewer.mjs'
+import { buildViewerSrc, compareViewerArtifacts, collectStagingEditorRelPaths, replaceFileAtomic } from './build-viewer.mjs'
 import {
   buildBundledViewer,
   buildBundledViewerHtml,
@@ -85,6 +86,23 @@ test('compareViewerArtifacts detects stale bundle without mutating repo file', (
   }
   const ok = spawnSync(process.execPath, ['build-viewer.mjs', '--check'], { cwd: ROOT, encoding: 'utf8' })
   assert.equal(ok.status, 0, (ok.stderr || ok.stdout || 'build-viewer --check failed after restore').trim())
+})
+
+test('replaceFileAtomic leaves a complete dest and --help documents --check-upload', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-atomic-'))
+  try {
+    const dest = path.join(tmp, 'out.txt')
+    fs.writeFileSync(dest, 'old')
+    replaceFileAtomic(dest, 'new')
+    assert.equal(fs.readFileSync(dest, 'utf8'), 'new')
+    const leftovers = fs.readdirSync(tmp).filter((n) => n.endsWith('.tmp'))
+    assert.equal(leftovers.length, 0)
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+  const help = spawnSync(process.execPath, ['build-viewer.mjs', '--help'], { cwd: ROOT, encoding: 'utf8' })
+  assert.equal(help.status, 0)
+  assert.match(help.stdout, /--check-upload/)
 })
 
 console.log(`\nbuild-viewer-bundle: ${pass} passed${fail ? `, ${fail} failed` : ''}`)

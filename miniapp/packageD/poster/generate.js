@@ -4,6 +4,7 @@ const { parseWxacodeResponse } = require('../../utils/wxacode')
 const {
   BADGE_SRC,
   parsePosterCover,
+  coverPreviewErrorPatch,
   coverRect,
   titleStartY,
   roundRectPath,
@@ -93,7 +94,7 @@ Page({
   onCoverError() {
     if (!this.data.hasCover) return
     console.warn('[poster] 封面加载失败，预览降级为徽记布局')
-    this.setData({ hasCover: false, coverUrl: '' })
+    this.setData(coverPreviewErrorPatch())
   },
 
   onPick(e) {

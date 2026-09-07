@@ -41,6 +41,8 @@ if (ENABLE_AI_CHAT) {
   assert.ok(!baselineFallback.agreement.includes('AI 生成'))
 }
 assert.strictEqual(sourceHint(baselineFallback), '')
+assert.ok(!sourceHint(cacheFallback).includes('可下拉刷新'))
+assert.ok(sourceHint(cacheFallback).includes('点击重新加载'))
 assert.ok(BASELINE.privacy.includes('贵州云漫科技有限公司'))
 assert.ok(BASELINE.agreement.includes('贵州云漫科技有限公司'))
 assert.ok(!BASELINE.privacy.includes('内置基线'))

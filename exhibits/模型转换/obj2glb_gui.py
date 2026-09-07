@@ -190,6 +190,7 @@ class ConverterGUI:
         self.out_dir: str | None = None
         self.worker: threading.Thread | None = None
         self._build_ui()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         if _IMPORT_ERROR:
             self._log(f"⚠ 缺少依赖：{_IMPORT_ERROR}\n请先双击「安装转换依赖.bat」\n", "er")
             self.btn_run.config(state="disabled")
@@ -786,6 +787,27 @@ class ConverterGUI:
 
     def _clear_log(self):
         self.txt.config(state="normal"); self.txt.delete("1.0", "end"); self.txt.config(state="disabled")
+
+    def _sweep_tmp_outputs(self) -> None:
+        out = self.out_dir
+        if not out or not os.path.isdir(out):
+            return
+        for name in os.listdir(out):
+            if name.startswith(".tmp_"):
+                try:
+                    os.remove(os.path.join(out, name))
+                except OSError:
+                    pass
+
+    def _on_close(self) -> None:
+        if self.worker and self.worker.is_alive():
+            if not messagebox.askokcancel(
+                "转换进行中",
+                "现在关闭会中断转换，可能留下未完成的临时文件。确定关闭？",
+            ):
+                return
+        self._sweep_tmp_outputs()
+        self.root.destroy()
 
 
 def main():

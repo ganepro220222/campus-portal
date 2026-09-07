@@ -309,6 +309,20 @@ function looksLikeVtt(text) {
   return head.startsWith('WEBVTT') || text.includes('-->')
 }
 
+/** VTT 时间戳；带 position/line 设置的 cue 先截掉空白后的设置段。 */
+function parseVttTime(raw) {
+  if (!raw) return 0
+  const token = String(raw).trim().split(/\s+/)[0]
+  const t = token.split(':')
+  if (t.length === 3) {
+    return parseInt(t[0], 10) * 3600 + parseInt(t[1], 10) * 60 + parseFloat(t[2])
+  }
+  if (t.length === 2) {
+    return parseInt(t[0], 10) * 60 + parseFloat(t[1])
+  }
+  return 0
+}
+
 const VIDEO_STABLE_SECONDS = 10
 const VIDEO_MAX_CONSECUTIVE_RETRIES = 2
 
@@ -333,6 +347,7 @@ module.exports = {
   shouldReportByInterval,
   isVttHttpSuccess,
   looksLikeVtt,
+  parseVttTime,
   VIDEO_STABLE_SECONDS,
   VIDEO_MAX_CONSECUTIVE_RETRIES,
   isVideoPlaybackStable,

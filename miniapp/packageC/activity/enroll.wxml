@@ -102,6 +102,7 @@
           <text class="field-label">学院</text>
           <input
             class="field-input"
+            maxlength="64"
             placeholder="选填"
             value="{{form.college}}"
             bindinput="onInput"
@@ -113,6 +114,7 @@
           <text class="field-label">年级</text>
           <input
             class="field-input"
+            maxlength="16"
             placeholder="选填，如 2024 级"
             value="{{form.grade}}"
             bindinput="onInput"

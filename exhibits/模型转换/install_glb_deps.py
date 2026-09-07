@@ -16,6 +16,8 @@ from python_env import argv_key, pick_gui_python  # noqa: E402
 
 PACKAGES = ("trimesh", "pillow", "numpy")
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
+GET_PIP_TIMEOUT = 30
+GET_PIP_RETRIES = 3
 
 
 def find_pth(python_dir: str) -> str | None:
@@ -41,38 +43,18 @@ def enable_site_packages(python_dir: str) -> tuple[bool, str, bool]:
     return True, "已启用 site-packages（修改了 ._pth）", True
 
 
-def pip_ready(py_exe: str) -> bool:
-    r = subprocess.run([py_exe, "-m", "pip", "--version"], capture_output=True)
-    return r.returncode == 0
-
-
-def bootstrap_pip(py_exe: str) -> None:
-    fd, path = tempfile.mkstemp(suffix=".py", prefix="get-pip-")
-    os.close(fd)
-    try:
-        print(f"下载 get-pip …")
-        urllib.request.urlretrieve(GET_PIP_URL, path)
-        print("安装 pip …")
-        subprocess.run([py_exe, path], check=True)
-    finally:
-        os.remove(path)
-
-
-def packages_ok(py_exe: str) -> list[str]:
-    """在新 Python 进程里验证 import（改 ._pth 后当前进程看不到 site-packages）。"""
-    probe = (
-        "import sys\n"
-        "missing=[]\n"
-        "for mod,name in (('trimesh','trimesh'),('PIL','pillow'),('numpy','numpy')):\n"
-        "  try: __import__(mod)\n"
-        "  except Exception: missing.append(name)\n"
-        "print(','.join(missing))\n"
-    )
-    r = subprocess.run([py_exe, "-c", probe], capture_output=True, text=True)
-    if r.returncode != 0:
-        return list(PACKAGES)
-    out = (r.stdout or "").strip()
-    return out.split(",") if out else []
+def download_url(url: str, dest: str, timeout: int = GET_PIP_TIMEOUT, retries: int = GET_PIP_RETRIES) -> None:
+    last: Exception | None = None
+    for _ in range(max(1, retries)):
+        try:
+            with urllib.request.urlopen(url, timeout=timeout) as resp:
+                data = resp.read()
+            with open(dest, "wb") as fh:
+                fh.write(data)
+            return
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+    raise last if last else RuntimeError(f"download failed: {url}")
 
 
 def install_for_argv(argv: list[str]) -> int:
@@ -121,7 +103,7 @@ def bootstrap_pip_argv(argv: list[str]) -> None:
     os.close(fd)
     try:
         print("下载 get-pip …")
-        urllib.request.urlretrieve(GET_PIP_URL, path)
+        download_url(GET_PIP_URL, path)
         print("安装 pip …")
         subprocess.run([*argv, path], check=True)
     finally:

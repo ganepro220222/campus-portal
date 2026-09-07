@@ -13,7 +13,9 @@ const {
   enrollStatusLabel,
   resolveDetailAction,
   canStartCancelEnroll,
-  cancelEnrollButtonText
+  cancelEnrollButtonText,
+  mergeEnrollResult,
+  resolveEnrollSubmitOutcome
 } = require('./activity')
 const { decorateActivities } = require('./decorate')
 
@@ -126,5 +128,14 @@ const listWxml = fs.readFileSync(path.join(__dirname, '../pages/activity/index.w
 assert.match(listWxml, /item.enrollHint/)
 assert.match(listWxml, /item.canEnroll/)
 assert.doesNotMatch(listWxml, /item.full \? '已满' : '报名'/)
+
+assert.strictEqual(mergeEnrollResult(null), null)
+assert.strictEqual(resolveEnrollSubmitOutcome(null).ok, false)
+assert.ok(resolveEnrollSubmitOutcome(null).message.includes('我的报名'))
+assert.strictEqual(resolveEnrollSubmitOutcome({ status: 'approved' }).ok, true)
+
+const enrollWxml = fs.readFileSync(path.join(__dirname, '../packageC/activity/enroll.wxml'), 'utf8')
+assert.match(enrollWxml, /data-field="college"[\s\S]*?maxlength="64"|maxlength="64"[\s\S]*?data-field="college"/)
+assert.match(enrollWxml, /data-field="grade"[\s\S]*?maxlength="16"|maxlength="16"[\s\S]*?data-field="grade"/)
 
 console.log('[activity.test] PASS')

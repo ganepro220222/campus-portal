@@ -101,6 +101,8 @@
   .audio.mini .au-mid, .audio.mini .au-collapse { display:none; }
   .audio.mini .au-btn { width:38px; height:38px; font-size:14px; }
   .audio.mini.playing .au-btn { box-shadow:0 0 0 3px rgba(200,168,106,.28); }
+  .audio.error { border-color:rgba(200,168,106,.45); }
+  .audio.error .au-name { color:#f4e6c8; }
   .au-collapse { flex:0 0 auto; width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.16);
     background:transparent; color:rgba(238,240,245,.7); font-size:11px; line-height:1; cursor:pointer; transition:.18s; }
   .au-collapse:hover { background:rgba(255,255,255,.1); color:#f4e6c8; }
@@ -195,7 +197,7 @@
   <div class="hs-layer" id="hs-layer"></div>
 
   <!-- 语音讲解 小型播放器 -->
-  <div class="audio" hidden id="audio" role="group" aria-label="语音讲解播放器">
+  <div class="audio" hidden id="audio" role="group" aria-label="语音讲解播放器" aria-live="polite">
     <button class="au-btn" id="au-play" aria-label="播放/暂停语音讲解（空格键）">▶</button>
     <div class="au-mid">
       <div class="au-top">
@@ -273,6 +275,6 @@ setTimeout(function () {
 }, window.__SY_PLAYER.bootTimeoutMs || 12000)
 </script>
 
-<script type="module" src="./player.bundle.js?v=a00d07ef"></script>
+<script type="module" src="./player.bundle.js?v=683b5474"></script>
 </body>
 </html>

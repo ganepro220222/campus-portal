@@ -700,6 +700,32 @@ def _():
     eq(stems_by_path(items_de)[r"E:\proj\b.glb"], "E__proj__b")
 
 
+@test("关窗拦截已注册；转换中取消关闭不 destroy")
+def _():
+    gui = _make_gui()
+    gui.root.protocol.assert_any_call("WM_DELETE_WINDOW", gui._on_close)
+    gui.worker = MagicMock()
+    gui.worker.is_alive.return_value = True
+    with patch.object(obj2glb_gui.messagebox, "askokcancel", return_value=False):
+        gui._on_close()
+    gui.root.destroy.assert_not_called()
+    with patch.object(obj2glb_gui.messagebox, "askokcancel", return_value=True):
+        gui._on_close()
+    gui.root.destroy.assert_called()
+
+
+@test("关闭时清扫输出目录 .tmp_ 残留")
+def _():
+    gui = _make_gui()
+    with tempfile.TemporaryDirectory() as d:
+        leftover = os.path.join(d, ".tmp_abc.glb")
+        open(leftover, "wb").write(b"x")
+        gui.out_dir = d
+        gui.worker = None
+        gui._on_close()
+        ok(not os.path.exists(leftover))
+
+
 print("obj2glb_gui tests")
 print(f"\nobj2glb_gui: {_pass} passed" + (f", {_fail} FAILED" if _fail else ""))
 sys.exit(1 if _fail else 0)

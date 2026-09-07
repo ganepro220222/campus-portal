@@ -19,13 +19,22 @@ function resolveUploadErrorMessage(err) {
   const code = err.code != null ? Number(err.code) : NaN
   if (code === 401) return '请先登录后再上传图片'
   if (code === 413) return '图片过大，请重新选择或压缩'
+  if (err.message === 'invalid upload url') return '上传响应异常，请重试或删除该图'
   if (err.message) return err.message
   return '图片上传失败，可点图片重试'
+}
+
+function canStartChooseImages({ choosing, loggedIn, remaining }) {
+  if (choosing) return { ok: false, reason: 'busy' }
+  if (!loggedIn) return { ok: false, reason: 'login' }
+  if (remaining <= 0) return { ok: false, reason: 'full' }
+  return { ok: true }
 }
 
 module.exports = {
   canAccessFeedback,
   isFeedbackSubmitLocked,
   shouldNavigateBackAfterSubmit,
-  resolveUploadErrorMessage
+  resolveUploadErrorMessage,
+  canStartChooseImages
 }

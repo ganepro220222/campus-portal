@@ -93,23 +93,39 @@ def read_bytes_for_zip(path: Path) -> bytes:
     return text.replace('\n', '\r\n').encode('utf-8')
 
 
+def write_zip_atomic(files: list[Path], dest: Path) -> int:
+    tmp = dest.with_name(dest.name + '.tmp')
+    expected = len(files) + 1
+    try:
+        with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+            for path in files:
+                arcname = path.relative_to(ROOT).as_posix()
+                zf.writestr(arcname, read_bytes_for_zip(path))
+            zf.writestr('拷贝说明.txt', PACK_README.encode('utf-8'))
+        with zipfile.ZipFile(tmp, 'r') as zf:
+            bad = zf.testzip()
+            if bad:
+                raise RuntimeError(f'zip corrupt: {bad}')
+            if len(zf.namelist()) != expected:
+                raise RuntimeError(f'zip entry count {len(zf.namelist())} != {expected}')
+        os.replace(tmp, dest)
+    except Exception:
+        if tmp.exists():
+            tmp.unlink()
+        raise
+    return expected
+
+
 def main() -> None:
-    if OUT.exists():
-        OUT.unlink()
     files: list[Path] = []
     for path in sorted(ROOT.rglob('*')):
         if path.is_file() and should_include(path):
             files.append(path)
 
-    with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
-        for path in files:
-            arcname = path.relative_to(ROOT).as_posix()
-            zf.writestr(arcname, read_bytes_for_zip(path))
-        zf.writestr('拷贝说明.txt', PACK_README.encode('utf-8'))
-
+    count = write_zip_atomic(files, OUT)
     size_mb = OUT.stat().st_size / (1024 * 1024)
     print(f'OK  {OUT.name}')
-    print(f'    {len(files) + 1} entries, {size_mb:.2f} MiB')
+    print(f'    {count} entries, {size_mb:.2f} MiB')
     print('    top-level included:')
     tops = sorted({p.relative_to(ROOT).parts[0] for p in files})
     for name in tops:

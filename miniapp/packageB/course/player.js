@@ -10,6 +10,7 @@ const {
   getCoursePlayerPlatform,
   resolveVideoResumePosition,
   coerceVttText,
+  parseVttTime,
   withVideoReloadNonce,
   looksLikeVtt,
   isVideoPlaybackStable,
@@ -30,6 +31,7 @@ Page({
     videoUrl: '',
     cover: '',
     hasSubtitle: false,
+    subtitleFailed: false,
     subtitleUrl: '',
     initialTime: 0,
     cc: true,
@@ -414,6 +416,12 @@ Page({
     wx.showToast({ title: this.data.cc ? '字幕已开启' : '字幕已关闭', icon: 'none' })
   },
 
+  onRetrySubtitle() {
+    this._subtitleRetryCount = 0
+    this.setData({ subtitleFailed: false })
+    this._loadVtt()
+  },
+
   _reportProgress(position, total, options = {}) {
     const notifyCompletion = options.notifyCompletion === true
     return new Promise((resolve, reject) => {
@@ -469,7 +477,7 @@ Page({
       })
       return
     }
-    this.setData({ hasSubtitle: false, subtitleUrl: '' })
+    this.setData({ hasSubtitle: false, subtitleUrl: '', subtitleFailed: true })
     wx.showToast({ title: '字幕暂不可用', icon: 'none' })
   },
 
@@ -483,7 +491,7 @@ Page({
       }
       this._vttCues = this._parseVtt(text)
       this._subtitleRetryCount = 0
-      this.setData({ hasSubtitle: true })
+      this.setData({ hasSubtitle: true, subtitleFailed: false })
     }).catch(() => this._handleSubtitleFailure())
   },
 
@@ -511,15 +519,7 @@ Page({
   },
 
   _parseVttTime(raw) {
-    if (!raw) return 0
-    const t = raw.trim().split(':')
-    if (t.length === 3) {
-      return parseInt(t[0], 10) * 3600 + parseInt(t[1], 10) * 60 + parseFloat(t[2])
-    }
-    if (t.length === 2) {
-      return parseInt(t[0], 10) * 60 + parseFloat(t[1])
-    }
-    return 0
+    return parseVttTime(raw)
   },
 
   _findCue(sec) {

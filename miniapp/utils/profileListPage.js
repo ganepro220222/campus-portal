@@ -97,7 +97,7 @@ function shouldShowLoadError(error, loading) {
 }
 
 /** 从详情返回后需刷新的列表类型（取消收藏/取消报名等） */
-const REFRESH_ON_SHOW_TYPES = new Set(['favorites', 'enrolls'])
+const REFRESH_ON_SHOW_TYPES = new Set(['favorites', 'enrolls', 'footprints'])
 
 function shouldRefreshOnShow(hasShownOnce, type) {
   if (!hasShownOnce) return false

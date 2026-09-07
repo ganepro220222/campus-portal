@@ -56,6 +56,9 @@
   <view wx:elif="{{offerResumeJump}}" class="page-refresh-bar player-resume-bar" bindtap="onJumpToSaved">
     <text>已找到上次位置 {{savedPositionLabel}}，点击跳转</text>
   </view>
+  <view wx:if="{{subtitleFailed}}" class="page-refresh-bar" bindtap="onRetrySubtitle">
+    <text>字幕暂不可用，点击重试</text>
+  </view>
 
   <scroll-view scroll-y class="player-scroll" enhanced show-scrollbar="{{false}}">
     <view class="now serif">{{course.name}}</view>

@@ -1,3 +1,9 @@
+const {
+  WEBVIEW_ROUTE,
+  resolveWebviewBoot
+} = require('../../utils/collegeWebview')
+const { shouldNavigateBackAfterSubmit } = require('../../utils/feedbackPage')
+
 Page({
   data: {
     url: '',
@@ -5,14 +11,24 @@ Page({
   },
 
   onLoad(options) {
-    const url = decodeURIComponent(options.url || '')
-    const title = decodeURIComponent(options.title || '学院内容')
-    if (!url || !url.startsWith('https://')) {
+    const boot = resolveWebviewBoot(options)
+    if (!boot.ok) {
       wx.showToast({ title: '链接无效', icon: 'none' })
-      setTimeout(() => wx.navigateBack(), 1500)
+      this._leaveTimer = setTimeout(() => {
+        this._leaveTimer = null
+        if (!shouldNavigateBackAfterSubmit(getCurrentPages(), WEBVIEW_ROUTE)) return
+        wx.navigateBack()
+      }, 1500)
       return
     }
-    this.setData({ url, title })
-    wx.setNavigationBarTitle({ title })
+    this.setData({ url: boot.url, title: boot.title })
+    wx.setNavigationBarTitle({ title: boot.title })
+  },
+
+  onUnload() {
+    if (this._leaveTimer) {
+      clearTimeout(this._leaveTimer)
+      this._leaveTimer = null
+    }
   }
 })

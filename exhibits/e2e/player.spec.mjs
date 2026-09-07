@@ -1239,6 +1239,18 @@ test.describe('语音播放器 折叠', () => {
     expect(m.aria).toContain('正在播放')
   })
 
+  test('语音加载失败给出可见提示', async () => {
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 } }))
+    await page.waitForSelector('#audio:not([hidden])')
+    await page.evaluate(() => {
+      const el = document.getElementById('au-el')
+      el.removeAttribute('data-sy-fallback')
+      el.dispatchEvent(new Event('error'))
+    })
+    await expect.poll(async () => page.locator('#audio').getAttribute('data-au-error')).toBe('1')
+    await expect(page.locator('#au-name')).toHaveText('语音加载失败，点击重试')
+  })
+
   test('热点绑定的语音自动播放时，播放器自动展开', async () => {
     const hs = [{ id: 'h1', position: [0, 0.2, 0.6], audio: 'a1', i18n: { zh: { title: '甲', body: '乙' } } }]
     await reloadPlayer(page, withAudio({ viewport: { width: 390, height: 800 }, hotspots: hs }))

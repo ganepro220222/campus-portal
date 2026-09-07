@@ -15,7 +15,8 @@ const {
   canAccessFeedback,
   isFeedbackSubmitLocked,
   shouldNavigateBackAfterSubmit,
-  resolveUploadErrorMessage
+  resolveUploadErrorMessage,
+  canStartChooseImages
 } = require('../../utils/feedbackPage')
 
 const FEEDBACK_ROUTE = 'packageC/feedback/index'
@@ -62,16 +63,23 @@ Page({
   onContact(e) { this.setData({ contact: e.detail.value }) },
 
   onChooseImages() {
-    if (!canAccessFeedback(!!getToken())) {
+    const left = remainingSlots(this.data.images.length)
+    const gate = canStartChooseImages({
+      choosing: !!this._choosing,
+      loggedIn: canAccessFeedback(!!getToken()),
+      remaining: left
+    })
+    if (gate.reason === 'login') {
       wx.showToast({ title: '请先登录', icon: 'none' })
       setTimeout(() => wx.navigateTo({ url: '/pages/login/index' }), 400)
       return
     }
-    const left = remainingSlots(this.data.images.length)
-    if (left <= 0) {
+    if (gate.reason === 'full') {
       wx.showToast({ title: `最多上传 ${MAX_IMAGES} 张`, icon: 'none' })
       return
     }
+    if (!gate.ok) return
+    this._choosing = true
     wx.chooseImage({
       count: left,
       sizeType: ['compressed'],
@@ -79,6 +87,9 @@ Page({
       success: (res) => {
         const paths = res.tempFilePaths || []
         paths.forEach(p => this._uploadOne(p))
+      },
+      complete: () => {
+        this._choosing = false
       }
     })
   },

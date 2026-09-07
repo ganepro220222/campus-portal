@@ -54,10 +54,12 @@ public class AdminUploadController {
 
     /**
      * 表单里保存的是不带签名的原始地址；CDN 开启 URL 鉴权后直接播放会 403。
-     * 预览前用本接口换取短时签名地址，不改变落库值。只读操作，登录管理员即可。
+     * 预览前用本接口换取短时签名地址，不改变落库值。
+     * 能换出任意对象的下载地址，权限与上传相同，不能只靠登录。
      */
     @GetMapping("/preview-url")
     public Result<Map<String, String>> previewUrl(@RequestParam("url") String url) {
+        requireUploadPermission();
         String signed = ossService.signUrl(url);
         return Result.ok(Map.of("url", signed == null ? "" : signed));
     }
@@ -69,6 +71,7 @@ public class AdminUploadController {
      */
     @GetMapping("/file-meta")
     public Result<Map<String, Object>> fileMeta(@RequestParam("url") String url) {
+        requireUploadPermission();
         return Result.ok(ossService.objectMeta(url));
     }
 

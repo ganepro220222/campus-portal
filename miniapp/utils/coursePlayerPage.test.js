@@ -43,6 +43,12 @@ require.cache[authPath] = {
   exports: {
     requireLogin(callback) {
       callback()
+    },
+    getToken() {
+      return 'test-token'
+    },
+    isMustChangePasswordRequired() {
+      return false
     }
   }
 }

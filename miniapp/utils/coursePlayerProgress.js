@@ -66,13 +66,25 @@ function resolveVideoResumePosition({ currentPosition, initialTime }) {
   return initialTime || 0
 }
 
-/** 播放器舞台四态：加载中不得落到「暂未配置」。 */
+/**
+ * 与 player.wxml 舞台分支同序：先有可播地址就出视频，
+ * 再 loadError → videoFailed → loading → 暂未配置。
+ */
 function resolvePlayerStage({ loading, loadError, videoFailed, videoUrl }) {
+  if (videoUrl && !loadError && !videoFailed) return 'video'
   if (loadError) return 'loadError'
   if (videoFailed) return 'videoFailed'
   if (loading) return 'loading'
-  if (videoUrl) return 'video'
   return 'empty'
+}
+
+/** requireLogin 在没 token 或必须改密时不会回调，这时不能再停在 loading。 */
+function canFetchCourseAfterAuth({ hasToken, mustChangePassword }) {
+  return !!hasToken && !mustChangePassword
+}
+
+function courseAuthBlockedPatch() {
+  return { loading: false, loadError: true }
 }
 
 /**
@@ -357,6 +369,8 @@ module.exports = {
   getCoursePlayerPlatform,
   resolveVideoResumePosition,
   resolvePlayerStage,
+  canFetchCourseAfterAuth,
+  courseAuthBlockedPatch,
   resolveResumeInitialTime,
   coerceVttText,
   withVideoReloadNonce,

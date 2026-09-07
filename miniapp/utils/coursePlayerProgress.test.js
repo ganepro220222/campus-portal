@@ -8,6 +8,8 @@ const {
   getCoursePlayerPlatform,
   resolveVideoResumePosition,
   resolvePlayerStage,
+  canFetchCourseAfterAuth,
+  courseAuthBlockedPatch,
   resolveResumeInitialTime,
   coerceVttText,
   parseVttTime,
@@ -298,6 +300,31 @@ assert.strictEqual(resolvePlayerStage({ loading: false, videoUrl: '' }), 'empty'
 assert.strictEqual(resolvePlayerStage({ loadError: true, loading: true, videoUrl: '' }), 'loadError')
 assert.strictEqual(resolvePlayerStage({ videoFailed: true, loading: false, videoUrl: 'https://x' }), 'videoFailed')
 assert.strictEqual(resolvePlayerStage({ loading: false, videoUrl: 'https://x' }), 'video')
+assert.strictEqual(resolvePlayerStage({ loading: true, videoUrl: 'https://x' }), 'video')
+
+assert.strictEqual(canFetchCourseAfterAuth({ hasToken: false, mustChangePassword: false }), false)
+assert.strictEqual(canFetchCourseAfterAuth({ hasToken: true, mustChangePassword: true }), false)
+assert.strictEqual(canFetchCourseAfterAuth({ hasToken: true, mustChangePassword: false }), true)
+assert.deepStrictEqual(courseAuthBlockedPatch(), { loading: false, loadError: true })
+
+{
+  const fs = require('fs')
+  const path = require('path')
+  const wxml = fs.readFileSync(path.join(__dirname, '../packageB/course/player.wxml'), 'utf8')
+  const needles = [
+    'wx:if="{{videoUrl && !loadError && !videoFailed}}"',
+    'wx:elif="{{loadError}}"',
+    'wx:elif="{{videoFailed}}"',
+    'wx:elif="{{loading}}"',
+    'wx:else'
+  ]
+  let from = 0
+  for (const needle of needles) {
+    const i = wxml.indexOf(needle, from)
+    assert.ok(i >= 0, 'player.wxml 舞台分支须按视频→失败→加载中→暂未配置排列：' + needle)
+    from = i + needle.length
+  }
+}
 
 assert.strictEqual(isVttHttpSuccess(200), true)
 assert.strictEqual(isVttHttpSuccess(403), false)

@@ -18,7 +18,7 @@ import { batchFieldApplies, batchFieldModeOff, collectBatchOps,
 import { inferBatchEnvEffect } from './studio-batch-env.mjs'
 import { ensureHotspotIds, nextHotspotId, auditHotspotIds, hotspotIdIssueLabel, normalizeHotspotId, bootstrapHotspotIds, mergeHotspotIdChanges, hotspotBootAuditHadIssues, formatHotspotIdChanges, hotspotAuditSummaryParts } from './hotspot-id.mjs'
 import { buildViewerSrc, buildProductionViewer, syncUploadModules, syncUploadExhibits, syncUploadAssets,
-  initUploadVendor, validateViewerSemantics, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
+  initUploadVendor, validateViewerSemantics, viewerMissingImportedExports, checkHtmlImports, checkUploadRuntimeDeps, verifyUploadAssets,
   collectModuleGraph, patchExhibitIndexTitle, exhibitTitleFromCfg, runUploadPreflight, deployUploadPack,
   prepareUploadStaging, promoteUploadStaging, uploadSiblingStagingPath, uploadSiblingBackupPath,
   orphanUploadExhibits, pruneUploadExhibits, pruneUploadToPlayerOnly, listUploadExhibits, listSourceCraftDirs, auditSourceExhibits, validateSourceExhibitConfig, buildExhibitIndexHtml, UPLOAD_JS_COPIES, VIEWER_BUNDLE_FILE, PLAYER_ONLY_UPLOAD_FILES } from './build-viewer.mjs'
@@ -1327,34 +1327,32 @@ test('viewer output imports boot timeouts from player-persist', () => {
   assert.doesNotMatch(view, /configExportFilename/)
 })
 
+function assertViewerImportsUsedExports(moduleFile) {
+  const used = viewerMissingImportedExports(
+    buildViewerSrc(),
+    moduleFile,
+    fs.readFileSync(path.join(ROOT, moduleFile), 'utf8'),
+  )
+  assert.equal(used.ok, true, used.reason || `viewer import usage failed for ${moduleFile}`)
+}
+
 test('viewer output imports every player-persist symbol it uses', () => {
-  const view = buildViewerSrc()
-  const imp = view.match(/import \{([^}]+)\} from '\.\/player-persist\.mjs'/)
-  assert.ok(imp, 'viewer must import player-persist.mjs')
-  const imported = new Set(imp[1].split(',').map(s => s.trim()))
-  const body = view.replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, '')
-  const persistSrc = fs.readFileSync(path.join(ROOT, 'player-persist.mjs'), 'utf8')
-  const exported = [...persistSrc.matchAll(/^export (?:const|function) (\w+)/gm)].map(m => m[1])
-  for (const sym of exported) {
-    if (new RegExp(`\\b${sym}\\b`).test(body)) {
-      assert.ok(imported.has(sym), `viewer uses ${sym} but import omits it`)
-    }
-  }
+  assertViewerImportsUsedExports('player-persist.mjs')
 })
 
 test('viewer output imports every light-rig symbol it uses', () => {
-  const view = buildViewerSrc()
-  const imp = view.match(/import \{([^}]+)\} from '\.\/light-rig\.mjs'/)
-  assert.ok(imp, 'viewer must import light-rig.mjs')
-  const imported = new Set(imp[1].split(',').map(s => s.trim()))
-  const body = view.replace(/import \{[^}]+\} from '\.\/light-rig\.mjs'/, '')
-  const rigSrc = fs.readFileSync(path.join(ROOT, 'light-rig.mjs'), 'utf8')
-  const exported = [...rigSrc.matchAll(/^export (?:const|function) (\w+)/gm)].map(m => m[1])
-  for (const sym of exported) {
-    if (new RegExp(`\\b${sym}\\b`).test(body)) {
-      assert.ok(imported.has(sym), `viewer uses ${sym} but import omits it`)
-    }
-  }
+  assertViewerImportsUsedExports('light-rig.mjs')
+})
+
+test('viewer output imports every player-audio symbol it uses', () => {
+  assertViewerImportsUsedExports('player-audio.mjs')
+})
+
+test('validateViewerSemantics fails when viewer calls an unimported audio export', () => {
+  const leaked = `${buildViewerSrc()}\nnormalizeAudioSrc("x")\n`
+  const sem = validateViewerSemantics(leaked)
+  assert.equal(sem.ok, false)
+  assert.match(String(sem.reason || ''), /normalizeAudioSrc/)
 })
 
 test('editor preset row uses dedicated label/actions classes', () => {

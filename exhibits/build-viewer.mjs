@@ -669,6 +669,37 @@ export function buildExhibitIndexHtml(exhibitName, cfg, templateHtml = fs.readFi
   return templateHtml.replaceAll('__EX__', exhibitName).replaceAll('__TITLE__', escapeHtml(title))
 }
 
+const VIEWER_EXPORT_USAGE_MODULES = [
+  'player-persist.mjs',
+  'light-rig.mjs',
+  'player-audio.mjs',
+]
+
+/** `export const|function Name` — 与观看端 import 对账用，不含 `export { … }` 再导出。 */
+export function listModuleExportNames(moduleSrc) {
+  return [...moduleSrc.matchAll(/^export (?:const|function) (\w+)/gm)].map((m) => m[1])
+}
+
+/**
+ * 观看版正文若调用了某模块的 export，对应 import 行必须带上。
+ * 对照的是 HTML 里实际 import，不是白名单常量（replace 漏改时也能抓到）。
+ */
+export function viewerMissingImportedExports(viewHtml, moduleFile, moduleSrc) {
+  const fileRe = moduleFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const importRe = new RegExp(`import \\{([^}]+)\\} from '\\./${fileRe}'`)
+  const matched = viewHtml.match(importRe)
+  if (!matched) return { ok: false, reason: `viewer must import ${moduleFile}` }
+  const imported = new Set(matched[1].split(',').map((s) => s.trim()).filter(Boolean))
+  const body = viewHtml.replace(importRe, '')
+  const missing = listModuleExportNames(moduleSrc).filter((sym) => (
+    new RegExp(`\\b${sym}\\b`).test(body) && !imported.has(sym)
+  ))
+  if (missing.length) {
+    return { ok: false, reason: `viewer uses ${missing.join(', ')} but import omits it` }
+  }
+  return { ok: true, missing: [] }
+}
+
 export function validateViewerSemantics(viewHtml) {
   for (const sym of VIEWER_FORBIDDEN) {
     if (viewHtml.includes(sym)) return { ok: false, reason: `viewer must not contain ${sym}` }
@@ -681,6 +712,14 @@ export function validateViewerSemantics(viewHtml) {
   }
   if (/buildEditor\(\)/.test(viewHtml)) {
     return { ok: false, reason: 'viewer must not call buildEditor()' }
+  }
+  for (const file of VIEWER_EXPORT_USAGE_MODULES) {
+    const used = viewerMissingImportedExports(
+      viewHtml,
+      file,
+      fs.readFileSync(path.join(ROOT, file), 'utf8'),
+    )
+    if (!used.ok) return used
   }
   return { ok: true }
 }

@@ -1,6 +1,6 @@
 // packageB/course/player.js — 真视频播放 + 进度上报
 const { get, post } = require('../../utils/request')
-const { requireLogin } = require('../../utils/auth')
+const { requireLogin, getToken, isMustChangePasswordRequired } = require('../../utils/auth')
 const { mergeCourseDetail } = require('../../utils/content')
 const {
   resolveEndedReport,
@@ -20,6 +20,8 @@ const {
   buildProgressResponsePatch,
   shouldNotifyProgressCompletion,
   resolveProgressRetryAction,
+  canFetchCourseAfterAuth,
+  courseAuthBlockedPatch,
   PROGRESS_AUTO_SEEK_GRACE_SECONDS
 } = require('../../utils/coursePlayerProgress')
 
@@ -70,6 +72,8 @@ Page({
     this._progressResumeFromReport = false
     this._completionNotified = false
     this._pageActive = true
+    this._authBlocked = false
+    this._fetching = false
 
     this._loadCourse()
   },
@@ -81,8 +85,6 @@ Page({
     this._progressResumeFromReport = false
     this._completionNotified = false
     this.setData({
-      loading: true,
-      loadError: false,
       videoFailed: false,
       videoUrl: '',
       progressLoadError: false,
@@ -188,51 +190,85 @@ Page({
     this._applyPendingVideoResume()
   },
 
+  _canFetchCourseNow() {
+    return canFetchCourseAfterAuth({
+      hasToken: !!getToken(),
+      mustChangePassword: isMustChangePasswordRequired()
+    })
+  },
+
   _loadCourse() {
     const id = this._courseId
     if (!id) return
-    this.setData({ loading: true, loadError: false })
-    requireLogin(() => {
-      Promise.all([
-        get(`/courses/${id}`),
-        get(`/courses/${id}/play`),
-        settlePromise(get(`/courses/${id}/progress`, {}, { silent: true }))
-      ]).then(([course, play, progressSettled]) => {
-        if (!course) {
-          this.setData({ loading: false, loadError: true })
-          return
-        }
-        const progressFailed = !progressSettled.ok
-        const progressView = buildPlayerProgressView({
-          progress: progressFailed ? null : progressSettled.value,
-          failed: progressFailed
-        })
-        const media = play || {}
-        if (progressView.completed) this._completionNotified = true
-        this.setData({
-          course,
-          videoUrl: media.videoUrl || '',
-          cover: course.cover || '',
-          hasSubtitle: !!media.hasSubtitle && !!media.subtitleUrl,
-          subtitleUrl: media.subtitleUrl || '',
-          loading: false,
-          loadError: false,
-          videoFailed: false,
-          ...progressView
-        })
-        if (media.hasSubtitle || media.subtitleUrl) {
-          this._loadVtt()
-        }
-      }).catch(err => {
-        console.warn('[course/player] 加载失败', err)
-        this.setData({ loading: false, loadError: true })
-        wx.showToast({ title: '课程加载失败', icon: 'none' })
+    if (!this._canFetchCourseNow()) {
+      this._authBlocked = true
+      this.setData(courseAuthBlockedPatch())
+      requireLogin(() => {
+        this._authBlocked = false
+        this._fetchCourse()
       })
+      return
+    }
+    this._authBlocked = false
+    this._fetchCourse()
+  },
+
+  _fetchCourse() {
+    const id = this._courseId
+    if (!id || this._fetching) return
+    this._fetching = true
+    this.setData({ loading: true, loadError: false })
+    Promise.all([
+      get(`/courses/${id}`),
+      get(`/courses/${id}/play`),
+      settlePromise(get(`/courses/${id}/progress`, {}, { silent: true }))
+    ]).then(([course, play, progressSettled]) => {
+      if (!course) {
+        this.setData({ loading: false, loadError: true })
+        return
+      }
+      const progressFailed = !progressSettled.ok
+      const progressView = buildPlayerProgressView({
+        progress: progressFailed ? null : progressSettled.value,
+        failed: progressFailed
+      })
+      const media = play || {}
+      if (progressView.completed) this._completionNotified = true
+      this.setData({
+        course,
+        videoUrl: media.videoUrl || '',
+        cover: course.cover || '',
+        hasSubtitle: !!media.hasSubtitle && !!media.subtitleUrl,
+        subtitleUrl: media.subtitleUrl || '',
+        loading: false,
+        loadError: false,
+        videoFailed: false,
+        ...progressView
+      })
+      if (media.hasSubtitle || media.subtitleUrl) {
+        this._loadVtt()
+      }
+    }).catch(err => {
+      console.warn('[course/player] 加载失败', err)
+      this.setData({ loading: false, loadError: true })
+      wx.showToast({ title: '课程加载失败', icon: 'none' })
+    }).then(() => {
+      this._fetching = false
+    }, () => {
+      this._fetching = false
     })
+  },
+
+  _resumeCourseLoadIfAuthed() {
+    if (!this._authBlocked || !this._courseId || !this._canFetchCourseNow()) return false
+    this._authBlocked = false
+    this._fetchCourse()
+    return true
   },
 
   onShow() {
     this._pageActive = true
+    this._resumeCourseLoadIfAuthed()
   },
 
   onUnload() {

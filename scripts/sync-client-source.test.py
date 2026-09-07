@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -73,5 +74,61 @@ readme = mod.PACK_README.lower()
 for banned in ('git', 'github', 'push', 'commit', 'claude', '甲方', '乙方', '合伙人', 'exhibits', '三维', '立体鉴赏'):
     if banned in readme:
         raise SystemExit(f'说明模板不应出现 {banned!r}')
+
+
+def write_file(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding='utf-8')
+
+
+def make_source_repo(root: Path) -> None:
+    write_file(root / 'miniapp' / 'app.js', 'module.exports = {}\n')
+    write_file(root / 'admin' / 'package.json', '{}\n')
+    write_file(root / 'backend' / 'pom.xml', '<project/>\n')
+    write_file(root / 'sql' / 'init.sql', '-- ok\n')
+
+
+def assert_no_work_dirs(out: Path) -> None:
+    leftover = mod.sibling_work_dirs(out)
+    if leftover:
+        raise SystemExit('临时目录未清理：' + ', '.join(p.name for p in leftover))
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    repo = Path(tmp)
+    out = repo / '交付源码'
+    make_source_repo(repo)
+    write_file(out / '旧包标记.txt', 'KEEP_ME')
+    write_file(out / '微信小程序' / 'app.js', 'old\n')
+    write_file(repo / 'miniapp' / 'leak.js', '内部协作标记：合伙人\n')
+    old_bytes = (out / '旧包标记.txt').read_bytes()
+    raised = False
+    try:
+        mod.sync(repo=repo, out=out)
+    except SystemExit as exc:
+        raised = True
+        if '未通过检查' not in str(exc):
+            raise SystemExit(f'失败原因不对：{exc}')
+    if not raised:
+        raise SystemExit('含内部信息时应同步失败')
+    if not (out / '旧包标记.txt').is_file():
+        raise SystemExit('扫描失败后不得丢掉上一份有效包')
+    if (out / '旧包标记.txt').read_bytes() != old_bytes:
+        raise SystemExit('扫描失败后旧包内容被改写')
+    if (out / '微信小程序' / 'leak.js').exists():
+        raise SystemExit('未通过检查的文件不得进入正式目录')
+    assert_no_work_dirs(out)
+
+    (repo / 'miniapp' / 'leak.js').unlink()
+    counts = mod.sync(repo=repo, out=out)
+    if counts['微信小程序'] < 1:
+        raise SystemExit('成功路径应写入新包')
+    if (out / '旧包标记.txt').exists():
+        raise SystemExit('成功替换后不应再留旧包标记')
+    if not (out / '微信小程序' / 'app.js').is_file():
+        raise SystemExit('成功路径缺少小程序入口')
+    if '合伙人' in (out / '微信小程序' / 'app.js').read_text(encoding='utf-8'):
+        raise SystemExit('成功包不应带内部信息')
+    assert_no_work_dirs(out)
 
 print('sync-client-source.test.py OK')

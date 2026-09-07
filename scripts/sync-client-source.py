@@ -69,6 +69,14 @@ EXCLUDE_REL = {
     }),
 }
 
+REQUIRED_PACK_RELS = (
+    '说明.txt',
+    '微信小程序/app.js',
+    '管理后台/package.json',
+    '服务端/pom.xml',
+    '数据库脚本/init.sql',
+)
+
 SCAN_SKIP_NAMES = frozenset({
     'package-lock.json',
 })
@@ -230,10 +238,52 @@ def iter_text_files(root: Path):
         yield path
 
 
+def work_dir(out: Path, kind: str) -> Path:
+    return out.with_name(f'{out.name}.{kind}-{os.getpid()}')
+
+
+def sibling_work_dirs(out: Path) -> list[Path]:
+    parent = out.parent
+    if not parent.is_dir():
+        return []
+    prefixes = (f'{out.name}.tmp-', f'{out.name}.bak-')
+    return [p for p in parent.iterdir() if p.name.startswith(prefixes)]
+
+
+def populate_pack(out: Path, trees: tuple[tuple[str, Path], ...]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for name, src in trees:
+        counts[name] = copy_tree(src, out / name, name)
+    prune_excluded(out)
+    write_readme(out)
+    return counts
+
+
+def promote_staging(staging: Path, out: Path) -> None:
+    bak = work_dir(out, 'bak')
+    if bak.exists():
+        rimraf(bak)
+    moved_out = False
+    if out.exists():
+        out.rename(bak)
+        moved_out = True
+    try:
+        staging.rename(out)
+    except OSError:
+        if moved_out and bak.exists() and not out.exists():
+            bak.rename(out)
+        raise
+    if bak.exists():
+        rimraf(bak)
+
+
 def scan_pack(out: Path) -> list[str]:
     errors: list[str] = []
     if (out / '.git').exists():
         errors.append('交付源码内出现 .git')
+    for rel in REQUIRED_PACK_RELS:
+        if not (out / Path(*rel.split('/'))).is_file():
+            errors.append(f'缺少必备文件：{rel}')
     for pack_name, extras in EXCLUDE_REL.items():
         for rel in extras:
             leftover = out / pack_name / Path(*rel.split('/'))
@@ -262,21 +312,35 @@ def scan_pack(out: Path) -> list[str]:
     return errors
 
 
-def sync() -> dict[str, int]:
-    for _, src in TREES:
+def pack_trees(repo: Path) -> tuple[tuple[str, Path], ...]:
+    return tuple((name, repo / src.name) for name, src in TREES)
+
+
+def sync(repo: Path | None = None, out: Path | None = None) -> dict[str, int]:
+    root = REPO if repo is None else repo
+    dest = OUT if out is None and repo is None else (out or (root / OUT.name))
+    trees = pack_trees(root)
+    for _, src in trees:
         if not src.is_dir():
             raise SystemExit(f'缺少源目录：{src}')
-    rimraf(OUT)
-    OUT.mkdir(parents=True, exist_ok=True)
-    counts: dict[str, int] = {}
-    for name, src in TREES:
-        counts[name] = copy_tree(src, OUT / name, name)
-    prune_excluded(OUT)
-    write_readme(OUT)
-    errors = scan_pack(OUT)
-    if errors:
-        raise SystemExit('交付源码未通过检查：\n  ' + '\n  '.join(errors))
-    return counts
+    staging = work_dir(dest, 'tmp')
+    if staging.exists():
+        rimraf(staging)
+    staging.mkdir(parents=True)
+    try:
+        counts = populate_pack(staging, trees)
+        errors = scan_pack(staging)
+        if errors:
+            raise SystemExit('交付源码未通过检查：\n  ' + '\n  '.join(errors))
+        promote_staging(staging, dest)
+        return counts
+    except BaseException:
+        if staging.exists():
+            try:
+                rimraf(staging)
+            except SystemExit:
+                pass
+        raise
 
 
 def main() -> None:

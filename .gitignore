@@ -64,6 +64,8 @@ docs/开发协作五大原则.md
 
 # 发给校方的源码副本（由 scripts/sync-client-source.py 生成，不进 Git）
 交付源码/
+交付源码.tmp-*/
+交付源码.bak-*/
 
 # 合作伙伴本地交付副本（从 exhibits 同步，不进 Git）
 编辑器模块/

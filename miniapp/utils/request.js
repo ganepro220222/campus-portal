@@ -32,6 +32,21 @@ function authPath(url) {
   return String(url).split('?')[0]
 }
 
+let lastAuthToastAt = 0
+
+function toastSessionAuth(message) {
+  const now = Date.now()
+  if (now - lastAuthToastAt < 2000) return
+  lastAuthToastAt = now
+  wx.showToast({ title: message || '请先登录', icon: 'none', duration: 2500 })
+}
+
+function rejectUnauthorized(body) {
+  const err = Object.assign({}, body || {}, { authExpired: true })
+  if (err.code == null) err.code = 401
+  return err
+}
+
 function logoutIfNeeded(url) {
   const path = authPath(url)
   // 公开登录接口的 401 是「账号密码错」，不是 session 过期，不能清 token
@@ -113,10 +128,8 @@ const request = (url, method = 'GET', data = {}, options = {}) => {
         }
         if (body.code === 401) {
           logoutIfNeeded(url)
-          if (!silent) {
-            wx.showToast({ title: body.message || '请先登录', icon: 'none', duration: 2500 })
-          }
-          return reject(body)
+          if (!silent) toastSessionAuth(body.message || '请先登录')
+          return reject(rejectUnauthorized(body))
         }
         if (body.code === 403 && body.errorKey === PASSWORD_CHANGE_REQUIRED) {
           handlePasswordChangeRequired(body, silent)

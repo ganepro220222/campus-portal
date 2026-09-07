@@ -10,6 +10,8 @@ const {
   resolvePlayerStage,
   canFetchCourseAfterAuth,
   courseAuthBlockedPatch,
+  isCourseAuthError,
+  shouldSuppressCourseLoadFailure,
   resolveResumeInitialTime,
   coerceVttText,
   parseVttTime,
@@ -298,21 +300,43 @@ assert.strictEqual(resolveVideoResumePosition({ currentPosition: null, initialTi
 assert.strictEqual(resolvePlayerStage({ loading: true, videoUrl: '' }), 'loading')
 assert.strictEqual(resolvePlayerStage({ loading: false, videoUrl: '' }), 'empty')
 assert.strictEqual(resolvePlayerStage({ loadError: true, loading: true, videoUrl: '' }), 'loadError')
+assert.strictEqual(resolvePlayerStage({ authRequired: true, loading: true, videoUrl: '' }), 'authRequired')
 assert.strictEqual(resolvePlayerStage({ videoFailed: true, loading: false, videoUrl: 'https://x' }), 'videoFailed')
 assert.strictEqual(resolvePlayerStage({ loading: false, videoUrl: 'https://x' }), 'video')
 assert.strictEqual(resolvePlayerStage({ loading: true, videoUrl: 'https://x' }), 'video')
+assert.strictEqual(resolvePlayerStage({ authRequired: true, videoUrl: 'https://x' }), 'authRequired')
 
 assert.strictEqual(canFetchCourseAfterAuth({ hasToken: false, mustChangePassword: false }), false)
 assert.strictEqual(canFetchCourseAfterAuth({ hasToken: true, mustChangePassword: true }), false)
 assert.strictEqual(canFetchCourseAfterAuth({ hasToken: true, mustChangePassword: false }), true)
-assert.deepStrictEqual(courseAuthBlockedPatch(), { loading: false, loadError: true })
+assert.deepStrictEqual(courseAuthBlockedPatch(), { loading: false, loadError: false, authRequired: true })
+assert.strictEqual(isCourseAuthError({ code: 401, message: '登录已过期' }), true)
+assert.strictEqual(isCourseAuthError({ authExpired: true }), true)
+assert.strictEqual(isCourseAuthError({ code: 403, errorKey: 'MEMBER_PASSWORD_CHANGE_REQUIRED' }), true)
+assert.strictEqual(isCourseAuthError({ code: 500 }), false)
+assert.strictEqual(shouldSuppressCourseLoadFailure({
+  err: { code: 401 },
+  hasToken: true,
+  mustChangePassword: false
+}), true)
+assert.strictEqual(shouldSuppressCourseLoadFailure({
+  err: new Error('network'),
+  hasToken: false,
+  mustChangePassword: false
+}), true)
+assert.strictEqual(shouldSuppressCourseLoadFailure({
+  err: new Error('network'),
+  hasToken: true,
+  mustChangePassword: false
+}), false)
 
 {
   const fs = require('fs')
   const path = require('path')
   const wxml = fs.readFileSync(path.join(__dirname, '../packageB/course/player.wxml'), 'utf8')
   const needles = [
-    'wx:if="{{videoUrl && !loadError && !videoFailed}}"',
+    'wx:if="{{videoUrl && !loadError && !videoFailed && !authRequired}}"',
+    'wx:elif="{{authRequired}}"',
     'wx:elif="{{loadError}}"',
     'wx:elif="{{videoFailed}}"',
     'wx:elif="{{loading}}"',
@@ -321,9 +345,11 @@ assert.deepStrictEqual(courseAuthBlockedPatch(), { loading: false, loadError: tr
   let from = 0
   for (const needle of needles) {
     const i = wxml.indexOf(needle, from)
-    assert.ok(i >= 0, 'player.wxml 舞台分支须按视频→失败→加载中→暂未配置排列：' + needle)
+    assert.ok(i >= 0, 'player.wxml 舞台分支须按视频→需登录→失败→加载中→暂未配置排列：' + needle)
     from = i + needle.length
   }
+  assert.ok(wxml.includes('登录后观看课程'))
+  assert.ok(wxml.includes('bindtap="onGoLogin"'))
 }
 
 assert.strictEqual(isVttHttpSuccess(200), true)

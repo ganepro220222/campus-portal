@@ -67,11 +67,11 @@ function resolveVideoResumePosition({ currentPosition, initialTime }) {
 }
 
 /**
- * 与 player.wxml 舞台分支同序：先有可播地址就出视频，
- * 再 loadError → videoFailed → loading → 暂未配置。
+ * 与 player.wxml 舞台分支同序：可播视频 → 需登录 → 加载失败 → 播放失败 → 加载中 → 暂未配置。
  */
-function resolvePlayerStage({ loading, loadError, videoFailed, videoUrl }) {
-  if (videoUrl && !loadError && !videoFailed) return 'video'
+function resolvePlayerStage({ loading, loadError, videoFailed, videoUrl, authRequired }) {
+  if (videoUrl && !loadError && !videoFailed && !authRequired) return 'video'
+  if (authRequired) return 'authRequired'
   if (loadError) return 'loadError'
   if (videoFailed) return 'videoFailed'
   if (loading) return 'loading'
@@ -84,7 +84,17 @@ function canFetchCourseAfterAuth({ hasToken, mustChangePassword }) {
 }
 
 function courseAuthBlockedPatch() {
-  return { loading: false, loadError: true }
+  return { loading: false, loadError: false, authRequired: true }
+}
+
+function isCourseAuthError(err) {
+  if (!err || typeof err !== 'object') return false
+  if (err.authExpired === true || err.code === 401) return true
+  return err.code === 403 && err.errorKey === 'MEMBER_PASSWORD_CHANGE_REQUIRED'
+}
+
+function shouldSuppressCourseLoadFailure({ err, hasToken, mustChangePassword }) {
+  return isCourseAuthError(err) || !canFetchCourseAfterAuth({ hasToken, mustChangePassword })
 }
 
 /**
@@ -371,6 +381,8 @@ module.exports = {
   resolvePlayerStage,
   canFetchCourseAfterAuth,
   courseAuthBlockedPatch,
+  isCourseAuthError,
+  shouldSuppressCourseLoadFailure,
   resolveResumeInitialTime,
   coerceVttText,
   withVideoReloadNonce,

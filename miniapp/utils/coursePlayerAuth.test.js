@@ -131,9 +131,10 @@ async function run() {
     page.onLoad({ id: '7' })
     await flushTurns()
     assert.strictEqual(page.data.loading, false, '没 token 不得停在课程加载中')
-    assert.strictEqual(page.data.loadError, true, '没 token 应露出重新加载')
+    assert.strictEqual(page.data.authRequired, true, '没 token 应提示登录后观看')
+    assert.strictEqual(page.data.loadError, false, '没 token 不得写成课程加载失败')
     assert.strictEqual(gets.length, 0, '没 token 不得打课程接口')
-    assert.strictEqual(modals.length, 1)
+    assert.strictEqual(modals.length, 0, '未点去登录不得先弹窗')
     assert.strictEqual(page._authBlocked, true)
   }
 
@@ -141,11 +142,14 @@ async function run() {
     resetAuthState()
     const page = createPage()
     page.onLoad({ id: '7' })
+    page.onGoLogin()
+    assert.strictEqual(modals.length, 1)
     modals[0].success({ confirm: false })
     page.onShow()
     await flushTurns()
     assert.strictEqual(page.data.loading, false)
-    assert.strictEqual(page.data.loadError, true)
+    assert.strictEqual(page.data.authRequired, true)
+    assert.strictEqual(page.data.loadError, false)
     assert.strictEqual(gets.length, 0, '取消登录后 onShow 不得偷偷请求')
     assert.strictEqual(modals.length, 1, '仍未登录时 onShow 不得再弹窗')
     assert.strictEqual(navigates.length, 0)
@@ -155,6 +159,7 @@ async function run() {
     resetAuthState()
     const page = createPage()
     page.onLoad({ id: '7' })
+    page.onGoLogin()
     modals[0].success({ confirm: true })
     assert.ok(navigates.some((url) => String(url).includes('/pages/login/index')))
     assert.strictEqual(gets.length, 0)
@@ -165,6 +170,7 @@ async function run() {
     assert.ok(gets.some((item) => item.url === '/courses/7'))
     assert.strictEqual(page.data.loading, false)
     assert.strictEqual(page.data.loadError, false)
+    assert.strictEqual(page.data.authRequired, false)
     assert.strictEqual(page.data.videoUrl, 'https://cdn.example/c.mp4')
   }
 
@@ -176,7 +182,8 @@ async function run() {
     page.onLoad({ id: '7' })
     await flushTurns()
     assert.strictEqual(page.data.loading, false, '须改密不得停在课程加载中')
-    assert.strictEqual(page.data.loadError, true)
+    assert.strictEqual(page.data.authRequired, true)
+    assert.strictEqual(page.data.loadError, false)
     assert.strictEqual(gets.length, 0)
     assert.ok(relaunches.some((url) => String(url).includes('change-password')))
     delete store.mustChangePassword
@@ -205,9 +212,10 @@ async function run() {
     page.onRetryLoad()
     await flushTurns()
     assert.strictEqual(page.data.loading, false, '未登录点重新加载不得先闪加载中')
-    assert.strictEqual(page.data.loadError, true)
+    assert.strictEqual(page.data.authRequired, true)
+    assert.strictEqual(page.data.loadError, false)
     assert.strictEqual(gets.length, 0)
-    assert.ok(modals.length >= 1)
+    assert.strictEqual(modals.length, 0, '重新加载未登录只回到登录提示，不弹窗')
   }
 
   console.log('[coursePlayerAuth.test] PASS')

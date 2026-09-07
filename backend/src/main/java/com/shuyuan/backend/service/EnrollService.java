@@ -63,9 +63,10 @@ public class EnrollService {
 
         try {
             if (existing != null && ("cancelled".equals(existing.getStatus()) || "rejected".equals(existing.getStatus()))) {
-                // reject_reason 必须走 LambdaUpdateWrapper 才能真正置空：
-                // MyBatis-Plus 的 updateStrategy 默认 NOT_NULL，updateById 会跳过 null 字段，
-                // 否则重新报名后「待审核」旁边还挂着上次的拒绝理由
+                // uk_member_activity 决定了只能复用旧行。create_time 在后台/小程序里就是「报名时间」，
+                // 也是待审核列表的排序键；不刷新的话重新提交会继续按第一次报名沉在后面。
+                // reject_reason / qr_code_url 必须走 wrapper 置空：updateById 默认跳过 null。
+                LocalDateTime submittedAt = LocalDateTime.now();
                 int reused = enrollMapper.update(null, new LambdaUpdateWrapper<Enroll>()
                         .eq(Enroll::getId, existing.getId())
                         .in(Enroll::getStatus, "cancelled", "rejected")
@@ -75,7 +76,9 @@ public class EnrollService {
                         .set(Enroll::getGrade, grade)
                         .set(Enroll::getStatus, status)
                         .set(Enroll::getVoucherCode, voucherCode)
-                        .set(Enroll::getRejectReason, null));
+                        .set(Enroll::getQrCodeUrl, null)
+                        .set(Enroll::getRejectReason, null)
+                        .set(Enroll::getCreateTime, submittedAt));
                 if (reused == 0) {
                     activityMapper.decrEnrolledCount(activityId);
                     throw new BusinessException(409, "您已报名该活动");

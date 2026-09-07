@@ -21,6 +21,8 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsColumn;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.assertSetsNonNullColumn;
+import static com.shuyuan.backend.service.UpdateWrapperAssertions.boundValue;
 import static com.shuyuan.backend.service.UpdateWrapperAssertions.initEntityCache;
 import static com.shuyuan.backend.service.UpdateWrapperAssertions.updateCaptor;
 import static org.junit.jupiter.api.Assertions.*;
@@ -177,6 +179,8 @@ class EnrollServiceTest {
         rejected.setId(21L);
         rejected.setStatus("rejected");
         rejected.setRejectReason("材料不全");
+        rejected.setCreateTime(LocalDateTime.of(2026, 9, 1, 8, 0));
+        rejected.setQrCodeUrl("https://cdn.yunmanvr.com/qr/old.png");
 
         when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
         when(enrollMapper.selectOne(any())).thenReturn(rejected);
@@ -191,11 +195,45 @@ class EnrollServiceTest {
         verify(enrollMapper).update(isNull(), cap.capture());
         // 不清的话，后台报名列表里「待审核」旁边会一直挂着上次的拒绝理由
         assertSetsColumn(cap.getValue(), "reject_reason", null);
+        assertSetsColumn(cap.getValue(), "qr_code_url", null);
         assertSetsColumn(cap.getValue(), "status", "approved");
+        assertSetsNonNullColumn(cap.getValue(), "voucher_code");
+        LocalDateTime submittedAt = (LocalDateTime) boundValue(cap.getValue(), "create_time");
+        assertTrue(submittedAt.isAfter(rejected.getCreateTime()), "复用旧行后报名时间必须晚于首次提交");
         String where = cap.getValue().getSqlSegment();
         assertTrue(where.contains("status"), where);
         assertTrue(cap.getValue().getParamNameValuePairs().containsValue("cancelled"));
         assertTrue(cap.getValue().getParamNameValuePairs().containsValue("rejected"));
+    }
+
+    @Test
+    void 取消后重新报名也刷新报名时间() {
+        Activity activity = publishedActivity(10, 3);
+        activity.setNeedReview(1);
+        Enroll cancelled = new Enroll();
+        cancelled.setId(22L);
+        cancelled.setStatus("cancelled");
+        cancelled.setCreateTime(LocalDateTime.of(2026, 9, 1, 8, 0));
+        cancelled.setQrCodeUrl("https://cdn.yunmanvr.com/qr/old.png");
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(cancelled);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
+        when(enrollMapper.selectById(22L)).thenReturn(cancelled);
+        when(activityMapper.incrEnrolledCount(ACTIVITY_ID)).thenReturn(1);
+        when(enrollMapper.update(isNull(), any())).thenReturn(1);
+
+        LocalDateTime before = LocalDateTime.now().minusSeconds(1);
+        enrollService.enroll(ACTIVITY_ID, enrollRequest());
+
+        ArgumentCaptor<LambdaUpdateWrapper<Enroll>> cap = updateCaptor();
+        verify(enrollMapper).update(isNull(), cap.capture());
+        assertSetsColumn(cap.getValue(), "status", "pending");
+        assertSetsColumn(cap.getValue(), "qr_code_url", null);
+        assertSetsColumn(cap.getValue(), "reject_reason", null);
+        LocalDateTime submittedAt = (LocalDateTime) boundValue(cap.getValue(), "create_time");
+        assertTrue(submittedAt.isAfter(cancelled.getCreateTime()), "复用旧行后报名时间必须晚于首次提交");
+        assertFalse(submittedAt.isBefore(before));
     }
 
     @Test

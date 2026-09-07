@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sync partner-facing local folders from exhibits/ (not committed to Git).
 
-  编辑器模块/   ← exhibits minus 模型转换 & dev-only paths (local 3D editor)
+  编辑器模块/   ← exhibits minus 模型转换、样片 craft-001、共享背景 & dev-only
   模型转换模块/ ← exhibits/模型转换 only (OBJ→GLB)
 
 Run from repo root:
@@ -35,6 +35,8 @@ _spec.loader.exec_module(_pack)
 
 EDITOR_EXTRA_EXCLUDE_PREFIXES = (
     '模型转换/',
+    'craft-001/',
+    '共享背景/',
     'deploy-test-server/',
     'player.deploy.html',
 )
@@ -108,9 +110,13 @@ def write_editor_readme() -> None:
   1. 双击「安装便携环境.bat」（需联网，约 12MB）
   2. 双击「打开工作台.bat」→ http://127.0.0.1:8888/studio.html
 
+【展品】
+  本包不含样片 craft-001 与共享背景（仍留在仓库 exhibits/ 供本机测试）。
+  工作台点「＋ 新建展品」，或自备 craft-XXX/ 放到与 player.html 同级。
+
 【上传】
   服务器 FileBrowser：http://47.109.0.192/fm/
-  上传整个 craft-XXX/ 文件夹（与 craft-001 同级）
+  上传整个 craft-XXX/ 文件夹（与 player.html 同级）
 
 【不含】模型转换器 → 请使用同级的「模型转换模块」文件夹。
 

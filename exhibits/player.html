@@ -429,7 +429,7 @@ import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, E
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
 import { classifyIosBlackLook, webglContextRestorePlan, readImageSize, constrainedDecodeTarget, applySharedMapDownscale, copyTextureSampling } from './shading-risk.mjs'
-import { audioChromeState, shouldReloadAudioSrc, nextAudioIndexAfterDelete, nextAudioId, auditAudioIds, audioConfigIssues, audioDeleteImpact, unbindHotspotsFromAudio, playableAudioTracks, normalizeAudioId, audioSrcEditPlan } from './player-audio.mjs'
+import { audioChromeState, shouldReloadAudioSrc, nextAudioId, auditAudioIds, audioConfigIssues, audioDeleteImpact, unbindHotspotsFromAudio, playableAudioTracks, normalizeAudioId, audioSrcEditPlan, audioDeletePlaybackPlan } from './player-audio.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -1945,11 +1945,11 @@ function rebuildAudioSelect(){
     sel.setAttribute('hidden',''); name.removeAttribute('hidden'); name.textContent = auTracks[0].label || '语音讲解'
   }
 }
-function buildAudio({ deletedIndex, preservePlayback = false } = {}){
+function buildAudio({ deletedId, preservePlayback = false } = {}){
   const prevIndex = auIndex
   const prevId = prevIndex >= 0 ? normalizeAudioId(auTracks[prevIndex]?.id) : ''
   const prevLoaded = auLoadedSrc
-  const del = Number.isFinite(Number(deletedIndex)) ? Math.floor(Number(deletedIndex)) : null
+  const prevTracks = auTracks
   auTracks = playableAudioTracks(cfg.audio)
   const wrap = $('audio')
   if (!auTracks.length){ resetAudioPlayer(); return }
@@ -1957,8 +1957,15 @@ function buildAudio({ deletedIndex, preservePlayback = false } = {}){
   wrap.removeAttribute('hidden')
   rebuildAudioSelect()
   let next
-  if (del != null) {
-    next = nextAudioIndexAfterDelete(prevIndex, del, auTracks.length)
+  let plannedGone = null
+  if (deletedId !== undefined) {
+    const plan = audioDeletePlaybackPlan({
+      currentId: prevId,
+      removedId: deletedId,
+      playableBefore: prevTracks,
+    })
+    next = plan.index
+    plannedGone = plan.currentGone
   } else if (preservePlayback && prevId) {
     const byId = auTracks.findIndex(a => normalizeAudioId(a.id) === prevId)
     next = byId >= 0 ? byId : 0
@@ -1968,7 +1975,7 @@ function buildAudio({ deletedIndex, preservePlayback = false } = {}){
     next = 0
   }
   const nextId = next >= 0 ? normalizeAudioId(auTracks[next]?.id) : ''
-  const currentGone = (del != null && del === prevIndex) || (prevId && nextId !== prevId)
+  const currentGone = plannedGone != null ? plannedGone : !!(prevId && nextId !== prevId)
   const srcChanged = !currentGone && next >= 0 && String(auTracks[next].src || '') !== String(prevLoaded || '')
   if (preservePlayback && !currentGone && !srcChanged && next >= 0) {
     auIndex = next
@@ -3436,7 +3443,8 @@ function syncShadowHint(){
     unbindHotspotsFromAudio(cfg.hotspots, removedId)
     cfg.audio.splice(i,1)
     renderEditor()
-    buildAudio({ deletedIndex: i, preservePlayback: true })
+    // 按音轨 ID 对齐，不把 cfg.audio 下标当成 auTracks 下标
+    buildAudio({ deletedId: removedId, preservePlayback: true })
   })
   // 热点位置数字微调
   ;['px','py','pz'].forEach((ax,ai)=>$('editor').querySelectorAll(`[data-hs-${ax}]`).forEach(inp=>inp.oninput=()=>{

@@ -88,6 +88,7 @@ export function audioSrcEditPlan({ currentId, loadedSrc, changedId, playable } =
 /**
  * 删除一条音轨后应落到的 index。列表已空返回 -1。
  * 删的是当前正在播的那条时，落到剩余列表的第一条（不自动续播）。
+ * 两个下标都必须是同一套可播列表（auTracks），不能拿 cfg.audio 下标进来。
  */
 export function nextAudioIndexAfterDelete(prevIndex, deletedIndex, remainingCount) {
   const remain = Math.max(0, Math.floor(Number(remainingCount) || 0))
@@ -99,6 +100,31 @@ export function nextAudioIndexAfterDelete(prevIndex, deletedIndex, remainingCoun
   if (del === prev) return 0
   if (del < prev) return Math.min(prev - 1, remain - 1)
   return Math.min(prev, remain - 1)
+}
+
+/**
+ * 编辑器删掉一条配置音轨后，预览播放器该落到哪。
+ * 用音轨 ID 对齐，不假设 cfg.audio index === auTracks index。
+ * 删的若本来就不可播（无 src），不碰当前试听。
+ */
+export function audioDeletePlaybackPlan({ currentId, removedId, playableBefore } = {}) {
+  const prev = Array.isArray(playableBefore) ? playableBefore : []
+  const cur = normalizeAudioId(currentId)
+  const removed = normalizeAudioId(removedId)
+  const prevIndex = cur ? prev.findIndex(a => normalizeAudioId(a?.id) === cur) : -1
+  const deletedIndex = removed ? prev.findIndex(a => normalizeAudioId(a?.id) === removed) : -1
+  const after = deletedIndex >= 0 ? prev.filter((_, i) => i !== deletedIndex) : prev.slice()
+  if (!after.length) return { index: -1, currentGone: true }
+  if (deletedIndex < 0) {
+    const byId = cur ? after.findIndex(a => normalizeAudioId(a?.id) === cur) : -1
+    return { index: byId >= 0 ? byId : 0, currentGone: false }
+  }
+  const index = nextAudioIndexAfterDelete(prevIndex, deletedIndex, after.length)
+  const nextId = index >= 0 ? normalizeAudioId(after[index]?.id) : ''
+  return {
+    index,
+    currentGone: deletedIndex === prevIndex || (!!cur && nextId !== cur),
+  }
 }
 
 export function normalizeAudioId(id) {

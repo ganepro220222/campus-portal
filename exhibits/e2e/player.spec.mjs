@@ -1379,6 +1379,36 @@ test.describe('语音播放器 折叠', () => {
     expect(snap.playing).toBe(false)
   })
 
+  test('删除无地址占位音轨时不停正在试听的轨', async () => {
+    const audio = [
+      { id: 'a1', src: 'assets/audio.mp3', label: '讲解 1' },
+      { id: 'a2', src: 'assets/audio-b.mp3', label: '讲解 2' },
+      { id: 'a3', src: '', label: '占位' },
+      { id: 'a4', src: 'assets/audio.mp3', label: '讲解 4' },
+    ]
+    await reloadPlayer(page, withAudio({ audio, viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false } }))
+    await page.waitForSelector('#audio:not([hidden])')
+    await stubAudioNetwork(page)
+    await page.locator('#au-sel').selectOption('2')
+    await expect(page.locator('#au-sel')).toHaveValue('2')
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+    const before = await page.evaluate(() => window.__SY_TEST__.audioLoadedSrc())
+    await openEditorSection(page, '语音讲解')
+    await page.locator('[data-au-del="2"]').click()
+    const snap = await page.evaluate(() => ({
+      index: window.__SY_TEST__.audioIndex(),
+      ids: window.__SY_TEST__.audioEditorSnapshot().ids,
+      loaded: window.__SY_TEST__.audioLoadedSrc(),
+      playing: document.getElementById('audio').classList.contains('playing'),
+    }))
+    expect(snap.ids).toEqual(['a1', 'a2', 'a4'])
+    expect(snap.index).toBe(2)
+    expect(snap.loaded).toBe(before)
+    expect(snap.playing).toBe(true)
+    await expect(page.locator('#au-sel')).toHaveValue('2')
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+  })
+
   test('删除被热点绑定的语音会确认并清掉引用', async () => {
     const hs = [{ id: 'h1', position: [0, 0.2, 0.6], audio: 'a1', i18n: { zh: { title: '甲', body: '乙' } } }]
     await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false }, hotspots: hs }))

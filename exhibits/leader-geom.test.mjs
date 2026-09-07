@@ -624,8 +624,8 @@ test('viewer output omits editor hotspot boot diagnostics', () => {
   assert.equal(sem.ok, true, sem.reason || 'viewer semantics failed')
   assert.match(view, /import \{ ensureHotspotIds \} from '\.\/hotspot-id\.mjs'/)
   assert.match(view, /ensureHotspotIds\(cfg\.hotspots \|\| \[\]\)/)
-  assert.match(view, /import \{ audioChromeState, shouldReloadAudioSrc, nextAudioIndexAfterDelete, playableAudioTracks, normalizeAudioId \} from '\.\/player-audio\.mjs'/)
-  assert.doesNotMatch(view, /nextAudioId|unbindHotspotsFromAudio|audioDeleteImpact|audioConfigIssues|audioSrcEditPlan/)
+  assert.match(view, /import \{ audioChromeState, shouldReloadAudioSrc, playableAudioTracks, normalizeAudioId, audioDeletePlaybackPlan \} from '\.\/player-audio\.mjs'/)
+  assert.doesNotMatch(view, /nextAudioId|unbindHotspotsFromAudio|audioDeleteImpact|audioConfigIssues|audioSrcEditPlan|nextAudioIndexAfterDelete/)
 })
 
 test('production viewer is bundled without import map', () => {

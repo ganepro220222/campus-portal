@@ -12,6 +12,7 @@ import {
   audioConfigIssues,
   playableAudioTracks,
   audioSrcEditPlan,
+  audioDeletePlaybackPlan,
 } from './player-audio.mjs'
 
 let pass = 0
@@ -179,6 +180,51 @@ test('cfg 与播放器 index 不一致时仍按 ID 对齐', () => {
   })
   assert.equal(plan.action, 'keep')
   assert.equal(plan.index, 1)
+})
+
+test('删除无 src 占位轨时按 ID 停在当前试听，不把 cfg 下标当 auTracks 下标', () => {
+  const playableBefore = [
+    { id: 'a1', src: 'a1.mp3' },
+    { id: 'a2', src: 'a2.mp3' },
+    { id: 'a4', src: 'a4.mp3' },
+  ]
+  const stay = audioDeletePlaybackPlan({
+    currentId: 'a4',
+    removedId: 'a3',
+    playableBefore,
+  })
+  assert.equal(stay.index, 2)
+  assert.equal(stay.currentGone, false)
+  // 旧调用方把 data-au-del=2（cfg.audio）塞进 nextAudioIndexAfterDelete(2, 2, 3) 会误落到 0
+  assert.equal(nextAudioIndexAfterDelete(2, 2, 3), 0)
+})
+
+test('删除当前可播轨后落到剩余第一条并标记 currentGone', () => {
+  const plan = audioDeletePlaybackPlan({
+    currentId: 'a4',
+    removedId: 'a4',
+    playableBefore: [
+      { id: 'a1', src: 'a1.mp3' },
+      { id: 'a2', src: 'a2.mp3' },
+      { id: 'a4', src: 'a4.mp3' },
+    ],
+  })
+  assert.equal(plan.index, 0)
+  assert.equal(plan.currentGone, true)
+})
+
+test('删除更靠前的可播轨时当前轨前移且不停播', () => {
+  const plan = audioDeletePlaybackPlan({
+    currentId: 'a4',
+    removedId: 'a1',
+    playableBefore: [
+      { id: 'a1', src: 'a1.mp3' },
+      { id: 'a2', src: 'a2.mp3' },
+      { id: 'a4', src: 'a4.mp3' },
+    ],
+  })
+  assert.equal(plan.index, 1)
+  assert.equal(plan.currentGone, false)
 })
 
 test('孤儿热点引用与重复 id 阻断保存', () => {

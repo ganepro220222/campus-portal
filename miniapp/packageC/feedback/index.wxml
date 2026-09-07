@@ -81,8 +81,8 @@
   </scroll-view>
 
   <view class="fb-bar">
-    <button class="fb-submit {{submitting ? 'ing' : ''}}" bindtap="onSubmit" disabled="{{submitting}}">
-      {{submitting ? '提交中…' : '提交反馈'}}
+    <button class="fb-submit {{submitting || submitted ? 'ing' : ''}}" bindtap="onSubmit" disabled="{{submitting || submitted}}">
+      {{submitted ? '已提交' : (submitting ? '提交中…' : '提交反馈')}}
     </button>
   </view>
 </view>

@@ -37,6 +37,7 @@ Page({
     progressPercent: 0,
     completed: false,
     playing: false,
+    loading: true,
     loadError: false,
     videoFailed: false,
     progressLoadError: false,
@@ -49,7 +50,10 @@ Page({
 
   onLoad(opts) {
     const id = opts && opts.id
-    if (!id) return
+    if (!id) {
+      this.setData({ loading: false, loadError: true })
+      return
+    }
     this._courseId = id
     this._lastReportSec = 0
     this._vttCues = []
@@ -75,6 +79,7 @@ Page({
     this._progressResumeFromReport = false
     this._completionNotified = false
     this.setData({
+      loading: true,
       loadError: false,
       videoFailed: false,
       videoUrl: '',
@@ -180,6 +185,7 @@ Page({
   _loadCourse() {
     const id = this._courseId
     if (!id) return
+    this.setData({ loading: true, loadError: false })
     requireLogin(() => {
       Promise.all([
         get(`/courses/${id}`),
@@ -187,7 +193,7 @@ Page({
         settlePromise(get(`/courses/${id}/progress`, {}, { silent: true }))
       ]).then(([course, play, progressSettled]) => {
         if (!course) {
-          this.setData({ loadError: true })
+          this.setData({ loading: false, loadError: true })
           return
         }
         const progressFailed = !progressSettled.ok
@@ -203,6 +209,7 @@ Page({
           cover: course.cover || '',
           hasSubtitle: !!media.hasSubtitle && !!media.subtitleUrl,
           subtitleUrl: media.subtitleUrl || '',
+          loading: false,
           loadError: false,
           videoFailed: false,
           ...progressView
@@ -212,7 +219,7 @@ Page({
         }
       }).catch(err => {
         console.warn('[course/player] 加载失败', err)
-        this.setData({ loadError: true })
+        this.setData({ loading: false, loadError: true })
         wx.showToast({ title: '课程加载失败', icon: 'none' })
       })
     })

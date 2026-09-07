@@ -9,7 +9,7 @@
  * 但后端返回的标签一度是「新闻」——SearchService.typeLabel() 把它发给小程序搜索结果页，
  * 也就是审核员会点开的那一页。本地跑 mock 永远看不到，因为 mock 里写的是「动态」。
  *
- * check-ui-copy.js 只扫 .vue 的 template 和 .wxml，够不到 Java 字符串，所以单独加这一条。
+ * check-ui-copy.js 扫 .vue 模板、.wxml 和 JS 弹窗串，够不到 Java 字符串，所以单独加这一条。
  *
  * 扫描范围：Java 字符串字面量、admin 的 .vue/.ts、miniapp 的 .js/.wxml/.json。
  * 注释一律剔除——注释里写「为什么不叫新闻」正是应该的。

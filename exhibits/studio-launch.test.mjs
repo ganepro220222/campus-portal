@@ -363,6 +363,17 @@ test('README requires STUDIO_BIND when STUDIO_PASS is set', () => {
   }
 })
 
+test('identity is anonymous behind reverse proxy; non-loopback must auth (401)', () => {
+  const node = fs.readFileSync(path.join(ROOT, '_server', 'studio-server.mjs'), 'utf8')
+  assert.match(node, /isLoopbackRemoteAddress/)
+  assert.match(node, /isLocalhost\(req\) \|\| authed\(req, res\)/)
+  assert.match(node, /对公网匿名公开/)
+  for (const rel of ['README.md', path.join('_server', 'README.md')]) {
+    const md = fs.readFileSync(path.join(ROOT, rel), 'utf8')
+    assert.match(md, /反代后该接口匿名公开/, `${rel} must say identity is anonymous behind the proxy`)
+  }
+})
+
 test('stop.bat reads studio-port.txt and fails if still listening', () => {
   const bat = fs.readFileSync(path.join(LAUNCH, 'stop.bat'), 'utf8')
   assert.match(bat, /studio-port\.txt/)

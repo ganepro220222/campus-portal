@@ -13,8 +13,12 @@ const {
 } = require('../../utils/feedbackImages')
 const {
   canAccessFeedback,
+  isFeedbackSubmitLocked,
+  shouldNavigateBackAfterSubmit,
   resolveUploadErrorMessage
 } = require('../../utils/feedbackPage')
+
+const FEEDBACK_ROUTE = 'packageC/feedback/index'
 
 const TYPES = ['功能建议', '内容纠错', '使用问题', '其他']
 
@@ -26,17 +30,30 @@ Page({
     contact: '',
     images: [],
     submitting: false,
+    submitted: false,
     maxImages: MAX_IMAGES
   },
 
   onLoad() {
     if (!canAccessFeedback(!!getToken())) {
       wx.showToast({ title: '请先登录', icon: 'none' })
-      setTimeout(() => {
+      this._loginLeaveTimer = setTimeout(() => {
+        this._loginLeaveTimer = null
         wx.navigateBack({
           fail: () => wx.navigateTo({ url: '/pages/login/index' })
         })
       }, 400)
+    }
+  },
+
+  onUnload() {
+    if (this._loginLeaveTimer) {
+      clearTimeout(this._loginLeaveTimer)
+      this._loginLeaveTimer = null
+    }
+    if (this._submitLeaveTimer) {
+      clearTimeout(this._submitLeaveTimer)
+      this._submitLeaveTimer = null
     }
   },
 
@@ -134,8 +151,8 @@ Page({
       setTimeout(() => wx.navigateTo({ url: '/pages/login/index' }), 400)
       return
     }
-    const { content, types, typeIndex, contact, submitting, images } = this.data
-    if (submitting) return
+    const { content, types, typeIndex, contact, submitting, submitted, images } = this.data
+    if (isFeedbackSubmitLocked({ submitting, submitted })) return
     if (!content.trim()) return wx.showToast({ title: '请填写反馈内容', icon: 'none' })
     const gate = gateFeedbackSubmit(images)
     if (gate.kind === 'wait') {
@@ -156,6 +173,7 @@ Page({
             return
           }
           const omitted = again.kind === 'failed' ? again.failedCount : 0
+          if (isFeedbackSubmitLocked(this.data)) return
           this._postFeedback(types[typeIndex], content, contact, buildSubmitImagesOmittingFailed(latest), omitted)
         }
       })
@@ -165,7 +183,7 @@ Page({
   },
 
   _postFeedback(type, content, contact, imageUrls, omittedCount) {
-    if (this.data.submitting) return
+    if (isFeedbackSubmitLocked(this.data)) return
     const payload = {
       type,
       content: content.trim(),
@@ -174,11 +192,15 @@ Page({
     if (imageUrls.length) payload.images = imageUrls
     this.setData({ submitting: true })
     post('/feedback', payload).then(() => {
-      this.setData({ submitting: false })
+      this.setData({ submitting: false, submitted: true })
       const toast = resolveFeedbackSubmitToast(omittedCount)
       wx.showToast(toast)
       const wait = toast.duration || 1200
-      setTimeout(() => wx.navigateBack(), wait)
+      this._submitLeaveTimer = setTimeout(() => {
+        this._submitLeaveTimer = null
+        if (!shouldNavigateBackAfterSubmit(getCurrentPages(), FEEDBACK_ROUTE)) return
+        wx.navigateBack()
+      }, wait)
     }).catch(() => {
       this.setData({ submitting: false })
     })

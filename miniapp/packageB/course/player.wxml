@@ -32,6 +32,10 @@
       <text>视频播放失败</text>
       <view class="player-retry" bindtap="onRetryVideo">重新加载</view>
     </view>
+    <view wx:elif="{{loading}}" class="video-empty">
+      <text class="video-empty-ic">▶</text>
+      <text>课程加载中…</text>
+    </view>
     <view wx:else class="video-empty">
       <text class="video-empty-ic">▶</text>
       <text>课程视频暂未配置</text>

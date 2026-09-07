@@ -25,7 +25,7 @@ import {
   shouldAutoFitCamera,
   DEFAULT_PORTRAIT_FILL,
 } from './player-persist.mjs'
-import { computeRootHash, normalizeRootPath, getIdentityPayload } from './_server/studio-identity.mjs'
+import { computeRootHash, normalizeRootPath, getIdentityPayload, identityAllowsAnonymous, isLoopbackRemoteAddress } from './_server/studio-identity.mjs'
 
 function sphericalFromThree(cameraPos, pivot) {
   const s = new THREE.Spherical().setFromVector3(
@@ -216,6 +216,15 @@ test('copied .studio-instance-id does not collide rootHash', () => {
     fs.rmSync(a, { recursive: true, force: true })
     fs.rmSync(b, { recursive: true, force: true })
   }
+})
+
+test('identity is anonymous only on loopback; non-loopback must authenticate', () => {
+  assert.equal(isLoopbackRemoteAddress('127.0.0.1'), true)
+  assert.equal(isLoopbackRemoteAddress('::1'), true)
+  assert.equal(isLoopbackRemoteAddress('::ffff:127.0.0.1'), true)
+  assert.equal(identityAllowsAnonymous('127.0.0.1'), true)
+  assert.equal(identityAllowsAnonymous('203.0.113.10'), false)
+  assert.equal(identityAllowsAnonymous('10.0.0.2'), false)
 })
 
 test('normalizeRootPath strips trailing separators consistently', () => {

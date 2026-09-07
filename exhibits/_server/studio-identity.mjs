@@ -20,3 +20,16 @@ export function getIdentityPayload(root) {
   const rootHash = computeRootHash(root)
   return { rootHash, instanceId: rootHash }
 }
+
+export function isLoopbackRemoteAddress(addr) {
+  const a = String(addr || '')
+  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1'
+}
+
+/**
+ * identity 仅回环免鉴权。Nginx 反代到 127.0.0.1 时对端恒为回环，
+ * 该接口会对公网匿名公开（只回 rootHash）。非回环直连必须走 Basic Auth。
+ */
+export function identityAllowsAnonymous(remoteAddress) {
+  return isLoopbackRemoteAddress(remoteAddress)
+}

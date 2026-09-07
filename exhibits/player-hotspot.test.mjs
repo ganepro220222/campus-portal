@@ -6,6 +6,8 @@ const bundle = fs.readFileSync(new URL('./player.bundle.js', import.meta.url), '
 assert.match(html, /function hotspotPos\(/)
 assert.match(html, /Array\.isArray\(p\)/)
 assert.match(html, /failPlayer\('展品配置无法解析，请检查热点数据后重试', true\)/)
+assert.match(html, /webglcontextlost/)
+assert.match(html, /showError\('画面显示中断，请点击重试', true\)/)
 assert.match(bundle, /invalid hotspot position/, 'player.bundle.js missing hotspot guard — run node build-viewer.mjs')
 const failEscaped = [...'展品配置无法解析'].map((c) => '\\u' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')).join('')
 assert.ok(bundle.includes(failEscaped), 'player.bundle.js missing failPlayer copy — run node build-viewer.mjs')

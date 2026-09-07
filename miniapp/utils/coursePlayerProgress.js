@@ -60,10 +60,19 @@ function getCoursePlayerPlatform(wxApi) {
   return ''
 }
 
-/** 刷新视频 URL 后应恢复的播放位置 */
+/** 刷新视频 URL 后应恢复的播放位置。0 是用户拖回片头后的真实位置，不能当「没有」。 */
 function resolveVideoResumePosition({ currentPosition, initialTime }) {
-  if (currentPosition != null && currentPosition > 0) return currentPosition
+  if (currentPosition != null && Number(currentPosition) >= 0) return Number(currentPosition)
   return initialTime || 0
+}
+
+/** 播放器舞台四态：加载中不得落到「暂未配置」。 */
+function resolvePlayerStage({ loading, loadError, videoFailed, videoUrl }) {
+  if (loadError) return 'loadError'
+  if (videoFailed) return 'videoFailed'
+  if (loading) return 'loading'
+  if (videoUrl) return 'video'
+  return 'empty'
 }
 
 /**
@@ -332,6 +341,7 @@ module.exports = {
   normalizeSeekCompletePosition,
   getCoursePlayerPlatform,
   resolveVideoResumePosition,
+  resolvePlayerStage,
   resolveResumeInitialTime,
   coerceVttText,
   withVideoReloadNonce,

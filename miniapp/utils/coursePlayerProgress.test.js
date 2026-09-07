@@ -7,6 +7,7 @@ const {
   normalizeSeekCompletePosition,
   getCoursePlayerPlatform,
   resolveVideoResumePosition,
+  resolvePlayerStage,
   resolveResumeInitialTime,
   coerceVttText,
   withVideoReloadNonce,
@@ -287,8 +288,15 @@ assert.strictEqual(shouldAutoSeekOnProgressRetry({ interacted: false, currentPos
 }
 
 assert.strictEqual(resolveVideoResumePosition({ currentPosition: 1080, initialTime: 480 }), 1080)
-assert.strictEqual(resolveVideoResumePosition({ currentPosition: 0, initialTime: 480 }), 480)
+assert.strictEqual(resolveVideoResumePosition({ currentPosition: 0, initialTime: 480 }), 0)
+assert.strictEqual(resolveVideoResumePosition({ currentPosition: null, initialTime: 480 }), 480)
 assert.strictEqual(resolveVideoResumePosition({ currentPosition: null, initialTime: 0 }), 0)
+
+assert.strictEqual(resolvePlayerStage({ loading: true, videoUrl: '' }), 'loading')
+assert.strictEqual(resolvePlayerStage({ loading: false, videoUrl: '' }), 'empty')
+assert.strictEqual(resolvePlayerStage({ loadError: true, loading: true, videoUrl: '' }), 'loadError')
+assert.strictEqual(resolvePlayerStage({ videoFailed: true, loading: false, videoUrl: 'https://x' }), 'videoFailed')
+assert.strictEqual(resolvePlayerStage({ loading: false, videoUrl: 'https://x' }), 'video')
 
 assert.strictEqual(isVttHttpSuccess(200), true)
 assert.strictEqual(isVttHttpSuccess(403), false)

@@ -16,6 +16,7 @@
  * 扫描范围：只看**会渲染出来的文字**
  *   - admin/src 下 .vue 的 <template> 文本节点，以及 label / placeholder / title 等属性
  *   - miniapp 下 .wxml 的文本节点与 placeholder
+ *   - miniapp 下 .js 的 showModal / showToast / showActionSheet 文案（先剥注释，排除 *.test.js）
  *   注释一律先剔除（注释里写「生产环境不得……」是应该的）。
  *
  * 用法：node scripts/check-ui-copy.js
@@ -72,11 +73,111 @@ function templateOf(src) {
   return m ? m[1] : src
 }
 
-/** 抹掉注释（保留换行，行号才对得上） */
+/** 抹掉注释（保留换行与偏移，行号才对得上） */
 function stripComments(src) {
   return src
     .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '))
     .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+}
+
+/** JS 注释：双斜杠与块注释。字符串内的斜杠不剥。长度与换行保持，方便对回原文件行号。 */
+function stripJsComments(src) {
+  let out = ''
+  let i = 0
+  const n = src.length
+  while (i < n) {
+    const c = src[i]
+    const next = src[i + 1]
+    if (c === '"' || c === "'" || c === '`') {
+      const q = c
+      out += c
+      i += 1
+      while (i < n) {
+        const ch = src[i]
+        out += ch
+        if (ch === '\\') {
+          out += src[i + 1] || ''
+          i += 2
+          continue
+        }
+        i += 1
+        if (ch === q) break
+      }
+      continue
+    }
+    if (c === '/' && next === '/') {
+      while (i < n && src[i] !== '\n') {
+        out += ' '
+        i += 1
+      }
+      continue
+    }
+    if (c === '/' && next === '*') {
+      out += '  '
+      i += 2
+      while (i < n) {
+        if (src[i] === '*' && src[i + 1] === '/') {
+          out += '  '
+          i += 2
+          break
+        }
+        out += src[i] === '\n' ? '\n' : ' '
+        i += 1
+      }
+      continue
+    }
+    out += c
+    i += 1
+  }
+  return out
+}
+
+function extractBalancedObject(s, openIdx) {
+  let depth = 0
+  let i = openIdx
+  let quote = null
+  while (i < s.length) {
+    const c = s[i]
+    if (quote) {
+      if (c === '\\') {
+        i += 2
+        continue
+      }
+      if (c === quote) quote = null
+      i += 1
+      continue
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      quote = c
+      i += 1
+      continue
+    }
+    if (c === '{') depth += 1
+    else if (c === '}') {
+      depth -= 1
+      if (depth === 0) return s.slice(openIdx, i + 1)
+    }
+    i += 1
+  }
+  return s.slice(openIdx)
+}
+
+function dialogChunksFromJs(src) {
+  const s = stripJsComments(src)
+  const out = []
+  const callRe = /\b(?:wx\.)?(?:showModal|showToast|showActionSheet)\s*\(\s*\{/g
+  let m
+  while ((m = callRe.exec(s))) {
+    const objStart = s.indexOf('{', m.index)
+    if (objStart < 0) continue
+    const obj = extractBalancedObject(s, objStart)
+    const keyRe = /\b(?:title|content|confirmText|cancelText)\s*:\s*(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g
+    let km
+    while ((km = keyRe.exec(obj))) {
+      out.push({ at: objStart + km.index, text: km[2].replace(/\\n/g, ' ') })
+    }
+  }
+  return out
 }
 
 /** 会渲染出来的片段：标签之外的文本 + 若干文案类属性的值 */
@@ -118,17 +219,59 @@ function scan(file, extract) {
   return errs
 }
 
-function main() {
-  const errs = [
+function shouldScanMiniappJs(file) {
+  const name = path.basename(file)
+  if (name.endsWith('.test.js')) return false
+  const rel = path.relative(root, file).split(path.sep).join('/')
+  if (rel.includes('/mock/')) return false
+  return true
+}
+
+function scanJsDialogs(file) {
+  const raw = fs.readFileSync(file, 'utf8')
+  const rel = path.relative(root, file)
+  const errs = []
+  for (const chunk of dialogChunksFromJs(raw)) {
+    const text = chunk.text
+    if (!text.trim()) continue
+    if (ALLOW.some((a) => text.includes(a))) continue
+    for (const [word, why] of BANNED) {
+      if (text.includes(word)) {
+        const snippet = text.trim().replace(/\s+/g, ' ').slice(0, 60)
+        errs.push(`${rel}:${lineOf(raw, chunk.at)}  弹窗文案出现「${word}」——${why}\n      → ${snippet}`)
+        break
+      }
+    }
+  }
+  return errs
+}
+
+function collectCopyErrors() {
+  return [
     ...walk(path.join(root, 'admin/src'), ['.vue']).flatMap((f) => scan(f, templateOf)),
-    ...walk(path.join(root, 'miniapp'), ['.wxml']).flatMap((f) => scan(f, (s) => s))
+    ...walk(path.join(root, 'miniapp'), ['.wxml']).flatMap((f) => scan(f, (s) => s)),
+    ...walk(path.join(root, 'miniapp'), ['.js']).filter(shouldScanMiniappJs).flatMap(scanJsDialogs)
   ]
+}
+
+function main() {
+  const errs = collectCopyErrors()
   if (errs.length) {
     console.error('check-ui-copy 发现问题：')
     for (const e of errs) console.error('  ✗ ' + e)
     process.exit(1)
   }
-  console.log('check-ui-copy OK（后台 .vue 模板与小程序 .wxml 未出现内部措辞）')
+  console.log('check-ui-copy OK（后台 .vue 模板、小程序 .wxml 与 JS 弹窗文案未出现内部措辞）')
 }
 
-main()
+if (require.main === module) {
+  main()
+}
+
+module.exports = {
+  stripJsComments,
+  dialogChunksFromJs,
+  shouldScanMiniappJs,
+  collectCopyErrors,
+  main
+}

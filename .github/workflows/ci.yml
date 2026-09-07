@@ -143,6 +143,9 @@ jobs:
       - name: UI copy check
         run: npm run check:ui-copy
 
+      - name: UI copy scanner tests
+        run: npm run test:ui-copy
+
       - name: rpx scaling check
         run: npm run check:rpx-scaling
 

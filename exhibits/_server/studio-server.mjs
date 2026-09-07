@@ -10,7 +10,9 @@
  *   - GET  /studio-api/list        列出所有展品（工作台自动加载，免手维护 manifest）
  *   - GET  /studio-api/identity    返回本目录实例 ID（启动器校验端口归属）
  *   - POST /studio-api/save        写回 <ex>/config.json，写前自动备份上一版到 <ex>/.bak/
- *   - Basic Auth 保护全部（生产务必设 STUDIO_PASS；不设则仅本机可用并告警）
+ *   - Basic Auth 保护写接口与静态资源（生产务必设 STUDIO_PASS；不设则仅本机可用并告警）
+ *   - GET /studio-api/identity 对回环匿名开放（启动器探活）。Nginx 反代到
+ *     127.0.0.1 后对端恒为回环，该接口对公网匿名公开（只回 rootHash）
  *
  * 上线：部署在自有服务器（独立端口或 URL 前缀均可），
  *       可由 Nginx 反代 /studio-api/ 到本服务、静态文件由 Nginx 直接分发；本文件为参考实现。
@@ -19,7 +21,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { computeRootHash, getIdentityPayload } from './studio-identity.mjs'
+import { computeRootHash, getIdentityPayload, isLoopbackRemoteAddress } from './studio-identity.mjs'
 import { createExhibit } from '../exhibit-create.mjs'
 import { assetFingerprint, hasAssetFile, listPanoramaCandidates, checkPanoramaPathAvailability } from '../pano-check.mjs'
 import { exhibitPublicHref } from '../exhibit-asset-cdn.mjs'
@@ -91,8 +93,7 @@ function authed(req, res) {
   return false
 }
 function isLocalhost(req) {
-  const a = req.socket.remoteAddress || ''
-  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1'
+  return isLoopbackRemoteAddress(req.socket && req.socket.remoteAddress)
 }
 const send = (res, code, type, body, extraHeaders = {}) => {
   res.writeHead(code, { 'Content-Type': type, ...extraHeaders })
@@ -184,9 +185,8 @@ const requestHandler = (req, res) => {
   res.on('error', () => {})
   const u = req.url || '/'
   if (u.startsWith('/studio-api/identity')) {
-    if (isLocalhost(req)) return json(res, 200, getIdentityPayload(ROOT))
-    if (!authed(req, res)) return
-    return json(res, 200, getIdentityPayload(ROOT))
+    if (isLocalhost(req) || authed(req, res)) return json(res, 200, getIdentityPayload(ROOT))
+    return
   }
   if (!authed(req, res)) return
   if (u.startsWith('/studio-api/list')) {

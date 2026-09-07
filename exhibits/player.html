@@ -713,6 +713,10 @@ function showError(msg, retry) {
   $('error').removeAttribute('hidden')
 }
 
+function hideError() {
+  $('error').setAttribute('hidden','')
+}
+
 /** 确定性失败：终止 watchdog，避免超时文案覆盖真实错误 */
 function failPlayer(msg, retry = true) {
   window.__SY_PLAYER.failed = true
@@ -867,9 +871,11 @@ function initRenderer() {
     ev.preventDefault()
     webglContextLostOnce = true
     panoDiagEvent('webgl:context-lost', { type: ev.type })
+    showError('画面显示中断，请点击重试', true)
   }, false)
   renderer.domElement.addEventListener('webglcontextrestored', () => {
     panoDiagEvent('webgl:context-restored', {})
+    hideError()
     if (scene && cfg) rebuildEnvironmentAfterContextRestore()
   }, false)
   renderer.toneMapping = THREE.ACESFilmicToneMapping

@@ -4,6 +4,16 @@ function canAccessFeedback(isLoggedIn) {
   return !!isLoggedIn
 }
 
+function isFeedbackSubmitLocked({ submitting, submitted }) {
+  return !!(submitting || submitted)
+}
+
+function shouldNavigateBackAfterSubmit(pages, route) {
+  if (!Array.isArray(pages) || pages.length < 2) return false
+  const top = pages[pages.length - 1]
+  return !!(top && top.route === route)
+}
+
 function resolveUploadErrorMessage(err) {
   if (!err) return '图片上传失败，可点图片重试'
   const code = err.code != null ? Number(err.code) : NaN
@@ -15,5 +25,7 @@ function resolveUploadErrorMessage(err) {
 
 module.exports = {
   canAccessFeedback,
+  isFeedbackSubmitLocked,
+  shouldNavigateBackAfterSubmit,
   resolveUploadErrorMessage
 }

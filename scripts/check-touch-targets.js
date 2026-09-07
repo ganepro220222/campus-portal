@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 高频小操作触控热区检查 —— 钉住 §25/§27 扩到 88rpx（375pt 宽 ≈ 44pt）的三处。
+ * 高频小操作触控热区检查 —— 钉住 §25/§27 扩到 88rpx（375pt 宽 ≈ 44pt）。
  *
  * 只查写死在 wxss 里的盒子/伪元素，不扫全站 bindtap（那类靠人工 review）。
  * 视觉图标尺寸可以不变，热区靠盒子留白或 ::after 外扩。
@@ -78,6 +78,12 @@ function main() {
     }
   }
 
+  const retry = ruleBlock('miniapp/packageB/course/player.wxss', '.player-retry')
+  const retryH = rpx(retry, 'min-height')
+  if (retryH == null || retryH < MIN_RPX) {
+    errs.push(`课程播放器 .player-retry 热区高度 ${retryH}rpx，低于 ${MIN_RPX}rpx（44pt）`)
+  }
+
   const tabBar = fs.readFileSync(path.join(root, 'miniapp/app.json'), 'utf8')
   if (/\"color\"\s*:\s*\"#8A93B2\"/i.test(tabBar)) {
     errs.push('app.json tabBar.color 仍为 #8A93B2，应与 --muted #67708C 同步')
@@ -88,7 +94,7 @@ function main() {
     for (const e of errs) console.error('  ✗ ' + e)
     process.exit(1)
   }
-  console.log(`check-touch-targets OK（密码显隐 / 搜索清空 / 反馈删除均 ≥${MIN_RPX}rpx，tabBar 色已同步）`)
+  console.log(`check-touch-targets OK（密码显隐 / 搜索清空 / 反馈删除 / 播放器重试均 ≥${MIN_RPX}rpx，tabBar 色已同步）`)
 }
 
 main()

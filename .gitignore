@@ -61,6 +61,9 @@ tmp-export-test.xlsx
 docs/开发协作四大原则.md
 *.bundle
 
+# 发给校方的源码副本（由 scripts/sync-client-source.py 生成，不进 Git）
+交付源码/
+
 # 合作伙伴本地交付副本（从 exhibits 同步，不进 Git）
 编辑器模块/
 模型转换模块/

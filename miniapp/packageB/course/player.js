@@ -92,8 +92,12 @@ Page({
   },
 
   onRetryVideo() {
+    if (this._videoReloading) return Promise.resolve(false)
     this._videoRetryCount = 0
-    this._reloadVideoUrl(false)
+    this._videoReloading = true
+    return this._reloadVideoUrl(false).finally(() => {
+      this._videoReloading = false
+    })
   },
 
   onRetryProgress() {
@@ -345,23 +349,23 @@ Page({
   },
 
   onVideoError() {
-    if (this._videoReloading) return
+    if (this._videoReloading) return Promise.resolve(false)
     if (shouldGiveUpVideoReload({ consecutiveRetries: this._videoRetryCount })) {
       this.setData({ videoFailed: true })
       wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
-      return
+      return Promise.resolve(false)
     }
     this._videoRetryCount += 1
     this._videoRecoveryStartPosition = null
     this._videoReloading = true
-    this._reloadVideoUrl(true).finally(() => {
+    return this._reloadVideoUrl(true).finally(() => {
       this._videoReloading = false
     })
   },
 
   async _reloadVideoUrl(silent) {
     try {
-      const play = await get(`/courses/${this._courseId}/play`)
+      const play = await get(`/courses/${this._courseId}/play`, {}, { silent: true })
       if (!play || !play.videoUrl) {
         throw new Error('no-video')
       }
@@ -379,11 +383,11 @@ Page({
       if (!silent) {
         wx.showToast({ title: '已刷新视频地址', icon: 'none' })
       }
+      return true
     } catch (e) {
-      if (!silent) {
-        this.setData({ videoFailed: true })
-      }
+      this.setData({ videoFailed: true })
       wx.showToast({ title: '视频播放失败，请稍后重试', icon: 'none' })
+      return false
     }
   },
 

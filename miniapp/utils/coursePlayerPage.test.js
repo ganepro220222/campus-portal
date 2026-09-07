@@ -3,6 +3,7 @@
  * 运行：node miniapp/utils/coursePlayerPage.test.js
  */
 const assert = require('assert')
+const { resolvePlayerStage } = require('./coursePlayerProgress')
 
 const requestPath = require.resolve('./request')
 const authPath = require.resolve('./auth')
@@ -17,14 +18,17 @@ const posts = []
 const pendingPosts = []
 const toasts = []
 const seeks = []
+const gets = []
+let getHandler = () => Promise.resolve({})
 
 require.cache[requestPath] = {
   id: requestPath,
   filename: requestPath,
   loaded: true,
   exports: {
-    get() {
-      return Promise.resolve({})
+    get(url, data, options) {
+      gets.push({ url, data, options })
+      return getHandler(url, data, options)
     },
     post(url, body) {
       posts.push({ url, body })
@@ -282,6 +286,76 @@ async function run() {
   assert.strictEqual(offerPage.data.offerResumeJump, true, '已经在看时应只提示跳转')
   assert.strictEqual(seeks.length, offerSeeksBefore)
   assert.ok(toasts.includes('已找到上次位置 5:00'))
+
+  function createVideoPage() {
+    const page = createPage({
+      videoUrl: 'https://cdn.example/old.mp4',
+      videoFailed: false,
+      loading: false,
+      loadError: false,
+      playing: true,
+      initialTime: 120
+    })
+    page._videoRetryCount = 0
+    page._videoReloading = false
+    page._videoRecoveryStartPosition = null
+    page._currentPosition = 80
+    page._pendingVideoResume = null
+    return page
+  }
+
+  function videoFailToasts() {
+    return toasts.filter((title) => title && String(title).includes('视频播放失败'))
+  }
+
+  async function assertReloadEntersRetryableError(handler, label) {
+    getHandler = handler
+    const page = createVideoPage()
+    const failBefore = videoFailToasts().length
+    const ok = await page.onVideoError()
+    assert.strictEqual(ok, false, label + ' 应返回失败')
+    assert.strictEqual(page.data.videoFailed, true, label + ' 必须进入 videoFailed')
+    assert.strictEqual(page._videoReloading, false, label + ' 必须释放重载锁')
+    assert.strictEqual(page.data.videoUrl, 'https://cdn.example/old.mp4')
+    assert.strictEqual(resolvePlayerStage(page.data), 'videoFailed', label + ' 舞台应对应重新加载')
+    assert.ok(videoFailToasts().length > failBefore, label + ' 应提示播放失败')
+    const playGet = gets.filter((item) => String(item.url).includes('/courses/7/play')).at(-1)
+    assert.strictEqual(playGet.options && playGet.options.silent, true)
+    return page
+  }
+
+  const rejectedPage = await assertReloadEntersRetryableError(
+    () => Promise.reject(new Error('network')),
+    'play 接口拒绝'
+  )
+  getHandler = () => Promise.resolve({ videoUrl: 'https://cdn.example/new.mp4' })
+  const retried = await rejectedPage.onRetryVideo()
+  assert.strictEqual(retried, true)
+  assert.strictEqual(rejectedPage.data.videoFailed, false)
+  assert.strictEqual(rejectedPage.data.videoUrl, 'https://cdn.example/new.mp4')
+  assert.strictEqual(rejectedPage._videoReloading, false)
+  assert.deepStrictEqual(rejectedPage._pendingVideoResume, { position: 80, playing: true })
+  assert.ok(toasts.includes('已刷新视频地址'))
+
+  await assertReloadEntersRetryableError(() => Promise.resolve({}), 'play 返回空对象')
+  await assertReloadEntersRetryableError(() => Promise.resolve({ videoUrl: '' }), 'play 返回空地址')
+
+  getHandler = () => Promise.resolve({ videoUrl: 'https://cdn.example/recovered.mp4' })
+  const autoOk = createVideoPage()
+  const failBeforeAutoOk = videoFailToasts().length
+  const successBeforeAutoOk = toasts.filter((title) => title === '已刷新视频地址').length
+  const autoOkResult = await autoOk.onVideoError()
+  assert.strictEqual(autoOkResult, true)
+  assert.strictEqual(autoOk.data.videoFailed, false)
+  assert.strictEqual(autoOk.data.videoUrl, 'https://cdn.example/recovered.mp4')
+  assert.strictEqual(videoFailToasts().length, failBeforeAutoOk, '自动刷新成功不得弹失败 toast')
+  assert.strictEqual(
+    toasts.filter((title) => title === '已刷新视频地址').length,
+    successBeforeAutoOk,
+    '自动刷新成功不得弹“已刷新”'
+  )
+
+  getHandler = () => Promise.resolve({})
 
   console.log('[coursePlayerPage.test] PASS')
 }

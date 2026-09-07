@@ -23,6 +23,7 @@ function resetState() {
   Object.keys(store).forEach((key) => delete store[key])
   toasts.length = 0
   relaunches.length = 0
+  require('./auth').clearSessionLogoutLock()
 }
 
 const mockApp = {
@@ -32,11 +33,11 @@ const mockApp = {
     baseUrl: 'https://api.example.edu/api/v1'
   },
   logout() {
-    const { clearToken } = require('./auth')
-    clearToken()
+    const auth = require('./auth')
     this.globalData.token = ''
     this.globalData.userInfo = null
-    wx.reLaunch({ url: '/pages/login/index' })
+    if (!auth.beginSessionLogout()) return
+    wx.reLaunch({ url: auth.LOGIN_PAGE })
   }
 }
 
@@ -128,7 +129,8 @@ async function run() {
     const loginToasts = toasts.filter((title) => title === '登录已过期')
     assert.strictEqual(loginToasts.length, 1, '并行 401 只应提示一次登录已过期')
     assert.ok(!toasts.includes('课程加载失败'), '认证失效不得再盖课程加载失败')
-    assert.ok(relaunches.some((url) => String(url).includes('/pages/login/index')))
+    assert.strictEqual(relaunches.length, 1, '并行 401 只应跳转一次登录页')
+    assert.ok(String(relaunches[0]).includes('/pages/login/index'))
     assert.strictEqual(page.data.loadError, false)
     assert.strictEqual(page.data.authRequired, true)
     assert.strictEqual(page.data.loading, false)

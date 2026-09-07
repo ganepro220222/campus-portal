@@ -43,7 +43,39 @@ function isMustChangePasswordRequired() {
 }
 
 const CHANGE_PASSWORD_PAGE = '/packageC/profile/change-password/index'
+const LOGIN_PAGE = '/pages/login/index'
+const LOGIN_ROUTE = 'pages/login/index'
 let redirectingToChangePassword = false
+let sessionLogoutStarted = false
+
+function currentRoute() {
+  try {
+    if (typeof getCurrentPages !== 'function') return ''
+    const pages = getCurrentPages()
+    const current = pages.length ? pages[pages.length - 1] : null
+    return current ? String(current.route || current.__route__ || '') : ''
+  } catch (e) {
+    return ''
+  }
+}
+
+function isLoginRoute(route) {
+  const normalized = String(route || '').replace(/^\//, '').split('?')[0]
+  return normalized === LOGIN_ROUTE
+}
+
+/** 第一次会话退出返回 true，由调用方跳登录页；之后返回 false。登录成功后再清锁。 */
+function beginSessionLogout() {
+  if (sessionLogoutStarted) return false
+  sessionLogoutStarted = true
+  clearToken()
+  if (isLoginRoute(currentRoute())) return false
+  return true
+}
+
+function clearSessionLogoutLock() {
+  sessionLogoutStarted = false
+}
 
 function redirectToChangePassword() {
   if (redirectingToChangePassword) return
@@ -67,6 +99,7 @@ function applyLoginData(data) {
     setUserInfo(data.member)
     const app = getApp()
     app.globalData.token = data.token
+    clearSessionLogoutLock()
   }
   if (data && data.mustChangePassword) {
     setMustChangePasswordFlag(true)
@@ -171,5 +204,6 @@ module.exports = {
   applyLoginData, handlePostLogin,
   setMustChangePasswordFlag, clearMustChangePasswordFlag,
   isMustChangePasswordRequired, redirectToChangePassword,
-  MUST_CHANGE_PWD_KEY, CHANGE_PASSWORD_PAGE
+  beginSessionLogout, clearSessionLogoutLock, isLoginRoute,
+  MUST_CHANGE_PWD_KEY, CHANGE_PASSWORD_PAGE, LOGIN_PAGE
 }

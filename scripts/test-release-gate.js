@@ -68,6 +68,14 @@ function assertViewerCheckInPreflight() {
     console.error('[test-release-gate] preflight:local 必须包含 check:viewer，否则观看版 bundle 会再次漏提交')
     process.exit(1)
   }
+  if (!pkg.scripts['test:sync-client-source']) {
+    console.error('[test-release-gate] package.json 缺少 test:sync-client-source')
+    process.exit(1)
+  }
+  if (!String(pkg.scripts['preflight:local'] || '').includes('test:sync-client-source')) {
+    console.error('[test-release-gate] preflight:local 必须包含 test:sync-client-source')
+    process.exit(1)
+  }
 }
 
 function assertBackendEnvTemplatesExposeRuntimeControls() {

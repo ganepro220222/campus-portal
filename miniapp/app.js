@@ -1,5 +1,5 @@
 // app.js
-const { getToken, clearToken } = require('./utils/auth')
+const { getToken } = require('./utils/auth')
 const { baseUrl } = require('./config/env')
 
 App({
@@ -28,12 +28,13 @@ App({
     return !!this.globalData.token
   },
 
-  // 退出登录
+  // 退出登录。并行 401 会连打多次，只跳一次登录页。
   logout() {
-    clearToken()
+    const auth = require('./utils/auth')
     this.globalData.token = ''
     this.globalData.userInfo = null
-    wx.reLaunch({ url: '/pages/login/index' })
+    if (!auth.beginSessionLogout()) return
+    wx.reLaunch({ url: auth.LOGIN_PAGE })
   },
 
   // 检查小程序更新

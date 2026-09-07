@@ -182,6 +182,14 @@ jobs:
       - name: Navigate appids sync test
         run: npm run test:sync-navigate-appids
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Client source pack rules
+        run: npm run test:sync-client-source
+
       - name: Release gate regression test
         run: npm run test:release-gate
 

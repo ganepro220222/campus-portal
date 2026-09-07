@@ -1452,6 +1452,110 @@ test.describe('语音播放器 折叠', () => {
     expect(played.issues.errs.some(e => e.includes('语音 id 重复') || e.includes('引用不存在的语音'))).toBe(false)
   })
 
+  test('修改当前音轨 URL 后预览换成新文件且不自动播放', async () => {
+    await reloadPlayer(page, withAudio({
+      audio: [{ id: 'a1', src: 'assets/audio-old.mp3', label: '讲解 1' }],
+      viewport: { width: 1100, height: 800 },
+      ui: { audioCollapsed: false },
+    }))
+    await page.waitForSelector('#audio:not([hidden])')
+    await stubAudioNetwork(page)
+    await page.locator('#au-play').click()
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+    await openEditorSection(page, '语音讲解')
+    await page.locator('[data-au-src="0"]').fill('assets/audio-new.mp3')
+    await page.locator('[data-au-src="0"]').blur()
+    const after = await page.evaluate(() => {
+      const el = document.getElementById('au-el')
+      const wrap = document.getElementById('audio')
+      return {
+        paused: el.paused,
+        stubSrc: el.getAttribute('data-stub-src') || '',
+        playing: wrap.classList.contains('playing'),
+        loaded: window.__SY_TEST__.audioLoadedSrc(),
+        cfgSrc: window.__SY_TEST__.audioEditorSnapshot().srcs[0],
+      }
+    })
+    expect(after.cfgSrc).toBe('assets/audio-new.mp3')
+    expect(after.loaded).toBe('assets/audio-new.mp3')
+    expect(after.stubSrc).toContain('audio-new.mp3')
+    expect(after.paused).toBe(true)
+    expect(after.playing).toBe(false)
+    await expect(page.locator('#au-play')).toHaveText('▶')
+    await page.locator('#au-play').click()
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+    const played = await page.evaluate(() => document.getElementById('au-el').getAttribute('data-stub-src') || '')
+    expect(played).toContain('audio-new.mp3')
+  })
+
+  test('修改非当前音轨 URL 不打断正在预览的音轨', async () => {
+    const audio = [
+      { id: 'a1', src: 'assets/audio.mp3', label: '讲解 1' },
+      { id: 'a2', src: 'assets/audio-b.mp3', label: '讲解 2' },
+    ]
+    await reloadPlayer(page, withAudio({ audio, viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false } }))
+    await page.waitForSelector('#audio:not([hidden])')
+    await stubAudioNetwork(page)
+    await page.locator('#au-play').click()
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+    const before = await page.evaluate(() => window.__SY_TEST__.audioLoadedSrc())
+    await openEditorSection(page, '语音讲解')
+    await page.locator('[data-au-src="1"]').fill('assets/audio-b-new.mp3')
+    await page.locator('[data-au-src="1"]').blur()
+    const mid = await page.evaluate(() => ({
+      loaded: window.__SY_TEST__.audioLoadedSrc(),
+      playing: document.getElementById('audio').classList.contains('playing'),
+      srcs: window.__SY_TEST__.audioEditorSnapshot().srcs,
+    }))
+    expect(mid.loaded).toBe(before)
+    expect(mid.playing).toBe(true)
+    expect(mid.srcs[1]).toBe('assets/audio-b-new.mp3')
+    await page.locator('#au-sel').selectOption('1')
+    const switched = await page.evaluate(() => ({
+      loaded: window.__SY_TEST__.audioLoadedSrc(),
+      stubSrc: document.getElementById('au-el').getAttribute('data-stub-src') || '',
+    }))
+    expect(switched.loaded).toBe('assets/audio-b-new.mp3')
+    expect(switched.stubSrc).toContain('audio-b-new.mp3')
+  })
+
+  test('清空当前音轨 URL 后停止旧预览，补回后可再试听', async () => {
+    await reloadPlayer(page, withAudio({
+      audio: [{ id: 'a1', src: 'assets/audio.mp3', label: '讲解 1' }],
+      viewport: { width: 1100, height: 800 },
+      ui: { audioCollapsed: false },
+    }))
+    await page.waitForSelector('#audio:not([hidden])')
+    await stubAudioNetwork(page)
+    await page.locator('#au-play').click()
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+    await openEditorSection(page, '语音讲解')
+    await page.locator('[data-au-src="0"]').fill('')
+    await page.locator('[data-au-src="0"]').blur()
+    await expect(page.locator('#audio')).toBeHidden()
+    const cleared = await page.evaluate(() => {
+      const el = document.getElementById('au-el')
+      return {
+        paused: el.paused,
+        srcAttr: el.getAttribute('src'),
+        loaded: window.__SY_TEST__.audioLoadedSrc(),
+        issues: window.__SY_TEST__.preSaveIssues(),
+      }
+    })
+    expect(cleared.paused).toBe(true)
+    expect(cleared.srcAttr).toBeNull()
+    expect(cleared.loaded).toBe('')
+    expect(cleared.issues.warns.some(w => w.includes('缺文件'))).toBe(true)
+    await page.locator('[data-au-src="0"]').fill('assets/audio-restored.mp3')
+    await page.locator('[data-au-src="0"]').blur()
+    await expect(page.locator('#audio')).toBeVisible()
+    const restored = await page.evaluate(() => window.__SY_TEST__.audioLoadedSrc())
+    expect(restored).toBe('assets/audio-restored.mp3')
+    await stubAudioNetwork(page)
+    await page.locator('#au-play').click()
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+  })
+
   test('孤儿热点语音引用会阻断保存', async () => {
     const hs = [{ id: 'h1', position: [0, 0.2, 0.6], i18n: { zh: { title: '甲', body: '乙' } } }]
     await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 }, hotspots: hs }))

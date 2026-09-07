@@ -429,7 +429,7 @@ import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, E
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
 import { classifyIosBlackLook, webglContextRestorePlan, readImageSize, constrainedDecodeTarget, applySharedMapDownscale, copyTextureSampling } from './shading-risk.mjs'
-import { audioChromeState, shouldReloadAudioSrc, nextAudioIndexAfterDelete, nextAudioId, auditAudioIds, audioConfigIssues, audioDeleteImpact, unbindHotspotsFromAudio } from './player-audio.mjs'
+import { audioChromeState, shouldReloadAudioSrc, nextAudioIndexAfterDelete, nextAudioId, auditAudioIds, audioConfigIssues, audioDeleteImpact, unbindHotspotsFromAudio, playableAudioTracks, normalizeAudioId, audioSrcEditPlan } from './player-audio.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -696,6 +696,7 @@ const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
 const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
 let auTracks = [], auIndex = -1, auPlaying = false, auWantPlay = false   // 语音讲解播放器状态
+let auLoadedSrc = ''
 let audioPagehideBound = false
 /* VIEWER-HOTSPOT-DIAG-START — build-viewer 剔除 */
 let hotspotIdBootAudit = null, hotspotIdBootChanges = []   // editor：加载时 ID 诊断（boot 前 audit）
@@ -1913,6 +1914,7 @@ function stopAudioElement(){
   const el = $('au-el')
   auWantPlay = false
   auPlaying = false
+  auLoadedSrc = ''
   try {
     el.pause()
     el.removeAttribute('data-sy-fallback')
@@ -1945,18 +1947,30 @@ function rebuildAudioSelect(){
 }
 function buildAudio({ deletedIndex, preservePlayback = false } = {}){
   const prevIndex = auIndex
+  const prevId = prevIndex >= 0 ? normalizeAudioId(auTracks[prevIndex]?.id) : ''
+  const prevLoaded = auLoadedSrc
   const del = Number.isFinite(Number(deletedIndex)) ? Math.floor(Number(deletedIndex)) : null
-  auTracks = (cfg.audio||[]).filter(a=>a && a.src)
+  auTracks = playableAudioTracks(cfg.audio)
   const wrap = $('audio')
   if (!auTracks.length){ resetAudioPlayer(); return }
   const wasHidden = wrap.hasAttribute('hidden')
   wrap.removeAttribute('hidden')
   rebuildAudioSelect()
-  const next = del != null
-    ? nextAudioIndexAfterDelete(prevIndex, del, auTracks.length)
-    : (preservePlayback && prevIndex >= 0 && prevIndex < auTracks.length ? prevIndex : 0)
-  const currentGone = del != null && del === prevIndex
-  if (preservePlayback && !currentGone && prevIndex >= 0 && next >= 0) {
+  let next
+  if (del != null) {
+    next = nextAudioIndexAfterDelete(prevIndex, del, auTracks.length)
+  } else if (preservePlayback && prevId) {
+    const byId = auTracks.findIndex(a => normalizeAudioId(a.id) === prevId)
+    next = byId >= 0 ? byId : 0
+  } else if (preservePlayback && prevIndex >= 0 && prevIndex < auTracks.length) {
+    next = prevIndex
+  } else {
+    next = 0
+  }
+  const nextId = next >= 0 ? normalizeAudioId(auTracks[next]?.id) : ''
+  const currentGone = (del != null && del === prevIndex) || (prevId && nextId !== prevId)
+  const srcChanged = !currentGone && next >= 0 && String(auTracks[next].src || '') !== String(prevLoaded || '')
+  if (preservePlayback && !currentGone && !srcChanged && next >= 0) {
     auIndex = next
     restoreAudioTrackUi()
     return
@@ -2011,9 +2025,10 @@ function failAudioLoad(){
 function selectTrack(i, play){
   const el = $('au-el'), tr = auTracks[i]; if(!tr) return
   const inError = $('audio').classList.contains('error')
-  if (shouldReloadAudioSrc(auIndex, i, inError)){
+  if (shouldReloadAudioSrc(auIndex, i, inError, auLoadedSrc, tr.src)){
     el.removeAttribute('data-sy-fallback')
     el.src = asset(tr.src)
+    auLoadedSrc = tr.src
     auIndex = i
   }
   clearAudioError()
@@ -2055,11 +2070,13 @@ function wireAudio(){
   $('au-play').onclick = () => {
     if(!auTracks.length) return
     if ($('audio').classList.contains('mini')) { setAudioMini(false); return }   // 折叠态：点＝展开
-    if ($('audio').classList.contains('error')) {
-      selectTrack(auIndex >= 0 ? auIndex : 0, true)
+    const i = auIndex >= 0 ? auIndex : 0
+    const tr = auTracks[i]
+    if (!tr) return
+    if ($('audio').classList.contains('error') || shouldReloadAudioSrc(auIndex, i, false, auLoadedSrc, tr.src)) {
+      selectTrack(i, true)
       return
     }
-    if(auIndex<0) selectTrack(0,false)
     if (el.paused) { auWantPlay = true; el.play().catch(()=>{}) }
     else { auWantPlay = false; el.pause() }
   }
@@ -2545,8 +2562,11 @@ function start() {
       if (tag==='input' || tag==='textarea' || tag==='select' || tag==='button' || tag==='a') return  // 不干扰控件/输入
       if (auTracks.length) {
         e.preventDefault()
-        if ($('audio').classList.contains('error')) {
-          selectTrack(auIndex >= 0 ? auIndex : 0, true)
+        const i = auIndex >= 0 ? auIndex : 0
+        const tr = auTracks[i]
+        if (!tr) return
+        if ($('audio').classList.contains('error') || shouldReloadAudioSrc(auIndex, i, false, auLoadedSrc, tr.src)) {
+          selectTrack(i, true)
           return
         }
         const a=$('au-el'); a.paused ? a.play().catch(()=>{}) : a.pause()
@@ -3369,12 +3389,45 @@ function syncShadowHint(){
   $('editor').querySelectorAll('[data-pr-del]').forEach(a=>a.onclick=()=>{ cfg.presets.splice(+a.dataset.prDel,1); renderEditor(); buildHUD_refresh() })
   // 热点绑定语音
   $('editor').querySelectorAll('[data-hs-audio]').forEach(s=>s.onchange=e=>{ const h=cfg.hotspots[+s.dataset.hsAudio]; if(e.target.value) h.audio=e.target.value; else delete h.audio })
+  function applyEditorAudioSrc(index, input) {
+    const track = cfg.audio?.[index]
+    if (!track) return
+    const value = String(input?.value || '').trim()
+    if (input && input.value !== value) input.value = value
+    track.src = value
+    const plan = audioSrcEditPlan({
+      currentId: auIndex >= 0 ? auTracks[auIndex]?.id : '',
+      loadedSrc: auLoadedSrc,
+      changedId: track.id,
+      playable: playableAudioTracks(cfg.audio),
+    })
+    if (plan.action === 'reset') {
+      resetAudioPlayer()
+      if (plan.notify) flash('语音地址已更新，请重新试听')
+      return
+    }
+    auTracks = playableAudioTracks(cfg.audio)
+    $('audio').removeAttribute('hidden')
+    rebuildAudioSelect()
+    if (plan.action === 'keep') {
+      auIndex = plan.index
+      restoreAudioTrackUi()
+      return
+    }
+    stopAudioElement()
+    auIndex = -1
+    selectTrack(plan.index, false)
+    if (plan.notify) flash('语音地址已更新，请重新试听')
+  }
   // 语音讲解 增删改
   el('ed-au-add').onclick=()=>{ cfg.audio=cfg.audio||[]; const u=el('ed-au-url').value.trim()
     const id = nextAudioId(cfg.audio)
     cfg.audio.push({ id, label:'讲解 '+id.replace(/^a/, ''), src:u }); renderEditor(); buildAudio({ preservePlayback: true }) }
   $('editor').querySelectorAll('[data-au-label]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auLabel].label=e.target.value; buildAudio({ preservePlayback: true }) })
-  $('editor').querySelectorAll('[data-au-src]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auSrc].src=e.target.value })
+  $('editor').querySelectorAll('[data-au-src]').forEach(input=>{
+    input.oninput = e => { const t = cfg.audio[+input.dataset.auSrc]; if (t) t.src = e.target.value }
+    input.onchange = () => applyEditorAudioSrc(+input.dataset.auSrc, input)
+  })
   $('editor').querySelectorAll('[data-au-del]').forEach(a=>a.onclick=()=>{
     const i=+a.dataset.auDel
     const removedId = cfg.audio[i]?.id
@@ -4111,9 +4164,11 @@ if (editMode) {
     preSaveIssues: () => preSaveIssues(),
     audioEditorSnapshot: () => ({
       ids: (cfg.audio || []).map(a => a.id),
+      srcs: (cfg.audio || []).map(a => a.src || ''),
       hotspotAudio: (cfg.hotspots || []).map(h => (h.audio == null ? null : h.audio)),
     }),
     audioIndex: () => auIndex,
+    audioLoadedSrc: () => auLoadedSrc,
     playTrackByIdForTest: (id) => playTrackById(id),
     bindHotspotAudioForTest: (index, id) => {
       const h = cfg.hotspots?.[index]

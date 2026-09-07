@@ -43,9 +43,46 @@ export function audioChromeState({ trackCount = 0, index = 0, error = false, lab
   }
 }
 
-/** 失败态或切轨后，当前源必须重拉，不能沿用已经 error 过的 <audio src>。 */
-export function shouldReloadAudioSrc(prevIndex, nextIndex, inError) {
-  return !!inError || prevIndex !== nextIndex
+/** 失败态、切轨、或同一轨 src 已变时必须重拉，不能沿用旧媒体源。 */
+export function shouldReloadAudioSrc(prevIndex, nextIndex, inError, prevSrc, nextSrc) {
+  if (!!inError || prevIndex !== nextIndex) return true
+  if (prevSrc === undefined || nextSrc === undefined) return false
+  return String(prevSrc || '') !== String(nextSrc || '')
+}
+
+export function normalizeAudioSrc(src) {
+  return typeof src === 'string' ? src.trim() : ''
+}
+
+/** 可预览 / 可播放的音轨。无 src 或只有空白的条目留在配置里，不进播放器。 */
+export function playableAudioTracks(audio) {
+  return (audio || []).filter(a => a && normalizeAudioSrc(a.src))
+}
+
+/**
+ * 编辑器改完一条音轨地址后，预览播放器该怎么同步。
+ * 用音轨 ID 对齐，不假设 cfg.audio index === auTracks index。
+ */
+export function audioSrcEditPlan({ currentId, loadedSrc, changedId, playable } = {}) {
+  const tracks = Array.isArray(playable) ? playable : []
+  const cur = normalizeAudioId(currentId)
+  const ch = normalizeAudioId(changedId)
+  const loaded = normalizeAudioSrc(loadedSrc)
+
+  if (!tracks.length) {
+    return { action: 'reset', index: -1, notify: !!cur || !!ch }
+  }
+  if (!cur) return { action: 'retarget', index: 0, notify: false }
+
+  const nextIndex = tracks.findIndex(a => normalizeAudioId(a?.id) === cur)
+  const currentGone = nextIndex < 0
+  const nextSrc = nextIndex >= 0 ? normalizeAudioSrc(tracks[nextIndex].src) : ''
+  const editingCurrent = !!ch && ch === cur
+  const srcChanged = editingCurrent && nextSrc !== loaded
+
+  if (currentGone) return { action: 'retarget', index: 0, notify: editingCurrent }
+  if (srcChanged) return { action: 'reload', index: nextIndex, notify: true }
+  return { action: 'keep', index: nextIndex, notify: false }
 }
 
 /**
@@ -173,7 +210,7 @@ export function audioConfigIssues(audio, hotspots) {
   }
   if (audit.dupes.length) errs.push('语音 id 重复：' + audit.dupes.join(', '))
   for (const a of list) {
-    if (!a || !a.src) warns.push('语音「' + ((a && a.label) || (a && a.id) || '?') + '」缺文件')
+    if (!a || !normalizeAudioSrc(a.src)) warns.push('语音「' + ((a && a.label) || (a && a.id) || '?') + '」缺文件')
   }
   for (const o of orphanHotspotAudioRefs(hotspots, list)) {
     errs.push(`热点 #${o.index + 1} 引用不存在的语音 ${o.audio}`)

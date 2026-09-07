@@ -10,6 +10,8 @@ import {
   audioDeleteImpact,
   unbindHotspotsFromAudio,
   audioConfigIssues,
+  playableAudioTracks,
+  audioSrcEditPlan,
 } from './player-audio.mjs'
 
 let pass = 0
@@ -59,6 +61,8 @@ test('失败态必须重拉源；正常同轨不重复加载', () => {
   assert.equal(shouldReloadAudioSrc(0, 0, true), true)
   assert.equal(shouldReloadAudioSrc(0, 0, false), false)
   assert.equal(shouldReloadAudioSrc(0, 1, false), true)
+  assert.equal(shouldReloadAudioSrc(0, 0, false, 'old.mp3', 'new.mp3'), true)
+  assert.equal(shouldReloadAudioSrc(0, 0, false, 'old.mp3', 'old.mp3'), false)
 })
 
 test('删光音轨后 index 为 -1', () => {
@@ -107,6 +111,74 @@ test('删除音轨会统计并清理热点引用', () => {
   assert.equal(hotspots[0].audio, undefined)
   assert.equal(hotspots[1].audio, 'a2')
   assert.equal(hotspots[2].audio, undefined)
+})
+
+test('playableAudioTracks 去掉空 src', () => {
+  assert.deepEqual(
+    playableAudioTracks([{ id: 'a1', src: 'x.mp3' }, { id: 'a2', src: '  ' }, { id: 'a3' }]).map(a => a.id),
+    ['a1'],
+  )
+})
+
+test('改当前轨 URL 要重载且不沿用旧源', () => {
+  const plan = audioSrcEditPlan({
+    currentId: 'a1',
+    loadedSrc: 'assets/old.mp3',
+    changedId: 'a1',
+    playable: [{ id: 'a1', src: 'assets/new.mp3' }],
+  })
+  assert.equal(plan.action, 'reload')
+  assert.equal(plan.index, 0)
+  assert.equal(plan.notify, true)
+})
+
+test('改非当前轨 URL 不打断当前预览', () => {
+  const plan = audioSrcEditPlan({
+    currentId: 'a1',
+    loadedSrc: 'assets/a1.mp3',
+    changedId: 'a2',
+    playable: [
+      { id: 'a1', src: 'assets/a1.mp3' },
+      { id: 'a2', src: 'assets/a2-new.mp3' },
+    ],
+  })
+  assert.equal(plan.action, 'keep')
+  assert.equal(plan.index, 0)
+  assert.equal(plan.notify, false)
+})
+
+test('清空当前轨 URL 后落到剩余第一条', () => {
+  const gone = audioSrcEditPlan({
+    currentId: 'a1',
+    loadedSrc: 'assets/a1.mp3',
+    changedId: 'a1',
+    playable: [{ id: 'a2', src: 'assets/a2.mp3' }],
+  })
+  assert.equal(gone.action, 'retarget')
+  assert.equal(gone.index, 0)
+  assert.equal(gone.notify, true)
+  const last = audioSrcEditPlan({
+    currentId: 'a1',
+    loadedSrc: 'assets/a1.mp3',
+    changedId: 'a1',
+    playable: [],
+  })
+  assert.equal(last.action, 'reset')
+  assert.equal(last.notify, true)
+})
+
+test('cfg 与播放器 index 不一致时仍按 ID 对齐', () => {
+  const plan = audioSrcEditPlan({
+    currentId: 'a3',
+    loadedSrc: 'assets/a3.mp3',
+    changedId: 'a2',
+    playable: [
+      { id: 'a2', src: 'assets/a2-new.mp3' },
+      { id: 'a3', src: 'assets/a3.mp3' },
+    ],
+  })
+  assert.equal(plan.action, 'keep')
+  assert.equal(plan.index, 1)
 })
 
 test('孤儿热点引用与重复 id 阻断保存', () => {

@@ -30,6 +30,8 @@ export const VIEWER_AUDIO_IMPORTS = [
   'audioChromeState',
   'shouldReloadAudioSrc',
   'nextAudioIndexAfterDelete',
+  'playableAudioTracks',
+  'normalizeAudioId',
 ]
 
 /** 观看版 player-persist 白名单。漏掉观看端实际调用的符号会在运行时变成 ReferenceError。 */
@@ -99,6 +101,7 @@ const VIEWER_FORBIDDEN = [
   'audioConfigIssues',
   'audioDeleteImpact',
   'unbindHotspotsFromAudio',
+  'audioSrcEditPlan',
 ]
 
 export function importsFromSource(text) {

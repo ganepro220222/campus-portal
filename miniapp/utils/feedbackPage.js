@@ -1,4 +1,4 @@
-// utils/feedbackPage.js — 意见反馈页：登录与上传错误文案（可单测）
+// utils/feedbackPage.js — 意见反馈登录与上传错误文案
 
 function canAccessFeedback(isLoggedIn) {
   return !!isLoggedIn

@@ -11,9 +11,7 @@
   <view class="login-inner">
     <view style="height: {{statusBarHeight}}px; flex-shrink: 0;"></view>
 
-    <!-- 三根弹性隔条把剩余空间按 3 : 1 : 3 分给「印章上方 / 品牌与表单之间 / 表单与页脚之间」。
-         用隔条而不是 margin:auto，是因为 auto 只能均分——均分后中间那段仍有 70~100rpx 的空档，
-         整屏被切成上下两半。压到七分之一后，空白落到顶部光晕与底部波浪上，那里本就该留白。 -->
+    <!-- 弹性隔条分配印章、表单、页脚之间的剩余高度 -->
     <view class="lg-sp lg-sp-top"></view>
     <view class="seal">
       <image class="seal-img" src="/assets/images/academy-seal-gold.png" mode="aspectFit" />
@@ -85,8 +83,7 @@
       </button>
     </view>
 
-    <!-- 页脚移出 .login-form：只有作为 .login-inner 的直接子元素，
-         它上面那根隔条才参与 flex 的剩余空间分配。 -->
+    <!-- 页脚放在 login-inner 下，才能吃到下方隔条的剩余空间 -->
     <view class="lg-sp lg-sp-bot"></view>
     <view class="foot">
       <text class="foot-b">校园学习与活动服务平台</text>

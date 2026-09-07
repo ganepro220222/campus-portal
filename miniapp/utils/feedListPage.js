@@ -1,4 +1,4 @@
-// utils/feedListPage.js — Tab/列表页：加载失败与静默刷新（逻辑层）
+// utils/feedListPage.js — Tab/列表页加载失败与静默刷新
 
 const { classifyActivityLoadError } = require('./activityDetailLoad')
 

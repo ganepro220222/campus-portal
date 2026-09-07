@@ -1,4 +1,4 @@
-// utils/contentPageInit.js — 内容详情页：加载状态（逻辑层，视觉样式由 UI 批次对接）
+// utils/contentPageInit.js — 内容详情页加载状态
 
 const {
   assertActivityDetailRaw,

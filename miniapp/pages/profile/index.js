@@ -1,12 +1,7 @@
 // pages/profile/index.js —— 个人中心（从首页顶栏「我的」进入）
 const { PLACEHOLDER_COLLEGES } = require('../../utils/profileForm')
 
-/*
- * profile.college 是后端返回的真实值，而历史数据里存的就是「贵州交通职业大学 · 中华文化书院」
- * 这类界面占位串——WXML 里那句 `userInfo.college || '中华文化书院'` 只在字段为空时才兜底，
- * 有值就原样显示，所以主体归属改完后个人中心仍然打着学校的名号。
- * 这里按占位串名单归一化：真实学院名照显，占位串一律显示书院名。
- */
+/* 历史占位校名按名单换成书院名；其它学院名原样显示。 */
 const ACADEMY_NAME = '中华文化书院'
 function collegeDisplay(profile) {
   const c = profile && profile.college

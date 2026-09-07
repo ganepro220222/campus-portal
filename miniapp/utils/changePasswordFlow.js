@@ -1,4 +1,4 @@
-// utils/changePasswordFlow.js — 改密页提交/401/退出竞态（纯函数，供页面与单测共用）
+// utils/changePasswordFlow.js — 改密提交与 401、退出竞态
 
 function shouldApplyChangePasswordSuccess(seq, submitSeq) {
   return seq === submitSeq

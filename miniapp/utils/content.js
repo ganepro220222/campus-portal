@@ -88,22 +88,7 @@ function mergeNewsArticle(raw, fallback) {
     read: raw.read || formatCount(raw.viewCount || raw.readCount || 0),
     showLead,
     lead,
-    /*
-     * 首字下沉的契约：drop 是首字（一个 Unicode 码点），leadRest 是去掉它之后的剩余，
-     * 两者拼起来才等于 lead；lead 本身保持完整原文不动。
-     *
-     * 必须用 Array.from 而不是 charAt(0)/slice(1)：后者按 UTF-16 码元切，emoji 会拆成
-     * 孤立代理项，页面上显示成 ▯，而 drop + leadRest === lead 仍然成立，护栏发现不了。
-     *
-     * 原来只给了 drop 却照样把整段 lead 渲染出去，于是「示例内容…」被渲染成
-     * 「示」+「示例内容…」，首字凭空多出一个。mock 里当年是手写 drop:'六' 配
-     * lead:'月五日起…'（即 lead 已被截过），和接口下发的口径正好相反——
-     * 所以这里一律自己从 lead 推导，不再信任外部传来的 drop，免得两套口径打架。
-     *
-     * lead 保持完整只给数据层用。展示一律 drop + leadRest，
-     * 正文是不是富文本都一样——后台 WangEditor 一保存，content 就是 HTML，
-     * 若只在纯文本分支做首字下沉，编辑/扩写后摘要首字会突然变回正常大小。
-     */
+    /* drop / leadRest 从 lead 用 Array.from 切开，不用外部 drop，避免 emoji 被拆开或首字重复。 */
     ...splitLeadChars(lead),
     dropCap: shouldDropCap(lead),
     coverImageMode: raw.coverFitMode === 'fit' ? 'aspectFit' : 'aspectFill',

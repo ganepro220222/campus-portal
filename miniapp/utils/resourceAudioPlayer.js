@@ -88,12 +88,12 @@ function destroyCtx() {
   try {
     ctx.stop()
   } catch (e) {
-    // ignore
+    // stop 失败可忽略
   }
   try {
     ctx.destroy()
   } catch (e) {
-    // ignore
+    // destroy 失败可忽略
   }
 }
 

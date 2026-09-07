@@ -1,4 +1,4 @@
-// utils/uploadResponse.js — wx.uploadFile success 回调响应解析（可单测）
+// utils/uploadResponse.js — wx.uploadFile 响应解析
 
 function uploadErrorMessage(statusCode, body) {
   if (statusCode === 413) return '图片过大，请重新选择或压缩'

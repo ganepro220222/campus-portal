@@ -32,15 +32,11 @@ async function fetchQuota() {
   }
 }
 
-/*
- * 一次提问要走「知识库检索 → 大模型生成」，10 秒的默认超时经常不够。
- * 而超时最坑的地方在于：服务端往往已经成功、答案也写进了 ai_message，
- * 次数照扣，用户却只看到一句失败——所以这里必须单独把时间给够。
- */
+/* 检索加生成超过默认 10 秒，这里单独放宽。 */
 const ASK_TIMEOUT = 30000
 
 async function sendQuestion(sessionId, question) {
-  // silent: 超时/断网等由本页 resolveErrorAnswer 统一提示，避免通用层 toast 与聊天气泡矛盾
+  // 失败由本页提示，不走通用 toast
   return post(`/ai/chat/sessions/${sessionId}/messages`, { question }, { timeout: ASK_TIMEOUT, silent: true })
 }
 

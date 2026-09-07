@@ -1,4 +1,4 @@
-// utils/coursePlayerProgress.js — 课程播放器进度纯函数（便于单测）
+// utils/coursePlayerProgress.js — 课程播放进度与续播
 
 /**
  * 播放结束时解析应上报的位置与总时长。

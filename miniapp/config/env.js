@@ -1,8 +1,8 @@
 /**
  * 小程序运行环境配置
- * dev：本地 Docker；staging：真机联调；prod：正式发布（须先配置正式域名并跑 release 门禁）。
+ * dev：本机 Docker；staging：预发联调；prod：正式域名配好后再改。
  */
-const ENV = 'staging' // dev | staging | prod — 当前提交值用于真机联调，不代表本地 Docker 默认值
+const ENV = 'staging' // 当前预发联调，不是本机 Docker
 
 const configMap = {
   dev: {

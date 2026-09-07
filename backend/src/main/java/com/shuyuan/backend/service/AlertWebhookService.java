@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 低成本告警：钉钉 / 企业微信机器人 Webhook（E2-1）。
+ * 低成本告警：钉钉 / 企业微信机器人 Webhook。
  * 未配置 webhook 或 disabled 时静默跳过，不影响主业务。
  */
 @Slf4j

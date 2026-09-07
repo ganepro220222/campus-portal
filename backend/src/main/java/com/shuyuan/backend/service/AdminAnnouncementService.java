@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 首页公告后台管理（docs Phase 2 公告通知条、Phase 5 系统设置）
+ * 首页公告后台管理
  */
 @Slf4j
 @Service
@@ -101,7 +101,7 @@ public class AdminAnnouncementService {
         evictActiveCache();
     }
 
-    /** 后台变更后清除小程序读缓存（TTL 5 分钟，docs Phase 2） */
+    /** 后台变更后清除小程序读缓存（TTL 5 分钟） */
     public void evictActiveCache() {
         try {
             redis.delete(CACHE_KEY);

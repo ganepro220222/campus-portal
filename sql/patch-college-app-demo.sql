@@ -1,9 +1,4 @@
--- sql/patch-college-app-demo.sql
--- 旧库升级：首页「关联应用」的 college_app 仍可能是 11 条旧学院名。
--- seed-dev.sql 用 INSERT IGNORE，不会覆盖已有行；本 patch 收敛为通途星 + 2 条示例。
--- 可重复执行（先清空再写入固定 id 1–3）。
---
--- 用法：mysql -uroot -pdev123456 shuyuan < sql/patch-college-app-demo.sql
+-- 旧库升级：关联小程序收敛为通途星与 2 条示例。可重复执行。
 
 SET NAMES utf8mb4;
 

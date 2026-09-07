@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 文创后台管理（与 docs Phase 3 文创展示、Phase 5 内容管理对齐）
+ * 文创后台管理
  */
 @Service
 @RequiredArgsConstructor

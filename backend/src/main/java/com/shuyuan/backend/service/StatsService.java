@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 /**
- * 客户端活跃与 DAU 统计（Redis 集合，供 Phase 6 定时任务落库）
+ * 客户端活跃与 DAU 统计（Redis 集合，供定时任务落库）
  */
 @Service
 @RequiredArgsConstructor

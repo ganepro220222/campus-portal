@@ -20,7 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 积分规则触发与每日上限控制（docs Phase 4 积分与徽章）
+ * 积分规则触发与每日上限控制
  * <p>{@link #award(Long, String)} 仅做「每日次数」限制（Redis），remark 为空，不做对象级幂等。
  * 对象级幂等请使用 {@link #awardCourseComplete(Long, Long)} 或带非空 remark 的专用方法。
  */

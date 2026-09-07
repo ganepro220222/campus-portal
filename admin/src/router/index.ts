@@ -191,7 +191,7 @@ router.beforeEach((to) => {
 
 export default router
 
-/** 侧栏菜单配置（与 docs Phase 5 导航结构对齐，本期仅开放已实现模块） */
+/** 侧栏菜单配置 */
 export interface MenuItem {
   path: string
   title: string

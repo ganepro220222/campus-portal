@@ -78,7 +78,7 @@ public class DataRetentionService {
         }
     }
 
-    /** 天数 &lt;= 0 表示该表不清理——留给甲方按合规要求自行放开 */
+    /** 天数 &lt;= 0 表示该表不清理 */
     private int purgeTable(String label, int days, LocalDateTime now, int batch, int maxBatches, BatchDeleter deleter) {
         if (days <= 0) {
             return 0;

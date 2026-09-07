@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 课程学习进度：续播、完成判定与积分触发（验收 §2.6、详细方案 Phase 3）
+ * 课程学习进度：续播、完成判定与积分触发
  */
 @Service
 @RequiredArgsConstructor

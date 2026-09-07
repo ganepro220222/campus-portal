@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 统计 API 请求与 5xx 业务码，供 E2-1 错误率告警使用。
+ * 统计 API 请求与 5xx 业务码，供错误率告警使用。
  * 计数在固定窗口结束时由 {@link OpsAlertService} 读取并清零。
  */
 @Component

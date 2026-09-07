@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 搜索索引同步（内容发布/下架时调用，与 docs Phase 2 一致）
+ * 搜索索引同步（内容发布/下架时调用）
  */
 @Slf4j
 @Service

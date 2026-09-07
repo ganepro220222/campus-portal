@@ -2,7 +2,7 @@
  * mock/defaults.js — 仅 dev 环境的本地兜底数据。
  *
  * env.js 里 prod/staging 的 useMock 都是 false，mockGuard 会让这份数据一律返回空，
- * 所以线上与提审时审核员都看不到它。它的用途只有两个：本地开发和给甲方演示。
+ * 所以线上与提审时审核员都看不到它。只用于本地开发演示。
  *
  * 两条约定：
  * 1. 展馆（hallsHome / hallsFull / hallDetail）是**真实**的，带真实 720 云 VR 链接——不要动。

@@ -7,7 +7,7 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ============================================================
--- 5.1 用户与权限
+-- 用户与权限
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `sys_role` (
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS `member_profile` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户扩展信息';
 
 -- ============================================================
--- 5.2 内容主体
+-- 内容主体
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `category` (
@@ -259,7 +259,7 @@ CREATE TABLE IF NOT EXISTS `course_resource` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程-资源关联';
 
 -- ============================================================
--- 5.3 活动与报名
+-- 活动与报名
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `activity` (
@@ -306,7 +306,7 @@ CREATE TABLE IF NOT EXISTS `enroll` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动报名';
 
 -- ============================================================
--- 5.4 互动行为
+-- 互动行为
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `favorite` (
@@ -370,7 +370,7 @@ CREATE TABLE IF NOT EXISTS `course_progress` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程学习进度';
 
 -- ============================================================
--- 5.5 公告
+-- 公告
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `announcement` (
@@ -389,7 +389,7 @@ CREATE TABLE IF NOT EXISTS `announcement` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='首页公告';
 
 -- ============================================================
--- 5.6 积分与徽章
+-- 积分与徽章
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `point_rule` (
@@ -439,7 +439,7 @@ CREATE TABLE IF NOT EXISTS `member_badge` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户已获徽章';
 
 -- ============================================================
--- 5.7 订阅消息授权记录
+-- 订阅消息授权记录
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `member_subscribe_record` (
@@ -474,7 +474,7 @@ CREATE TABLE IF NOT EXISTS `subscribe_outbox` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='微信订阅消息发件箱';
 
 -- ============================================================
--- 5.8 反馈与站内消息
+-- 反馈与站内消息
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `feedback` (
@@ -510,7 +510,7 @@ CREATE TABLE IF NOT EXISTS `message` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内消息';
 
 -- ============================================================
--- 5.9 全局搜索索引
+-- 全局搜索索引
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `search_index` (
@@ -529,7 +529,7 @@ CREATE TABLE IF NOT EXISTS `search_index` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='搜索索引';
 
 -- ============================================================
--- 5.10 统计
+-- 统计
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `event_log` (
@@ -566,7 +566,7 @@ CREATE TABLE IF NOT EXISTS `stat_content` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='内容统计';
 
 -- ============================================================
--- 5.11 学院矩阵
+-- 学院矩阵
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `college_app` (
@@ -588,7 +588,7 @@ CREATE TABLE IF NOT EXISTS `college_app` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学院矩阵';
 
 -- ============================================================
--- 5.12 知识库与问答会话
+-- 知识库与问答会话
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `knowledge_doc` (
@@ -639,7 +639,7 @@ CREATE TABLE IF NOT EXISTS `ai_message` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI会话消息';
 
 -- ============================================================
--- 5.13 系统配置
+-- 系统配置
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS `banner` (

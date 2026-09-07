@@ -52,7 +52,7 @@ public class ShuyuanProperties {
         private int wxacodeCacheTtlSeconds = 3600;
     }
 
-    /** 接口限流（Redis 固定窗口，E2-3） */
+    /** 接口限流（Redis 固定窗口） */
     @Data
     public static class RateLimit {
         private boolean enabled = true;
@@ -78,7 +78,7 @@ public class ShuyuanProperties {
         private int feedbackPerDay = 20;
     }
 
-    /** AI 问答（Phase 7） */
+    /** AI 问答 */
     @Data
     public static class Ai {
         /** fallback=无 Key 时基于知识库片段作答；zhipu=智谱 GLM */
@@ -151,7 +151,7 @@ public class ShuyuanProperties {
         }
     }
 
-    /** E2-1 低成本告警：钉钉 / 企业微信 Webhook */
+    /** 低成本告警：钉钉 / 企业微信 Webhook */
     @Data
     public static class Alert {
         /** 默认关闭；staging/prod 配置 webhook 后开启 */
@@ -208,7 +208,7 @@ public class ShuyuanProperties {
      * 收藏/分享/下载/报名/播放都写一行，是主要增长源。明细的统计价值在 StatsDailyJob
      * 每日聚合进 stat_daily 之后就基本用尽了，超过保留期的行只占地方。
      *
-     * <p>天数设 0 或负数 = 该表不清理（留给甲方按合规要求自行放开）。
+     * <p>天数设 0 或负数 = 该表不清理。
      */
     @Data
     public static class Retention {

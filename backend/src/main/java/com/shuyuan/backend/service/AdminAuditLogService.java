@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 管理后台操作审计（写入 sys_log，验收 §三「操作日志」、E2-2）
+ * 管理后台操作审计（写入 sys_log）
  */
 @Service
 @RequiredArgsConstructor

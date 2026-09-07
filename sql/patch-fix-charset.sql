@@ -1,5 +1,4 @@
--- 修复 seed-dev 以 latin1 导入导致的 UTF-8 乱码（mojibake）
--- 用法：docker compose -f docker-compose.dev.yml exec -T mysql mysql -uroot -pdev123456 --default-character-set=utf8mb4 shuyuan < sql/patch-fix-charset.sql
+-- 修复演示数据以 latin1 导入导致的中文乱码。
 
 SET NAMES utf8mb4;
 

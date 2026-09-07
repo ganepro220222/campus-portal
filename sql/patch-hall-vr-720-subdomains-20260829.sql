@@ -1,10 +1,4 @@
--- 720云 微信小程序业务域名校验专用子域 + 第 11 馆上线（2026-08-29）
--- roma.720yun.com → a28c11ea.720roma.com
--- www.720yun.com  → 2e6zb07zn85.720yun.com
--- 8、9 号馆待合伙人重做迁 720 后再更新
---
--- ECS 执行:
---   mysql ... shuyuan < /opt/shuyuan/sql/patch-hall-vr-720-subdomains-20260829.sql
+-- 将展馆 VR 地址改为已通过微信业务域名校验的 720 云子域，并上线第 11 馆。
 
 SET NAMES utf8mb4;
 

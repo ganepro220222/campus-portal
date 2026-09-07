@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 
 /**
- * 浏览量 Redis 计数：INCR + 30 分钟去重，定时批量落库（docs Phase 6）
+ * 浏览量 Redis 计数：INCR + 30 分钟去重，定时批量落库
  */
 @Slf4j
 @Service

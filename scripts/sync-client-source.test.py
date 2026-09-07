@@ -44,6 +44,7 @@ assert (ROOT.parent / 'exhibits').is_dir()
 must_include('miniapp', 'app.js')
 must_include('miniapp', 'app.json')
 must_include('miniapp', 'config/env.prod.template.js')
+must_include('miniapp', 'config/env.js')
 must_include('admin', 'package.json')
 must_include('admin', 'src/main.ts')
 must_include('backend', 'pom.xml')
@@ -61,9 +62,15 @@ must_exclude('admin', '.gitignore')
 must_exclude('sql', 'README.md')
 must_exclude('sql', 'sql-init-manifest.json')
 must_exclude('sql', 'patch-loadtest.sql')
+must_exclude('sql', 'patch-remove-craft-3d-columns.sql')
+must_exclude('sql', 'patch-craft-image-fit-mode.sql')
+
+env_src = mod.resolve_copy_source(ROOT.parent / 'miniapp', ROOT.parent / 'miniapp' / 'config' / 'env.js', '微信小程序')
+if 'yunmanvr' in env_src.read_text(encoding='utf-8'):
+    raise SystemExit('校方包里的 env.js 不得带内部预发域名')
 
 readme = mod.PACK_README.lower()
-for banned in ('git', 'github', 'push', 'commit', 'claude', '甲方', 'exhibits', '三维', '立体鉴赏'):
+for banned in ('git', 'github', 'push', 'commit', 'claude', '甲方', '乙方', '合伙人', 'exhibits', '三维', '立体鉴赏'):
     if banned in readme:
         raise SystemExit(f'说明模板不应出现 {banned!r}')
 

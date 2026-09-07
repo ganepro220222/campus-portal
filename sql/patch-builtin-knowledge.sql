@@ -1,23 +1,10 @@
--- 内置知识库：云端书院小程序自身的介绍、功能与使用指南
---
--- 本文件由 scripts/build-builtin-knowledge.js 依据 sql/knowledge/*.md 生成，请勿手改；
--- 要改内容请改 sql/knowledge/ 下的 .md 再重新生成（npm run build:builtin-knowledge）。
---
--- 为什么要内置：知识库空着的时候，知识问答检索不到任何片段，只会反复回答
--- 「没有找到相关资料」。
--- 校方与学院的文化资料我们无从代劳，但「这个小程序怎么用」是我们自己的交付物，
--- 本来就该随系统一起给出。
---
--- 特性：
---   * 可重复执行：按标题判重，已存在则跳过，不会产生重复文档
---   * 后台可管：source_type=manual，与手工录入的资料同一套增删改查，可编辑可停用可删除
---   * 分段与后端 TextChunker 完全一致（500 字一段、50 字重叠），
---     后台编辑保存后重新分段的结果与此处相同
---   * 不属于演示数据：sql/seed-dev-cleanup.sql 不会清除本文件写入的内容
+-- 内置知识库：云端书院小程序使用指南
+-- 知识库为空时问答检索不到内容。本文件写入使用说明，可重复执行。
+-- 按标题判重；分段 500 字、重叠 50 字。
 
 SET NAMES utf8mb4;
 
--- ---------- 使用指南 · 小程序总览（源文件 sql/knowledge/01-overview.md，2 段） ----------
+-- ---------- 使用指南 · 小程序总览 ----------
 INSERT INTO `knowledge_doc`
   (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
 SELECT
@@ -44,7 +31,7 @@ SELECT
 
 学习资源：可下载的 PDF、Word、PPT、音视频等学习资料。
 
-文创：书院文创产品的图文介绍与鉴赏，部分提供 3D 展示。
+文创：书院文创产品的图文介绍与鉴赏。
 
 全局搜索：一次搜索全部内容类型，搜索结果会标明每条属于哪个板块。
 
@@ -57,7 +44,7 @@ SELECT
 需要提醒的是，浏览大部分内容不需要登录，但收藏、点赞、报名活动、下载资源、记录学习进度、获得积分和使用知识问答都需要先登录。
 
 常见问法：这个小程序是干什么的？有哪些功能？首页有什么？底部四个标签分别是什么？在哪里找到活动报名？在哪里找到学习资源？',
-  923,
+  912,
   2,
   'ready',
   NULL
@@ -101,7 +88,7 @@ SELECT @doc_id, '页，还有这些功能，都可以从首页或个人中心进
 
 学习资源：可下载的 PDF、Word、PPT、音视频等学习资料。
 
-文创：书院文创产品的图文介绍与鉴赏，部分提供 3D 展示。
+文创：书院文创产品的图文介绍与鉴赏。
 
 全局搜索：一次搜索全部内容类型，搜索结果会标明每条属于哪个板块。
 
@@ -117,10 +104,10 @@ SELECT @doc_id, '页，还有这些功能，都可以从首页或个人中心进
 
 活动报名：查看书院组织的线下活动，在报名时间内提交报名，获得凭证码与签到二维码。
 
-学习资源：可下载的 PDF', 473
+学习资源：可下载的 PDF', 462
 FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
 
--- ---------- 使用指南 · 登录与账号（源文件 sql/knowledge/02-login-account.md，3 段） ----------
+-- ---------- 使用指南 · 登录与账号 ----------
 INSERT INTO `knowledge_doc`
   (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
 SELECT
@@ -219,7 +206,7 @@ SELECT @doc_id, '。
 账号被停用：如果提示账号已停用或无', 435
 FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
 
--- ---------- 使用指南 · 动态展馆与搜索（源文件 sql/knowledge/03-news-hall-search.md，2 段） ----------
+-- ---------- 使用指南 · 动态展馆与搜索 ----------
 INSERT INTO `knowledge_doc`
   (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
 SELECT
@@ -234,7 +221,7 @@ SELECT
 
 展馆：点击底部「展馆」标签进入展馆列表，目前共有 11 个线上文化展馆。怎么进详情、怎么看 VR 和章节，以展馆详情页上的按钮和「沉浸式浏览」为准。参观展馆可以获得积分，参观全部 11 个展馆还能获得「展馆达人」徽章。
 
-文创：文创产品有独立的列表与详情页，提供双语介绍、鉴赏图与咨询方式，部分产品提供 3D 展示。可以从首页或展馆相关入口进入。
+文创：文创产品有独立的列表与详情页，提供双语介绍、鉴赏图与咨询方式。可以从首页或展馆相关入口进入。
 
 全局搜索：首页顶部的搜索框可以一次搜索全部内容，包括动态、课程、展馆、资源等。搜索结果会标明每条属于哪个板块，点击直接跳到对应详情页。如果搜不到内容，可以换用更短的关键词再试，例如只搜「书法」而不是一整句话。
 
@@ -247,7 +234,7 @@ SELECT
 浏览记录：个人中心的「足迹」记录你最近浏览过的内容，方便找回看过但没收藏的东西。
 
 常见问法：怎么收藏？怎么取消收藏？收藏在哪里看？怎么点赞？怎么分享？怎么搜索？搜不到内容怎么办？展馆怎么进？展馆有几个？怎么看动态？浏览记录在哪里？文创在哪里看？文创能买吗？怎么联系文创？',
-  816,
+  803,
   2,
   'ready',
   NULL
@@ -271,17 +258,17 @@ SELECT @doc_id, '怎么看动态？展馆怎么参观？怎么搜索内容？收
 
 展馆：点击底部「展馆」标签进入展馆列表，目前共有 11 个线上文化展馆。怎么进详情、怎么看 VR 和章节，以展馆详情页上的按钮和「沉浸式浏览」为准。参观展馆可以获得积分，参观全部 11 个展馆还能获得「展馆达人」徽章。
 
-文创：文创产品有独立的列表与详情页，提供双语介绍、鉴赏图与咨询方式，部分产品提供 3D 展示。可以从首页或展馆相关入口进入。
+文创：文创产品有独立的列表与详情页，提供双语介绍、鉴赏图与咨询方式。可以从首页或展馆相关入口进入。
 
 全局搜索：首页顶部的搜索框可以一次搜索全部内容，包括动态、课程、展馆、资源等。搜索结果会标明每条属于哪个板块，点击直接跳到对应详情页。如果搜不到内容，可以换用更短的关键词再试，例如只搜「书法」而不是一整句话。
 
-收藏：在动态、课程、', 0, '怎么看动态？展馆怎么参观？怎么搜索内容？收藏和点赞在哪里？文创在哪里看？
+收藏：在动态、课程、展馆、文创的详情页都可以收', 0, '怎么看动态？展馆怎么参观？怎么搜索内容？收藏和点赞在哪里？文创在哪里看？
 
 动态：点击底部「动态」标签进入列表，可以按分类筛选，点击任意一条进入正文。正文页底部', 500
 FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
 
 INSERT INTO `knowledge_chunk` (`doc_id`, `chunk_text`, `chunk_index`, `keywords`, `char_count`)
-SELECT @doc_id, '。如果搜不到内容，可以换用更短的关键词再试，例如只搜「书法」而不是一整句话。
+SELECT @doc_id, '更短的关键词再试，例如只搜「书法」而不是一整句话。
 
 收藏：在动态、课程、展馆、文创的详情页都可以收藏。收藏需要先登录。个人中心的「收藏」数字就是你的收藏总数，点进去可以看到收藏列表并取消收藏。
 
@@ -291,12 +278,12 @@ SELECT @doc_id, '。如果搜不到内容，可以换用更短的关键词再试
 
 浏览记录：个人中心的「足迹」记录你最近浏览过的内容，方便找回看过但没收藏的东西。
 
-常见问法：怎么收藏？怎么取消收藏？收藏在哪里看？怎么点赞？怎么分享？怎么搜索？搜不到内容怎么办？展馆怎么进？展馆有几个？怎么看动态？浏览记录在哪里？文创在哪里看？文创能买吗？怎么联系文创？', 1, '。如果搜不到内容，可以换用更短的关键词再试，例如只搜「书法」而不是一整句话。
+常见问法：怎么收藏？怎么取消收藏？收藏在哪里看？怎么点赞？怎么分享？怎么搜索？搜不到内容怎么办？展馆怎么进？展馆有几个？怎么看动态？浏览记录在哪里？文创在哪里看？文创能买吗？怎么联系文创？', 1, '更短的关键词再试，例如只搜「书法」而不是一整句话。
 
-收藏：在动态、课程、展馆、文创的详情页都可以收藏。收藏需要先登录。个人中心的「收', 366
+收藏：在动态、课程、展馆、文创的详情页都可以收藏。收藏需要先登录。个人中心的「收藏」数字就是你的收藏总数，', 353
 FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
 
--- ---------- 使用指南 · 课程与学习资源（源文件 sql/knowledge/04-course-resource.md，2 段） ----------
+-- ---------- 使用指南 · 课程与学习资源 ----------
 INSERT INTO `knowledge_doc`
   (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
 SELECT
@@ -369,7 +356,7 @@ SELECT @doc_id, 'PPT 和音视频文件。可以从课程板块或首页的资�
 常见问法：怎么看课程？课程进度怎么算？看到多少算完成？为什么进度没有保存？课程有字幕吗？资源怎么下载？资料在哪？资料在哪里？下载失败怎么办？下载记录在哪里？', 1, 'PPT 和音视频文件。可以从课程板块或首页的资源入口进入。点击下载即可，下载需要先登录。文档成功打开，或音视频开始播放后，才会记入下载记录并获得积分；中途失败不', 378
 FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
 
--- ---------- 使用指南 · 活动报名（源文件 sql/knowledge/05-activity-enroll.md，3 段） ----------
+-- ---------- 使用指南 · 活动报名 ----------
 INSERT INTO `knowledge_doc`
   (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
 SELECT
@@ -462,7 +449,7 @@ SELECT @doc_id, '服务通知发送。目前请以活动详情中的开始时间
 常见问法：怎么报名？怎么参加？报名要审核吗？名额满了怎么办？怎么取消报名？报名凭证', 119
 FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
 
--- ---------- 使用指南 · 积分与徽章（源文件 sql/knowledge/06-points-badge.md，2 段） ----------
+-- ---------- 使用指南 · 积分与徽章 ----------
 INSERT INTO `knowledge_doc`
   (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
 SELECT
@@ -567,7 +554,7 @@ SELECT @doc_id, '得 92 分。
 为什么积分没有增加：常见原因有四个。一是没有登录；二是当天这一项的次数上限已经用完，例如今天已经浏览过 5 条动态再看第 6 条就不再加分；三', 441
 FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
 
--- ---------- 使用指南 · 个人中心与消息（源文件 sql/knowledge/07-profile-message.md，3 段） ----------
+-- ---------- 使用指南 · 个人中心与消息 ----------
 INSERT INTO `knowledge_doc`
   (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
 SELECT
@@ -676,7 +663,7 @@ SELECT @doc_id, '权了订阅消息，部分报名结果也会以微信服务通
 意见反馈', 468
 FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
 
--- ---------- 使用指南 · 知识问答使用说明（源文件 sql/knowledge/08-ai-assistant.md，2 段） ----------
+-- ---------- 使用指南 · 知识问答使用说明 ----------
 INSERT INTO `knowledge_doc`
   (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
 SELECT
@@ -755,7 +742,7 @@ SELECT @doc_id, '页面也不会显示剩余次数。为防止异常刷取，短
 哪些情况不会被拦住：如果因为服务器故', 417
 FROM DUAL WHERE @doc_id IS NOT NULL AND @has_chunk = 0;
 
--- ---------- 使用指南 · 线上展馆导览（源文件 sql/knowledge/09-online-halls.md，2 段） ----------
+-- ---------- 使用指南 · 线上展馆导览 ----------
 INSERT INTO `knowledge_doc`
   (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)
 SELECT

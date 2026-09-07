@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * 个人中心读服务（docs Phase 4 个人中心、交付物 §2.10）
+ * 个人中心读服务
  */
 @Service
 @RequiredArgsConstructor

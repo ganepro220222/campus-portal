@@ -1,5 +1,4 @@
--- sql/seed-dev.sql — 开发环境演示数据（在 init.sql 之后执行）
--- 用法：mysql -uroot -pdev123456 shuyuan < sql/seed-dev.sql
+-- 演示数据，在 init.sql 之后执行。正式库不要导入。
 
 SET NAMES utf8mb4;
 
@@ -238,12 +237,7 @@ INSERT IGNORE INTO `event_log` (`member_id`, `event_type`, `target_type`, `targe
 INSERT IGNORE INTO `member_badge` (`member_id`, `badge_id`, `achieved_at`) VALUES
 (1, 1, '2026-06-01 08:00:00');
 
--- 关联小程序。
--- 真实存在的关联小程序**只有「通途星」一个**，且 AppID 尚未拿到，先留占位符；
--- 拿到后填进 miniapp/config/navigate-appids.json 并执行 scripts/sync-navigate-appids.js。
--- 其余两条是演示条目，用来展示列表的两种形态（跳转 / 图文），不是真实学院。
--- 早先这里铺了 11 个学院名，其中「马克思主义学院」等既不是真实关联对象，
--- 又正好撞在要回避的表述上——首页「关联应用」把它们直接显示了出来。
+-- 关联小程序：通途星为真实对象，AppID 待配置；其余两条仅作列表演示。
 INSERT IGNORE INTO `college_app` (`id`, `name`, `description`, `sort`, `status`, `content_type`, `appid`, `path`) VALUES
 (1, '通途星',         '关联小程序 · AppID 待配置',   1, 1, 'jump',   'wxPLACEHOLDER001', 'pages/index/index'),
 (2, '示例关联应用 A', '示例条目 · 用于演示列表布局', 2, 1, 'manual', NULL, NULL),

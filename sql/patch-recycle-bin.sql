@@ -1,13 +1,4 @@
--- 回收站 / 清退（软删除 + 恢复 + 彻底删除 + 师生匿名化）
---
--- 说明：本期功能完全复用既有列，不新增任何表或字段——
---   · 6 类内容表（news/hall/craft/course/resource/activity）均已带 is_deleted（见 init.sql），
---     软删除由 MyBatis-Plus 全局逻辑删除完成，回收站通过原生 SQL 读取 is_deleted=1 的行；
---   · 师生「清退」= 脱敏 member/member_account/member_profile 并递增 member.token_version，
---     token_version 已由 patch-token-version.sql 保证存在。
---
--- 因此新库无需执行本 patch。本文件仅为「历史旧库缺列」提供防御式补齐 + 一段自检查询，
--- 可安全重复执行。
+-- 回收站 / 清退：旧库若缺 is_deleted 则补齐。新库已含，可重复执行。
 
 SET @db := DATABASE();
 

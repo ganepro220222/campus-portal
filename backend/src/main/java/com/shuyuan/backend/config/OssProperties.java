@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * 阿里云 OSS / CDN 配置（技术方案 §6.2、验收 §六 OSS 签名访问）
+ * 阿里云 OSS / CDN 配置
  */
 @Data
 @Component

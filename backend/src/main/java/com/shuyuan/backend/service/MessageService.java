@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 站内消息（《交付物》§2.8 无授权用户消息中心兜底）
+ * 站内消息（未登录用户也可看平台通知）
  */
 @Service
 @RequiredArgsConstructor

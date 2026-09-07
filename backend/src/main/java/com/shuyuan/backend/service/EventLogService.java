@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 
 /**
- * 用户行为事件写入（供个人中心足迹与 Phase 6 统计聚合）
+ * 用户行为事件写入（供个人中心足迹与统计聚合）
  */
 @Service
 @RequiredArgsConstructor

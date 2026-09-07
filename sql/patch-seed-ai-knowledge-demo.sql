@@ -1,5 +1,4 @@
--- 为已有 dev 库补录知识库演示资料（可重复执行）
--- 用法：docker cp 后 mysql 执行，或合并进 seed-dev 全量导入
+-- 为已有库补录知识库演示资料（可重复执行）。
 
 INSERT IGNORE INTO `knowledge_doc` (`id`, `title`, `file_url`, `source_type`, `char_count`, `chunk_count`, `status`, `uploaded_by`, `created_at`) VALUES
 (1, '平台功能说明', 'manual://平台功能说明', 'manual', 420, 3, 'ready', 1, '2026-07-01 10:00:00'),

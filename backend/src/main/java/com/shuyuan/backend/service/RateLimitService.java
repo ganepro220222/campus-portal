@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 接口限流：Redis 固定窗口计数（E2-3）
+ * 接口限流：Redis 固定窗口计数
  */
 @Service
 @RequiredArgsConstructor

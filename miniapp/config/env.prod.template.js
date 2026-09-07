@@ -1,6 +1,6 @@
 /**
- * 小程序生产环境配置模板
- * 发布前：复制为 env.js，将 ENV 改为 prod 并替换 baseUrl
+ * 小程序运行环境配置。
+ * 发布前将 ENV 改为 prod，并把 baseUrl 换成正式域名。
  */
 const ENV = 'prod' // dev | staging | prod
 

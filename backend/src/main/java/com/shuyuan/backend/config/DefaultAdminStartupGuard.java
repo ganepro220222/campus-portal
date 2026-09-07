@@ -12,7 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * 生产/预发环境启动门禁：禁止启用中的默认超管口令 admin/Admin@123。
+ * 生产/预发环境启动校验：禁止启用中的默认超管口令 admin/Admin@123。
  */
 @Slf4j
 @Component

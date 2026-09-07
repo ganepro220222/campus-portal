@@ -1,11 +1,11 @@
 {
-  "_comment": "关联小程序 AppID 清单。复制为 navigate-appids.json 填入真实值后执行：node scripts/sync-navigate-appids.js",
-  "_note": "现实中真实存在的关联小程序只有「通途星」一个，AppID 尚未拿到；下面第二条仅为格式示例，拿到正式清单后按需增删。",
+  "_comment": "关联小程序 AppID 清单。复制为 navigate-appids.json 后填入真实值。",
+  "_note": "通途星为真实关联对象，AppID 待配置；下面第二条仅为格式示例。",
   "appIds": [
     {
       "appId": "wxPLACEHOLDER_COLLEGE_01",
       "name": "通途星",
-      "note": "唯一真实的关联小程序，待甲方提供正式 AppID 后替换"
+      "note": "真实关联小程序，拿到正式 AppID 后替换"
     },
     {
       "appId": "wxPLACEHOLDER_COLLEGE_02",

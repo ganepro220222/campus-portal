@@ -27,22 +27,13 @@ public class SysConfigService {
     public static final String CONTACT_EMAIL = "contact_email";
     public static final String ABOUT_ICP = "about_icp";
 
-    /*
-     * 下面这些默认值不是「示例数据」——后台没配时，接口返回的就是它们，
-     * 小程序照单展示，提审时审核员看到的也是它们。所以它们必须始终是
-     * 可以直接对外的文案，且与 miniapp/utils/miniappConfig.js 里的 DEFAULT 逐字一致：
-     * 后端非空就会盖掉小程序侧的兜底（`res.intro || this.data.intro`），
-     * 两边写得不一样等于小程序那份永远不生效，改了也白改。
-     */
+    /* 后台没配时接口就返回这些默认值，须与小程序兜底文案一致。 */
     private static final String DEFAULT_ABOUT_INTRO =
             "云端书院是面向校园的线上学习服务平台，整合线上展馆、精品课程、文创展示与活动报名等功能，"
             + "支持随时随地学习与交流，线上线下相结合。";
 
     /*
-     * 联系方式默认留空，关于页对这三行都有 wx:if，空值即不渲染。
-     * 原先内置的是 0851-12345678 与 shuyuan@gzjtzy.edu.cn：号码是编的，
-     * 邮箱是学校的 edu.cn 域——备案主体已是贵州云漫科技有限公司，
-     * 界面上再挂学校域名的联系方式，与主体和授权范围都对不上。
+     * 联系方式默认留空，关于页对空值不渲染。
      * 真实联系方式请在后台「内容配置」填写。
      */
     private static final String DEFAULT_ADDRESS = "";

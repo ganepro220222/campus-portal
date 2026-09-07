@@ -1,11 +1,6 @@
--- sql/patch-hall-vr-copy-20260830.sql — 已有库：8/9 号馆简介与按钮文案对齐
--- 背景：visibility 补丁已摘掉未验收的第三方 VR 入口，但简介仍写「支持 VR 全景漫游」，
---       详情页按钮却是「VR 链接筹备中」，用户看到互相矛盾的信息。
--- 幂等：仅当 VR 仍不可用、且简介仍声称「支持 VR」时才改写。
--- 用法（staging）：
---   docker compose -f docker-compose.staging.yml exec -T mysql \
---     mysql -uroot -p'密码' --default-character-set=utf8mb4 shuyuan \
---     < sql/patch-hall-vr-copy-20260830.sql
+-- 已有库：8/9 号馆简介与按钮文案对齐。
+-- VR 入口已摘掉时，简介不要再写「支持 VR 全景漫游」。
+-- 仅当 VR 仍不可用、且简介仍声称「支持 VR」时才改写。
 
 SET NAMES utf8mb4;
 

@@ -165,7 +165,7 @@ public final class DeploymentSecurityRules {
     }
 
     /**
-     * dev/docker 等非 guarded profile 若连接远程 DB/Redis，拒绝启动，避免绕过 staging/prod 门禁。
+     * dev/docker 等非 guarded profile 若连接远程 DB/Redis，拒绝启动，避免绕过 staging/prod 校验。
      */
     public static void validateNonGuardedProfileUsesLocalInfraOnly(String[] activeProfiles,
                                                                    String datasourceUrl,

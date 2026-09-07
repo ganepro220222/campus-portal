@@ -13,8 +13,10 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
+import stat
 from datetime import date
 from pathlib import Path
 
@@ -60,6 +62,8 @@ EXCLUDE_REL = {
         'sql-init-manifest.json',
         'patch-loadtest.sql',
         'patch-loadtest-cleanup.sql',
+        'patch-remove-craft-3d-columns.sql',
+        'patch-craft-image-fit-mode.sql',
     }),
 }
 
@@ -94,6 +98,20 @@ FORBIDDEN = (
     (re.compile(r'Cursor 生成'), '生成痕迹'),
     (re.compile(r'\bClaude\b'), '生成痕迹'),
     (re.compile(r'\bChatGPT\b'), '生成痕迹'),
+    (re.compile(r'合伙人'), '内部协作信息'),
+    (re.compile(r'甲方'), '内部协作信息'),
+    (re.compile(r'乙方'), '内部协作信息'),
+    (re.compile(r'开发方'), '内部协作信息'),
+    (re.compile(r'yunmanvr', re.I), '内部域名'),
+    (re.compile(r'TinyManager'), '内部工具'),
+    (re.compile(r'FileBrowser'), '内部工具'),
+    (re.compile(r'campus-portal'), '内部仓库名'),
+    (re.compile(r'/opt/shuyuan'), '内部路径'),
+    (re.compile(r'docker-compose\.staging'), '内部编排'),
+    (re.compile(r'无从代劳'), '内部协作信息'),
+    (re.compile(r'docs Phase'), '内部文档编号'),
+    (re.compile(r'交付物\s*§'), '内部文档编号'),
+    (re.compile(r'E\d-\d'), '内部文档编号'),
 )
 
 PACK_README = """云端书院源码
@@ -102,7 +120,7 @@ PACK_README = """云端书院源码
 
 【微信小程序】
   用微信开发者工具导入「微信小程序」文件夹。
-  正式发布前，对照 config/env.prod.template.js 把运行环境改成正式域名。
+  正式发布前，把 config/env.js 的运行环境和接口地址改成正式域名。
 
 【管理后台】
   需要 Node.js 18 或更高版本。在「管理后台」目录安装依赖后启动，接口指向服务端。
@@ -147,9 +165,38 @@ def should_include(src_root: Path, path: Path, pack_name: str) -> bool:
     return True
 
 
+def _rmtree_onerror(_func, p, _exc) -> None:
+    try:
+        os.chmod(p, stat.S_IWRITE)
+        Path(p).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def rimraf(path: Path) -> None:
     if path.exists():
-        shutil.rmtree(path)
+        shutil.rmtree(path, onerror=_rmtree_onerror)
+    if path.exists():
+        raise SystemExit(f'无法清空目录：{path}')
+
+
+def prune_excluded(out: Path) -> None:
+    for pack_name, extras in EXCLUDE_REL.items():
+        for rel in extras:
+            target = out / pack_name / Path(*rel.split('/'))
+            if target.is_file():
+                target.unlink()
+            elif target.is_dir():
+                shutil.rmtree(target, onerror=_rmtree_onerror)
+
+
+def resolve_copy_source(src_root: Path, path: Path, pack_name: str) -> Path:
+    rel = path.relative_to(src_root).as_posix()
+    if pack_name == '微信小程序' and rel == 'config/env.js':
+        template = src_root / 'config/env.prod.template.js'
+        if template.is_file():
+            return template
+    return path
 
 
 def copy_tree(src_root: Path, dst_root: Path, pack_name: str) -> int:
@@ -157,9 +204,10 @@ def copy_tree(src_root: Path, dst_root: Path, pack_name: str) -> int:
     for path in sorted(src_root.rglob('*')):
         if not should_include(src_root, path, pack_name):
             continue
+        src = resolve_copy_source(src_root, path, pack_name)
         out = dst_root / path.relative_to(src_root)
         out.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, out)
+        shutil.copy2(src, out)
         n += 1
     return n
 
@@ -184,6 +232,11 @@ def scan_pack(out: Path) -> list[str]:
     errors: list[str] = []
     if (out / '.git').exists():
         errors.append('交付源码内出现 .git')
+    for pack_name, extras in EXCLUDE_REL.items():
+        for rel in extras:
+            leftover = out / pack_name / Path(*rel.split('/'))
+            if leftover.exists():
+                errors.append(f'排除项残留：{pack_name}/{rel}')
     for path in out.rglob('*'):
         if not path.is_file():
             continue
@@ -216,6 +269,7 @@ def sync() -> dict[str, int]:
     counts: dict[str, int] = {}
     for name, src in TREES:
         counts[name] = copy_tree(src, OUT / name, name)
+    prune_excluded(OUT)
     write_readme(OUT)
     errors = scan_pack(OUT)
     if errors:

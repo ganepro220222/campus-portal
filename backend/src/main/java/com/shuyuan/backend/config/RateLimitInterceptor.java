@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 敏感接口限流：登录、报名、AI 问答（E2-3）
+ * 敏感接口限流：登录、报名、AI 问答
  *
  * <p>计数在 preHandle 里就扣，也就是请求还没进 Controller 就先占一次。这是限流该有的样子
  * （不然就挡不住打进来的量），代价是「服务端自己没干成」的那几种失败也会把用户的次数吃掉。

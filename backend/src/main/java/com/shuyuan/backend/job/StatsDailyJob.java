@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 
 /**
- * 每日凌晨聚合前一日统计数据（docs Phase 6 定时任务）
+ * 每日凌晨聚合前一日统计数据
  */
 @Slf4j
 @Component

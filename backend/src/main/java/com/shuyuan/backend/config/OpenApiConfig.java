@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * OpenAPI 文档配置（对照 E2-4、交付物 §5）
+ * OpenAPI 文档配置
  */
 @Configuration
 public class OpenApiConfig {

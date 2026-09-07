@@ -1,7 +1,4 @@
--- sql/patch-hall-real-data.sql — 将占位展馆替换为校方真实 11 馆（已有库执行）
--- 用法：
---   type sql\patch-hall-vr.sql | docker compose -f docker-compose.dev.yml exec -T mysql mysql -uroot -pdev123456 shuyuan
---   type sql\patch-hall-real-data.sql | docker compose -f docker-compose.dev.yml exec -T mysql mysql -uroot -pdev123456 shuyuan
+-- 将占位展馆替换为真实 11 馆（已有库执行）。建议先具备 short_name、vr_url 字段。
 
 SET NAMES utf8mb4;
 
@@ -92,9 +89,8 @@ UPDATE `hall` SET
   `status` = 1
 WHERE `id` = 7;
 
--- 8/9 号馆 VR 暂缺：第三方域名无法完成微信业务域名校验（原链接见 patch-hall-vr-visibility-20260829.sql），
--- 合伙人迁移到 720yun 后再回填；展馆本体保留上线（展馆达人徽章要求 11 馆齐全）。
--- vr_url 带域名防护：已换成 720yun 的不要被本初始化补丁覆盖成 NULL。
+-- 8/9 号馆当时 VR 未就绪：第三方域名无法完成微信业务域名校验，展馆仍上线。
+-- 已换成 720 云的 vr_url 不要被本补丁覆盖成空。
 UPDATE `hall` SET
   `name` = '校园安全教育馆',
   `short_name` = '校园安全教育馆',

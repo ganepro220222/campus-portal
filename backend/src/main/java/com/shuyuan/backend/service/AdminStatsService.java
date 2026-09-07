@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 管理后台统计看板（docs Phase 6）
+ * 管理后台统计看板
  */
 @Service
 @RequiredArgsConstructor

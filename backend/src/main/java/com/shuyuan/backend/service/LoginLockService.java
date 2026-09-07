@@ -10,8 +10,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 登录失败计数与锁定（Redis）
- * 对照交付标准 §2.1：连续 5 次错误锁定 5 分钟
+ * 登录失败计数与锁定（Redis）：连续 5 次错误锁定 5 分钟
  */
 @Service
 @RequiredArgsConstructor

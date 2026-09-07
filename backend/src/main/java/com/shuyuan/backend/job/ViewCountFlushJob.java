@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 每 5 分钟将 Redis 浏览量增量落库（docs Phase 6）
+ * 每 5 分钟将 Redis 浏览量增量落库
  */
 @Slf4j
 @Component

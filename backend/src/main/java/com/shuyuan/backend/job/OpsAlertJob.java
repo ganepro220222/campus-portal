@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * E2-1 低成本告警：每 5 分钟评估健康状态与 5xx 错误率。
+ * 低成本告警：每 5 分钟评估健康状态与 5xx 错误率。
  * 仅在 shuyuan.alert.enabled=true 时启用。
  */
 @Slf4j

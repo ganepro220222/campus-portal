@@ -1,8 +1,4 @@
--- 账号安全增强：首次改密标记 + 发布权细分
--- 注：must_change_password 与角色 4 已并入 init.sql；旧库升级时执行
--- 用法：mysql -uroot -p shuyuan < sql/patch-admin-account-security.sql
--- 可重复执行：ADD COLUMN 与角色 INSERT 已做幂等处理
--- 旧库即使 must_change_password 列已存在，仍应执行本文件以修正默认 admin 改密标记与角色权限
+-- 账号安全：首次改密标记与发布权细分。新库已含这些字段；旧库升级时执行，可重复。
 
 SET NAMES utf8mb4;
 

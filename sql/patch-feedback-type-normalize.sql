@@ -1,8 +1,5 @@
--- 统一 feedback.type 契约（幂等，可重复执行）
---
--- 修复历史 patch 曾使用英文默认值 other，导致后台中文筛选无法命中。
--- ECS 执行：
---   mysql ... shuyuan < /opt/shuyuan/sql/patch-feedback-type-normalize.sql
+-- 统一 feedback.type（可重复执行）。
+-- 历史默认值 other 会导致后台中文筛选无法命中。
 
 SET NAMES utf8mb4;
 SET @db := DATABASE();

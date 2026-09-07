@@ -1,17 +1,6 @@
--- sql/patch-hall-vr-visibility-20260829.sql — 已有库（staging/prod）数据修正
--- 背景：
---   1)「待上线」分类（id=19）处于启用状态但名下没有任何上线展馆，
---      小程序展馆页会出现一个点进去永远为空的页签；
---   2) 8/9 号馆 VR 链接指向第三方域名 bafang720.com / eqvrar.com，这两个域名
---      无法上传微信业务域名校验文件，体验版/正式版 web-view 打开即报“不支持打开该页面”。
---      合伙人计划将两馆全景迁移到 720yun，迁移完成前先摘掉 VR 入口。
---      注意：只清 vr_url、不下线展馆——「展馆达人」徽章要求参观全部 11 个展馆，
---      小程序端 vr_url 为空时会显示既有的「VR 链接筹备中」状态，展馆内容仍可浏览。
--- 幂等，可重复执行。
--- 用法（staging）：
---   docker compose -f docker-compose.staging.yml exec -T mysql \
---     mysql -uroot -p'密码' --default-character-set=utf8mb4 shuyuan \
---     < sql/patch-hall-vr-visibility-20260829.sql
+-- 已有库数据修正：关掉空的「待上线」分类；
+-- 8/9 号馆原 VR 域名无法通过微信业务域名校验，先清空 vr_url，展馆仍上线。
+-- 可重复执行。
 
 SET NAMES utf8mb4;
 

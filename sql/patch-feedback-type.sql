@@ -1,5 +1,5 @@
--- 历史升级入口：保持可重复执行，并与当前 feedback.type 中文契约一致。
--- 新部署请按 sql-init-manifest.json 执行 patch-feedback-type-normalize.sql。
+-- 旧库升级：统一 feedback.type。可重复执行。
+-- 新库也可改跑 patch-feedback-type-normalize.sql。
 
 SET NAMES utf8mb4;
 SET @db := DATABASE();

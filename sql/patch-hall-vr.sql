@@ -1,5 +1,4 @@
--- sql/patch-hall-vr.sql — 展馆 VR 链接与短名称字段（已有库增量升级）
--- 用法：type sql\patch-hall-vr.sql | docker compose -f docker-compose.dev.yml exec -T mysql mysql -uroot -pdev123456 shuyuan
+-- 展馆增加短名称与 VR 链接字段（已有库升级）。
 
 SET NAMES utf8mb4;
 

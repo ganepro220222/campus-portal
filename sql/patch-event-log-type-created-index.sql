@@ -1,11 +1,4 @@
--- event_log 看板聚合与个人足迹索引（幂等，可重复执行）
---
--- idx_type_created：三条 view 聚合 WHERE event_type='view' AND created_at>=?
--- idx_member_created：学习足迹 WHERE member_id=? AND created_at>=? ORDER BY created_at
--- aggregateDaily 只按时间范围，继续走 idx_created_at
---
--- 新库已并入 init.sql；旧库：
---   mysql ... shuyuan < sql/patch-event-log-type-created-index.sql
+-- event_log 看板聚合与个人足迹索引。新库已含；旧库升级时执行，可重复。
 
 SET NAMES utf8mb4;
 

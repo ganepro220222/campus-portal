@@ -127,7 +127,7 @@
             <version>3.18.1</version>
         </dependency>
 
-        <!-- OpenAPI 文档（E2-4，交付物 §5） -->
+        <!-- OpenAPI 文档 -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>

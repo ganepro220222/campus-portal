@@ -100,29 +100,16 @@ function loadDocs() {
 
 function render(docs) {
   const lines = []
-  lines.push('-- 内置知识库：云端书院小程序自身的介绍、功能与使用指南')
-  lines.push('--')
-  lines.push('-- 本文件由 scripts/build-builtin-knowledge.js 依据 sql/knowledge/*.md 生成，请勿手改；')
-  lines.push('-- 要改内容请改 sql/knowledge/ 下的 .md 再重新生成（npm run build:builtin-knowledge）。')
-  lines.push('--')
-  lines.push('-- 为什么要内置：知识库空着的时候，知识问答检索不到任何片段，只会反复回答')
-  lines.push('-- 「没有找到相关资料」。')
-  lines.push('-- 校方与学院的文化资料我们无从代劳，但「这个小程序怎么用」是我们自己的交付物，')
-  lines.push('-- 本来就该随系统一起给出。')
-  lines.push('--')
-  lines.push('-- 特性：')
-  lines.push('--   * 可重复执行：按标题判重，已存在则跳过，不会产生重复文档')
-  lines.push('--   * 后台可管：source_type=manual，与手工录入的资料同一套增删改查，可编辑可停用可删除')
-  lines.push('--   * 分段与后端 TextChunker 完全一致（500 字一段、50 字重叠），')
-  lines.push('--     后台编辑保存后重新分段的结果与此处相同')
-  lines.push('--   * 不属于演示数据：sql/seed-dev-cleanup.sql 不会清除本文件写入的内容')
+  lines.push('-- 内置知识库：云端书院小程序使用指南')
+  lines.push('-- 知识库为空时问答检索不到内容。本文件写入使用说明，可重复执行。')
+  lines.push('-- 按标题判重；分段 500 字、重叠 50 字。')
   lines.push('')
   lines.push('SET NAMES utf8mb4;')
   lines.push('')
 
   for (const doc of docs) {
     const t = sqlStr(doc.title)
-    lines.push(`-- ---------- ${doc.title}（源文件 sql/knowledge/${doc.name}，${doc.parts.length} 段） ----------`)
+    lines.push(`-- ---------- ${doc.title} ----------`)
     lines.push('INSERT INTO `knowledge_doc`')
     lines.push('  (`title`, `file_url`, `source_type`, `content`, `char_count`, `chunk_count`, `status`, `uploaded_by`)')
     lines.push('SELECT')
@@ -167,8 +154,7 @@ function render(docs) {
 function renderUpdate(docs) {
   const lines = []
   lines.push('-- 将已入库的内置使用指南更新为当前口径；没有的篇会插入（可重复执行）')
-  lines.push('-- 由 scripts/build-builtin-knowledge.js 生成，请勿手改。')
-  lines.push('-- 按标题匹配已存在行并重建分段；新标题在本文件内插入。')
+  lines.push('-- 按标题匹配已存在行并重建分段。')
   lines.push('')
   lines.push('SET NAMES utf8mb4;')
   lines.push('')

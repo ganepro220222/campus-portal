@@ -1,8 +1,5 @@
--- sql/patch-hall-vr-links-20260711.sql — 补全校园安全教育馆、西部山区安全基地 VR 链接
--- 用法：
---   Get-Content sql\patch-hall-vr-links-20260711.sql -Raw | docker compose -f docker-compose.dev.yml exec -T mysql mysql -uroot -pdev123456 --default-character-set=utf8mb4 shuyuan
---
--- 说明：校园安全教育馆甲方提供为 http 链接；小程序 web-view 要求 https，故入库使用 https 同路径。
+-- 补全校园安全教育馆、西部山区安全基地 VR 链接。
+-- 原链接为 http，入库改为 https，以符合小程序 web-view 要求。
 
 SET NAMES utf8mb4;
 

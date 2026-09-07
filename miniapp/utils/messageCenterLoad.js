@@ -37,10 +37,36 @@ function shouldShowMessageEmpty(loading, error, listLength) {
   return !loading && !error && !listLength
 }
 
+/**
+ * 乐观标已读。未读总数以服务端 stats 为准，不能用当前页 list.filter 重算：
+ * 列表最多 100 条，总未读可能更大。
+ */
+function markMessageReadLocally(list, unreadCount, id) {
+  const messages = Array.isArray(list) ? list : []
+  if (id == null || id === '') {
+    return { changed: 0, list: messages, unreadCount: Math.max(0, Number(unreadCount) || 0) }
+  }
+  const target = String(id)
+  let changed = 0
+  const nextList = messages.map((item) => {
+    if (!item || String(item.id) !== target || Number(item.readStatus) === 1) {
+      return item
+    }
+    changed += 1
+    return { ...item, readStatus: 1 }
+  })
+  return {
+    changed,
+    list: nextList,
+    unreadCount: Math.max(0, (Number(unreadCount) || 0) - changed)
+  }
+}
+
 module.exports = {
   unreadCountFrom,
   buildMessageLoadingPatch,
   buildMessageLoadedPatch,
   buildMessageFailurePatch,
-  shouldShowMessageEmpty
+  shouldShowMessageEmpty,
+  markMessageReadLocally
 }

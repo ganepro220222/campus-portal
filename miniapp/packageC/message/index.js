@@ -3,7 +3,8 @@ const { get, put } = require('../../utils/request')
 const {
   buildMessageLoadingPatch,
   buildMessageLoadedPatch,
-  buildMessageFailurePatch
+  buildMessageFailurePatch,
+  markMessageReadLocally
 } = require('../../utils/messageCenterLoad')
 
 Page({
@@ -16,6 +17,7 @@ Page({
   },
 
   onShow() {
+    this._navigating = false
     this._load()
   },
 
@@ -39,24 +41,31 @@ Page({
     }
   },
 
-  async onItemTap(e) {
+  _markLocalRead(id) {
+    const next = markMessageReadLocally(this.data.list, this.data.unreadCount, id)
+    if (!next.changed) return false
+    this.setData({ list: next.list, unreadCount: next.unreadCount })
+    return true
+  },
+
+  onItemTap(e) {
     const { id, route } = e.currentTarget.dataset
+    if (route && this._navigating) return
     if (id) {
-      try {
-        await put(`/messages/${id}/read`)
-        const list = this.data.list.map(m =>
-          String(m.id) === String(id) ? { ...m, readStatus: 1 } : m
-        )
-        const unreadCount = list.filter(m => m.readStatus === 0).length
-        this.setData({ list, unreadCount })
-      } catch (err) {
+      this._markLocalRead(id)
+      put(`/messages/${id}/read`, {}, { silent: true }).catch((err) => {
         console.warn('[message] 标已读失败', err)
-        wx.showToast({ title: '已读状态同步失败', icon: 'none' })
+      })
+    }
+    if (!route) return
+    this._navigating = true
+    wx.navigateTo({
+      url: route,
+      fail: () => {
+        this._navigating = false
+        wx.showToast({ title: '打开详情失败', icon: 'none' })
       }
-    }
-    if (route) {
-      wx.navigateTo({ url: route, fail: () => {} })
-    }
+    })
   },
 
   async onReadAll() {

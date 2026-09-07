@@ -10,13 +10,18 @@ const {
   buildMessageLoadingPatch,
   buildMessageLoadedPatch,
   buildMessageFailurePatch,
-  shouldShowMessageEmpty
+  shouldShowMessageEmpty,
+  markMessageReadLocally
 } = require('./messageCenterLoad')
 
 const pageSrc = fs.readFileSync(path.join(__dirname, '../packageC/message/index.js'), 'utf8')
 assert.doesNotMatch(pageSrc, /get\('\/messages'\)\.catch\(\(\) => \[\]\)/)
 assert.match(pageSrc, /buildMessageFailurePatch/)
 assert.match(pageSrc, /get\('\/profile\/stats'\)\.catch/)
+assert.match(pageSrc, /markMessageReadLocally/)
+assert.match(pageSrc, /silent:\s*true/)
+assert.doesNotMatch(pageSrc, /await put\(`\/messages\/\$\{id\}\/read`\)/)
+assert.doesNotMatch(pageSrc, /list\.filter\(m => m\.readStatus === 0\)\.length/)
 
 const items = [
   { id: 1, readStatus: 0 },
@@ -51,5 +56,26 @@ const refreshFail = buildMessageFailurePatch(true)
 assert.strictEqual(refreshFail.error, false)
 assert.strictEqual(refreshFail.refreshError, true)
 assert.strictEqual(refreshFail.list, undefined)
+
+{
+  const marked = markMessageReadLocally(
+    [{ id: 1, readStatus: 0 }, { id: 2, readStatus: 1 }],
+    9,
+    1
+  )
+  assert.strictEqual(marked.changed, 1)
+  assert.strictEqual(marked.list[0].readStatus, 1)
+  assert.strictEqual(marked.unreadCount, 8, '总未读必须按 stats 递减，不能用当前页重算')
+}
+
+{
+  const again = markMessageReadLocally(
+    [{ id: 1, readStatus: 1 }],
+    8,
+    '1'
+  )
+  assert.strictEqual(again.changed, 0)
+  assert.strictEqual(again.unreadCount, 8)
+}
 
 console.log('messageCenterLoad.test: ok')

@@ -57,6 +57,7 @@ EXCLUDE_REL = {
     }),
     '数据库脚本': frozenset({
         'README.md',
+        'sql-init-manifest.json',
         'patch-loadtest.sql',
         'patch-loadtest-cleanup.sql',
     }),
@@ -98,8 +99,6 @@ FORBIDDEN = (
 PACK_README = """云端书院源码
 
 同步日期：{today}
-
-本目录包含校方小程序与后台工程，不含三维展陈。
 
 【微信小程序】
   用微信开发者工具导入「微信小程序」文件夹。

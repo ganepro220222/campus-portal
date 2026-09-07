@@ -59,10 +59,11 @@ must_exclude('backend', '.gitignore')
 must_exclude('backend', '.dockerignore')
 must_exclude('admin', '.gitignore')
 must_exclude('sql', 'README.md')
+must_exclude('sql', 'sql-init-manifest.json')
 must_exclude('sql', 'patch-loadtest.sql')
 
 readme = mod.PACK_README.lower()
-for banned in ('git', 'github', 'push', 'commit', 'claude', '甲方', 'exhibits'):
+for banned in ('git', 'github', 'push', 'commit', 'claude', '甲方', 'exhibits', '三维', '立体鉴赏'):
     if banned in readme:
         raise SystemExit(f'说明模板不应出现 {banned!r}')
 

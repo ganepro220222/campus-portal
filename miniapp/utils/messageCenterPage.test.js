@@ -162,6 +162,25 @@ async function run() {
   assert.strictEqual(noticeFail.data.unreadCount, 9)
   assert.ok(toasts.includes('已读状态同步失败'))
 
+  const race = createPage()
+  navigations.length = 0
+  toasts.length = 0
+  tap(race, race.data.list[1])
+  assert.match(puts.at(-1).url, /\/messages\/13\/read$/)
+  const singleRead = pendingPuts.at(-1)
+  const readAll = race.onReadAll()
+  assert.match(puts.at(-1).url, /\/messages\/read-all$/)
+  pendingPuts.at(-1).resolve()
+  await readAll
+  assert.strictEqual(race.data.unreadCount, 0)
+  assert.ok(race.data.list.every((item) => item.readStatus === 1))
+  assert.ok(toasts.includes('已全部标为已读'))
+  singleRead.reject(new Error('network'))
+  await flushPromises()
+  assert.strictEqual(race.data.list[1].readStatus, 1, '全部已读成功后不得被迟到的单条失败打回未读')
+  assert.strictEqual(race.data.unreadCount, 0)
+  assert.ok(!toasts.includes('已读状态同步失败'), '全部已读成功后不得再弹单条同步失败')
+
   console.log('[messageCenterPage.test] PASS')
 }
 

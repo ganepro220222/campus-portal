@@ -23,6 +23,7 @@ assert.match(pageSrc, /markMessageReadLocally/)
 assert.match(pageSrc, /revertMessageReadLocally/)
 assert.match(pageSrc, /silent:\s*true/)
 assert.match(pageSrc, /已读状态同步失败/)
+assert.match(pageSrc, /read-all[\s\S]*_bumpReadSyncGen/)
 assert.doesNotMatch(pageSrc, /await put\(`\/messages\/\$\{id\}\/read`\)/)
 assert.doesNotMatch(pageSrc, /list\.filter\(m => m\.readStatus === 0\)\.length/)
 

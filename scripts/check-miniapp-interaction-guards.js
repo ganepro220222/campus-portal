@@ -61,6 +61,11 @@ mustMatch(
   /if \(this\._navigating\) return[\s\S]*已读状态同步失败/,
   '已跳转详情时不得因标已读失败弹 toast'
 )
+mustMatch(
+  'miniapp/packageC/message/index.js',
+  /read-all[\s\S]*_bumpReadSyncGen/,
+  '全部已读成功后必须推进代际，否则迟到的单条 PUT 失败会造出幽灵未读'
+)
 
 const ci = read('.github/workflows/ci.yml')
 if (!ci.includes('check:miniapp-interaction-guards')) {

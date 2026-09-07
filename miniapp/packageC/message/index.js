@@ -30,8 +30,12 @@ Page({
     this._load()
   },
 
-  async _load() {
+  _bumpReadSyncGen() {
     this._readSyncGen = (this._readSyncGen || 0) + 1
+  },
+
+  async _load() {
+    this._bumpReadSyncGen()
     const hasList = this.data.list.length > 0
     this.setData(buildMessageLoadingPatch(hasList))
     try {
@@ -86,6 +90,7 @@ Page({
   async onReadAll() {
     try {
       await put('/messages/read-all')
+      this._bumpReadSyncGen()
       const list = this.data.list.map(m => ({ ...m, readStatus: 1 }))
       this.setData({ list, unreadCount: 0 })
       wx.showToast({ title: '已全部标为已读', icon: 'none' })

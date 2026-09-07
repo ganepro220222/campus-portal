@@ -1379,6 +1379,89 @@ test.describe('语音播放器 折叠', () => {
     expect(snap.playing).toBe(false)
   })
 
+  test('删除被热点绑定的语音会确认并清掉引用', async () => {
+    const hs = [{ id: 'h1', position: [0, 0.2, 0.6], audio: 'a1', i18n: { zh: { title: '甲', body: '乙' } } }]
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false }, hotspots: hs }))
+    await openEditorSection(page, '语音讲解')
+    page.once('dialog', async d => {
+      expect(d.message()).toContain('1 个热点')
+      expect(d.message()).toContain('取消语音绑定')
+      await d.accept()
+    })
+    await page.locator('[data-au-del="0"]').click()
+    const snap = await page.evaluate(() => window.__SY_TEST__.audioEditorSnapshot())
+    expect(snap.ids).toEqual([])
+    expect(snap.hotspotAudio[0]).toBeNull()
+    await expect(page.locator('[data-hs-audio="0"]')).toHaveValue('')
+    const issues = await page.evaluate(() => window.__SY_TEST__.preSaveIssues())
+    expect(issues.errs.some(e => e.includes('引用不存在的语音'))).toBe(false)
+  })
+
+  test('取消删除被绑定语音时音轨和热点引用都保留', async () => {
+    const hs = [{ id: 'h1', position: [0, 0.2, 0.6], audio: 'a1', i18n: { zh: { title: '甲', body: '乙' } } }]
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false }, hotspots: hs }))
+    await openEditorSection(page, '语音讲解')
+    page.once('dialog', d => d.dismiss())
+    await page.locator('[data-au-del="0"]').click()
+    const snap = await page.evaluate(() => window.__SY_TEST__.audioEditorSnapshot())
+    expect(snap.ids).toEqual(['a1'])
+    expect(snap.hotspotAudio[0]).toBe('a1')
+  })
+
+  test('删除 a1 后再新增得到空闲 id 且不重复', async () => {
+    const audio = [
+      { id: 'a1', src: 'assets/audio.mp3', label: '一' },
+      { id: 'a2', src: 'assets/audio.mp3', label: '二' },
+      { id: 'a3', src: 'assets/audio.mp3', label: '三' },
+    ]
+    const hs = [
+      { id: 'h1', position: [0, 0.2, 0.6], i18n: { zh: { title: '甲', content: '1' } } },
+      { id: 'h2', position: [0.1, 0.2, 0.6], i18n: { zh: { title: '乙', content: '2' } } },
+      { id: 'h3', position: [0.2, 0.2, 0.6], i18n: { zh: { title: '丙', content: '3' } } },
+    ]
+    await reloadPlayer(page, withAudio({ audio, hotspots: hs, viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false } }))
+    await openEditorSection(page, '语音讲解')
+    await page.locator('[data-au-del="0"]').click()
+    await page.locator('#ed-au-url').fill('assets/audio.mp3')
+    await page.locator('#ed-au-add').click()
+    const ids = await page.evaluate(() => window.__SY_TEST__.audioEditorSnapshot().ids)
+    expect(ids).toHaveLength(3)
+    expect(new Set(ids).size).toBe(3)
+    expect(ids).toEqual(['a2', 'a3', 'a1'])
+
+    await stubAudioNetwork(page)
+    const played = await page.evaluate(() => {
+      window.__SY_TEST__.bindHotspotAudioForTest(0, 'a2')
+      window.__SY_TEST__.bindHotspotAudioForTest(1, 'a3')
+      window.__SY_TEST__.bindHotspotAudioForTest(2, 'a1')
+      const idx = {}
+      window.__SY_TEST__.playTrackByIdForTest('a1')
+      idx.a1 = window.__SY_TEST__.audioIndex()
+      window.__SY_TEST__.playTrackByIdForTest('a2')
+      idx.a2 = window.__SY_TEST__.audioIndex()
+      window.__SY_TEST__.playTrackByIdForTest('a3')
+      idx.a3 = window.__SY_TEST__.audioIndex()
+      return {
+        idx,
+        snap: window.__SY_TEST__.audioEditorSnapshot(),
+        issues: window.__SY_TEST__.preSaveIssues(),
+      }
+    })
+    expect(played.snap.hotspotAudio).toEqual(['a2', 'a3', 'a1'])
+    expect(played.idx).toEqual({ a1: 2, a2: 0, a3: 1 })
+    expect(played.issues.errs.some(e => e.includes('语音 id 重复') || e.includes('引用不存在的语音'))).toBe(false)
+  })
+
+  test('孤儿热点语音引用会阻断保存', async () => {
+    const hs = [{ id: 'h1', position: [0, 0.2, 0.6], i18n: { zh: { title: '甲', body: '乙' } } }]
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 }, hotspots: hs }))
+    const issues = await page.evaluate(() => {
+      window.__SY_TEST__.bindHotspotAudioForTest(0, 'ghost')
+      return window.__SY_TEST__.preSaveIssues()
+    })
+    expect(issues.errs.some(e => e.includes('引用不存在的语音 ghost'))).toBe(true)
+  })
+
   test('热点绑定的语音自动播放时，播放器自动展开', async () => {
     const hs = [{ id: 'h1', position: [0, 0.2, 0.6], audio: 'a1', i18n: { zh: { title: '甲', body: '乙' } } }]
     await reloadPlayer(page, withAudio({ viewport: { width: 390, height: 800 }, hotspots: hs }))

@@ -63,3 +63,120 @@ export function nextAudioIndexAfterDelete(prevIndex, deletedIndex, remainingCoun
   if (del < prev) return Math.min(prev - 1, remain - 1)
   return Math.min(prev, remain - 1)
 }
+
+export function normalizeAudioId(id) {
+  return typeof id === 'string' ? id.trim() : ''
+}
+
+export function audioIdIssue(id) {
+  if (id == null) return 'missing'
+  if (typeof id === 'string') return id.trim() ? null : 'empty'
+  return 'invalid'
+}
+
+export function nextAudioIdFromUsed(used) {
+  for (let n = 1; ; n++) {
+    const cand = 'a' + n
+    if (!used.has(cand)) return cand
+  }
+}
+
+export function nextAudioId(list) {
+  const used = new Set()
+  for (const a of list || []) {
+    const id = normalizeAudioId(a?.id)
+    if (id) used.add(id)
+  }
+  return nextAudioIdFromUsed(used)
+}
+
+export function auditAudioIds(list) {
+  const invalid = []
+  let missing = 0
+  const seen = new Map()
+  const dupes = []
+  for (let i = 0; i < (list || []).length; i++) {
+    const a = list[i]
+    if (!a || typeof a !== 'object') continue
+    const issue = audioIdIssue(a.id)
+    if (issue) {
+      if (issue === 'empty' || issue === 'missing') missing++
+      else invalid.push({ index: i, issue })
+      continue
+    }
+    const id = normalizeAudioId(a.id)
+    const n = (seen.get(id) || 0) + 1
+    seen.set(id, n)
+    if (n === 2) dupes.push(id)
+  }
+  return { invalid, missing, dupes: [...new Set(dupes)] }
+}
+
+export function hotspotsBoundToAudio(hotspots, audioId) {
+  const id = normalizeAudioId(audioId)
+  if (!id) return []
+  const hits = []
+  for (let i = 0; i < (hotspots || []).length; i++) {
+    if (normalizeAudioId(hotspots[i]?.audio) === id) hits.push(i)
+  }
+  return hits
+}
+
+export function unbindHotspotsFromAudio(hotspots, audioId) {
+  const id = normalizeAudioId(audioId)
+  if (!id) return 0
+  let n = 0
+  for (const h of hotspots || []) {
+    if (h && normalizeAudioId(h.audio) === id) {
+      delete h.audio
+      n++
+    }
+  }
+  return n
+}
+
+export function orphanHotspotAudioRefs(hotspots, audio) {
+  const ids = new Set()
+  for (const a of audio || []) {
+    const id = normalizeAudioId(a?.id)
+    if (id) ids.add(id)
+  }
+  const orphans = []
+  for (let i = 0; i < (hotspots || []).length; i++) {
+    const ref = normalizeAudioId(hotspots[i]?.audio)
+    if (ref && !ids.has(ref)) orphans.push({ index: i, audio: ref })
+  }
+  return orphans
+}
+
+export function audioDeleteImpact(hotspots, audioId) {
+  const indexes = hotspotsBoundToAudio(hotspots, audioId)
+  const count = indexes.length
+  return {
+    count,
+    indexes,
+    confirmText: count
+      ? `这条语音正在被 ${count} 个热点使用。\n删除后这些热点将取消语音绑定，是否继续？`
+      : '',
+  }
+}
+
+/** 保存阻断项为 errs；缺文件仍为 warns。 */
+export function audioConfigIssues(audio, hotspots) {
+  const errs = []
+  const warns = []
+  const list = Array.isArray(audio) ? audio : []
+  const audit = auditAudioIds(list)
+  if (audit.missing) errs.push(`语音缺 id：${audit.missing} 个`)
+  if (audit.invalid.length) {
+    errs.push('语音 id 类型非法：' + audit.invalid.map(x => `#${x.index + 1}`).join(' · '))
+  }
+  if (audit.dupes.length) errs.push('语音 id 重复：' + audit.dupes.join(', '))
+  for (const a of list) {
+    if (!a || !a.src) warns.push('语音「' + ((a && a.label) || (a && a.id) || '?') + '」缺文件')
+  }
+  for (const o of orphanHotspotAudioRefs(hotspots, list)) {
+    errs.push(`热点 #${o.index + 1} 引用不存在的语音 ${o.audio}`)
+  }
+  return { errs, warns }
+}

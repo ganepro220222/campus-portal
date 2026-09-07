@@ -25,6 +25,13 @@ export const VIEWER_LIGHT_RIG_IMPORTS = [
   'createEnvLoadGuard',
 ]
 
+/** 观看版 player-audio 白名单。增删音轨 / 热点解绑只在编辑器。 */
+export const VIEWER_AUDIO_IMPORTS = [
+  'audioChromeState',
+  'shouldReloadAudioSrc',
+  'nextAudioIndexAfterDelete',
+]
+
 /** 观看版 player-persist 白名单。漏掉观看端实际调用的符号会在运行时变成 ReferenceError。 */
 export const VIEWER_PERSIST_IMPORTS = [
   'configFetchUrl',
@@ -87,6 +94,11 @@ const VIEWER_FORBIDDEN = [
   'mergeHotspotIdChanges',
   'hotspotBootAuditHadIssues',
   'nextHotspotId',
+  'nextAudioId',
+  'auditAudioIds',
+  'audioConfigIssues',
+  'audioDeleteImpact',
+  'unbindHotspotsFromAudio',
 ]
 
 export function importsFromSource(text) {
@@ -688,6 +700,7 @@ export function buildViewerSrc(playerHtml = fs.readFileSync(SRC, 'utf8')) {
     .replace(/import \{[^}]+\} from '\.\/hotspot-id\.mjs'/, "import { ensureHotspotIds } from './hotspot-id.mjs'")
     .replace(/import \{[^}]+\} from '\.\/player-persist\.mjs'/, `import { ${VIEWER_PERSIST_IMPORTS.join(', ')} } from './player-persist.mjs'`)
     .replace(/import \{[^}]+\} from '\.\/light-rig\.mjs'/, `import { ${VIEWER_LIGHT_RIG_IMPORTS.join(', ')} } from './light-rig.mjs'`)
+    .replace(/import \{[^}]+\} from '\.\/player-audio\.mjs'/, `import { ${VIEWER_AUDIO_IMPORTS.join(', ')} } from './player-audio.mjs'`)
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/\n+$/, '\n')

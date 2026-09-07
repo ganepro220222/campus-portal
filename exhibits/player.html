@@ -429,7 +429,7 @@ import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, E
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
 import { classifyIosBlackLook, webglContextRestorePlan, readImageSize, constrainedDecodeTarget, applySharedMapDownscale, copyTextureSampling } from './shading-risk.mjs'
-import { audioChromeState, shouldReloadAudioSrc, nextAudioIndexAfterDelete } from './player-audio.mjs'
+import { audioChromeState, shouldReloadAudioSrc, nextAudioIndexAfterDelete, nextAudioId, auditAudioIds, audioConfigIssues, audioDeleteImpact, unbindHotspotsFromAudio } from './player-audio.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -3370,11 +3370,21 @@ function syncShadowHint(){
   // 热点绑定语音
   $('editor').querySelectorAll('[data-hs-audio]').forEach(s=>s.onchange=e=>{ const h=cfg.hotspots[+s.dataset.hsAudio]; if(e.target.value) h.audio=e.target.value; else delete h.audio })
   // 语音讲解 增删改
-  el('ed-au-add').onclick=()=>{ cfg.audio=cfg.audio||[]; const n=cfg.audio.length+1; const u=el('ed-au-url').value.trim()
-    cfg.audio.push({ id:'a'+n, label:'讲解 '+n, src:u }); renderEditor(); buildAudio({ preservePlayback: true }) }
+  el('ed-au-add').onclick=()=>{ cfg.audio=cfg.audio||[]; const u=el('ed-au-url').value.trim()
+    const id = nextAudioId(cfg.audio)
+    cfg.audio.push({ id, label:'讲解 '+id.replace(/^a/, ''), src:u }); renderEditor(); buildAudio({ preservePlayback: true }) }
   $('editor').querySelectorAll('[data-au-label]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auLabel].label=e.target.value; buildAudio({ preservePlayback: true }) })
   $('editor').querySelectorAll('[data-au-src]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auSrc].src=e.target.value })
-  $('editor').querySelectorAll('[data-au-del]').forEach(a=>a.onclick=()=>{ const i=+a.dataset.auDel; cfg.audio.splice(i,1); renderEditor(); buildAudio({ deletedIndex: i, preservePlayback: true }) })
+  $('editor').querySelectorAll('[data-au-del]').forEach(a=>a.onclick=()=>{
+    const i=+a.dataset.auDel
+    const removedId = cfg.audio[i]?.id
+    const impact = audioDeleteImpact(cfg.hotspots, removedId)
+    if (impact.count && !confirm(impact.confirmText)) return
+    unbindHotspotsFromAudio(cfg.hotspots, removedId)
+    cfg.audio.splice(i,1)
+    renderEditor()
+    buildAudio({ deletedIndex: i, preservePlayback: true })
+  })
   // 热点位置数字微调
   ;['px','py','pz'].forEach((ax,ai)=>$('editor').querySelectorAll(`[data-hs-${ax}]`).forEach(inp=>inp.oninput=()=>{
     const h=cfg.hotspots[+inp.getAttribute(`data-hs-${ax}`)]; if(!h) return
@@ -3506,7 +3516,9 @@ function preSaveIssues(){
   if (modelPreviewOnly) errs.push('当前是本地模型预览，模型文件尚未上传，不能直接保存')
   if(!((cfg.i18n?.zh?.title)||'').trim()) warns.push('未填标题')
   ;(cfg.hotspots||[]).forEach((h,i)=>{ const x=h.i18n?.zh||{}; if(!((x.title||'').trim())&&!((x.content||'').trim())) warns.push('热点 #'+(i+1)+' 无标题/文案') })
-  ;(cfg.audio||[]).forEach(a=>{ if(!a||!a.src) warns.push('语音「'+((a&&a.label)||(a&&a.id)||'?')+'」缺文件') })
+  const audioIssues = audioConfigIssues(cfg.audio, cfg.hotspots)
+  errs.push(...audioIssues.errs)
+  warns.push(...audioIssues.warns)
   return { errs, warns }
 }
 // 一键保存：配置了 SAVE_API 则写回服务器（后端负责备份上一版）；否则降级为导出 config.json
@@ -3560,7 +3572,13 @@ function validateReport(){ const p=[]; const ok=x=>`✅ ${x}`, wn=x=>`⚠️ ${x
   if (!hsAudit.invalid.length && !hsAudit.dupes.length && !hsAudit.missing) {
     p.push(ok('热点 id 唯一' + (bootHadIssues ? '（加载后已修正）' : '')))
   }
-  ;(cfg.audio||[]).forEach(a=>{ if(!a.src) p.push(wn('语音「'+(a.label||a.id)+'」缺文件')) })
+  const audioIssues = audioConfigIssues(cfg.audio, cfg.hotspots)
+  for (const e of audioIssues.errs) p.push(wn(e))
+  for (const w of audioIssues.warns) p.push(wn(w))
+  const auAudit = auditAudioIds(cfg.audio || [])
+  if (!auAudit.invalid.length && !auAudit.dupes.length && !auAudit.missing) {
+    p.push(ok('语音 id 唯一'))
+  }
   const st=modelStats(); p.push(st.tris>500000?wn('三角面偏多 '+st.tris.toLocaleString()):ok('三角面 '+st.tris.toLocaleString()))
   return p.join('<br>') }
 function flash(msg){ const e=document.createElement('div'); e.textContent=msg; e.style.cssText='position:fixed;left:50%;top:40px;transform:translateX(-50%);background:rgba(200,168,106,.95);color:#0b0d14;padding:7px 16px;border-radius:999px;font-size:12.5px;z-index:99'; document.body.appendChild(e); setTimeout(()=>e.remove(),1400) }
@@ -4091,6 +4109,19 @@ if (editMode) {
     resolveModelLoadMock: (tag) => resolveModelLoadMock(tag),
     rejectModelLoadMock: (tag, msg) => rejectModelLoadMock(tag, msg),
     preSaveIssues: () => preSaveIssues(),
+    audioEditorSnapshot: () => ({
+      ids: (cfg.audio || []).map(a => a.id),
+      hotspotAudio: (cfg.hotspots || []).map(h => (h.audio == null ? null : h.audio)),
+    }),
+    audioIndex: () => auIndex,
+    playTrackByIdForTest: (id) => playTrackById(id),
+    bindHotspotAudioForTest: (index, id) => {
+      const h = cfg.hotspots?.[index]
+      if (!h) return false
+      if (id) h.audio = id
+      else delete h.audio
+      return true
+    },
     setLangForTest: (l) => { lang = l; renderText() },
     displayTitle: () => document.getElementById('c-name')?.textContent ?? '',
     enablePanoramaLoadMock: () => { panoramaLoadMockEnabled = true; panoramaLoadMockEntry = null },

@@ -429,7 +429,7 @@ import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, E
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
 import { classifyIosBlackLook, webglContextRestorePlan, readImageSize, constrainedDecodeTarget, applySharedMapDownscale, copyTextureSampling } from './shading-risk.mjs'
-import { audioChromeState, shouldReloadAudioSrc } from './player-audio.mjs'
+import { audioChromeState, shouldReloadAudioSrc, nextAudioIndexAfterDelete } from './player-audio.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -696,6 +696,7 @@ const tmp = new THREE.Vector3()
 const modelBox = new THREE.Box3()   // 世界空间模型包围盒（面板避让用）
 const pivot = new THREE.Vector3()   // 旋转/环绕轴心（默认=模型中心）
 let auTracks = [], auIndex = -1, auPlaying = false, auWantPlay = false   // 语音讲解播放器状态
+let audioPagehideBound = false
 /* VIEWER-HOTSPOT-DIAG-START — build-viewer 剔除 */
 let hotspotIdBootAudit = null, hotspotIdBootChanges = []   // editor：加载时 ID 诊断（boot 前 audit）
 /* VIEWER-HOTSPOT-DIAG-END */
@@ -1908,21 +1909,62 @@ function focusTo(target, dist, dur, camOverride) {
 }
 
 /* ── 语音讲解 播放器 ── */
-function buildAudio(){
-  auTracks = (cfg.audio||[]).filter(a=>a && a.src)
+function stopAudioElement(){
+  const el = $('au-el')
+  auWantPlay = false
+  auPlaying = false
+  try {
+    el.pause()
+    el.removeAttribute('data-sy-fallback')
+    el.removeAttribute('src')
+    el.load()
+  } catch {}
+  auIcon(false)
+  const prog = $('au-prog'); if (prog) prog.style.width = '0%'
+  const time = $('au-time'); if (time) time.textContent = '0:00'
+}
+function resetAudioPlayer(){
+  auIndex = -1
+  auTracks = []
+  stopAudioElement()
   const wrap = $('audio')
-  if (!auTracks.length){ wrap.setAttribute('hidden',''); return }
-  wrap.removeAttribute('hidden')
+  wrap.classList.remove('playing', 'error')
+  wrap.removeAttribute('data-au-error')
+  wrap.setAttribute('hidden', '')
+}
+function rebuildAudioSelect(){
   const sel = $('au-sel'), name = $('au-name')
+  if (!sel || !name) return
   if (auTracks.length > 1){
     sel.removeAttribute('hidden'); name.setAttribute('hidden','')
     sel.innerHTML = auTracks.map((a,i)=>`<option value="${i}">${(a.label||('讲解 '+(i+1))).replace(/</g,'&lt;')}</option>`).join('')
     sel.onchange = () => selectTrack(+sel.value, true)
-  } else {
+  } else if (auTracks.length === 1) {
     sel.setAttribute('hidden',''); name.removeAttribute('hidden'); name.textContent = auTracks[0].label || '语音讲解'
   }
-  auIndex = -1; selectTrack(0, false)
-  setAudioMini(audioCollapsedDefault())
+}
+function buildAudio({ deletedIndex, preservePlayback = false } = {}){
+  const prevIndex = auIndex
+  const del = Number.isFinite(Number(deletedIndex)) ? Math.floor(Number(deletedIndex)) : null
+  auTracks = (cfg.audio||[]).filter(a=>a && a.src)
+  const wrap = $('audio')
+  if (!auTracks.length){ resetAudioPlayer(); return }
+  const wasHidden = wrap.hasAttribute('hidden')
+  wrap.removeAttribute('hidden')
+  rebuildAudioSelect()
+  const next = del != null
+    ? nextAudioIndexAfterDelete(prevIndex, del, auTracks.length)
+    : (preservePlayback && prevIndex >= 0 && prevIndex < auTracks.length ? prevIndex : 0)
+  const currentGone = del != null && del === prevIndex
+  if (preservePlayback && !currentGone && prevIndex >= 0 && next >= 0) {
+    auIndex = next
+    restoreAudioTrackUi()
+    return
+  }
+  stopAudioElement()
+  auIndex = -1
+  selectTrack(next, false)
+  if (wasHidden) setAudioMini(audioCollapsedDefault())
 }
 function applyAudioChrome(error){
   const wrap = $('audio')
@@ -2022,11 +2064,13 @@ function wireAudio(){
     else { auWantPlay = false; el.pause() }
   }
   $('au-collapse').onclick = () => setAudioMini(true)
-  el.oncanplay = () => clearAudioError()
-  el.onplay = ()=>{ clearAudioError(); auIcon(true) }
+  el.oncanplay = () => { if (!auTracks.length) return; clearAudioError() }
+  el.onplay = ()=>{ if (!auTracks.length) { try { el.pause() } catch {}; return }; clearAudioError(); auIcon(true) }
   el.onpause = ()=>auIcon(false)
   el.onended = ()=>{ auWantPlay = false; auIcon(false); $('au-prog').style.width='0%' }
   el.onerror = () => {
+    if (!auTracks.length) return
+    if (!el.getAttribute('src')) return
     if (el.dataset.syFallback === '1') { failAudioLoad(); return }
     const tr = auTracks[auIndex]
     const fallback = tr ? sameOriginFallbackUrl(tr.src) : ''
@@ -2039,6 +2083,10 @@ function wireAudio(){
   }
   el.ontimeupdate = ()=>{ const p = el.duration ? el.currentTime/el.duration*100 : 0; $('au-prog').style.width=p+'%'; $('au-time').textContent=auFmt(el.currentTime) }
   $('au-bar').onclick = e => { if(!el.duration) return; const r=$('au-bar').getBoundingClientRect(); el.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*el.duration }
+  if (!audioPagehideBound) {
+    audioPagehideBound = true
+    addEventListener('pagehide', () => { stopAudioElement() })
+  }
 }
 
 /* ── UI ── */
@@ -3323,10 +3371,10 @@ function syncShadowHint(){
   $('editor').querySelectorAll('[data-hs-audio]').forEach(s=>s.onchange=e=>{ const h=cfg.hotspots[+s.dataset.hsAudio]; if(e.target.value) h.audio=e.target.value; else delete h.audio })
   // 语音讲解 增删改
   el('ed-au-add').onclick=()=>{ cfg.audio=cfg.audio||[]; const n=cfg.audio.length+1; const u=el('ed-au-url').value.trim()
-    cfg.audio.push({ id:'a'+n, label:'讲解 '+n, src:u }); renderEditor(); buildAudio() }
-  $('editor').querySelectorAll('[data-au-label]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auLabel].label=e.target.value; buildAudio() })
+    cfg.audio.push({ id:'a'+n, label:'讲解 '+n, src:u }); renderEditor(); buildAudio({ preservePlayback: true }) }
+  $('editor').querySelectorAll('[data-au-label]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auLabel].label=e.target.value; buildAudio({ preservePlayback: true }) })
   $('editor').querySelectorAll('[data-au-src]').forEach(i=>i.oninput=e=>{ cfg.audio[+i.dataset.auSrc].src=e.target.value })
-  $('editor').querySelectorAll('[data-au-del]').forEach(a=>a.onclick=()=>{ cfg.audio.splice(+a.dataset.auDel,1); renderEditor(); buildAudio() })
+  $('editor').querySelectorAll('[data-au-del]').forEach(a=>a.onclick=()=>{ const i=+a.dataset.auDel; cfg.audio.splice(i,1); renderEditor(); buildAudio({ deletedIndex: i, preservePlayback: true }) })
   // 热点位置数字微调
   ;['px','py','pz'].forEach((ax,ai)=>$('editor').querySelectorAll(`[data-hs-${ax}]`).forEach(inp=>inp.oninput=()=>{
     const h=cfg.hotspots[+inp.getAttribute(`data-hs-${ax}`)]; if(!h) return

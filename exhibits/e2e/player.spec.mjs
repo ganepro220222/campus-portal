@@ -1318,6 +1318,67 @@ test.describe('语音播放器 折叠', () => {
     await expect(page.locator('#audio')).not.toHaveAttribute('data-au-error')
   })
 
+  test('删除最后一条正在播放的语音后停止并隐藏播放器', async () => {
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false } }))
+    await page.waitForSelector('#audio:not([hidden])')
+    await stubAudioNetwork(page)
+    await page.locator('#au-play').click()
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+    await openEditorSection(page, '语音讲解')
+    await page.locator('[data-au-del="0"]').click()
+    await expect(page.locator('#audio')).toBeHidden()
+    const snap = await page.evaluate(() => {
+      const el = document.getElementById('au-el')
+      const wrap = document.getElementById('audio')
+      return {
+        paused: el.paused,
+        srcAttr: el.getAttribute('src'),
+        error: wrap.getAttribute('data-au-error'),
+        playing: wrap.classList.contains('playing'),
+        prog: document.getElementById('au-prog').style.width,
+        time: document.getElementById('au-time').textContent,
+      }
+    })
+    expect(snap.paused).toBe(true)
+    expect(snap.srcAttr).toBeNull()
+    expect(snap.error).toBeNull()
+    expect(snap.playing).toBe(false)
+    expect(snap.prog).toBe('0%')
+    expect(snap.time).toBe('0:00')
+
+    await page.locator('#ed-au-url').fill('assets/audio.mp3')
+    await page.locator('#ed-au-add').click()
+    await expect(page.locator('#audio')).toBeVisible()
+    await stubAudioNetwork(page)
+    await page.locator('#au-play').click()
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+    await expect(page.locator('#audio')).not.toHaveAttribute('data-au-error')
+  })
+
+  test('删除正在播放的第二条后停掉旧源并回到第一条', async () => {
+    const audio = [
+      { id: 'a1', src: 'assets/audio.mp3', label: '讲解 1' },
+      { id: 'a2', src: 'assets/audio-b.mp3', label: '讲解 2' },
+    ]
+    await reloadPlayer(page, withAudio({ audio, viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false } }))
+    await page.waitForSelector('#audio:not([hidden])')
+    await stubAudioNetwork(page)
+    await page.locator('#au-sel').selectOption('1')
+    await expect(page.locator('#au-sel')).toHaveValue('1')
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+    await openEditorSection(page, '语音讲解')
+    await page.locator('[data-au-del="1"]').click()
+    await expect(page.locator('#audio')).toBeVisible()
+    await expect(page.locator('#au-sel')).toBeHidden()
+    await expect(page.locator('#au-name')).toHaveText('讲解 1')
+    const snap = await page.evaluate(() => {
+      const el = document.getElementById('au-el')
+      return { paused: el.paused, playing: document.getElementById('audio').classList.contains('playing') }
+    })
+    expect(snap.paused).toBe(true)
+    expect(snap.playing).toBe(false)
+  })
+
   test('热点绑定的语音自动播放时，播放器自动展开', async () => {
     const hs = [{ id: 'h1', position: [0, 0.2, 0.6], audio: 'a1', i18n: { zh: { title: '甲', body: '乙' } } }]
     await reloadPlayer(page, withAudio({ viewport: { width: 390, height: 800 }, hotspots: hs }))

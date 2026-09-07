@@ -4,6 +4,7 @@ import {
   AUDIO_DEFAULT_LABEL,
   audioChromeState,
   shouldReloadAudioSrc,
+  nextAudioIndexAfterDelete,
 } from './player-audio.mjs'
 
 let pass = 0
@@ -49,10 +50,30 @@ test('非法 index 按 0', () => {
   assert.equal(audioChromeState({ trackCount: 2, index: Number.NaN }).selValue, '0')
 })
 
-test('失败态必须重拉源；同轨无错误不重拉', () => {
+test('失败态必须重拉源；正常同轨不重复加载', () => {
   assert.equal(shouldReloadAudioSrc(0, 0, true), true)
   assert.equal(shouldReloadAudioSrc(0, 0, false), false)
   assert.equal(shouldReloadAudioSrc(0, 1, false), true)
+})
+
+test('删光音轨后 index 为 -1', () => {
+  assert.equal(nextAudioIndexAfterDelete(0, 0, 0), -1)
+  assert.equal(nextAudioIndexAfterDelete(1, 0, 0), -1)
+})
+
+test('删除当前播放轨后落到剩余第一条', () => {
+  assert.equal(nextAudioIndexAfterDelete(1, 1, 1), 0)
+  assert.equal(nextAudioIndexAfterDelete(0, 0, 1), 0)
+})
+
+test('删除更靠前的轨时当前 index 前移', () => {
+  assert.equal(nextAudioIndexAfterDelete(2, 0, 2), 1)
+  assert.equal(nextAudioIndexAfterDelete(1, 0, 1), 0)
+})
+
+test('删除后面的轨时当前 index 不变', () => {
+  assert.equal(nextAudioIndexAfterDelete(0, 1, 1), 0)
+  assert.equal(nextAudioIndexAfterDelete(1, 2, 2), 1)
 })
 
 console.log(`player-audio: ${pass} passed`)

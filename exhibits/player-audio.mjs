@@ -47,3 +47,19 @@ export function audioChromeState({ trackCount = 0, index = 0, error = false, lab
 export function shouldReloadAudioSrc(prevIndex, nextIndex, inError) {
   return !!inError || prevIndex !== nextIndex
 }
+
+/**
+ * 删除一条音轨后应落到的 index。列表已空返回 -1。
+ * 删的是当前正在播的那条时，落到剩余列表的第一条（不自动续播）。
+ */
+export function nextAudioIndexAfterDelete(prevIndex, deletedIndex, remainingCount) {
+  const remain = Math.max(0, Math.floor(Number(remainingCount) || 0))
+  if (remain === 0) return -1
+  const prev = Number.isFinite(Number(prevIndex)) ? Math.floor(Number(prevIndex)) : -1
+  const del = Number(deletedIndex)
+  if (prev < 0) return 0
+  if (!Number.isFinite(del)) return Math.min(prev, remain - 1)
+  if (del === prev) return 0
+  if (del < prev) return Math.min(prev - 1, remain - 1)
+  return Math.min(prev, remain - 1)
+}

@@ -143,16 +143,15 @@ async function run() {
     const page = createPage()
     page.onLoad({ id: '7' })
     page.onGoLogin()
-    assert.strictEqual(modals.length, 1)
-    modals[0].success({ confirm: false })
+    assert.strictEqual(modals.length, 0, '页面已有去登录，不得再弹确认')
+    assert.ok(navigates.some((url) => String(url).includes('/pages/login/index')))
     page.onShow()
     await flushTurns()
     assert.strictEqual(page.data.loading, false)
     assert.strictEqual(page.data.authRequired, true)
     assert.strictEqual(page.data.loadError, false)
-    assert.strictEqual(gets.length, 0, '取消登录后 onShow 不得偷偷请求')
-    assert.strictEqual(modals.length, 1, '仍未登录时 onShow 不得再弹窗')
-    assert.strictEqual(navigates.length, 0)
+    assert.strictEqual(gets.length, 0, '仍未登录时 onShow 不得偷偷请求')
+    assert.strictEqual(modals.length, 0)
   }
 
   {
@@ -160,7 +159,7 @@ async function run() {
     const page = createPage()
     page.onLoad({ id: '7' })
     page.onGoLogin()
-    modals[0].success({ confirm: true })
+    assert.strictEqual(modals.length, 0, '去登录应直接跳转')
     assert.ok(navigates.some((url) => String(url).includes('/pages/login/index')))
     assert.strictEqual(gets.length, 0)
     store.token = 'after-login'
@@ -186,6 +185,10 @@ async function run() {
     assert.strictEqual(page.data.loadError, false)
     assert.strictEqual(gets.length, 0)
     assert.ok(relaunches.some((url) => String(url).includes('change-password')))
+    relaunches.length = 0
+    page.onGoLogin()
+    assert.ok(relaunches.some((url) => String(url).includes('change-password')), '须改密点去登录仍走改密页')
+    assert.strictEqual(navigates.length, 0)
     delete store.mustChangePassword
     page.onShow()
     await flushTurns()

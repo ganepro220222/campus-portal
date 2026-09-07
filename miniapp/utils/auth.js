@@ -192,15 +192,24 @@ const requireLogin = (callback) => {
     confirmText: '去登录',
     success(res) {
       if (res.confirm) {
-        wx.navigateTo({ url: '/pages/login/index' })
+        wx.navigateTo({ url: LOGIN_PAGE })
       }
     }
   })
 }
 
+/** 页面上已经有「去登录」时直接走，不再弹一次确认 */
+function openLoginPage() {
+  if (isMustChangePasswordRequired()) {
+    redirectToChangePassword()
+    return
+  }
+  wx.navigateTo({ url: LOGIN_PAGE })
+}
+
 module.exports = {
   getToken, setToken, clearToken, setUserInfo, getUserInfo,
-  wxLogin, bindWxAccount, bindWxAuthenticated, requireLogin,
+  wxLogin, bindWxAccount, bindWxAuthenticated, requireLogin, openLoginPage,
   applyLoginData, handlePostLogin,
   setMustChangePasswordFlag, clearMustChangePasswordFlag,
   isMustChangePasswordRequired, redirectToChangePassword,

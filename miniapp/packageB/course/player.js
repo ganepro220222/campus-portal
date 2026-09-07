@@ -1,6 +1,6 @@
 // packageB/course/player.js — 真视频播放 + 进度上报
 const { get, post } = require('../../utils/request')
-const { requireLogin, getToken, isMustChangePasswordRequired } = require('../../utils/auth')
+const { requireLogin, openLoginPage, getToken, isMustChangePasswordRequired } = require('../../utils/auth')
 const { mergeCourseDetail } = require('../../utils/content')
 const {
   resolveEndedReport,
@@ -96,10 +96,7 @@ Page({
   },
 
   onGoLogin() {
-    requireLogin(() => {
-      this._authBlocked = false
-      this._fetchCourse()
-    })
+    openLoginPage()
   },
 
   onRetryVideo() {

@@ -131,4 +131,16 @@ with tempfile.TemporaryDirectory() as tmp:
         raise SystemExit('成功包不应带内部信息')
     assert_no_work_dirs(out)
 
+with tempfile.TemporaryDirectory() as tmp:
+    real_out = Path(tmp) / '交付源码'
+    counts = mod.sync(repo=mod.REPO, out=real_out)
+    if set(counts) != {'微信小程序', '管理后台', '服务端', '数据库脚本'}:
+        raise SystemExit(f'真实仓库打包目录不对：{counts}')
+    if min(counts.values()) < 1:
+        raise SystemExit('真实仓库打包结果为空')
+    packed_env = (real_out / '微信小程序' / 'config' / 'env.js').read_text(encoding='utf-8')
+    if 'yunmanvr' in packed_env:
+        raise SystemExit('真实打包后的 env.js 不得带内部预发域名')
+    assert_no_work_dirs(real_out)
+
 print('sync-client-source.test.py OK')

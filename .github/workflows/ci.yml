@@ -155,6 +155,9 @@ jobs:
       - name: Miniapp utils tests
         run: npm run test:miniapp-utils
 
+      - name: Miniapp interaction guards
+        run: npm run check:miniapp-interaction-guards
+
   deploy-env-guard:
     name: Deploy Env Guard
     runs-on: ubuntu-latest

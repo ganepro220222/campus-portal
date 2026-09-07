@@ -11,7 +11,8 @@ const {
   buildMessageLoadedPatch,
   buildMessageFailurePatch,
   shouldShowMessageEmpty,
-  markMessageReadLocally
+  markMessageReadLocally,
+  revertMessageReadLocally
 } = require('./messageCenterLoad')
 
 const pageSrc = fs.readFileSync(path.join(__dirname, '../packageC/message/index.js'), 'utf8')
@@ -19,7 +20,9 @@ assert.doesNotMatch(pageSrc, /get\('\/messages'\)\.catch\(\(\) => \[\]\)/)
 assert.match(pageSrc, /buildMessageFailurePatch/)
 assert.match(pageSrc, /get\('\/profile\/stats'\)\.catch/)
 assert.match(pageSrc, /markMessageReadLocally/)
+assert.match(pageSrc, /revertMessageReadLocally/)
 assert.match(pageSrc, /silent:\s*true/)
+assert.match(pageSrc, /已读状态同步失败/)
 assert.doesNotMatch(pageSrc, /await put\(`\/messages\/\$\{id\}\/read`\)/)
 assert.doesNotMatch(pageSrc, /list\.filter\(m => m\.readStatus === 0\)\.length/)
 
@@ -76,6 +79,20 @@ assert.strictEqual(refreshFail.list, undefined)
   )
   assert.strictEqual(again.changed, 0)
   assert.strictEqual(again.unreadCount, 8)
+}
+
+{
+  const reverted = revertMessageReadLocally(
+    [{ id: 1, readStatus: 1 }, { id: 2, readStatus: 1 }],
+    8,
+    1
+  )
+  assert.strictEqual(reverted.changed, 1)
+  assert.strictEqual(reverted.list[0].readStatus, 0)
+  assert.strictEqual(reverted.unreadCount, 9)
+  const noop = revertMessageReadLocally(reverted.list, reverted.unreadCount, 1)
+  assert.strictEqual(noop.changed, 0)
+  assert.strictEqual(noop.unreadCount, 9)
 }
 
 console.log('messageCenterLoad.test: ok')

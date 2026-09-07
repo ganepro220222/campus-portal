@@ -76,7 +76,8 @@ function createPage(overrides = {}) {
       loading: false,
       error: false
     }, overrides),
-    _navigating: false
+    _navigating: false,
+    _readSyncGen: 0
   }
   Object.keys(pageDef).forEach((key) => {
     if (typeof pageDef[key] === 'function') {
@@ -142,9 +143,24 @@ async function run() {
   assert.deepStrictEqual(navigations, [], '无落地页应留在当前页')
   assert.strictEqual(noticePage.data.list[1].readStatus, 1)
   assert.strictEqual(noticePage.data.unreadCount, 8)
+  pendingPuts.at(-1).resolve()
+  await flushPromises()
+  assert.strictEqual(noticePage.data.list[1].readStatus, 1)
 
   noticePage.onShow()
   assert.strictEqual(noticePage._navigating, false)
+
+  const noticeFail = createPage()
+  navigations.length = 0
+  toasts.length = 0
+  tap(noticeFail, noticeFail.data.list[1])
+  assert.deepStrictEqual(navigations, [])
+  assert.strictEqual(noticeFail.data.list[1].readStatus, 1)
+  pendingPuts.at(-1).reject(new Error('network'))
+  await flushPromises()
+  assert.strictEqual(noticeFail.data.list[1].readStatus, 0, '无落地页时 PUT 失败必须回滚已读')
+  assert.strictEqual(noticeFail.data.unreadCount, 9)
+  assert.ok(toasts.includes('已读状态同步失败'))
 
   console.log('[messageCenterPage.test] PASS')
 }

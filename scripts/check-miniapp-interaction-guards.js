@@ -48,12 +48,24 @@ mustMatch('miniapp/packageC/profile/edit.wxml', /wx:elif="\{\{error\}\}"/, '资�
 mustMatch('miniapp/packageC/search/index.js', /bumpListGeneration/, '搜索必须有 generation 守卫')
 mustMatch('miniapp/packageC/search/index.js', /isStaleListRequest/, '搜索过期响应必须丢弃')
 
-mustMatch('miniapp/packageC/message/index.js', /已读状态同步失败/, '单项标已读失败必须提示')
+mustNotMatch(
+  'miniapp/packageC/message/index.js',
+  /await put\(`\/messages\/\$\{id\}\/read`\)/,
+  '有落地页时不得 await 标已读再跳转'
+)
+mustMatch('miniapp/packageC/message/index.js', /silent:\s*true/, '标已读失败不得用默认 toast 挡到详情页')
+mustMatch('miniapp/packageC/message/index.js', /revertMessageReadLocally/, '无落地页时标已读失败必须能回滚本地状态')
+mustMatch('miniapp/packageC/message/index.js', /已读状态同步失败/, '留在消息中心时标已读失败必须提示')
 mustMatch(
   'miniapp/packageC/message/index.js',
-  /await put\(`\/messages\/\$\{id\}\/read`\)[\s\S]*readStatus:\s*1[\s\S]*catch/,
-  '标已读成功才更新本地状态（失败路径不得先乐观更新）'
+  /if \(this\._navigating\) return[\s\S]*已读状态同步失败/,
+  '已跳转详情时不得因标已读失败弹 toast'
 )
+
+const ci = read('.github/workflows/ci.yml')
+if (!ci.includes('check:miniapp-interaction-guards')) {
+  errors.push('ci.yml 必须跑 check:miniapp-interaction-guards，否则这组护栏拦不住合并')
+}
 
 if (errors.length) {
   console.error('check-miniapp-interaction-guards 失败：')

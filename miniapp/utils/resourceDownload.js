@@ -604,10 +604,10 @@ function downloadResource(resourceId, options = {}) {
           throw syncErr
         }
         throwIfCancelled(task)
+        options.skipConfirm = true
         if (typeof options.onRecorded === 'function') {
           options.onRecorded(data)
         }
-        options.skipConfirm = true
       }
     } catch (e) {
       if (isDownloadCancelled(e)) return

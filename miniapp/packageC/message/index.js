@@ -4,7 +4,8 @@ const {
   buildMessageLoadingPatch,
   buildMessageLoadedPatch,
   buildMessageFailurePatch,
-  markMessageReadLocally
+  markMessageReadLocally,
+  revertMessageReadLocally
 } = require('../../utils/messageCenterLoad')
 
 Page({
@@ -30,6 +31,7 @@ Page({
   },
 
   async _load() {
+    this._readSyncGen = (this._readSyncGen || 0) + 1
     const hasList = this.data.list.length > 0
     this.setData(buildMessageLoadingPatch(hasList))
     try {
@@ -48,14 +50,27 @@ Page({
     return true
   },
 
+  _revertLocalRead(id) {
+    const next = revertMessageReadLocally(this.data.list, this.data.unreadCount, id)
+    if (!next.changed) return false
+    this.setData({ list: next.list, unreadCount: next.unreadCount })
+    return true
+  },
+
   onItemTap(e) {
     const { id, route } = e.currentTarget.dataset
     if (route && this._navigating) return
     if (id) {
-      this._markLocalRead(id)
-      put(`/messages/${id}/read`, {}, { silent: true }).catch((err) => {
-        console.warn('[message] 标已读失败', err)
-      })
+      const gen = this._readSyncGen || 0
+      if (this._markLocalRead(id)) {
+        put(`/messages/${id}/read`, {}, { silent: true }).catch((err) => {
+          console.warn('[message] 标已读失败', err)
+          if ((this._readSyncGen || 0) !== gen) return
+          if (this._navigating) return
+          this._revertLocalRead(id)
+          wx.showToast({ title: '已读状态同步失败', icon: 'none' })
+        })
+      }
     }
     if (!route) return
     this._navigating = true

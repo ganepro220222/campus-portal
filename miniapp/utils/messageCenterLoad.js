@@ -62,11 +62,34 @@ function markMessageReadLocally(list, unreadCount, id) {
   }
 }
 
+/** 无落地页时标已读失败：把该行和角标滚回去，不能一直假装已读。 */
+function revertMessageReadLocally(list, unreadCount, id) {
+  const messages = Array.isArray(list) ? list : []
+  if (id == null || id === '') {
+    return { changed: 0, list: messages, unreadCount: Math.max(0, Number(unreadCount) || 0) }
+  }
+  const target = String(id)
+  let changed = 0
+  const nextList = messages.map((item) => {
+    if (!item || String(item.id) !== target || Number(item.readStatus) !== 1) {
+      return item
+    }
+    changed += 1
+    return { ...item, readStatus: 0 }
+  })
+  return {
+    changed,
+    list: nextList,
+    unreadCount: (Number(unreadCount) || 0) + changed
+  }
+}
+
 module.exports = {
   unreadCountFrom,
   buildMessageLoadingPatch,
   buildMessageLoadedPatch,
   buildMessageFailurePatch,
   shouldShowMessageEmpty,
-  markMessageReadLocally
+  markMessageReadLocally,
+  revertMessageReadLocally
 }

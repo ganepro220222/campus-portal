@@ -4,6 +4,15 @@
  * 运行：node miniapp/utils/resourceDownloadAudioRetry.test.js
  */
 const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
+
+{
+  const downloadSrc = fs.readFileSync(path.join(__dirname, 'resourceDownload.js'), 'utf8')
+  const skipAt = downloadSrc.indexOf('options.skipConfirm = true')
+  const recordedAt = downloadSrc.indexOf('options.onRecorded(data)')
+  assert.ok(skipAt > 0 && recordedAt > skipAt, 'skipConfirm 必须在 onRecorded 之前赋值')
+}
 
 const requestPath = require.resolve('./request')
 const authPath = require.resolve('./auth')

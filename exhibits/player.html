@@ -429,6 +429,7 @@ import { LIGHT_KEYS, LIGHT_LABELS, LIGHT_DEFAULTS, SHADOW_CASTER, ENV_PRESETS, E
 import { pickOverrideForMaterial, applyOverrideFields, matchingOverridePattern, findOverrideEntry, removeOverrideEntries, ensureOverrideEntry } from './material-override.mjs'
 import { localizeCdnAsset } from './exhibit-asset-cdn.mjs'
 import { classifyIosBlackLook, webglContextRestorePlan, readImageSize, constrainedDecodeTarget, applySharedMapDownscale, copyTextureSampling } from './shading-risk.mjs'
+import { audioChromeState, shouldReloadAudioSrc } from './player-audio.mjs'
 
 window.__SY_PLAYER = window.__SY_PLAYER || {}
 window.__SY_PLAYER.module = true
@@ -1923,35 +1924,57 @@ function buildAudio(){
   auIndex = -1; selectTrack(0, false)
   setAudioMini(audioCollapsedDefault())
 }
-function clearAudioError(){
+function applyAudioChrome(error){
   const wrap = $('audio')
-  wrap.classList.remove('error')
-  wrap.removeAttribute('data-au-error')
+  const sel = $('au-sel')
+  const name = $('au-name')
+  const i = auIndex >= 0 ? auIndex : 0
+  const st = audioChromeState({
+    trackCount: auTracks.length,
+    index: i,
+    error: !!error,
+    label: auTracks[i]?.label || '',
+  })
+  wrap.classList.toggle('error', st.error)
+  if (st.error) wrap.setAttribute('data-au-error', '1')
+  else wrap.removeAttribute('data-au-error')
+  if (sel) {
+    if (st.selHidden) sel.setAttribute('hidden', '')
+    else {
+      sel.removeAttribute('hidden')
+      sel.value = st.selValue
+    }
+  }
+  if (name) {
+    if (st.nameHidden) name.setAttribute('hidden', '')
+    else {
+      name.removeAttribute('hidden')
+      name.textContent = st.nameText
+    }
+  }
+}
+function restoreAudioTrackUi(){
+  applyAudioChrome(false)
+}
+function clearAudioError(){
+  restoreAudioTrackUi()
 }
 function failAudioLoad(){
   auWantPlay = false
+  const el = $('au-el')
+  try { el.pause() } catch {}
   auIcon(false)
-  const wrap = $('audio')
-  wrap.classList.add('error')
-  wrap.setAttribute('data-au-error', '1')
-  const name = $('au-name')
-  if (name){
-    name.removeAttribute('hidden')
-    name.textContent = '语音加载失败，点击重试'
-  }
-  const sel = $('au-sel')
-  if (sel) sel.setAttribute('hidden', '')
+  applyAudioChrome(true)
 }
 function selectTrack(i, play){
   const el = $('au-el'), tr = auTracks[i]; if(!tr) return
-  if (i !== auIndex){
-    clearAudioError()
+  const inError = $('audio').classList.contains('error')
+  if (shouldReloadAudioSrc(auIndex, i, inError)){
     el.removeAttribute('data-sy-fallback')
     el.src = asset(tr.src)
     auIndex = i
   }
-  const sel = $('au-sel'); if(!sel.hasAttribute('hidden')) sel.value = String(i)
-  const name = $('au-name'); if(!name.hasAttribute('hidden')) name.textContent = tr.label || '语音讲解'
+  clearAudioError()
   if (play){ auWantPlay = true; el.play().catch(()=>{}) } else { auIcon(false); $('au-prog').style.width='0%'; $('au-time').textContent='0:00' }
 }
 function playTrackById(id){
@@ -1991,14 +2014,7 @@ function wireAudio(){
     if(!auTracks.length) return
     if ($('audio').classList.contains('mini')) { setAudioMini(false); return }   // 折叠态：点＝展开
     if ($('audio').classList.contains('error')) {
-      const tr = auTracks[auIndex >= 0 ? auIndex : 0]
-      if (!tr) return
-      clearAudioError()
-      el.removeAttribute('data-sy-fallback')
-      el.src = asset(tr.src)
-      auIndex = auIndex >= 0 ? auIndex : 0
-      auWantPlay = true
-      el.play().catch(()=>{})
+      selectTrack(auIndex >= 0 ? auIndex : 0, true)
       return
     }
     if(auIndex<0) selectTrack(0,false)
@@ -2006,7 +2022,10 @@ function wireAudio(){
     else { auWantPlay = false; el.pause() }
   }
   $('au-collapse').onclick = () => setAudioMini(true)
-  el.onplay = ()=>auIcon(true); el.onpause = ()=>auIcon(false); el.onended = ()=>{ auWantPlay = false; auIcon(false); $('au-prog').style.width='0%' }
+  el.oncanplay = () => clearAudioError()
+  el.onplay = ()=>{ clearAudioError(); auIcon(true) }
+  el.onpause = ()=>auIcon(false)
+  el.onended = ()=>{ auWantPlay = false; auIcon(false); $('au-prog').style.width='0%' }
   el.onerror = () => {
     if (el.dataset.syFallback === '1') { failAudioLoad(); return }
     const tr = auTracks[auIndex]
@@ -2476,7 +2495,14 @@ function start() {
     else if (e.key === ' ' || e.code === 'Space') {
       const tag = (e.target?.tagName || '').toLowerCase()
       if (tag==='input' || tag==='textarea' || tag==='select' || tag==='button' || tag==='a') return  // 不干扰控件/输入
-      if (auTracks.length) { e.preventDefault(); const a=$('au-el'); a.paused ? a.play().catch(()=>{}) : a.pause() }
+      if (auTracks.length) {
+        e.preventDefault()
+        if ($('audio').classList.contains('error')) {
+          selectTrack(auIndex >= 0 ? auIndex : 0, true)
+          return
+        }
+        const a=$('au-el'); a.paused ? a.play().catch(()=>{}) : a.pause()
+      }
     }
   })
 }

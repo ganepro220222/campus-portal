@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 
 const html = fs.readFileSync(new URL('./player.html', import.meta.url), 'utf8')
+const audioMod = fs.readFileSync(new URL('./player-audio.mjs', import.meta.url), 'utf8')
 const bundle = fs.readFileSync(new URL('./player.bundle.js', import.meta.url), 'utf8')
 assert.match(html, /function hotspotPos\(/)
 assert.match(html, /Array\.isArray\(p\)/)
@@ -9,7 +10,12 @@ assert.match(html, /failPlayer\('展品配置无法解析，请检查热点数�
 assert.match(html, /webglcontextlost/)
 assert.match(html, /showError\('画面显示中断，请点击重试', true\)/)
 assert.match(html, /function failAudioLoad\(/)
-assert.match(html, /语音加载失败，点击重试/)
+assert.match(html, /function restoreAudioTrackUi\(/)
+assert.match(html, /function applyAudioChrome\(/)
+assert.match(html, /shouldReloadAudioSrc\(/)
+assert.match(html, /from '\.\/player-audio\.mjs'/)
+assert.match(html, /el\.onplay = \(\)=>\{ clearAudioError\(\); auIcon\(true\) \}/)
+assert.match(audioMod, /语音加载失败，点击重试/)
 assert.match(bundle, /invalid hotspot position/, 'player.bundle.js missing hotspot guard — run node build-viewer.mjs')
 const failEscaped = [...'展品配置无法解析'].map((c) => '\\u' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')).join('')
 assert.ok(bundle.includes(failEscaped), 'player.bundle.js missing failPlayer copy — run node build-viewer.mjs')

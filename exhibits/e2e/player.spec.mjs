@@ -1251,6 +1251,73 @@ test.describe('语音播放器 折叠', () => {
     await expect(page.locator('#au-name')).toHaveText('语音加载失败，点击重试')
   })
 
+  async function stubAudioNetwork(page) {
+    await page.evaluate(() => {
+      const el = document.getElementById('au-el')
+      if (el.dataset.sySrcStub === '1') return
+      el.dataset.sySrcStub = '1'
+      Object.defineProperty(el, 'src', {
+        configurable: true,
+        get() { return this.getAttribute('data-stub-src') || '' },
+        set(v) { this.setAttribute('data-stub-src', String(v || '')) },
+      })
+      el.play = () => {
+        el.dispatchEvent(new Event('canplay'))
+        el.dispatchEvent(new Event('play'))
+        return Promise.resolve()
+      }
+    })
+  }
+
+  test('单音轨：重试成功后错误文案消失并显示暂停按钮', async () => {
+    await reloadPlayer(page, withAudio({ viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false } }))
+    await page.waitForSelector('#audio:not([hidden])')
+    await stubAudioNetwork(page)
+    await page.evaluate(() => {
+      const el = document.getElementById('au-el')
+      el.removeAttribute('data-sy-fallback')
+      el.dispatchEvent(new Event('error'))
+      el.dispatchEvent(new Event('error'))
+    })
+    await expect(page.locator('#audio')).toHaveAttribute('data-au-error', '1')
+    await expect(page.locator('#au-name')).toHaveText('语音加载失败，点击重试')
+
+    await page.locator('#au-play').click()
+    await expect(page.locator('#audio')).not.toHaveAttribute('data-au-error')
+    await expect(page.locator('#au-name')).toHaveText('讲解 1')
+    await expect(page.locator('#au-sel')).toBeHidden()
+    await expect(page.locator('#au-play')).toHaveText('❚❚')
+  })
+
+  test('多音轨：重试成功后选择器恢复，可切换第二条', async () => {
+    const audio = [
+      { id: 'a1', src: 'assets/audio.mp3', label: '讲解 1' },
+      { id: 'a2', src: 'assets/audio-b.mp3', label: '讲解 2' },
+    ]
+    await reloadPlayer(page, withAudio({ audio, viewport: { width: 1100, height: 800 }, ui: { audioCollapsed: false } }))
+    await page.waitForSelector('#audio:not([hidden])')
+    await expect(page.locator('#au-sel')).toBeVisible()
+    await stubAudioNetwork(page)
+    await page.evaluate(() => {
+      const el = document.getElementById('au-el')
+      el.removeAttribute('data-sy-fallback')
+      el.dispatchEvent(new Event('error'))
+    })
+    await expect(page.locator('#audio')).toHaveAttribute('data-au-error', '1')
+    await expect(page.locator('#au-sel')).toBeHidden()
+    await expect(page.locator('#au-name')).toHaveText('语音加载失败，点击重试')
+
+    await page.locator('#au-play').click()
+    await expect(page.locator('#audio')).not.toHaveAttribute('data-au-error')
+    await expect(page.locator('#au-sel')).toBeVisible()
+    await expect(page.locator('#au-name')).toBeHidden()
+    await expect(page.locator('#au-sel')).toHaveValue('0')
+
+    await page.locator('#au-sel').selectOption('1')
+    await expect(page.locator('#au-sel')).toHaveValue('1')
+    await expect(page.locator('#audio')).not.toHaveAttribute('data-au-error')
+  })
+
   test('热点绑定的语音自动播放时，播放器自动展开', async () => {
     const hs = [{ id: 'h1', position: [0, 0.2, 0.6], audio: 'a1', i18n: { zh: { title: '甲', body: '乙' } } }]
     await reloadPlayer(page, withAudio({ viewport: { width: 390, height: 800 }, hotspots: hs }))

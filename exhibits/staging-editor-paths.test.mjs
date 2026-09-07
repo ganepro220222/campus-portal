@@ -12,8 +12,10 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
 const live = collectStagingEditorRelPaths()
 assert.ok(live.includes('shading-risk.mjs'), 'live collect must include shading-risk.mjs')
+assert.ok(live.includes('player-audio.mjs'), 'live collect must include player-audio.mjs')
 assert.ok(live.includes('image-head.mjs'), 'live collect must include image-head.mjs')
 assert.ok(collectStagingExhibitsCheckoutPaths().includes('exhibits/shading-risk.mjs'))
+assert.ok(collectStagingExhibitsCheckoutPaths().includes('exhibits/player-audio.mjs'))
 assert.ok(collectStagingExhibitsCheckoutPaths().includes('exhibits/image-head.mjs'))
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sy-collect-'))

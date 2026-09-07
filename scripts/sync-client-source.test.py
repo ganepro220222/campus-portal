@@ -132,6 +132,38 @@ with tempfile.TemporaryDirectory() as tmp:
     assert_no_work_dirs(out)
 
 with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    out = root / '交付源码'
+    staging = root / '交付源码.tmp-new'
+    write_file(out / '旧包.txt', 'OLD')
+    write_file(staging / '新包.txt', 'NEW')
+    original_try_rimraf = mod.try_rimraf
+
+    def refuse_backup_cleanup(path):
+        if '.bak-' in path.name:
+            return f'目录清理失败：{path}'
+        return original_try_rimraf(path)
+
+    mod.try_rimraf = refuse_backup_cleanup
+    try:
+        warning = mod.promote_staging(staging, out)
+    finally:
+        mod.try_rimraf = original_try_rimraf
+    if not warning or '旧备份清理失败' not in warning:
+        raise SystemExit(f'backup 清理失败应只警告：{warning!r}')
+    if not (out / '新包.txt').is_file():
+        raise SystemExit('backup 清理失败时正式目录应已是新包')
+    if (out / '旧包.txt').exists():
+        raise SystemExit('新包就位后正式目录不应再留旧文件')
+    backups = [p for p in root.iterdir() if p.name.startswith('交付源码.bak-')]
+    if len(backups) != 1:
+        raise SystemExit('backup 应保留供人工删除')
+    if str(backups[0]) not in warning:
+        raise SystemExit('警告须带上 backup 路径')
+    if staging.exists():
+        raise SystemExit('staging 已发布后不应还在')
+
+with tempfile.TemporaryDirectory() as tmp:
     real_out = Path(tmp) / '交付源码'
     counts = mod.sync(repo=mod.REPO, out=real_out)
     if set(counts) != {'微信小程序', '管理后台', '服务端', '数据库脚本'}:

@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import stat
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -183,11 +184,27 @@ def _rmtree_onerror(_func, p, _exc) -> None:
         pass
 
 
-def rimraf(path: Path) -> None:
-    if path.exists():
+def try_rimraf(path: Path) -> str | None:
+    if not path.exists():
+        return None
+    try:
         shutil.rmtree(path, onerror=_rmtree_onerror)
+    except OSError:
+        pass
     if path.exists():
+        return f'目录清理失败：{path}'
+    return None
+
+
+def rimraf(path: Path) -> None:
+    warning = try_rimraf(path)
+    if warning:
         raise SystemExit(f'无法清空目录：{path}')
+
+
+def sweep_stale_work_dirs(out: Path) -> None:
+    for path in sibling_work_dirs(out):
+        try_rimraf(path)
 
 
 def prune_excluded(out: Path) -> None:
@@ -259,10 +276,12 @@ def populate_pack(out: Path, trees: tuple[tuple[str, Path], ...]) -> dict[str, i
     return counts
 
 
-def promote_staging(staging: Path, out: Path) -> None:
+def promote_staging(staging: Path, out: Path) -> str | None:
     bak = work_dir(out, 'bak')
     if bak.exists():
-        rimraf(bak)
+        leftover = try_rimraf(bak)
+        if bak.exists():
+            raise SystemExit(leftover or f'无法清空目录：{bak}')
     moved_out = False
     if out.exists():
         out.rename(bak)
@@ -273,8 +292,12 @@ def promote_staging(staging: Path, out: Path) -> None:
         if moved_out and bak.exists() and not out.exists():
             bak.rename(out)
         raise
-    if bak.exists():
-        rimraf(bak)
+    if not bak.exists():
+        return None
+    warning = try_rimraf(bak)
+    if warning:
+        return f'新交付包已生成，但旧备份清理失败：{bak}'
+    return None
 
 
 def scan_pack(out: Path) -> list[str]:
@@ -323,6 +346,7 @@ def sync(repo: Path | None = None, out: Path | None = None) -> dict[str, int]:
     for _, src in trees:
         if not src.is_dir():
             raise SystemExit(f'缺少源目录：{src}')
+    sweep_stale_work_dirs(dest)
     staging = work_dir(dest, 'tmp')
     if staging.exists():
         rimraf(staging)
@@ -332,7 +356,9 @@ def sync(repo: Path | None = None, out: Path | None = None) -> dict[str, int]:
         errors = scan_pack(staging)
         if errors:
             raise SystemExit('交付源码未通过检查：\n  ' + '\n  '.join(errors))
-        promote_staging(staging, dest)
+        warning = promote_staging(staging, dest)
+        if warning:
+            print(f'警告：{warning}', file=sys.stderr)
         return counts
     except BaseException:
         if staging.exists():

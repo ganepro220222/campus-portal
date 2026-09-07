@@ -55,7 +55,10 @@ EXCLUDE_SUFFIXES = (
 
 # 相对各源根的路径（posix）
 EXCLUDE_REL = {
-    '微信小程序': frozenset(),
+    '微信小程序': frozenset({
+        # 进包的 env.js 已是这份内容；模板留在仓库，避免接收方改错文件
+        'config/env.prod.template.js',
+    }),
     '管理后台': frozenset(),
     '服务端': frozenset({
         'src/test',

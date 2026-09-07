@@ -44,7 +44,7 @@ assert (ROOT.parent / 'exhibits').is_dir()
 
 must_include('miniapp', 'app.js')
 must_include('miniapp', 'app.json')
-must_include('miniapp', 'config/env.prod.template.js')
+must_exclude('miniapp', 'config/env.prod.template.js')
 must_include('miniapp', 'config/env.js')
 must_include('admin', 'package.json')
 must_include('admin', 'src/main.ts')
@@ -173,6 +173,8 @@ with tempfile.TemporaryDirectory() as tmp:
     packed_env = (real_out / '微信小程序' / 'config' / 'env.js').read_text(encoding='utf-8')
     if 'yunmanvr' in packed_env:
         raise SystemExit('真实打包后的 env.js 不得带内部预发域名')
+    if (real_out / '微信小程序' / 'config' / 'env.prod.template.js').exists():
+        raise SystemExit('校方包不应再带 env.prod.template.js')
     assert_no_work_dirs(real_out)
 
 print('sync-client-source.test.py OK')

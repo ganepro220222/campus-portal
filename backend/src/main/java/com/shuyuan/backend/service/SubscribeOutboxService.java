@@ -39,7 +39,7 @@ public class SubscribeOutboxService {
     private final ObjectMapper objectMapper;
     private final ShuyuanProperties properties;
 
-    /** 报名成功/提交：与报名事务同事务写入发件箱 */
+    /** 仅已通过的报名：与报名事务同事务写入发件箱。待审核不入队。 */
     public void enqueueEnrollSuccess(Long memberId, Activity activity, Enroll enroll) {
         if (memberId == null || activity == null || enroll == null) {
             return;

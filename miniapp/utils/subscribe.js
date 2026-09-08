@@ -12,11 +12,9 @@ const ENROLL_APPROVED_SUBSCRIPTION = {
 }
 
 function buildEnrollSubscribeRequests(needReview) {
-  const requests = [ENROLL_SUCCESS_SUBSCRIPTION]
-  if (needReview) {
-    requests.push(ENROLL_APPROVED_SUBSCRIPTION)
-  }
-  return requests.map((item) => ({ ...item }))
+  // 待审核不是报名成功：只申请审核结果通知，提交当下不申请「报名成功」。
+  const item = needReview ? ENROLL_APPROVED_SUBSCRIPTION : ENROLL_SUCCESS_SUBSCRIPTION
+  return [{ ...item }]
 }
 
 function resolveTemplateRequests(requests, templates) {

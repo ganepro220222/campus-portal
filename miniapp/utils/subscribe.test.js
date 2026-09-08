@@ -1,5 +1,5 @@
 /**
- * 活动报名订阅：需审核时一次申请两个模板，并等待授权记录落库。
+ * 活动报名订阅：无需审核申请成功通知，需审核只申请审核结果通知，并等待授权记录落库。
  */
 const assert = require('assert')
 
@@ -58,21 +58,21 @@ async function run() {
   )
   assert.deepStrictEqual(
     buildEnrollSubscribeRequests(true),
-    [
-      { scene: 'enroll_success', templateKey: 'enrollSuccess' },
-      { scene: 'enroll_approved', templateKey: 'enrollApproved' }
-    ]
+    [{ scene: 'enroll_approved', templateKey: 'enrollApproved' }]
+  )
+  assert.ok(
+    !buildEnrollSubscribeRequests(true).some((item) => item.scene === 'enroll_success'),
+    '需审核不得申请报名成功通知'
   )
   assert.deepStrictEqual(
     resolveTemplateRequests(buildEnrollSubscribeRequests(true), templates)
       .map((item) => item.templateId),
-    ['tmpl-success', 'tmpl-approved']
+    ['tmpl-approved']
   )
 
   const pendingRecords = []
   postImpl = () => new Promise((resolve) => pendingRecords.push(resolve))
   subscribeResponse = {
-    'tmpl-success': 'accept',
     'tmpl-approved': 'accept'
   }
   let settled = false
@@ -83,30 +83,26 @@ async function run() {
     })
 
   await flushPromises()
-  assert.deepStrictEqual(requestedTemplateIds, ['tmpl-success', 'tmpl-approved'])
+  assert.deepStrictEqual(requestedTemplateIds, ['tmpl-approved'])
   assert.deepStrictEqual(
     postPayloads.map((item) => item.scene),
-    ['enroll_success', 'enroll_approved']
+    ['enroll_approved']
   )
   assert.strictEqual(settled, false, '授权记录未全部落库前不得继续提交报名')
 
   pendingRecords[0]()
-  await flushPromises()
-  assert.strictEqual(settled, false)
-  pendingRecords[1]()
   const reviewResult = await reviewFlow
-  assert.deepStrictEqual(reviewResult.recorded, ['enroll_success', 'enroll_approved'])
+  assert.deepStrictEqual(reviewResult.recorded, ['enroll_approved'])
 
   postPayloads.length = 0
   requestedTemplateIds = []
   postImpl = () => Promise.resolve()
   subscribeResponse = {
-    'tmpl-success': 'reject',
-    'tmpl-approved': 'accept'
+    'tmpl-approved': 'reject'
   }
-  const partialResult = await requestSubscribeMany(buildEnrollSubscribeRequests(true))
-  assert.deepStrictEqual(partialResult.accepted, ['enroll_approved'])
-  assert.deepStrictEqual(postPayloads.map((item) => item.scene), ['enroll_approved'])
+  const rejectedReview = await requestSubscribeMany(buildEnrollSubscribeRequests(true))
+  assert.deepStrictEqual(rejectedReview.accepted, [])
+  assert.deepStrictEqual(postPayloads.map((item) => item.scene), [])
 
   postPayloads.length = 0
   requestedTemplateIds = []

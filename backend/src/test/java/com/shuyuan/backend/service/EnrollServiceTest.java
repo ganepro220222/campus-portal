@@ -157,6 +157,28 @@ class EnrollServiceTest {
     }
 
     @Test
+    void enroll_needReview_pending_doesNotEnqueueSuccess() {
+        Activity activity = publishedActivity(10, 3);
+        activity.setNeedReview(1);
+
+        when(activityMapper.selectById(ACTIVITY_ID)).thenReturn(activity);
+        when(enrollMapper.selectOne(any())).thenReturn(null);
+        when(memberProfileMapper.selectById(MEMBER_ID)).thenReturn(memberProfile());
+        when(activityMapper.incrEnrolledCount(ACTIVITY_ID)).thenReturn(1);
+
+        Map<String, Object> result = enrollService.enroll(ACTIVITY_ID, enrollRequest());
+
+        assertEquals("pending", result.get("status"));
+        verify(messageService).create(eq(MEMBER_ID), eq("报名已提交"), anyString(),
+                eq("enroll"), eq("activity"), eq(ACTIVITY_ID));
+        verify(subscribeOutboxService, never()).enqueueEnrollSuccess(anyLong(), any(), any());
+        verify(subscribeOutboxService, never()).enqueueEnrollApproved(anyLong(), any(), any());
+        verifyNoMoreInteractions(subscribeOutboxService);
+        verify(eventLogService).record("enroll", "activity", ACTIVITY_ID);
+        verify(pointService).award(MEMBER_ID, "enroll_activity");
+    }
+
+    @Test
     void enroll_enqueuesOutboxInSameTransaction() {
         Activity activity = publishedActivity(10, 3);
         EnrollRequest req = enrollRequest();
@@ -234,6 +256,8 @@ class EnrollServiceTest {
         LocalDateTime submittedAt = (LocalDateTime) boundValue(cap.getValue(), "create_time");
         assertTrue(submittedAt.isAfter(cancelled.getCreateTime()), "复用旧行后报名时间必须晚于首次提交");
         assertFalse(submittedAt.isBefore(before));
+        verify(subscribeOutboxService, never()).enqueueEnrollSuccess(anyLong(), any(), any());
+        verify(subscribeOutboxService, never()).enqueueEnrollApproved(anyLong(), any(), any());
     }
 
     @Test

@@ -103,7 +103,10 @@ public class EnrollService {
         }
 
         createEnrollMessage(memberId, activity, existing);
-        subscribeOutboxService.enqueueEnrollSuccess(memberId, activity, existing);
+        // 待审核只靠站内消息告知「已提交」；微信「报名成功通知」仅已通过才发。
+        if ("approved".equals(status)) {
+            subscribeOutboxService.enqueueEnrollSuccess(memberId, activity, existing);
+        }
         eventLogService.record("enroll", "activity", activityId);
         pointService.award(memberId, "enroll_activity");
         return toEnrollVo(existing, activity);

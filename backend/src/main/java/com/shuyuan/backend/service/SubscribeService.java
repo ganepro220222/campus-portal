@@ -83,7 +83,7 @@ public class SubscribeService {
         }
     }
 
-    /** 报名成功/提交后发送（需用户事先授权 enroll_success） */
+    /** 已通过的报名发送（需用户事先授权 enroll_success；待审核不走此场景） */
     public void sendEnrollSuccess(Long memberId, Activity activity, Enroll enroll) {
         if (activity == null || enroll == null) {
             return;

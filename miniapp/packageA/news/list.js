@@ -8,6 +8,7 @@ const {
   buildLoadMoreFailurePatch,
   buildResetFailurePatch
 } = require('../../utils/newsListPage')
+const { applyCoverFailed } = require('../../utils/coverFallback')
 
 Page({
   data: {
@@ -85,6 +86,10 @@ Page({
         this.setData(buildLoadMoreFailurePatch())
       }
     }
+  },
+
+  onCoverError(e) {
+    applyCoverFailed(this, 'newsList', e)
   },
 
   onCardTap(e) { wx.navigateTo({ url: `./detail?id=${e.currentTarget.dataset.id}` }) }

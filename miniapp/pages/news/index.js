@@ -25,6 +25,7 @@ const {
   sliceMockPage,
   mockHasMore
 } = require('../../utils/newsListPage')
+const { applyCoverFailed } = require('../../utils/coverFallback')
 
 Page({
   data: {
@@ -145,6 +146,10 @@ Page({
 
   onSearch() {
     wx.navigateTo({ url: '/packageC/search/index' })
+  },
+
+  onCoverError(e) {
+    applyCoverFailed(this, 'newsList', e)
   },
 
   onCardTap(e) {

@@ -48,7 +48,7 @@
         data-id="{{item.id}}"
       >
         <view class="ncard-thumb {{item.colorClass}}">
-          <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ncard-img" lazy-load />
+          <image wx:if="{{item.cover && !item.coverFailed}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ncard-img" lazy-load data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
           <icon wx:else name="{{item.icon}}" size="30" color="rgba(255,255,255,0.92)" />
         </view>
         <view class="ncard-body">

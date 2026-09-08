@@ -19,7 +19,7 @@
       data-id="{{item.id}}"
     >
       <view class="acard-cover {{item.colorClass}}">
-        <image wx:if="{{item.cover}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="acard-img" />
+        <image wx:if="{{item.cover && !item.coverFailed}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="acard-img" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
         <icon wx:else name="{{item.icon}}" size="34" color="rgba(255,255,255,0.9)" />
         <text class="acard-tag">{{item.tag}}</text>
       </view>

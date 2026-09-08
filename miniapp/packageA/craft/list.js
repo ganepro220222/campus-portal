@@ -13,6 +13,7 @@ const {
   bumpListGeneration,
   isStaleListRequest
 } = require('../../utils/feedListPage')
+const { applyCoverFailed } = require('../../utils/coverFallback')
 
 Page({
   data: {
@@ -58,6 +59,10 @@ Page({
         options
       ))
     }
+  },
+
+  onCoverError(e) {
+    applyCoverFailed(this, 'craftList', e)
   },
 
   onCardTap(e) {

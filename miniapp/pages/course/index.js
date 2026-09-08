@@ -16,6 +16,7 @@ const {
   isStaleCategoryRequest
 } = require('../../utils/feedListPage')
 const { enablePageShare, buildShareAppMessage, buildShareTimeline } = require('../../utils/pageShare')
+const { applyCoverFailed } = require('../../utils/coverFallback')
 
 Page({
   data: {
@@ -91,6 +92,10 @@ Page({
     if (i === this.data.activeCat) return
     this.setData({ activeCat: i })
     this._load(FEED_LOAD.categorySwitch)
+  },
+
+  onCoverError(e) {
+    applyCoverFailed(this, 'courseList', e)
   },
 
   onCardTap(e) {

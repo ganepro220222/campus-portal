@@ -5,7 +5,7 @@
 const assert = require('assert')
 const fs = require('fs')
 const path = require('path')
-const { decorateCourses, decorateCourseCards } = require('./decorate')
+const { decorateCourses, decorateCourseCards, decorateNewsFeed, resolveCoverImageMode } = require('./decorate')
 
 const fromApi = decorateCourseCards([{
   id: 1,
@@ -68,6 +68,24 @@ const homeApiReady = decorateCourses([{
   lessonCount: 8
 }])[0]
 assert.deepStrictEqual(homeApiReady.tags, ['通识必修', '字幕'])
+
+assert.strictEqual(resolveCoverImageMode('fit'), 'aspectFit')
+assert.strictEqual(resolveCoverImageMode('fill'), 'aspectFill')
+assert.strictEqual(resolveCoverImageMode(undefined), 'aspectFill')
+
+const newsFit = decorateNewsFeed([{
+  id: 8,
+  title: '有封面',
+  cover: 'https://cdn.example.com/n.jpg',
+  coverFitMode: 'fit',
+  readCount: 1300
+}])[0]
+assert.strictEqual(newsFit.cover, 'https://cdn.example.com/n.jpg')
+assert.strictEqual(newsFit.coverImageMode, 'aspectFit')
+assert.ok(!newsFit.coverFailed)
+
+const newsFill = decorateNewsFeed([{ id: 9, title: '默认裁切', cover: 'https://cdn.example.com/n2.jpg' }])[0]
+assert.strictEqual(newsFill.coverImageMode, 'aspectFill')
 
 const courseWxml = fs.readFileSync(path.join(__dirname, '../pages/course/index.wxml'), 'utf8')
 assert.match(courseWxml, /wx:for="\{\{item\.tags\}\}"/)

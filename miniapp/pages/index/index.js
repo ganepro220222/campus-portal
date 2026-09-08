@@ -19,6 +19,7 @@ const {
   buildAnnouncementLoadPatch
 } = require('../../utils/homePageLoad')
 const { enablePageShare, buildShareAppMessage, buildShareTimeline, pickShareImage } = require('../../utils/pageShare')
+const { applyCoverFailed } = require('../../utils/coverFallback')
 
 function settle(promise, empty) {
   return promise
@@ -243,6 +244,10 @@ Page({
   onSectionMore(e) {
     const path = e.currentTarget.dataset.path
     if (path) openNavItem({ path })
+  },
+
+  onCoverError(e) {
+    applyCoverFailed(this, null, e)
   },
 
   onHallTap(e) { wx.navigateTo({ url: `/packageA/hall/detail?id=${e.currentTarget.dataset.id}` }) },

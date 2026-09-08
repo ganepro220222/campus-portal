@@ -14,6 +14,7 @@ const {
   isStaleListRequest
 } = require('../../utils/feedListPage')
 const { enablePageShare, buildShareAppMessage, buildShareTimeline } = require('../../utils/pageShare')
+const { applyCoverFailed } = require('../../utils/coverFallback')
 
 Page({
   data: {
@@ -62,6 +63,10 @@ Page({
         options
       ))
     }
+  },
+
+  onCoverError(e) {
+    applyCoverFailed(this, 'activityList', e)
   },
 
   onCardTap(e) {

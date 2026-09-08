@@ -39,8 +39,8 @@
         data-id="{{item.id}}"
       >
         <view class="hcard-cover {{item.colorClass}}">
-          <view wx:if="{{item.cover}}" class="hcard-bg">
-            <image src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="hcard-img" />
+          <view wx:if="{{item.cover && !item.coverFailed}}" class="hcard-bg">
+            <image src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="hcard-img" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
           </view>
           <view class="hcard-corner"><icon name="museum" size="40" color="rgba(255,255,255,0.32)" /></view>
           <text class="hcard-ct serif">{{item.shortName}}</text>

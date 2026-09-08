@@ -7,6 +7,8 @@ const {
   TONG_TU_XING_APPID,
   classifyMiniProgramAppId,
   isUsableMiniProgramAppId,
+  isNavigateToMiniProgramCancel,
+  resolveNavigateToMiniProgramFailToast,
   resolveRelatedMiniProgramJump,
   openRelatedMiniProgram
 } = require('./collegeJump')
@@ -72,5 +74,25 @@ assert.deepStrictEqual(navigations, [{
   path: '',
   fail: navigations[0].fail
 }])
+
+assert.strictEqual(isNavigateToMiniProgramCancel({ errMsg: 'navigateToMiniProgram:fail cancel' }), true)
+assert.strictEqual(isNavigateToMiniProgramCancel({ errMsg: 'navigateToMiniProgram:fail:cancel' }), true)
+assert.strictEqual(isNavigateToMiniProgramCancel({ errMsg: 'navigateToMiniProgram:fail appId not found' }), false)
+assert.strictEqual(resolveNavigateToMiniProgramFailToast({ errMsg: 'navigateToMiniProgram:fail cancel' }), '')
+assert.strictEqual(
+  resolveNavigateToMiniProgramFailToast({ errMsg: 'navigateToMiniProgram:fail appId not found' }),
+  '跳转失败，请确认目标小程序已发布'
+)
+
+const failToasts = []
+const failApi = {
+  showToast(opts) { failToasts.push(opts.title) },
+  navigateToMiniProgram(opts) {
+    opts.fail({ errMsg: 'navigateToMiniProgram:fail cancel' })
+    opts.fail({ errMsg: 'navigateToMiniProgram:fail appId not found' })
+  }
+}
+openRelatedMiniProgram({ appid: TONG_TU_XING_APPID, path: '' }, failApi)
+assert.deepStrictEqual(failToasts, ['跳转失败，请确认目标小程序已发布'])
 
 console.log('[collegeJump.test] PASS')

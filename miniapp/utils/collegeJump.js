@@ -30,6 +30,16 @@ function resolveRelatedMiniProgramJump(item) {
   }
 }
 
+function isNavigateToMiniProgramCancel(err) {
+  const msg = String((err && err.errMsg) || (err && err.message) || err || '')
+  return /cancel/i.test(msg)
+}
+
+function resolveNavigateToMiniProgramFailToast(err) {
+  if (isNavigateToMiniProgramCancel(err)) return ''
+  return '跳转失败，请确认目标小程序已发布'
+}
+
 function openRelatedMiniProgram(item, wxApi) {
   const api = wxApi || (typeof wx !== 'undefined' ? wx : null)
   const jump = resolveRelatedMiniProgramJump(item)
@@ -42,11 +52,12 @@ function openRelatedMiniProgram(item, wxApi) {
   api.navigateToMiniProgram({
     appId: jump.appId,
     path: jump.path,
-    fail: () => api.showToast({
-      title: '跳转失败，请确认目标小程序已发布',
-      icon: 'none',
-      duration: 3000
-    })
+    fail: (err) => {
+      const title = resolveNavigateToMiniProgramFailToast(err)
+      if (title) {
+        api.showToast({ title, icon: 'none', duration: 3000 })
+      }
+    }
   })
   return jump
 }
@@ -55,6 +66,8 @@ module.exports = {
   TONG_TU_XING_APPID,
   classifyMiniProgramAppId,
   isUsableMiniProgramAppId,
+  isNavigateToMiniProgramCancel,
+  resolveNavigateToMiniProgramFailToast,
   resolveRelatedMiniProgramJump,
   openRelatedMiniProgram
 }

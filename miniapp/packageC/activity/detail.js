@@ -13,6 +13,7 @@ const {
 } = require('../../utils/detailPageInit')
 const { shouldSilentRefreshDetail } = require('../../utils/activityDetailLoad')
 const { enablePageShare, buildShareAppMessage, buildShareTimeline, pickShareImage } = require('../../utils/pageShare')
+const { applyItemCoverFailed } = require('../../utils/mediaFallback')
 
 Page({
   data: {
@@ -87,6 +88,10 @@ Page({
         this.setData(buildDetailInitialFailurePatch(err))
       }
     }
+  },
+
+  onCoverError(e) {
+    applyItemCoverFailed(this, 'detail', e)
   },
 
   onRetry() {

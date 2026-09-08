@@ -16,6 +16,12 @@ const {
   shouldRefreshContentOnShow,
   canInteractWithContent
 } = require('../../utils/contentPageInit')
+const {
+  markIndexedImageFailed,
+  retryIndexedImage,
+  usableImageUrls,
+  previewImages
+} = require('../../utils/mediaFallback')
 
 const CONTENT_KEY = 'detail'
 const COVER_CLASSES = ['gi1', 'gi2', 'gi3']
@@ -135,15 +141,27 @@ Page({
     this.setData({ lang })
   },
 
+  onSlideError(e) {
+    const ds = e.currentTarget.dataset
+    const next = markIndexedImageFailed(this.data.slides, ds.index, ds.cover, ds.epoch)
+    if (next !== this.data.slides) this.setData({ slides: next })
+  },
+
   onPreview(e) {
     if (!canInteractWithContent(this.data, CONTENT_KEY, 'contentId')) return
-    const url = e.currentTarget.dataset.url
-    if (!url) {
+    const idx = e.currentTarget.dataset.index
+    const slides = this.data.slides || []
+    const slide = slides[idx]
+    if (!slide || !slide.imageUrl) {
       wx.showToast({ title: '高清图即将上线', icon: 'none' })
       return
     }
-    const urls = (this.data.detail.images || []).map(s => s.imageUrl).filter(Boolean)
-    wx.previewImage({ current: url, urls: urls.length ? urls : [url] })
+    if (slide.imageFailed) {
+      const next = retryIndexedImage(slides, idx)
+      if (next !== slides) this.setData({ slides: next })
+      return
+    }
+    previewImages(wx, usableImageUrls(slides), slide.imageUrl)
   },
 
   onPhone(e) {

@@ -29,14 +29,17 @@
         <!-- 文章 -->
         <view class="article">
           <view class="art-hero {{article.colorClass}}">
-            <image
-              wx:if="{{article.cover}}"
-              class="art-hero-img"
-              src="{{article.cover}}"
-              mode="{{article.coverImageMode}}"
-              lazy-load
-            />
-            <view wx:if="{{article.cover}}" class="art-hero-scrim"></view>
+            <block wx:if="{{article.cover && !article.coverFailed}}">
+              <image
+                class="art-hero-img"
+                src="{{article.cover}}"
+                mode="{{article.coverImageMode}}"
+                lazy-load
+                data-cover="{{article.cover}}"
+                binderror="onCoverError"
+              />
+              <view class="art-hero-scrim"></view>
+            </block>
             <view wx:else class="art-hero-deco"></view>
             <view class="art-hero-title serif">{{article.title}}</view>
           </view>

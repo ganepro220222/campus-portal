@@ -54,6 +54,7 @@ function applyCoverFailed(page, listKey, e) {
 module.exports = {
   COVER_LIST_KEYS,
   coverUrlOf,
+  readEventDataset,
   markCoverFailed,
   coverFailedPatch,
   applyCoverFailed

@@ -24,6 +24,7 @@ const {
   shouldRefreshContentOnShow,
   canInteractWithContent
 } = require('../../utils/contentPageInit')
+const { applyItemCoverFailed } = require('../../utils/mediaFallback')
 
 const CONTENT_KEY = 'article'
 
@@ -75,6 +76,10 @@ Page({
 
   onShareTimeline() {
     return buildNewsShareTimeline(this.data.article, this.data.articleId)
+  },
+
+  onCoverError(e) {
+    applyItemCoverFailed(this, 'article', e)
   },
 
   onRetry() {

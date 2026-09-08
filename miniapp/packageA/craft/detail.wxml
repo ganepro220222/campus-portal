@@ -31,13 +31,14 @@
         <swiper class="gslides" circular="{{slides.length > 1}}" bindchange="onGallery"
           indicator-dots="{{slides.length > 1}}" indicator-color="rgba(255,255,255,.4)" indicator-active-color="#ffffff">
           <swiper-item wx:for="{{slides}}" wx:key="angleLabel">
-            <view class="gimg {{item.cls}}" bindtap="onPreview" data-url="{{item.imageUrl}}">
-              <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" class="gimg-img" />
+            <view class="gimg {{item.cls}}" bindtap="onPreview" data-index="{{index}}">
+              <image wx:if="{{item.imageUrl && !item.imageFailed}}" src="{{item.imageUrl}}" mode="aspectFill" class="gimg-img" data-index="{{index}}" data-cover="{{item.imageUrl}}" data-epoch="{{item.imageEpoch || 0}}" binderror="onSlideError" />
               <icon wx:else name="{{item.icon}}" size="60" color="rgba(255,255,255,0.55)" />
             </view>
           </swiper-item>
         </swiper>
-        <view class="gcap">{{detail.name}} · {{slides[galleryIndex].angleLabel}}（点击查看大图）</view>
+        <view wx:if="{{slides[galleryIndex].imageFailed}}" class="gcap">图片加载失败，点击重试</view>
+        <view wx:else class="gcap">{{detail.name}} · {{slides[galleryIndex].angleLabel}}（点击查看大图）</view>
       </view>
 
       <!-- 介绍 -->

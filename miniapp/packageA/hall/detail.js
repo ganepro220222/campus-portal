@@ -16,8 +16,20 @@ const {
   shouldRefreshContentOnShow,
   canInteractWithContent
 } = require('../../utils/contentPageInit')
+const {
+  IMAGE_RETRY_HINT,
+  markIndexedImageFailed,
+  retryIndexedImage,
+  usableImageUrls,
+  markNestedImageFailed,
+  retryNestedImage,
+  replaceField,
+  slideCaption,
+  previewImages
+} = require('../../utils/mediaFallback')
 
 const CONTENT_KEY = 'hall'
+const GALLERY_FALLBACK = '左右滑动浏览，支持双指放大'
 
 Page({
   data: {
@@ -186,33 +198,74 @@ Page({
 
   onGallery(e) {
     const idx = e.detail.current
-    const slides = (this.data.hall && this.data.hall.slides) || []
-    const cap = (slides[idx] && slides[idx].caption) || this.data.hall.caption || '左右滑动浏览，支持双指放大'
+    const hall = this.data.hall || {}
+    const slides = hall.slides || []
+    const cap = slideCaption(slides[idx], hall.caption || GALLERY_FALLBACK)
     this.setData({ galleryIndex: idx, currentCaption: cap })
   },
 
+  onSlideError(e) {
+    const ds = e.currentTarget.dataset
+    const hall = this.data.hall
+    if (!hall) return
+    const slides = markIndexedImageFailed(hall.slides, ds.index, ds.cover, ds.epoch)
+    if (slides === hall.slides) return
+    const patch = { hall: replaceField(hall, 'slides', slides) }
+    if (Number(ds.index) === this.data.galleryIndex) {
+      patch.currentCaption = IMAGE_RETRY_HINT
+    }
+    this.setData(patch)
+  },
+
+  onSectionImageError(e) {
+    const ds = e.currentTarget.dataset
+    const hall = this.data.hall
+    if (!hall) return
+    const sections = markNestedImageFailed(hall.sections, ds.sidx, ds.midx, ds.cover, ds.epoch)
+    if (sections === hall.sections) return
+    this.setData({ hall: replaceField(hall, 'sections', sections) })
+  },
+
   onPreviewSlide(e) {
-    const url = e.currentTarget.dataset.url
-    if (!url) {
+    const idx = e.currentTarget.dataset.index
+    const hall = this.data.hall || {}
+    const slides = hall.slides || []
+    const slide = slides[idx]
+    if (!slide || !slide.imageUrl) {
       wx.showToast({ title: '展馆高清图即将上线', icon: 'none' })
       return
     }
-    const urls = (this.data.hall.slides || []).map(s => s.imageUrl).filter(Boolean)
-    wx.previewImage({ current: url, urls: urls.length ? urls : [url] })
+    if (slide.imageFailed) {
+      const next = retryIndexedImage(slides, idx)
+      if (next === slides) return
+      const patch = { hall: replaceField(hall, 'slides', next) }
+      if (Number(idx) === this.data.galleryIndex) {
+        patch.currentCaption = slideCaption(next[idx], hall.caption || GALLERY_FALLBACK)
+      }
+      this.setData(patch)
+      return
+    }
+    previewImages(wx, usableImageUrls(slides), slide.imageUrl)
   },
 
   onPreviewSection(e) {
-    const url = e.currentTarget.dataset.url
-    const anchor = e.currentTarget.dataset.section
-    const section = (this.data.hall.sections || []).find(s => s.anchorId === anchor)
-    if (!url) {
+    const ds = e.currentTarget.dataset
+    const hall = this.data.hall || {}
+    const sections = hall.sections || []
+    const si = Number(ds.sidx)
+    const mi = Number(ds.midx)
+    const section = sections[si]
+    const media = section && section.items && section.items[mi]
+    if (!media || !media.imageUrl) {
       wx.showToast({ title: '章节高清图即将上线', icon: 'none' })
       return
     }
-    const urls = (section && section.items ? section.items : [])
-      .map(it => it.imageUrl)
-      .filter(Boolean)
-    wx.previewImage({ current: url, urls: urls.length ? urls : [url] })
+    if (media.imageFailed) {
+      const next = retryNestedImage(sections, si, mi)
+      if (next !== sections) this.setData({ hall: replaceField(hall, 'sections', next) })
+      return
+    }
+    previewImages(wx, usableImageUrls(section.items), media.imageUrl)
   },
 
   onEnterVr() {

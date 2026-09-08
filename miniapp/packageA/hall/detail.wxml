@@ -40,9 +40,9 @@
             <view
               class="gimg {{item.cls}}"
               bindtap="onPreviewSlide"
-              data-url="{{item.imageUrl}}"
+              data-index="{{index}}"
             >
-              <image wx:if="{{item.imageUrl}}" class="gimg-photo" src="{{item.imageUrl}}" mode="aspectFill" lazy-load />
+              <image wx:if="{{item.imageUrl && !item.imageFailed}}" class="gimg-photo" src="{{item.imageUrl}}" mode="aspectFill" lazy-load data-index="{{index}}" data-cover="{{item.imageUrl}}" data-epoch="{{item.imageEpoch || 0}}" binderror="onSlideError" />
               <icon wx:else name="{{item.icon}}" size="54" color="rgba(255,255,255,0.55)" />
             </view>
           </swiper-item>
@@ -96,6 +96,7 @@
         <view class="imm-body">
           <view
             wx:for="{{hall.sections}}"
+            wx:for-index="sidx"
             wx:key="anchorId"
             id="{{item.anchorId}}"
             class="imm-section"
@@ -108,14 +109,16 @@
             <view
               wx:for="{{item.items}}"
               wx:for-item="media"
+              wx:for-index="midx"
               wx:key="caption"
               class="imm-card"
               bindtap="onPreviewSection"
-              data-url="{{media.imageUrl}}"
+              data-sidx="{{sidx}}"
+              data-midx="{{midx}}"
               data-section="{{item.anchorId}}"
             >
               <view class="imm-img {{media.cls}}">
-                <image wx:if="{{media.imageUrl}}" src="{{media.imageUrl}}" mode="aspectFill" class="imm-photo" lazy-load />
+                <image wx:if="{{media.imageUrl && !media.imageFailed}}" src="{{media.imageUrl}}" mode="aspectFill" class="imm-photo" lazy-load data-sidx="{{sidx}}" data-midx="{{midx}}" data-cover="{{media.imageUrl}}" data-epoch="{{media.imageEpoch || 0}}" binderror="onSectionImageError" />
                 <icon wx:else name="{{media.icon}}" size="48" color="rgba(255,255,255,0.55)" />
               </view>
               <view class="imm-cap">{{media.caption}}</view>

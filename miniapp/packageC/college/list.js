@@ -3,6 +3,7 @@ const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
 const { withListFallback } = require('../../utils/mockGuard')
 const { openRelatedMiniProgram } = require('../../utils/collegeJump')
+const { decorateCollegeApps } = require('../../utils/collegeIcon')
 
 Page({
   data: {
@@ -27,7 +28,7 @@ Page({
     this.setData({ loading: true, loadError: false })
     try {
       const list = await get('/colleges')
-      this.setData({ colleges: withListFallback(list, mock.colleges), loading: false, loadError: false })
+      this.setData({ colleges: decorateCollegeApps(withListFallback(list, mock.colleges)), loading: false, loadError: false })
     } catch (e) {
       console.warn('[college/list] 加载失败', e)
       this.setData({ colleges: [], loading: false, loadError: true })

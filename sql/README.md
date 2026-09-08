@@ -114,6 +114,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 28 | `patch-hall-vr-8-9-20260905.sql` | 8/9 号馆回填 720yun VR 链接，简介去掉「筹备中」 | 仅数据；seed 已同步；**可重复执行** |
 | 29 | `patch-college-app-tongtuxing-appid.sql` | 通途星填入正式 AppID；没有该条则补一条 | 仅数据；seed 已同步；**旧库必跑、可重复执行** |
 | 30 | `patch-college-app-remove-demo.sql` | 删除「示例关联应用 A/B」两条演示行 | 仅数据；**旧库必跑、可重复执行** |
+| 31 | `patch-college-app-icon-display.sql` | 关联小程序图标：`icon_fit_mode` / `icon_shape` | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
 
 `patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 
@@ -207,6 +208,10 @@ bash scripts/backup-staging-mysql.sh
 #### `patch-college-app-remove-demo.sql`（去掉演示关联应用）
 
 只删除名称仍是「示例关联应用 A / B」且 AppID 为空或占位的行。后台后来新增的真实条目不动。可重复执行。
+
+#### `patch-college-app-icon-display.sql`（关联小程序图标外形）
+
+旧库增加 `icon_fit_mode`（fill/fit，默认 fit）与 `icon_shape`（square/circle，默认 square）。已有图标外观不变。新库 `init.sql` 已含这两列，不必再跑。可重复执行。
 
 #### `patch-oss-object-meta.sql`（旧库后台预览必读）
 

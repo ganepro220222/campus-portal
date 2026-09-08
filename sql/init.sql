@@ -575,6 +575,8 @@ CREATE TABLE IF NOT EXISTS `college_app` (
   `appid`        VARCHAR(50)  DEFAULT NULL COMMENT '小程序AppID',
   `path`         VARCHAR(200) DEFAULT NULL COMMENT '跳转页面路径',
   `icon_url`     VARCHAR(500) DEFAULT NULL,
+  `icon_fit_mode` VARCHAR(16) NOT NULL DEFAULT 'fit' COMMENT '图标展示：fill/fit',
+  `icon_shape`   VARCHAR(16) NOT NULL DEFAULT 'square' COMMENT '图标外形：square/circle',
   `description`  VARCHAR(200) DEFAULT NULL,
   `sort`         INT          NOT NULL DEFAULT 0,
   `status`       TINYINT      NOT NULL DEFAULT 1,

@@ -4,7 +4,7 @@
       <div
         v-if="showImagePreview"
         class="preview-wrap"
-        :class="{ 'preview-wrap--fit': fitMode === 'fit' }"
+        :class="previewWrapClass"
       >
         <el-image
           :src="inner"
@@ -96,6 +96,13 @@
           </div>
         </div>
         <p v-if="aspectHint" class="hint aspect-hint">{{ aspectHint }}</p>
+        <div v-if="showIconShape" class="fit-mode">
+          <span class="fit-label">图标形状</span>
+          <el-radio-group v-model="iconShape" size="small">
+            <el-radio-button value="square">方形</el-radio-button>
+            <el-radio-button value="circle">圆形</el-radio-button>
+          </el-radio-group>
+        </div>
         <div v-if="showCoverFit" class="fit-mode">
           <span class="fit-label">小程序展示</span>
           <el-radio-group v-model="fitMode" size="small">
@@ -147,6 +154,8 @@ type PreviewMode = 'auto' | 'image' | 'video' | 'audio' | 'file' | 'none'
 const props = withDefaults(defineProps<{
   modelValue?: string
   fitMode?: CoverFitMode
+  iconShape?: 'square' | 'circle'
+  previewVariant?: 'default' | 'icon'
   scene?: string
   accept?: string
   uploadLabel?: string
@@ -154,11 +163,14 @@ const props = withDefaults(defineProps<{
   hint?: string
   aspectHint?: string
   showCoverFit?: boolean
+  showIconShape?: boolean
   preview?: PreviewMode
   displayName?: string
 }>(), {
   modelValue: '',
   fitMode: 'fill',
+  iconShape: 'square',
+  previewVariant: 'default',
   scene: 'image',
   accept: 'image/*',
   uploadLabel: '上传文件',
@@ -166,6 +178,7 @@ const props = withDefaults(defineProps<{
   hint: '上传后小程序端自动展示；若按钮不可用请联系技术人员',
   aspectHint: '',
   showCoverFit: false,
+  showIconShape: false,
   preview: 'auto',
   displayName: ''
 })
@@ -173,6 +186,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   'update:fitMode': [value: CoverFitMode]
+  'update:iconShape': [value: 'square' | 'circle']
   uploaded: [payload: { url: string; sizeBytes: number; fileName: string; file?: File }]
   /** 读到音频时长后抛给表单，省掉老师听一遍再手打「时长说明」 */
   duration: [payload: { seconds: number; text: string }]
@@ -182,6 +196,12 @@ const PROXY_MAX_BYTES = 200 * 1024 * 1024
 
 const inner = ref(props.modelValue || '')
 const fitMode = ref<CoverFitMode>(props.fitMode || 'fill')
+const iconShape = ref<'square' | 'circle'>(props.iconShape === 'circle' ? 'circle' : 'square')
+const previewWrapClass = computed(() => ({
+  'preview-wrap--fit': fitMode.value === 'fit',
+  'preview-wrap--icon': props.previewVariant === 'icon' || props.showIconShape,
+  'preview-wrap--circle': iconShape.value === 'circle'
+}))
 const uploading = ref(false)
 const uploadPercent = ref<number | null>(null)
 const uploadError = ref('')
@@ -443,6 +463,14 @@ watch(() => props.fitMode, (v) => {
 
 watch(fitMode, (v) => {
   emit('update:fitMode', v === 'fit' ? 'fit' : 'fill')
+})
+
+watch(() => props.iconShape, (v) => {
+  iconShape.value = v === 'circle' ? 'circle' : 'square'
+})
+
+watch(iconShape, (v) => {
+  emit('update:iconShape', v === 'circle' ? 'circle' : 'square')
 })
 
 function errorMessage(e: unknown): string {
@@ -728,6 +756,15 @@ function clear() {
 
 .preview-wrap--fit {
   background: #f0f2f5;
+}
+
+.preview-wrap--icon {
+  width: 96px;
+  height: 96px;
+}
+
+.preview-wrap--circle {
+  border-radius: 50%;
 }
 
 /* 200x112 时原生控件条几乎盖满画面，等于没有预览；16:9 放到 320x180 才看得见内容 */

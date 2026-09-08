@@ -63,12 +63,17 @@
         <el-form-item label="图标">
           <OssUploadInput
             v-model="form.iconUrl"
+            v-model:fit-mode="form.iconFitMode"
+            v-model:icon-shape="form.iconShape"
             scene="image"
             accept=".png,.jpg,.jpeg"
             upload-label="上传图标"
             done-text="图标已上传"
-            aspect-hint="建议 1:1 正方形，PNG/JPG，边长 200–512px"
-            hint="选填，留空则使用默认色块。微信无法自动获取对方小程序 logo，请上传对方官方图标（正方形效果最佳）。"
+            preview-variant="icon"
+            show-cover-fit
+            show-icon-shape
+            aspect-hint="建议正方形 PNG/JPG，边长 200–512px。只有圆形小程序图标时，选「圆形」并按预览选裁切方式。"
+            hint="选填，留空则使用默认色块。微信无法自动获取对方 logo。方形官方图选「方形」；只有圆形图标时选「圆形」。"
           />
         </el-form-item>
         <el-form-item label="对接方式" prop="contentType">
@@ -134,6 +139,10 @@ import {
   normalizeMiniProgramAppId,
   validateMiniProgramAppId
 } from '@/utils/miniProgramAppId.mjs'
+import {
+  normalizeCollegeIconFit,
+  normalizeCollegeIconShape
+} from '@/utils/collegeIcon.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const loading = ref(false)
@@ -150,6 +159,8 @@ const form = reactive({
   name: '',
   description: '',
   iconUrl: '',
+  iconFitMode: 'fit',
+  iconShape: 'square',
   contentType: 'jump',
   appid: '',
   path: '',
@@ -191,6 +202,8 @@ function resetForm() {
   form.name = ''
   form.description = ''
   form.iconUrl = ''
+  form.iconFitMode = 'fit'
+  form.iconShape = 'square'
   form.contentType = 'jump'
   form.appid = ''
   form.path = ''
@@ -215,6 +228,8 @@ function openDialog(row?: CollegeAppItem) {
     form.name = row.name
     form.description = row.description || ''
     form.iconUrl = row.iconUrl || ''
+    form.iconFitMode = normalizeCollegeIconFit(row.iconFitMode)
+    form.iconShape = normalizeCollegeIconShape(row.iconShape)
     form.contentType = row.contentType || 'manual'
     form.appid = row.appid || ''
     form.path = row.path || ''

@@ -7,6 +7,8 @@ export interface CollegeAppItem {
   appid?: string
   path?: string
   iconUrl?: string
+  iconFitMode?: 'fill' | 'fit'
+  iconShape?: 'square' | 'circle'
   description?: string
   sort: number
   status: number

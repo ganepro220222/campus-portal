@@ -7,6 +7,7 @@ import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.CollegeAppSaveRequest;
 import com.shuyuan.backend.entity.CollegeApp;
 import com.shuyuan.backend.mapper.CollegeAppMapper;
+import com.shuyuan.backend.util.CollegeIconDisplay;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -118,6 +119,8 @@ public class AdminCollegeAppService {
         if (req.getIconUrl() != null) {
             row.setIconUrl(req.getIconUrl().trim());
         }
+        row.setIconFitMode(CollegeIconDisplay.normalizeFit(req.getIconFitMode()));
+        row.setIconShape(CollegeIconDisplay.normalizeShape(req.getIconShape()));
         if (req.getDescription() != null) {
             row.setDescription(req.getDescription().trim());
         }
@@ -157,6 +160,8 @@ public class AdminCollegeAppService {
         m.put("appid", c.getAppid());
         m.put("path", c.getPath());
         m.put("iconUrl", c.getIconUrl());
+        m.put("iconFitMode", CollegeIconDisplay.normalizeFit(c.getIconFitMode()));
+        m.put("iconShape", CollegeIconDisplay.normalizeShape(c.getIconShape()));
         m.put("description", c.getDescription());
         m.put("sort", c.getSort());
         m.put("status", c.getStatus());

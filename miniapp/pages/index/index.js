@@ -21,6 +21,7 @@ const {
 const { enablePageShare, buildShareAppMessage, buildShareTimeline, pickShareImage } = require('../../utils/pageShare')
 const { applyCoverFailed } = require('../../utils/coverFallback')
 const { openRelatedMiniProgram } = require('../../utils/collegeJump')
+const { decorateCollegeApps, decorateHomeCollegeLists } = require('../../utils/collegeIcon')
 
 function settle(promise, empty) {
   return promise
@@ -92,7 +93,7 @@ Page({
     const cached = store.getCache('home')
     if (cached) {
       this.setData({
-        ...viewListsFromHomeCache(cached, DEFAULT_ENTRIES),
+        ...decorateHomeCollegeLists(viewListsFromHomeCache(cached, DEFAULT_ENTRIES)),
         loading: false,
         homeError: false
       })
@@ -135,9 +136,9 @@ Page({
         colleges: !flags.colleges,
         navItems: !flags.navItems
       }
-      const collegeAll = failed.colleges
+      const collegeAll = decorateCollegeApps(failed.colleges
         ? resolveHomeSection(true, [], previous && previous.collegeList)
-        : withListFallback(collegesR.value, mock.collegesHome || [])
+        : withListFallback(collegesR.value, mock.collegesHome || []))
       const next = {
         banners: failed.banners
           ? []

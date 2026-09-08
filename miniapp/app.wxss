@@ -336,6 +336,7 @@ button.lbtn-ghost[disabled] {
   justify-content: center;
   box-shadow: 0 6rpx 16rpx rgba(31, 40, 90, 0.2);
 }
+.app-icon--circle { border-radius: 50%; }
 .app-icon-img { width: 100%; height: 100%; }
 .app-icon-seal { color: #fff; font-size: 34rpx; font-weight: 700; letter-spacing: 1rpx; }
 .app-body { flex: 1; min-width: 0; }

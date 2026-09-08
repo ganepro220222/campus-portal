@@ -18,6 +18,10 @@ public class CollegeApp {
     private String appid;
     private String path;
     private String iconUrl;
+    /** fill=裁切填满 fit=完整显示 */
+    private String iconFitMode;
+    /** square=圆角方 circle=圆形 */
+    private String iconShape;
     private String description;
     private Integer sort;
     /** 1 上架 0 下架 */

@@ -3,6 +3,7 @@ package com.shuyuan.backend.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.entity.CollegeApp;
 import com.shuyuan.backend.mapper.CollegeAppMapper;
+import com.shuyuan.backend.util.CollegeIconDisplay;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -83,6 +84,8 @@ public class CollegeAppService {
         int sort = c.getSort() != null ? c.getSort() : 0;
         m.put("colorClass", COLOR_CLASSES[Math.floorMod(sort, COLOR_CLASSES.length)]);
         m.put("iconUrl", c.getIconUrl());
+        m.put("iconFitMode", CollegeIconDisplay.normalizeFit(c.getIconFitMode()));
+        m.put("iconShape", CollegeIconDisplay.normalizeShape(c.getIconShape()));
         m.put("contentType", c.getContentType());
         m.put("appid", c.getAppid());
         m.put("path", c.getPath());

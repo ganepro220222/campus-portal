@@ -118,7 +118,38 @@ class AdminCollegeAppServiceTest {
         ArgumentCaptor<CollegeApp> captor = ArgumentCaptor.forClass(CollegeApp.class);
         verify(collegeAppMapper).insert(captor.capture());
         assertEquals("wx532a624945bc7691", captor.getValue().getAppid());
+        assertEquals("fit", captor.getValue().getIconFitMode());
+        assertEquals("square", captor.getValue().getIconShape());
         assertEquals("wx532a624945bc7691", vo.get("appid"));
+    }
+
+    @Test
+    void create_savesCircleFillIconDisplay() {
+        CollegeAppSaveRequest req = jumpRequest("wx532a624945bc7691", 1);
+        req.setIconFitMode("fill");
+        req.setIconShape("circle");
+        when(collegeAppMapper.insert(any(CollegeApp.class))).thenAnswer(invocation -> {
+            CollegeApp row = invocation.getArgument(0);
+            row.setId(11L);
+            return 1;
+        });
+        CollegeApp saved = new CollegeApp();
+        saved.setId(11L);
+        saved.setName("通途星");
+        saved.setContentType("jump");
+        saved.setAppid("wx532a624945bc7691");
+        saved.setIconFitMode("fill");
+        saved.setIconShape("circle");
+        when(collegeAppMapper.selectById(11L)).thenReturn(saved);
+
+        Map<String, Object> vo = adminCollegeAppService.create(req);
+
+        ArgumentCaptor<CollegeApp> captor = ArgumentCaptor.forClass(CollegeApp.class);
+        verify(collegeAppMapper).insert(captor.capture());
+        assertEquals("fill", captor.getValue().getIconFitMode());
+        assertEquals("circle", captor.getValue().getIconShape());
+        assertEquals("fill", vo.get("iconFitMode"));
+        assertEquals("circle", vo.get("iconShape"));
     }
 
     @Test

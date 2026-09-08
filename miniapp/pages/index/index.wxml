@@ -238,8 +238,8 @@
           bindtap="onCollegeTap"
           data-id="{{item.id}}"
         >
-          <view class="app-icon {{item.colorClass || 'hc1'}}">
-            <image wx:if="{{item.iconUrl}}" src="{{item.iconUrl}}" mode="aspectFit" class="app-icon-img" />
+          <view class="app-icon {{item.colorClass || 'hc1'}} {{item.iconCircle ? 'app-icon--circle' : ''}}">
+            <image wx:if="{{item.iconUrl}}" src="{{item.iconUrl}}" mode="{{item.iconImageMode || 'aspectFit'}}" class="app-icon-img" />
             <text wx:else class="app-icon-seal serif">{{item.short}}</text>
           </view>
           <view class="app-body">

@@ -47,6 +47,8 @@ class CollegeAppServiceTest {
         assertEquals("轨道交通学院", list.get(0).get("name"));
         assertEquals("轨道", list.get(0).get("short"));
         assertTrue(list.get(0).containsKey("colorClass"));
+        assertEquals("fit", list.get(0).get("iconFitMode"));
+        assertEquals("square", list.get(0).get("iconShape"));
     }
 
     @Test

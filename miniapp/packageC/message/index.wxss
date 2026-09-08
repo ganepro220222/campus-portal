@@ -59,6 +59,7 @@
   line-height: 1.6;
   margin-top: 10rpx;
   display: block;
+  white-space: pre-wrap;
 }
 .msg-time {
   font-size: 22rpx;

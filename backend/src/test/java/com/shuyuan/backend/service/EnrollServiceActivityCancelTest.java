@@ -109,8 +109,8 @@ class EnrollServiceActivityCancelTest {
         Activity activity = cancelledActivity();
         String notice = EnrollService.buildActivityCancelledNotice(activity);
         assertTrue(notice.contains("您报名的活动「非遗体验」已取消，报名同步关闭。"));
-        assertTrue(notice.contains("原定时间：2026-09-10 14:00"));
-        assertTrue(notice.contains("地点：体验中心"));
+        assertTrue(notice.contains("\n原定时间：2026-09-10 14:00"));
+        assertTrue(notice.contains("\n地点：体验中心"));
         assertFalse(notice.contains("/packageC/activity/detail"));
     }
 

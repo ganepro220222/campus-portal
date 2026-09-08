@@ -3,6 +3,8 @@
  * 运行：node miniapp/utils/messageCenterPage.test.js
  */
 const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 
 const requestPath = require.resolve('./request')
 const pagePath = require.resolve('../packageC/message/index.js')
@@ -197,6 +199,11 @@ async function run() {
   assert.strictEqual(race.data.list[1].readStatus, 1, '全部已读成功后不得被迟到的单条失败打回未读')
   assert.strictEqual(race.data.unreadCount, 0)
   assert.ok(!toasts.includes('已读状态同步失败'), '全部已读成功后不得再弹单条同步失败')
+
+  const msgWxml = fs.readFileSync(path.join(__dirname, '../packageC/message/index.wxml'), 'utf8')
+  const msgWxss = fs.readFileSync(path.join(__dirname, '../packageC/message/index.wxss'), 'utf8')
+  assert.match(msgWxml, /class="msg-content"/)
+  assert.match(msgWxss, /\.msg-content\s*\{[^}]*white-space:\s*pre-wrap/s)
 
   console.log('[messageCenterPage.test] PASS')
 }

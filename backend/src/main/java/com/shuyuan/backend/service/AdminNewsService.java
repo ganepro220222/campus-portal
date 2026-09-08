@@ -1,6 +1,6 @@
 package com.shuyuan.backend.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.exception.BusinessException;
@@ -31,20 +31,39 @@ public class AdminNewsService {
 
     public PageResult<Map<String, Object>> list(String status, Long categoryId, int page, int size) {
         adminPermissionService.require("news:read");
-        LambdaQueryWrapper<News> qw = new LambdaQueryWrapper<News>()
-                .orderByDesc(News::getIsTop)
-                .orderByDesc(News::getUpdateTime);
+        // 列表不查 LONGTEXT 正文：表格用不到，点编辑再走 detail。
+        QueryWrapper<News> qw = new QueryWrapper<News>()
+                .select(
+                        "id",
+                        "title",
+                        "cover",
+                        "cover_fit_mode",
+                        "summary",
+                        "category_id",
+                        "status",
+                        "is_top",
+                        "view_count",
+                        "publish_time",
+                        "update_time"
+                )
+                .orderByDesc("is_top")
+                .orderByDesc("update_time");
         if (status != null && !status.isBlank()) {
-            qw.eq(News::getStatus, status);
+            qw.eq("status", status);
         }
         if (categoryId != null && categoryId > 0) {
-            qw.eq(News::getCategoryId, categoryId);
+            qw.eq("category_id", categoryId);
         }
         Page<News> p = newsMapper.selectPage(new Page<>(page, size), qw);
         Map<Long, String> catMap = categoryService.nameMap("news");
         List<Map<String, Object>> records = p.getRecords().stream()
-                .map(n -> toVo(n, catMap)).toList();
+                .map(n -> toVo(n, catMap, false)).toList();
         return new PageResult<>(records, p.getTotal(), page, size);
+    }
+
+    public Map<String, Object> detail(Long id) {
+        adminPermissionService.require("news:read");
+        return toVo(requireNews(id), categoryService.nameMap("news"), true);
     }
 
     public Map<String, Object> create(NewsSaveRequest req) {
@@ -59,7 +78,7 @@ public class AdminNewsService {
             news.setIsTop(0);
         }
         newsMapper.insert(news);
-        return toVo(newsMapper.selectById(news.getId()), categoryService.nameMap("news"));
+        return toVo(newsMapper.selectById(news.getId()), categoryService.nameMap("news"), true);
     }
 
     public Map<String, Object> update(Long id, NewsSaveRequest req) {
@@ -77,7 +96,7 @@ public class AdminNewsService {
         if (oldContent != null && saved.getContent() != null && !oldContent.equals(saved.getContent())) {
             ossMediaCleanupService.releaseStored(List.of(oldContent));
         }
-        return toVo(saved, categoryService.nameMap("news"));
+        return toVo(saved, categoryService.nameMap("news"), true);
     }
 
     @Transactional
@@ -94,7 +113,7 @@ public class AdminNewsService {
         newsMapper.updateById(news);
         News published = newsMapper.selectById(id);
         searchIndexSyncService.syncNews(published);
-        return toVo(published, categoryService.nameMap("news"));
+        return toVo(published, categoryService.nameMap("news"), true);
     }
 
     @Transactional
@@ -107,7 +126,7 @@ public class AdminNewsService {
         news.setStatus("draft");
         newsMapper.updateById(news);
         searchIndexSyncService.removeNews(id);
-        return toVo(newsMapper.selectById(id), categoryService.nameMap("news"));
+        return toVo(newsMapper.selectById(id), categoryService.nameMap("news"), true);
     }
 
     @Transactional
@@ -160,14 +179,16 @@ public class AdminNewsService {
         return news;
     }
 
-    private Map<String, Object> toVo(News n, Map<Long, String> catMap) {
+    private Map<String, Object> toVo(News n, Map<Long, String> catMap, boolean includeContent) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", n.getId());
         m.put("title", n.getTitle());
         m.put("cover", n.getCover());
         m.put("coverFitMode", CoverFitMode.normalize(n.getCoverFitMode()));
         m.put("summary", n.getSummary());
-        m.put("content", n.getContent());
+        if (includeContent) {
+            m.put("content", n.getContent());
+        }
         m.put("categoryId", n.getCategoryId());
         m.put("categoryName", categoryService.getName(n.getCategoryId(), catMap));
         m.put("status", n.getStatus());

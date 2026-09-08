@@ -27,6 +27,11 @@ public class AdminNewsController {
         return Result.ok(adminNewsService.list(status, categoryId, page, size));
     }
 
+    @GetMapping("/{id}")
+    public Result<Map<String, Object>> detail(@PathVariable Long id) {
+        return Result.ok(adminNewsService.detail(id));
+    }
+
     @PostMapping
     public Result<Map<String, Object>> create(@RequestBody NewsSaveRequest req) {
         return Result.ok(adminNewsService.create(req));

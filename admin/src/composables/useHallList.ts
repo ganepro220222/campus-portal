@@ -176,8 +176,7 @@ export function useHallList() {
   })
 
   onMounted(async () => {
-    await loadCategories()
-    await loadData()
+    await Promise.all([loadCategories(), loadData()])
   })
 
   return {

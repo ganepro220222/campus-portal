@@ -2,7 +2,7 @@
 /**
  * 路由组件的 <template> 必须只有一个根节点。
  *
- * AdminLayout 里 router-view 外面包着 `<transition name="fade-slide" mode="out-in">`，
+ * AdminLayout 里 router-view 外面包着 `<transition name="fade-slide">`，
  * 而 `<transition>` 只能处理单个根元素。路由组件写成多根（Vue 3 允许的 fragment）时：
  *
  *   - vue-tsc 通过，vite build 通过，页面首次打开也完全正常
@@ -87,7 +87,7 @@ if (errs.length) {
   console.error('check-view-single-root 失败：')
   for (const e of errs) console.error('  ✖ ' + e)
   console.error('')
-  console.error('  router-view 外面包着 <transition mode="out-in">，只能处理单根组件。')
+  console.error('  router-view 外面包着 <transition>，只能处理单根组件。')
   console.error('  多根时页面首次打开正常，但从这一页跳走会白屏且控制台无报错。')
   console.error('  请把弹窗 / 抽屉等放进那唯一的根元素里面。')
   process.exit(1)

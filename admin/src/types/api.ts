@@ -112,7 +112,7 @@ export interface NewsItem {
   cover: string | null
   coverFitMode?: 'fill' | 'fit'
   summary: string
-  content: string
+  content?: string
   categoryId: number | null
   categoryName: string
   status: 'draft' | 'published'

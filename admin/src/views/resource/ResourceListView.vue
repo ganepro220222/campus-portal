@@ -312,8 +312,7 @@ async function onDelete(row: ResourceItem) {
 }
 
 onMounted(async () => {
-  await loadCategories()
-  await loadData()
+  await Promise.all([loadCategories(), loadData()])
 })
 </script>
 

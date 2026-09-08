@@ -1,5 +1,7 @@
 package com.shuyuan.backend.service;
 
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.dto.NewsSaveRequest;
 import com.shuyuan.backend.entity.News;
@@ -11,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,6 +81,39 @@ class AdminNewsServiceTest {
 
         verify(newsMapper).deleteById(5L);
         verify(searchIndexSyncService).removeNews(5L);
+    }
+
+    @Test
+    void list_omitsRichTextContent() {
+        News row = new News();
+        row.setId(3L);
+        row.setTitle("标题");
+        row.setContent("<p>很长正文不应出现在列表里</p>");
+        Page<News> page = new Page<>(1, 20);
+        page.setRecords(List.of(row));
+        page.setTotal(1);
+        when(newsMapper.selectPage(any(Page.class), any(Wrapper.class))).thenReturn(page);
+        when(categoryService.nameMap("news")).thenReturn(Map.of());
+
+        var result = adminNewsService.list(null, null, 1, 20);
+
+        assertEquals(1, result.getRecords().size());
+        assertEquals("标题", result.getRecords().get(0).get("title"));
+        assertFalse(result.getRecords().get(0).containsKey("content"));
+    }
+
+    @Test
+    void detail_returnsRichTextContent() {
+        News row = new News();
+        row.setId(3L);
+        row.setTitle("标题");
+        row.setContent("<p>正文</p>");
+        when(newsMapper.selectById(3L)).thenReturn(row);
+        when(categoryService.nameMap("news")).thenReturn(Map.of());
+
+        Map<String, Object> vo = adminNewsService.detail(3L);
+
+        assertEquals("<p>正文</p>", vo.get("content"));
     }
 
     @Test

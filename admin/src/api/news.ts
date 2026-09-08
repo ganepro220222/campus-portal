@@ -12,6 +12,10 @@ export function fetchNews(params: NewsQuery) {
   return get<PageResult<NewsItem>>('/admin/news', params as Record<string, unknown>)
 }
 
+export function fetchNewsDetail(id: number) {
+  return get<NewsItem>(`/admin/news/${id}`)
+}
+
 export function createNews(data: Partial<NewsItem>) {
   return post<NewsItem>('/admin/news', data)
 }

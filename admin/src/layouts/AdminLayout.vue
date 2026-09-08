@@ -62,7 +62,7 @@
 
       <el-main class="main">
         <router-view v-slot="{ Component }">
-          <transition name="fade-slide" mode="out-in">
+          <transition name="fade-slide">
             <component :is="Component" />
           </transition>
         </router-view>
@@ -263,15 +263,26 @@ async function onLogout() {
 }
 
 .main {
+  position: relative;
   padding: 22px;
   background: linear-gradient(180deg, #eef1f7 0, #f4f6fb 100%);
   overflow: auto;
 }
 
-/* 页面切换动效 */
+/*
+ * 进出重叠：新页立刻挂载并发请求，旧页绝对定位淡出。
+ * 以前 mode=out-in 要等旧页退完（约 0.2s）才挂新页，loading 被空等垫在请求前面。
+ * 绝对定位按主区 padding 对齐，避免两页叠在一起把滚动区撑高。
+ */
 .fade-slide-enter-active,
 .fade-slide-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-slide-leave-active {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  left: 22px;
 }
 .fade-slide-enter-from {
   opacity: 0;

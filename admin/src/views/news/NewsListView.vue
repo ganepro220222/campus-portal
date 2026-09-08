@@ -140,7 +140,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="onSave">保存草稿</el-button>
+        <el-button type="primary" :loading="saving || detailLoading" :disabled="detailLoading" @click="onSave">保存草稿</el-button>
       </template>
     </el-dialog>
   </div>
@@ -153,7 +153,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { AiPolishAction } from '@/api/ai'
 import { fetchCategories } from '@/api/category'
-import { createNews, fetchNews, publishNews, removeNews, unpublishNews, updateNews } from '@/api/news'
+import { createNews, fetchNews, fetchNewsDetail, publishNews, removeNews, unpublishNews, updateNews } from '@/api/news'
 import AiAssistBar from '@/components/AiAssistBar.vue'
 import CoverUploadField from '@/components/CoverUploadField.vue'
 import FieldHint from '@/components/FieldHint.vue'
@@ -177,6 +177,7 @@ const titleAiSource = computed(() => bodyAiSource.value || form.summary.trim() |
 
 const loading = ref(false)
 const saving = ref(false)
+const detailLoading = ref(false)
 const list = ref<NewsItem[]>([])
 const categories = ref<CategoryOption[]>([])
 const page = ref(1)
@@ -266,23 +267,40 @@ function resetForm() {
   coverSavedUrl.value = ''
 }
 
-function openDialog(row?: NewsItem) {
+function applyNewsDetail(row: NewsItem) {
+  form.title = row.title
+  form.cover = row.cover || ''
+  coverSavedUrl.value = form.cover
+  form.coverFitMode = (row.coverFitMode === 'fit' ? 'fit' : 'fill')
+  form.summary = row.summary || ''
+  form.content = row.content || ''
+  form.categoryId = row.categoryId ?? undefined
+  form.isTop = row.isTop ?? 0
+}
+
+async function openDialog(row?: NewsItem) {
   resetForm()
   editingId.value = row?.id ?? null
-  if (row) {
-    form.title = row.title
-    form.cover = row.cover || ''
-    coverSavedUrl.value = form.cover
-    form.coverFitMode = (row.coverFitMode === 'fit' ? 'fit' : 'fill')
-    form.summary = row.summary || ''
-    form.content = row.content || ''
-    form.categoryId = row.categoryId ?? undefined
-    form.isTop = row.isTop ?? 0
-  }
   dialogVisible.value = true
+  if (!row) {
+    return
+  }
+  applyNewsDetail(row)
+  detailLoading.value = true
+  try {
+    const detail = await fetchNewsDetail(row.id)
+    if (editingId.value !== detail.id) return
+    applyNewsDetail(detail)
+  } catch {
+    ElMessage.error('动态正文加载失败，请重试')
+    dialogVisible.value = false
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 async function onSave() {
+  if (detailLoading.value) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   try {
@@ -331,8 +349,7 @@ async function onDelete(row: NewsItem) {
 }
 
 onMounted(async () => {
-  await loadCategories()
-  await loadData()
+  await Promise.all([loadCategories(), loadData()])
 })
 </script>
 

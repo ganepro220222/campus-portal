@@ -285,8 +285,7 @@ export function useCourseList() {
   }
 
   onMounted(async () => {
-    await Promise.all([loadCategories(), loadResourceOptions()])
-    await loadData()
+    await Promise.all([loadCategories(), loadResourceOptions(), loadData()])
   })
 
   return {

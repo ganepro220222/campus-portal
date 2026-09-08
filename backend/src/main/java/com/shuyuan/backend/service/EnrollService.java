@@ -157,6 +157,8 @@ public class EnrollService {
                     buildActivityCancelledNotice(activity),
                     "enroll", null, null);
         }
+        // 报名成功/已提交/审核结果仍可能挂着这场活动的详情箭头，一并摘掉。
+        messageService.clearActivityRoutes(activity.getId());
     }
 
     /**

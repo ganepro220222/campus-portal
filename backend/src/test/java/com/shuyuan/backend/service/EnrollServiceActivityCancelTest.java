@@ -68,6 +68,7 @@ class EnrollServiceActivityCancelTest {
         assertTrue(content.contains("体验中心"));
         assertEquals("", MessageService.buildRoute(
                 MessageService.TITLE_ACTIVITY_CANCELLED, null, null));
+        verify(messageService).clearActivityRoutes(9L);
     }
 
     @Test
@@ -88,7 +89,19 @@ class EnrollServiceActivityCancelTest {
         enrollService.onActivityCancelled(activity);
 
         verify(activityMapper, never()).decrEnrolledCount(anyLong());
-        verifyNoInteractions(messageService);
+        verify(messageService, never()).create(anyLong(), anyString(), anyString(), anyString(), any(), any());
+        verify(messageService).clearActivityRoutes(9L);
+    }
+
+    @Test
+    void onActivityCancelled_clearsHistoryRoutesWhenNoActiveEnrolls() {
+        Activity activity = cancelledActivity();
+        when(enrollMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        enrollService.onActivityCancelled(activity);
+
+        verify(messageService, never()).create(anyLong(), anyString(), anyString(), anyString(), any(), any());
+        verify(messageService).clearActivityRoutes(9L);
     }
 
     @Test

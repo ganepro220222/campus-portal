@@ -4,15 +4,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shuyuan.backend.common.context.MemberContext;
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.entity.Activity;
 import com.shuyuan.backend.entity.Message;
+import com.shuyuan.backend.mapper.ActivityMapper;
 import com.shuyuan.backend.mapper.MessageMapper;
 import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 站内消息（未登录用户也可看平台通知）
@@ -25,6 +30,7 @@ public class MessageService {
     public static final String TITLE_ACTIVITY_CANCELLED = "活动已取消";
 
     private final MessageMapper messageMapper;
+    private final ActivityMapper activityMapper;
 
     public void create(Long memberId, String title, String content, String type,
                        String relatedType, Long relatedId) {
@@ -41,13 +47,28 @@ public class MessageService {
 
     public List<Map<String, Object>> listMine() {
         Long memberId = requireMemberId();
-        return messageMapper.selectList(new LambdaQueryWrapper<Message>()
-                        .eq(Message::getMemberId, memberId)
-                        .orderByDesc(Message::getCreatedAt)
-                        .last("LIMIT 100"))
-                .stream()
-                .map(this::toVo)
+        List<Message> messages = messageMapper.selectList(new LambdaQueryWrapper<Message>()
+                .eq(Message::getMemberId, memberId)
+                .orderByDesc(Message::getCreatedAt)
+                .last("LIMIT 100"));
+        Set<Long> publishedActivityIds = publishedActivityIds(messages);
+        return messages.stream()
+                .map(msg -> toVo(msg, publishedActivityIds))
                 .toList();
+    }
+
+    /**
+     * 活动取消后详情不可访问。清掉该场所有历史消息的跳转关联，正文保留。
+     */
+    public int clearActivityRoutes(Long activityId) {
+        if (activityId == null) {
+            return 0;
+        }
+        return messageMapper.update(null, new LambdaUpdateWrapper<Message>()
+                .eq(Message::getRelatedType, "activity")
+                .eq(Message::getRelatedId, activityId)
+                .set(Message::getRelatedType, null)
+                .set(Message::getRelatedId, null));
     }
 
     public long unreadCount(Long memberId) {
@@ -82,7 +103,7 @@ public class MessageService {
                 .set(Message::getReadStatus, 1));
     }
 
-    private Map<String, Object> toVo(Message msg) {
+    private Map<String, Object> toVo(Message msg, Set<Long> publishedActivityIds) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", msg.getId());
         m.put("title", msg.getTitle());
@@ -92,29 +113,50 @@ public class MessageService {
         m.put("relatedId", msg.getRelatedId());
         m.put("readStatus", msg.getReadStatus() != null ? msg.getReadStatus() : 0);
         m.put("createdAt", FormatUtils.formatDateTime(msg.getCreatedAt()));
-        m.put("route", buildRoute(msg));
+        m.put("route", buildRoute(msg.getTitle(), msg.getRelatedType(), msg.getRelatedId(), publishedActivityIds));
         return m;
     }
 
-    private String buildRoute(Message msg) {
-        return buildRoute(msg.getTitle(), msg.getRelatedType(), msg.getRelatedId());
+    static String buildRoute(String title, String relatedType, Long relatedId) {
+        return buildRoute(title, relatedType, relatedId, Set.of());
     }
 
-    static String buildRoute(String title, String relatedType, Long relatedId) {
+    static String buildRoute(String title, String relatedType, Long relatedId, Set<Long> publishedActivityIds) {
         if (relatedType == null || relatedId == null) {
             return "";
         }
-        // 已落库的取消通知仍可能带着 activity 关联，详情接口此时只会 404。
         if (TITLE_ACTIVITY_CANCELLED.equals(title) && "activity".equals(relatedType)) {
             return "";
         }
         if ("activity".equals(relatedType)) {
+            if (publishedActivityIds == null || !publishedActivityIds.contains(relatedId)) {
+                return "";
+            }
             return "/packageC/activity/detail?id=" + relatedId;
         }
         if ("feedback".equals(relatedType)) {
             return "/packageC/feedback/detail?id=" + relatedId;
         }
         return "";
+    }
+
+    private Set<Long> publishedActivityIds(List<Message> messages) {
+        Set<Long> ids = new HashSet<>();
+        for (Message msg : messages) {
+            if ("activity".equals(msg.getRelatedType()) && msg.getRelatedId() != null) {
+                ids.add(msg.getRelatedId());
+            }
+        }
+        if (ids.isEmpty()) {
+            return Set.of();
+        }
+        return activityMapper.selectList(new LambdaQueryWrapper<Activity>()
+                        .select(Activity::getId)
+                        .in(Activity::getId, ids)
+                        .eq(Activity::getStatus, "published"))
+                .stream()
+                .map(Activity::getId)
+                .collect(Collectors.toSet());
     }
 
     private Long requireMemberId() {

@@ -100,7 +100,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 14 | `patch-sys-config-miniapp.sql` | 问答欢迎语/推荐问题、搜索热词配置项 | ✅ 已并入 init.sql |
 | 15 | `patch-subtitle-asr-poll.sql` | 课程 ASR 轮询元数据字段（`subtitle_asr_*`） | ✅ 已并入 init.sql；**可重复执行** |
 | 16 | `patch-subject-neutral-config.sql` | **主体归属对齐**：把库里随 init.sql 写入的旧默认文案与机构占位串换成中性表述 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
-| 17 | `patch-college-app-demo.sql` | **首页关联应用**：`college_app` 从旧版 11 条学院名收敛为通途星 + 2 条示例 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
+| 17 | `patch-college-app-demo.sql` | **首页关联应用**：`college_app` 从旧版 11 条学院名收敛为通途星 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
 | 18 | `seed-dev-cleanup.sql` | **交付前清场**：反向删除 `seed-dev.sql` 灌入的全部演示数据 | 非日常；两道护栏，见下 |
 | 19 | `patch-course-progress-watched-seconds.sql` | 课程进度累计观看 + 上次上报位置；旧库高进度回填 | ✅ 已并入 init.sql；**可重复执行** |
 | 20 | `patch-hall-vr-720-subdomains-20260829.sql` | 展馆 VR 链接切换到 720 云可校验子域名 + 11 号馆牙舟陶上线 | 仅数据；seed 已同步 |
@@ -113,6 +113,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 27 | `patch-scrub-demo-ai-copy.sql` | **提审前**：把示例动态/课程/导航/欢迎语里残留的「AI / 智能问答 / 自动字幕」换成中性说法 | 可重复执行；演示数据删除后不必再跑 |
 | 28 | `patch-hall-vr-8-9-20260905.sql` | 8/9 号馆回填 720yun VR 链接，简介去掉「筹备中」 | 仅数据；seed 已同步；**可重复执行** |
 | 29 | `patch-college-app-tongtuxing-appid.sql` | 通途星填入正式 AppID；没有该条则补一条 | 仅数据；seed 已同步；**旧库必跑、可重复执行** |
+| 30 | `patch-college-app-remove-demo.sql` | 删除「示例关联应用 A/B」两条演示行 | 仅数据；**旧库必跑、可重复执行** |
 
 `patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 
@@ -192,8 +193,9 @@ bash scripts/backup-staging-mysql.sh
 小程序首页「关联应用」读的就是这张表，因此仅改代码或跑 `patch-subject-neutral-config.sql`
 仍可能看到马克思主义学院等旧条目。
 
-本 patch 先 `DELETE` 再写入固定 id 1–3（通途星 + 2 条示例），可重复执行。
+本 patch 先 `DELETE` 再写入通途星一条，可重复执行。
 **会清空并重建整张 `college_app` 表**——若后台曾手工维护过关联应用，请先导出再决定是否执行。
+已上线库若只想删掉两条示例、保留其它条目，请改跑 `patch-college-app-remove-demo.sql`。
 
 与 `patch-subject-neutral-config.sql` 互补：后者不动 `college_app`；全新 Docker 库（`init.sql` +
 `seed-dev.sql`）已含新数据，**无需**再跑本 patch。
@@ -201,6 +203,10 @@ bash scripts/backup-staging-mysql.sh
 #### `patch-college-app-tongtuxing-appid.sql`（通途星正式 AppID）
 
 旧库里通途星仍可能是占位 AppID。本 patch 只改空值或占位行，已在后台填过其它 AppID 的不动；没有通途星则补一条。路径留空，打开对方首页。可重复执行。新库跑过当前 `seed-dev.sql` 的不必再跑。
+
+#### `patch-college-app-remove-demo.sql`（去掉演示关联应用）
+
+只删除名称仍是「示例关联应用 A / B」且 AppID 为空或占位的行。后台后来新增的真实条目不动。可重复执行。
 
 #### `patch-oss-object-meta.sql`（旧库后台预览必读）
 

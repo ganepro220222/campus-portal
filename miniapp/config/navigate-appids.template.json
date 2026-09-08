@@ -1,6 +1,6 @@
 {
-  "_comment": "关联小程序 AppID 清单。复制为 navigate-appids.json 后执行 node scripts/sync-navigate-appids.js。",
-  "_note": "通途星已填入正式 AppID。若需增加其它关联对象，按同格式追加。",
+  "_comment": "当前已知的关联小程序。新增入口在管理后台配置即可，不必改本文件。",
+  "_note": "通途星已填入正式 AppID。",
   "appIds": [
     {
       "appId": "wx532a624945bc7691",

@@ -237,11 +237,9 @@ INSERT IGNORE INTO `event_log` (`member_id`, `event_type`, `target_type`, `targe
 INSERT IGNORE INTO `member_badge` (`member_id`, `badge_id`, `achieved_at`) VALUES
 (1, 1, '2026-06-01 08:00:00');
 
--- 关联小程序：通途星为真实对象；其余两条仅作列表演示。
+-- 关联小程序：只保留通途星。
 INSERT IGNORE INTO `college_app` (`id`, `name`, `description`, `sort`, `status`, `content_type`, `appid`, `path`) VALUES
-(1, '通途星',         '关联小程序',                 1, 1, 'jump',   'wx532a624945bc7691', ''),
-(2, '示例关联应用 A', '示例条目 · 用于演示列表布局', 2, 1, 'manual', NULL, NULL),
-(3, '示例关联应用 B', '示例条目 · 用于演示跳转形态', 3, 1, 'jump',   'wxPLACEHOLDER002', 'pages/index/index');
+(1, '通途星', '关联小程序', 1, 1, 'jump', 'wx532a624945bc7691', '');
 
 -- 知识库演示资料（关键词检索；与内置使用指南分开，清场时按 file_url 删除）
 INSERT IGNORE INTO `knowledge_doc` (`id`, `title`, `file_url`, `source_type`, `char_count`, `chunk_count`, `status`, `uploaded_by`, `created_at`) VALUES

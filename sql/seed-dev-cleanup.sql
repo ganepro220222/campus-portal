@@ -74,7 +74,7 @@ DELETE FROM `news`             WHERE `id` BETWEEN 1 AND 6;
 -- 5) 站点配置类
 DELETE FROM `announcement`     WHERE `id` = 1;
 DELETE FROM `banner`           WHERE `id` BETWEEN 1 AND 3;
-DELETE FROM `college_app`      WHERE `id` BETWEEN 1 AND 3;
+DELETE FROM `college_app`      WHERE `id` BETWEEN 1 AND 3; -- 通途星及历史示例
 -- 分类放在内容之后：内容行的 category_id 指着它
 DELETE FROM `category`         WHERE `id` BETWEEN 1 AND 19;
 

@@ -6,7 +6,7 @@
  *
  * 两条约定：
  * 1. 展馆（hallsHome / hallsFull / hallDetail）是**真实**的，带真实 720 云 VR 链接——不要动。
- * 2. 关联小程序（colleges / collegesHome）仅「通途星」为真实目标，其余为示例；其它模块一律用中性占位，不挂真实地标与人物。
+ * 2. 关联小程序（colleges / collegesHome）仅「通途星」；其它模块一律用中性占位，不挂真实地标与人物。
  *    后台配置分类和内容时**不要照抄这里**，那才是线上真正会显示的东西。
  */
 
@@ -87,15 +87,9 @@ module.exports = {
     { id: 4, title: '示例活动：企业参观与实习宣讲', startTime: '2026-07-02 08:30', location: '校内报告厅', enrolledCount: 56, quota: 80, tag: '参观' }
   ],
 
-  /*
-   * 关联小程序。真实的只有「通途星」一个，AppID 在
-   * config/navigate-appids.json，由 scripts/sync-navigate-appids.js 同步进 app.json。
-   * 其余两条明确标注为示例，只为在 dev 下撑起列表布局——别当成真实院系名。
-   */
+  /* 关联小程序兜底：只放通途星。 */
   colleges: [
-    { id: 1, name: '通途星', short: '通途', en: '小程序跳转', desc: '关联小程序', colorClass: 'hc1', contentType: 'jump', appid: 'wx532a624945bc7691', path: '' },
-    { id: 2, name: '示例关联应用 A', short: '示例', en: 'Sample A', desc: '示例条目 · 用于演示列表布局', colorClass: 'hc2' },
-    { id: 3, name: '示例关联应用 B', short: '示例', en: 'Sample B', desc: '示例条目 · 用于演示列表布局', colorClass: 'hc4' }
+    { id: 1, name: '通途星', short: '通途', en: '小程序跳转', desc: '关联小程序', colorClass: 'hc1', contentType: 'jump', appid: 'wx532a624945bc7691', path: '' }
   ],
 
   /** 首页「关联应用」横滑兜底：现实中只有通途星一个，就只放一个 */

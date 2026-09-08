@@ -99,5 +99,7 @@
   "componentFramework": "glass-easel",
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
-  "navigateToMiniProgramAppIdList": []
+  "navigateToMiniProgramAppIdList": [
+    "wx532a624945bc7691"
+  ]
 }

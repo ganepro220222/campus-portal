@@ -42,3 +42,15 @@ function run() {
 }
 
 run()
+
+const { TONG_TU_XING_APPID } = require('../miniapp/utils/collegeJump')
+const committedConfig = JSON.parse(fs.readFileSync(path.join(root, 'miniapp/config/navigate-appids.json'), 'utf8'))
+const committedApp = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'))
+const committedIds = (committedConfig.appIds || [])
+  .map((item) => (typeof item === 'string' ? item : item && item.appId))
+assert.ok(committedIds.includes(TONG_TU_XING_APPID), 'navigate-appids.json 须含通途星 AppID')
+assert.ok(
+  (committedApp.navigateToMiniProgramAppIdList || []).includes(TONG_TU_XING_APPID),
+  'app.json 白名单须含通途星 AppID，请先执行 sync-navigate-appids.js'
+)
+console.log('[test-sync-navigate-appids] 通途星白名单已对齐')

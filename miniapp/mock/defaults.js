@@ -88,19 +88,19 @@ module.exports = {
   ],
 
   /*
-   * 关联小程序。真实的只有「通途星」一个，AppID 尚未拿到（配置在
-   * config/navigate-appids.json，由 scripts/sync-navigate-appids.js 同步进 app.json）。
+   * 关联小程序。真实的只有「通途星」一个，AppID 在
+   * config/navigate-appids.json，由 scripts/sync-navigate-appids.js 同步进 app.json。
    * 其余两条明确标注为示例，只为在 dev 下撑起列表布局——别当成真实院系名。
    */
   colleges: [
-    { id: 1, name: '通途星', short: '通途', en: 'Tongtu', desc: '关联小程序 · AppID 待配置', colorClass: 'hc1' },
+    { id: 1, name: '通途星', short: '通途', en: '小程序跳转', desc: '关联小程序', colorClass: 'hc1', contentType: 'jump', appid: 'wx532a624945bc7691', path: '' },
     { id: 2, name: '示例关联应用 A', short: '示例', en: 'Sample A', desc: '示例条目 · 用于演示列表布局', colorClass: 'hc2' },
     { id: 3, name: '示例关联应用 B', short: '示例', en: 'Sample B', desc: '示例条目 · 用于演示列表布局', colorClass: 'hc4' }
   ],
 
   /** 首页「关联应用」横滑兜底：现实中只有通途星一个，就只放一个 */
   collegesHome: [
-    { id: 1, name: '通途星', short: '通途', en: '小程序跳转', desc: '关联小程序 · AppID 待配置', colorClass: 'hc1', contentType: 'jump', appid: 'wxPLACEHOLDER001', path: 'pages/index/index' }
+    { id: 1, name: '通途星', short: '通途', en: '小程序跳转', desc: '关联小程序', colorClass: 'hc1', contentType: 'jump', appid: 'wx532a624945bc7691', path: '' }
   ],
 
   activityDetail: {

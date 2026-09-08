@@ -35,9 +35,21 @@ if (appIds.length === 0) {
   console.warn('[sync-navigate-appids] 无有效 AppID（已跳过 PLACEHOLDER），app.json 将写入空数组')
 }
 
-const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'))
-appJson.navigateToMiniProgramAppIdList = appIds
-fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2) + '\n', 'utf8')
+const appJsonText = fs.readFileSync(appJsonPath, 'utf8')
+JSON.parse(appJsonText)
+const listJson = JSON.stringify(appIds, null, 2)
+  .split('\n')
+  .map((line, idx) => (idx === 0 ? line : `  ${line}`))
+  .join('\n')
+const next = appJsonText.replace(
+  /"navigateToMiniProgramAppIdList"\s*:\s*\[[\s\S]*?\]/,
+  `"navigateToMiniProgramAppIdList": ${listJson}`
+)
+if (next === appJsonText && !/"navigateToMiniProgramAppIdList"\s*:/.test(appJsonText)) {
+  console.error('[sync-navigate-appids] app.json 缺少 navigateToMiniProgramAppIdList')
+  process.exit(1)
+}
+fs.writeFileSync(appJsonPath, next.endsWith('\n') ? next : `${next}\n`, 'utf8')
 
 console.log(`[sync-navigate-appids] 已写入 ${appIds.length} 个 AppID 到 miniapp/app.json`)
 appIds.forEach((id) => console.log('  -', id))

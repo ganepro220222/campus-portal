@@ -1,0 +1,10 @@
+{
+  "_comment": "关联小程序 AppID 清单。修改后执行 node scripts/sync-navigate-appids.js 写入 app.json。",
+  "appIds": [
+    {
+      "appId": "wx532a624945bc7691",
+      "name": "通途星",
+      "note": "首页与关联列表的跳转目标"
+    }
+  ]
+}

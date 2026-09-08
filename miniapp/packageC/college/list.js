@@ -2,6 +2,7 @@
 const { request } = require('../../utils/request')
 const mock = require('../../mock/defaults')
 const { withListFallback } = require('../../utils/mockGuard')
+const { openRelatedMiniProgram } = require('../../utils/collegeJump')
 
 Page({
   data: {
@@ -40,15 +41,7 @@ Page({
 
     const type = item.contentType || 'manual'
     if (type === 'jump') {
-      if (!item.appid) {
-        wx.showToast({ title: '未配置目标小程序', icon: 'none' })
-        return
-      }
-      wx.navigateToMiniProgram({
-        appId: item.appid,
-        path: item.path || '',
-        fail: () => wx.showToast({ title: '跳转失败，请检查 AppID 是否已关联', icon: 'none', duration: 3000 })
-      })
+      openRelatedMiniProgram(item)
       return
     }
     if (type === 'embed_h5') {

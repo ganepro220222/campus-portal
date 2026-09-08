@@ -20,6 +20,7 @@ const {
 } = require('../../utils/homePageLoad')
 const { enablePageShare, buildShareAppMessage, buildShareTimeline, pickShareImage } = require('../../utils/pageShare')
 const { applyCoverFailed } = require('../../utils/coverFallback')
+const { openRelatedMiniProgram } = require('../../utils/collegeJump')
 
 function settle(promise, empty) {
   return promise
@@ -262,14 +263,6 @@ Page({
     const id = e.currentTarget.dataset.id
     const item = (this.data.collegeList || []).find(c => String(c.id) === String(id))
     if (!item) return
-    if (!item.appid) {
-      wx.showToast({ title: '未配置目标小程序', icon: 'none' })
-      return
-    }
-    wx.navigateToMiniProgram({
-      appId: item.appid,
-      path: item.path || '',
-      fail: () => wx.showToast({ title: '跳转失败，请检查 AppID 是否已关联', icon: 'none', duration: 3000 })
-    })
+    openRelatedMiniProgram(item)
   }
 })

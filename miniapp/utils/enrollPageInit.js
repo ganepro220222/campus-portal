@@ -36,7 +36,47 @@ function buildEnrollFormFromProfile(profile) {
 }
 
 function buildEnrollLoadingPatch() {
-  return buildActivityDetailLoadingPatch()
+  return {
+    ...buildActivityDetailLoadingPatch(),
+    authRequired: false
+  }
+}
+
+function buildEnrollAuthRequiredPatch() {
+  return {
+    loading: false,
+    loadError: false,
+    notFound: false,
+    authRequired: true,
+    detail: null,
+    hasEnrolled: false,
+    statusLabel: '',
+    enrolledHint: '',
+    success: false,
+    result: null,
+    resultHint: '',
+    showVoucherQr: false,
+    voucherQrSrc: ''
+  }
+}
+
+function canInitEnrollAfterAuth({ loggedIn, mustChangePassword }) {
+  return !!loggedIn && !mustChangePassword
+}
+
+function shouldResumeEnrollAfterAuth({
+  authBlocked,
+  activityId,
+  loggedIn,
+  mustChangePassword,
+  initializing
+}) {
+  return !!(
+    authBlocked
+    && activityId
+    && !initializing
+    && canInitEnrollAfterAuth({ loggedIn, mustChangePassword })
+  )
 }
 
 function buildEnrollLoadedView(raw, profile, activityId) {
@@ -51,6 +91,7 @@ function buildEnrollLoadedView(raw, profile, activityId) {
     loading: false,
     loadError: false,
     notFound: false,
+    authRequired: false,
     detail,
     hasEnrolled: hasActiveEnroll(detail),
     statusLabel: enrollStatusLabel(detail.enrollStatus),
@@ -63,6 +104,7 @@ function buildEnrollLoadedView(raw, profile, activityId) {
 function buildEnrollFailurePatch(err) {
   return {
     ...buildActivityDetailFailurePatch(err),
+    authRequired: false,
     hasEnrolled: false,
     statusLabel: '',
     enrolledHint: '',
@@ -73,13 +115,15 @@ function buildEnrollFailurePatch(err) {
 }
 
 function resolveEnrollPagePhase(state) {
+  if (state && state.loading) return 'loading'
+  if (state && state.authRequired) return 'authRequired'
   return resolveActivityDetailPagePhase(state)
 }
 
 function canSubmitEnroll(state) {
   if (!state || state.submitting) return false
   if (!state.activityId) return false
-  if (state.loading || state.loadError || state.notFound) return false
+  if (state.loading || state.loadError || state.notFound || state.authRequired) return false
   if (!state.detail || state.detail.id == null) return false
   if (String(state.detail.id) !== String(state.activityId)) return false
   return true
@@ -91,8 +135,11 @@ module.exports = {
   buildEnrollFormFromProfile,
   assertActivityDetailRaw,
   buildEnrollLoadingPatch,
+  buildEnrollAuthRequiredPatch,
   buildEnrollLoadedView,
   buildEnrollFailurePatch,
+  canInitEnrollAfterAuth,
+  shouldResumeEnrollAfterAuth,
   resolveEnrollPagePhase,
   canSubmitEnroll
 }

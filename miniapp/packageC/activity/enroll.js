@@ -1,7 +1,7 @@
 // packageC/activity/enroll.js — 活动报名
 const { get, post } = require('../../utils/request')
 const { mergeEnrollResult, resolveEnrollSubmitOutcome } = require('../../utils/activity')
-const { requireLogin } = require('../../utils/auth')
+const { openLoginPage, requireLogin, isMustChangePasswordRequired } = require('../../utils/auth')
 const { requestSubscribeMany, buildEnrollSubscribeRequests } = require('../../utils/subscribe')
 const { mapEnrollVoucherFields } = require('../../utils/enrollVoucher')
 const { validateEnrollForm } = require('../../utils/enrollForm')
@@ -9,8 +9,11 @@ const { exportVoucherQr } = require('../../utils/voucherQrCanvas')
 const { resolveVoucherQrSrc } = require('../../utils/enrollVoucherPage')
 const {
   buildEnrollLoadingPatch,
+  buildEnrollAuthRequiredPatch,
   buildEnrollLoadedView,
   buildEnrollFailurePatch,
+  canInitEnrollAfterAuth,
+  shouldResumeEnrollAfterAuth,
   canSubmitEnroll
 } = require('../../utils/enrollPageInit')
 
@@ -19,6 +22,7 @@ Page({
     loading: true,
     loadError: false,
     notFound: false,
+    authRequired: false,
     submitting: false,
     activityId: null,
     detail: null,
@@ -37,20 +41,54 @@ Page({
 
   onLoad(opts) {
     const id = opts.id || opts.activityId
+    this._authBlocked = false
+    this._initializing = false
     if (!id) {
-      this.setData({ loading: false, notFound: true })
+      this.setData({ loading: false, notFound: true, authRequired: false })
       return
     }
     this.setData({ activityId: id })
-    if (!getApp().isLoggedIn()) {
-      this.setData({ loading: false })
-      requireLogin(() => this._init(id))
+    if (!this._canInitNow()) {
+      this._blockForAuth()
       return
     }
     this._init(id)
   },
 
+  onShow() {
+    if (!shouldResumeEnrollAfterAuth({
+      authBlocked: this._authBlocked,
+      activityId: this.data.activityId,
+      loggedIn: !!(getApp().isLoggedIn && getApp().isLoggedIn()),
+      mustChangePassword: isMustChangePasswordRequired(),
+      initializing: this._initializing
+    })) return
+    this._authBlocked = false
+    this._init(this.data.activityId)
+  },
+
+  onGoLogin() {
+    openLoginPage()
+  },
+
+  _canInitNow() {
+    return canInitEnrollAfterAuth({
+      loggedIn: !!(getApp().isLoggedIn && getApp().isLoggedIn()),
+      mustChangePassword: isMustChangePasswordRequired()
+    })
+  },
+
+  _blockForAuth() {
+    this._authBlocked = true
+    this.setData(buildEnrollAuthRequiredPatch())
+    if (isMustChangePasswordRequired()) {
+      requireLogin()
+    }
+  },
+
   async _init(id) {
+    if (!id || this._initializing) return
+    this._initializing = true
     this.setData(buildEnrollLoadingPatch())
     try {
       const [raw, profile] = await Promise.all([
@@ -70,10 +108,16 @@ Page({
     } catch (err) {
       console.warn('[activity/enroll] 初始化失败', err)
       this.setData(buildEnrollFailurePatch(err))
+    } finally {
+      this._initializing = false
     }
   },
 
   onRetry() {
+    if (!this._canInitNow()) {
+      this._blockForAuth()
+      return
+    }
     const id = this.data.activityId
     if (id) this._init(id)
   },

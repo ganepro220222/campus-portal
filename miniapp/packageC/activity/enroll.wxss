@@ -17,7 +17,11 @@
 .state-text { font-size: 28rpx; color: #67708C; line-height: 1.6; }
 
 .enroll-retry {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 88rpx;
   margin-top: 28rpx;
   font-size: 26rpx;
   font-weight: 600;

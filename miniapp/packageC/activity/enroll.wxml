@@ -5,6 +5,12 @@
     <text class="state-text">加载中…</text>
   </view>
 
+  <view wx:elif="{{authRequired}}" class="state-box">
+    <text class="state-text">该功能需要登录后使用</text>
+    <view class="enroll-retry" bindtap="onGoLogin">去登录</view>
+    <view class="enroll-retry-link" bindtap="onBackDetail">返回活动详情</view>
+  </view>
+
   <view wx:elif="{{loadError}}" class="state-box">
     <text class="state-text">活动信息加载失败，请检查网络后重试</text>
     <view class="enroll-retry" bindtap="onRetry">重新加载</view>

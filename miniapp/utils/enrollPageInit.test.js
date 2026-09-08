@@ -6,10 +6,13 @@ const assert = require('assert')
 const { assertActivityDetailRaw } = require('./activityDetailLoad')
 const {
   buildEnrollLoadingPatch,
+  buildEnrollAuthRequiredPatch,
   buildEnrollLoadedView,
   buildEnrollFailurePatch,
   buildEnrollFormFromProfile,
   buildApprovedEnrolledHint,
+  canInitEnrollAfterAuth,
+  shouldResumeEnrollAfterAuth,
   resolveEnrollPagePhase,
   canSubmitEnroll
 } = require('./enrollPageInit')
@@ -24,7 +27,15 @@ const loading = buildEnrollLoadingPatch()
 assert.strictEqual(loading.loading, true)
 assert.strictEqual(loading.loadError, false)
 assert.strictEqual(loading.notFound, false)
+assert.strictEqual(loading.authRequired, false)
 assert.strictEqual(loading.detail, null)
+
+const authRequired = buildEnrollAuthRequiredPatch()
+assert.strictEqual(authRequired.loading, false)
+assert.strictEqual(authRequired.authRequired, true)
+assert.strictEqual(authRequired.loadError, false)
+assert.strictEqual(authRequired.notFound, false)
+assert.strictEqual(authRequired.detail, null)
 
 const activityRaw = {
   id: 7,
@@ -40,6 +51,7 @@ const loaded = buildEnrollLoadedView(activityRaw, profile, 7)
 assert.strictEqual(loaded.loading, false)
 assert.strictEqual(loaded.loadError, false)
 assert.strictEqual(loaded.notFound, false)
+assert.strictEqual(loaded.authRequired, false)
 assert.strictEqual(loaded.detail.title, '讲座')
 assert.strictEqual(loaded.hasEnrolled, false)
 assert.strictEqual(loaded.form.name, '张三')
@@ -65,6 +77,10 @@ assert.throws(
 )
 
 assert.strictEqual(resolveEnrollPagePhase({ loading: true }), 'loading')
+assert.strictEqual(
+  resolveEnrollPagePhase({ loading: false, authRequired: true, detail: null }),
+  'authRequired'
+)
 assert.strictEqual(resolveEnrollPagePhase({ loading: false, loadError: true }), 'loadError')
 assert.strictEqual(resolveEnrollPagePhase({ loading: false, notFound: true }), 'notFound')
 assert.strictEqual(
@@ -90,6 +106,40 @@ assert.strictEqual(canSubmitEnroll({ ...submitOk, loading: true }), false)
 assert.strictEqual(canSubmitEnroll({ ...submitOk, detail: null }), false)
 assert.strictEqual(canSubmitEnroll({ ...submitOk, detail: { id: 8 } }), false)
 assert.strictEqual(canSubmitEnroll({ ...submitOk, submitting: true }), false)
+assert.strictEqual(canSubmitEnroll({ ...submitOk, authRequired: true }), false)
+
+assert.strictEqual(canInitEnrollAfterAuth({ loggedIn: true, mustChangePassword: false }), true)
+assert.strictEqual(canInitEnrollAfterAuth({ loggedIn: false, mustChangePassword: false }), false)
+assert.strictEqual(canInitEnrollAfterAuth({ loggedIn: true, mustChangePassword: true }), false)
+
+assert.strictEqual(shouldResumeEnrollAfterAuth({
+  authBlocked: true,
+  activityId: 7,
+  loggedIn: true,
+  mustChangePassword: false,
+  initializing: false
+}), true)
+assert.strictEqual(shouldResumeEnrollAfterAuth({
+  authBlocked: true,
+  activityId: 7,
+  loggedIn: false,
+  mustChangePassword: false,
+  initializing: false
+}), false)
+assert.strictEqual(shouldResumeEnrollAfterAuth({
+  authBlocked: true,
+  activityId: 7,
+  loggedIn: true,
+  mustChangePassword: false,
+  initializing: true
+}), false)
+assert.strictEqual(shouldResumeEnrollAfterAuth({
+  authBlocked: false,
+  activityId: 7,
+  loggedIn: true,
+  mustChangePassword: false,
+  initializing: false
+}), false)
 
 const form = buildEnrollFormFromProfile({ realName: '李四', phone: '13900139000' })
 assert.strictEqual(form.name, '李四')

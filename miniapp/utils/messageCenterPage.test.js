@@ -70,6 +70,12 @@ function createPage(overrides = {}) {
           title: '系统通知',
           readStatus: 0,
           route: ''
+        },
+        {
+          id: 14,
+          title: '活动已取消',
+          readStatus: 0,
+          route: ''
         }
       ],
       unreadCount: 9,
@@ -146,6 +152,17 @@ async function run() {
   pendingPuts.at(-1).resolve()
   await flushPromises()
   assert.strictEqual(noticePage.data.list[1].readStatus, 1)
+
+  const cancelled = createPage()
+  navigations.length = 0
+  toasts.length = 0
+  tap(cancelled, cancelled.data.list[2])
+  assert.deepStrictEqual(navigations, [], '活动已取消不得跳进已下架详情')
+  assert.strictEqual(cancelled.data.list[2].readStatus, 1)
+  assert.strictEqual(cancelled.data.unreadCount, 8)
+  pendingPuts.at(-1).resolve()
+  await flushPromises()
+  assert.strictEqual(toasts.length, 0)
 
   noticePage.onShow()
   assert.strictEqual(noticePage._navigating, false)

@@ -21,6 +21,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MessageService {
 
+    /** 活动取消后详情不可访问，列表不得再给出活动路由。 */
+    public static final String TITLE_ACTIVITY_CANCELLED = "活动已取消";
+
     private final MessageMapper messageMapper;
 
     public void create(Long memberId, String title, String content, String type,
@@ -89,12 +92,20 @@ public class MessageService {
         m.put("relatedId", msg.getRelatedId());
         m.put("readStatus", msg.getReadStatus() != null ? msg.getReadStatus() : 0);
         m.put("createdAt", FormatUtils.formatDateTime(msg.getCreatedAt()));
-        m.put("route", buildRoute(msg.getRelatedType(), msg.getRelatedId()));
+        m.put("route", buildRoute(msg));
         return m;
     }
 
-    private String buildRoute(String relatedType, Long relatedId) {
+    private String buildRoute(Message msg) {
+        return buildRoute(msg.getTitle(), msg.getRelatedType(), msg.getRelatedId());
+    }
+
+    static String buildRoute(String title, String relatedType, Long relatedId) {
         if (relatedType == null || relatedId == null) {
+            return "";
+        }
+        // 已落库的取消通知仍可能带着 activity 关联，详情接口此时只会 404。
+        if (TITLE_ACTIVITY_CANCELLED.equals(title) && "activity".equals(relatedType)) {
             return "";
         }
         if ("activity".equals(relatedType)) {

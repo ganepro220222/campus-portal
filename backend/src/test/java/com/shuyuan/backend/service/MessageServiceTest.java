@@ -86,12 +86,32 @@ class MessageServiceTest {
         Message msg = new Message();
         msg.setId(5L);
         msg.setMemberId(10L);
+        msg.setTitle("报名成功");
         msg.setRelatedType("activity");
         msg.setRelatedId(1L);
         msg.setReadStatus(0);
         when(messageMapper.selectList(any())).thenReturn(List.of(msg));
 
         assertEquals("/packageC/activity/detail?id=1", messageService.listMine().get(0).get("route"));
+    }
+
+    @Test
+    void listMine_cancelledActivityNoticeHasNoRoute() {
+        Message legacy = new Message();
+        legacy.setId(6L);
+        legacy.setMemberId(10L);
+        legacy.setTitle(MessageService.TITLE_ACTIVITY_CANCELLED);
+        legacy.setContent("您报名的活动「非遗体验」已取消，报名同步关闭。");
+        legacy.setRelatedType("activity");
+        legacy.setRelatedId(9L);
+        legacy.setReadStatus(0);
+        when(messageMapper.selectList(any())).thenReturn(List.of(legacy));
+
+        assertEquals("", messageService.listMine().get(0).get("route"));
+        assertEquals("", MessageService.buildRoute(
+                MessageService.TITLE_ACTIVITY_CANCELLED, "activity", 9L));
+        assertEquals("", MessageService.buildRoute(
+                MessageService.TITLE_ACTIVITY_CANCELLED, null, null));
     }
 
     @Test

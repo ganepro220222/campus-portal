@@ -151,9 +151,11 @@ public class EnrollService {
                 continue;
             }
             activityMapper.decrEnrolledCount(activity.getId());
-            createMessage(enroll.getMemberId(), "活动已取消",
-                    "您报名的活动「" + activity.getTitle() + "」已取消，报名同步关闭。",
-                    "enroll", "activity", activity.getId());
+            // 详情接口只认 published，这里不能再挂 activity 路由，否则消息箭头必然进 404。
+            // 取消后的报名也不进「我的报名」，时间和地点写进正文，方便对上是哪一场。
+            createMessage(enroll.getMemberId(), MessageService.TITLE_ACTIVITY_CANCELLED,
+                    buildActivityCancelledNotice(activity),
+                    "enroll", null, null);
         }
     }
 
@@ -306,6 +308,21 @@ public class EnrollService {
 
     private void createMessage(Long memberId, String title, String content, String type, String relatedType, Long relatedId) {
         messageService.create(memberId, title, content, type, relatedType, relatedId);
+    }
+
+    static String buildActivityCancelledNotice(Activity activity) {
+        String title = activity.getTitle() != null ? activity.getTitle() : "";
+        StringBuilder content = new StringBuilder();
+        content.append("您报名的活动「").append(title).append("」已取消，报名同步关闭。");
+        String startTime = FormatUtils.formatDateTime(activity.getStartTime());
+        if (!startTime.isEmpty()) {
+            content.append("\n原定时间：").append(startTime);
+        }
+        String location = activity.getLocation() == null ? "" : activity.getLocation().trim();
+        if (!location.isEmpty()) {
+            content.append("\n地点：").append(location);
+        }
+        return content.toString();
     }
 
     private String generateVoucherCode() {

@@ -16,6 +16,8 @@ const {
 } = require('./messageCenterLoad')
 
 const pageSrc = fs.readFileSync(path.join(__dirname, '../packageC/message/index.js'), 'utf8')
+const pageWxml = fs.readFileSync(path.join(__dirname, '../packageC/message/index.wxml'), 'utf8')
+assert.match(pageWxml, /wx:if="\{\{item\.route\}\}"/)
 assert.doesNotMatch(pageSrc, /get\('\/messages'\)\.catch\(\(\) => \[\]\)/)
 assert.match(pageSrc, /buildMessageFailurePatch/)
 assert.match(pageSrc, /get\('\/profile\/stats'\)\.catch/)

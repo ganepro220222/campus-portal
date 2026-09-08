@@ -2,15 +2,26 @@
 
 const TONG_TU_XING_APPID = 'wx532a624945bc7691'
 
-function isUsableMiniProgramAppId(appid) {
+const MINI_PROGRAM_APPID_PATTERN = /^wx[0-9A-Fa-f]{16}$/
+
+function classifyMiniProgramAppId(appid) {
   const id = String(appid || '').trim()
-  if (!id || id.includes('PLACEHOLDER')) return false
-  return /^wx[0-9a-f]{16}$/i.test(id)
+  if (!id || id.includes('PLACEHOLDER')) return 'missing'
+  if (!MINI_PROGRAM_APPID_PATTERN.test(id)) return 'invalid'
+  return 'ok'
+}
+
+function isUsableMiniProgramAppId(appid) {
+  return classifyMiniProgramAppId(appid) === 'ok'
 }
 
 function resolveRelatedMiniProgramJump(item) {
-  if (!item || !isUsableMiniProgramAppId(item.appid)) {
-    return { ok: false, message: '未配置目标小程序' }
+  const kind = classifyMiniProgramAppId(item && item.appid)
+  if (kind === 'missing') {
+    return { ok: false, reason: 'missing', message: '未配置目标小程序' }
+  }
+  if (kind === 'invalid') {
+    return { ok: false, reason: 'invalid', message: '目标小程序 AppID 配置有误' }
   }
   return {
     ok: true,
@@ -42,6 +53,7 @@ function openRelatedMiniProgram(item, wxApi) {
 
 module.exports = {
   TONG_TU_XING_APPID,
+  classifyMiniProgramAppId,
   isUsableMiniProgramAppId,
   resolveRelatedMiniProgramJump,
   openRelatedMiniProgram

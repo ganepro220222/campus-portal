@@ -14,12 +14,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class AdminCollegeAppService {
 
     private static final Set<String> CONTENT_TYPES = Set.of("manual", "jump", "embed_h5", "api_sync");
+    private static final Pattern MINI_PROGRAM_APPID = Pattern.compile("^wx[0-9A-Fa-f]{16}$");
+    private static final String APPID_FORMAT_MESSAGE = "AppID 格式不正确，应为 wx 开头的 18 位小程序 AppID";
 
     private final CollegeAppMapper collegeAppMapper;
     private final AdminPermissionService adminPermissionService;
@@ -72,8 +75,12 @@ public class AdminCollegeAppService {
     private void validateRequest(CollegeAppSaveRequest req) {
         String type = normalizeContentType(req.getContentType());
         if ("jump".equals(type)) {
-            if (req.getAppid() == null || req.getAppid().isBlank()) {
+            String appid = req.getAppid() == null ? "" : req.getAppid().trim();
+            if (appid.isEmpty()) {
                 throw new BusinessException(400, "跳转方式须填写目标小程序 AppID");
+            }
+            if (!MINI_PROGRAM_APPID.matcher(appid).matches()) {
+                throw new BusinessException(400, APPID_FORMAT_MESSAGE);
             }
         }
         if ("embed_h5".equals(type) || "api_sync".equals(type)) {

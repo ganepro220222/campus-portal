@@ -72,7 +72,7 @@
           />
         </el-form-item>
         <el-form-item label="对接方式" prop="contentType">
-          <el-select v-model="form.contentType" style="width: 100%">
+          <el-select v-model="form.contentType" style="width: 100%" @change="onContentTypeChange">
             <el-option label="手动录入（卡片展示简介）" value="manual" />
             <el-option label="小程序跳转" value="jump" />
             <el-option label="H5 嵌入" value="embed_h5" />
@@ -81,7 +81,8 @@
         </el-form-item>
         <template v-if="form.contentType === 'jump'">
           <el-form-item label="AppID" prop="appid">
-            <el-input v-model="form.appid" placeholder="目标小程序 AppID" />
+            <el-input v-model="form.appid" placeholder="wx 开头的 18 位 AppID" maxlength="32" @blur="trimAppid" />
+            <FieldHint :text="MINI_PROGRAM_APPID_HINT" />
           </el-form-item>
           <el-form-item label="页面路径" prop="path">
             <el-input v-model="form.path" placeholder="如 pages/index/index，可留空进首页" />
@@ -128,6 +129,11 @@ import OssUploadInput from '@/components/OssUploadInput.vue'
 import FieldHint from '@/components/FieldHint.vue'
 import type { CollegeAppItem } from '@/api/college'
 import { FIELD_HINTS } from '@/utils/field-hints'
+import {
+  MINI_PROGRAM_APPID_HINT,
+  normalizeMiniProgramAppId,
+  validateMiniProgramAppId
+} from '@/utils/miniProgramAppId.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 const loading = ref(false)
@@ -155,7 +161,19 @@ const form = reactive({
 
 const rules: FormRules = {
   name: [{ required: true, message: '请填写学院名称', trigger: 'blur' }],
-  contentType: [{ required: true, message: '请选择对接方式', trigger: 'change' }]
+  contentType: [{ required: true, message: '请选择对接方式', trigger: 'change' }],
+  appid: [{
+    validator: (_rule, value, callback) => {
+      if (form.contentType !== 'jump') {
+        callback()
+        return
+      }
+      const result = validateMiniProgramAppId(value)
+      if (!result.ok) callback(new Error(result.message))
+      else callback()
+    },
+    trigger: ['blur', 'change']
+  }]
 }
 
 async function loadData() {
@@ -182,6 +200,14 @@ function resetForm() {
   form.status = 1
 }
 
+function trimAppid() {
+  form.appid = normalizeMiniProgramAppId(form.appid)
+}
+
+function onContentTypeChange() {
+  formRef.value?.clearValidate(['appid'])
+}
+
 function openDialog(row?: CollegeAppItem) {
   resetForm()
   editingId.value = row?.id ?? null
@@ -200,6 +226,7 @@ function openDialog(row?: CollegeAppItem) {
 }
 
 async function onSave() {
+  trimAppid()
   await formRef.value?.validate()
   saving.value = true
   try {

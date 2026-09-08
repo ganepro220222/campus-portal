@@ -5,6 +5,7 @@
 const assert = require('assert')
 const {
   TONG_TU_XING_APPID,
+  classifyMiniProgramAppId,
   isUsableMiniProgramAppId,
   resolveRelatedMiniProgramJump,
   openRelatedMiniProgram
@@ -15,12 +16,30 @@ assert.strictEqual(isUsableMiniProgramAppId('wxPLACEHOLDER001'), false)
 assert.strictEqual(isUsableMiniProgramAppId('wx532a624945bc7691'), true)
 assert.strictEqual(isUsableMiniProgramAppId(TONG_TU_XING_APPID), true)
 assert.strictEqual(isUsableMiniProgramAppId('not-an-appid'), false)
+assert.strictEqual(isUsableMiniProgramAppId('wx532A624945BC7691'), true)
+assert.strictEqual(isUsableMiniProgramAppId('WX532a624945bc7691'), false)
+assert.strictEqual(isUsableMiniProgramAppId('wx532a624945bc769'), false)
+assert.strictEqual(isUsableMiniProgramAppId('wx532a624945bc769g'), false)
+
+assert.strictEqual(classifyMiniProgramAppId(''), 'missing')
+assert.strictEqual(classifyMiniProgramAppId('wxPLACEHOLDER001'), 'missing')
+assert.strictEqual(classifyMiniProgramAppId('wx532a624945bc769'), 'invalid')
 
 assert.deepStrictEqual(resolveRelatedMiniProgramJump(null), {
   ok: false,
+  reason: 'missing',
   message: '未配置目标小程序'
 })
-assert.equal(resolveRelatedMiniProgramJump({ appid: 'wxPLACEHOLDER001' }).ok, false)
+assert.deepStrictEqual(resolveRelatedMiniProgramJump({ appid: 'wxPLACEHOLDER001' }), {
+  ok: false,
+  reason: 'missing',
+  message: '未配置目标小程序'
+})
+assert.deepStrictEqual(resolveRelatedMiniProgramJump({ appid: 'wx532a624945bc769' }), {
+  ok: false,
+  reason: 'invalid',
+  message: '目标小程序 AppID 配置有误'
+})
 
 const jump = resolveRelatedMiniProgramJump({
   appid: ` ${TONG_TU_XING_APPID} `,
@@ -43,7 +62,8 @@ const wxApi = {
 }
 
 openRelatedMiniProgram({ appid: '' }, wxApi)
-assert.deepStrictEqual(toasts, ['未配置目标小程序'])
+openRelatedMiniProgram({ appid: 'wx532a624945bc769' }, wxApi)
+assert.deepStrictEqual(toasts, ['未配置目标小程序', '目标小程序 AppID 配置有误'])
 assert.deepStrictEqual(navigations, [])
 
 openRelatedMiniProgram({ appid: TONG_TU_XING_APPID, path: '' }, wxApi)

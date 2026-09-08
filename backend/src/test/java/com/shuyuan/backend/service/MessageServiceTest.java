@@ -34,7 +34,8 @@ class MessageServiceTest {
 
     @BeforeAll
     static void initMybatisPlusEntityCache() {
-        initEntityCache(Message.class);
+        // listMine 会按活动 ID 建 LambdaQueryWrapper<Activity>，不能依赖别的用例先初始化
+        initEntityCache(Message.class, Activity.class);
     }
 
     @Mock

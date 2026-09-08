@@ -1,5 +1,5 @@
 // packageC/college/list.js — 关联小程序矩阵
-const { request } = require('../../utils/request')
+const { get } = require('../../utils/request')
 const mock = require('../../mock/defaults')
 const { withListFallback } = require('../../utils/mockGuard')
 const { openRelatedMiniProgram } = require('../../utils/collegeJump')
@@ -26,7 +26,7 @@ Page({
   async loadColleges() {
     this.setData({ loading: true, loadError: false })
     try {
-      const list = await request('/colleges', 'GET')
+      const list = await get('/colleges')
       this.setData({ colleges: withListFallback(list, mock.colleges), loading: false, loadError: false })
     } catch (e) {
       console.warn('[college/list] 加载失败', e)

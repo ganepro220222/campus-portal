@@ -97,7 +97,12 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { deleteFeedback, fetchFeedbacks, replyFeedback } from '@/api/feedback'
 import type { FeedbackItem } from '@/types/api'
+import {
+  loadFeedbackListPage,
+  runFeedbackReplyAndReload
+} from '@/utils/feedbackListPage.mjs'
 import { normalizeListPage } from '@/utils/listPageNormalize'
+import { shouldApplyListResult } from '@/utils/listRequestSeq'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -107,6 +112,7 @@ const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 const statusFilter = ref<string | undefined>()
+let listRequestSeq = 0
 
 const dialogVisible = ref(false)
 const current = ref<FeedbackItem | null>(null)
@@ -121,18 +127,26 @@ const canReply = computed(() => current.value?.status === 'pending')
 const dialogTitle = computed(() => (canReply.value ? '回复反馈' : '反馈详情'))
 
 async function loadData() {
+  const seq = ++listRequestSeq
   loading.value = true
   try {
-    let res = await fetchFeedbacks(page.value, pageSize.value, statusFilter.value)
-    const nextPage = normalizeListPage(page.value, res.total, pageSize.value)
-    if (nextPage !== page.value) {
-      page.value = nextPage
-      res = await fetchFeedbacks(page.value, pageSize.value, statusFilter.value)
+    const res = await loadFeedbackListPage({
+      page: page.value,
+      pageSize: pageSize.value,
+      statusFilter: statusFilter.value,
+      fetchFeedbacks,
+      normalizeListPage
+    })
+    if (!shouldApplyListResult(seq, listRequestSeq)) {
+      return
     }
-    list.value = res.records
+    page.value = res.page
+    list.value = res.records as FeedbackItem[]
     total.value = res.total
   } finally {
-    loading.value = false
+    if (shouldApplyListResult(seq, listRequestSeq)) {
+      loading.value = false
+    }
   }
 }
 
@@ -172,11 +186,17 @@ async function onSaveReply() {
   await formRef.value.validate()
   saving.value = true
   try {
-    const updated = await replyFeedback(current.value.id, form.reply.trim())
-    ElMessage.success('回复已保存，并已发送至用户消息中心')
-    dialogVisible.value = false
-    const idx = list.value.findIndex((i) => i.id === updated.id)
-    if (idx >= 0) list.value[idx] = updated
+    await runFeedbackReplyAndReload({
+      currentId: current.value.id,
+      reply: form.reply.trim(),
+      replyFeedback,
+      reloadList: loadData,
+      onSaved({ successMessage }) {
+        ElMessage.success(successMessage)
+        dialogVisible.value = false
+        current.value = null
+      }
+    })
   } finally {
     saving.value = false
   }

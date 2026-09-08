@@ -12,7 +12,7 @@ assert.match(layout, /position:\s*relative/)
 assert.match(layout, /fade-slide-leave-active[\s\S]*position:\s*absolute/)
 
 for (const [rel, extra] of [
-  ['admin/src/views/news/NewsListView.vue', /const requestId = row\.id/],
+  ['admin/src/views/news/NewsListView.vue', /openNewsDetailDialog/],
   ['admin/src/views/resource/ResourceListView.vue', null],
   ['admin/src/composables/useHallList.ts', null],
   ['admin/src/composables/useCraftList.ts', null]

@@ -157,7 +157,11 @@ import { createNews, fetchNews, fetchNewsDetail, publishNews, removeNews, unpubl
 import AiAssistBar from '@/components/AiAssistBar.vue'
 import CoverUploadField from '@/components/CoverUploadField.vue'
 import FieldHint from '@/components/FieldHint.vue'
-const WangEditor = defineAsyncComponent(() => import('@/components/WangEditor.vue'))
+import {
+  createNewsDetailDialogSession,
+  isNewsDraftSaveLocked,
+  openNewsDetailDialog
+} from '@/utils/newsDetailDialog.mjs'
 import type { CoverFitMode } from '@/utils/cover'
 import { FIELD_HINTS } from '@/utils/field-hints'
 import { isEditorContentEmpty } from '@/utils/editor'
@@ -166,6 +170,8 @@ import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, NewsItem } from '@/types/api'
 import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
+
+const WangEditor = defineAsyncComponent(() => import('@/components/WangEditor.vue'))
 
 const auth = useAuthStore()
 const canWrite = computed(() => auth.can('news:write'))
@@ -187,6 +193,7 @@ const filterStatus = ref('')
 const filterCategoryId = ref<number | undefined>()
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
+const detailSession = createNewsDetailDialogSession()
 const coverSavedUrl = ref('')
 const formRef = ref<FormInstance>()
 
@@ -279,32 +286,23 @@ function applyNewsDetail(row: NewsItem) {
 }
 
 async function openDialog(row?: NewsItem) {
-  resetForm()
-  editingId.value = row?.id ?? null
-  dialogVisible.value = true
-  if (!row) {
-    return
-  }
-  applyNewsDetail(row)
-  const requestId = row.id
-  detailLoading.value = true
-  try {
-    const detail = await fetchNewsDetail(requestId)
-    if (editingId.value !== requestId) return
-    applyNewsDetail(detail)
-  } catch {
-    if (editingId.value !== requestId) return
-    ElMessage.error('动态正文加载失败，请重试')
-    dialogVisible.value = false
-  } finally {
-    if (editingId.value === requestId) {
-      detailLoading.value = false
+  await openNewsDetailDialog({
+    row,
+    session: detailSession,
+    resetForm,
+    applyForm: applyNewsDetail,
+    fetchDetail: fetchNewsDetail,
+    setEditingId: (id) => { editingId.value = id },
+    setDialogVisible: (visible) => { dialogVisible.value = visible },
+    setDetailLoading: (loading) => { detailLoading.value = loading },
+    onLoadError: () => {
+      ElMessage.error('动态正文加载失败，请重试')
     }
-  }
+  })
 }
 
 async function onSave() {
-  if (detailLoading.value) return
+  if (isNewsDraftSaveLocked({ saving: saving.value, detailLoading: detailLoading.value })) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   try {

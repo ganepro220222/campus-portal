@@ -84,6 +84,14 @@ function assertViewerCheckInPreflight() {
     console.error('[test-release-gate] preflight:local 必须包含 typecheck:admin，否则本地全绿也拦不住 Admin CI 的 vue-tsc')
     process.exit(1)
   }
+  if (!pkg.scripts['test:admin-news-detail-dialog']) {
+    console.error('[test-release-gate] package.json 缺少 test:admin-news-detail-dialog')
+    process.exit(1)
+  }
+  if (!String(pkg.scripts['preflight:local'] || '').includes('test:admin-news-detail-dialog')) {
+    console.error('[test-release-gate] preflight:local 必须包含 test:admin-news-detail-dialog，否则动态详情 loading 代际会再次漏测')
+    process.exit(1)
+  }
 }
 
 function assertBackendEnvTemplatesExposeRuntimeControls() {

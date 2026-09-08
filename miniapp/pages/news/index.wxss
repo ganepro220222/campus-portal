@@ -73,7 +73,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
+.ncard-img { width: 100%; height: 100%; }
 .ncard-body { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .ncard-title {
   font-size: 29rpx;

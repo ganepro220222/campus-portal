@@ -155,7 +155,22 @@ const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
 
-const form = reactive({
+type CollegeForm = {
+  name: string
+  description: string
+  iconUrl: string
+  iconFitMode: NonNullable<CollegeAppItem['iconFitMode']>
+  iconShape: NonNullable<CollegeAppItem['iconShape']>
+  contentType: string
+  appid: string
+  path: string
+  contentUrl: string
+  apiToken: string
+  sort: number
+  status: number
+}
+
+const form = reactive<CollegeForm>({
   name: '',
   description: '',
   iconUrl: '',

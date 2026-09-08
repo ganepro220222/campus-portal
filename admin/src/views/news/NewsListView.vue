@@ -286,16 +286,20 @@ async function openDialog(row?: NewsItem) {
     return
   }
   applyNewsDetail(row)
+  const requestId = row.id
   detailLoading.value = true
   try {
-    const detail = await fetchNewsDetail(row.id)
-    if (editingId.value !== detail.id) return
+    const detail = await fetchNewsDetail(requestId)
+    if (editingId.value !== requestId) return
     applyNewsDetail(detail)
   } catch {
+    if (editingId.value !== requestId) return
     ElMessage.error('动态正文加载失败，请重试')
     dialogVisible.value = false
   } finally {
-    detailLoading.value = false
+    if (editingId.value === requestId) {
+      detailLoading.value = false
+    }
   }
 }
 

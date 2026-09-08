@@ -76,6 +76,14 @@ function assertViewerCheckInPreflight() {
     console.error('[test-release-gate] preflight:local 必须包含 test:sync-client-source')
     process.exit(1)
   }
+  if (!pkg.scripts['typecheck:admin']) {
+    console.error('[test-release-gate] package.json 缺少 typecheck:admin')
+    process.exit(1)
+  }
+  if (!String(pkg.scripts['preflight:local'] || '').includes('typecheck:admin')) {
+    console.error('[test-release-gate] preflight:local 必须包含 typecheck:admin，否则本地全绿也拦不住 Admin CI 的 vue-tsc')
+    process.exit(1)
+  }
 }
 
 function assertBackendEnvTemplatesExposeRuntimeControls() {

@@ -7,17 +7,17 @@
     top="3vh"
     @update:model-value="emit('update:visible', $event)"
   >
-    <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" :disabled="readonly" label-width="108px">
+    <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" label-width="108px">
       <el-form-item label="名称" prop="name">
-        <el-input v-model="form.name" maxlength="100" show-word-limit placeholder="完整展馆名称" />
+        <el-input v-model="form.name" maxlength="100" show-word-limit placeholder="完整展馆名称" :disabled="readonly" />
         <FieldHint :text="FIELD_HINTS.hallName" />
       </el-form-item>
       <el-form-item label="短名称">
-        <el-input v-model="form.shortName" maxlength="50" show-word-limit placeholder="列表卡片显示，如「交通博物馆」" />
+        <el-input v-model="form.shortName" maxlength="50" show-word-limit placeholder="列表卡片显示，如「交通博物馆」" :disabled="readonly" />
         <FieldHint :text="FIELD_HINTS.hallShortName" />
       </el-form-item>
       <el-form-item label="分类" prop="categoryId">
-        <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
+        <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%" :disabled="readonly">
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
       </el-form-item>
@@ -30,10 +30,13 @@
           />
       </el-form-item>
       <el-form-item label="VR 全景链接">
-        <el-input v-model="form.vrUrl" placeholder="粘贴全景服务商提供的展馆链接（可向技术人员索取）" />
+        <el-input v-model="form.vrUrl" placeholder="粘贴全景服务商提供的展馆链接（可向技术人员索取）" :disabled="readonly" />
+        <p v-if="readonly && isHttpUrl(form.vrUrl)" class="form-tip">
+          <a :href="form.vrUrl.trim()" target="_blank" rel="noopener noreferrer">打开全景链接</a>
+        </p>
       </el-form-item>
       <el-form-item label="简介" prop="intro">
-        <el-input v-model="form.intro" type="textarea" :rows="3" maxlength="500" show-word-limit />
+        <el-input v-model="form.intro" type="textarea" :rows="3" maxlength="500" show-word-limit :disabled="readonly" />
         <FieldHint :text="FIELD_HINTS.hallIntro" />
       </el-form-item>
 
@@ -44,7 +47,7 @@
         <el-button v-if="!readonly" type="primary" link :icon="Plus" @click="addSection">添加章节</el-button>
         <div v-for="(section, sIdx) in form.sections" :key="sIdx" class="section-card">
           <div class="section-head">
-            <el-input v-model="section.title" placeholder="章节标题，如「办学历程」" maxlength="100" />
+            <el-input v-model="section.title" placeholder="章节标题，如「办学历程」" maxlength="100" :disabled="readonly" />
             <el-button v-if="!readonly" link type="danger" @click="removeSection(sIdx)">删除章节</el-button>
           </div>
           <el-table :data="section.items" size="small" border class="slides-table">
@@ -62,7 +65,7 @@
             </el-table-column>
             <el-table-column label="图说" min-width="180" :resizable="false">
               <template #default="{ row }">
-                <el-input v-model="row.caption" placeholder="图片说明" size="small" maxlength="200" />
+                <el-input v-model="row.caption" placeholder="图片说明" size="small" maxlength="200" :disabled="readonly" />
               </template>
             </el-table-column>
             <el-table-column v-if="!readonly" label="操作" width="70" align="center" :resizable="false">
@@ -94,7 +97,7 @@
           </el-table-column>
           <el-table-column label="图说" min-width="180" :resizable="false">
             <template #default="{ row }">
-              <el-input v-model="row.caption" placeholder="图片说明" size="small" maxlength="200" />
+              <el-input v-model="row.caption" placeholder="图片说明" size="small" maxlength="200" :disabled="readonly" />
             </template>
           </el-table-column>
           <el-table-column label="排序" width="104" align="center" :resizable="false">
@@ -106,6 +109,7 @@
                 size="small"
                 controls-position="right"
                 style="width: 100%"
+                :disabled="readonly"
               />
             </template>
           </el-table-column>
@@ -132,12 +136,12 @@
         />
       </el-form-item>
       <el-form-item label="时长说明">
-        <el-input v-model="form.audioTime" placeholder="如：语音讲解 03:48" maxlength="50" />
+        <el-input v-model="form.audioTime" placeholder="如：语音讲解 03:48" maxlength="50" :disabled="readonly" />
         <p class="form-tip">留空会在上传语音后按实际时长自动填写</p>
       </el-form-item>
 
       <el-form-item label="排序" prop="sort">
-        <el-input-number v-model="form.sort" :min="0" :max="999" />
+        <el-input-number v-model="form.sort" :min="0" :max="999" :disabled="readonly" />
       </el-form-item>
       <p v-if="!readonly" class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
     </el-form>
@@ -206,6 +210,10 @@ const dialogTitle = computed(() => {
 })
 
 const formRef = ref<FormInstance>()
+
+function isHttpUrl(value: string) {
+  return /^https?:\/\//i.test((value || '').trim())
+}
 
 /**
  * 语音传上来后按实际时长回填「时长说明」。

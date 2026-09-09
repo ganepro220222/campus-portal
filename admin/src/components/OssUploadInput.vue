@@ -41,13 +41,12 @@
           <div class="file-meta">
             <div class="file-title" :title="previewLabel">{{ previewLabel }}</div>
             <div v-if="fileMetaLine" class="file-sub">{{ fileMetaLine }}</div>
-            <el-button
-              link
-              type="primary"
+            <button
+              type="button"
               class="file-open"
-              :loading="openingFile"
+              :disabled="openingFile"
               @click="openFileInNewTab"
-            >↗ 打开预览</el-button>
+            >{{ openingFile ? '打开中…' : '↗ 打开预览' }}</button>
           </div>
         </div>
         <div v-if="isSubtitleFile" class="subtitle-box">
@@ -890,10 +889,21 @@ function clear() {
 }
 
 .file-open {
+  display: inline-block;
   margin-top: 3px;
   height: auto;
   padding: 0;
+  border: 0;
+  background: none;
   font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-color-primary);
+  cursor: pointer;
+}
+
+.file-open:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 /* 字幕：把前两条摆出来。ASR 产出的空文件 / 乱码，只有这样才看得见 */

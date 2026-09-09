@@ -31,6 +31,11 @@ declare module '@/utils/contentReviewActions.mjs' {
     mode: 'create' | 'edit' | 'view'
   }): string
 
+  export function isReviewFilePreviewEnabled(input: {
+    formDisabled: boolean
+    previewIsNativeButton: boolean
+  }): boolean
+
   export function resolveContentDialogFooter(input: {
     mode: 'create' | 'edit' | 'view'
     canPublish: boolean

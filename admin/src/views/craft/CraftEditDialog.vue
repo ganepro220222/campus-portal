@@ -7,13 +7,13 @@
     top="3vh"
     @update:model-value="emit('update:visible', $event)"
   >
-    <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" :disabled="readonly" label-width="108px">
+    <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" label-width="108px">
       <el-form-item label="名称" prop="name">
-        <el-input v-model="form.name" maxlength="100" show-word-limit />
+        <el-input v-model="form.name" maxlength="100" show-word-limit :disabled="readonly" />
         <FieldHint :text="FIELD_HINTS.craftName" />
       </el-form-item>
       <el-form-item label="分类" prop="categoryId">
-        <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
+        <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%" :disabled="readonly">
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
       </el-form-item>
@@ -26,11 +26,11 @@
           />
       </el-form-item>
       <el-form-item label="中文介绍" prop="introZh">
-        <el-input v-model="form.introZh" type="textarea" :rows="3" maxlength="2000" show-word-limit />
+        <el-input v-model="form.introZh" type="textarea" :rows="3" maxlength="2000" show-word-limit :disabled="readonly" />
         <FieldHint :text="FIELD_HINTS.craftIntro" />
       </el-form-item>
       <el-form-item label="英文介绍">
-        <el-input v-model="form.introEn" type="textarea" :rows="3" maxlength="2000" show-word-limit />
+        <el-input v-model="form.introEn" type="textarea" :rows="3" maxlength="2000" show-word-limit :disabled="readonly" />
         <div class="form-tip">选填，用于双语展示</div>
       </el-form-item>
 
@@ -55,7 +55,7 @@
           </el-table-column>
           <el-table-column label="角度标签" width="120" :resizable="false">
             <template #default="{ row }">
-              <el-input v-model="row.angleLabel" placeholder="正面" size="small" />
+              <el-input v-model="row.angleLabel" placeholder="正面" size="small" :disabled="readonly" />
             </template>
           </el-table-column>
           <el-table-column label="排序" width="104" align="center" :resizable="false">
@@ -67,6 +67,7 @@
                 size="small"
                 controls-position="right"
                 style="width: 100%"
+                :disabled="readonly"
               />
             </template>
           </el-table-column>
@@ -81,20 +82,20 @@
 
       <el-divider content-position="left">合作与咨询</el-divider>
       <el-form-item label="联系电话">
-        <el-input v-model="form.contact.phone" maxlength="20" placeholder="一键拨打" />
+        <el-input v-model="form.contact.phone" maxlength="20" placeholder="一键拨打" :disabled="readonly" />
       </el-form-item>
       <el-form-item label="微信号">
-        <el-input v-model="form.contact.wechat" maxlength="100" placeholder="一键复制" />
+        <el-input v-model="form.contact.wechat" maxlength="100" placeholder="一键复制" :disabled="readonly" />
       </el-form-item>
       <el-form-item label="企业微信">
-        <el-input v-model="form.contact.workWechat" maxlength="100" />
+        <el-input v-model="form.contact.workWechat" maxlength="100" :disabled="readonly" />
       </el-form-item>
       <el-form-item label="邮箱">
-        <el-input v-model="form.contact.email" maxlength="100" placeholder="调起邮件客户端" />
+        <el-input v-model="form.contact.email" maxlength="100" placeholder="调起邮件客户端" :disabled="readonly" />
       </el-form-item>
 
       <el-form-item label="排序">
-        <el-input-number v-model="form.sort" :min="0" :max="999" />
+        <el-input-number v-model="form.sort" :min="0" :max="999" :disabled="readonly" />
       </el-form-item>
       <p v-if="!readonly" class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
     </el-form>

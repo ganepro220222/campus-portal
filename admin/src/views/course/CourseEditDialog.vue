@@ -7,13 +7,13 @@
     top="4vh"
     @update:model-value="emit('update:visible', $event)"
   >
-    <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" :disabled="readonly" label-width="100px">
+    <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" label-width="100px">
       <el-form-item label="课程名称" prop="name">
-        <el-input v-model="form.name" maxlength="200" show-word-limit />
+        <el-input v-model="form.name" maxlength="200" show-word-limit :disabled="readonly" />
         <FieldHint :text="FIELD_HINTS.courseName" />
       </el-form-item>
       <el-form-item label="分类" prop="categoryId">
-        <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
+        <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%" :disabled="readonly">
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
       </el-form-item>
@@ -26,10 +26,10 @@
           />
       </el-form-item>
       <el-form-item label="适合人群">
-        <el-input v-model="form.targetAudience" maxlength="200" placeholder="如：全校学生" />
+        <el-input v-model="form.targetAudience" maxlength="200" placeholder="如：全校学生" :disabled="readonly" />
       </el-form-item>
       <el-form-item label="时长(分钟)">
-        <el-input-number v-model="form.durationMinutes" :min="1" :max="9999" />
+        <el-input-number v-model="form.durationMinutes" :min="1" :max="9999" :disabled="readonly" />
         <div class="form-tip">上传教学视频后按片长自动填写，一般不用改。</div>
       </el-form-item>
       <el-form-item label="开课时间">
@@ -40,11 +40,12 @@
           format="YYYY-MM-DD HH:mm"
           value-format="YYYY-MM-DD HH:mm"
           :value-on-clear="''"
+          :disabled="readonly"
           style="width: 100%"
         />
       </el-form-item>
       <el-form-item label="课程介绍">
-        <el-input v-model="form.intro" type="textarea" :rows="4" maxlength="2000" show-word-limit />
+        <el-input v-model="form.intro" type="textarea" :rows="4" maxlength="2000" show-word-limit :disabled="readonly" />
         <FieldHint :text="FIELD_HINTS.courseIntro" />
       </el-form-item>
       <el-form-item label="教学视频">
@@ -66,6 +67,7 @@
           filterable
           placeholder="选择配套下载资源"
           style="width: 100%"
+          :disabled="readonly"
         >
           <el-option
             v-for="r in resourceOptions"

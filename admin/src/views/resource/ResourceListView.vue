@@ -95,18 +95,18 @@
       width="600px"
       destroy-on-close
     >
-      <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" :disabled="readonly" label-width="100px">
+      <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" label-width="100px">
         <el-form-item label="资源名称" prop="name">
-          <el-input v-model="form.name" maxlength="200" show-word-limit />
+          <el-input v-model="form.name" maxlength="200" show-word-limit :disabled="readonly" />
           <FieldHint v-if="!readonly" :text="FIELD_HINTS.resourceName" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
-          <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
+          <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%" :disabled="readonly">
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="文件格式" prop="fileType">
-          <el-select v-model="form.fileType" placeholder="选择格式" style="width: 100%">
+          <el-select v-model="form.fileType" placeholder="选择格式" style="width: 100%" :disabled="readonly">
             <el-option v-for="t in FILE_TYPE_OPTIONS" :key="t.value" :label="t.label" :value="t.value" />
           </el-select>
           <div v-if="!readonly" class="form-tip">上传学习资料后按后缀自动带出，标错可改。</div>

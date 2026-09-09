@@ -95,7 +95,6 @@
         ref="formRef"
         :model="form"
         :rules="readonly ? {} : rules"
-        :disabled="readonly"
         label-width="88px"
       >
         <el-form-item label="标题" prop="title">
@@ -107,11 +106,11 @@
             :result-rows="5"
             @adopt="onTitleAiAdopt"
           />
-          <el-input v-model="form.title" maxlength="200" show-word-limit />
+          <el-input v-model="form.title" maxlength="200" show-word-limit :disabled="readonly" />
           <FieldHint v-if="!readonly" :text="FIELD_HINTS.listTitle" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
-          <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
+          <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%" :disabled="readonly">
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
@@ -132,7 +131,7 @@
             :result-rows="4"
             @adopt="onSummaryAiAdopt"
           />
-          <el-input v-model="form.summary" type="textarea" :rows="2" maxlength="500" show-word-limit />
+          <el-input v-model="form.summary" type="textarea" :rows="2" maxlength="500" show-word-limit :disabled="readonly" />
           <FieldHint v-if="!readonly" :text="FIELD_HINTS.newsSummary" />
         </el-form-item>
         <el-form-item label="正文" prop="content">
@@ -152,7 +151,7 @@
           <FieldHint v-if="!readonly" :text="FIELD_HINTS.editorBody" />
         </el-form-item>
         <el-form-item label="置顶">
-          <el-switch v-model="form.isTop" :active-value="1" :inactive-value="0" />
+          <el-switch v-model="form.isTop" :active-value="1" :inactive-value="0" :disabled="readonly" />
         </el-form-item>
       </el-form>
       <template #footer>

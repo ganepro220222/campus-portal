@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   CONTENT_REVIEWER_PERMISSIONS,
+  isReviewFilePreviewEnabled,
   resolveContentDialogFooter,
   resolveContentDialogMode,
   resolveContentDialogTitle,
@@ -135,9 +136,51 @@ const news = readFileSync(new URL('../admin/src/views/news/NewsListView.vue', im
 assert.match(news, /dialogMode/)
 assert.match(news, /readonly/)
 assert.match(news, /detailReady/)
-assert.match(news, /:disabled="readonly"/)
 assert.match(news, /WangEditor[\s\S]*:disabled="readonly"/)
 assert.doesNotMatch(news, /v-if="canWrite"[\s\S]*openDialog\(row\)[\s\S]*查看/)
+
+assert.equal(isReviewFilePreviewEnabled({ formDisabled: true, previewIsNativeButton: false }), false)
+assert.equal(isReviewFilePreviewEnabled({ formDisabled: true, previewIsNativeButton: true }), true)
+assert.equal(isReviewFilePreviewEnabled({ formDisabled: false, previewIsNativeButton: false }), true)
+
+function formOpenTag(src) {
+  const match = src.match(/<el-form\b[\s\S]*?>/)
+  return match ? match[0] : ''
+}
+
+const reviewForms = [
+  'admin/src/views/news/NewsListView.vue',
+  'admin/src/views/hall/HallEditDialog.vue',
+  'admin/src/views/craft/CraftEditDialog.vue',
+  'admin/src/views/course/CourseEditDialog.vue',
+  'admin/src/views/resource/ResourceListView.vue'
+]
+for (const rel of reviewForms) {
+  const src = readFileSync(new URL('../' + rel, import.meta.url), 'utf8')
+  assert.doesNotMatch(
+    formOpenTag(src),
+    /:disabled="readonly"/,
+    `${rel} 只读不得禁整个表单，否则打开预览会被连带禁用`
+  )
+  assert.match(src, /:disabled="readonly"/, `${rel} 可编辑字段须逐项禁用`)
+}
+
+const oss = readFileSync(new URL('../admin/src/components/OssUploadInput.vue', import.meta.url), 'utf8')
+assert.match(oss, /<button[\s\S]*?打开预览/)
+assert.doesNotMatch(oss, /<el-button[\s\S]{0,280}打开预览/)
+assert.match(oss, /v-if="!readonly"/)
+assert.match(oss, /class="controls"/)
+
+const resource = readFileSync(new URL('../admin/src/views/resource/ResourceListView.vue', import.meta.url), 'utf8')
+assert.match(resource, /preview="file"/)
+assert.match(resource, /:readonly="readonly"/)
+
+const course = readFileSync(new URL('../admin/src/views/course/CourseEditDialog.vue', import.meta.url), 'utf8')
+assert.match(course, /preview="file"/)
+assert.match(course, /scene="subtitle"[\s\S]*:readonly="readonly"/)
+
+const handbook = readFileSync(new URL('../docs/运维/管理员操作手册_V1.0.md', import.meta.url), 'utf8')
+assert.doesNotMatch(handbook, /保存并更新线上内容[^\n]*  \n/)
 
 const upload = readFileSync(new URL('../backend/src/main/java/com/shuyuan/backend/controller/admin/AdminUploadController.java', import.meta.url), 'utf8')
 assert.match(upload, /requireMediaPreviewPermission/)

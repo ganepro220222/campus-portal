@@ -1,13 +1,13 @@
 <template>
   <el-dialog
     :model-value="visible"
-    :title="editingId ? '编辑课程' : '新建课程'"
+    :title="dialogTitle"
     width="720px"
     destroy-on-close
     top="4vh"
     @update:model-value="emit('update:visible', $event)"
   >
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+    <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" :disabled="readonly" label-width="100px">
       <el-form-item label="课程名称" prop="name">
         <el-input v-model="form.name" maxlength="200" show-word-limit />
         <FieldHint :text="FIELD_HINTS.courseName" />
@@ -18,11 +18,12 @@
         </el-select>
       </el-form-item>
       <el-form-item label="封面图">
-        <CoverUploadField
-          v-model="form.cover"
-          v-model:fit-mode="form.coverFitMode"
-          slot="courseList"
-        />
+          <CoverUploadField
+            v-model="form.cover"
+            v-model:fit-mode="form.coverFitMode"
+            slot="courseList"
+            :readonly="readonly"
+          />
       </el-form-item>
       <el-form-item label="适合人群">
         <el-input v-model="form.targetAudience" maxlength="200" placeholder="如：全校学生" />
@@ -54,6 +55,7 @@
           preview="video"
           upload-label="上传视频"
           done-text="视频已上传"
+          :readonly="readonly"
           @uploaded="onCourseVideoUploaded"
         />
       </el-form-item>
@@ -73,7 +75,7 @@
           />
         </el-select>
       </el-form-item>
-      <p class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
+      <p v-if="!readonly" class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
 
       <template v-if="editingId">
         <el-divider content-position="left">字幕管理</el-divider>
@@ -96,38 +98,41 @@
             preview="file"
             upload-label="上传字幕"
             done-text="字幕已上传"
+            :readonly="readonly"
             @update:model-value="emit('update:subtitleUrlInput', $event)"
           />
         </el-form-item>
         <el-form-item>
           <el-button
-            v-if="canWrite"
+            v-if="canWrite && !readonly"
             :loading="subtitleTriggering"
             :disabled="!form.videoUrl"
             @click="emit('trigger-subtitle')"
           >触发 ASR 生成</el-button>
           <el-button
-            v-if="canWrite"
+            v-if="canWrite && !readonly"
             type="primary"
             :loading="subtitleSaving"
             @click="emit('save-subtitle')"
           >
             保存字幕地址
           </el-button>
-            <div class="form-tip">先保存课程视频，再点「触发 ASR 生成」。未开通阿里云智能语音时可手动上传 VTT/SRT 后保存。生成约 2–10 分钟，状态会自动轮询。</div>
+            <div v-if="!readonly" class="form-tip">先保存课程视频，再点「触发 ASR 生成」。未开通阿里云智能语音时可手动上传 VTT/SRT 后保存。生成约 2–10 分钟，状态会自动轮询。</div>
         </el-form-item>
       </template>
     </el-form>
     <template #footer>
-      <el-button @click="emit('update:visible', false)">取消</el-button>
-      <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+      <el-button @click="emit('update:visible', false)">{{ readonly ? '关闭' : '取消' }}</el-button>
+      <el-button v-if="!readonly" type="primary" :loading="saving" @click="handleSave">保存</el-button>
+      <el-button v-if="readonly && canPublish && itemStatus !== 1" type="success" @click="emit('publish')">上架</el-button>
+      <el-button v-if="readonly && canPublish && itemStatus === 1" type="warning" @click="emit('unpublish')">下架</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
 /** 课程新建/编辑弹窗：视频、配套资源与字幕管理 */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { SubtitleStatus } from '@/api/course'
 import CoverUploadField from '@/components/CoverUploadField.vue'
@@ -152,7 +157,7 @@ export interface CourseFormState {
   resourceIds: number[]
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   visible: boolean
   editingId: number | null
   form: CourseFormState
@@ -161,20 +166,34 @@ const props = defineProps<{
   saving: boolean
   rules: FormRules
   canWrite: boolean
+  readonly?: boolean
+  canPublish?: boolean
+  itemStatus?: number
   subtitleInfo: SubtitleStatus
   subtitleUrlInput: string
   subtitleTriggering: boolean
   subtitleSaving: boolean
   subtitleTagType: (status: string) => 'success' | 'warning' | 'danger' | 'info'
-}>()
+}>(), {
+  readonly: false,
+  canPublish: false,
+  itemStatus: 0
+})
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
   'update:subtitleUrlInput': [value: string]
   save: []
+  publish: []
+  unpublish: []
   'trigger-subtitle': []
   'save-subtitle': []
 }>()
+
+const dialogTitle = computed(() => {
+  if (props.readonly) return '查看课程'
+  return props.editingId ? '编辑课程' : '新建课程'
+})
 
 const formRef = ref<FormInstance>()
 
@@ -190,6 +209,7 @@ async function onCourseVideoUploaded(payload: { file?: File }) {
 }
 
 async function handleSave() {
+  if (props.readonly) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (valid) emit('save')
 }

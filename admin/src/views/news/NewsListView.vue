@@ -40,8 +40,9 @@
       </el-table-column>
       <el-table-column prop="viewCount" label="阅读" width="80" align="center" />
       <el-table-column prop="publishTime" label="发布时间" width="160" />
-      <el-table-column label="操作" width="280" fixed="right" align="center">
+      <el-table-column label="操作" width="340" fixed="right" align="center">
         <template #default="{ row }">
+          <el-button v-if="canRead" link @click="openView(row)">查看</el-button>
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
           <el-button
             v-if="canPublish && row.status === 'draft'"
@@ -77,15 +78,29 @@
 
     <el-dialog
       v-model="dialogVisible"
-      :title="editingId ? '编辑动态' : '新建动态'"
+      :title="dialogTitle"
       width="860px"
       destroy-on-close
       top="5vh"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="88px">
+      <el-alert
+        v-if="!readonly && saveMode.warning"
+        :title="saveMode.warning"
+        type="warning"
+        :closable="false"
+        show-icon
+        class="live-save-alert"
+      />
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="readonly ? {} : rules"
+        :disabled="readonly"
+        label-width="88px"
+      >
         <el-form-item label="标题" prop="title">
           <AiAssistBar
-            v-if="canWrite"
+            v-if="canWrite && !readonly"
             :source-text="titleAiSource"
             :actions="['title']"
             :min-length="8"
@@ -93,7 +108,7 @@
             @adopt="onTitleAiAdopt"
           />
           <el-input v-model="form.title" maxlength="200" show-word-limit />
-          <FieldHint :text="FIELD_HINTS.listTitle" />
+          <FieldHint v-if="!readonly" :text="FIELD_HINTS.listTitle" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
@@ -105,11 +120,12 @@
             v-model="form.cover"
             v-model:fit-mode="form.coverFitMode"
             slot="newsList"
+            :readonly="readonly"
           />
         </el-form-item>
         <el-form-item label="摘要">
           <AiAssistBar
-            v-if="canWrite"
+            v-if="canWrite && !readonly"
             :source-text="summaryAiSource"
             :actions="['summarize']"
             :min-length="8"
@@ -117,11 +133,11 @@
             @adopt="onSummaryAiAdopt"
           />
           <el-input v-model="form.summary" type="textarea" :rows="2" maxlength="500" show-word-limit />
-          <FieldHint :text="FIELD_HINTS.newsSummary" />
+          <FieldHint v-if="!readonly" :text="FIELD_HINTS.newsSummary" />
         </el-form-item>
         <el-form-item label="正文" prop="content">
           <AiAssistBar
-            v-if="canWrite"
+            v-if="canWrite && !readonly"
             :source-text="bodyAiSource"
             :actions="['polish', 'expand']"
             :min-length="8"
@@ -130,17 +146,36 @@
           <WangEditor
             v-model="form.content"
             placeholder="撰写动态正文，可插入图片与排版"
+            :disabled="readonly"
             @change="onContentChange"
           />
-          <FieldHint :text="FIELD_HINTS.editorBody" />
+          <FieldHint v-if="!readonly" :text="FIELD_HINTS.editorBody" />
         </el-form-item>
         <el-form-item label="置顶">
           <el-switch v-model="form.isTop" :active-value="1" :inactive-value="0" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving || detailLoading" :disabled="detailLoading" @click="onSave">保存草稿</el-button>
+        <el-button @click="dialogVisible = false">{{ dialogFooter.closeText }}</el-button>
+        <el-button
+          v-if="dialogFooter.showSave"
+          type="primary"
+          :loading="saving || detailLoading"
+          :disabled="detailLoading"
+          @click="onSave"
+        >{{ saveMode.buttonText }}</el-button>
+        <el-button
+          v-if="dialogFooter.showPublish"
+          type="success"
+          :disabled="dialogFooter.publishDisabled"
+          @click="onPublishFromDialog"
+        >{{ dialogFooter.publishLabel }}</el-button>
+        <el-button
+          v-if="dialogFooter.showUnpublish"
+          type="warning"
+          :disabled="dialogFooter.publishDisabled"
+          @click="onUnpublishFromDialog"
+        >{{ dialogFooter.unpublishLabel }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -158,10 +193,16 @@ import AiAssistBar from '@/components/AiAssistBar.vue'
 import CoverUploadField from '@/components/CoverUploadField.vue'
 import FieldHint from '@/components/FieldHint.vue'
 import {
+  resolveContentDialogFooter,
+  resolveContentDialogMode,
+  resolveContentDialogTitle
+} from '@/utils/contentReviewActions.mjs'
+import {
   createNewsDetailDialogSession,
   isNewsDraftSaveLocked,
   openNewsDetailDialog
 } from '@/utils/newsDetailDialog.mjs'
+import { resolveNewsSaveMode } from '@/utils/newsSaveMode.mjs'
 import type { CoverFitMode } from '@/utils/cover'
 import { FIELD_HINTS } from '@/utils/field-hints'
 import { isEditorContentEmpty } from '@/utils/editor'
@@ -174,6 +215,7 @@ import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 const WangEditor = defineAsyncComponent(() => import('@/components/WangEditor.vue'))
 
 const auth = useAuthStore()
+const canRead = computed(() => auth.can('news:read'))
 const canWrite = computed(() => auth.can('news:write'))
 const canPublish = computed(() => auth.can('news:publish'))
 
@@ -193,7 +235,27 @@ const filterStatus = ref('')
 const filterCategoryId = ref<number | undefined>()
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
+const dialogMode = ref<'create' | 'edit' | 'view'>('create')
+const editingStatus = ref<'draft' | 'published' | ''>('')
+const detailReady = ref(false)
 const detailSession = createNewsDetailDialogSession()
+const readonly = computed(() => dialogMode.value === 'view')
+const saveMode = computed(() => resolveNewsSaveMode({
+  editingId: editingId.value,
+  status: editingStatus.value
+}))
+const dialogTitle = computed(() => resolveContentDialogTitle({
+  moduleLabel: '动态',
+  mode: dialogMode.value
+}))
+const dialogFooter = computed(() => resolveContentDialogFooter({
+  mode: dialogMode.value,
+  canPublish: canPublish.value,
+  published: editingStatus.value === 'published',
+  detailReady: detailReady.value,
+  detailLoading: detailLoading.value,
+  publishLabel: '发布'
+}))
 const coverSavedUrl = ref('')
 const formRef = ref<FormInstance>()
 
@@ -283,10 +345,20 @@ function applyNewsDetail(row: NewsItem) {
   form.content = row.content || ''
   form.categoryId = row.categoryId ?? undefined
   form.isTop = row.isTop ?? 0
+  if (row.status === 'published' || row.status === 'draft') {
+    editingStatus.value = row.status
+  }
 }
 
-async function openDialog(row?: NewsItem) {
-  await openNewsDetailDialog({
+async function openDialog(row?: NewsItem, requested?: 'view' | 'edit') {
+  dialogMode.value = resolveContentDialogMode({
+    hasRow: Boolean(row),
+    canWrite: canWrite.value,
+    requested: row ? requested : 'create'
+  })
+  editingStatus.value = row?.status === 'published' || row?.status === 'draft' ? row.status : ''
+  detailReady.value = false
+  const result = await openNewsDetailDialog({
     row,
     session: detailSession,
     resetForm,
@@ -299,9 +371,17 @@ async function openDialog(row?: NewsItem) {
       ElMessage.error('动态正文加载失败，请重试')
     }
   })
+  if (result.outcome === 'loaded' || result.outcome === 'create') {
+    detailReady.value = true
+  }
+}
+
+function openView(row: NewsItem) {
+  return openDialog(row, 'view')
 }
 
 async function onSave() {
+  if (readonly.value) return
   if (isNewsDraftSaveLocked({ saving: saving.value, detailLoading: detailLoading.value })) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
@@ -312,15 +392,26 @@ async function onSave() {
   } catch {
     return
   }
+  if (saveMode.value.needsLiveConfirm) {
+    try {
+      await ElMessageBox.confirm(saveMode.value.confirmMessage, saveMode.value.confirmTitle, {
+        type: 'warning',
+        confirmButtonText: '保存并更新',
+        cancelButtonText: '取消'
+      })
+    } catch {
+      return
+    }
+  }
   saving.value = true
   try {
     const payload = { ...form }
     if (editingId.value) {
       await updateNews(editingId.value, payload)
-      ElMessage.success('已更新')
+      ElMessage.success(saveMode.value.successText)
     } else {
       await createNews(payload)
-      ElMessage.success('草稿已创建')
+      ElMessage.success(saveMode.value.successText)
     }
     dialogVisible.value = false
     await loadData()
@@ -343,6 +434,26 @@ async function onUnpublish(row: NewsItem) {
   await loadData()
 }
 
+async function onPublishFromDialog() {
+  if (!editingId.value || dialogFooter.value.publishDisabled) return
+  const title = form.title || '该动态'
+  await ElMessageBox.confirm(`发布「${title}」？发布后将同步至搜索索引。`, '发布确认')
+  await publishNews(editingId.value)
+  ElMessage.success('已发布')
+  dialogVisible.value = false
+  await loadData()
+}
+
+async function onUnpublishFromDialog() {
+  if (!editingId.value || dialogFooter.value.publishDisabled) return
+  const title = form.title || '该动态'
+  await ElMessageBox.confirm(`下架「${title}」？小程序端将不再展示。`, '下架确认', { type: 'warning' })
+  await unpublishNews(editingId.value)
+  ElMessage.success('已下架')
+  dialogVisible.value = false
+  await loadData()
+}
+
 async function onDelete(row: NewsItem) {
   await ElMessageBox.confirm(softDeleteConfirm(`「${row.title}」`), '删除确认', { type: 'warning' })
   await removeNews(row.id)
@@ -360,5 +471,9 @@ onMounted(async () => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.live-save-alert {
+  margin-bottom: 12px;
 }
 </style>

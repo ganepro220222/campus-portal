@@ -22,6 +22,7 @@ import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 /** 文创列表页：筛选、分页、上下架与编辑弹窗状态 */
 export function useCraftList() {
   const auth = useAuthStore()
+  const canRead = computed(() => auth.can('hall:read'))
   const canWrite = computed(() => auth.can('hall:write'))
   const canPublish = computed(() => auth.can('hall:publish'))
 
@@ -36,7 +37,10 @@ export function useCraftList() {
   const filterStatus = ref<number | undefined>()
   const dialogVisible = ref(false)
   const editingId = ref<number | null>(null)
+  const dialogMode = ref<'create' | 'edit' | 'view'>('create')
+  const reviewingRow = ref<CraftItem | null>(null)
   const coverSavedUrl = ref('')
+  const readonly = computed(() => dialogMode.value === 'view')
 
   const form = reactive({
     name: '',
@@ -99,7 +103,13 @@ export function useCraftList() {
     coverSavedUrl.value = ''
   }
 
-  async function openDialog(row?: CraftItem) {
+  function openView(row: CraftItem) {
+    return openDialog(row, 'view')
+  }
+
+  async function openDialog(row?: CraftItem, requested?: 'view' | 'edit') {
+    dialogMode.value = !row ? 'create' : (requested === 'view' || !canWrite.value ? 'view' : 'edit')
+    reviewingRow.value = row ?? null
     resetForm()
     editingId.value = row?.id ?? null
     if (row) {
@@ -130,6 +140,7 @@ export function useCraftList() {
   }
 
   async function onSave() {
+    if (readonly.value) return
     try {
       await confirmCoverClearIfNeeded(coverSavedUrl.value, explicitClear(form.cover), ({ message, title }) =>
         ElMessageBox.confirm(message, title, { type: 'warning', confirmButtonText: '确定清空', cancelButtonText: '取消' })
@@ -182,6 +193,18 @@ export function useCraftList() {
     await loadData()
   }
 
+  async function onPublishCurrent() {
+    if (!reviewingRow.value) return
+    await onPublish(reviewingRow.value)
+    dialogVisible.value = false
+  }
+
+  async function onUnpublishCurrent() {
+    if (!reviewingRow.value) return
+    await onUnpublish(reviewingRow.value)
+    dialogVisible.value = false
+  }
+
   async function onDelete(row: CraftItem) {
     await ElMessageBox.confirm(softDeleteConfirm(`「${row.name}」`), '删除确认', { type: 'warning' })
     await removeCraft(row.id)
@@ -194,8 +217,10 @@ export function useCraftList() {
   })
 
   return {
+    canRead,
     canWrite,
     canPublish,
+    readonly,
     loading,
     saving,
     list,
@@ -207,12 +232,16 @@ export function useCraftList() {
     filterStatus,
     dialogVisible,
     editingId,
+    reviewingRow,
     form,
     rules,
     loadData,
     onFilter,
     openDialog,
+    openView,
     onSave,
+    onPublishCurrent,
+    onUnpublishCurrent,
     onPublish,
     onUnpublish,
     onDelete

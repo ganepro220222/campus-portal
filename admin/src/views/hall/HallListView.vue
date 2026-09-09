@@ -30,8 +30,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right" align="center">
+      <el-table-column label="操作" width="280" fixed="right" align="center">
         <template #default="{ row }">
+          <el-button v-if="canRead" link @click="openView(row)">查看</el-button>
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
           <el-button
             v-if="canPublish && row.status !== 1"
@@ -72,7 +73,12 @@
       :categories="categories"
       :saving="saving"
       :rules="rules"
+      :readonly="readonly"
+      :can-publish="canPublish"
+      :item-status="reviewingRow?.status ?? 0"
       @save="onSave"
+      @publish="onPublishCurrent"
+      @unpublish="onUnpublishCurrent"
     />
   </div>
 </template>
@@ -84,8 +90,10 @@ import { useHallList } from '@/composables/useHallList'
 import HallEditDialog from './HallEditDialog.vue'
 
 const {
+  canRead,
   canWrite,
   canPublish,
+  readonly,
   loading,
   saving,
   list,
@@ -95,12 +103,16 @@ const {
   total,
   dialogVisible,
   editingId,
+  reviewingRow,
   form,
   rules,
   listSummary,
   loadData,
   openDialog,
+  openView,
   onSave,
+  onPublishCurrent,
+  onUnpublishCurrent,
   onPublish,
   onUnpublish,
   onDelete

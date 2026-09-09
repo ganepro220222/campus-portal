@@ -1,13 +1,13 @@
 <template>
   <el-dialog
     :model-value="visible"
-    :title="editingId ? '编辑文创' : '新建文创'"
+    :title="dialogTitle"
     width="760px"
     destroy-on-close
     top="3vh"
     @update:model-value="emit('update:visible', $event)"
   >
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="108px">
+    <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" :disabled="readonly" label-width="108px">
       <el-form-item label="名称" prop="name">
         <el-input v-model="form.name" maxlength="100" show-word-limit />
         <FieldHint :text="FIELD_HINTS.craftName" />
@@ -18,11 +18,12 @@
         </el-select>
       </el-form-item>
       <el-form-item label="封面图">
-        <CoverUploadField
-          v-model="form.cover"
-          v-model:fit-mode="form.coverFitMode"
-          slot="craftList"
-        />
+          <CoverUploadField
+            v-model="form.cover"
+            v-model:fit-mode="form.coverFitMode"
+            slot="craftList"
+            :readonly="readonly"
+          />
       </el-form-item>
       <el-form-item label="中文介绍" prop="introZh">
         <el-input v-model="form.introZh" type="textarea" :rows="3" maxlength="2000" show-word-limit />
@@ -38,7 +39,7 @@
         <p class="text-muted images-hint">
           上传多角度高清图，小程序按排序轮播展示；建议标注角度标签（如正面、侧面）
         </p>
-        <el-button type="primary" link :icon="Plus" @click="addImage">添加一张图片</el-button>
+        <el-button v-if="!readonly" type="primary" link :icon="Plus" @click="addImage">添加一张图片</el-button>
         <el-table v-if="form.images.length" :data="form.images" size="small" border class="images-table">
           <el-table-column label="图片" min-width="200" :resizable="false">
             <template #default="{ row }">
@@ -48,6 +49,7 @@
                 accept="image/*"
                 upload-label="上传图片"
                 done-text="已上传"
+                :readonly="readonly"
               />
             </template>
           </el-table-column>
@@ -68,13 +70,13 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="70" align="center" :resizable="false">
+          <el-table-column v-if="!readonly" label="操作" width="70" align="center" :resizable="false">
             <template #default="{ $index }">
               <el-button link type="danger" @click="removeImage($index)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
-        <p v-else class="text-muted images-empty">暂未添加，点击上方「添加一张图片」</p>
+        <p v-else class="text-muted images-empty">{{ readonly ? '暂未添加鉴赏图' : '暂未添加，点击上方「添加一张图片」' }}</p>
       </div>
 
       <el-divider content-position="left">合作与咨询</el-divider>
@@ -94,18 +96,20 @@
       <el-form-item label="排序">
         <el-input-number v-model="form.sort" :min="0" :max="999" />
       </el-form-item>
-      <p class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
+      <p v-if="!readonly" class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
     </el-form>
     <template #footer>
-      <el-button @click="emit('update:visible', false)">取消</el-button>
-      <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+      <el-button @click="emit('update:visible', false)">{{ readonly ? '关闭' : '取消' }}</el-button>
+      <el-button v-if="!readonly" type="primary" :loading="saving" @click="handleSave">保存</el-button>
+      <el-button v-if="readonly && canPublish && itemStatus !== 1" type="success" @click="emit('publish')">上架</el-button>
+      <el-button v-if="readonly && canPublish && itemStatus === 1" type="warning" @click="emit('unpublish')">下架</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
 /** 文创新建/编辑弹窗：多角度鉴赏图与咨询方式 */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import type { CraftImagePayload } from '@/api/craft'
@@ -133,19 +137,33 @@ export interface CraftFormState {
   }
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   visible: boolean
   editingId: number | null
   form: CraftFormState
   categories: CategoryOption[]
   saving: boolean
   rules: FormRules
-}>()
+  readonly?: boolean
+  canPublish?: boolean
+  itemStatus?: number
+}>(), {
+  readonly: false,
+  canPublish: false,
+  itemStatus: 0
+})
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
   save: []
+  publish: []
+  unpublish: []
 }>()
+
+const dialogTitle = computed(() => {
+  if (props.readonly) return '查看文创'
+  return props.editingId ? '编辑文创' : '新建文创'
+})
 
 const formRef = ref<FormInstance>()
 
@@ -158,6 +176,7 @@ function removeImage(index: number) {
 }
 
 async function handleSave() {
+  if (props.readonly) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (valid) emit('save')
 }

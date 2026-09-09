@@ -27,6 +27,7 @@ import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 /** 课程列表页：筛选、分页、上下架、字幕与编辑弹窗状态 */
 export function useCourseList() {
   const auth = useAuthStore()
+  const canRead = computed(() => auth.can('course:read'))
   const canWrite = computed(() => auth.can('course:write'))
   const canPublish = computed(() => auth.can('course:publish'))
 
@@ -42,6 +43,9 @@ export function useCourseList() {
   const filterStatus = ref<number | undefined>()
   const dialogVisible = ref(false)
   const editingId = ref<number | null>(null)
+  const dialogMode = ref<'create' | 'edit' | 'view'>('create')
+  const reviewingRow = ref<CourseItem | null>(null)
+  const readonly = computed(() => dialogMode.value === 'view')
   let listRequestSeq = 0
 
   const subtitleInfo = ref<SubtitleStatus>({
@@ -147,7 +151,13 @@ export function useCourseList() {
     }
   }
 
-  async function openDialog(row?: CourseItem) {
+  function openView(row: CourseItem) {
+    return openDialog(row, 'view')
+  }
+
+  async function openDialog(row?: CourseItem, requested?: 'view' | 'edit') {
+    dialogMode.value = !row ? 'create' : (requested === 'view' || !canWrite.value ? 'view' : 'edit')
+    reviewingRow.value = row ?? null
     resetForm()
     editingId.value = row?.id ?? null
     if (row) {
@@ -174,6 +184,7 @@ export function useCourseList() {
   }
 
   async function onSave() {
+    if (readonly.value) return
     const pendingSubtitleUrl = subtitleUrlInput.value.trim()
     const subtitleDirty = Boolean(editingId.value)
       && pendingSubtitleUrl !== subtitleSavedUrl.value.trim()
@@ -235,7 +246,7 @@ export function useCourseList() {
   }
 
   async function onTriggerSubtitle() {
-    if (!editingId.value) return
+    if (readonly.value || !editingId.value) return
     subtitleTriggering.value = true
     try {
       subtitleInfo.value = await triggerSubtitle(editingId.value)
@@ -246,7 +257,7 @@ export function useCourseList() {
   }
 
   async function onSaveSubtitle() {
-    if (!editingId.value) return
+    if (readonly.value || !editingId.value) return
     if (!subtitleUrlInput.value.trim()) {
       ElMessage.warning('请先上传字幕文件')
       return
@@ -277,6 +288,18 @@ export function useCourseList() {
     await loadData()
   }
 
+  async function onPublishCurrent() {
+    if (!reviewingRow.value) return
+    await onPublish(reviewingRow.value)
+    dialogVisible.value = false
+  }
+
+  async function onUnpublishCurrent() {
+    if (!reviewingRow.value) return
+    await onUnpublish(reviewingRow.value)
+    dialogVisible.value = false
+  }
+
   async function onDelete(row: CourseItem) {
     await ElMessageBox.confirm(softDeleteConfirm(`「${row.name}」`), '删除确认', { type: 'warning' })
     await removeCourse(row.id)
@@ -289,8 +312,10 @@ export function useCourseList() {
   })
 
   return {
+    canRead,
     canWrite,
     canPublish,
+    readonly,
     loading,
     saving,
     list,
@@ -303,6 +328,7 @@ export function useCourseList() {
     filterStatus,
     dialogVisible,
     editingId,
+    reviewingRow,
     subtitleInfo,
     subtitleUrlInput,
     subtitleTriggering,
@@ -313,7 +339,10 @@ export function useCourseList() {
     loadData,
     onFilter,
     openDialog,
+    openView,
     onSave,
+    onPublishCurrent,
+    onUnpublishCurrent,
     onTriggerSubtitle,
     onSaveSubtitle,
     onPublish,

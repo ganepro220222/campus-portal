@@ -9,6 +9,7 @@
     :aspect-hint="aspectHint"
     :upload-label="uploadLabel"
     :done-text="doneText"
+    :readonly="readonly"
     @update:model-value="$emit('update:modelValue', $event)"
     @update:fit-mode="$emit('update:fitMode', $event)"
   />
@@ -25,11 +26,13 @@ const props = withDefaults(defineProps<{
   slot?: CoverSlot
   uploadLabel?: string
   doneText?: string
+  readonly?: boolean
 }>(), {
   modelValue: '',
   fitMode: 'fill',
   uploadLabel: '上传封面',
-  doneText: '封面已上传'
+  doneText: '封面已上传',
+  readonly: false
 })
 
 defineEmits<{

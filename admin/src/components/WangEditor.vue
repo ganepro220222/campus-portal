@@ -1,6 +1,7 @@
 <template>
   <div class="wang-editor" :class="{ 'is-disabled': disabled }">
     <Toolbar
+      v-if="!disabled"
       class="wang-toolbar"
       :editor="editorRef"
       :default-config="toolbarConfig"
@@ -74,7 +75,17 @@ const editorConfig: Partial<IEditorConfig> = {
 
 function onCreated(editor: IDomEditor) {
   editorRef.value = editor
+  if (props.disabled) {
+    editor.disable()
+  }
 }
+
+watch(() => props.disabled, (disabled) => {
+  const editor = editorRef.value
+  if (!editor) return
+  if (disabled) editor.disable()
+  else editor.enable()
+})
 
 function onChange(editor: IDomEditor) {
   const val = sanitizeRichHtml(editor.getHtml())

@@ -1,13 +1,13 @@
 <template>
   <el-dialog
     :model-value="visible"
-    :title="editingId ? '编辑展馆' : '新建展馆'"
+    :title="dialogTitle"
     width="760px"
     destroy-on-close
     top="3vh"
     @update:model-value="emit('update:visible', $event)"
   >
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="108px">
+    <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" :disabled="readonly" label-width="108px">
       <el-form-item label="名称" prop="name">
         <el-input v-model="form.name" maxlength="100" show-word-limit placeholder="完整展馆名称" />
         <FieldHint :text="FIELD_HINTS.hallName" />
@@ -22,11 +22,12 @@
         </el-select>
       </el-form-item>
       <el-form-item label="封面图">
-        <CoverUploadField
-          v-model="form.cover"
-          v-model:fit-mode="form.coverFitMode"
-          slot="hallList"
-        />
+          <CoverUploadField
+            v-model="form.cover"
+            v-model:fit-mode="form.coverFitMode"
+            slot="hallList"
+            :readonly="readonly"
+          />
       </el-form-item>
       <el-form-item label="VR 全景链接">
         <el-input v-model="form.vrUrl" placeholder="粘贴全景服务商提供的展馆链接（可向技术人员索取）" />
@@ -40,11 +41,11 @@
       <p class="text-muted section-tip">按章节组织长卷图文，小程序端连续滚动展示</p>
       <FieldHint :text="FIELD_HINTS.hallSectionTitle" />
       <div class="sections-block">
-        <el-button type="primary" link :icon="Plus" @click="addSection">添加章节</el-button>
+        <el-button v-if="!readonly" type="primary" link :icon="Plus" @click="addSection">添加章节</el-button>
         <div v-for="(section, sIdx) in form.sections" :key="sIdx" class="section-card">
           <div class="section-head">
             <el-input v-model="section.title" placeholder="章节标题，如「办学历程」" maxlength="100" />
-            <el-button link type="danger" @click="removeSection(sIdx)">删除章节</el-button>
+            <el-button v-if="!readonly" link type="danger" @click="removeSection(sIdx)">删除章节</el-button>
           </div>
           <el-table :data="section.items" size="small" border class="slides-table">
             <el-table-column label="图片" min-width="200" :resizable="false">
@@ -55,6 +56,7 @@
                   accept="image/*"
                   upload-label="上传图片"
                   done-text="已上传"
+                  :readonly="readonly"
                 />
               </template>
             </el-table-column>
@@ -63,20 +65,20 @@
                 <el-input v-model="row.caption" placeholder="图片说明" size="small" maxlength="200" />
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="70" align="center" :resizable="false">
+            <el-table-column v-if="!readonly" label="操作" width="70" align="center" :resizable="false">
               <template #default="{ $index }">
                 <el-button link type="danger" @click="removeSectionItem(sIdx, $index)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
-          <el-button type="primary" link :icon="Plus" @click="addSectionItem(sIdx)">添加章节图片</el-button>
+          <el-button v-if="!readonly" type="primary" link :icon="Plus" @click="addSectionItem(sIdx)">添加章节图片</el-button>
         </div>
       </div>
 
       <el-divider content-position="left">轮播图文</el-divider>
       <FieldHint :text="FIELD_HINTS.hallCaption" />
       <div class="slides-block">
-        <el-button type="primary" link :icon="Plus" @click="addSlide">添加图片</el-button>
+        <el-button v-if="!readonly" type="primary" link :icon="Plus" @click="addSlide">添加图片</el-button>
         <el-table :data="form.slides" size="small" border class="slides-table">
           <el-table-column label="图片" min-width="200" :resizable="false">
             <template #default="{ row }">
@@ -86,6 +88,7 @@
                 accept="image/*"
                 upload-label="上传图片"
                 done-text="已上传"
+                :readonly="readonly"
               />
             </template>
           </el-table-column>
@@ -106,7 +109,7 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="70" align="center" :resizable="false">
+          <el-table-column v-if="!readonly" label="操作" width="70" align="center" :resizable="false">
             <template #default="{ $index }">
               <el-button link type="danger" @click="removeSlide($index)">删除</el-button>
             </template>
@@ -124,6 +127,7 @@
           upload-label="上传语音"
           done-text="语音已上传"
           hint="支持 MP3、AAC、M4A、WAV"
+          :readonly="readonly"
           @duration="onAudioDuration"
         />
       </el-form-item>
@@ -135,18 +139,20 @@
       <el-form-item label="排序" prop="sort">
         <el-input-number v-model="form.sort" :min="0" :max="999" />
       </el-form-item>
-      <p class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
+      <p v-if="!readonly" class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
     </el-form>
     <template #footer>
-      <el-button @click="emit('update:visible', false)">取消</el-button>
-      <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+      <el-button @click="emit('update:visible', false)">{{ readonly ? '关闭' : '取消' }}</el-button>
+      <el-button v-if="!readonly" type="primary" :loading="saving" @click="handleSave">保存</el-button>
+      <el-button v-if="readonly && canPublish && itemStatus !== 1" type="success" @click="emit('publish')">上架</el-button>
+      <el-button v-if="readonly && canPublish && itemStatus === 1" type="warning" @click="emit('unpublish')">下架</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
 /** 展馆新建/编辑弹窗：章节、轮播图与语音讲解表单 */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import CoverUploadField from '@/components/CoverUploadField.vue'
@@ -171,19 +177,33 @@ export interface HallFormState {
   audioTime: string
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   visible: boolean
   editingId: number | null
   form: HallFormState
   categories: CategoryOption[]
   saving: boolean
   rules: FormRules
-}>()
+  readonly?: boolean
+  canPublish?: boolean
+  itemStatus?: number
+}>(), {
+  readonly: false,
+  canPublish: false,
+  itemStatus: 0
+})
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
   save: []
+  publish: []
+  unpublish: []
 }>()
+
+const dialogTitle = computed(() => {
+  if (props.readonly) return '查看展馆'
+  return props.editingId ? '编辑展馆' : '新建展馆'
+})
 
 const formRef = ref<FormInstance>()
 
@@ -225,6 +245,7 @@ function removeSectionItem(sectionIndex: number, itemIndex: number) {
 }
 
 async function handleSave() {
+  if (props.readonly) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (valid) emit('save')
 }

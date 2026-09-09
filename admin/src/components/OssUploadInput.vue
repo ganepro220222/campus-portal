@@ -68,7 +68,7 @@
         </div>
       </div>
 
-      <div class="controls">
+      <div v-if="!readonly" class="controls">
         <div class="row">
           <el-upload
             :show-file-list="false"
@@ -113,6 +113,9 @@
         <p v-if="resolvedHint" class="hint">{{ resolvedHint }}</p>
         <p v-if="uploadError" class="hint error">{{ uploadError }}</p>
       </div>
+      <p v-if="readonly && showCoverFit" class="hint">
+        小程序展示：{{ fitMode === 'fit' ? '完整显示' : '裁切填满' }}
+      </p>
     </div>
   </div>
 </template>
@@ -166,6 +169,7 @@ const props = withDefaults(defineProps<{
   showIconShape?: boolean
   preview?: PreviewMode
   displayName?: string
+  readonly?: boolean
 }>(), {
   modelValue: '',
   fitMode: 'fill',
@@ -180,7 +184,8 @@ const props = withDefaults(defineProps<{
   showCoverFit: false,
   showIconShape: false,
   preview: 'auto',
-  displayName: ''
+  displayName: '',
+  readonly: false
 })
 
 const emit = defineEmits<{

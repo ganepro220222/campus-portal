@@ -38,8 +38,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right" align="center">
+      <el-table-column label="操作" width="280" fixed="right" align="center">
         <template #default="{ row }">
+          <el-button v-if="canRead" link @click="openView(row)">查看</el-button>
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
           <el-button
             v-if="canPublish && row.status !== 1"
@@ -59,7 +60,6 @@
             type="danger"
             @click="onDelete(row)"
           >删除</el-button>
-          <span v-if="!canWrite" class="text-muted">—</span>
         </template>
       </el-table-column>
     </el-table>
@@ -81,7 +81,12 @@
       :categories="categories"
       :saving="saving"
       :rules="rules"
+      :readonly="readonly"
+      :can-publish="canPublish"
+      :item-status="reviewingRow?.status ?? 0"
       @save="onSave"
+      @publish="onPublishCurrent"
+      @unpublish="onUnpublishCurrent"
     />
   </div>
 </template>
@@ -93,8 +98,10 @@ import { useCraftList } from '@/composables/useCraftList'
 import CraftEditDialog from './CraftEditDialog.vue'
 
 const {
+  canRead,
   canWrite,
   canPublish,
+  readonly,
   loading,
   saving,
   list,
@@ -106,12 +113,16 @@ const {
   filterStatus,
   dialogVisible,
   editingId,
+  reviewingRow,
   form,
   rules,
   loadData,
   onFilter,
   openDialog,
+  openView,
   onSave,
+  onPublishCurrent,
+  onUnpublishCurrent,
   onPublish,
   onUnpublish,
   onDelete

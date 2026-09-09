@@ -53,8 +53,9 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="150" />
-      <el-table-column label="操作" width="220" fixed="right" align="center">
+      <el-table-column label="操作" width="280" fixed="right" align="center">
         <template #default="{ row }">
+          <el-button v-if="canRead" link @click="openView(row)">查看</el-button>
           <el-button v-if="canWrite" link type="primary" @click="openDialog(row)">编辑</el-button>
           <el-button
             v-if="canPublish && row.status !== 1"
@@ -74,7 +75,6 @@
             type="danger"
             @click="onDelete(row)"
           >删除</el-button>
-          <span v-if="!canWrite" class="text-muted">—</span>
         </template>
       </el-table-column>
     </el-table>
@@ -91,14 +91,14 @@
 
     <el-dialog
       v-model="dialogVisible"
-      :title="editingId ? '编辑资源' : '新建资源'"
+      :title="dialogTitle"
       width="600px"
       destroy-on-close
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+      <el-form ref="formRef" :model="form" :rules="readonly ? {} : rules" :disabled="readonly" label-width="100px">
         <el-form-item label="资源名称" prop="name">
           <el-input v-model="form.name" maxlength="200" show-word-limit />
-          <FieldHint :text="FIELD_HINTS.resourceName" />
+          <FieldHint v-if="!readonly" :text="FIELD_HINTS.resourceName" />
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
           <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%">
@@ -109,7 +109,7 @@
           <el-select v-model="form.fileType" placeholder="选择格式" style="width: 100%">
             <el-option v-for="t in FILE_TYPE_OPTIONS" :key="t.value" :label="t.label" :value="t.value" />
           </el-select>
-          <div class="form-tip">上传学习资料后按后缀自动带出，标错可改。</div>
+          <div v-if="!readonly" class="form-tip">上传学习资料后按后缀自动带出，标错可改。</div>
         </el-form-item>
         <el-form-item label="学习资料" prop="fileUrl">
           <OssUploadInput
@@ -121,6 +121,7 @@
             upload-label="上传文件"
             done-text="文件已上传"
             hint="支持 PDF、Word、PPT、Excel、MP4、MOV、MP3、AAC、M4A。小程序内打开建议 30MB 以内；更大文件请用外链。"
+            :readonly="readonly"
             @uploaded="onResourceFileUploaded"
           />
         </el-form-item>
@@ -128,14 +129,16 @@
           <span v-if="form.fileSizeKb">{{ formatFileSizeKb(form.fileSizeKb) }}</span>
           <span v-else class="text-muted">{{ form.fileUrl ? '未记录大小，重新上传后自动计算' : '上传学习资料后自动计算' }}</span>
         </el-form-item>
-        <p class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
+        <p v-if="!readonly" class="form-tip">上下架请在列表操作，保存内容不会改变当前状态。</p>
         <el-form-item v-if="editingId" label="下载次数">
           <span>{{ form.downloadCount }} 次（只读，学员成功打开或播放后自动累计）</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="onSave">保存</el-button>
+        <el-button @click="dialogVisible = false">{{ readonly ? '关闭' : '取消' }}</el-button>
+        <el-button v-if="!readonly" type="primary" :loading="saving" @click="onSave">保存</el-button>
+        <el-button v-if="readonly && canPublish && reviewingStatus !== 1" type="success" @click="onPublishCurrent">上架</el-button>
+        <el-button v-if="readonly && canPublish && reviewingStatus === 1" type="warning" @click="onUnpublishCurrent">下架</el-button>
       </template>
     </el-dialog>
   </div>
@@ -166,6 +169,7 @@ import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 import { bytesToFileSizeKb, formatFileSizeKb, inferResourceFileType } from '@/utils/uploadMeta.mjs'
 
 const auth = useAuthStore()
+const canRead = computed(() => auth.can('course:read'))
 const canWrite = computed(() => auth.can('course:write'))
 const canPublish = computed(() => auth.can('course:publish'))
 
@@ -181,7 +185,15 @@ const filterFileType = ref('')
 const filterStatus = ref<number | undefined>()
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
+const dialogMode = ref<'create' | 'edit' | 'view'>('create')
+const reviewingRow = ref<ResourceItem | null>(null)
 const formRef = ref<FormInstance>()
+const readonly = computed(() => dialogMode.value === 'view')
+const reviewingStatus = computed(() => reviewingRow.value?.status ?? 0)
+const dialogTitle = computed(() => {
+  if (readonly.value) return '查看资源'
+  return editingId.value ? '编辑资源' : '新建资源'
+})
 
 const form = reactive({
   name: '',
@@ -247,7 +259,13 @@ function resetForm() {
   form.downloadCount = 0
 }
 
-async function openDialog(row?: ResourceItem) {
+function openView(row: ResourceItem) {
+  return openDialog(row, 'view')
+}
+
+async function openDialog(row?: ResourceItem, requested?: 'view' | 'edit') {
+  dialogMode.value = !row ? 'create' : (requested === 'view' || !canWrite.value ? 'view' : 'edit')
+  reviewingRow.value = row ?? null
   resetForm()
   editingId.value = row?.id ?? null
   if (row) {
@@ -264,6 +282,7 @@ async function openDialog(row?: ResourceItem) {
 }
 
 async function onSave() {
+  if (readonly.value) return
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   saving.value = true
@@ -302,6 +321,18 @@ async function onUnpublish(row: ResourceItem) {
   await unpublishResource(row.id)
   ElMessage.success('已下架')
   await loadData()
+}
+
+async function onPublishCurrent() {
+  if (!reviewingRow.value) return
+  await onPublish(reviewingRow.value)
+  dialogVisible.value = false
+}
+
+async function onUnpublishCurrent() {
+  if (!reviewingRow.value) return
+  await onUnpublish(reviewingRow.value)
+  dialogVisible.value = false
 }
 
 async function onDelete(row: ResourceItem) {

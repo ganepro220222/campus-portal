@@ -59,7 +59,7 @@ public class AdminUploadController {
      */
     @GetMapping("/preview-url")
     public Result<Map<String, String>> previewUrl(@RequestParam("url") String url) {
-        requireUploadPermission();
+        requireMediaPreviewPermission();
         String signed = ossService.signUrl(url);
         return Result.ok(Map.of("url", signed == null ? "" : signed));
     }
@@ -71,7 +71,7 @@ public class AdminUploadController {
      */
     @GetMapping("/file-meta")
     public Result<Map<String, Object>> fileMeta(@RequestParam("url") String url) {
-        requireUploadPermission();
+        requireMediaPreviewPermission();
         return Result.ok(ossService.objectMeta(url));
     }
 
@@ -82,11 +82,23 @@ public class AdminUploadController {
      */
     @GetMapping("/subtitle-preview")
     public Result<Map<String, Object>> subtitlePreview(@RequestParam("url") String url) {
-        requireUploadPermission();
+        requireMediaPreviewPermission();
         return Result.ok(ossService.subtitlePreview(url));
     }
 
     private void requireUploadPermission() {
         adminPermissionService.requireAny("course:write", "hall:write", "news:write", "admin:super");
+    }
+
+    /**
+     * 只读预览：内容审核只有 read/publish，没有 write，但仍须能看视频、音频、字幕和资料。
+     * 上传、直传仍走 {@link #requireUploadPermission()}。
+     */
+    private void requireMediaPreviewPermission() {
+        adminPermissionService.requireAny(
+                "course:write", "hall:write", "news:write",
+                "course:read", "hall:read", "news:read",
+                "course:publish", "hall:publish", "news:publish",
+                "admin:super");
     }
 }

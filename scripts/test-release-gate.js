@@ -92,6 +92,14 @@ function assertViewerCheckInPreflight() {
     console.error('[test-release-gate] preflight:local 必须包含 test:admin-news-detail-dialog，否则动态详情 loading 代际会再次漏测')
     process.exit(1)
   }
+  if (!pkg.scripts['test:admin-content-review'] || !String(pkg.scripts['preflight:local'] || '').includes('test:admin-content-review')) {
+    console.error('[test-release-gate] preflight:local 必须包含 test:admin-content-review，否则内容审核只读查看会再次漏测')
+    process.exit(1)
+  }
+  if (!pkg.scripts['test:admin-news-save-mode'] || !String(pkg.scripts['preflight:local'] || '').includes('test:admin-news-save-mode')) {
+    console.error('[test-release-gate] preflight:local 必须包含 test:admin-news-save-mode，否则已发布动态保存文案会再次漏测')
+    process.exit(1)
+  }
 }
 
 function assertBackendEnvTemplatesExposeRuntimeControls() {

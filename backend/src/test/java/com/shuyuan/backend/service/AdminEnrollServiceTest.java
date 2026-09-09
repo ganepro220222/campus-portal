@@ -43,6 +43,8 @@ class AdminEnrollServiceTest {
     private MessageService messageService;
     @Mock
     private SubscribeOutboxService subscribeOutboxService;
+    @Mock
+    private PointService pointService;
 
     private AdminEnrollService adminEnrollService;
 
@@ -50,7 +52,7 @@ class AdminEnrollServiceTest {
     void setUp() {
         adminEnrollService = new AdminEnrollService(
                 enrollMapper, activityMapper, adminPermissionService,
-                messageService, subscribeOutboxService);
+                messageService, subscribeOutboxService, pointService);
     }
 
     @Test
@@ -100,6 +102,7 @@ class AdminEnrollServiceTest {
 
         assertEquals("approved", vo.get("status"));
         verify(subscribeOutboxService).enqueueEnrollApproved(eq(88L), any(Activity.class), any(Enroll.class));
+        verify(pointService).awardEnrollApproved(88L, 11L);
     }
 
     @Test
@@ -112,6 +115,7 @@ class AdminEnrollServiceTest {
         assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,
                 () -> adminEnrollService.approve(11L));
         verify(subscribeOutboxService, never()).enqueueEnrollApproved(anyLong(), any(), any());
+        verify(pointService, never()).awardEnrollApproved(anyLong(), anyLong());
     }
 
     private void stubApproveSuccess() {
@@ -152,6 +156,7 @@ class AdminEnrollServiceTest {
         assertEquals(409, ex.getCode());
         verify(subscribeOutboxService, never()).enqueueEnrollApproved(anyLong(), any(), any());
         verify(messageService, never()).create(anyLong(), anyString(), anyString(), anyString(), anyString(), anyLong());
+        verify(pointService, never()).awardEnrollApproved(anyLong(), anyLong());
     }
 
     @Test
@@ -216,5 +221,18 @@ class AdminEnrollServiceTest {
         verify(activityMapper).decrEnrolledCount(5L);
         verify(messageService).create(eq(88L), eq("报名未通过"), contains("材料不全"),
                 eq("enroll"), eq("activity"), eq(5L));
+        verify(pointService, never()).awardEnrollApproved(anyLong(), anyLong());
+        verify(pointService, never()).award(anyLong(), anyString());
+    }
+
+    @Test
+    void approve_awardFailurePropagatesAfterCas() {
+        stubApproveSuccess();
+        doThrow(new RuntimeException("points"))
+                .when(pointService).awardEnrollApproved(88L, 11L);
+
+        assertThrows(RuntimeException.class, () -> adminEnrollService.approve(11L));
+        verify(enrollMapper).casApprove(11L);
+        verify(subscribeOutboxService, never()).enqueueEnrollApproved(anyLong(), any(), any());
     }
 }

@@ -154,7 +154,7 @@
         </el-form-item>
         <el-form-item label="报名审核">
           <el-switch v-model="form.needReview" :active-value="1" :inactive-value="0" />
-          <span class="inline-tip">开启后提交即占位，需管理员审核通过</span>
+          <span class="inline-tip">开启后提交即占位，审核通过后才发报名积分</span>
         </el-form-item>
       </el-form>
       <template #footer>

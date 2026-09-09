@@ -81,9 +81,10 @@ public class BadgeGrantService {
             return count >= Math.max(need, 1);
         }
         if ("enroll_count".equals(type)) {
+            // 「参加」只认审核通过；待审核还不是有效参与。
             long count = enrollMapper.selectCount(new LambdaQueryWrapper<Enroll>()
                     .eq(Enroll::getMemberId, memberId)
-                    .in(Enroll::getStatus, "pending", "approved"));
+                    .eq(Enroll::getStatus, "approved"));
             return count >= need;
         }
         if ("hall_count".equals(type)) {

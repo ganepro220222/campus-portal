@@ -103,12 +103,12 @@ public class EnrollService {
         }
 
         createEnrollMessage(memberId, activity, existing);
-        // 待审核只靠站内消息告知「已提交」；微信「报名成功通知」仅已通过才发。
+        // 待审核只靠站内消息告知「已提交」；微信通知和报名积分都只在已通过时发。
         if ("approved".equals(status)) {
             subscribeOutboxService.enqueueEnrollSuccess(memberId, activity, existing);
+            pointService.awardEnrollApproved(memberId, existing.getId());
         }
         eventLogService.record("enroll", "activity", activityId);
-        pointService.award(memberId, "enroll_activity");
         return toEnrollVo(existing, activity);
     }
 
@@ -133,6 +133,7 @@ public class EnrollService {
             throw new BusinessException(409, "报名状态已变化，请刷新");
         }
         activityMapper.decrEnrolledCount(activityId);
+        // 通过后获得的报名积分不随取消扣回；待审核取消时本来就还没发分。
 
         createMessage(memberId, "报名已取消", "您已取消活动「" + activity.getTitle() + "」的报名。", "enroll", "activity", activityId);
     }

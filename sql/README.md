@@ -345,4 +345,6 @@ sudo systemctl restart shuyuan-backend
 | `seed-dev.sql` | 开发演示数据 |
 | `knowledge/*.md` | 内置知识库源文件（改这里，不要改生成的 .sql） |
 | `patch-builtin-knowledge.sql` | 内置知识库（**正式内容**，由上面的源文件生成，所有环境都要跑） |
+| `patch-badge-enroll-approved.sql` | 旧库：活动达人文案改为「审核通过 5 次活动」 |
+| `report-enroll-activity-points.sql` | 只读核对报名积分与报名状态，不改正数据 |
 | `patch-*.sql` | 旧库增量升级或数据修正 |

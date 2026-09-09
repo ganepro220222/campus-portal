@@ -67,6 +67,13 @@ class EnrollServiceTest {
         enrollService = new EnrollService(
                 activityMapper, enrollMapper, memberProfileMapper,
                 eventLogService, pointService, messageService, subscribeOutboxService);
+        lenient().doAnswer(invocation -> {
+            Enroll enroll = invocation.getArgument(0);
+            if (enroll.getId() == null) {
+                enroll.setId(99L);
+            }
+            return 1;
+        }).when(enrollMapper).insert(any(Enroll.class));
     }
 
     @AfterEach
@@ -90,6 +97,7 @@ class EnrollServiceTest {
 
         assertNotNull(result);
         verify(subscribeOutboxService).enqueueEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
+        verify(pointService).awardEnrollApproved(MEMBER_ID, 99L);
     }
 
     @Test
@@ -153,7 +161,8 @@ class EnrollServiceTest {
         verify(messageService).create(eq(MEMBER_ID), anyString(), anyString(), eq("enroll"), eq("activity"), eq(ACTIVITY_ID));
         verify(subscribeOutboxService).enqueueEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
         verify(eventLogService).record("enroll", "activity", ACTIVITY_ID);
-        verify(pointService).award(MEMBER_ID, "enroll_activity");
+        verify(pointService).awardEnrollApproved(MEMBER_ID, 99L);
+        verify(pointService, never()).award(anyLong(), anyString());
     }
 
     @Test
@@ -175,7 +184,8 @@ class EnrollServiceTest {
         verify(subscribeOutboxService, never()).enqueueEnrollApproved(anyLong(), any(), any());
         verifyNoMoreInteractions(subscribeOutboxService);
         verify(eventLogService).record("enroll", "activity", ACTIVITY_ID);
-        verify(pointService).award(MEMBER_ID, "enroll_activity");
+        verify(pointService, never()).award(anyLong(), anyString());
+        verify(pointService, never()).awardEnrollApproved(anyLong(), anyLong());
     }
 
     @Test
@@ -191,6 +201,7 @@ class EnrollServiceTest {
         enrollService.enroll(ACTIVITY_ID, req);
 
         verify(subscribeOutboxService).enqueueEnrollSuccess(eq(MEMBER_ID), any(Activity.class), any(Enroll.class));
+        verify(pointService).awardEnrollApproved(MEMBER_ID, 99L);
         verifyNoMoreInteractions(subscribeOutboxService);
     }
 
@@ -226,6 +237,7 @@ class EnrollServiceTest {
         assertTrue(where.contains("status"), where);
         assertTrue(cap.getValue().getParamNameValuePairs().containsValue("cancelled"));
         assertTrue(cap.getValue().getParamNameValuePairs().containsValue("rejected"));
+        verify(pointService).awardEnrollApproved(MEMBER_ID, 21L);
     }
 
     @Test
@@ -258,6 +270,8 @@ class EnrollServiceTest {
         assertFalse(submittedAt.isBefore(before));
         verify(subscribeOutboxService, never()).enqueueEnrollSuccess(anyLong(), any(), any());
         verify(subscribeOutboxService, never()).enqueueEnrollApproved(anyLong(), any(), any());
+        verify(pointService, never()).award(anyLong(), anyString());
+        verify(pointService, never()).awardEnrollApproved(anyLong(), anyLong());
     }
 
     @Test
@@ -279,6 +293,7 @@ class EnrollServiceTest {
         verify(activityMapper).decrEnrolledCount(ACTIVITY_ID);
         verify(subscribeOutboxService, never()).enqueueEnrollSuccess(anyLong(), any(), any());
         verify(pointService, never()).award(anyLong(), anyString());
+        verify(pointService, never()).awardEnrollApproved(anyLong(), anyLong());
     }
 
     @Test
@@ -332,6 +347,8 @@ class EnrollServiceTest {
         verify(enrollMapper).casCancelActive(20L);
         verify(enrollMapper, never()).updateById(any(Enroll.class));
         verify(activityMapper).decrEnrolledCount(ACTIVITY_ID);
+        verify(pointService, never()).award(anyLong(), anyString());
+        verify(pointService, never()).awardEnrollApproved(anyLong(), anyLong());
     }
 
     @Test
@@ -492,6 +509,7 @@ class EnrollServiceTest {
         verify(activityMapper).incrEnrolledCount(ACTIVITY_ID);
         verify(enrollMapper).insert(argThat((Enroll enroll) ->
                 "张三".equals(enroll.getName()) && "13800138000".equals(enroll.getPhone())));
+        verify(pointService).awardEnrollApproved(MEMBER_ID, 99L);
     }
 
     @Test

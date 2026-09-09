@@ -223,6 +223,57 @@ class PointServiceTest {
         verify(badgeGrantService, never()).checkAndGrant(anyLong());
     }
 
+    @Test
+    void awardEnrollApproved_isIdempotentPerEnroll() {
+        when(pointRecordMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+
+        pointService.awardEnrollApproved(8L, 21L);
+
+        verify(pointRuleMapper, never()).selectOne(any(LambdaQueryWrapper.class));
+        verify(pointRecordMapper, never()).insert(any(PointRecord.class));
+    }
+
+    @Test
+    void awardEnrollApproved_writesRemarkOnce() {
+        when(pointRecordMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(pointRuleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(activeRule("enroll_activity", 10, 1));
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+
+        pointService.awardEnrollApproved(8L, 21L);
+
+        ArgumentCaptor<PointRecord> captor = ArgumentCaptor.forClass(PointRecord.class);
+        verify(pointRecordMapper).insert(captor.capture());
+        assertEquals("enroll:21", captor.getValue().getRemark());
+        assertEquals("enroll_activity", captor.getValue().getAction());
+        verify(memberMapper).addPointsDelta(8L, 10);
+    }
+
+    @Test
+    void awardEnrollApproved_ignoresDuplicateKeyOnConcurrentInsert() {
+        when(pointRecordMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+        when(pointRuleMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(activeRule("enroll_activity", 10, 1));
+        when(redis.opsForValue()).thenReturn(valueOps);
+        when(valueOps.increment(anyString())).thenReturn(1L);
+        doThrow(new DuplicateKeyException("uk_member_action_remark"))
+                .when(pointRecordMapper).insert(any(PointRecord.class));
+
+        pointService.awardEnrollApproved(8L, 21L);
+
+        verify(valueOps).decrement(anyString());
+        verify(memberMapper, never()).addPointsDelta(anyLong(), anyInt());
+        verify(badgeGrantService, never()).checkAndGrant(anyLong());
+    }
+
+    @Test
+    void awardEnrollApproved_skipsNullIds() {
+        pointService.awardEnrollApproved(null, 21L);
+        pointService.awardEnrollApproved(8L, null);
+
+        verify(pointRecordMapper, never()).selectCount(any());
+        verify(pointRecordMapper, never()).insert(any(PointRecord.class));
+    }
+
     private static PointRule activeRule(String action, int points, int dailyLimit) {
         PointRule rule = new PointRule();
         rule.setAction(action);

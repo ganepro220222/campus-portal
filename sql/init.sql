@@ -748,7 +748,7 @@ INSERT IGNORE INTO `badge` (`name`, `icon_url`, `description`, `condition_type`,
 ('积分达人',  NULL, '累计积分达到 200 分', 'points', 200, 1),
 ('展馆达人',  NULL, '参观全部 11 个展馆', 'hall_count', 11, 1),
 ('学习先锋',  NULL, '完成 3 门课程学习', 'course_count', 3, 1),
-('活动达人',  NULL, '参加 5 次活动', 'enroll_count', 5, 1);
+('活动达人',  NULL, '审核通过 5 次活动', 'enroll_count', 5, 1);
 
 -- 系统配置初始值
 INSERT IGNORE INTO `sys_config` (`config_key`, `config_value`, `remark`) VALUES

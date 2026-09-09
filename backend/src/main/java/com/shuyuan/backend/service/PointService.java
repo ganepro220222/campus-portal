@@ -22,7 +22,8 @@ import java.time.LocalDateTime;
 /**
  * 积分规则触发与每日上限控制
  * <p>{@link #award(Long, String)} 仅做「每日次数」限制（Redis），remark 为空，不做对象级幂等。
- * 对象级幂等请使用 {@link #awardCourseComplete(Long, Long)} 或带非空 remark 的专用方法。
+ * 对象级幂等请使用 {@link #awardCourseComplete(Long, Long)}、{@link #awardEnrollApproved(Long, Long)}
+ * 或带非空 remark 的专用方法。
  */
 @Service
 @RequiredArgsConstructor
@@ -59,15 +60,30 @@ public class PointService {
         if (memberId == null || courseId == null) {
             return;
         }
-        String remark = "course:" + courseId;
+        awardOnceByRemark(memberId, "complete_course", "course:" + courseId);
+    }
+
+    /**
+     * 报名通过积分：每用户每条报名仅奖励一次（remark=enroll:{id} + DB 唯一键）。
+     * 待审核不得调用；通过后取消也不撤回。同一活动复用同一报名行，因此不会重复得分。
+     */
+    @Transactional
+    public void awardEnrollApproved(Long memberId, Long enrollId) {
+        if (memberId == null || enrollId == null) {
+            return;
+        }
+        awardOnceByRemark(memberId, "enroll_activity", "enroll:" + enrollId);
+    }
+
+    private void awardOnceByRemark(Long memberId, String action, String remark) {
         Long prior = pointRecordMapper.selectCount(new LambdaQueryWrapper<PointRecord>()
                 .eq(PointRecord::getMemberId, memberId)
-                .eq(PointRecord::getAction, "complete_course")
+                .eq(PointRecord::getAction, action)
                 .eq(PointRecord::getRemark, remark));
         if (prior != null && prior > 0) {
             return;
         }
-        awardWithRemark(memberId, "complete_course", remark, true);
+        awardWithRemark(memberId, action, remark, true);
     }
 
     private void awardWithRemark(Long memberId, String action, String remark, boolean idempotentByRemark) {

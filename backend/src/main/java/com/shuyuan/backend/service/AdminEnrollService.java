@@ -33,6 +33,7 @@ public class AdminEnrollService {
     private final AdminPermissionService adminPermissionService;
     private final MessageService messageService;
     private final SubscribeOutboxService subscribeOutboxService;
+    private final PointService pointService;
 
     public PageResult<Map<String, Object>> listByActivity(Long activityId, String status, int page, int size) {
         adminPermissionService.require("enroll:read");
@@ -61,6 +62,7 @@ public class AdminEnrollService {
 
         Activity activity = activityMapper.selectById(enroll.getActivityId());
         Enroll approved = enrollMapper.selectById(enrollId);
+        pointService.awardEnrollApproved(enroll.getMemberId(), enrollId);
         notifyMember(enroll.getMemberId(), "报名审核通过",
                 "您报名的活动「" + (activity != null ? activity.getTitle() : "") + "」已审核通过。",
                 enroll.getActivityId());
@@ -79,6 +81,7 @@ public class AdminEnrollService {
         }
 
         activityMapper.decrEnrolledCount(enroll.getActivityId());
+        // 待审核从未发报名积分，拒绝只需释放名额，没有可撤回的流水。
 
         Activity activity = activityMapper.selectById(enroll.getActivityId());
         notifyMember(enroll.getMemberId(), "报名未通过",

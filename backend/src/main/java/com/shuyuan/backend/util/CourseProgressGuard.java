@@ -65,18 +65,38 @@ public final class CourseProgressGuard {
             }
             return;
         }
-        int existingPos = existing.getLastPositionSeconds() != null ? existing.getLastPositionSeconds() : 0;
+        int lastReportPos = resolveLastReportPosition(existing);
+        int historicalMax = historicalMaxPositionSeconds(existing, totalSeconds);
         LocalDateTime lastAt = existing.getUpdatedAt() != null ? existing.getUpdatedAt() : now;
         long elapsed = Math.max(0, Duration.between(lastAt, now).getSeconds());
         int maxJump = (int) (elapsed * MAX_PLAYBACK_RATE) + JUMP_BUFFER_SECONDS;
-        if (incomingPosition > existingPos + maxJump) {
+        int allowed = Math.max(historicalMax, lastReportPos + maxJump);
+        if (incomingPosition > allowed) {
             throw new BusinessException(400, "进度上报过快，请正常观看后重试");
         }
     }
 
     /**
+     * 已学到过的最远位置：百分比只增不减，后退复习后仍允许立刻跳回该点。
+     */
+    public static int historicalMaxPositionSeconds(CourseProgress existing, int totalSeconds) {
+        if (existing == null) {
+            return 0;
+        }
+        int lastPos = existing.getLastPositionSeconds() != null ? existing.getLastPositionSeconds() : 0;
+        BigDecimal percent = existing.getProgressPercent() != null
+                ? existing.getProgressPercent() : BigDecimal.ZERO;
+        int fromPercent = 0;
+        if (totalSeconds > 0 && percent.compareTo(BigDecimal.ZERO) > 0) {
+            fromPercent = (int) Math.round(percent.doubleValue() / 100.0 * totalSeconds);
+            fromPercent = Math.min(totalSeconds, Math.max(0, fromPercent));
+        }
+        return Math.max(lastPos, fromPercent);
+    }
+
+    /**
      * 根据本次上报位置与上次上报间隔，累计可信观看秒数。
-     * 使用 lastReportPositionSeconds 而非续播最大位置；回退重看会重置累计基准。
+     * 使用 lastReportPositionSeconds 而非续播位置；回退重看会重置累计基准。
      */
     public static int nextWatchedSeconds(CourseProgress existing, int incomingPosition, LocalDateTime now) {
         if (existing == null) {

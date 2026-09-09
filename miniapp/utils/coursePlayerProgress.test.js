@@ -107,6 +107,7 @@ assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 280, complete
 assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 80, completed: false, totalDurationSeconds: 303 }), 80)
 assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 302, completed: false, totalDurationSeconds: 303 }), 0)
 assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 0, completed: false, totalDurationSeconds: 0 }), 0)
+assert.strictEqual(resolveResumeInitialTime({ lastPositionSeconds: 720, completed: false, totalDurationSeconds: 1800 }), 720)
 
 assert.strictEqual(formatResumeClock(0), '0:00')
 assert.strictEqual(formatResumeClock(1510), '25:10')
@@ -253,6 +254,16 @@ assert.strictEqual(shouldNotifyProgressCompletion({
   assert.strictEqual(mid.savedPositionLabel, '25:10')
   assert.strictEqual(mid.completed, false)
   assert.strictEqual(mid.progressStatusText, '已学习 45%')
+}
+
+{
+  const review = buildPlayerProgressView({
+    progress: { lastPositionSeconds: 720, completed: false, progressPercent: 66.67, totalDurationSeconds: 1800 },
+    failed: false
+  })
+  assert.strictEqual(review.initialTime, 720)
+  assert.strictEqual(review.savedPositionLabel, '12:00')
+  assert.strictEqual(review.progressStatusText, '已学习 66.67%')
 }
 
 {

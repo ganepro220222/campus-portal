@@ -98,8 +98,8 @@ function shouldSuppressCourseLoadFailure({ err, hasToken, mustChangePassword }) 
 }
 
 /**
- * 续播起点：未完成用上次位置；已完成或已停在片尾则从头播。
- * 库里的最高进度 / 完成态由服务端 merge，不会因为从头播被改小。
+ * 续播起点：未完成用上次真实离开位置；已完成或已停在片尾则从头播。
+ * 服务端最高百分比 / 完成态只增不减，后退复习不会把学习进度改小。
  */
 function resolveResumeInitialTime({ lastPositionSeconds, completed, totalDurationSeconds }) {
   if (completed) return 0

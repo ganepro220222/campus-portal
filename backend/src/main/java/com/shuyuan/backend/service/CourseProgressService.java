@@ -73,8 +73,8 @@ public class CourseProgressService {
             watchedSeconds = CourseProgressGuard.nextWatchedSeconds(existing, incomingPosition, now);
         }
 
-        boolean reachedThreshold = CourseProgressGuard.reachedCompletePosition(
-                snapshot.position(), snapshot.total());
+        boolean reachedThreshold = incomingTotal > 0
+                && CourseProgressGuard.reachedCompletePosition(incomingPosition, snapshot.total());
         boolean canComplete = CourseProgressGuard.eligibleForCompletion(
                 course, existing, snapshot.percent(), snapshot.total(), watchedSeconds);
         boolean completed = wasCompleted || (reachedThreshold && canComplete);
@@ -116,7 +116,8 @@ public class CourseProgressService {
     }
 
     /**
-     * 合并上报与历史进度：位置/百分比只增不减。
+     * 百分比只增不减；续播位置取本次真实播放位置。
+     * 未带总时长的上报不改续播位置，避免把进度抹掉。
      */
     ProgressSnapshot mergeProgress(CourseProgress existing, int incomingPosition, int incomingTotal) {
         int existingPos = existing != null && existing.getLastPositionSeconds() != null
@@ -126,20 +127,18 @@ public class CourseProgressService {
         BigDecimal existingPercent = existing != null && existing.getProgressPercent() != null
                 ? existing.getProgressPercent() : BigDecimal.ZERO;
 
-        int position = Math.max(existingPos, incomingPosition);
         int total = incomingTotal > 0 ? incomingTotal : existingTotal;
+        int resumePosition = incomingTotal > 0 ? incomingPosition : existingPos;
 
-        BigDecimal percent;
-        if (total > 0) {
-            percent = calcPercent(position, total);
-            if (existingPercent.compareTo(percent) > 0) {
-                percent = existingPercent;
+        BigDecimal percent = existingPercent;
+        if (incomingTotal > 0 && total > 0) {
+            BigDecimal incomingPercent = calcPercent(incomingPosition, total);
+            if (incomingPercent.compareTo(percent) > 0) {
+                percent = incomingPercent;
             }
-        } else {
-            percent = existingPercent;
         }
 
-        return new ProgressSnapshot(position, total, percent);
+        return new ProgressSnapshot(resumePosition, total, percent);
     }
 
     record ProgressSnapshot(int position, int total, BigDecimal percent) {}

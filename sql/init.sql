@@ -360,7 +360,7 @@ CREATE TABLE IF NOT EXISTS `course_progress` (
   `course_id`              BIGINT  NOT NULL,
   `last_position_seconds`  INT     NOT NULL DEFAULT 0 COMMENT '上次播放位置（秒）',
   `total_duration_seconds` INT     NOT NULL DEFAULT 0 COMMENT '总时长（秒）',
-  `progress_percent`       DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '完成百分比',
+  `progress_percent`       DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '历史最高学习百分比',
   `completed`              TINYINT NOT NULL DEFAULT 0 COMMENT '是否完成（≥90%）',
   `watched_seconds`        INT     NOT NULL DEFAULT 0 COMMENT '累计有效观看秒数',
   `last_report_position_seconds` INT NOT NULL DEFAULT 0 COMMENT '上次上报播放位置（秒）',

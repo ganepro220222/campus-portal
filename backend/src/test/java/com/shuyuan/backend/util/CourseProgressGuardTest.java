@@ -47,6 +47,40 @@ class CourseProgressGuardTest {
     }
 
     @Test
+    void validatePositionReport_allowsSeekBackToHistoricalMaxAfterRewind() {
+        CourseProgress existing = new CourseProgress();
+        existing.setLastPositionSeconds(600);
+        existing.setLastReportPositionSeconds(600);
+        existing.setProgressPercent(new BigDecimal("66.67"));
+        existing.setUpdatedAt(LocalDateTime.now());
+
+        assertDoesNotThrow(() ->
+                CourseProgressGuard.validatePositionReport(existing, 1200, 1800, LocalDateTime.now()));
+    }
+
+    @Test
+    void validatePositionReport_rejectsJumpPastHistoricalMaxAfterRewind() {
+        CourseProgress existing = new CourseProgress();
+        existing.setLastPositionSeconds(600);
+        existing.setLastReportPositionSeconds(600);
+        existing.setProgressPercent(new BigDecimal("66.67"));
+        existing.setUpdatedAt(LocalDateTime.now());
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> CourseProgressGuard.validatePositionReport(existing, 1300, 1800, LocalDateTime.now()));
+        assertEquals(400, ex.getCode());
+    }
+
+    @Test
+    void historicalMaxPositionSeconds_usesPercentAfterRewind() {
+        CourseProgress existing = new CourseProgress();
+        existing.setLastPositionSeconds(600);
+        existing.setProgressPercent(new BigDecimal("66.67"));
+
+        assertEquals(1200, CourseProgressGuard.historicalMaxPositionSeconds(existing, 1800));
+    }
+
+    @Test
     void eligibleForCompletion_requiresPriorProgressAndWatchTime() {
         Course course = courseWithDuration(10);
         CourseProgress existing = new CourseProgress();

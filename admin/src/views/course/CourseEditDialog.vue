@@ -59,6 +59,7 @@
           :readonly="readonly"
           @uploaded="onCourseVideoUploaded"
         />
+        <div v-if="editingId && !readonly" class="form-tip">更换视频将重置学员续播与完成状态，保存前会确认。</div>
       </el-form-item>
       <el-form-item label="配套资源">
         <el-select

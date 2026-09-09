@@ -20,6 +20,7 @@ import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, CourseItem, ResourceOption } from '@/types/api'
 import { explicitClear } from '@/utils/clearableField.mjs'
 import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
+import { confirmCourseVideoReplaceIfNeeded } from '@/utils/courseVideoReplace.mjs'
 import { shouldApplyListResult } from '@/utils/listRequestSeq'
 import type { CoverFitMode } from '@/utils/cover'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
@@ -59,6 +60,7 @@ export function useCourseList() {
   const subtitleUrlInput = ref('')
   const subtitleSavedUrl = ref('')
   const videoSavedUrl = ref('')
+  const progressLearnerCount = ref(0)
   const coverSavedUrl = ref('')
   const subtitleTriggering = ref(false)
   const subtitleSaving = ref(false)
@@ -139,6 +141,7 @@ export function useCourseList() {
     subtitleUrlInput.value = ''
     subtitleSavedUrl.value = ''
     videoSavedUrl.value = ''
+    progressLearnerCount.value = 0
     coverSavedUrl.value = ''
     subtitleInfo.value = {
       courseId: 0,
@@ -173,6 +176,7 @@ export function useCourseList() {
       form.intro = detail.intro || ''
       form.videoUrl = detail.videoUrl || ''
       videoSavedUrl.value = form.videoUrl
+      progressLearnerCount.value = Number(detail.progressLearnerCount) || 0
       form.resourceIds = detail.resourceIds || []
       subtitleInfo.value = await fetchSubtitleStatus(row.id)
       const currentSubtitleUrl = subtitleInfo.value.subtitleUrl || detail.subtitleUrl || ''
@@ -197,6 +201,17 @@ export function useCourseList() {
     }
     if (editingId.value && videoSavedUrl.value.trim() && !form.videoUrl.trim()) {
       ElMessage.warning('视频已清空但尚未选择替代文件，请上传新视频或取消本次变更')
+      return
+    }
+    try {
+      await confirmCourseVideoReplaceIfNeeded({
+        previousVideo: videoSavedUrl.value,
+        nextVideo: form.videoUrl,
+        learnerCount: progressLearnerCount.value,
+        prompt: ({ message, title, confirmButtonText, cancelButtonText }) =>
+          ElMessageBox.confirm(message, title, { type: 'warning', confirmButtonText, cancelButtonText })
+      })
+    } catch {
       return
     }
     if (subtitleDirty && !pendingSubtitleUrl) {

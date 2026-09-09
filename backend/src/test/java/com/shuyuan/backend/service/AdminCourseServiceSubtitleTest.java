@@ -55,6 +55,8 @@ class AdminCourseServiceSubtitleTest {
     private OssService ossService;
     @Mock
     private OssMediaCleanupService ossMediaCleanupService;
+    @Mock
+    private CourseProgressService courseProgressService;
 
     @InjectMocks
     private AdminCourseService adminCourseService;
@@ -171,6 +173,7 @@ class AdminCourseServiceSubtitleTest {
         assertSetsColumn(cap.getValue(), "subtitle_asr_attempt_count", 0);
         assertSetsColumn(cap.getValue(), "subtitle_asr_last_error", null);
         verify(ossMediaCleanupService).afterReplace("subtitles/old.vtt", null);
+        verify(courseProgressService).clearForReplacedVideo(20L);
     }
 
     @Test
@@ -191,6 +194,7 @@ class AdminCourseServiceSubtitleTest {
         verify(courseMapper, never()).update(isNull(), any(LambdaUpdateWrapper.class));
         assertEquals("processing", existing.getSubtitleStatus());
         assertEquals("task-live", existing.getSubtitleTaskId());
+        verify(courseProgressService, never()).clearForReplacedVideo(any());
     }
 
     @Test
@@ -213,6 +217,7 @@ class AdminCourseServiceSubtitleTest {
         ArgumentCaptor<LambdaUpdateWrapper<Course>> cap = updateCaptor();
         verify(courseMapper).update(isNull(), cap.capture());
         assertSetsColumn(cap.getValue(), "start_time", null);
+        verify(courseProgressService, never()).clearForReplacedVideo(any());
     }
 
     @Test
@@ -244,6 +249,22 @@ class AdminCourseServiceSubtitleTest {
         assertEquals("", cap.getValue().getCover());
         assertEquals("", cap.getValue().getIntro());
         assertEquals("", cap.getValue().getTargetAudience());
+        verify(courseProgressService, never()).clearForReplacedVideo(any());
+    }
+
+    @Test
+    void update_whenCoursePersistFails_doesNotClearProgress() {
+        Course existing = processingCourse(25L, "videos/old.mp4", "subtitles/old.vtt", "task-old");
+        existing.setName("课程");
+        existing.setStatus(0);
+        when(courseMapper.selectByIdForUpdate(25L)).thenReturn(existing);
+        doThrow(new RuntimeException("db")).when(courseMapper).updateById(any(Course.class));
+        CourseSaveRequest req = new CourseSaveRequest();
+        req.setName("课程");
+        req.setVideoUrl("videos/new.mp4");
+
+        assertThrows(RuntimeException.class, () -> adminCourseService.update(25L, req));
+        verify(courseProgressService, never()).clearForReplacedVideo(any());
     }
 
     @Test

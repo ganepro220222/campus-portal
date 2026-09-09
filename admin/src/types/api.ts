@@ -217,6 +217,7 @@ export interface CourseItem {
   startTime: string
   intro: string
   videoUrl: string | null
+  progressLearnerCount?: number
   subtitleUrl: string | null
   subtitleStatus: string
   subtitleStatusLabel: string

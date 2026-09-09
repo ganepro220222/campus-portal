@@ -38,6 +38,7 @@ public class AdminCourseService {
     private final AsrService asrService;
     private final OssService ossService;
     private final OssMediaCleanupService ossMediaCleanupService;
+    private final CourseProgressService courseProgressService;
 
     public PageResult<Map<String, Object>> list(Long categoryId, Integer status, int page, int size) {
         adminPermissionService.require("course:read");
@@ -62,6 +63,7 @@ public class AdminCourseService {
         Map<String, Object> vo = toVo(course, categoryService.nameMap("course"));
         vo.put("resourceIds", listResourceIds(id));
         vo.put("resources", listLinkedResources(id));
+        vo.put("progressLearnerCount", courseProgressService.countLearners(id));
         return vo;
     }
 
@@ -111,6 +113,9 @@ public class AdminCourseService {
         }
         if (subtitleMutation != SubtitleMutation.NONE) {
             persistSubtitleMutation(id, course, subtitleMutation);
+        }
+        if (videoChanged) {
+            courseProgressService.clearForReplacedVideo(id);
         }
         syncResources(id, req.getResourceIds());
         Course saved = courseMapper.selectById(id);

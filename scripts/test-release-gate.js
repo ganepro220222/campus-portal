@@ -100,6 +100,10 @@ function assertViewerCheckInPreflight() {
     console.error('[test-release-gate] preflight:local 必须包含 test:admin-news-save-mode，否则已发布动态保存文案会再次漏测')
     process.exit(1)
   }
+  if (!pkg.scripts['test:admin-course-video-replace'] || !String(pkg.scripts['preflight:local'] || '').includes('test:admin-course-video-replace')) {
+    console.error('[test-release-gate] preflight:local 必须包含 test:admin-course-video-replace，否则换视频重置进度会再次漏测')
+    process.exit(1)
+  }
 }
 
 function assertBackendEnvTemplatesExposeRuntimeControls() {

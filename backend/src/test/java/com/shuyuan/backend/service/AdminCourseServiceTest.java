@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -41,6 +42,8 @@ class AdminCourseServiceTest {
     private OssService ossService;
     @Mock
     private OssMediaCleanupService ossMediaCleanupService;
+    @Mock
+    private CourseProgressService courseProgressService;
 
     @InjectMocks
     private AdminCourseService adminCourseService;
@@ -144,5 +147,24 @@ class AdminCourseServiceTest {
         verify(courseMapper).updateById(captor.capture());
         assertEquals(0, captor.getValue().getStatus());
         verify(searchIndexSyncService, never()).syncCourse(any());
+        verify(courseProgressService, never()).clearForReplacedVideo(any());
+    }
+
+    @Test
+    void detail_includesProgressLearnerCount() {
+        Course course = new Course();
+        course.setId(22L);
+        course.setName("节水教育");
+        course.setStatus(1);
+        course.setSubtitleStatus("none");
+        when(courseMapper.selectById(22L)).thenReturn(course);
+        when(categoryService.nameMap("course")).thenReturn(java.util.Map.of());
+        when(courseResourceMapper.selectList(any())).thenReturn(List.of());
+        when(courseProgressService.countLearners(22L)).thenReturn(6L);
+
+        Map<String, Object> vo = adminCourseService.detail(22L);
+
+        assertEquals(6L, vo.get("progressLearnerCount"));
+        verify(courseProgressService).countLearners(22L);
     }
 }

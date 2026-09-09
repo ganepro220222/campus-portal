@@ -115,6 +115,27 @@ public class CourseProgressService {
         return toVo(row);
     }
 
+    public long countLearners(Long courseId) {
+        if (courseId == null) {
+            return 0L;
+        }
+        Long count = courseProgressMapper.selectCount(new LambdaQueryWrapper<CourseProgress>()
+                .eq(CourseProgress::getCourseId, courseId));
+        return count != null ? count : 0L;
+    }
+
+    /**
+     * 教学视频对象被替换后，旧进度不能套到新片上。
+     * 删行而不是只清位置：下次上报按未学习处理，仍受首次 50% 上限约束。
+     */
+    public int clearForReplacedVideo(Long courseId) {
+        if (courseId == null) {
+            return 0;
+        }
+        return courseProgressMapper.delete(new LambdaQueryWrapper<CourseProgress>()
+                .eq(CourseProgress::getCourseId, courseId));
+    }
+
     /**
      * 百分比只增不减；续播位置取本次真实播放位置。
      * 未带总时长的上报不改续播位置，避免把进度抹掉。

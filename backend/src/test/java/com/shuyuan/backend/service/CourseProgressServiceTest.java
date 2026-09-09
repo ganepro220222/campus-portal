@@ -551,4 +551,62 @@ class CourseProgressServiceTest {
         assertEquals(new BigDecimal("100.00"), vo.get("progressPercent"));
         verify(pointService, never()).awardCourseComplete(anyLong(), anyLong());
     }
+
+    @Test
+    void getProgress_whenMissing_returnsZeroAndNotCompleted() {
+        stubPublishedCourse();
+        when(courseProgressMapper.selectOne(any())).thenReturn(null);
+
+        Map<String, Object> vo = courseProgressService.getProgress(COURSE_ID);
+
+        assertEquals(0, vo.get("lastPositionSeconds"));
+        assertEquals(0, vo.get("totalDurationSeconds"));
+        assertEquals(BigDecimal.ZERO, vo.get("progressPercent"));
+        assertEquals(false, vo.get("completed"));
+    }
+
+    @Test
+    void getProgress_returnsSavedResumeAndHighestPercent() {
+        stubPublishedCourse();
+        CourseProgress existing = new CourseProgress();
+        existing.setCourseId(COURSE_ID);
+        existing.setLastPositionSeconds(720);
+        existing.setTotalDurationSeconds(1800);
+        existing.setProgressPercent(new BigDecimal("66.67"));
+        existing.setCompleted(0);
+        when(courseProgressMapper.selectOne(any())).thenReturn(existing);
+
+        Map<String, Object> vo = courseProgressService.getProgress(COURSE_ID);
+
+        assertEquals(720, vo.get("lastPositionSeconds"));
+        assertEquals(1800, vo.get("totalDurationSeconds"));
+        assertEquals(new BigDecimal("66.67"), vo.get("progressPercent"));
+        assertEquals(false, vo.get("completed"));
+    }
+
+    @Test
+    void countLearners_returnsZeroForNullCourse() {
+        assertEquals(0L, courseProgressService.countLearners(null));
+        verify(courseProgressMapper, never()).selectCount(any());
+    }
+
+    @Test
+    void countLearners_readsMapperCount() {
+        when(courseProgressMapper.selectCount(any())).thenReturn(4L);
+        assertEquals(4L, courseProgressService.countLearners(COURSE_ID));
+    }
+
+    @Test
+    void clearForReplacedVideo_deletesRowsForCourse() {
+        when(courseProgressMapper.delete(any())).thenReturn(3);
+
+        assertEquals(3, courseProgressService.clearForReplacedVideo(COURSE_ID));
+        verify(courseProgressMapper).delete(any());
+    }
+
+    @Test
+    void clearForReplacedVideo_skipsNullCourse() {
+        assertEquals(0, courseProgressService.clearForReplacedVideo(null));
+        verify(courseProgressMapper, never()).delete(any());
+    }
 }

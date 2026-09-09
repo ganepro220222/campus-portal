@@ -28,7 +28,9 @@ const {
   shouldNotifyProgressCompletion,
   buildPlayerProgressView,
   shouldAutoSeekOnProgressRetry,
-  resolveProgressRetryAction
+  resolveProgressRetryAction,
+  isCourseVideoUpdatedError,
+  resolvePlayVideoRevision
 } = require('./coursePlayerProgress')
 
 {
@@ -325,6 +327,11 @@ assert.strictEqual(isCourseAuthError({ code: 401, message: '登录已过期' }),
 assert.strictEqual(isCourseAuthError({ authExpired: true }), true)
 assert.strictEqual(isCourseAuthError({ code: 403, errorKey: 'MEMBER_PASSWORD_CHANGE_REQUIRED' }), true)
 assert.strictEqual(isCourseAuthError({ code: 500 }), false)
+assert.strictEqual(isCourseVideoUpdatedError({ code: 409, errorKey: 'COURSE_VIDEO_UPDATED' }), true)
+assert.strictEqual(isCourseVideoUpdatedError({ code: 400, message: '进度上报过快' }), false)
+assert.strictEqual(resolvePlayVideoRevision({ videoRevision: 4 }), 4)
+assert.strictEqual(resolvePlayVideoRevision({}), 1)
+assert.strictEqual(resolvePlayVideoRevision(null), 1)
 assert.strictEqual(shouldSuppressCourseLoadFailure({
   err: { code: 401 },
   hasToken: true,

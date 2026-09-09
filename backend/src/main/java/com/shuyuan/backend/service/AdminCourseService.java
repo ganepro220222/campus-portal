@@ -14,6 +14,7 @@ import com.shuyuan.backend.mapper.CourseMapper;
 import com.shuyuan.backend.mapper.CourseResourceMapper;
 import com.shuyuan.backend.mapper.ResourceMapper;
 import com.shuyuan.backend.util.CoverFitMode;
+import com.shuyuan.backend.util.CourseVideoRevision;
 import com.shuyuan.backend.util.FormatUtils;
 import com.shuyuan.backend.util.OssManagedObjectKey;
 import lombok.RequiredArgsConstructor;
@@ -74,6 +75,9 @@ public class AdminCourseService {
         Course course = fromRequest(new Course(), req);
         // 保存接口只负责内容编辑；上下架必须经过 course:publish 权限入口。
         course.setStatus(0);
+        if (course.getVideoRevision() == null) {
+            course.setVideoRevision(1L);
+        }
         if (course.getSubtitleStatus() == null || course.getSubtitleStatus().isBlank()) {
             course.setSubtitleStatus(resolveSubtitleStatus(course));
         }
@@ -103,6 +107,9 @@ public class AdminCourseService {
             clearSubtitleFieldsInMemory(course);
         } else if (subtitleMutation == SubtitleMutation.MANUAL_READY) {
             prepareManualSubtitleInMemory(course);
+        }
+        if (videoChanged) {
+            course.setVideoRevision(CourseVideoRevision.next(course.getVideoRevision()));
         }
         courseMapper.updateById(course);
         if (req.getStartTime() != null && req.getStartTime().isBlank()) {
@@ -400,6 +407,7 @@ public class AdminCourseService {
         m.put("startTime", FormatUtils.formatDateTime(c.getStartTime()));
         m.put("intro", c.getIntro());
         m.put("videoUrl", c.getVideoUrl());
+        m.put("videoRevision", CourseVideoRevision.resolve(c.getVideoRevision()));
         m.put("subtitleUrl", c.getSubtitleUrl());
         m.put("subtitleStatus", c.getSubtitleStatus());
         m.put("subtitleStatusLabel", subtitleStatusLabel(c.getSubtitleStatus()));

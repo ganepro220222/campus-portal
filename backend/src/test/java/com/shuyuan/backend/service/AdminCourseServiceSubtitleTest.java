@@ -145,6 +145,7 @@ class AdminCourseServiceSubtitleTest {
         Course existing = processingCourse(20L, "videos/old.mp4", "subtitles/old.vtt", "task-old");
         existing.setName("课程");
         existing.setStatus(0);
+        existing.setVideoRevision(1L);
         when(courseMapper.selectByIdForUpdate(20L)).thenReturn(existing);
         Course saved = new Course();
         saved.setId(20L);
@@ -174,6 +175,9 @@ class AdminCourseServiceSubtitleTest {
         assertSetsColumn(cap.getValue(), "subtitle_asr_last_error", null);
         verify(ossMediaCleanupService).afterReplace("subtitles/old.vtt", null);
         verify(courseProgressService).clearForReplacedVideo(20L);
+        ArgumentCaptor<Course> courseCap = ArgumentCaptor.forClass(Course.class);
+        verify(courseMapper).updateById(courseCap.capture());
+        assertEquals(2L, courseCap.getValue().getVideoRevision());
     }
 
     @Test
@@ -181,6 +185,7 @@ class AdminCourseServiceSubtitleTest {
         Course existing = processingCourse(21L, "videos/same.mp4", "subtitles/old.vtt", "task-live");
         existing.setName("课程");
         existing.setStatus(0);
+        existing.setVideoRevision(3L);
         when(courseMapper.selectByIdForUpdate(21L)).thenReturn(existing);
         when(courseMapper.selectById(21L)).thenReturn(existing);
         when(courseResourceMapper.selectList(any())).thenReturn(java.util.List.of());
@@ -194,6 +199,7 @@ class AdminCourseServiceSubtitleTest {
         verify(courseMapper, never()).update(isNull(), any(LambdaUpdateWrapper.class));
         assertEquals("processing", existing.getSubtitleStatus());
         assertEquals("task-live", existing.getSubtitleTaskId());
+        assertEquals(3L, existing.getVideoRevision());
         verify(courseProgressService, never()).clearForReplacedVideo(any());
     }
 

@@ -87,6 +87,8 @@ const admin = readFileSync(
 assert.match(admin, /clearForReplacedVideo/)
 assert.match(admin, /videoChanged/)
 assert.match(admin, /progressLearnerCount/)
+assert.match(admin, /CourseVideoRevision\.next/)
+assert.match(admin, /videoRevision/)
 
 const handbook = readFileSync(new URL('../docs/运维/管理员操作手册_V1.0.md', import.meta.url), 'utf8')
 const replaceLine = handbook.split(/\r?\n/).find((line) => line.includes('更换教学视频') && line.includes('重置学习进度'))
@@ -99,5 +101,23 @@ const progress = readFileSync(
 )
 assert.match(progress, /clearForReplacedVideo/)
 assert.match(progress, /countLearners/)
+assert.match(progress, /requireMatching/)
+assert.match(progress, /COURSE_VIDEO_UPDATED|CourseVideoRevision/)
+
+const play = readFileSync(
+  new URL('../backend/src/main/java/com/shuyuan/backend/service/CourseService.java', import.meta.url),
+  'utf8'
+)
+assert.match(play, /videoRevision/)
+
+const player = readFileSync(new URL('../miniapp/packageB/course/player.js', import.meta.url), 'utf8')
+assert.match(player, /videoRevision/)
+assert.match(player, /COURSE_VIDEO_UPDATED|isCourseVideoUpdatedError/)
+assert.match(player, /课程视频已更新，正在重新加载/)
+
+const initSql = readFileSync(new URL('../sql/init.sql', import.meta.url), 'utf8')
+assert.match(initSql, /video_revision/)
+const patchSql = readFileSync(new URL('../sql/patch-course-video-revision.sql', import.meta.url), 'utf8')
+assert.match(patchSql, /video_revision/)
 
 console.log('test-admin-course-video-replace OK')

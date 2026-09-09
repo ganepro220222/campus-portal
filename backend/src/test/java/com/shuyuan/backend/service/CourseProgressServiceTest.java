@@ -563,6 +563,33 @@ class CourseProgressServiceTest {
         assertEquals(0, vo.get("totalDurationSeconds"));
         assertEquals(BigDecimal.ZERO, vo.get("progressPercent"));
         assertEquals(false, vo.get("completed"));
+        assertEquals(1L, vo.get("videoRevision"));
+    }
+
+    @Test
+    void getProgress_staleRowAfterReplace_returnsEmpty() {
+        stubPublishedCourse();
+        Course course = new Course();
+        course.setId(COURSE_ID);
+        course.setStatus(1);
+        course.setDurationMinutes(10);
+        course.setVideoRevision(2L);
+        when(courseMapper.selectById(COURSE_ID)).thenReturn(course);
+        CourseProgress existing = new CourseProgress();
+        existing.setCourseId(COURSE_ID);
+        existing.setVideoRevision(1L);
+        existing.setLastPositionSeconds(480);
+        existing.setTotalDurationSeconds(600);
+        existing.setProgressPercent(new BigDecimal("80.00"));
+        existing.setCompleted(1);
+        when(courseProgressMapper.selectOne(any())).thenReturn(existing);
+
+        Map<String, Object> vo = courseProgressService.getProgress(COURSE_ID);
+
+        assertEquals(0, vo.get("lastPositionSeconds"));
+        assertEquals(BigDecimal.ZERO, vo.get("progressPercent"));
+        assertEquals(false, vo.get("completed"));
+        assertEquals(2L, vo.get("videoRevision"));
     }
 
     @Test
@@ -570,6 +597,7 @@ class CourseProgressServiceTest {
         stubPublishedCourse();
         CourseProgress existing = new CourseProgress();
         existing.setCourseId(COURSE_ID);
+        existing.setVideoRevision(1L);
         existing.setLastPositionSeconds(720);
         existing.setTotalDurationSeconds(1800);
         existing.setProgressPercent(new BigDecimal("66.67"));
@@ -582,6 +610,87 @@ class CourseProgressServiceTest {
         assertEquals(1800, vo.get("totalDurationSeconds"));
         assertEquals(new BigDecimal("66.67"), vo.get("progressPercent"));
         assertEquals(false, vo.get("completed"));
+    }
+
+    @Test
+    void reportProgress_staleRevisionAfterReplace_doesNotInsert() {
+        Course course = new Course();
+        course.setId(COURSE_ID);
+        course.setStatus(1);
+        course.setDurationMinutes(10);
+        course.setVideoRevision(2L);
+        when(courseMapper.selectById(COURSE_ID)).thenReturn(course);
+
+        CourseProgressRequest req = new CourseProgressRequest();
+        req.setLastPositionSeconds(480);
+        req.setTotalDurationSeconds(600);
+        req.setVideoRevision(1L);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> courseProgressService.reportProgress(COURSE_ID, req));
+        assertEquals(409, ex.getCode());
+        assertEquals("COURSE_VIDEO_UPDATED", ex.getErrorKey());
+        verify(courseProgressMapper, never()).insert(any(CourseProgress.class));
+        verify(courseProgressMapper, never()).updateById(any(CourseProgress.class));
+        verify(pointService, never()).awardCourseComplete(anyLong(), anyLong());
+    }
+
+    @Test
+    void reportProgress_missingRevisionAfterReplace_doesNotInsert() {
+        Course course = new Course();
+        course.setId(COURSE_ID);
+        course.setStatus(1);
+        course.setDurationMinutes(10);
+        course.setVideoRevision(2L);
+        when(courseMapper.selectById(COURSE_ID)).thenReturn(course);
+
+        CourseProgressRequest req = new CourseProgressRequest();
+        req.setLastPositionSeconds(480);
+        req.setTotalDurationSeconds(600);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> courseProgressService.reportProgress(COURSE_ID, req));
+        assertEquals(409, ex.getCode());
+        verify(courseProgressMapper, never()).insert(any(CourseProgress.class));
+    }
+
+    @Test
+    void reportProgress_currentRevisionAfterLeftoverRow_treatsAsFirstWatch() {
+        Course course = new Course();
+        course.setId(COURSE_ID);
+        course.setStatus(1);
+        course.setDurationMinutes(40);
+        course.setVideoRevision(2L);
+        when(courseMapper.selectById(COURSE_ID)).thenReturn(course);
+        CourseProgress leftover = new CourseProgress();
+        leftover.setId(11L);
+        leftover.setMemberId(MEMBER_ID);
+        leftover.setCourseId(COURSE_ID);
+        leftover.setVideoRevision(1L);
+        leftover.setLastPositionSeconds(1200);
+        leftover.setTotalDurationSeconds(1800);
+        leftover.setProgressPercent(new BigDecimal("66.67"));
+        leftover.setCompleted(1);
+        leftover.setWatchedSeconds(400);
+        leftover.setLastReportPositionSeconds(1200);
+        leftover.setUpdatedAt(LocalDateTime.now().minusMinutes(3));
+        when(courseProgressMapper.selectOne(any())).thenReturn(leftover);
+        doReturn(1).when(courseProgressMapper).deleteById(11L);
+        doReturn(1).when(courseProgressMapper).insert(any(CourseProgress.class));
+
+        CourseProgressRequest req = new CourseProgressRequest();
+        req.setLastPositionSeconds(270);
+        req.setTotalDurationSeconds(2400);
+        req.setVideoRevision(2L);
+
+        Map<String, Object> vo = courseProgressService.reportProgress(COURSE_ID, req);
+
+        assertEquals(false, vo.get("completed"));
+        assertEquals(new BigDecimal("11.25"), vo.get("progressPercent"));
+        assertEquals(2L, vo.get("videoRevision"));
+        verify(courseProgressMapper).deleteById(11L);
+        verify(courseProgressMapper).insert(any(CourseProgress.class));
+        verify(pointService, never()).awardCourseComplete(anyLong(), anyLong());
     }
 
     @Test

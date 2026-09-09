@@ -56,6 +56,7 @@ try {
   assert.strictEqual(request._resolveRequestData('PUT', body), body, 'PUT 不得剥掉显式 null')
   assert.strictEqual(request._resolveRequestData('POST', body), body, 'POST 不得剥掉显式 null')
 
+  assert.strictEqual(request.COURSE_VIDEO_UPDATED, 'COURSE_VIDEO_UPDATED')
   assert.strictEqual(typeof request.getArrayBufferChunk, 'function')
   assert.strictEqual(typeof request.getUrlArrayBufferChunk, 'function')
 

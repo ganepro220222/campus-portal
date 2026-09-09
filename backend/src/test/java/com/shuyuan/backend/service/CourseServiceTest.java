@@ -128,6 +128,7 @@ class CourseServiceTest {
 
         assertEquals("https://cdn/videos/a.mp4?sig=1", result.get("videoUrl"));
         assertEquals("https://cdn/subtitles/a.vtt?sig=2", result.get("subtitleUrl"));
+        assertEquals(1L, result.get("videoRevision"));
         verify(eventLogService).record("play", "course", COURSE_ID);
         verify(ossService, never()).signUrl(anyString());
         verify(ossService).signVideoUrl("videos/a.mp4");

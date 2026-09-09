@@ -23,6 +23,8 @@ public class Course {
     private LocalDateTime startTime;
     private String intro;
     private String videoUrl;
+    /** 教学视频版本，更换文件时递增 */
+    private Long videoRevision;
     private String subtitleUrl;
     private String subtitleStatus;
     private String subtitleTaskId;

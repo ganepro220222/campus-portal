@@ -23,6 +23,8 @@ const {
   canFetchCourseAfterAuth,
   courseAuthBlockedPatch,
   shouldSuppressCourseLoadFailure,
+  isCourseVideoUpdatedError,
+  resolvePlayVideoRevision,
   PROGRESS_AUTO_SEEK_GRACE_SECONDS
 } = require('../../utils/coursePlayerProgress')
 
@@ -61,6 +63,9 @@ Page({
       return
     }
     this._courseId = id
+    this._videoRevision = 1
+    this._videoSessionStale = false
+    this._reloadingUpdatedVideo = null
     this._lastReportSec = 0
     this._vttCues = []
     this._videoRetryCount = 0
@@ -82,6 +87,9 @@ Page({
 
   onRetryLoad() {
     this._videoRetryCount = 0
+    this._videoRevision = 1
+    this._videoSessionStale = false
+    this._reloadingUpdatedVideo = null
     this._progressInteracted = false
     this._progressRetrying = false
     this._progressResumeFromReport = false
@@ -241,6 +249,8 @@ Page({
         failed: progressFailed
       })
       const media = play || {}
+      this._videoRevision = resolvePlayVideoRevision(media)
+      this._videoSessionStale = false
       if (progressView.completed) this._completionNotified = true
       this.setData({
         course,
@@ -393,10 +403,16 @@ Page({
     }
     try {
       const res = await this._reportProgress(position, total, { notifyCompletion: true })
+      if (this._videoSessionStale || this._reloadingUpdatedVideo) {
+        return
+      }
       if (!res) {
         wx.showToast({ title: '进度保存失败，请稍后重试', icon: 'none' })
       }
     } catch (err) {
+      if (isCourseVideoUpdatedError(err)) {
+        return
+      }
       console.warn('[course/player] 结束上报失败', err)
       wx.showToast({ title: '进度保存失败，请稍后重试', icon: 'none' })
     }
@@ -422,6 +438,10 @@ Page({
       const play = await get(`/courses/${this._courseId}/play`, {}, { silent: true })
       if (!play || !play.videoUrl) {
         throw new Error('no-video')
+      }
+      const incomingRevision = resolvePlayVideoRevision(play)
+      if (incomingRevision !== resolvePlayVideoRevision({ videoRevision: this._videoRevision })) {
+        return this._reloadAfterVideoUpdated(play)
       }
       const resumePosition = resolveVideoResumePosition({
         currentPosition: this._currentPosition,
@@ -481,12 +501,16 @@ Page({
   },
 
   _reportProgress(position, total, options = {}) {
+    if (this._videoSessionStale) {
+      return Promise.resolve(null)
+    }
     const notifyCompletion = options.notifyCompletion === true
     return new Promise((resolve, reject) => {
       requireLogin(() => {
         post(`/courses/${this._courseId}/progress`, {
           lastPositionSeconds: position,
-          totalDurationSeconds: total
+          totalDurationSeconds: total,
+          videoRevision: resolvePlayVideoRevision({ videoRevision: this._videoRevision })
         }).then(res => {
           if (res) {
             const wasCompleted = !!this.data.completed
@@ -512,13 +536,86 @@ Page({
             }
           }
           resolve(res)
-        }).catch(reject)
+        }).catch((err) => {
+          if (isCourseVideoUpdatedError(err)) {
+            this._handleCourseVideoUpdated()
+            resolve(null)
+            return
+          }
+          reject(err)
+        })
       })
     })
   },
 
+  _handleCourseVideoUpdated() {
+    if (this._reloadingUpdatedVideo) {
+      return this._reloadingUpdatedVideo
+    }
+    this._videoSessionStale = true
+    this._reloadingUpdatedVideo = this._reloadAfterVideoUpdated().finally(() => {
+      this._reloadingUpdatedVideo = null
+    })
+    return this._reloadingUpdatedVideo
+  },
+
+  async _reloadAfterVideoUpdated(existingPlay) {
+    this._videoSessionStale = true
+    this._currentPosition = 0
+    this._lastReportSec = 0
+    this._progressBaselineSent = false
+    this._completionNotified = false
+    this._progressInteracted = false
+    this._progressResumeFromReport = false
+    wx.showToast({ title: '课程视频已更新，正在重新加载', icon: 'none' })
+    try {
+      const ctx = wx.createVideoContext('courseVideo', this)
+      if (ctx && typeof ctx.pause === 'function') {
+        ctx.pause()
+      }
+    } catch (e) {
+      // 旧页面可能已销毁
+    }
+    try {
+      const play = existingPlay || await get(`/courses/${this._courseId}/play`, {}, { silent: true })
+      const progressSettled = await settlePromise(get(`/courses/${this._courseId}/progress`, {}, { silent: true }))
+      if (!play || !play.videoUrl) {
+        throw new Error('no-video')
+      }
+      const progressFailed = !progressSettled.ok
+      const progressView = buildPlayerProgressView({
+        progress: progressFailed ? null : progressSettled.value,
+        failed: progressFailed
+      })
+      this._videoRevision = resolvePlayVideoRevision(play)
+      const nextUrl = play.videoUrl === this.data.videoUrl
+        ? withVideoReloadNonce(play.videoUrl)
+        : play.videoUrl
+      this.setData({
+        videoUrl: nextUrl,
+        hasSubtitle: !!play.hasSubtitle && !!play.subtitleUrl,
+        subtitleUrl: play.subtitleUrl || '',
+        videoFailed: false,
+        playing: false,
+        initialTime: 0,
+        offerResumeJump: false,
+        ...progressView
+      })
+      if (play.hasSubtitle || play.subtitleUrl) {
+        this._loadVtt()
+      }
+      this._pendingVideoResume = { position: 0, playing: false }
+      this._videoSessionStale = false
+      return true
+    } catch (e) {
+      this.setData({ videoFailed: true, playing: false })
+      wx.showToast({ title: '课程视频已更新，请重新打开课程', icon: 'none' })
+      return false
+    }
+  },
+
   _flushProgress(force, options = {}) {
-    if (!force || !this._courseId) return
+    if (this._videoSessionStale || !force || !this._courseId) return
     const total = this._currentDuration || 0
     if (total <= 0) return
     const pos = this._currentPosition != null ? this._currentPosition : (this.data.initialTime || 0)

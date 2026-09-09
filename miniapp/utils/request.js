@@ -3,6 +3,7 @@
 const { baseUrl: configBaseUrl } = require('../config/env')
 
 const PASSWORD_CHANGE_REQUIRED = 'MEMBER_PASSWORD_CHANGE_REQUIRED'
+const COURSE_VIDEO_UPDATED = 'COURSE_VIDEO_UPDATED'
 
 function getRuntimeApp() {
   try {
@@ -133,6 +134,9 @@ const request = (url, method = 'GET', data = {}, options = {}) => {
         }
         if (body.code === 403 && body.errorKey === PASSWORD_CHANGE_REQUIRED) {
           handlePasswordChangeRequired(body, silent)
+          return reject(body)
+        }
+        if (body.errorKey === COURSE_VIDEO_UPDATED) {
           return reject(body)
         }
         const duration = body.code === 429 ? 3500 : 2500
@@ -311,6 +315,7 @@ module.exports = {
   _logoutIfNeeded: logoutIfNeeded,
   DEFAULT_TIMEOUT,
   PASSWORD_CHANGE_REQUIRED,
+  COURSE_VIDEO_UPDATED,
   _handlePasswordChangeRequired: handlePasswordChangeRequired,
   _sanitizeRequestData: sanitizeRequestData,
   _resolveRequestData: resolveRequestData,

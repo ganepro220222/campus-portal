@@ -64,7 +64,8 @@ global.wx = {
   createVideoContext() {
     return {
       seek(pos) { seeks.push(pos) },
-      play() {}
+      play() {},
+      pause() {}
     }
   }
 }
@@ -86,6 +87,9 @@ function createPage(overrides = {}) {
     _currentDuration: 600,
     _currentPosition: 0,
     _lastReportSec: 0,
+    _videoRevision: 1,
+    _videoSessionStale: false,
+    _reloadingUpdatedVideo: null,
     _progressInteracted: false,
     _progressResumeFromReport: false
   }
@@ -122,6 +126,7 @@ async function run() {
   })
 
   const mid = page._reportProgress(240, 600, { notifyCompletion: true })
+  assert.strictEqual(posts.at(-1).body.videoRevision, 1)
   pendingPosts.at(-1).resolve({ progressPercent: 40, completed: false })
   await mid
   assert.strictEqual(page.data.progressPercent, 40)
@@ -360,6 +365,70 @@ async function run() {
     successBeforeAutoOk,
     '自动刷新成功不得弹“已刷新”'
   )
+
+  const stalePage = createPage({
+    videoUrl: 'https://cdn.example/old.mp4',
+    progressPercent: 80,
+    completed: false,
+    playing: true
+  })
+  stalePage._videoRevision = 1
+  stalePage._currentPosition = 480
+  stalePage._currentDuration = 600
+  getHandler = (url) => {
+    if (String(url).includes('/play')) {
+      return Promise.resolve({
+        videoUrl: 'https://cdn.example/new.mp4',
+        videoRevision: 2,
+        hasSubtitle: false
+      })
+    }
+    if (String(url).includes('/progress')) {
+      return Promise.resolve({
+        lastPositionSeconds: 0,
+        progressPercent: 0,
+        completed: false,
+        videoRevision: 2
+      })
+    }
+    return Promise.resolve({})
+  }
+  const staleReport = stalePage._reportProgress(480, 600)
+  pendingPosts.at(-1).reject({
+    code: 409,
+    errorKey: 'COURSE_VIDEO_UPDATED',
+    message: '课程视频已更新，请重新打开课程'
+  })
+  await staleReport
+  await flushTurns(8)
+  assert.strictEqual(stalePage._videoRevision, 2)
+  assert.strictEqual(stalePage.data.videoUrl, 'https://cdn.example/new.mp4')
+  assert.strictEqual(stalePage.data.progressPercent, 0)
+  assert.strictEqual(stalePage.data.completed, false)
+  assert.strictEqual(stalePage._videoSessionStale, false)
+  assert.ok(toasts.includes('课程视频已更新，正在重新加载'))
+  const afterReload = stalePage._reportProgress(20, 1800)
+  assert.strictEqual(posts.at(-1).body.videoRevision, 2)
+  pendingPosts.at(-1).resolve({ progressPercent: 1, completed: false, videoRevision: 2 })
+  await afterReload
+
+  const blocked = createPage()
+  blocked._videoSessionStale = true
+  const postsBeforeBlocked = posts.length
+  blocked.onHide()
+  assert.strictEqual(posts.length, postsBeforeBlocked, '旧视频会话失效后不得继续上报')
+
+  getHandler = () => Promise.resolve({
+    videoUrl: 'https://cdn.example/replaced.mp4',
+    videoRevision: 3
+  })
+  const revPage = createVideoPage()
+  revPage._videoRevision = 1
+  const revResult = await revPage.onVideoError()
+  assert.strictEqual(revResult, true)
+  assert.strictEqual(revPage._videoRevision, 3)
+  assert.strictEqual(revPage.data.initialTime, 0)
+  assert.deepStrictEqual(revPage._pendingVideoResume, { position: 0, playing: false })
 
   getHandler = () => Promise.resolve({})
 

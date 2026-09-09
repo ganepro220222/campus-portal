@@ -9,6 +9,7 @@ import com.shuyuan.backend.entity.Resource;
 import com.shuyuan.backend.mapper.CourseMapper;
 import com.shuyuan.backend.mapper.CourseResourceMapper;
 import com.shuyuan.backend.mapper.ResourceMapper;
+import com.shuyuan.backend.util.CourseVideoRevision;
 import com.shuyuan.backend.util.FormatUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -85,6 +86,7 @@ public class CourseService {
 
         Map<String, Object> m = new HashMap<>();
         m.put("courseId", course.getId());
+        m.put("videoRevision", CourseVideoRevision.resolve(course.getVideoRevision()));
         m.put("hasVideo", hasVideo);
         m.put("hasSubtitle", hasSubtitle);
         if (hasVideo) {

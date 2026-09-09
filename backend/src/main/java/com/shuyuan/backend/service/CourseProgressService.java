@@ -10,6 +10,7 @@ import com.shuyuan.backend.entity.CourseProgress;
 import com.shuyuan.backend.mapper.CourseMapper;
 import com.shuyuan.backend.mapper.CourseProgressMapper;
 import com.shuyuan.backend.util.CourseProgressGuard;
+import com.shuyuan.backend.util.CourseVideoRevision;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,13 +39,13 @@ public class CourseProgressService {
         Course course = requirePublishedCourse(courseId);
         Long memberId = MemberContext.getMemberId();
         if (memberId == null) {
-            return emptyProgress(course.getId());
+            return emptyProgress(course);
         }
         CourseProgress progress = findProgress(memberId, courseId);
-        if (progress == null) {
-            return emptyProgress(course.getId());
+        if (progress == null || !CourseVideoRevision.same(progress.getVideoRevision(), course.getVideoRevision())) {
+            return emptyProgress(course);
         }
-        return toVo(progress);
+        return toVo(progress, course);
     }
 
     @Transactional
@@ -58,7 +59,14 @@ public class CourseProgressService {
                 ? req.getTotalDurationSeconds()
                 : 0;
 
+        long currentRevision = CourseVideoRevision.resolve(course.getVideoRevision());
+        CourseVideoRevision.requireMatching(req.getVideoRevision(), currentRevision);
+
         CourseProgress existing = findProgress(memberId, courseId);
+        if (existing != null && !CourseVideoRevision.same(existing.getVideoRevision(), currentRevision)) {
+            courseProgressMapper.deleteById(existing.getId());
+            existing = null;
+        }
         if (incomingTotal > 0) {
             CourseProgressGuard.validateTotalDuration(course, incomingTotal);
             CourseProgressGuard.validatePositionReport(existing, incomingPosition, incomingTotal, now);
@@ -83,6 +91,7 @@ public class CourseProgressService {
         CourseProgress row = existing != null ? existing : new CourseProgress();
         row.setMemberId(memberId);
         row.setCourseId(courseId);
+        row.setVideoRevision(currentRevision);
         row.setLastPositionSeconds(snapshot.position());
         row.setTotalDurationSeconds(snapshot.total());
         row.setProgressPercent(snapshot.percent());
@@ -112,7 +121,7 @@ public class CourseProgressService {
             eventLogService.record("complete", "course", courseId);
         }
 
-        return toVo(row);
+        return toVo(row, course);
     }
 
     public long countLearners(Long courseId) {
@@ -191,9 +200,10 @@ public class CourseProgressService {
         return CourseProgressGuard.calcPercent(position, total);
     }
 
-    private Map<String, Object> emptyProgress(Long courseId) {
+    private Map<String, Object> emptyProgress(Course course) {
         Map<String, Object> m = new HashMap<>();
-        m.put("courseId", courseId);
+        m.put("courseId", course.getId());
+        m.put("videoRevision", CourseVideoRevision.resolve(course.getVideoRevision()));
         m.put("lastPositionSeconds", 0);
         m.put("totalDurationSeconds", 0);
         m.put("progressPercent", BigDecimal.ZERO);
@@ -201,9 +211,10 @@ public class CourseProgressService {
         return m;
     }
 
-    private Map<String, Object> toVo(CourseProgress p) {
+    private Map<String, Object> toVo(CourseProgress p, Course course) {
         Map<String, Object> m = new HashMap<>();
         m.put("courseId", p.getCourseId());
+        m.put("videoRevision", CourseVideoRevision.resolve(course.getVideoRevision()));
         m.put("lastPositionSeconds", p.getLastPositionSeconds() != null ? p.getLastPositionSeconds() : 0);
         m.put("totalDurationSeconds", p.getTotalDurationSeconds() != null ? p.getTotalDurationSeconds() : 0);
         m.put("progressPercent", p.getProgressPercent() != null ? p.getProgressPercent() : BigDecimal.ZERO);

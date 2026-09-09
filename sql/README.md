@@ -115,6 +115,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 29 | `patch-college-app-tongtuxing-appid.sql` | 通途星填入正式 AppID；没有该条则补一条 | 仅数据；seed 已同步；**旧库必跑、可重复执行** |
 | 30 | `patch-college-app-remove-demo.sql` | 删除「示例关联应用 A/B」两条演示行 | 仅数据；**旧库必跑、可重复执行** |
 | 31 | `patch-college-app-icon-display.sql` | 关联小程序图标：`icon_fit_mode` / `icon_shape` | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
+| 32 | `patch-course-video-revision.sql` | 课程教学视频版本：更换文件后旧播放器不能写回旧进度 | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
 
 `patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 
@@ -243,6 +244,26 @@ bash scripts/backup-staging-mysql.sh
 ```sql
 SHOW INDEX FROM event_log WHERE Key_name IN ('idx_type_created', 'idx_member_created');
 ```
+
+#### `patch-course-video-revision.sql`（旧库更换课程视频必读）
+
+**新库**：`init.sql` 已含 `course.video_revision`、`course_progress.video_revision`，**勿**再跑本 patch。
+
+**旧库升级**（自引入教学视频版本后）：
+
+1. 发布含版本校验的后端**前**执行本 patch（幂等，可重复执行）。
+2. 已有课程与学习记录都会得到版本 `1`，与从未换过片的行为一致。
+3. 验收 SQL（应返回 **2** 行）：
+
+```sql
+SELECT table_name, column_name
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND column_name = 'video_revision'
+  AND table_name IN ('course', 'course_progress');
+```
+
+4. 须同时发布小程序：播放页会带上版本上报；旧页面在老师换片后会提示重新加载，而不是把旧进度写到新片上。
 
 #### `patch-course-progress-watched-seconds.sql`（旧库课程进度必读）
 

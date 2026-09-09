@@ -12,6 +12,17 @@ function resolveEndedReport({ detailDuration, cachedDuration, cachedPosition }) 
   return { position, total }
 }
 
+const COURSE_VIDEO_UPDATED = 'COURSE_VIDEO_UPDATED'
+
+function isCourseVideoUpdatedError(err) {
+  return !!(err && err.errorKey === COURSE_VIDEO_UPDATED)
+}
+
+function resolvePlayVideoRevision(play) {
+  const n = Math.floor(Number(play && play.videoRevision))
+  return n > 0 ? n : 1
+}
+
 /** 是否到达周期上报间隔（默认 20 秒） */
 function shouldReportByInterval(currentSec, lastReportSec, intervalSec = 20) {
   return currentSec - lastReportSec >= intervalSec
@@ -365,6 +376,9 @@ function shouldGiveUpVideoReload({
 }
 
 module.exports = {
+  COURSE_VIDEO_UPDATED,
+  isCourseVideoUpdatedError,
+  resolvePlayVideoRevision,
   resolveEndedReport,
   shouldReportByInterval,
   isVttHttpSuccess,

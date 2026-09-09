@@ -16,6 +16,8 @@ public class CourseProgress {
     private Long id;
     private Long memberId;
     private Long courseId;
+    /** 进度对应的教学视频版本 */
+    private Long videoRevision;
     /** 上次真实播放位置，用于下次续播（允许后退复习后回退） */
     private Integer lastPositionSeconds;
     private Integer totalDurationSeconds;

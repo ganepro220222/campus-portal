@@ -103,7 +103,7 @@
             data-anchor="{{item.anchorId}}"
           >
             <view class="imm-sec-title">
-              <view class="imm-sec-num">{{index + 1}}</view>
+              <view class="imm-sec-num">{{sidx + 1}}</view>
               <text class="imm-sec-text serif">{{item.title}}</text>
             </view>
             <view

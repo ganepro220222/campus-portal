@@ -6,7 +6,6 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   CONTENT_REVIEWER_PERMISSIONS,
-  isReviewFilePreviewEnabled,
   resolveContentDialogFooter,
   resolveContentDialogMode,
   resolveContentDialogTitle,
@@ -139,10 +138,6 @@ assert.match(news, /detailReady/)
 assert.match(news, /WangEditor[\s\S]*:disabled="readonly"/)
 assert.doesNotMatch(news, /v-if="canWrite"[\s\S]*openDialog\(row\)[\s\S]*查看/)
 
-assert.equal(isReviewFilePreviewEnabled({ formDisabled: true, previewIsNativeButton: false }), false)
-assert.equal(isReviewFilePreviewEnabled({ formDisabled: true, previewIsNativeButton: true }), true)
-assert.equal(isReviewFilePreviewEnabled({ formDisabled: false, previewIsNativeButton: false }), true)
-
 function formOpenTag(src) {
   const match = src.match(/<el-form\b[\s\S]*?>/)
   return match ? match[0] : ''
@@ -180,7 +175,9 @@ assert.match(course, /preview="file"/)
 assert.match(course, /scene="subtitle"[\s\S]*:readonly="readonly"/)
 
 const handbook = readFileSync(new URL('../docs/运维/管理员操作手册_V1.0.md', import.meta.url), 'utf8')
-assert.doesNotMatch(handbook, /保存并更新线上内容[^\n]*  \n/)
+const liveSaveLine = handbook.split(/\r?\n/).find((line) => line.includes('保存并更新线上内容'))
+assert.ok(liveSaveLine, '手册须说明已发布动态保存会更新线上内容')
+assert.doesNotMatch(liveSaveLine.replace(/\r$/, ''), /[ \t]+$/, '手册该行不得留尾随空白')
 
 const upload = readFileSync(new URL('../backend/src/main/java/com/shuyuan/backend/controller/admin/AdminUploadController.java', import.meta.url), 'utf8')
 assert.match(upload, /requireMediaPreviewPermission/)

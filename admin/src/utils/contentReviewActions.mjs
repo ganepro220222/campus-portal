@@ -56,16 +56,6 @@ export function resolveContentDialogTitle({ moduleLabel, mode }) {
   return `编辑${moduleLabel}`
 }
 
-/**
- * 只读审核不得把整个 el-form 设为 disabled。
- * Element Plus 会把内部 el-button 一并禁用，「打开预览」会点不了。
- * 预览入口须用原生 button，避免再次掉进表单禁用上下文。
- */
-export function isReviewFilePreviewEnabled({ formDisabled, previewIsNativeButton }) {
-  if (formDisabled && !previewIsNativeButton) return false
-  return true
-}
-
 export function resolveContentDialogFooter({
   mode,
   canPublish,

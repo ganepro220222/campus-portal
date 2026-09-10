@@ -19,6 +19,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
@@ -65,8 +66,9 @@ class AdminNewsServiceTest {
 
         ArgumentCaptor<News> captor = ArgumentCaptor.forClass(News.class);
         verify(newsMapper).insert(captor.capture());
-        assertEquals("<p>ok</p>", captor.getValue().getContent());
-        assertFalse(captor.getValue().getContent().contains("script"));
+        String saved = captor.getValue().getContent();
+        assertTrue(saved.contains("ok"));
+        assertFalse(saved.toLowerCase().contains("script"));
     }
 
     @Test

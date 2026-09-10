@@ -8,6 +8,7 @@ import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.News;
 import com.shuyuan.backend.mapper.NewsMapper;
 import com.shuyuan.backend.util.FormatUtils;
+import com.shuyuan.backend.util.RichHtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -86,7 +87,8 @@ public class NewsService {
         m.put("lead", lead);
         m.put("drop", FormatUtils.firstChar(lead));
         m.put("paras", paras);
-        m.put("content", news.getContent());
+        // 旧稿入库时可能还没带上小程序能认的内联样式，读详情时再走一遍，避免老师必须重新保存
+        m.put("content", RichHtmlSanitizer.sanitize(news.getContent()));
         newsInteractionService.enrichDetailInteraction(m, news);
         return m;
     }

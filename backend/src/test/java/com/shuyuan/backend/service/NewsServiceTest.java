@@ -71,6 +71,25 @@ class NewsServiceTest {
     }
 
     @Test
+    void detail_decoratesRichTextForMiniapp() {
+        News news = new News();
+        news.setId(8L);
+        news.setTitle("排版");
+        news.setStatus("published");
+        news.setViewCount(1);
+        news.setContent("<p>普通段</p><ul><li>条目</li></ul>");
+        when(newsMapper.selectById(8L)).thenReturn(news);
+        when(viewCountService.getDisplayCount("news", 8L, 1)).thenReturn(1);
+        when(categoryService.nameMap("news")).thenReturn(Map.of());
+
+        Map<String, Object> result = newsService.detail(8L, "127.0.0.1");
+
+        String html = String.valueOf(result.get("content"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("justify"), html);
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("list-style-type"), html);
+    }
+
+    @Test
     void detail_throwsWhenNotPublished() {
         News news = new News();
         news.setId(4L);

@@ -45,7 +45,7 @@ class RichHtmlSanitizerTest {
                 + "<hr/>"
                 + "<img src=\"https://cdn.example.com/a.png\" alt=\"图\" width=\"320\" style=\"width: 100%;\" />";
         String out = RichHtmlSanitizer.sanitize(input);
-        assertTrue(out.contains("text-align: center"), out);
+        assertTrue(out.contains("text-align: center") || out.contains("text-align:center"), out);
         assertTrue(out.contains("color:"), out);
         assertTrue(out.contains("<table"), out);
         assertTrue(out.contains("单元格"), out);
@@ -54,7 +54,29 @@ class RichHtmlSanitizerTest {
         assertTrue(out.contains("https://cdn.example.com/a.png"), out);
         assertTrue(out.contains("border-collapse"), out);
         assertTrue(out.contains("1px solid #ccc"), out);
-        assertTrue(out.contains("max-width:100%"), out);
+        assertTrue(out.contains("max-width:100%") || out.contains("max-width: 100%"), out);
+        assertTrue(out.contains("height:auto") || out.contains("height: auto"), out);
+    }
+
+    @Test
+    void sanitize_keepsExplicitAlignAndAddsMiniappDefaults() {
+        String out = RichHtmlSanitizer.sanitize(
+                "<p>普通段</p>"
+                        + "<h2>二级标题</h2>"
+                        + "<ul><li>条目</li></ul>"
+                        + "<ol><li>其一</li></ol>"
+                        + "<blockquote>引语</blockquote>"
+                        + "<pre><code>code</code></pre>"
+                        + "<img src=\"https://cdn.example.com/a.png\" alt=\"图\" style=\"width: 800px;height: 600px;\" height=\"600\" />");
+        assertTrue(out.contains("justify"), out);
+        assertTrue(out.contains("font-size:24px") || out.contains("font-size: 24px"), out);
+        assertTrue(out.contains("list-style-type:disc") || out.contains("list-style-type: disc"), out);
+        assertTrue(out.contains("list-style-type:decimal") || out.contains("list-style-type: decimal"), out);
+        assertTrue(out.contains("border-left"), out);
+        assertTrue(out.contains("pre-wrap"), out);
+        assertTrue(out.contains("height:auto") || out.contains("height: auto"), out);
+        assertFalse(out.contains("height=\"600\""), out);
+        assertTrue(out.contains("width:100%") || out.contains("width: 100%") || !out.contains("<table"), out);
     }
 
     @Test

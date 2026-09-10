@@ -53,7 +53,7 @@
               <text class="drop serif {{article.dropCap ? '' : 'drop--raised'}}">{{article.drop}}</text>{{article.leadRest}}
             </view>
             <view wx:if="{{article.useRichText}}" class="art-rich">
-              <rich-text nodes="{{article.contentHtml}}" />
+              <rich-text nodes="{{article.contentHtml}}" space="nbsp" />
             </view>
             <block wx:else>
               <view class="art-p" wx:for="{{article.paras}}" wx:key="index">{{item}}</view>

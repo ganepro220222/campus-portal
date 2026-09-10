@@ -134,14 +134,26 @@ assert.strictEqual(mergeNewsArticle({}, {}).coverImageMode, 'aspectFill')
 
 {
   const html = '<p style="text-align:center"><span style="color:#c0392b">红字</span></p>'
+    + '<ul style="list-style-type:disc"><li>条目</li></ul>'
     + '<table><tr><td>单元格</td></tr></table>'
     + '<img src="https://cdn.example.com/a.png" width="320">'
   const out = stripUnsafeHtml(html)
   assert.ok(out.includes('text-align:center'))
   assert.ok(out.includes('color:#c0392b'))
+  assert.ok(out.includes('list-style-type:disc'))
   assert.ok(out.includes('<table>'))
   assert.ok(out.includes('https://cdn.example.com/a.png'))
   assert.ok(!/script/i.test(stripUnsafeHtml(html + '<script>alert(1)</script>')))
+}
+
+{
+  const a = mergeNewsArticle({
+    summary: '这是摘要',
+    content: '<h2 style="font-size:24px">标题</h2><p style="text-align:justify">正文</p>'
+  }, {})
+  assert.strictEqual(a.useRichText, true)
+  assert.ok(a.contentHtml.includes('font-size:24px'))
+  assert.ok(a.contentHtml.includes('text-align:justify'))
 }
 
 const news = mergeNewsArticle({ id: 1, title: '标题', content: '正文\n第二段' }, {})

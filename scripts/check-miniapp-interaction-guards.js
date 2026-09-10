@@ -46,7 +46,12 @@ mustMatch('miniapp/packageC/profile/edit.js', /this\.data\.error/, '资料编辑
 mustMatch('miniapp/packageC/profile/edit.wxml', /wx:elif="\{\{error\}\}"/, '资料编辑失败必须独立分支')
 
 mustMatch('miniapp/packageC/search/index.js', /bumpListGeneration/, '搜索必须有 generation 守卫')
-mustMatch('miniapp/packageC/search/index.js', /isStaleListRequest/, '搜索过期响应必须丢弃')
+mustMatch('miniapp/packageC/search/index.js', /isStaleSearchResponse/, '搜索过期响应必须按关键词和页码丢弃')
+mustMatch('miniapp/packageC/search/index.js', /SEARCH_PAGE_SIZE/, '搜索分页不得写死第一页 20 条')
+mustMatch('miniapp/packageC/search/index.wxml', /wx:key="searchKey"/, '搜索结果必须用类型+ID 复合 key')
+mustNotMatch('miniapp/packageC/search/index.wxml', /wx:key="targetId"/, '搜索结果不得只用 targetId 当 key，跨类型会撞号')
+mustMatch('miniapp/packageC/search/index.wxml', /找到 \{\{total\}\} 条/, '搜索条数必须用后端 total，不得用当前页 length')
+mustMatch('miniapp/packageC/search/index.wxml', /bindscrolltolower="onScrollToLower"/, '搜索必须能触底加载更多')
 
 mustNotMatch(
   'miniapp/packageC/message/index.js',

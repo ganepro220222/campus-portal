@@ -102,4 +102,13 @@
   white-space: nowrap;
 }
 
+.list-foot {
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--muted);
+  padding: 8rpx 0 24rpx;
+}
+.list-foot-done { color: #C3CCE0; }
+.list-foot-retry { color: var(--navy); }
+
 .list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

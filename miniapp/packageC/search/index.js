@@ -1,12 +1,35 @@
 // packageC/search/index.js — 全局搜索逻辑
 const { get } = require('../../utils/request')
-const { mapSearchResults, buildRoute } = require('../../utils/search')
+const {
+  SEARCH_PAGE_SIZE,
+  SEARCH_TYPES,
+  mapSearchResults,
+  extractSearchPage,
+  mergeSearchResults,
+  calcSearchHasMore,
+  shouldLoadSearchMore,
+  sliceSearchPage,
+  isStaleSearchResponse
+} = require('../../utils/search')
 const mock = require('../../mock/defaults')
 const { useMock } = require('../../utils/mockGuard')
 const { loadMiniappConfig, DEFAULT_MINIAPP_CONFIG } = require('../../utils/miniappConfig')
-const { bumpListGeneration, isStaleListRequest } = require('../../utils/feedListPage')
+const { bumpListGeneration } = require('../../utils/feedListPage')
 
 const HISTORY_KEY = 'search_history'
+
+function emptySearchState(extra) {
+  return Object.assign({
+    results: [],
+    total: 0,
+    page: 1,
+    hasMore: false,
+    loading: false,
+    loadingMore: false,
+    loadMoreError: false,
+    errorText: ''
+  }, extra || {})
+}
 
 // 接口不可用时的本地检索索引（仅 dev mock 模式）
 function localIndex() {
@@ -19,18 +42,24 @@ function localIndex() {
   return idx
 }
 
-function localSearch(q) {
+function localSearchAll(q) {
   const kw = q.toLowerCase()
-  return localIndex()
-    .filter(it => (it.title || '').toLowerCase().indexOf(kw) >= 0 || (it.sub || '').toLowerCase().indexOf(kw) >= 0)
-    .map(it => ({ ...it, route: buildRoute(it.targetType, it.targetId) }))
+  return mapSearchResults(
+    localIndex().filter(it => (it.title || '').toLowerCase().indexOf(kw) >= 0 || (it.sub || '').toLowerCase().indexOf(kw) >= 0)
+  )
 }
 
 Page({
   data: {
     keyword: '',
     results: [],
+    total: 0,
+    page: 1,
+    hasMore: false,
     searched: false,
+    loading: false,
+    loadingMore: false,
+    loadMoreError: false,
     errorText: '',
     hotTags: DEFAULT_MINIAPP_CONFIG.searchHotTags,
     history: []
@@ -46,35 +75,102 @@ Page({
   },
 
   onInput(e) { this.setData({ keyword: e.detail.value }) },
-  onConfirm() { this.doSearch(this.data.keyword) },
-  onTag(e) { this.doSearch(e.currentTarget.dataset.k) },
+  onConfirm() { this._searchFirst(this.data.keyword) },
+  onTag(e) { this._searchFirst(e.currentTarget.dataset.k) },
 
-  onClear() { this.setData({ keyword: '', results: [], searched: false, errorText: '' }) },
+  onClear() {
+    this.setData(emptySearchState({ keyword: '', searched: false }))
+  },
 
-  async doSearch(keyword) {
+  onScrollToLower() {
+    this._loadMore(false)
+  },
+
+  onRetryLoadMore() {
+    this._loadMore(true)
+  },
+
+  _searchFirst(keyword) {
     const q = (keyword || '').trim()
     const seq = bumpListGeneration(this)
-    this.setData({ keyword: q, errorText: '' })
-    if (!q) { this.setData({ results: [], searched: false }); return }
+    if (!q) {
+      this.setData(emptySearchState({ keyword: '', searched: false }))
+      return
+    }
+    this.setData(emptySearchState({
+      keyword: q,
+      searched: true,
+      loading: true
+    }))
+    return this._fetchPage({ seq, keyword: q, requestPage: 1, reset: true })
+  },
 
-    let results = []
+  _loadMore(manualRetry) {
+    if (!shouldLoadSearchMore(this.data, manualRetry)) return
+    const q = (this.data.keyword || '').trim()
+    if (!q) return
+    const requestPage = this.data.page
+    const seq = bumpListGeneration(this)
+    this.setData({ loadingMore: true, loadMoreError: false })
+    return this._fetchPage({ seq, keyword: q, requestPage, reset: false })
+  },
+
+  async _fetchPage({ seq, keyword, requestPage, reset }) {
+    let records = []
+    let total = 0
     let failed = false
     try {
-      const res = await get('/search', { q, types: 'news,hall,craft,course,resource', page: 1, size: 20 })
-      const records = (res && res.records) ? res.records : []
-      results = mapSearchResults(records)
+      const res = await get('/search', {
+        q: keyword,
+        types: SEARCH_TYPES,
+        page: requestPage,
+        size: SEARCH_PAGE_SIZE
+      })
+      const extracted = extractSearchPage(res)
+      records = extracted.records
+      total = extracted.total
     } catch (err) {
       console.warn('[search] 搜索失败', err)
       failed = true
     }
-    if (isStaleListRequest(this, seq)) return
+    if (isStaleSearchResponse(this, seq, keyword, requestPage)) return
+
     if (failed && !useMock) {
-      this.setData({ results: [], searched: true, errorText: '搜索失败，请稍后重试' })
+      if (reset) {
+        this.setData({
+          results: [],
+          total: 0,
+          hasMore: false,
+          loading: false,
+          loadingMore: false,
+          searched: true,
+          errorText: '搜索失败，请稍后重试'
+        })
+      } else {
+        this.setData({ loading: false, loadingMore: false, loadMoreError: true })
+      }
       return
     }
-    if (!results.length && useMock) results = localSearch(q)
-    this.setData({ results, searched: true, errorText: '' })
-    this._saveHistory(q)
+
+    if ((failed && useMock) || (reset && !records.length && useMock)) {
+      const local = sliceSearchPage(localSearchAll(keyword), requestPage, SEARCH_PAGE_SIZE)
+      records = local.records
+      total = local.total
+    }
+
+    const results = mergeSearchResults(this.data.results, records, reset)
+    this.setData({
+      results,
+      total,
+      page: requestPage + 1,
+      hasMore: calcSearchHasMore(results.length, total),
+      searched: true,
+      errorText: '',
+      loading: false,
+      loadingMore: false,
+      loadMoreError: false
+    })
+    if (reset) this._saveHistory(keyword)
   },
 
   _saveHistory(q) {

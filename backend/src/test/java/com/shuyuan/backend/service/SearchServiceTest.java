@@ -1,10 +1,14 @@
 package com.shuyuan.backend.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.SearchIndex;
 import com.shuyuan.backend.mapper.SearchIndexMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -24,11 +28,37 @@ import static org.mockito.Mockito.doThrow;
 @ExtendWith(MockitoExtension.class)
 class SearchServiceTest {
 
+    @BeforeAll
+    static void initMybatisPlusEntityCache() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), SearchIndex.class.getName()),
+                SearchIndex.class);
+    }
+
     @Mock
     private SearchIndexMapper searchIndexMapper;
 
     @InjectMocks
     private SearchService searchService;
+
+    @Test
+    void search_ordersByPublishTimeThenId() {
+        Page<SearchIndex> page = new Page<>(1, 20);
+        page.setRecords(List.of());
+        page.setTotal(0);
+        when(searchIndexMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        searchService.search("课程", null, 1, 20);
+
+        ArgumentCaptor<LambdaQueryWrapper<SearchIndex>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(searchIndexMapper).selectPage(any(Page.class), captor.capture());
+        String sql = captor.getValue().getSqlSegment();
+        assertTrue(sql.contains("publish_time") && sql.contains("id"),
+                "并列时间必须再按 id 排，否则分页会漏行或重复。实际：" + sql);
+        int timeAt = sql.indexOf("publish_time");
+        int idAt = sql.lastIndexOf("id");
+        assertTrue(timeAt >= 0 && idAt > timeAt, "publish_time 必须在 id 前面：" + sql);
+    }
 
     @Test
     void search_clampsOversizedPageSize() {

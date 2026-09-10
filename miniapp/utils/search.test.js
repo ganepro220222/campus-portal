@@ -34,7 +34,7 @@ const first = extractSearchPage({
 })
 assert.strictEqual(first.records.length, 20)
 assert.strictEqual(first.total, 45)
-assert.strictEqual(calcSearchHasMore(20, 45), true)
+assert.strictEqual(calcSearchHasMore(20, 45, 20, 20), true)
 
 const page2 = mergeSearchResults(
   mapSearchResults(first.records),
@@ -46,8 +46,10 @@ const page2 = mergeSearchResults(
 )
 assert.strictEqual(page2.length, 21, '追加不得覆盖，且按 searchKey 去重')
 assert.strictEqual(page2[20].searchKey, 'news:21')
-assert.strictEqual(calcSearchHasMore(40, 45), true)
-assert.strictEqual(calcSearchHasMore(45, 45), false)
+assert.strictEqual(calcSearchHasMore(40, 45, 20, 20), true)
+assert.strictEqual(calcSearchHasMore(45, 45, 5, 5), false)
+assert.strictEqual(calcSearchHasMore(20, 45, 0, 0), false, '空页必须收尾')
+assert.strictEqual(calcSearchHasMore(20, 45, 20, 0), false, '整页都是重复行必须收尾')
 
 const last = mergeSearchResults(page2, [
   { targetType: 'course', targetId: 1 },
@@ -57,7 +59,7 @@ const last = mergeSearchResults(page2, [
   { targetType: 'news', targetId: 99 }
 ], false)
 assert.strictEqual(last.length, 26)
-assert.strictEqual(calcSearchHasMore(last.length, 45), true)
+assert.strictEqual(calcSearchHasMore(last.length, 45, 5, 5), true)
 
 assert.strictEqual(shouldLoadSearchMore({
   hasMore: true, loading: false, loadingMore: false, loadMoreError: false
@@ -78,7 +80,7 @@ assert.strictEqual(shouldLoadSearchMore({
 const mockSlice = sliceSearchPage(new Array(45).fill(0).map((_, i) => i), 3, SEARCH_PAGE_SIZE)
 assert.strictEqual(mockSlice.records.length, 5)
 assert.strictEqual(mockSlice.total, 45)
-assert.strictEqual(calcSearchHasMore(40 + mockSlice.records.length, mockSlice.total), false)
+assert.strictEqual(calcSearchHasMore(40 + mockSlice.records.length, mockSlice.total, mockSlice.records.length, mockSlice.records.length), false)
 
 const live = {
   _listGeneration: 2,
@@ -93,6 +95,7 @@ const pageJs = fs.readFileSync(path.join(__dirname, '../packageC/search/index.js
 assert.match(pageJs, /SEARCH_PAGE_SIZE/)
 assert.match(pageJs, /requestPage/)
 assert.match(pageJs, /isStaleSearchResponse/)
+assert.match(pageJs, /results\.length - prevLen/)
 assert.match(pageJs, /bindscrolltolower|onScrollToLower/)
 assert.doesNotMatch(pageJs, /page:\s*1,\s*size:\s*20/)
 

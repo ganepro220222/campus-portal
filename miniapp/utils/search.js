@@ -56,7 +56,9 @@ function mergeSearchResults(existing, incoming, reset) {
   return out
 }
 
-function calcSearchHasMore(loadedCount, total) {
+function calcSearchHasMore(loadedCount, total, incomingCount, addedCount) {
+  if (incomingCount != null && Number(incomingCount) <= 0) return false
+  if (addedCount != null && Number(addedCount) <= 0) return false
   return Number(loadedCount) < Number(total)
 }
 

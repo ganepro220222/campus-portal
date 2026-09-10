@@ -53,7 +53,10 @@ public class SearchService {
         if (!typeList.isEmpty()) {
             qw.in(SearchIndex::getTargetType, typeList);
         }
-        qw.orderByDesc(SearchIndex::getPublishTime);
+        // publish_time 只有秒，展馆全量重刷、批量导入会整批同秒。
+        // 不按 id 再排一次，LIMIT/OFFSET 在并列块里会漏行或重复。
+        qw.orderByDesc(SearchIndex::getPublishTime)
+                .orderByDesc(SearchIndex::getId);
 
         Page<SearchIndex> p = searchIndexMapper.selectPage(new Page<>(safePage, safeSize), qw);
         List<Map<String, Object>> records = p.getRecords().stream().map(this::toVo).toList();

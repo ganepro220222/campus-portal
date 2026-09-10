@@ -158,12 +158,13 @@ Page({
       total = local.total
     }
 
+    const prevLen = reset ? 0 : (this.data.results || []).length
     const results = mergeSearchResults(this.data.results, records, reset)
     this.setData({
       results,
       total,
       page: requestPage + 1,
-      hasMore: calcSearchHasMore(results.length, total),
+      hasMore: calcSearchHasMore(results.length, total, records.length, results.length - prevLen),
       searched: true,
       errorText: '',
       loading: false,

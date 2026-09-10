@@ -146,7 +146,7 @@ exhibits/craft-XXX/
   - `vendor/`
   - 各展品数据目录
   - 须 HTTP 访问；设了 `STUDIO_PASS` 必须同时设 `STUDIO_BIND=127.0.0.1`，由 `node _server/studio-server.mjs` 提供保存 API（公网只走 Nginx 反代）
-- **安全提示**：`player.html?mode=edit` 与 `studio.html` 勿与公开展品同路径暴露；`craft-XXX/index.html` 跳转壳应指向 `player.view.html`，勿透传 `mode=edit`。设了 `STUDIO_PASS` 必须 `STUDIO_BIND=127.0.0.1`，否则本机局域网可直连明文 Basic Auth。`GET /studio-api/identity` 对回环免鉴权；Nginx 反代后该接口匿名公开（只回 rootHash）。
+- **安全提示**：`player.html?mode=edit` 与 `studio.html` 勿与公开展品同路径暴露；`craft-XXX/index.html` 跳转壳应指向 `player.view.html`，勿透传 `mode=edit`。设了 `STUDIO_PASS` 必须 `STUDIO_BIND=127.0.0.1`，否则本机局域网可直连明文 Basic Auth。`GET /studio-api/identity` 对回环免鉴权；Nginx 反代后该接口匿名公开（只回 rootHash）。写接口（save/create）拒绝浏览器跨站请求（`Origin` 与 `Host` 不符，或 `Sec-Fetch-Site: cross-site`），且只接受 `application/json`。
 - **缓存**：`config.json` 不宜长期 CDN 缓存，保存后应能立即读到新版本；静态资源可加版本号或 hash 避免浏览器旧缓存。
 - **保存服务**：浏览器内直接保存需启动 `_server/` 中的参考服务，详见 `_server/README.md`。
 

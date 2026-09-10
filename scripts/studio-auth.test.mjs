@@ -16,6 +16,8 @@ assert.match(node, /process\.exit\(1\)/, 'node must refuse start without STUDIO_
 assert.match(node, /STUDIO_ALLOW_INSECURE/, 'node must allow explicit insecure local mode')
 assert.match(node, /rejectAuth/, 'node must throttle 401 responses')
 assert.match(node, /AUTH_FAIL/, 'node must count auth failures')
+assert.match(node, /denyStudioWriteReason/, 'node write APIs must check request origin')
+assert.match(api, /studio_deny_write_reason/, 'php write APIs must check request origin')
 assert.match(apply, /probe_api_list_requires_unauth/, 'apply must probe unauthenticated API')
 
 console.log('studio-auth.test: PASS')

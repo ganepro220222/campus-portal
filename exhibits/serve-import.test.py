@@ -100,6 +100,27 @@ def main() -> int:
             smoke3 = next(x for x in json.loads(r.read().decode())['exhibits'] if x['dir'] == EX)
         if smoke3.get('panoramaHash') == fp:
             raise RuntimeError('换了全景图内容，panoramaHash 却没变')
+
+        cfg_path = ROOT / 'craft-001' / 'config.json'
+        before = cfg_path.read_bytes()
+        evil = json.dumps({'ex': 'craft-001', 'config': {'assets': {'model': 'evil.glb'}}}).encode()
+        bad = urllib.request.Request(
+            f'http://127.0.0.1:{port}/studio-api/save',
+            data=evil,
+            headers={
+                'Content-Type': 'text/plain;charset=UTF-8',
+                'Origin': 'http://127.0.0.1:8898',
+            },
+            method='POST',
+        )
+        try:
+            urllib.request.urlopen(bad)
+            raise RuntimeError('跨站 save 应被拒绝')
+        except urllib.error.HTTPError as e:
+            if e.code != 403:
+                raise RuntimeError('跨站 save 期望 403，实际 %s' % e.code)
+        if cfg_path.read_bytes() != before:
+            raise RuntimeError('跨站 save 不得改写 craft-001/config.json')
     finally:
         proc.kill()
         proc.wait(timeout=5)

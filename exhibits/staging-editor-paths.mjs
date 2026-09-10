@@ -32,6 +32,7 @@ export const STAGING_EXHIBITS_CODE_EXTRA = [
   'pano-check.mjs',
   'studio-port.mjs',
   'studio-static-path.mjs',
+  'studio-request-origin.mjs',
   'exhibit-create.mjs',
   'exhibit_create.py',
   'new-exhibit.mjs',

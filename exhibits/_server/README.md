@@ -71,3 +71,7 @@ STUDIO_BIND=127.0.0.1 STUDIO_PASS=你的密码 node _server/studio-server.mjs
 ## 备份与回滚
 
 每次保存前，旧配置备份为 `<ex>/.bak/config.<时间戳>.json`。回滚：将某份备份复制回 `<ex>/config.json` 即可。`.bak/` 已在 `.gitignore` 中，不入版本库。
+
+## 写接口来源校验
+
+`POST /studio-api/save` 与 `POST /studio-api/create` 会拒绝浏览器跨站请求：带了 `Origin` 且与本请求 `Host` 不符，或 `Sec-Fetch-Site: cross-site`，直接 403。只认 `Host`，不认转发过来的 Host 头。协议可以不同（反代终结 HTTPS 后上游仍是 HTTP）。不带这些头的脚本、curl 仍可调用。请求体必须是 `Content-Type: application/json`，避免浏览器把 `text/plain` JSON 当成简单请求直接送达。

@@ -309,6 +309,36 @@ function studio_list_panorama_candidates(string $root): array {
   return $out;
 }
 
+function studio_authority_key(string $hostOrOrigin): string {
+  $text = trim($hostOrOrigin);
+  if ($text === '') return '';
+  $url = strpos($text, '://') !== false ? $text : ('http://' . $text);
+  $p = parse_url($url);
+  if (!$p || empty($p['host'])) return '';
+  $hostname = strtolower($p['host']);
+  $port = isset($p['port']) ? (string)$p['port'] : '';
+  if ($port === '' || $port === '80' || $port === '443') return $hostname;
+  return $hostname . ':' . $port;
+}
+
+function studio_deny_write_reason(string $origin, string $secFetchSite, string $host): string {
+  if (strtolower(trim($secFetchSite)) === 'cross-site') return 'cross-site';
+  $origin = trim($origin);
+  if ($origin === '') return '';
+  if (strtolower($origin) === 'null') return 'null-origin';
+  $originKey = studio_authority_key($origin);
+  if ($originKey === '') return 'bad-origin';
+  $hostKey = studio_authority_key($host);
+  if ($hostKey === '') return 'missing-host';
+  if ($originKey !== $hostKey) return 'origin-mismatch';
+  return '';
+}
+
+function studio_deny_write_content_type(string $contentType): string {
+  $t = strtolower(trim(explode(';', $contentType, 2)[0]));
+  return $t === 'application/json' ? '' : 'content-type';
+}
+
 // 只加载函数、不执行请求分发（供单元测试比对三份实现的指纹算法；保持本文件单文件可部署）
 if (defined('STUDIO_API_LIB_ONLY')) return;
 
@@ -392,6 +422,23 @@ if ($isCheckPano) {
   $availability = studio_check_panorama_availability($ROOT, $path);
   $bool = $availability === 'true' ? true : ($availability === 'false' ? false : 'unknown');
   echo json_encode(['availability' => $bool, 'exists' => $availability === 'true'], JSON_UNESCAPED_UNICODE); exit;
+}
+
+if (($isCreate || $isSave) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+  $originReason = studio_deny_write_reason(
+    $_SERVER['HTTP_ORIGIN'] ?? '',
+    $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '',
+    $_SERVER['HTTP_HOST'] ?? ''
+  );
+  $typeReason = studio_deny_write_content_type($_SERVER['CONTENT_TYPE'] ?? ($_SERVER['HTTP_CONTENT_TYPE'] ?? ''));
+  if ($originReason !== '' || $typeReason !== '') {
+    http_response_code($originReason !== '' ? 403 : 415);
+    echo json_encode([
+      'ok' => false,
+      'error' => $originReason !== '' ? '拒绝跨站写入' : '写接口只接受 JSON',
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
 }
 
 if ($isCreate && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {

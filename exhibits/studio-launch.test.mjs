@@ -182,6 +182,73 @@ test('Node server create API works end-to-end', async () => {
   }
 })
 
+test('write APIs reject cross-site Origin and keep config untouched', async () => {
+  await withStudioServer(async (port) => {
+    const cfgPath = path.join(ROOT, 'craft-001', 'config.json')
+    const before = fs.readFileSync(cfgPath)
+    const evil = JSON.stringify({ ex: 'craft-001', config: { assets: { model: 'evil.glb' } } })
+    const auth = studioAuthHeaders()
+    const cross = await fetch(`http://127.0.0.1:${port}/studio-api/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+        Origin: 'http://127.0.0.1:8898',
+        ...auth,
+      },
+      body: evil,
+    })
+    assert.equal(cross.status, 403)
+    assert.equal(fs.readFileSync(cfgPath).equals(before), true, '跨站 text/plain 不得改配置')
+
+    const flagged = await fetch(`http://127.0.0.1:${port}/studio-api/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Sec-Fetch-Site': 'cross-site',
+        ...auth,
+      },
+      body: evil,
+    })
+    assert.equal(flagged.status, 403)
+    assert.equal(fs.readFileSync(cfgPath).equals(before), true)
+
+    const plain = await fetch(`http://127.0.0.1:${port}/studio-api/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=UTF-8',
+        Origin: `http://127.0.0.1:${port}`,
+        ...auth,
+      },
+      body: evil,
+    })
+    assert.equal(plain.status, 415)
+    assert.equal(fs.readFileSync(cfgPath).equals(before), true)
+
+    const sameOrigin = await fetch(`http://127.0.0.1:${port}/studio-api/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: `http://127.0.0.1:${port}`,
+        ...auth,
+      },
+      body: JSON.stringify({ ex: 'craft-no-such-dir', config: { assets: { model: 'x.glb' } } }),
+    })
+    assert.equal(sameOrigin.status, 400, '同源 JSON 应进入原有校验，而不是被来源检查挡住')
+
+    const create = await fetch(`http://127.0.0.1:${port}/studio-api/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'http://127.0.0.1:8898',
+        ...auth,
+      },
+      body: JSON.stringify({ dir: '99885', title: 'should-not-create' }),
+    })
+    assert.equal(create.status, 403)
+    assert.equal(fs.existsSync(path.join(ROOT, 'craft-99885')), false)
+  })
+})
+
 test('Node identity endpoint allows localhost without STUDIO_PASS', async () => {
   const port = await freePort()
   const child = spawn(process.execPath, [path.join(ROOT, '_server', 'studio-server.mjs')], {

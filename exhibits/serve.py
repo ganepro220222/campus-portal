@@ -23,7 +23,7 @@ import sys
 import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urlparse, urlsplit
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
@@ -128,6 +128,52 @@ def deny_static_rel_reason(rel: str) -> str:
     if any(p.startswith('_') and p not in STATIC_UNDERSCORE_ALLOW for p in parts):
         return 'private'
     return ''
+
+
+def _header_first(value) -> str:
+    if value is None:
+        return ''
+    return str(value).split(',', 1)[0].strip()
+
+
+def studio_authority_key(host_or_origin: str) -> str:
+    text = (host_or_origin or '').strip()
+    if not text:
+        return ''
+    parsed = urlsplit(text if '://' in text else 'http://' + text)
+    hostname = (parsed.hostname or '').lower()
+    if not hostname:
+        return ''
+    port = parsed.port
+    if port in (None, 80, 443):
+        return hostname
+    return '%s:%s' % (hostname, port)
+
+
+def deny_studio_write_reason(headers) -> str:
+    # 与 studio-request-origin.mjs 同一套规则；只认 Host，不认转发 Host。
+    site = _header_first(headers.get('Sec-Fetch-Site') if hasattr(headers, 'get') else '').lower()
+    if site == 'cross-site':
+        return 'cross-site'
+    origin = _header_first(headers.get('Origin') if hasattr(headers, 'get') else '')
+    if not origin:
+        return ''
+    if origin.lower() == 'null':
+        return 'null-origin'
+    origin_key = studio_authority_key(origin)
+    if not origin_key:
+        return 'bad-origin'
+    host = _header_first(headers.get('Host') if hasattr(headers, 'get') else '')
+    if not host:
+        return 'missing-host'
+    if origin_key != studio_authority_key(host):
+        return 'origin-mismatch'
+    return ''
+
+
+def deny_studio_write_content_type(content_type) -> str:
+    text = str(content_type or '').split(';', 1)[0].strip().lower()
+    return '' if text == 'application/json' else 'content-type'
 
 
 def is_resolved_inside_root(root: Path, full: Path) -> bool:
@@ -351,6 +397,15 @@ class Handler(SimpleHTTPRequestHandler):
             return
         p = self._path()
         length = int(self.headers.get('Content-Length') or 0)
+        if p.startswith('/studio-api/create') or p.startswith('/studio-api/save'):
+            origin_reason = deny_studio_write_reason(self.headers)
+            type_reason = deny_studio_write_content_type(self.headers.get('Content-Type'))
+            if origin_reason or type_reason:
+                if length > 0:
+                    self.rfile.read(min(length, 1_000_000))
+                if origin_reason:
+                    return self._json(403, {'ok': False, 'error': '拒绝跨站写入'})
+                return self._json(415, {'ok': False, 'error': '写接口只接受 JSON'})
         if p.startswith('/studio-api/create'):
             if length > 1_000_000:
                 self.send_error(413)

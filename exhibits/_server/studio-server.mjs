@@ -10,6 +10,7 @@
  *   - GET  /studio-api/list        列出所有展品（工作台自动加载，免手维护 manifest）
  *   - GET  /studio-api/identity    返回本目录实例 ID（启动器校验端口归属）
  *   - POST /studio-api/save        写回 <ex>/config.json，写前自动备份上一版到 <ex>/.bak/
+ *   - 写接口拒绝浏览器跨站请求（Origin / Sec-Fetch-Site），且只接受 JSON
  *   - Basic Auth 保护写接口与静态资源（生产务必设 STUDIO_PASS；不设则仅本机可用并告警）
  *   - GET /studio-api/identity 对回环匿名开放（启动器探活）。Nginx 反代到
  *     127.0.0.1 后对端恒为回环，该接口对公网匿名公开（只回 rootHash）
@@ -27,6 +28,7 @@ import { assetFingerprint, hasAssetFile, listPanoramaCandidates, checkPanoramaPa
 import { exhibitPublicHref } from '../exhibit-asset-cdn.mjs'
 import { portAttempts, isFallbackEnabled, isPortUnavailableError, writePortFile, removePortFile } from '../studio-port.mjs'
 import { decodeStaticRel, denyStaticRelReason, isResolvedInsideRoot } from '../studio-static-path.mjs'
+import { denyStudioWriteReason, denyStudioWriteContentType } from '../studio-request-origin.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') // exhibits/
 const ROOT_HASH = computeRootHash(ROOT)
@@ -100,6 +102,19 @@ const send = (res, code, type, body, extraHeaders = {}) => {
   res.end(body)
 }
 const json = (res, code, obj) => send(res, code, 'application/json; charset=utf-8', JSON.stringify(obj), NO_STORE)
+
+function rejectStudioWrite(req, res) {
+  const originReason = denyStudioWriteReason(req.headers)
+  if (originReason) {
+    json(res, 403, { ok: false, error: '拒绝跨站写入' })
+    return true
+  }
+  if (denyStudioWriteContentType(req.headers['content-type'])) {
+    json(res, 415, { ok: false, error: '写接口只接受 JSON' })
+    return true
+  }
+  return false
+}
 
 function listExhibits() {
   const out = []
@@ -200,6 +215,7 @@ const requestHandler = (req, res) => {
     } catch (e) { return json(res, 500, { error: String(e.message) }) }
   }
   if (u.startsWith('/studio-api/create') && req.method === 'POST') {
+    if (rejectStudioWrite(req, res)) return
     let body = ''
     req.on('data', c => { body += c; if (body.length > 1e6) req.destroy() })
     req.on('end', () => {
@@ -212,6 +228,7 @@ const requestHandler = (req, res) => {
     return
   }
   if (u.startsWith('/studio-api/save') && req.method === 'POST') {
+    if (rejectStudioWrite(req, res)) return
     let body = ''
     req.on('data', c => { body += c; if (body.length > 5e6) req.destroy() })
     req.on('end', () => {

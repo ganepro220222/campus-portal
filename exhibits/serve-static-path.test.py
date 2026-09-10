@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+from email.message import Message
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -27,6 +28,24 @@ def main() -> int:
     root = (ROOT).resolve()
     assert m.is_resolved_inside_root(root, root / 'studio.html') is True
     assert m.is_resolved_inside_root(root, (root / '../exhibits-upload/x').resolve()) is False
+
+    same = Message()
+    same['Host'] = '127.0.0.1:8888'
+    same['Origin'] = 'http://127.0.0.1:8888'
+    assert m.deny_studio_write_reason(same) == ''
+
+    cross = Message()
+    cross['Host'] = '127.0.0.1:8888'
+    cross['Origin'] = 'http://127.0.0.1:8898'
+    cross['X-Forwarded-Host'] = '127.0.0.1:8898'
+    assert m.deny_studio_write_reason(cross) == 'origin-mismatch'
+
+    site = Message()
+    site['Host'] = '127.0.0.1:8888'
+    site['Sec-Fetch-Site'] = 'cross-site'
+    assert m.deny_studio_write_reason(site) == 'cross-site'
+    assert m.deny_studio_write_content_type('text/plain;charset=UTF-8') == 'content-type'
+    assert m.deny_studio_write_content_type('application/json;charset=UTF-8') == ''
     print('[serve-static-path.test] PASS')
     return 0
 

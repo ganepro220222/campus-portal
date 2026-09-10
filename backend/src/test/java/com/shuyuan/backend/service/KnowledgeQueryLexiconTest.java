@@ -41,4 +41,14 @@ class KnowledgeQueryLexiconTest {
         assertFalse(KnowledgeQueryLexicon.faqMatches("VR怎么看", "怎么进入 VR"));
         assertFalse(KnowledgeQueryLexicon.faqMatches("通知在哪", "怎么看通知"));
     }
+
+    @Test
+    void 切段残片不能把积分标准问算到课程篇() {
+        var faqs = KnowledgeQueryLexicon.extractFaqQuestions(
+                "见积分与徽章相关说明。\n\n常见问法：怎么看课程？课程进度怎么算？");
+        assertTrue(faqs.contains("怎么看课程"));
+        assertTrue(faqs.contains("课程进度怎么算"));
+        assertTrue(faqs.stream().noneMatch(f -> f.contains("积分")),
+                "残片不得带着「积分」当标准问：" + faqs);
+    }
 }

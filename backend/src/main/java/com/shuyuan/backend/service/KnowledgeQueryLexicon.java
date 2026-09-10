@@ -209,6 +209,13 @@ final class KnowledgeQueryLexicon {
         }
         for (String part : text.split("[？?]")) {
             String n = normalize(part.replace("常见问法：", "").replace("常见问法:", ""));
+            // 500 字切段常从句子中间切开，问号前会拖着上一句。
+            // 「见积分与徽章相关说明。怎么看课程」这种残片一旦当标准问，
+            // 「积分」两个字就会被课程篇抢走。
+            int lastStop = Math.max(n.lastIndexOf('。'), n.lastIndexOf('！'));
+            if (lastStop >= 0) {
+                n = n.substring(lastStop + 1).trim();
+            }
             if (n.length() >= 2 && n.length() <= 24) {
                 out.add(n);
             }

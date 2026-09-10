@@ -9,6 +9,8 @@
  * 3) 内置内容会原样拼给学生看，所以「新闻」这类按审核口径要回避的词
  *    在这里同样不能出现（check-subject-neutral 扫不到 .md/.sql）。
  * 4) 必须写入 content 列：后台编辑时靠它回填正文，缺了会显示成空白。
+ * 5) 同一篇里不能出现完全相同的长句：重复句会把 500 字切段推过边界，
+ *    残片可能抢走其他主题。半句重叠、近义改写扫不到，只拦整句粘贴。
  *
  * 用法：node scripts/check-builtin-knowledge.js
  */
@@ -81,6 +83,23 @@ for (const name of sources) {
   }
   if (!/^#\s+\S/m.test(text)) {
     errs.push(`sql/knowledge/${name} 首行不是「# 标题」`)
+  }
+  const sentenceCount = new Map()
+  let buf = ''
+  for (const ch of text) {
+    buf += ch
+    if ('。！？'.includes(ch)) {
+      const norm = buf.replace(/\s+/g, '').trim()
+      if (norm.length >= 20) {
+        sentenceCount.set(norm, (sentenceCount.get(norm) || 0) + 1)
+      }
+      buf = ''
+    }
+  }
+  for (const [sentence, n] of sentenceCount) {
+    if (n > 1) {
+      errs.push(`sql/knowledge/${name} 同一句出现 ${n} 次：「${sentence.slice(0, 24)}…」——重复句会把切段推过边界，残片可能抢走其他主题`)
+    }
   }
 }
 if (patch.includes('新闻')) {

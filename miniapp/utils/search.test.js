@@ -12,6 +12,7 @@ const {
   mergeSearchResults,
   calcSearchHasMore,
   shouldLoadSearchMore,
+  resolveSearchLoadMore,
   sliceSearchPage,
   isStaleSearchResponse
 } = require('./search')
@@ -82,27 +83,48 @@ assert.strictEqual(mockSlice.records.length, 5)
 assert.strictEqual(mockSlice.total, 45)
 assert.strictEqual(calcSearchHasMore(40 + mockSlice.records.length, mockSlice.total, mockSlice.records.length, mockSlice.records.length), false)
 
+const afterEdit = {
+  keyword: '文化',
+  activeKeyword: '课程',
+  page: 2,
+  hasMore: true,
+  loading: false,
+  loadingMore: false,
+  loadMoreError: false
+}
+const loadAfterEdit = resolveSearchLoadMore(afterEdit, false)
+assert.ok(loadAfterEdit)
+assert.strictEqual(loadAfterEdit.keyword, '课程', '改了输入框未提交时，翻页仍用已提交词')
+assert.strictEqual(loadAfterEdit.requestPage, 2)
+assert.strictEqual(resolveSearchLoadMore({
+  ...afterEdit,
+  activeKeyword: ''
+}, false), null)
+
 const live = {
   _listGeneration: 2,
-  data: { keyword: '课程', page: 2 }
+  data: { keyword: '文化', activeKeyword: '课程', page: 2 }
 }
 assert.strictEqual(isStaleSearchResponse(live, 2, '课程', 2), false)
 assert.strictEqual(isStaleSearchResponse(live, 1, '课程', 2), true, '旧代际必须丢弃')
-assert.strictEqual(isStaleSearchResponse(live, 2, '文化', 2), true, '旧关键词第 2 页不得追加到新搜索')
+assert.strictEqual(isStaleSearchResponse(live, 2, '文化', 2), true, '输入草稿不得当成已提交词')
 assert.strictEqual(isStaleSearchResponse(live, 2, '课程', 1), true, '页码对不上必须丢弃')
 
 const pageJs = fs.readFileSync(path.join(__dirname, '../packageC/search/index.js'), 'utf8')
 assert.match(pageJs, /SEARCH_PAGE_SIZE/)
 assert.match(pageJs, /requestPage/)
 assert.match(pageJs, /isStaleSearchResponse/)
+assert.match(pageJs, /resolveSearchLoadMore/)
+assert.match(pageJs, /activeKeyword/)
 assert.match(pageJs, /results\.length - prevLen/)
+assert.doesNotMatch(pageJs, /_loadMore\([\s\S]*?this\.data\.keyword/)
 assert.match(pageJs, /bindscrolltolower|onScrollToLower/)
 assert.doesNotMatch(pageJs, /page:\s*1,\s*size:\s*20/)
 
 const pageWxml = fs.readFileSync(path.join(__dirname, '../packageC/search/index.wxml'), 'utf8')
 assert.match(pageWxml, /wx:key="searchKey"/)
 assert.doesNotMatch(pageWxml, /wx:key="targetId"/)
-assert.match(pageWxml, /找到 \{\{total\}\} 条/)
+assert.match(pageWxml, /找到 \{\{total\}\} 条与「\{\{activeKeyword\}\}」/)
 assert.match(pageWxml, /bindscrolltolower="onScrollToLower"/)
 assert.match(pageWxml, /加载更多失败，点击重试/)
 

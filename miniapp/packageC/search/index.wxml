@@ -45,7 +45,7 @@
 
     <!-- 搜索结果 -->
     <block wx:else>
-      <view class="res-count" wx:if="{{!loading && results.length}}">找到 {{total}} 条与「{{keyword}}」相关的内容</view>
+      <view class="res-count" wx:if="{{!loading && results.length}}">找到 {{total}} 条与「{{activeKeyword}}」相关的内容</view>
       <view class="sres" wx:for="{{results}}" wx:key="searchKey" data-route="{{item.route}}" bindtap="onResultTap">
         <view class="sres-tag">{{item.typeLabel}}</view>
         <view class="sres-body">
@@ -67,7 +67,7 @@
 
       <view wx:elif="{{!results.length}}" class="empty-state">
         <icon name="search" size="40" color="#C3CCE0" />
-        <text>未找到「{{keyword}}」相关内容</text>
+        <text>未找到「{{activeKeyword}}」相关内容</text>
       </view>
 
       <view wx:if="{{loadingMore}}" class="list-foot">加载中…</view>

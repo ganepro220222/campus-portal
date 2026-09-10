@@ -67,6 +67,18 @@ function shouldLoadSearchMore(state, manualRetry) {
   return manualRetry ? !!state.loadMoreError : !state.loadMoreError
 }
 
+/** 当前列表真正对应的词；输入框草稿不能用来翻页 */
+function committedSearchKeyword(state) {
+  return ((state && state.activeKeyword) || '').trim()
+}
+
+function resolveSearchLoadMore(state, manualRetry) {
+  if (!shouldLoadSearchMore(state, manualRetry)) return null
+  const q = committedSearchKeyword(state)
+  if (!q) return null
+  return { keyword: q, requestPage: state.page }
+}
+
 function sliceSearchPage(list, page, pageSize) {
   const size = pageSize > 0 ? pageSize : SEARCH_PAGE_SIZE
   const start = (Math.max(page, 1) - 1) * size
@@ -77,11 +89,11 @@ function sliceSearchPage(list, page, pageSize) {
   }
 }
 
-/** 关键词、代际、请求页任一不对，说明这条响应已经过期 */
+/** 已提交词、代际、请求页任一不对，说明这条响应已经过期 */
 function isStaleSearchResponse(page, generation, keyword, requestPage) {
   if (!page) return true
   if (generation !== page._listGeneration) return true
-  if ((page.data.keyword || '').trim() !== keyword) return true
+  if (committedSearchKeyword(page.data) !== keyword) return true
   if (Number(page.data.page) !== Number(requestPage)) return true
   return false
 }
@@ -96,6 +108,8 @@ module.exports = {
   mergeSearchResults,
   calcSearchHasMore,
   shouldLoadSearchMore,
+  committedSearchKeyword,
+  resolveSearchLoadMore,
   sliceSearchPage,
   isStaleSearchResponse
 }

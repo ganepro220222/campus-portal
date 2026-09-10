@@ -7,7 +7,7 @@ const {
   extractSearchPage,
   mergeSearchResults,
   calcSearchHasMore,
-  shouldLoadSearchMore,
+  resolveSearchLoadMore,
   sliceSearchPage,
   isStaleSearchResponse
 } = require('../../utils/search')
@@ -27,7 +27,8 @@ function emptySearchState(extra) {
     loading: false,
     loadingMore: false,
     loadMoreError: false,
-    errorText: ''
+    errorText: '',
+    activeKeyword: ''
   }, extra || {})
 }
 
@@ -52,6 +53,7 @@ function localSearchAll(q) {
 Page({
   data: {
     keyword: '',
+    activeKeyword: '',
     results: [],
     total: 0,
     page: 1,
@@ -94,11 +96,12 @@ Page({
     const q = (keyword || '').trim()
     const seq = bumpListGeneration(this)
     if (!q) {
-      this.setData(emptySearchState({ keyword: '', searched: false }))
+      this.setData(emptySearchState({ keyword: '', activeKeyword: '', searched: false }))
       return
     }
     this.setData(emptySearchState({
       keyword: q,
+      activeKeyword: q,
       searched: true,
       loading: true
     }))
@@ -106,13 +109,11 @@ Page({
   },
 
   _loadMore(manualRetry) {
-    if (!shouldLoadSearchMore(this.data, manualRetry)) return
-    const q = (this.data.keyword || '').trim()
-    if (!q) return
-    const requestPage = this.data.page
+    const next = resolveSearchLoadMore(this.data, manualRetry)
+    if (!next) return
     const seq = bumpListGeneration(this)
     this.setData({ loadingMore: true, loadMoreError: false })
-    return this._fetchPage({ seq, keyword: q, requestPage, reset: false })
+    return this._fetchPage({ seq, keyword: next.keyword, requestPage: next.requestPage, reset: false })
   },
 
   async _fetchPage({ seq, keyword, requestPage, reset }) {

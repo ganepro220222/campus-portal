@@ -69,7 +69,8 @@ class RichHtmlSanitizerTest {
                         + "<pre><code>code</code></pre>"
                         + "<img src=\"https://cdn.example.com/a.png\" alt=\"图\" style=\"width: 800px;height: 600px;\" height=\"600\" />");
         assertTrue(out.contains("justify"), out);
-        assertTrue(out.contains("font-size:24px") || out.contains("font-size: 24px"), out);
+        assertTrue(out.contains("1.6em"), out);
+        assertFalse(out.contains("font-size:15px") || out.contains("font-size: 15px"), out);
         assertTrue(out.contains("list-style-type:disc") || out.contains("list-style-type: disc"), out);
         assertTrue(out.contains("list-style-type:decimal") || out.contains("list-style-type: decimal"), out);
         assertTrue(out.contains("border-left"), out);
@@ -118,5 +119,27 @@ class RichHtmlSanitizerTest {
         assertFalse(RichHtmlSanitizer.isBlankContent(
                 RichHtmlSanitizer.sanitize("<p><img src=\"https://cdn.example.com/a.png\" alt=\"图\"></p>")));
         assertFalse(RichHtmlSanitizer.isBlankContent("<p>有字</p>"));
+    }
+
+    @Test
+    void sanitize_doesNotPinBodyFontToFifteenPx() {
+        String fresh = RichHtmlSanitizer.sanitize("<p>普通段</p>");
+        assertFalse(fresh.contains("15px"), fresh);
+        String legacy = RichHtmlSanitizer.sanitize("<p style=\"font-size:15px\">旧稿</p>");
+        assertFalse(legacy.contains("15px"), legacy);
+        String custom = RichHtmlSanitizer.sanitize(
+                "<p><span style=\"font-size:18px\">加大</span></p>");
+        assertTrue(custom.contains("18px"), custom);
+    }
+
+    @Test
+    void sanitize_migratesLegacyHeadingPxToEm() {
+        String fresh = RichHtmlSanitizer.sanitize("<h2>二级标题</h2>");
+        assertTrue(fresh.contains("1.6em"), fresh);
+        String legacy = RichHtmlSanitizer.sanitize("<h2 style=\"font-size:24px\">旧标题</h2>");
+        assertTrue(legacy.contains("1.6em"), legacy);
+        assertFalse(legacy.contains("24px"), legacy);
+        String custom = RichHtmlSanitizer.sanitize("<h2 style=\"font-size:20px\">自定义</h2>");
+        assertTrue(custom.contains("20px"), custom);
     }
 }

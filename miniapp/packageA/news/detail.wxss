@@ -107,6 +107,14 @@
   margin-bottom: 22rpx;
   text-align: justify;
 }
+/* 打在组件上，内部段落才有机会继承 29rpx；只写在包裹 view 上，rich-text 经常吃不到 */
+.art-rich-nodes {
+  display: block;
+  width: 100%;
+  font-size: 29rpx;
+  line-height: 1.9;
+  color: var(--ink);
+}
 .art-rich image {
   max-width: 100%;
   border-radius: 12rpx;

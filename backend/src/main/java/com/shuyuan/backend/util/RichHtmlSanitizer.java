@@ -141,17 +141,20 @@ public final class RichHtmlSanitizer {
 
     private static void decorateForMiniapp(Document doc) {
         for (Element p : doc.select("p")) {
+            // 正文字号交给详情页 rich-text 的 29rpx，不写死 15px，避免和小程序 rpx 正文、摘要对不上
+            if (isLegacyFontSize(cssValue(p.attr("style"), "font-size"), "15px")) {
+                removeCss(p, "font-size");
+            }
             ensureCss(p, "text-align", "justify");
             ensureCss(p, "color", INK);
-            ensureCss(p, "font-size", "15px");
             ensureCss(p, "line-height", "1.9");
         }
-        applyHeading(doc, "h1", "32px");
-        applyHeading(doc, "h2", "24px");
-        applyHeading(doc, "h3", "18px");
-        applyHeading(doc, "h4", "16px");
-        applyHeading(doc, "h5", "13px");
-        applyHeading(doc, "h6", "13px");
+        applyHeading(doc, "h1", "2.13em", "32px");
+        applyHeading(doc, "h2", "1.6em", "24px");
+        applyHeading(doc, "h3", "1.2em", "18px");
+        applyHeading(doc, "h4", "1.07em", "16px");
+        applyHeading(doc, "h5", "0.87em", "13px");
+        applyHeading(doc, "h6", "0.87em", "13px");
         for (Element ul : doc.select("ul")) {
             ensureCss(ul, "padding-left", "1.6em");
             ensureCss(ul, "margin", "0.4em 0");
@@ -180,7 +183,7 @@ public final class RichHtmlSanitizer {
         for (Element pre : doc.select("pre")) {
             ensureCss(pre, "white-space", "pre-wrap");
             ensureCss(pre, "word-break", "break-word");
-            ensureCss(pre, "font-size", "13px");
+            applyRelativeFontSize(pre, "0.87em", "13px");
             ensureCss(pre, "background", "#F5F7FB");
             ensureCss(pre, "padding", "8px");
         }
@@ -218,14 +221,34 @@ public final class RichHtmlSanitizer {
         }
     }
 
-    private static void applyHeading(Document doc, String tag, String fontSize) {
+    private static void applyHeading(Document doc, String tag, String emSize, String legacyPx) {
         for (Element heading : doc.select(tag)) {
-            ensureCss(heading, "font-size", fontSize);
+            applyRelativeFontSize(heading, emSize, legacyPx);
             ensureCss(heading, "font-weight", "bold");
             ensureCss(heading, "color", INK);
             ensureCss(heading, "line-height", "1.35");
             ensureCss(heading, "margin", "0.7em 0 0.35em");
         }
+    }
+
+    private static void applyRelativeFontSize(Element el, String emSize, String legacyPx) {
+        String current = cssValue(el.attr("style"), "font-size");
+        if (current.isBlank() || isLegacyFontSize(current, legacyPx, emSize)) {
+            setCss(el, "font-size", emSize);
+        }
+    }
+
+    private static boolean isLegacyFontSize(String current, String... expected) {
+        if (current == null || current.isBlank()) {
+            return false;
+        }
+        String compact = current.toLowerCase(Locale.ROOT).replace(" ", "");
+        for (String item : expected) {
+            if (compact.equals(item.toLowerCase(Locale.ROOT).replace(" ", ""))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void setCssIfAutoOrMissing(Element el, String property, String value) {
@@ -268,6 +291,29 @@ public final class RichHtmlSanitizer {
             return;
         }
         setCss(el, property, value);
+    }
+
+    private static void removeCss(Element el, String property) {
+        String style = el.attr("style");
+        StringBuilder out = new StringBuilder();
+        String needle = property.toLowerCase(Locale.ROOT) + ":";
+        if (style != null && !style.isBlank()) {
+            for (String part : style.split(";")) {
+                String trimmed = part.trim();
+                if (trimmed.isEmpty() || trimmed.toLowerCase(Locale.ROOT).startsWith(needle)) {
+                    continue;
+                }
+                if (out.length() > 0) {
+                    out.append(';');
+                }
+                out.append(trimmed);
+            }
+        }
+        if (out.length() == 0) {
+            el.removeAttr("style");
+        } else {
+            el.attr("style", out.toString());
+        }
     }
 
     private static void setCss(Element el, String property, String value) {

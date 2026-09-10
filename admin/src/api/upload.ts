@@ -156,12 +156,13 @@ export function postFileToOss(
 }
 
 /** 管理端媒体上传（OSS 中转） */
-export function uploadFile(file: File, scene: string): Promise<UploadResult> {
+export function uploadFile(file: File, scene: string, extra?: RequestConfig): Promise<UploadResult> {
   const form = new FormData()
   form.append('file', file)
   form.append('scene', scene)
   return post<UploadResult>('/admin/upload', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: uploadTimeoutMs(file, scene)
+    timeout: uploadTimeoutMs(file, scene),
+    ...extra
   })
 }

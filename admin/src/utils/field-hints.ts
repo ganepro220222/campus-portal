@@ -26,5 +26,5 @@ export const FIELD_HINTS = {
   resourceName: '资源列表展示，建议 12–30 字。',
   // 一个字段只挂一条提示：这里原来另有一条手写的 .form-tip 与之并列，
   // 两条会被 el-form-item 的 flex 布局挤在同一行，读起来错位
-  editorBody: '正文支持图文排版，在详情页完整展示，列表仅显示标题；AI 润色、扩写的结果需确认采纳后才会写入。'
+  editorBody: '正文支持标题、对齐、颜色、表格和插图；插图请用工具栏上传（JPG/PNG/GIF/WebP，单张不超过 20MB），不要只贴外链。列表只显示标题。AI 润色、扩写需确认采纳后才会写入。'
 } as const

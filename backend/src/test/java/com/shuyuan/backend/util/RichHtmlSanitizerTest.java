@@ -37,4 +37,29 @@ class RichHtmlSanitizerTest {
         assertEquals("", RichHtmlSanitizer.sanitize(null));
         assertEquals("", RichHtmlSanitizer.sanitize("   "));
     }
+
+    @Test
+    void sanitize_keepsEditorLayoutThatMiniappCanRender() {
+        String input = "<p style=\"text-align: center;\"><span style=\"color: rgb(192, 57, 43); font-size: 18px;\">红字</span></p>"
+                + "<table><tbody><tr><td colspan=\"2\">单元格</td></tr></tbody></table>"
+                + "<hr/>"
+                + "<img src=\"https://cdn.example.com/a.png\" alt=\"图\" width=\"320\" style=\"width: 100%;\" />";
+        String out = RichHtmlSanitizer.sanitize(input);
+        assertTrue(out.contains("text-align: center"), out);
+        assertTrue(out.contains("color:"), out);
+        assertTrue(out.contains("<table"), out);
+        assertTrue(out.contains("单元格"), out);
+        assertTrue(out.contains("<hr"), out);
+        assertTrue(out.contains("width"), out);
+        assertTrue(out.contains("https://cdn.example.com/a.png"), out);
+        assertTrue(out.contains("border-collapse"), out);
+        assertTrue(out.contains("1px solid #ccc"), out);
+        assertTrue(out.contains("max-width:100%"), out);
+    }
+
+    @Test
+    void sanitize_stillDropsDataUriImages() {
+        String out = RichHtmlSanitizer.sanitize("<p><img src=\"data:image/png;base64,aaaa\" alt=\"x\"></p>");
+        assertFalse(out.toLowerCase().contains("data:"));
+    }
 }

@@ -25,6 +25,17 @@ class UploadContentInspectorTest {
     }
 
     @Test
+    void inspect_acceptsGifAndWebpMagic() {
+        byte[] gif = new byte[]{'G', 'I', 'F', '8', '9', 'a', 0x01, 0x00};
+        assertEquals("image/gif", UploadContentInspector.inspect("gif", gif));
+        byte[] webp = new byte[]{
+                'R', 'I', 'F', 'F', 0x10, 0x00, 0x00, 0x00,
+                'W', 'E', 'B', 'P', 'V', 'P', '8', ' '
+        };
+        assertEquals("image/webp", UploadContentInspector.inspect("webp", webp));
+    }
+
+    @Test
     void inspect_rejectsHtmlDisguisedAsJpeg() {
         byte[] html = "<html>".getBytes();
         var ex = assertThrows(com.shuyuan.backend.common.exception.BusinessException.class,

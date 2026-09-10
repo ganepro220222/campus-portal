@@ -6,6 +6,7 @@ const assert = require('assert')
 const {
   resolveEmptyContentObject,
   mergeNewsArticle,
+  stripUnsafeHtml,
   displayWidth,
   shouldDropCap,
   DROP_CAP_MIN_DISPLAY_WIDTH
@@ -129,6 +130,18 @@ assert.strictEqual(mergeNewsArticle({}, {}).coverImageMode, 'aspectFill')
   assert.strictEqual(a.showLead, true)
   assert.strictEqual(a.lead, '这是摘要')
   assert.strictEqual(a.drop + a.leadRest, '这是摘要')
+}
+
+{
+  const html = '<p style="text-align:center"><span style="color:#c0392b">红字</span></p>'
+    + '<table><tr><td>单元格</td></tr></table>'
+    + '<img src="https://cdn.example.com/a.png" width="320">'
+  const out = stripUnsafeHtml(html)
+  assert.ok(out.includes('text-align:center'))
+  assert.ok(out.includes('color:#c0392b'))
+  assert.ok(out.includes('<table>'))
+  assert.ok(out.includes('https://cdn.example.com/a.png'))
+  assert.ok(!/script/i.test(stripUnsafeHtml(html + '<script>alert(1)</script>')))
 }
 
 const news = mergeNewsArticle({ id: 1, title: '标题', content: '正文\n第二段' }, {})

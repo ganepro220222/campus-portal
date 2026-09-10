@@ -52,8 +52,27 @@ watch(() => props.modelValue, (v) => {
   if (next !== html.value) html.value = next
 })
 
+/** 动态详情页没有视频位；全屏会撑破弹窗；待办勾选无法在详情交互；表情默认外链图在真机可能空白 */
 const toolbarConfig: Partial<IToolbarConfig> = {
-  excludeKeys: ['group-video', 'fullScreen']
+  excludeKeys: ['group-video', 'fullScreen', 'todo', 'emotion']
+}
+
+const IMAGE_MAX_BYTES = 20 * 1024 * 1024
+
+function isAllowedEditorImage(file: File): boolean {
+  const name = (file.name || '').toLowerCase()
+  if (/\.(jpe?g|png|gif|webp)$/.test(name)) return true
+  const type = (file.type || '').toLowerCase()
+  return type === 'image/jpeg' || type === 'image/jpg' || type === 'image/png'
+    || type === 'image/gif' || type === 'image/webp'
+}
+
+function uploadFailMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'message' in err) {
+    const msg = String((err as { message?: unknown }).message || '').trim()
+    if (msg) return msg
+  }
+  return '图片上传失败，请检查文件格式与大小'
 }
 
 const editorConfig: Partial<IEditorConfig> = {
@@ -61,13 +80,26 @@ const editorConfig: Partial<IEditorConfig> = {
   readOnly: props.disabled,
   MENU_CONF: {
     uploadImage: {
+      maxFileSize: IMAGE_MAX_BYTES,
       async customUpload(file: File, insertFn: (url: string, alt?: string, href?: string) => void) {
-        try {
-          const res = await uploadFile(file, 'image')
-          insertFn(res.url, '', '')
-        } catch {
-          ElMessage.error('图片上传失败，请检查文件格式与大小，或联系技术人员')
+        if (!isAllowedEditorImage(file)) {
+          ElMessage.error('仅支持 JPG、PNG、GIF、WebP，单张不超过 20MB')
+          return
         }
+        try {
+          const res = await uploadFile(file, 'image', { silent: true })
+          insertFn(res.url, file.name || '', '')
+        } catch (err) {
+          ElMessage.error(uploadFailMessage(err))
+        }
+      }
+    },
+    insertImage: {
+      checkImage(src: string) {
+        if (!/^https:\/\//i.test(String(src || '').trim())) {
+          return '请填写 https 图片地址；校内插图请用工具栏上传'
+        }
+        return true
       }
     }
   }

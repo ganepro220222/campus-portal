@@ -333,8 +333,10 @@ public final class UploadContentInspector {
 
     private static boolean matchesMagic(String ext, byte[] h) {
         return switch (ext) {
-            case "jpg", "jpeg" -> startsWith(h, (byte) 0xFF, (byte) 0xD8, (byte) 0xFF);
-            case "png" -> startsWith(h, (byte) 0x89, 0x50, 0x4E, 0x47);
+            case "jpg", "jpeg" -> startsWith(h, 0xFF, 0xD8, 0xFF);
+            // PNG 签名首字节是 0x89。必须走无符号比较：写成 (byte)0x89 再塞进 int...
+            // 会符号扩展成 -119，和文件头 137 对不上，真实 PNG 会被整批拒掉。
+            case "png" -> startsWith(h, 0x89, 0x50, 0x4E, 0x47);
             case "gif" -> startsWith(h, 'G', 'I', 'F');
             case "webp" -> h.length >= 12 && startsWith(h, 'R', 'I', 'F', 'F')
                     && h[8] == 'W' && h[9] == 'E' && h[10] == 'B' && h[11] == 'P';
@@ -397,14 +399,6 @@ public final class UploadContentInspector {
             }
         }
         return true;
-    }
-
-    private static boolean startsWith(byte[] data, byte b0, byte b1, byte b2) {
-        return data.length >= 3 && data[0] == b0 && data[1] == b1 && data[2] == b2;
-    }
-
-    private static boolean startsWith(byte[] data, byte b0, byte b1, byte b2, byte b3) {
-        return data.length >= 4 && data[0] == b0 && data[1] == b1 && data[2] == b2 && data[3] == b3;
     }
 
     private static boolean startsWith(byte[] data, char c0, char c1, char c2) {

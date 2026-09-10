@@ -318,8 +318,17 @@ function onSummaryAiAdopt(payload: { action: AiPolishAction; text: string }) {
   form.summary = payload.text.slice(0, 500)
 }
 
-function onBodyAiAdopt(payload: { action: AiPolishAction; text: string }) {
+async function onBodyAiAdopt(payload: { action: AiPolishAction; text: string }) {
   if (payload.action !== 'polish' && payload.action !== 'expand') return
+  try {
+    await ElMessageBox.confirm(
+      '采纳后会替换当前正文，已有图片、表格和文字样式都会丢失。是否继续？',
+      '替换正文',
+      { type: 'warning', confirmButtonText: '采纳并替换', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
   form.content = plainTextToHtml(payload.text)
   onContentChange()
 }

@@ -52,17 +52,19 @@ watch(() => props.modelValue, (v) => {
   if (next !== html.value) html.value = next
 })
 
-/** 动态详情页没有视频位；全屏会撑破弹窗；待办勾选无法在详情交互；表情默认外链图在真机可能空白 */
+/** 动态详情页没有视频位；全屏会撑破弹窗；待办勾选无法在详情交互；表情和外链图在真机可能空白 */
 const toolbarConfig: Partial<IToolbarConfig> = {
-  excludeKeys: ['group-video', 'fullScreen', 'todo', 'emotion']
+  excludeKeys: ['group-video', 'fullScreen', 'todo', 'emotion', 'insertImage']
 }
 
 const IMAGE_MAX_BYTES = 20 * 1024 * 1024
 
 function isAllowedEditorImage(file: File): boolean {
   const name = (file.name || '').toLowerCase()
-  if (/\.(jpe?g|png|gif|webp)$/.test(name)) return true
+  const extOk = /\.(jpe?g|png|gif|webp)$/.test(name)
+  if (!extOk) return false
   const type = (file.type || '').toLowerCase()
+  if (!type) return true
   return type === 'image/jpeg' || type === 'image/jpg' || type === 'image/png'
     || type === 'image/gif' || type === 'image/webp'
 }
@@ -92,14 +94,6 @@ const editorConfig: Partial<IEditorConfig> = {
         } catch (err) {
           ElMessage.error(uploadFailMessage(err))
         }
-      }
-    },
-    insertImage: {
-      checkImage(src: string) {
-        if (!/^https:\/\//i.test(String(src || '').trim())) {
-          return '请填写 https 图片地址；校内插图请用工具栏上传'
-        }
-        return true
       }
     }
   }

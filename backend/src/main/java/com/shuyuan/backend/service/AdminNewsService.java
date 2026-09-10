@@ -68,7 +68,7 @@ public class AdminNewsService {
 
     public Map<String, Object> create(NewsSaveRequest req) {
         adminPermissionService.require("news:write");
-        validateContent(req);
+        validateContent(req, true);
         News news = fromRequest(new News(), req);
         news.setStatus("draft");
         news.setViewCount(0);
@@ -81,9 +81,11 @@ public class AdminNewsService {
         return toVo(newsMapper.selectById(news.getId()), categoryService.nameMap("news"), true);
     }
 
+    @Transactional
     public Map<String, Object> update(Long id, NewsSaveRequest req) {
         adminPermissionService.require("news:write");
         News news = requireNews(id);
+        validateContent(req, false);
         String oldCover = news.getCover();
         String oldContent = news.getContent();
         fromRequest(news, req);
@@ -148,9 +150,17 @@ public class AdminNewsService {
         return news;
     }
 
-    private void validateContent(NewsSaveRequest req) {
-        if (req.getTitle() == null || req.getTitle().isBlank()) {
-            throw new BusinessException(400, "标题不能为空");
+    private void validateContent(NewsSaveRequest req, boolean creating) {
+        if (creating || req.getTitle() != null) {
+            if (req.getTitle() == null || req.getTitle().isBlank()) {
+                throw new BusinessException(400, "标题不能为空");
+            }
+        }
+        if (creating || req.getContent() != null) {
+            String cleaned = RichHtmlSanitizer.sanitize(req.getContent());
+            if (RichHtmlSanitizer.isBlankContent(cleaned)) {
+                throw new BusinessException(400, "正文不能为空");
+            }
         }
     }
 

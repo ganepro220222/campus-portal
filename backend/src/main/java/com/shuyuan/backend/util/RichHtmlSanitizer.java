@@ -5,18 +5,36 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.safety.Safelist;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
 /**
  * 富文本入库白名单净化（新闻正文等 HTML 字段）。
  * 与前端 sanitizeRichHtml 互补：后端统一拦截绕过工作台的直接 API 写入。
- * 白名单对齐小程序 rich-text 能渲染的标签，以及编辑器工具栏会写出的属性。
- * 小程序 rich-text 不吃页面 wxss，编辑器里靠样式表画出的列表点、引用条、标题大小、
- * 图片高度，入库时必须写到标签的 style 上，详情页才能和工具栏效果对上。
+ * 标签对齐小程序 rich-text；style 只保留排版用得到的 CSS，不收 position / z-index 这类能盖住界面的属性。
+ * 小程序不吃页面 wxss，列表点、引用条、标题大小、图片高度要写到标签 style 上。
  */
 public final class RichHtmlSanitizer {
 
     private static final String INK = "#1F2547";
     private static final String NAVY = "#2B356E";
     private static final String LINE = "#D8DEEA";
+
+    private static final Set<String> ALLOWED_CSS = Set.of(
+            "color", "background-color", "background",
+            "font-size", "font-weight", "font-style", "font-family",
+            "text-align", "text-indent", "text-decoration", "line-height",
+            "width", "height", "max-width", "min-width",
+            "border", "border-collapse", "border-top", "border-right", "border-bottom", "border-left",
+            "border-color", "border-width", "border-style",
+            "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
+            "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
+            "list-style-type", "white-space", "word-break", "table-layout",
+            "display", "vertical-align");
+
+    private static final Set<String> ALLOWED_DISPLAY = Set.of("block", "inline", "inline-block");
 
     private static final Safelist RICH_TEXT = Safelist.none()
             .addTags(
@@ -28,7 +46,7 @@ public final class RichHtmlSanitizer {
                     "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption",
                     "col", "colgroup",
                     "hr", "pre", "code", "font", "center", "small")
-            .addAttributes(":all", "style", "class")
+            .addAttributes(":all", "style")
             .addAttributes("a", "href", "title", "target")
             .addAttributes("img", "src", "alt", "title", "width", "height")
             .addAttributes("td", "colspan", "rowspan", "width", "align", "valign")
@@ -50,8 +68,75 @@ public final class RichHtmlSanitizer {
         String cleaned = Jsoup.clean(html, "", RICH_TEXT, compact);
         Document doc = Jsoup.parseBodyFragment(cleaned);
         doc.outputSettings(compact);
+        filterInlineCss(doc);
         decorateForMiniapp(doc);
         return doc.body().html().trim();
+    }
+
+    /** 净化后没有可见文字、也没有图片，视为空正文。 */
+    public static boolean isBlankContent(String html) {
+        if (html == null || html.isBlank()) {
+            return true;
+        }
+        Document doc = Jsoup.parseBodyFragment(html);
+        if (!doc.text().isBlank()) {
+            return false;
+        }
+        return doc.select("img[src]").isEmpty();
+    }
+
+    private static void filterInlineCss(Document doc) {
+        for (Element el : doc.getAllElements()) {
+            if (!el.hasAttr("style")) {
+                continue;
+            }
+            String filtered = filterCss(el.attr("style"));
+            if (filtered.isBlank()) {
+                el.removeAttr("style");
+            } else {
+                el.attr("style", filtered);
+            }
+        }
+    }
+
+    static String filterCss(String style) {
+        if (style == null || style.isBlank()) {
+            return "";
+        }
+        List<String> kept = new ArrayList<>();
+        for (String part : style.split(";")) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            int colon = trimmed.indexOf(':');
+            if (colon <= 0) {
+                continue;
+            }
+            String property = trimmed.substring(0, colon).trim().toLowerCase(Locale.ROOT);
+            String value = trimmed.substring(colon + 1).trim().replaceAll("(?i)!important", "").trim();
+            if (property.isEmpty() || value.isEmpty() || !ALLOWED_CSS.contains(property)) {
+                continue;
+            }
+            if (looksLikeUnsafeCssValue(value)) {
+                continue;
+            }
+            if ("display".equals(property) && !ALLOWED_DISPLAY.contains(value.toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            kept.add(property + ":" + value);
+        }
+        return String.join(";", kept);
+    }
+
+    private static boolean looksLikeUnsafeCssValue(String value) {
+        String lower = value.toLowerCase(Locale.ROOT);
+        return lower.contains("url(")
+                || lower.contains("expression")
+                || lower.contains("javascript")
+                || lower.contains("behavior")
+                || lower.contains("-moz-binding")
+                || lower.contains("attr(");
     }
 
     private static void decorateForMiniapp(Document doc) {
@@ -112,8 +197,12 @@ public final class RichHtmlSanitizer {
             if ("auto".equalsIgnoreCase(cell.attr("width"))) {
                 cell.removeAttr("width");
             }
-            ensureCss(cell, "border", "1px solid #ccc");
-            ensureCss(cell, "padding", "6px");
+            if (!hasCssPropertyOrLonghand(cell.attr("style"), "border")) {
+                ensureCss(cell, "border", "1px solid #ccc");
+            }
+            if (!hasCssPropertyOrLonghand(cell.attr("style"), "padding")) {
+                ensureCss(cell, "padding", "6px");
+            }
             ensureCss(cell, "word-break", "break-word");
             ensureCss(cell, "color", INK);
         }
@@ -147,10 +236,10 @@ public final class RichHtmlSanitizer {
     }
 
     private static String cssValue(String style, String property) {
-        String needle = property.toLowerCase() + ":";
+        String needle = property.toLowerCase(Locale.ROOT) + ":";
         for (String part : style.split(";")) {
             String trimmed = part.trim();
-            if (trimmed.toLowerCase().startsWith(needle)) {
+            if (trimmed.toLowerCase(Locale.ROOT).startsWith(needle)) {
                 return trimmed.substring(needle.length()).trim();
             }
         }
@@ -159,6 +248,19 @@ public final class RichHtmlSanitizer {
 
     private static boolean hasCssProperty(String style, String property) {
         return !cssValue(style, property).isEmpty();
+    }
+
+    private static boolean hasCssPropertyOrLonghand(String style, String property) {
+        if (hasCssProperty(style, property)) {
+            return true;
+        }
+        String prefix = property.toLowerCase(Locale.ROOT) + "-";
+        for (String part : style.split(";")) {
+            if (part.trim().toLowerCase(Locale.ROOT).startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void ensureCss(Element el, String property, String value) {
@@ -171,14 +273,14 @@ public final class RichHtmlSanitizer {
     private static void setCss(Element el, String property, String value) {
         String style = el.attr("style");
         StringBuilder out = new StringBuilder();
-        String needle = property.toLowerCase() + ":";
+        String needle = property.toLowerCase(Locale.ROOT) + ":";
         if (style != null && !style.isBlank()) {
             for (String part : style.split(";")) {
                 String trimmed = part.trim();
                 if (trimmed.isEmpty()) {
                     continue;
                 }
-                if (trimmed.toLowerCase().startsWith(needle)) {
+                if (trimmed.toLowerCase(Locale.ROOT).startsWith(needle)) {
                     continue;
                 }
                 if (out.length() > 0) {

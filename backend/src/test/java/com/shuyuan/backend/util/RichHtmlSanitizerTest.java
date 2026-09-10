@@ -84,4 +84,39 @@ class RichHtmlSanitizerTest {
         String out = RichHtmlSanitizer.sanitize("<p><img src=\"data:image/png;base64,aaaa\" alt=\"x\"></p>");
         assertFalse(out.toLowerCase().contains("data:"));
     }
+
+    @Test
+    void sanitize_stripsLayoutOverlayCss() {
+        String out = RichHtmlSanitizer.sanitize(
+                "<div style=\"position:fixed;inset:0;z-index:999999;background:white;color:black\">请重新登录</div>"
+                        + "<span style=\"opacity:0;font-size:18px\">藏字</span>"
+                        + "<p style=\"background:url(javascript:alert(1));text-align:center\">红字</p>");
+        assertFalse(out.contains("position"), out);
+        assertFalse(out.contains("z-index"), out);
+        assertFalse(out.contains("inset"), out);
+        assertFalse(out.contains("opacity"), out);
+        assertFalse(out.toLowerCase().contains("javascript"), out);
+        assertFalse(out.toLowerCase().contains("url("), out);
+        assertTrue(out.contains("请重新登录"), out);
+        assertTrue(out.contains("text-align:center") || out.contains("text-align: center"), out);
+    }
+
+    @Test
+    void sanitize_doesNotOverridePastedTableLonghands() {
+        String out = RichHtmlSanitizer.sanitize(
+                "<table><tr><td style=\"padding-left:20px;border-bottom:3px solid red\">x</td></tr></table>");
+        assertTrue(out.contains("padding-left:20px") || out.contains("padding-left: 20px"), out);
+        assertTrue(out.contains("border-bottom"), out);
+        assertFalse(out.contains("padding:6px") || out.contains("padding: 6px"), out);
+        assertFalse(out.contains("border:1px solid #ccc") || out.contains("border: 1px solid #ccc"), out);
+    }
+
+    @Test
+    void isBlankContent_treatsScriptOnlyAsEmptyAndKeepsImages() {
+        assertTrue(RichHtmlSanitizer.isBlankContent(RichHtmlSanitizer.sanitize("<script>alert(1)</script>")));
+        assertTrue(RichHtmlSanitizer.isBlankContent("<p><br></p>"));
+        assertFalse(RichHtmlSanitizer.isBlankContent(
+                RichHtmlSanitizer.sanitize("<p><img src=\"https://cdn.example.com/a.png\" alt=\"图\"></p>")));
+        assertFalse(RichHtmlSanitizer.isBlankContent("<p>有字</p>"));
+    }
 }

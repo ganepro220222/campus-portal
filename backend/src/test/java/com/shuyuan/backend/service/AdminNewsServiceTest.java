@@ -131,4 +131,59 @@ class AdminNewsServiceTest {
         verify(newsMapper, never()).deleteById(anyLong());
         verify(searchIndexSyncService, never()).removeNews(anyLong());
     }
+
+    @Test
+    void create_rejectsBlankTitleAndEmptySanitizedContent() {
+        NewsSaveRequest noTitle = new NewsSaveRequest();
+        noTitle.setTitle("   ");
+        noTitle.setContent("<p>正文</p>");
+        BusinessException titleEx = assertThrows(BusinessException.class, () -> adminNewsService.create(noTitle));
+        assertEquals(400, titleEx.getCode());
+
+        NewsSaveRequest noBody = new NewsSaveRequest();
+        noBody.setTitle("标题");
+        noBody.setContent("<script>alert(1)</script>");
+        BusinessException bodyEx = assertThrows(BusinessException.class, () -> adminNewsService.create(noBody));
+        assertEquals(400, bodyEx.getCode());
+        verify(newsMapper, never()).insert(any(News.class));
+    }
+
+    @Test
+    void update_rejectsBlankTitle() {
+        News existing = new News();
+        existing.setId(9L);
+        existing.setTitle("旧标题");
+        existing.setContent("<p>旧正文</p>");
+        existing.setStatus("published");
+        when(newsMapper.selectById(9L)).thenReturn(existing);
+
+        NewsSaveRequest req = new NewsSaveRequest();
+        req.setTitle("   ");
+        req.setContent("<p>新正文</p>");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> adminNewsService.update(9L, req));
+        assertEquals(400, ex.getCode());
+        verify(newsMapper, never()).updateById(any(News.class));
+        verify(searchIndexSyncService, never()).syncNews(any(News.class));
+    }
+
+    @Test
+    void update_sanitizesContentWhenProvided() {
+        News existing = new News();
+        existing.setId(10L);
+        existing.setTitle("标题");
+        existing.setContent("<p>旧</p>");
+        existing.setStatus("draft");
+        when(newsMapper.selectById(10L)).thenReturn(existing);
+        when(categoryService.nameMap("news")).thenReturn(Map.of());
+
+        NewsSaveRequest req = new NewsSaveRequest();
+        req.setContent("<p>新</p><script>evil()</script>");
+        adminNewsService.update(10L, req);
+
+        ArgumentCaptor<News> captor = ArgumentCaptor.forClass(News.class);
+        verify(newsMapper).updateById(captor.capture());
+        assertTrue(captor.getValue().getContent().contains("新"));
+        assertFalse(captor.getValue().getContent().toLowerCase().contains("script"));
+    }
 }

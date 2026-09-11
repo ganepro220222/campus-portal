@@ -77,7 +77,16 @@ class RichHtmlSanitizerTest {
         assertTrue(out.contains("pre-wrap"), out);
         assertTrue(out.contains("height:auto") || out.contains("height: auto"), out);
         assertFalse(out.contains("height=\"600\""), out);
-        assertTrue(out.contains("width:100%") || out.contains("width: 100%") || !out.contains("<table"), out);
+        assertFalse(out.contains("<table"), out);
+    }
+
+    @Test
+    void sanitize_fillsMissingTableWidthAndFixedLayout() {
+        String out = RichHtmlSanitizer.sanitize("<table><tr><td>x</td></tr></table>");
+        assertTrue(out.contains("<table"), out);
+        assertTrue(out.contains("width:100%") || out.contains("width: 100%"), out);
+        assertTrue(out.contains("table-layout:fixed") || out.contains("table-layout: fixed"), out);
+        assertTrue(out.contains("border-collapse:collapse") || out.contains("border-collapse: collapse"), out);
     }
 
     @Test

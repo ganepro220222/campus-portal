@@ -65,6 +65,8 @@ function isAllowedEditorImage(file: File): boolean {
   if (!extOk) return false
   const type = (file.type || '').toLowerCase()
   if (!type) return true
+  // 只要求扩展名、MIME 各自落在允许集合里。不强制 .png 配 image/png：
+  // 浏览器对同一张 JPG 可能报 image/jpg 或 image/jpeg；真实类型由后端按文件头判定。
   return type === 'image/jpeg' || type === 'image/jpg' || type === 'image/png'
     || type === 'image/gif' || type === 'image/webp'
 }

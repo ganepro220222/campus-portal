@@ -22,7 +22,8 @@ public class HomeService {
     public Map<String, Object> recommends() {
         List<HomeRecommend> items = homeRecommendMapper.selectList(new LambdaQueryWrapper<HomeRecommend>()
                 .eq(HomeRecommend::getStatus, 1)
-                .orderByAsc(HomeRecommend::getSort));
+                .orderByAsc(HomeRecommend::getSort)
+                .orderByAsc(HomeRecommend::getId));
 
         Map<Long, String> newsCat = categoryService.nameMap("news");
         Map<Long, String> hallCat = categoryService.nameMap("hall");
@@ -32,6 +33,7 @@ public class HomeService {
         List<Map<String, Object>> halls = new ArrayList<>();
         List<Map<String, Object>> courses = new ArrayList<>();
 
+        // 按条查目标。首页推荐条数很少，不为这点改成三组 IN。草稿、下架、已删的目标在这里跳过。
         for (HomeRecommend item : items) {
             String type = item.getModuleType();
             if ("news".equals(type)) {

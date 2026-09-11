@@ -673,6 +673,7 @@ CREATE TABLE IF NOT EXISTS `home_recommend` (
   `is_deleted`  TINYINT     NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='首页推荐位';
+-- 不加 (module_type, target_id) 唯一索引：逻辑删除行仍占键，移除后再添加同一内容会被挡住。重复由服务端查在用行拦截。
 
 CREATE TABLE IF NOT EXISTS `nav_item` (
   `id`          BIGINT       NOT NULL AUTO_INCREMENT,

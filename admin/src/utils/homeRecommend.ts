@@ -1,4 +1,7 @@
 import type { HomeRecommendModule } from '@/types/api'
+import { nextRecommendSort } from '@/utils/homeRecommendSort.mjs'
+
+export { nextRecommendSort }
 
 export interface HomeRecommendSection {
   moduleType: HomeRecommendModule
@@ -14,10 +17,3 @@ export const HOME_RECOMMEND_SECTIONS: HomeRecommendSection[] = [
   { moduleType: 'news', title: '最新动态', addLabel: '添加动态', empty: '暂无动态推荐，首页该板块为空', softLimit: 3 },
   { moduleType: 'course', title: '热门课程', addLabel: '添加课程', empty: '暂无课程推荐，首页该板块为空', softLimit: 2 }
 ]
-
-export function nextRecommendSort(sorts: number[]): number {
-  if (!sorts.length) {
-    return 0
-  }
-  return Math.min(999, Math.max(...sorts) + 1)
-}

@@ -133,6 +133,7 @@ import {
   loadBannerContentOptions,
   type BannerLinkOption
 } from '@/utils/banner-link'
+import { shouldApplyCandidateResult, shouldApplyListResult } from '@/utils/listRequestSeq'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -146,6 +147,8 @@ const editingTitle = ref('')
 const formRef = ref<FormInstance>()
 const contentOptions = ref<BannerLinkOption[]>([])
 const activeModule = ref<HomeRecommendModule>('news')
+/** 添加弹窗共用；切换板块或关掉弹窗就作废进行中的候选请求 */
+let candidateSeq = 0
 
 const form = reactive({
   targetId: '' as string,
@@ -200,24 +203,40 @@ async function loadData() {
 }
 
 async function openCreate(sec: HomeRecommendSection) {
+  const seq = ++candidateSeq
+  const moduleType = sec.moduleType
   editingId.value = null
   editingTitle.value = ''
-  activeModule.value = sec.moduleType
+  activeModule.value = moduleType
   form.targetId = ''
-  form.sort = nextRecommendSort(rowsOf(sec.moduleType).map((row) => row.sort ?? 0))
+  form.sort = nextRecommendSort(rowsOf(moduleType).map((row) => row.sort ?? 0))
   form.status = 1
+  contentOptions.value = []
   dialogVisible.value = true
   contentLoading.value = true
   try {
-    const used = usedTargetIds(sec.moduleType)
-    const options = await loadBannerContentOptions(sec.moduleType)
+    const used = usedTargetIds(moduleType)
+    const options = await loadBannerContentOptions(moduleType)
+    if (!shouldApplyCandidateResult(
+      seq,
+      candidateSeq,
+      dialogVisible.value,
+      moduleType,
+      activeModule.value
+    )) {
+      return
+    }
     contentOptions.value = options.filter((opt) => !used.has(opt.value))
   } finally {
-    contentLoading.value = false
+    if (shouldApplyListResult(seq, candidateSeq)) {
+      contentLoading.value = false
+    }
   }
 }
 
 function openEdit(row: HomeRecommendItem) {
+  candidateSeq += 1
+  contentLoading.value = false
   editingId.value = row.id
   editingTitle.value = row.targetMissing ? '（内容已删除）' : (row.title || '（未命名）')
   activeModule.value = row.moduleType
@@ -229,6 +248,8 @@ function openEdit(row: HomeRecommendItem) {
 }
 
 function onDialogClosed() {
+  candidateSeq += 1
+  contentLoading.value = false
   contentOptions.value = []
   form.targetId = ''
 }

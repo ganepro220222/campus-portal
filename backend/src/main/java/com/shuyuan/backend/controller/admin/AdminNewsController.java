@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * 动态写接口不加 {@code @Valid}：管理端已有 maxlength，DTO 也不加 {@code @Size}，见 {@link NewsSaveRequest}。
+ */
 @Tag(name = "新闻管理")
 @RestController
 @RequestMapping("/api/v1/admin/news")

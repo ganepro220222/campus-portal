@@ -3,6 +3,7 @@ import { fetchCourses } from '@/api/course'
 import { fetchCrafts } from '@/api/craft'
 import { fetchHalls } from '@/api/hall'
 import { fetchNews } from '@/api/news'
+import { loadAllPagedRecords } from '@/utils/pagedRecords.mjs'
 
 export type BannerLinkType =
   | 'none'
@@ -51,25 +52,35 @@ export function bannerLinkTypeLabel(type: string): string {
 }
 
 export async function loadBannerContentOptions(type: BannerLinkType): Promise<BannerLinkOption[]> {
+  // 100 是单页条数，不是总上限；由 loadAllPagedRecords 翻完全部已发布 / 已上架内容。
   const size = 100
   switch (type) {
     case 'news': {
-      const res = await fetchNews({ page: 1, size, status: 'published' })
-      return res.records.map((item) => ({
+      const records = await loadAllPagedRecords(
+        (page, pageSize) => fetchNews({ page, size: pageSize, status: 'published' }),
+        size
+      )
+      return records.map((item) => ({
         value: String(item.id),
         label: item.title
       }))
     }
     case 'course': {
-      const res = await fetchCourses({ page: 1, size, status: 1 })
-      return res.records.map((item) => ({
+      const records = await loadAllPagedRecords(
+        (page, pageSize) => fetchCourses({ page, size: pageSize, status: 1 }),
+        size
+      )
+      return records.map((item) => ({
         value: String(item.id),
         label: item.name
       }))
     }
     case 'hall': {
-      const res = await fetchHalls(1, size)
-      return res.records
+      const records = await loadAllPagedRecords(
+        (page, pageSize) => fetchHalls(page, pageSize),
+        size
+      )
+      return records
         .filter((item) => item.status === 1)
         .map((item) => ({
           value: String(item.id),
@@ -77,15 +88,21 @@ export async function loadBannerContentOptions(type: BannerLinkType): Promise<Ba
         }))
     }
     case 'activity': {
-      const res = await fetchActivities({ page: 1, size, status: 'published' })
-      return res.records.map((item) => ({
+      const records = await loadAllPagedRecords(
+        (page, pageSize) => fetchActivities({ page, size: pageSize, status: 'published' }),
+        size
+      )
+      return records.map((item) => ({
         value: String(item.id),
         label: item.title
       }))
     }
     case 'craft': {
-      const res = await fetchCrafts({ page: 1, size, status: 1 })
-      return res.records.map((item) => ({
+      const records = await loadAllPagedRecords(
+        (page, pageSize) => fetchCrafts({ page, size: pageSize, status: 1 }),
+        size
+      )
+      return records.map((item) => ({
         value: String(item.id),
         label: item.name
       }))

@@ -148,6 +148,11 @@ public class AdminHomeRecommendService {
         return status;
     }
 
+    /**
+     * 只查在用行。不加 (module_type, target_id) 唯一索引：
+     * 表是逻辑删除，删掉的行仍占唯一键，管理员移除后再添加同一内容会被挡住。
+     * 单人操作靠这一查足够；多超管并发插出重复的概率低，不为此改表。
+     */
     private void assertNotDuplicate(String moduleType, Long targetId) {
         Long count = homeRecommendMapper.selectCount(new LambdaQueryWrapper<HomeRecommend>()
                 .eq(HomeRecommend::getModuleType, moduleType)

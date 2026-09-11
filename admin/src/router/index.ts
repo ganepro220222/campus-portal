@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { Component } from 'vue'
-import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, Operation, List, Reading, Connection, Grid, PriceTag, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets, DeleteFilled, Message } from '@element-plus/icons-vue'
+import { Odometer, Document, OfficeBuilding, Picture, Calendar, VideoCamera, FolderOpened, Goods, Bell, ChatDotRound, Operation, List, Reading, Connection, Grid, PriceTag, User, Key, Postcard, Service, MagicStick, Monitor, Collection, Setting, Tickets, DeleteFilled, Message, Star } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { hasAnyPermission } from '@/utils/permission'
 import { resolveAdminRouteRedirect } from './guard'
@@ -42,6 +42,12 @@ const router = createRouter({
           name: 'NavItems',
           component: () => import('@/views/nav/NavItemListView.vue'),
           meta: { title: '功能入口', permission: 'admin:super' }
+        },
+        {
+          path: 'home-recommends',
+          name: 'HomeRecommends',
+          component: () => import('@/views/home/HomeRecommendView.vue'),
+          meta: { title: '首页推荐', permission: 'admin:super' }
         },
         {
           path: 'announcements',
@@ -236,6 +242,7 @@ export const menuItems: MenuNode[] = [
     children: [
       { path: '/banners', title: '首页轮播', icon: Picture, permissions: ['admin:super'] },
       { path: '/nav-items', title: '功能入口', icon: Grid, permissions: ['admin:super'] },
+      { path: '/home-recommends', title: '首页推荐', icon: Star, permissions: ['admin:super'] },
       { path: '/announcements', title: '公告管理', icon: Bell, permissions: ['admin:super'] }
     ]
   },

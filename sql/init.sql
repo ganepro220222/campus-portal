@@ -664,7 +664,7 @@ CREATE TABLE IF NOT EXISTS `banner` (
 
 CREATE TABLE IF NOT EXISTS `home_recommend` (
   `id`          BIGINT      NOT NULL AUTO_INCREMENT,
-  `module_type` VARCHAR(30) NOT NULL COMMENT 'news/course',
+  `module_type` VARCHAR(30) NOT NULL COMMENT 'news/hall/course',
   `target_id`   BIGINT      NOT NULL COMMENT '对应内容ID',
   `sort`        INT         NOT NULL DEFAULT 0,
   `status`      TINYINT     NOT NULL DEFAULT 1,

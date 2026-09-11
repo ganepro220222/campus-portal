@@ -39,6 +39,25 @@ export interface BannerItem {
   status: number
 }
 
+export type HomeRecommendModule = 'news' | 'hall' | 'course'
+
+export interface HomeRecommendItem {
+  id: number
+  moduleType: HomeRecommendModule
+  targetId: number
+  title: string
+  targetMissing: boolean
+  targetPublished: boolean
+  sort: number
+  status: number
+}
+
+export interface HomeRecommendGrouped {
+  halls: HomeRecommendItem[]
+  news: HomeRecommendItem[]
+  courses: HomeRecommendItem[]
+}
+
 export interface NavItemRecord {
   id: number
   label: string

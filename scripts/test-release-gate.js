@@ -104,6 +104,10 @@ function assertViewerCheckInPreflight() {
     console.error('[test-release-gate] preflight:local 必须包含 test:admin-course-video-replace，否则换视频重置进度会再次漏测')
     process.exit(1)
   }
+  if (!pkg.scripts['test:admin-image-preview'] || !String(pkg.scripts['preflight:local'] || '').includes('test:admin-image-preview')) {
+    console.error('[test-release-gate] preflight:local 必须包含 test:admin-image-preview，否则换图后再开编辑裂图会再次漏测')
+    process.exit(1)
+  }
 }
 
 function assertBackendEnvTemplatesExposeRuntimeControls() {

@@ -167,6 +167,7 @@ import type { CategoryOption, ResourceItem } from '@/types/api'
 import { FIELD_HINTS } from '@/utils/field-hints'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 import { bytesToFileSizeKb, formatFileSizeKb, inferResourceFileType } from '@/utils/uploadMeta.mjs'
+import { createFetchedEditDialogSession, openFetchedEditDialog } from '@/utils/openFetchedEditDialog.mjs'
 
 const auth = useAuthStore()
 const canRead = computed(() => auth.can('course:read'))
@@ -187,6 +188,7 @@ const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const dialogMode = ref<'create' | 'edit' | 'view'>('create')
 const reviewingRow = ref<ResourceItem | null>(null)
+const editDialogSession = createFetchedEditDialogSession()
 const formRef = ref<FormInstance>()
 const readonly = computed(() => dialogMode.value === 'view')
 const reviewingStatus = computed(() => reviewingRow.value?.status ?? 0)
@@ -259,6 +261,16 @@ function resetForm() {
   form.downloadCount = 0
 }
 
+function applyResourceDetail(detail: ResourceItem) {
+  form.name = detail.name
+  form.categoryId = detail.categoryId ?? undefined
+  form.fileType = detail.fileType
+  form.fileUrl = detail.fileUrl
+  form.previewUrl = detail.previewUrl || ''
+  form.fileSizeKb = detail.fileSizeKb ?? undefined
+  form.downloadCount = detail.downloadCount ?? 0
+}
+
 function openView(row: ResourceItem) {
   return openDialog(row, 'view')
 }
@@ -266,19 +278,15 @@ function openView(row: ResourceItem) {
 async function openDialog(row?: ResourceItem, requested?: 'view' | 'edit') {
   dialogMode.value = !row ? 'create' : (requested === 'view' || !canWrite.value ? 'view' : 'edit')
   reviewingRow.value = row ?? null
-  resetForm()
-  editingId.value = row?.id ?? null
-  if (row) {
-    const detail = await fetchResource(row.id)
-    form.name = detail.name
-    form.categoryId = detail.categoryId ?? undefined
-    form.fileType = detail.fileType
-    form.fileUrl = detail.fileUrl
-    form.previewUrl = detail.previewUrl || ''
-    form.fileSizeKb = detail.fileSizeKb ?? undefined
-    form.downloadCount = detail.downloadCount ?? 0
-  }
-  dialogVisible.value = true
+  await openFetchedEditDialog({
+    row,
+    session: editDialogSession,
+    resetForm,
+    setEditingId: (id) => { editingId.value = id },
+    setDialogVisible: (visible) => { dialogVisible.value = visible },
+    fetchDetail: fetchResource,
+    applyDetail: applyResourceDetail
+  })
 }
 
 async function onSave() {

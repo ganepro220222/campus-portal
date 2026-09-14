@@ -7,11 +7,14 @@
         :class="previewWrapClass"
       >
         <el-image
-          :src="inner"
+          v-if="imagePreviewSrc"
+          :key="imagePreviewSrc"
+          :src="imagePreviewSrc"
           :fit="fitMode === 'fit' ? 'contain' : 'cover'"
           class="preview-image"
           :preview-src-list="[inner]"
           preview-teleported
+          @error="onImagePreviewError"
         />
       </div>
       <div v-else-if="showVideoPreview" class="preview-wrap preview-wrap--video">
@@ -120,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import {
   completeDirectUpload,
@@ -150,6 +153,7 @@ import {
   parseSubtitleCues
 } from '@/utils/uploadMeta.mjs'
 import { DIRECT_PENDING_KEY, parseDirectPending, pendingForScene } from '@/utils/directPending.mjs'
+import { nextImagePreviewRetry } from '@/utils/imagePreviewBind.mjs'
 
 type PreviewMode = 'auto' | 'image' | 'video' | 'audio' | 'file' | 'none'
 
@@ -242,6 +246,79 @@ const showImagePreview = computed(() => inner.value && resolvedPreview.value ===
 const showVideoPreview = computed(() => inner.value && resolvedPreview.value === 'video')
 const showAudioPreview = computed(() => inner.value && resolvedPreview.value === 'audio')
 const showFilePreview = computed(() => inner.value && resolvedPreview.value === 'file')
+
+/*
+ * 图片不走短时签名（images/ 公开分发）。但弹窗关窗清空、进场未入文档、或刚换过的
+ * 新图第一次回源时，el-image 容易进失败态且不会自己再试。缩略图延后一帧再绑 src，
+ * 失败只自动再绑一次；点开大图仍用落库地址。
+ */
+const imagePreviewSrc = ref('')
+let imagePreviewSeq = 0
+let imageRetryCount = 0
+let imageRetryTimer: number | null = null
+
+function clearImageRetryTimer() {
+  if (imageRetryTimer == null) {
+    return
+  }
+  window.clearTimeout(imageRetryTimer)
+  imageRetryTimer = null
+}
+
+function scheduleImagePreview(url: string) {
+  imagePreviewSeq += 1
+  const seq = imagePreviewSeq
+  imageRetryCount = 0
+  clearImageRetryTimer()
+  if (!url) {
+    imagePreviewSrc.value = ''
+    return
+  }
+  nextTick(() => {
+    const raf = typeof window.requestAnimationFrame === 'function'
+      ? window.requestAnimationFrame.bind(window)
+      : (cb: FrameRequestCallback) => window.setTimeout(cb, 16)
+    raf(() => {
+      if (seq === imagePreviewSeq) {
+        imagePreviewSrc.value = url
+      }
+    })
+  })
+}
+
+function onImagePreviewError() {
+  const url = inner.value
+  const plan = nextImagePreviewRetry(imageRetryCount, url, imagePreviewSrc.value)
+  if (!plan) {
+    return
+  }
+  imageRetryCount = plan.retryCount
+  const seq = imagePreviewSeq
+  imagePreviewSrc.value = ''
+  clearImageRetryTimer()
+  imageRetryTimer = window.setTimeout(() => {
+    imageRetryTimer = null
+    if (seq !== imagePreviewSeq || inner.value !== url) {
+      return
+    }
+    imagePreviewSrc.value = url
+  }, plan.delayMs)
+}
+
+watch(
+  [inner, resolvedPreview],
+  ([url, mode]) => {
+    if (mode !== 'image') {
+      imagePreviewSeq += 1
+      imageRetryCount = 0
+      clearImageRetryTimer()
+      imagePreviewSrc.value = ''
+      return
+    }
+    scheduleImagePreview(url || '')
+  },
+  { immediate: true }
+)
 
 /*
  * 音视频落库的是不带签名的原始地址；CDN 开启 URL 鉴权后直接当 src 用会 403
@@ -434,6 +511,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  imagePreviewSeq += 1
+  clearImageRetryTimer()
   ossAbort?.abort()
 })
 

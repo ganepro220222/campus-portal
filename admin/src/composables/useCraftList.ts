@@ -17,6 +17,7 @@ import type { CategoryOption, CraftItem } from '@/types/api'
 import { explicitClear } from '@/utils/clearableField.mjs'
 import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
 import type { CoverFitMode } from '@/utils/cover'
+import { createFetchedEditDialogSession, openFetchedEditDialog } from '@/utils/openFetchedEditDialog.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 /** 文创列表页：筛选、分页、上下架与编辑弹窗状态 */
@@ -40,6 +41,7 @@ export function useCraftList() {
   const dialogMode = ref<'create' | 'edit' | 'view'>('create')
   const reviewingRow = ref<CraftItem | null>(null)
   const coverSavedUrl = ref('')
+  const editDialogSession = createFetchedEditDialogSession()
   const readonly = computed(() => dialogMode.value === 'view')
 
   const form = reactive({
@@ -103,6 +105,28 @@ export function useCraftList() {
     coverSavedUrl.value = ''
   }
 
+  function applyCraftDetail(detail: CraftItem) {
+    form.name = detail.name
+    form.cover = detail.cover || ''
+    coverSavedUrl.value = form.cover
+    form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
+    form.categoryId = detail.categoryId ?? undefined
+    form.introZh = detail.introZh || ''
+    form.introEn = detail.introEn || ''
+    form.sort = detail.sort ?? 0
+    form.images = (detail.images || []).map((img) => ({
+      imageUrl: img.imageUrl,
+      angleLabel: img.angleLabel || '',
+      sort: img.sort ?? 0
+    }))
+    form.contact = {
+      phone: detail.contact?.phone || '',
+      wechat: detail.contact?.wechat || '',
+      workWechat: detail.contact?.workWechat || '',
+      email: detail.contact?.email || ''
+    }
+  }
+
   function openView(row: CraftItem) {
     return openDialog(row, 'view')
   }
@@ -110,33 +134,15 @@ export function useCraftList() {
   async function openDialog(row?: CraftItem, requested?: 'view' | 'edit') {
     dialogMode.value = !row ? 'create' : (requested === 'view' || !canWrite.value ? 'view' : 'edit')
     reviewingRow.value = row ?? null
-    resetForm()
-    editingId.value = row?.id ?? null
-    if (row) {
-      const detail = await fetchCraft(row.id)
-      form.name = detail.name
-      form.cover = detail.cover || ''
-      coverSavedUrl.value = form.cover
-      form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
-      form.categoryId = detail.categoryId ?? undefined
-      form.introZh = detail.introZh || ''
-      form.introEn = detail.introEn || ''
-      form.sort = detail.sort ?? 0
-      form.images = (detail.images || []).map((img) => ({
-        imageUrl: img.imageUrl,
-        angleLabel: img.angleLabel || '',
-        sort: img.sort ?? 0
-      }))
-      if (detail.contact) {
-        form.contact = {
-          phone: detail.contact.phone || '',
-          wechat: detail.contact.wechat || '',
-          workWechat: detail.contact.workWechat || '',
-          email: detail.contact.email || ''
-        }
-      }
-    }
-    dialogVisible.value = true
+    await openFetchedEditDialog({
+      row,
+      session: editDialogSession,
+      resetForm,
+      setEditingId: (id) => { editingId.value = id },
+      setDialogVisible: (visible) => { dialogVisible.value = visible },
+      fetchDetail: fetchCraft,
+      applyDetail: applyCraftDetail
+    })
   }
 
   async function onSave() {

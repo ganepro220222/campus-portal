@@ -123,6 +123,14 @@ if (!fileRule) {
   errs.push('.preview-wrap--file 不能是死宽 —— 换行独占一行时要涨满，否则卡片右边又是一块空白')
 }
 
+// ---------- 图片缩略图：不得把落库地址直接塞给 el-image ----------
+if (/<el-image[\s\S]*?:src="inner"/.test(template)) {
+  errs.push('图片预览把落库地址直接交给 el-image —— 换图保存后再开编辑第一次会裂图')
+}
+if (!/nextImagePreviewRetry/.test(vue) || !/@error="onImagePreviewError"/.test(template)) {
+  errs.push('图片预览失败未自动再绑一次')
+}
+
 // ---------- 5) 字幕预览 ----------
 if (!/parseSubtitleCues/.test(vue) || !/fetchSubtitlePreview/.test(vue)) {
   errs.push('字幕未接内容预览 —— ASR 产出空文件 / 乱码时后台完全看不出来')

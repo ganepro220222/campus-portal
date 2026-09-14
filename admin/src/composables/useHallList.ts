@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import type { CategoryOption, HallItem, HallSectionItem, HallSlideItem } from '@/types/api'
 import type { CoverFitMode } from '@/utils/cover'
 import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
+import { createFetchedEditDialogSession, openFetchedEditDialog } from '@/utils/openFetchedEditDialog.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 /** 展馆列表页：分页、上下架与编辑弹窗状态 */
@@ -28,6 +29,7 @@ export function useHallList() {
   const dialogMode = ref<'create' | 'edit' | 'view'>('create')
   const reviewingRow = ref<HallItem | null>(null)
   const coverSavedUrl = ref('')
+  const editDialogSession = createFetchedEditDialogSession()
   const readonly = computed(() => dialogMode.value === 'view')
 
   const form = reactive({
@@ -80,6 +82,34 @@ export function useHallList() {
     coverSavedUrl.value = ''
   }
 
+  function applyHallDetail(detail: HallItem) {
+    form.name = detail.name
+    form.shortName = detail.shortName || ''
+    form.cover = detail.cover || ''
+    coverSavedUrl.value = form.cover
+    form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
+    form.intro = detail.intro || ''
+    form.vrUrl = detail.vrUrl || ''
+    form.categoryId = detail.categoryId ?? undefined
+    form.sort = detail.sort ?? 0
+    form.slides = (detail.slides || []).map((s) => ({
+      url: s.url || '',
+      caption: s.caption || '',
+      sort: s.sort ?? 0
+    }))
+    form.sections = (detail.sections || []).map((sec, idx) => ({
+      title: sec.title || '',
+      sort: sec.sort ?? idx,
+      items: (sec.items || []).map((it, i) => ({
+        url: it.url || '',
+        caption: it.caption || '',
+        sort: it.sort ?? i
+      }))
+    }))
+    form.audioUrl = detail.audioUrl || ''
+    form.audioTime = detail.audioTime || ''
+  }
+
   function openView(row: HallItem) {
     return openDialog(row, 'view')
   }
@@ -87,37 +117,15 @@ export function useHallList() {
   async function openDialog(row?: HallItem, requested?: 'view' | 'edit') {
     dialogMode.value = !row ? 'create' : (requested === 'view' || !canWrite.value ? 'view' : 'edit')
     reviewingRow.value = row ?? null
-    resetForm()
-    editingId.value = row?.id ?? null
-    if (row?.id) {
-      const detail = await fetchHallDetail(row.id)
-      form.name = detail.name
-      form.shortName = detail.shortName || ''
-      form.cover = detail.cover || ''
-      coverSavedUrl.value = form.cover
-      form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
-      form.intro = detail.intro || ''
-      form.vrUrl = detail.vrUrl || ''
-      form.categoryId = detail.categoryId ?? undefined
-      form.sort = detail.sort ?? 0
-      form.slides = (detail.slides || []).map((s) => ({
-        url: s.url || '',
-        caption: s.caption || '',
-        sort: s.sort ?? 0
-      }))
-      form.sections = (detail.sections || []).map((sec, idx) => ({
-        title: sec.title || '',
-        sort: sec.sort ?? idx,
-        items: (sec.items || []).map((it, i) => ({
-          url: it.url || '',
-          caption: it.caption || '',
-          sort: it.sort ?? i
-        }))
-      }))
-      form.audioUrl = detail.audioUrl || ''
-      form.audioTime = detail.audioTime || ''
-    }
-    dialogVisible.value = true
+    await openFetchedEditDialog({
+      row,
+      session: editDialogSession,
+      resetForm,
+      setEditingId: (id) => { editingId.value = id },
+      setDialogVisible: (visible) => { dialogVisible.value = visible },
+      fetchDetail: fetchHallDetail,
+      applyDetail: applyHallDetail
+    })
   }
 
   async function onSave() {

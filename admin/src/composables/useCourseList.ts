@@ -23,6 +23,7 @@ import { confirmCoverClearIfNeeded } from '@/utils/coverClearConfirm.mjs'
 import { confirmCourseVideoReplaceIfNeeded } from '@/utils/courseVideoReplace.mjs'
 import { shouldApplyListResult } from '@/utils/listRequestSeq'
 import type { CoverFitMode } from '@/utils/cover'
+import { createFetchedEditDialogSession, openFetchedEditDialog } from '@/utils/openFetchedEditDialog.mjs'
 import { MOVED_TO_RECYCLE_BIN, softDeleteConfirm } from '@/utils/recycleBinCopy'
 
 /** 课程列表页：筛选、分页、上下架、字幕与编辑弹窗状态 */
@@ -62,6 +63,7 @@ export function useCourseList() {
   const videoSavedUrl = ref('')
   const progressLearnerCount = ref(0)
   const coverSavedUrl = ref('')
+  const editDialogSession = createFetchedEditDialogSession()
   const subtitleTriggering = ref(false)
   const subtitleSaving = ref(false)
 
@@ -154,6 +156,27 @@ export function useCourseList() {
     }
   }
 
+  function applyCourseDetail(detail: CourseItem, subtitle: SubtitleStatus) {
+    form.name = detail.name
+    form.cover = detail.cover || ''
+    coverSavedUrl.value = form.cover
+    form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
+    form.categoryId = detail.categoryId ?? undefined
+    form.targetAudience = detail.targetAudience || ''
+    form.durationMinutes = detail.durationMinutes ?? undefined
+    form.startTime = detail.startTime || ''
+    form.intro = detail.intro || ''
+    form.videoUrl = detail.videoUrl || ''
+    videoSavedUrl.value = form.videoUrl
+    progressLearnerCount.value = Number(detail.progressLearnerCount) || 0
+    form.resourceIds = detail.resourceIds || []
+    subtitleInfo.value = subtitle
+    const currentSubtitleUrl = subtitle.subtitleUrl || detail.subtitleUrl || ''
+    form.subtitleUrl = currentSubtitleUrl
+    subtitleUrlInput.value = currentSubtitleUrl
+    subtitleSavedUrl.value = currentSubtitleUrl
+  }
+
   function openView(row: CourseItem) {
     return openDialog(row, 'view')
   }
@@ -161,30 +184,21 @@ export function useCourseList() {
   async function openDialog(row?: CourseItem, requested?: 'view' | 'edit') {
     dialogMode.value = !row ? 'create' : (requested === 'view' || !canWrite.value ? 'view' : 'edit')
     reviewingRow.value = row ?? null
-    resetForm()
-    editingId.value = row?.id ?? null
-    if (row) {
-      const detail = await fetchCourse(row.id)
-      form.name = detail.name
-      form.cover = detail.cover || ''
-      coverSavedUrl.value = form.cover
-      form.coverFitMode = detail.coverFitMode === 'fit' ? 'fit' : 'fill'
-      form.categoryId = detail.categoryId ?? undefined
-      form.targetAudience = detail.targetAudience || ''
-      form.durationMinutes = detail.durationMinutes ?? undefined
-      form.startTime = detail.startTime || ''
-      form.intro = detail.intro || ''
-      form.videoUrl = detail.videoUrl || ''
-      videoSavedUrl.value = form.videoUrl
-      progressLearnerCount.value = Number(detail.progressLearnerCount) || 0
-      form.resourceIds = detail.resourceIds || []
-      subtitleInfo.value = await fetchSubtitleStatus(row.id)
-      const currentSubtitleUrl = subtitleInfo.value.subtitleUrl || detail.subtitleUrl || ''
-      form.subtitleUrl = currentSubtitleUrl
-      subtitleUrlInput.value = currentSubtitleUrl
-      subtitleSavedUrl.value = currentSubtitleUrl
-    }
-    dialogVisible.value = true
+    await openFetchedEditDialog({
+      row,
+      session: editDialogSession,
+      resetForm,
+      setEditingId: (id) => { editingId.value = id },
+      setDialogVisible: (visible) => { dialogVisible.value = visible },
+      fetchDetail: async (id) => {
+        const detail = await fetchCourse(id)
+        const subtitle = await fetchSubtitleStatus(id)
+        return { detail, subtitle }
+      },
+      applyDetail: ({ detail, subtitle }) => {
+        applyCourseDetail(detail, subtitle)
+      }
+    })
   }
 
   async function onSave() {

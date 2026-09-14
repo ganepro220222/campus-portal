@@ -6,8 +6,10 @@ const assert = require('assert')
 const fs = require('fs')
 const path = require('path')
 const {
+  SCHOOL_EMBLEM_SRC,
   normalizeCollegeIconFit,
   normalizeCollegeIconShape,
+  resolveCollegeIconUrl,
   decorateCollegeApp,
   decorateCollegeApps,
   decorateHomeCollegeLists
@@ -24,11 +26,23 @@ assert.strictEqual(normalizeCollegeIconShape('square'), 'square')
 assert.strictEqual(normalizeCollegeIconShape('circle'), 'circle')
 assert.strictEqual(normalizeCollegeIconShape(' CIRCLE '), 'circle')
 
-const legacy = decorateCollegeApp({ id: 1, name: '通途星' })
+assert.strictEqual(resolveCollegeIconUrl({ name: '通途星', iconUrl: 'https://cdn.example.com/cutout.png' }), SCHOOL_EMBLEM_SRC)
+assert.strictEqual(resolveCollegeIconUrl({ name: '其它入口', iconUrl: 'https://cdn.example.com/app.png' }), 'https://cdn.example.com/app.png')
+
+const emblem = decorateCollegeApp({ id: 1, name: '通途星', iconUrl: 'https://cdn.example.com/cutout.png', iconFitMode: 'fill', iconShape: 'square' })
+assert.strictEqual(emblem.iconUrl, SCHOOL_EMBLEM_SRC)
+assert.strictEqual(emblem.iconFitMode, 'fit')
+assert.strictEqual(emblem.iconShape, 'circle')
+assert.strictEqual(emblem.iconImageMode, 'aspectFit')
+assert.strictEqual(emblem.iconCircle, true)
+assert.strictEqual(emblem.iconHasImage, true)
+
+const legacy = decorateCollegeApp({ id: 3, name: '其它入口' })
 assert.strictEqual(legacy.iconFitMode, 'fit')
 assert.strictEqual(legacy.iconShape, 'square')
 assert.strictEqual(legacy.iconImageMode, 'aspectFit')
 assert.strictEqual(legacy.iconCircle, false)
+assert.strictEqual(legacy.iconHasImage, false)
 
 const circle = decorateCollegeApp({
   id: 2,
@@ -62,9 +76,14 @@ for (const rel of ['../pages/index/index.wxml', '../packageC/college/list.wxml']
   const wxml = fs.readFileSync(path.join(__dirname, rel), 'utf8')
   assert.match(wxml, /iconImageMode/, `${rel} 须按后台设置渲染图标`)
   assert.match(wxml, /iconCircle/, `${rel} 须能切圆形`)
+  assert.match(wxml, /iconHasImage/, `${rel} 有图时须换白底，避免透明校徽叠深蓝`)
 }
 
 const wxss = fs.readFileSync(path.join(__dirname, '../app.wxss'), 'utf8')
 assert.match(wxss, /\.app-icon--circle/)
+assert.match(wxss, /\.app-icon--plate/)
+
+const emblemFile = path.join(__dirname, '../assets/images/school-emblem.png')
+assert.ok(fs.existsSync(emblemFile), '须带上校方正式校徽')
 
 console.log('[collegeIcon.test] PASS')

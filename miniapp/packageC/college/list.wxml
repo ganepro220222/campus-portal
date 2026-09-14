@@ -25,7 +25,7 @@
         data-id="{{item.id}}"
         data-name="{{item.name}}"
       >
-        <view class="app-icon {{item.colorClass || 'hc1'}} {{item.iconCircle ? 'app-icon--circle' : ''}}">
+        <view class="app-icon {{item.iconHasImage ? 'app-icon--plate' : (item.colorClass || 'hc1')}} {{item.iconCircle ? 'app-icon--circle' : ''}}">
           <image wx:if="{{item.iconUrl}}" src="{{item.iconUrl}}" mode="{{item.iconImageMode || 'aspectFit'}}" class="app-icon-img" />
           <text wx:else class="app-icon-seal serif">{{item.short}}</text>
         </view>

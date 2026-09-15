@@ -1,4 +1,6 @@
 /* app.wxss — 全局样式 */
+@import "styles/font-shuyuan-song.wxss";
+
 page {
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   font-size: 28rpx;
@@ -47,8 +49,12 @@ page {
   --color-danger:    #FF4D4F;
 }
 
-/* ── 宋体辅助类 ── */
-.serif { font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif; }
+/* ── 宋体辅助类 ──
+   ShuyuanSong 是内嵌子集（见 styles/font-shuyuan-song.wxss）。
+   回退栈保持完整：字体万一没生效，观感退回原来的系统字，不会白屏也不会豆腐块。
+   之所以内嵌而不是 wx.loadFontFace：安卓多个品牌对网络字体的 CORS 校验不一致，
+   做不到「所有设备都正常显示」。 */
+.serif { font-family: "ShuyuanSong", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif; }
 
 /* ── Flex 工具类 ── */
 .flex        { display: flex; }
@@ -89,7 +95,7 @@ page {
   color: var(--ink);
   position: relative;
   padding-left: 20rpx;
-  font-family: "Noto Serif SC", serif;
+  font-family: "ShuyuanSong", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
 .sec-title::before {
   content: "";

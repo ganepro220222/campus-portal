@@ -1,0 +1,54 @@
+<!-- packageC/fontcheck/index.wxml
+     内嵌宋体子集的真机自检页。不挂任何入口，只能按路径打开：
+     /packageC/fontcheck/index
+     验收完成后可整页删除，删掉不影响任何业务。 -->
+<view class="fc-page">
+  <nav-bar title="字体自检" />
+
+  <scroll-view class="fc-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+
+    <view class="fc-hint">
+      <text class="fc-hint-tx">两行字形不一样 = 宋体已生效；一模一样 = 没生效（此时观感退回系统字，属于兜底，不是故障）。</text>
+    </view>
+
+    <view class="fc-sec">
+      <view class="fc-label">① 对照：同一句话，上宋体下系统字</view>
+      <view class="fc-big serif">中华文化书院 · 永和九年</view>
+      <view class="fc-big">中华文化书院 · 永和九年</view>
+    </view>
+
+    <view class="fc-sec">
+      <view class="fc-label">② 大字看细节（宋体有横细竖粗与三角顿角）</view>
+      <view class="fc-huge serif">書院講堂永和</view>
+    </view>
+
+    <view class="fc-sec">
+      <view class="fc-label">③ 正文段落（资讯详情页就是这个观感）</view>
+      <view class="fc-body serif">主讲人指出，道路从来不只是通行的工具。《周礼·地官》已设「遂人」之职掌邦之野道路，秦并天下而修驰道，其规制之严，实为政令通达之所系。汉通西域，自长安西出，驿置相望，商旅不绝于途。</view>
+    </view>
+
+    <view class="fc-sec">
+      <view class="fc-label">④ 数字、英文、标点、全角</view>
+      <view class="fc-body serif">0123456789 ABCabc ￥1,284 · 2026-03-12</view>
+      <view class="fc-body serif">，。、；：？！「」『』《》（）—— ……</view>
+    </view>
+
+    <!-- 这一行是故意用子集外的字来演示「逐字回退」的观感，不是漏字。
+         font-subset-allow: 魑魍魉犇龘 -->
+    <view class="fc-sec">
+      <view class="fc-label">⑤ 子集外的字（此行本就该混着两种字形，属于预期）</view>
+      <view class="fc-body serif">常用字：书院讲堂 ／ 生僻字：魑魍魉犇龘</view>
+    </view>
+
+    <view class="fc-sec">
+      <view class="fc-label">⑥ 设备信息（请连同截图一起反馈）</view>
+      <view class="fc-kv" wx:for="{{infoList}}" wx:key="k">
+        <text class="fc-k">{{item.k}}</text>
+        <text class="fc-v">{{item.v}}</text>
+      </view>
+      <view class="fc-copy" bindtap="onCopy" hover-class="fc-copy-hover" hover-stay-time="60">复制设备信息</view>
+    </view>
+
+    <view class="fc-bottom"></view>
+  </scroll-view>
+</view>

@@ -46,7 +46,8 @@
         "feedback/detail",
         "feedback/index",
         "about/index",
-        "legal/privacy"
+        "legal/privacy",
+        "fontcheck/index"
       ]
     },
     {

@@ -15,7 +15,8 @@
 | `ui/icons/` | 功能入口、Tab、操作类图标（优先 SVG） |
 | `ui/patterns/` | 背景纹理、装饰线、纹样 |
 | `ui/tags/` | 栏目标签、角标样式（如「书院动态」） |
-| `demo/` | 甲方确认的 HTML 演示稿及配套截图 |
+| `demo/` | HTML 演示稿及配套截图（`demo/v2/` 是「书院·檐棂印」方向稿） |
+| `fonts/` | 内嵌宋体的**源文件与字集清单**，见下节 |
 | `refs/` | 其他参考：设计稿导出、配色表、字体说明 |
 
 ---
@@ -52,6 +53,37 @@
 | 正文 | `#1F2547` | 主要文字 |
 
 正式稿以校方 VIS 手册为准，上表仅供开发对齐 demo 使用。
+
+---
+
+## 字体（内嵌宋体子集）
+
+| 文件 | 说明 |
+|------|------|
+| `fonts/shuyuan-serif-400.woff2` | 思源宋体 Noto Serif SC 的子集，单字重 400，约 689 KB |
+| `fonts/subset-charset.txt` | 子集包含的 4009 个字符 |
+
+授权：思源宋体是 **SIL OFL 1.1**，可商用、可嵌入、可子集化。
+
+它被 `scripts/build-font-subset.js` 转成 base64 写进
+`miniapp/styles/font-shuyuan-song.wxss`，由 `app.wxss` 引入，`.serif` 走这个字体。
+
+**为什么内嵌而不用 `wx.loadFontFace`**：后者只收网络地址，要配 `downloadFile`
+合法域名，还必须返回 `Access-Control-Allow-Origin: *`（设成 `servicewechat.com`
+时 iOS 能过、安卓挂），荣耀 / vivo 等机型对字体 CORS 的校验更严 —— 做不到
+「所有设备都正常显示」。内嵌进代码包则不走网络、不需要白名单、没有机型分裂；
+`font-family` 回退栈保持完整，万一没生效就退回系统字，不会白屏也不会豆腐块。
+
+**要改字集**（护栏报「写死的汉字不在子集内」时）：
+
+```bash
+pip install fonttools brotli
+python3 scripts/subset-font.py /path/to/NotoSerifSC[wght].ttf
+node scripts/build-font-subset.js
+npm run check:font-subset
+```
+
+Canvas 画的文字吃不到自定义字体（微信的硬限制），海报里的文案不受这套字体影响。
 
 ---
 

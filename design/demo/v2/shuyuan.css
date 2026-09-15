@@ -84,6 +84,17 @@
   /* —— 印 —— */
   --zhu:        #A8342A;   /* 朱砂：取自校方印章，全站唯一高饱和色 */
   --zhu-soft:   rgba(168, 52, 42, .10);
+  --zhu-lit:    #B14435;   /* 顶棱受光。再亮就发糖果色，朱砂是矿物不是塑料 */
+  --zhu-d:      #83241E;   /* 底部 */
+  --zhu-edge:   #561813;   /* 侧壁厚度 */
+
+  /* 石青：次按钮的材质。和页面的暖墨、主按钮的朱漆都不是一回事，
+     三者一眼能分出「纸上放着三种东西」 */
+  /* 比主按钮暗一档：次按钮亮过主按钮，层级就反了 */
+  --shi-lit:    #525C64;
+  --shi:        #414A52;
+  --shi-d:      #333B42;
+  --shi-edge:   #222930;
   --seal-img:   url('../../brand/logo/extracted/seal-maroon.png');
 
   --gold:       #C8A45C;   /* 细线、描边 */
@@ -186,6 +197,7 @@
   /* 纸纤维：SVG 分形噪声。透明度烧进 SVG 里——直接当 background-image 用的时候
      没有别的地方能调强弱，不烧进去就是一层砂纸。 */
   --fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
+  --speckle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23s)' opacity='0.10'/%3E%3C/svg%3E");
   --fiber-page: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.14'/%3E%3C/svg%3E");
 }
 
@@ -857,27 +869,85 @@ body {
 .form { width: 295px; margin-top: 34px; }
 .field {
   height: 46px; margin-bottom: 13px;
-  border: 1px solid rgba(184,146,104,.36);
   border-radius: var(--r-s);
-  background: rgba(250,244,232,.05);
+  /* 不透明底：原来是 5% 白的半透明，页面木纹直接透过来，
+     看着像"画在背景上"而不是"嵌在背景里的一件东西"。 */
+  background: linear-gradient(180deg, #1F1D1B 0%, #2A2725 100%);
+  border: 1px solid rgba(255,244,224,.09);
+  box-shadow:
+    inset 0 2px 5px rgba(0,0,0,.55),          /* 光从上来，凹槽的影子就在上沿 */
+    inset 0 -1px 0 rgba(214,178,108,.20),     /* 底沿一道极细金反光 */
+    0 1px 0 rgba(255,250,240,.05);
   display: flex; align-items: center; gap: 10px; padding: 0 13px;
-  color: rgba(232,220,198,.45); font-size: 13.5px;
+  /* α 从 .42 提到 .60：在凹槽底色上实算只有 3.23:1，占位字是 13.5px，必须过 4.5 */
+  color: rgba(232,220,198,.60); font-size: 13.5px;
+  transition: background .18s, box-shadow .18s, border-color .18s;
 }
+/* 选中：整块翻成纸。在书院里"输入"就是在纸上写字，这个隐喻比加个蓝框贴切得多 */
+.field.on {
+  background-color: var(--paper-1);
+  background-image: var(--fiber);
+  background-size: 160px 160px;
+  border-color: var(--zhu);
+  color: var(--ink);
+  box-shadow:
+    inset 0 1px 3px rgba(107,67,38,.20),
+    0 0 0 3px rgba(168,52,42,.15),
+    0 3px 10px rgba(0,0,0,.40);
+}
+.field.on .f-ic { color: var(--wood-70); }
 .field .f-ic { color: rgba(184,146,104,.85); font-size: 14px; }
 .btn-primary {
   height: 46px; border-radius: var(--r-s);
   /* 按钮红 = 印章红，两者永远是同一个颜色 */
-  background: linear-gradient(180deg, #9A3028, #7B221C);
+  background: linear-gradient(180deg, var(--zhu-lit) 0%, var(--zhu) 44%, var(--zhu-d) 100%);
   color: #F5E7CE; font-size: 16px; letter-spacing: 6px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 16px rgba(90,24,18,.45), inset 0 0 0 1px rgba(184,146,104,.3);
+  /* 侧壁（0 4px 0）是"能按下去"的关键：它给了按钮一个看得见的厚度 */
+  box-shadow:
+    inset 0 1px 0 rgba(255,214,200,.45),
+    inset 0 -2px 0 rgba(70,16,12,.55),
+    inset 0 0 0 1px rgba(214,178,108,.32),
+    0 4px 0 var(--zhu-edge),
+    0 9px 18px rgba(0,0,0,.42);
   margin-top: 4px;
+  transition: transform .09s, box-shadow .09s;
+}
+.btn-primary:active, .btn-primary.is-pressed {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,214,200,.25),
+    inset 0 2px 6px rgba(70,16,12,.55),
+    inset 0 0 0 1px rgba(214,178,108,.26),
+    0 1px 0 var(--zhu-edge),
+    0 3px 8px rgba(0,0,0,.40);
 }
 .btn-ghost {
   height: 46px; border-radius: var(--r-s); margin-top: 13px;
-  border: 1px solid rgba(184,146,104,.36);
-  color: rgba(232,220,198,.82); font-size: 14px;
+  /* 石青块：页面是暖墨、主按钮是朱漆、这里是石，三种材质一眼分得开。
+     颗粒用比纸纤维更高频的噪声，看着是石不是纸。 */
+  background-color: var(--shi);
+  background-image: var(--speckle), linear-gradient(180deg, var(--shi-lit) 0%, var(--shi) 48%, var(--shi-d) 100%);
+  background-size: 90px 90px, auto;
+  border: none;
+  color: #DDE4E9; font-size: 14px;
   display: flex; align-items: center; justify-content: center; gap: 7px;
+  box-shadow:
+    inset 0 1px 0 rgba(222,238,246,.30),
+    inset 0 -2px 0 rgba(16,24,30,.50),
+    inset 0 0 0 1px rgba(214,178,108,.18),
+    0 3px 0 var(--shi-edge),
+    0 7px 14px rgba(0,0,0,.36);
+  transition: transform .09s, box-shadow .09s;
+}
+.btn-ghost:active, .btn-ghost.is-pressed {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(222,238,246,.18),
+    inset 0 2px 5px rgba(16,24,30,.50),
+    inset 0 0 0 1px rgba(214,178,108,.14),
+    0 1px 0 var(--shi-edge),
+    0 2px 6px rgba(0,0,0,.34);
 }
 .forgot { text-align: right; font-size: 12px; color: rgba(184,146,104,.8); margin: 2px 0 14px; }
 .login-or { text-align: center; font-size: 11.5px; color: rgba(232,220,198,.34); margin-top: 20px; }

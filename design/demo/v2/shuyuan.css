@@ -21,11 +21,18 @@
   /* —— 木 ——
      原来那组（#6B4A32 起）偏深、偏巧克力色，压得整页发闷。
      换成榉木/楠木那种暖蜜色，只留 --wood-dark 给需要对比度的线和字。 */
-  --wood-dark:  #6B4326;   /* 文字、细线：要保证在纸上的对比度 */
-  --wood:       #9A6E48;   /* 木面主色 */
-  --wood-mid:   #B08658;
-  --wood-light: #CCA47A;
-  --wood-pale:  #E0C6A4;   /* 高光棱 */
+  --wood-dark:  #7A5626;   /* 文字、细线：要保证在纸上的对比度 */
+  --wood:       #AD8248;   /* 木面主色：金丝楠，偏黄不偏红，所以不是咖啡色 */
+  --wood-mid:   #C59C63;
+  --wood-light: #DDBE8E;
+  --wood-pale:  #F2E1C2;   /* 高光棱 */
+
+  /* 瓦：黛瓦。屋顶本来就不是木头，给它自己的灰调，
+     木构件（椽头、枋、匾）才衬得出来，整页也不再一片棕。 */
+  --tile:       #6A6560;
+  --tile-2:     #7D7772;
+  --tile-dark:  #494541;
+  --tile-hi:    #A29B94;
 
   /* —— 墨 —— */
   --ink:        #23262E;   /* 正文 */
@@ -62,6 +69,10 @@
   --wood-mid:   #5A83A4;
   --wood-light: #8EAEC6;
   --wood-pale:  #BCD2E2;
+  --tile:       #5E6266;
+  --tile-2:     #71757A;
+  --tile-dark:  #414548;
+  --tile-hi:    #969BA0;
   --qing:       #2F4A63;
   --lv:         #4A6B6B;
   --line:       rgba(47, 74, 99, .22);
@@ -184,8 +195,17 @@ body {
 /* ============================================================
    装置① 檐 —— 每一页顶部的那道屋檐
    ============================================================ */
-.eave { display: block; width: 100%; height: 58px; margin-bottom: -2px; }
-.eave--sub { height: 34px; }
+.eave { display: block; width: 100%; height: 62px; margin-bottom: -2px; }
+.eave--sub { height: 36px; }
+/* 檐要在纸上投下影子，才是"压在上面"而不是"画在上面" */
+.eave-shadow {
+  height: 12px; margin-top: -12px; position: relative; z-index: 0;
+  background: linear-gradient(180deg, rgba(60,40,20,.16), rgba(60,40,20,0));
+}
+
+/* 冰裂纹：格心的底。步步锦画规整了就成棋盘格，冰裂是无规则的，
+   一眼是窗棂/开片，不会认成网格纸。图形由 _ornaments.py 递归劈分生成。 */
+.ice { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* 远山：几层淡墨剪影，压在深色块的底部 —— 让首图不再是一块纯色 */
 .shan { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 62%; }
@@ -293,9 +313,53 @@ body {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='54' height='54' viewBox='0 0 54 54'%3E%3Cg fill='none' stroke='%23B08A46' stroke-width='1' opacity='0.45'%3E%3Cpath d='M54 14L38 0M54 30L24 0M54 44L10 0'/%3E%3Cpath d='M43 5L38 14L47 19M30 6L26 15'/%3E%3C/g%3E%3C/svg%3E") no-repeat;
 }
 
+/* ============================================================
+   裱 —— 所有会放封面图的位置的统一结构
+   问题：木纹、纹样做在"图位"上，等真封面图一放，全被盖住，白做。
+   解法：纹理一律做在**画心之外**。
+     .mount     = 裱边/木框，永远露在外面，图盖不到
+     .mount-art = 画心，图就放这里，内凹
+   没图时画心显示木纹占位，有图时画心是照片，外面那圈始终在。
+   ============================================================ */
+.mount {
+  padding: 3.5px;
+  border-radius: var(--r-s);
+  background-color: var(--wood);
+  background-image: var(--grain-v),
+    linear-gradient(150deg, var(--wood-mid), var(--wood) 55%, var(--wood-dark));
+  box-shadow:
+    inset 0 1px 0 rgba(255,240,220,.45),
+    inset 0 -1px 0 rgba(58,34,14,.35),
+    0 2px 6px rgba(74,50,30,.16);
+}
+.mount--lg { padding: 5px; border-radius: var(--r); }
+.mount-art {
+  width: 100%; height: 100%;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  box-shadow: inset 0 0 0 1px rgba(58,34,14,.45), inset 0 2px 7px rgba(20,14,6,.40);
+}
+/* 画心里的东西必须撑满，否则裱边会从旁边露一大块出来 */
+.mount-art > * { flex: 1 1 auto; width: 100%; min-width: 0; }
+
+/* 题签：书上贴的签条。栏目名写在签上，图再满也盖不住名字 */
+.tiqian {
+  margin: 8px auto 0;
+  display: block;
+  padding: 3px 10px;
+  background: linear-gradient(180deg, #FBF6EA, #F0E7D4);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(74,50,30,.10);
+  font-size: 12.5px; color: var(--ink-2); text-align: center;
+  max-width: 92%;
+}
+
 /* ============ 首图（Banner） ============ */
 .banner {
-  height: 176px; margin-top: 14px;
+  height: 176px;
   display: flex; flex-direction: column; justify-content: flex-end;
   padding: 16px;
   background: linear-gradient(165deg, #5E4128 0%, #7A5636 58%, #916B44 100%);
@@ -406,7 +470,7 @@ body {
 .wadang svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .wadang span {
   position: relative;
-  font-size: 22px; color: var(--wood-dark); line-height: 1;
+  font-size: 24px; color: var(--wood-dark); line-height: 1;
   text-shadow: 0 1px 0 rgba(255,255,255,.7);
 }
 .entry-label {
@@ -447,6 +511,20 @@ body {
   border: 1px solid rgba(197,160,96,.22); border-radius: 2px;
   pointer-events: none;
 }
+/* 登录页那方"钤印的纸"：同样双重镶边，两处呼应 */
+.seal-plate {
+  width: 78px; height: 78px; margin: 0 auto;
+  border-radius: 3px;
+  background: linear-gradient(160deg, #F6EFDF, #EADFC6);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow:
+    0 0 0 1px rgba(192,153,78,.9),
+    0 0 0 3.5px rgba(122,86,38,.6),
+    0 0 0 4.6px rgba(192,153,78,.5),
+    0 7px 24px rgba(0,0,0,.38),
+    inset 0 1px 2px rgba(255,255,255,.85);
+}
+
 /* 朱印直接压在深木上会糊成一团黑红，垫一方纸——和登录页是同一个手法 */
 .plaque-seal-paper {
   width: 34px; height: 34px; flex: none; border-radius: 2px;
@@ -469,9 +547,8 @@ body {
 .halls { display: flex; gap: 11px; overflow: hidden; margin-right: -16px; }
 .hall { width: 132px; flex: none; }
 .hall-cover {
-  height: 92px; border-radius: var(--r-s);
+  height: 92px;
   display: flex; align-items: flex-end; padding: 9px;
-  border: 1px solid var(--line);
   box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -16px 26px rgba(40,24,10,.24);
   position: relative; overflow: hidden;
 }
@@ -486,7 +563,7 @@ body {
 /* ============ 列表卡：动态 ============ */
 .ncard { display: flex; gap: 11px; padding: 11px; margin-bottom: 10px; }
 .nthumb {
-  width: 84px; height: 62px; flex: none; border-radius: var(--r-s);
+  width: 100%; height: 100%;
   background-color: var(--wood);
   background-image: var(--grain-v), linear-gradient(145deg, var(--wood-mid), var(--wood-dark));
   display: flex; align-items: center; justify-content: center;
@@ -537,6 +614,13 @@ body {
   position: relative; overflow: hidden;
 }
 .login .statusbar { color: #E8DCC6; width: 100%; }
+.login {
+  --tile:      #4B4641;
+  --tile-2:    #5C5751;
+  --tile-dark: #322E2A;
+  --tile-hi:   #7C756D;
+}
+.login .eave { flex: none; }
 .login-lattice {
   position: absolute; inset: 0; opacity: .3; pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23B79268' stroke-width='1' opacity='0.30'%3E%3Cpath d='M0 0H48M0 0V48'/%3E%3Cpath d='M12 0V12H0M36 0V12H48M12 48V36H0M36 48V36H48'/%3E%3Crect x='12' y='12' width='24' height='24'/%3E%3C/g%3E%3C/svg%3E");
@@ -554,7 +638,15 @@ body {
 .login-div { display: flex; align-items: center; gap: 10px; margin: 16px auto 0; width: 190px; }
 .login-div i { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(184,146,104,.6)); }
 .login-div i:last-child { background: linear-gradient(90deg, rgba(184,146,104,.6), transparent); }
-.login-div span { color: var(--wood-light); font-size: 11px; }
+/* 原来那个 ❖ 是灰金的，几乎看不见。换成一枚朱砂菱：
+   醒目，而且延续"印"这条线索——全站唯一的高饱和色就该在这种位置出现 */
+.login-div span {
+  width: 9px; height: 9px; flex: none;
+  transform: rotate(45deg);
+  background: var(--zhu);
+  box-shadow: 0 0 0 1px rgba(242,225,194,.45), 0 0 10px rgba(168,52,42,.7);
+  font-size: 0;
+}
 
 .form { width: 295px; margin-top: 34px; }
 .field {
@@ -586,7 +678,21 @@ body {
 .login-foot { margin-top: auto; padding-bottom: 30px; text-align: center; }
 .login-foot .lf-1 { font-size: 12.5px; color: rgba(232,220,198,.6); letter-spacing: 1px; }
 .login-foot .lf-2 { font-size: 11px; color: rgba(232,220,198,.32); margin-top: 6px; }
-.login-emblem { width: 36px; height: 36px; opacity: .8; margin: 0 auto 11px; display: block; }
+/* 校徽做成一枚圆牌：纸底 + 内外双金环。
+   白方块里嵌一个圆徽是最廉价的做法，边缘还会硬切。 */
+.login-emblem-plate {
+  width: 52px; height: 52px; margin: 0 auto 13px;
+  border-radius: 50%;
+  background: radial-gradient(70% 70% at 38% 30%, #FBF5E7 0%, #EFE4CD 70%, #E2D4B8 100%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow:
+    0 0 0 1px rgba(192,153,78,.85),
+    0 0 0 3.5px rgba(122,86,38,.55),
+    0 0 0 4.6px rgba(192,153,78,.55),
+    0 3px 12px rgba(0,0,0,.34),
+    inset 0 1px 2px rgba(255,255,255,.9);
+}
+.login-emblem { width: 36px; height: 36px; display: block; }
 
 /* ============ 资讯详情 ============ */
 .navbar {

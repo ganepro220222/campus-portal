@@ -125,13 +125,15 @@ body {
 /* ============================================================
    装置② 棂 —— 步步锦格心，既是装饰也是版式的底层网格
    ============================================================ */
+/* 棂条是「双线」——真木条有宽度，画成一根发丝线就是网格纸。
+   双线之间那条缝才是让人认出"这是木格子"的东西。 */
 .lattice-bg {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%236B4A32' stroke-width='1' opacity='0.16'%3E%3Cpath d='M0 0H48M0 0V48'/%3E%3Cpath d='M12 0V12H0M36 0V12H48M12 48V36H0M36 48V36H48'/%3E%3Crect x='12' y='12' width='24' height='24'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 48px 48px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52' viewBox='0 0 52 52'%3E%3Cg fill='none' stroke='%236B4A32' stroke-width='0.9' opacity='0.19'%3E%3Cpath d='M0 1.4H52M0 4.2H52M1.4 0V52M4.2 0V52'/%3E%3Cpath d='M14 1.4V14H1.4M38 1.4V14H50.6M14 50.6V38H1.4M38 50.6V38H50.6'/%3E%3Crect x='14' y='14' width='24' height='24'/%3E%3Crect x='16.8' y='16.8' width='18.4' height='18.4'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 52px 52px;
 }
 .theme-indigo .lattice-bg {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%232F4A63' stroke-width='1' opacity='0.16'%3E%3Cpath d='M0 0H48M0 0V48'/%3E%3Cpath d='M12 0V12H0M36 0V12H48M12 48V36H0M36 48V36H48'/%3E%3Crect x='12' y='12' width='24' height='24'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 48px 48px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52' viewBox='0 0 52 52'%3E%3Cg fill='none' stroke='%232F4A63' stroke-width='0.9' opacity='0.19'%3E%3Cpath d='M0 1.4H52M0 4.2H52M1.4 0V52M4.2 0V52'/%3E%3Cpath d='M14 1.4V14H1.4M38 1.4V14H50.6M14 50.6V38H1.4M38 50.6V38H50.6'/%3E%3Crect x='14' y='14' width='24' height='24'/%3E%3Crect x='16.8' y='16.8' width='18.4' height='18.4'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 52px 52px;
 }
 
 /* 回纹：只做分隔线，不做面 */
@@ -258,26 +260,124 @@ body {
 /* ============================================================
    附件 瓦当 —— 五个功能入口的圆框
    ============================================================ */
+/* 功能入口 = 一扇槅扇门：上下枋（木横档）夹着格心，四角有角叶。
+   这是首页的视觉中心，值得多给几层。 */
 .entries {
-  margin-top: 16px; padding: 18px 8px 14px;
-  display: flex; justify-content: space-between;
-  border: 1px solid var(--line);
+  margin-top: 16px;
   border-radius: var(--r);
-  background-color: var(--paper-card);
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  overflow: hidden;
   position: relative;
 }
-.entry { width: 62px; text-align: center; }
+/* 上下枋：木色横档 + 一根金线，门的样子一下就出来了 */
+.entries-rail {
+  height: 8px;
+  background: linear-gradient(180deg, var(--wood-light) 0 1px, var(--wood-mid) 1px, var(--wood));
+  position: relative; flex: none;
+}
+.entries-rail::after {
+  content: ''; position: absolute; left: 0; right: 0;
+  height: 1px; background: var(--gold); opacity: .75;
+}
+.entries-rail--top::after { bottom: 1.5px; }
+.entries-rail--bot::after { top: 1.5px; }
+
+/* 格心：棂格铺在这里，四周留出边框 */
+.entries-core {
+  padding: 17px 6px 14px;
+  display: flex; justify-content: space-between;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(107,74,50,.13);
+}
+/* 角叶：四角的铜活，只有线，很小，但"精致"就藏在这种地方 */
+.entries-core .corner {
+  position: absolute; width: 17px; height: 17px;
+  color: var(--wood-mid); opacity: .75;
+}
+.entries-core .corner--tl { left: 4px;  top: 4px; }
+.entries-core .corner--tr { right: 4px; top: 4px; transform: scaleX(-1); }
+.entries-core .corner--bl { left: 4px;  bottom: 4px; transform: scaleY(-1); }
+.entries-core .corner--br { right: 4px; bottom: 4px; transform: scale(-1); }
+
+.entry { width: 63px; text-align: center; position: relative; }
 .wadang {
-  width: 50px; height: 50px; margin: 0 auto 8px;
+  width: 54px; height: 54px; margin: 0 auto 9px;
   position: relative;
   display: flex; align-items: center; justify-content: center;
+  /* 瓦当是烧出来的陶，不是一个空心圆：给它胎体、给它一点起伏 */
+  border-radius: 50%;
+  background: radial-gradient(70% 70% at 36% 30%, #FDFAF3 0%, #F4EBD8 58%, #E9DCC2 100%);
+  box-shadow:
+    0 2px 5px rgba(74,50,30,.16),
+    0 0 0 1px rgba(107,74,50,.30),
+    inset 0 1px 2px rgba(255,255,255,.85),
+    inset 0 -2px 4px rgba(107,74,50,.10);
+}
+.theme-indigo .wadang {
+  background: radial-gradient(70% 70% at 36% 30%, #FBFCFD 0%, #E9EFF4 58%, #D7E2EA 100%);
+  box-shadow:
+    0 2px 5px rgba(30,50,70,.16),
+    0 0 0 1px rgba(47,74,99,.30),
+    inset 0 1px 2px rgba(255,255,255,.9),
+    inset 0 -2px 4px rgba(47,74,99,.10);
 }
 .wadang svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .wadang span {
   position: relative;
-  font-size: 21px; color: var(--wood); line-height: 1;
+  font-size: 22px; color: var(--wood); line-height: 1;
+  text-shadow: 0 1px 0 rgba(255,255,255,.7);
 }
-.entry-label { font-size: 11.5px; color: var(--ink-2); letter-spacing: .3px; }
+.entry-label {
+  font-size: 12px; color: var(--ink-2); letter-spacing: .5px;
+}
+
+/* ============ 匾额：精品好物 ============
+   这类"一条横幅入口"在书院语汇里的对应物就是匾。
+   做法：深木底 + 内嵌金线双框 + 宋体阔字距 + 一枚朱印。 */
+.plaque {
+  margin-top: 14px;
+  padding: 5px;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #5C3F29 0%, #3E2A1A 100%);
+  box-shadow: 0 3px 12px rgba(52,34,20,.30), inset 0 1px 0 rgba(212,178,124,.30);
+  position: relative;
+}
+.theme-indigo .plaque {
+  background: linear-gradient(180deg, #2B4358 0%, #1B2D3D 100%);
+  box-shadow: 0 3px 12px rgba(20,38,54,.30), inset 0 1px 0 rgba(150,186,212,.28);
+}
+.plaque-inner {
+  border: 1px solid rgba(197,160,96,.55);
+  border-radius: 4px;
+  padding: 11px 14px 12px;
+  display: flex; align-items: center; gap: 11px;
+  position: relative;
+}
+/* 内框再套一根极细的线：双框是匾额和普通横幅的分水岭 */
+.plaque-inner::before {
+  content: ''; position: absolute; inset: 2.5px;
+  border: 1px solid rgba(197,160,96,.22); border-radius: 2px;
+  pointer-events: none;
+}
+/* 朱印直接压在深木上会糊成一团黑红，垫一方纸——和登录页是同一个手法 */
+.plaque-seal-paper {
+  width: 34px; height: 34px; flex: none; border-radius: 2px;
+  background: #EFE6D2;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.28), inset 0 0 0 1px rgba(107,74,50,.16);
+}
+.plaque-seal { width: 23px; height: 23px; display: block; }
+.plaque-txt { flex: 1; min-width: 0; }
+.plaque-title {
+  font-size: 21px; color: #F2E3C2; letter-spacing: 6px; line-height: 1.2;
+}
+.plaque-sub {
+  font-size: 11px; color: rgba(242,227,194,.52);
+  letter-spacing: 1.6px; margin-top: 5px;
+}
+.plaque-go { color: rgba(197,160,96,.85); flex: none; display: flex; }
 
 /* ============ 横滑：展馆 ============ */
 .halls { display: flex; gap: 11px; overflow: hidden; margin-right: -16px; }

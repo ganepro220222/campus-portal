@@ -197,6 +197,10 @@
   /* 纸纤维：SVG 分形噪声。透明度烧进 SVG 里——直接当 background-image 用的时候
      没有别的地方能调强弱，不烧进去就是一层砂纸。 */
   --fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
+  /* 钤印的缺墨遮罩：大部分不透明、零星漏白，才像盖出来的 */
+  --ink-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52'%3E%3Cfilter id='k'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.30' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='gamma' exponent='0.18' amplitude='1.95'/%3E%3CfeFuncG type='gamma' exponent='0.18' amplitude='1.95'/%3E%3CfeFuncB type='gamma' exponent='0.18' amplitude='1.95'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='52' height='52' filter='url(%23k)'/%3E%3C/svg%3E");
+  /* 毛边遮罩：由 _ornaments.py 的 deckle_mask() 生成 */
+  --deckle-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0.00,0.02 L6.25,-0.93 L12.50,0.69 L18.75,-0.78 L25.00,-0.54 L31.25,1.21 L37.50,1.30 L43.75,0.69 L50.00,-0.52 L56.25,-0.33 L62.50,-0.16 L68.75,-1.17 L75.00,0.77 L81.25,0.56 L87.50,-0.25 L93.75,-1.07 L99.65,0.00 L101.61,6.25 L99.79,12.50 L100.28,18.75 L99.44,25.00 L98.41,31.25 L99.75,37.50 L99.00,43.75 L101.14,50.00 L100.01,56.25 L98.62,62.50 L100.19,68.75 L100.40,75.00 L99.24,81.25 L99.93,87.50 L98.71,93.75 L100.00,98.94 L93.75,99.56 L87.50,101.23 L81.25,99.78 L75.00,98.50 L68.75,100.16 L62.50,101.38 L56.25,100.43 L50.00,101.44 L43.75,99.15 L37.50,98.95 L31.25,101.30 L25.00,100.29 L18.75,99.95 L12.50,98.99 L6.25,101.38 L-1.62,100.00 L0.88,93.75 L-0.41,87.50 L0.51,81.25 L1.35,75.00 L-1.31,68.75 L0.66,62.50 L1.38,56.25 L0.92,50.00 L-1.07,43.75 L0.83,37.50 L-0.49,31.25 L1.01,25.00 L0.90,18.75 L1.03,12.50 L-1.22,6.25 Z' fill='white'/%3E%3C/svg%3E");
   --speckle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23s)' opacity='0.10'/%3E%3C/svg%3E");
   --fiber-page: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.14'/%3E%3C/svg%3E");
 }
@@ -207,6 +211,47 @@
   background-color: var(--wood);
 }
 .wood-face--v { background-image: var(--grain-v); }
+
+/* ── 雕刻：阴刻与阳刻 ────────────────────────────────────────
+   光默认从上方来，所以：
+     阴刻（凿进去）＝ 上沿暗、下沿亮
+     阳刻（凸出来）＝ 上沿亮、下沿暗
+   两条方向反过来就是"贴纸"感，这一条是所有立体效果的总开关。 */
+.carve-in {           /* 阴刻：瓦当上的篆字、石上的刻痕 */
+  filter:
+    drop-shadow(0 -0.5px 0 rgba(40, 28, 12, .40))
+    drop-shadow(0 1px 0 rgba(255, 252, 240, .80))
+    drop-shadow(0 1.5px 1px rgba(40, 28, 12, .12));
+}
+.carve-out {          /* 阳刻：匾上的贴金字 */
+  text-shadow:
+    0 -1px 0 rgba(0, 0, 0, .45),
+    0 1px 0 rgba(255, 236, 190, .45),
+    0 2px 3px rgba(0, 0, 0, .55);
+}
+/* 纸上的浅浮雕：栏目标题、导航标题这类墨字 */
+.emboss {
+  text-shadow: 0 1px 0 rgba(255, 252, 244, .85);
+}
+
+/* ── 钤印：真印章不是印得完美的 ──────────────────────────────
+   歪一点点、边缘缺墨、深浅不匀。三件缺一件都像"贴了张图片"。 */
+.seal-ink {
+  -webkit-mask-image: var(--ink-mask);
+  mask-image: var(--ink-mask);
+  -webkit-mask-size: 52px 52px;
+  mask-size: 52px 52px;
+  -webkit-mask-mode: luminance;
+  mask-mode: luminance;
+  transform: rotate(-2.4deg);
+  filter: drop-shadow(0 .5px 0 rgba(255, 252, 244, .55));
+}
+.seal-ink--r { transform: rotate(3.1deg); }
+
+/* ── 极细暗金线：这套里最"贵"的元素，只描边、不铺面 ── */
+.gold-rule {
+  box-shadow: inset 0 0 0 1px rgba(200, 164, 92, .34);
+}
 
 /* 起伏：一道顶高光 + 一道底暗边，扁平立刻变成有厚度 */
 .raised {
@@ -473,12 +518,27 @@ body {
   width: 15px; height: 15px; pointer-events: none;
   background: var(--seal-img) center / contain no-repeat;
   opacity: .92;
+  /* 压角印也是钤上去的：歪一点、缺一点墨 */
+  -webkit-mask-image: var(--ink-mask);
+  mask-image: var(--ink-mask);
+  -webkit-mask-size: 30px 30px;
+  mask-size: 30px 30px;
+  transform: rotate(-3deg);
   filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
 }
 .mount--lg .mount-art::after { width: 26px; height: 26px; right: 11px; bottom: 11px; }
 /* 84×62 的列表缩略图上钤印会比画心还抢眼，这一档不钤 */
 .mount--sm .mount-art::after { content: none; }
 .mount--sm .mount-art::before { background-size: 14px 14px; }
+
+/* 毛边：手工纸是撕出来的，边不齐。只给"一张纸"用（题签、钤印那方纸）；
+   界面里的卡片不用——那是印刷品，边就该是齐的。 */
+.deckle {
+  -webkit-mask-image: var(--deckle-mask);
+  mask-image: var(--deckle-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
 
 /* 题签：书上贴的签条。栏目名写在签上，图再满也盖不住名字 */
 .tiqian {
@@ -491,6 +551,12 @@ body {
   box-shadow: 0 1px 2px rgba(74,50,30,.10);
   font-size: 12.5px; color: var(--ink-2); text-align: center;
   max-width: 92%;
+  /* 签条是手裁的纸，边不齐 */
+  -webkit-mask-image: var(--deckle-mask);
+  mask-image: var(--deckle-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  text-shadow: 0 1px 0 rgba(255,252,244,.85);
 }
 
 /* ============ 首图（Banner） ============ */
@@ -661,6 +727,35 @@ body {
   font-size: 12px; color: var(--ink-2); letter-spacing: .5px;
 }
 
+/* ── 按下：纸被按了一下 ──────────────────────────────────
+   幅度必须很小（1px / 0.6%），大了就成弹簧。
+   小程序里落地时这些写进 hover-class。 */
+.card, .ncard, .hall, .notice, .search, .entry, .plaque, .tab, .act, .pill {
+  transition: transform .10s ease-out, box-shadow .10s ease-out, opacity .10s;
+}
+.card:active,
+.ncard:active,
+.hall:active,
+.notice:active,
+.search:active {
+  transform: translateY(1px) scale(.994);
+  box-shadow:
+    inset 0 1px 0 rgba(255,252,244,.6),
+    0 1px 3px rgba(74,50,30,.12);
+}
+/* 瓦当按下去像落了个印：下沉 + 朱砂一闪 */
+.entry:active .wadang {
+  transform: translateY(1.5px);
+  box-shadow:
+    0 1px 2px rgba(74,50,30,.26),
+    inset 0 2px 5px rgba(107,74,50,.30),
+    inset 0 0 0 1px rgba(168,52,42,.45);
+}
+.entry:active .entry-label { color: var(--zhu); }
+.plaque:active { transform: translateY(2px); box-shadow: 0 1px 5px rgba(52,34,20,.30); }
+.act:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(74,50,30,.18); }
+.tab:active { opacity: .7; }
+
 /* ============ 匾额：精品好物 ============
    这类"一条横幅入口"在书院语汇里的对应物就是匾。
    做法：深木底 + 内嵌金线双框 + 宋体阔字距 + 一枚朱印。 */
@@ -719,8 +814,9 @@ body {
     0 0 0 1px rgba(192,153,78,.9),
     0 0 0 3.5px rgba(122,86,38,.6),
     0 0 0 4.6px rgba(192,153,78,.5),
-    0 7px 24px rgba(0,0,0,.38),
-    inset 0 1px 2px rgba(255,255,255,.85);
+    0 9px 26px rgba(0,0,0,.45),
+    inset 0 2px 3px rgba(255,255,255,.9),
+    inset 0 -3px 6px rgba(107,74,50,.16);
 }
 
 /* 朱印直接压在深木上会糊成一团黑红，垫一方纸——和登录页是同一个手法 */

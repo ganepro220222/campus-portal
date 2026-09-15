@@ -62,13 +62,20 @@ def eave(width=375, height=62, top=8, ridge=7, yc=38, rise=20, pitch=9.0, sub=Fa
     xs = [(i + 0.5) * width / n for i in range(n)]
     for x in xs:
         ye = y_edge(x)
-        # 筒瓦是半圆截面：中间亮、两侧暗，宽度只占一半，另一半是板瓦沟
+        # 筒瓦是半圆截面的筒。光从左上来，所以：
+        # 左侧一道暗（背光的转折）→ 中间一道高光（受光的脊）→ 右侧一道深影（落在沟里）。
+        # 只画三根等亮度的线是"瓦楞铁"，有了这组明暗才是"一根根筒瓦"。
         out.append(f'<path d="M{x:.2f},{top} V{ye:.2f}" stroke="var(--tile-2)" '
-                   f'stroke-width="{pitch * 0.42:.2f}"/>')
-        out.append(f'<path d="M{x - pitch * 0.07:.2f},{top} V{ye:.2f}" stroke="var(--tile-hi)" '
-                   f'stroke-width=".8" opacity=".30"/>')
-        out.append(f'<path d="M{x + pitch * 0.2:.2f},{top} V{ye:.2f}" stroke="var(--tile-dark)" '
-                   f'stroke-width=".9" opacity=".30"/>')
+                   f'stroke-width="{pitch * 0.46:.2f}"/>')
+        out.append(f'<path d="M{x - pitch * 0.17:.2f},{top} V{ye:.2f}" stroke="var(--tile-dark)" '
+                   f'stroke-width="{pitch * 0.10:.2f}" opacity=".30"/>')
+        out.append(f'<path d="M{x - pitch * 0.05:.2f},{top} V{ye:.2f}" stroke="var(--tile-hi)" '
+                   f'stroke-width="{pitch * 0.12:.2f}" opacity=".50"/>')
+        out.append(f'<path d="M{x + pitch * 0.17:.2f},{top} V{ye:.2f}" stroke="var(--tile-dark)" '
+                   f'stroke-width="{pitch * 0.16:.2f}" opacity=".42"/>')
+        # 沟里的深影，让筒与筒之间真的凹下去
+        out.append(f'<path d="M{x + pitch * 0.5:.2f},{top} V{ye:.2f}" stroke="#000" '
+                   f'stroke-width="{pitch * 0.20:.2f}" opacity=".16"/>')
 
     # 正脊 + 两端的吻
     out.append(f'<path d="{face_path(top)}" fill="url(%23{gid})"/>')
@@ -80,8 +87,9 @@ def eave(width=375, height=62, top=8, ridge=7, yc=38, rise=20, pitch=9.0, sub=Fa
             f'{sx + 7 * flip},{top - 7.5}" fill="none" stroke="var(--tile-dark)" '
             f'stroke-width="4.6" stroke-linecap="round"/>')
     out.append(f'<rect x="0" y="{top - 1}" width="{width}" height="{ridge}" rx="1" fill="var(--tile-dark)"/>')
-    out.append(f'<rect x="0" y="{top - 1}" width="{width}" height="{ridge * 0.40:.2f}" '
-               f'fill="var(--tile-hi)" opacity=".22"/>')
+    out.append(f'<rect x="0" y="{top - 1}" width="{width}" height="1.1" fill="var(--tile-hi)" opacity=".55"/>')
+    out.append(f'<rect x="0" y="{top - 1 + ridge - 1.1:.2f}" width="{width}" height="1.1" '
+               f'fill="#000" opacity=".30"/>')
 
     # 檐口线
     out.append(f'<path d="{curve_path()}" fill="none" stroke="var(--tile-dark)" stroke-width="1.6"/>')
@@ -90,9 +98,13 @@ def eave(width=375, height=62, top=8, ridge=7, yc=38, rise=20, pitch=9.0, sub=Fa
     # 檐口：筒瓦头上是瓦当（圆），板瓦沟里是滴水（如意形垂片），两者相间
     for x in xs:
         ye = y_edge(x)
-        out.append(f'<circle cx="{x:.2f}" cy="{ye + 2.6:.2f}" r="3.1" fill="var(--tile-2)" '
+        cy = ye + 2.6
+        out.append(f'<circle cx="{x:.2f}" cy="{cy + .6:.2f}" r="3.1" fill="#000" opacity=".22"/>')
+        out.append(f'<circle cx="{x:.2f}" cy="{cy:.2f}" r="3.1" fill="var(--tile-2)" '
                    f'stroke="var(--tile-dark)" stroke-width=".6"/>')
-        out.append(f'<circle cx="{x:.2f}" cy="{ye + 2.6:.2f}" r="1.1" fill="var(--tile-dark)" opacity=".6"/>')
+        out.append(f'<path d="M{x - 2.1:.2f},{cy - 1.4:.2f} A3.1,3.1 0 0,1 {x + 1.0:.2f},{cy - 2.9:.2f}" '
+                   f'fill="none" stroke="var(--tile-hi)" stroke-width="1" opacity=".65"/>')
+        out.append(f'<circle cx="{x:.2f}" cy="{cy:.2f}" r="1.1" fill="var(--tile-dark)" opacity=".6"/>')
     for i in range(n + 1):
         x = i * width / n
         ye = y_edge(x)
@@ -101,21 +113,28 @@ def eave(width=375, height=62, top=8, ridge=7, yc=38, rise=20, pitch=9.0, sub=Fa
             f'<path d="M{x - w:.2f},{ye + .4:.2f} L{x + w:.2f},{ye + .4:.2f} '
             f'L{x + w * .68:.2f},{ye + 3.4:.2f} Q{x:.2f},{ye + 6.2:.2f} {x - w * .68:.2f},{ye + 3.4:.2f} Z" '
             f'fill="var(--tile)" stroke="var(--tile-dark)" stroke-width=".55" opacity=".92"/>')
+        out.append(f'<path d="M{x - w * .55:.2f},{ye + 1.1:.2f} L{x + w * .55:.2f},{ye + 1.1:.2f}" '
+                   f'stroke="var(--tile-hi)" stroke-width=".8" opacity=".45"/>')
 
     if not sub:
         # 檐檩：一条木梁把椽头串起来。少了这条，方块就是一排浮着的积木。
-        out.append(f'<path d="{curve_path(9.5)}" fill="none" stroke="var(--wood-dark)" stroke-width="3.4"/>')
-        out.append(f'<path d="{curve_path(8.6)}" fill="none" stroke="var(--wood-mid)" stroke-width="1.1" opacity=".8"/>')
+        out.append(f'<path d="{curve_path(9.5)}" fill="none" stroke="var(--wood-90)" stroke-width="3.8"/>')
+        out.append(f'<path d="{curve_path(9.0)}" fill="none" stroke="var(--wood-60)" stroke-width="2.0" opacity=".95"/>')
+        out.append(f'<path d="{curve_path(8.3)}" fill="none" stroke="var(--wood-pale)" stroke-width=".9" opacity=".75"/>')
         # 椽头：这里才是木头
         step = pitch * 2
         m = int(width / step)
         for i in range(m + 1):
             x = (i + 0.5) * width / m
             ye = y_edge(x) + 11.4
+            out.append(f'<rect x="{x - 3.2:.2f}" y="{ye + .7:.2f}" width="6.4" height="5.2" rx=".8" '
+                       f'fill="#000" opacity=".26"/>')
             out.append(f'<rect x="{x - 3.2:.2f}" y="{ye:.2f}" width="6.4" height="5.2" rx=".8" '
                        f'fill="var(--wood)" stroke="var(--wood-dark)" stroke-width=".6"/>')
-            out.append(f'<rect x="{x - 3.2:.2f}" y="{ye + .3:.2f}" width="6.4" height="1.2" rx=".6" '
-                       f'fill="var(--wood-pale)" opacity=".65"/>')
+            out.append(f'<rect x="{x - 3.2:.2f}" y="{ye + .25:.2f}" width="6.4" height="1.15" rx=".55" '
+                       f'fill="var(--wood-pale)" opacity=".75"/>')
+            out.append(f'<rect x="{x - 3.2:.2f}" y="{ye + 4.1:.2f}" width="6.4" height="1.1" rx=".55" '
+                       f'fill="var(--wood-95)" opacity=".55"/>')
 
     out.append('</svg>')
     return "\n    ".join(out)
@@ -251,6 +270,33 @@ def ruyi_divider(w=210, h=24):
              f'stroke="var(--wood-pale)" stroke-width=".9" stroke-linecap="round" opacity=".55"/>')
     return (f'<svg class="ruyi-div" viewBox="0 0 {w} {h}" aria-hidden="true">'
             + "".join(seg) + cloud + curls + '</svg>')
+
+
+def deckle_mask(w=100, h=100, step=6, amp=1.7, seed=424242):
+    """手裁纸的毛边遮罩，输出给 CSS 变量用的 data-URI，配合 mask-image。
+
+    四条边各自沿自己的法线方向抖，抖幅只有一两个百分点——毛边是纸纤维的
+    断口，不是撕破的口子，幅度一大就成了爆炸贴纸。
+    """
+    rnd = random.Random(seed)
+    pts = []
+
+    def edge(x0, y0, x1, y1, nx, ny):
+        n = max(2, int(max(abs(x1 - x0), abs(y1 - y0)) / step))
+        for i in range(n):
+            t = i / n
+            j = rnd.uniform(-amp, amp)
+            pts.append((x0 + (x1 - x0) * t + nx * j, y0 + (y1 - y0) * t + ny * j))
+
+    edge(0, 0, w, 0, 0, 1)
+    edge(w, 0, w, h, -1, 0)
+    edge(w, h, 0, h, 0, -1)
+    edge(0, h, 0, 0, 1, 0)
+    d = "M" + " L".join("%.2f,%.2f" % (x, y) for x, y in pts) + " Z"
+    svg = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 %d %d' "
+           "preserveAspectRatio='none'><path d='%s' fill='white'/></svg>" % (w, h, d))
+    return "url(\"data:image/svg+xml,%s\")" % (
+        svg.replace("<", "%3C").replace(">", "%3E").replace("#", "%23").replace('"', "'"))
 
 
 ENTRIES = [('闻', '书院动态'), ('览', '展馆展示'), ('讲', '课程中心'),

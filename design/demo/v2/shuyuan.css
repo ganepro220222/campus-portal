@@ -832,7 +832,8 @@ body {
   font-size: 21px; color: var(--gold-lit); letter-spacing: 6px; line-height: 1.2;
 }
 .plaque-sub {
-  font-size: 11px; color: rgba(230,199,124,.55);
+  /* α 从 .55 提到 .72：11px 的小字在黑漆底上只有 3.70:1，必须过 4.5 */
+  font-size: 11px; color: rgba(230,199,124,.72);
   letter-spacing: 1.6px; margin-top: 5px;
 }
 .plaque-go { color: rgba(214,178,108,.9); flex: none; display: flex; }

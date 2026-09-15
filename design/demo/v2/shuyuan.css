@@ -18,15 +18,20 @@
   --paper-card: #FBF7EF;   /* 卡片：更亮一档的纸 */
   --paper-sunk: #EAE2D0;   /* 凹陷/分隔 */
 
-  /* —— 木 —— */
-  --wood:       #6B4A32;   /* 檐、框、棂 */
-  --wood-mid:   #8A6440;
-  --wood-light: #B79268;
+  /* —— 木 ——
+     原来那组（#6B4A32 起）偏深、偏巧克力色，压得整页发闷。
+     换成榉木/楠木那种暖蜜色，只留 --wood-dark 给需要对比度的线和字。 */
+  --wood-dark:  #6B4326;   /* 文字、细线：要保证在纸上的对比度 */
+  --wood:       #9A6E48;   /* 木面主色 */
+  --wood-mid:   #B08658;
+  --wood-light: #CCA47A;
+  --wood-pale:  #E0C6A4;   /* 高光棱 */
 
   /* —— 墨 —— */
   --ink:        #23262E;   /* 正文 */
   --ink-2:      #4C505C;   /* 次级 */
-  --ink-3:      #837C6E;   /* 说明、时间 */
+  --ink-3:      #6B6659;   /* 说明、时间。原 #837C6E 在纸底上只有 3.51:1，
+                              而它承担的是 11–12px 的时间与说明文字，必须过 4.5 */
 
   /* —— 彩画二色（檐下彩画） —— */
   --qing:       #35566F;   /* 石青 */
@@ -36,12 +41,12 @@
   --zhu:        #A8342A;   /* 朱砂：取自校方印章，全站唯一高饱和色 */
   --zhu-soft:   rgba(168, 52, 42, .10);
 
-  --gold:       #B08A46;   /* 只用于 1px 描边，不做面 */
-  --line:       rgba(107, 74, 50, .22);
-  --line-soft:  rgba(107, 74, 50, .12);
+  --gold:       #C0994E;   /* 只用于 1px 描边，不做面 */
+  --line:       rgba(107, 67, 38, .22);
+  --line-soft:  rgba(107, 67, 38, .12);
 
-  --shadow:     0 2px 10px rgba(74, 50, 30, .07);
-  --shadow-up:  0 6px 20px rgba(74, 50, 30, .12);
+  --shadow:     0 1px 2px rgba(74, 50, 30, .06), 0 4px 14px rgba(74, 50, 30, .08);
+  --shadow-up:  0 2px 4px rgba(74, 50, 30, .10), 0 10px 26px rgba(74, 50, 30, .14);
 
   --r:   10px;   /* 卡片圆角：克制，接近木作 */
   --r-s: 6px;
@@ -52,15 +57,73 @@
   --paper:      #EFEDE4;
   --paper-card: #FAF8F2;
   --paper-sunk: #E4E1D5;
-  --wood:       #2F4A63;
-  --wood-mid:   #3E6182;
-  --wood-light: #7C9CB6;
+  --wood-dark:  #24384B;
+  --wood:       #456A8A;
+  --wood-mid:   #5A83A4;
+  --wood-light: #8EAEC6;
+  --wood-pale:  #BCD2E2;
   --qing:       #2F4A63;
   --lv:         #4A6B6B;
   --line:       rgba(47, 74, 99, .22);
   --line-soft:  rgba(47, 74, 99, .12);
-  --shadow:     0 2px 10px rgba(30, 50, 70, .07);
-  --shadow-up:  0 6px 20px rgba(30, 50, 70, .12);
+  --shadow:     0 1px 2px rgba(30, 50, 70, .06), 0 4px 14px rgba(30, 50, 70, .08);
+  --shadow-up:  0 2px 4px rgba(30, 50, 70, .10), 0 10px 26px rgba(30, 50, 70, .14);
+}
+
+/* ============================================================
+   质感层：木纹 / 纸纤维 / 起伏
+   全部是 CSS 渐变 + 一张 SVG 噪声，没有位图，可换色、不占体积。
+   ============================================================ */
+:root {
+  /* 木纹（横纹，给横向构件：枋、匾、檐）。
+     三层不同周期（5 / 23 / 13）叠在一起，避免出现规则条纹的机械感。 */
+  --grain-h:
+    repeating-linear-gradient(180deg,
+      rgba(58,34,14,.10) 0 1px, rgba(255,240,220,.05) 1px 2px, transparent 2px 5px),
+    repeating-linear-gradient(180deg,
+      rgba(58,34,14,.09) 0 2px, transparent 2px 9px,
+      rgba(58,34,14,.06) 9px 11px, transparent 11px 23px),
+    repeating-linear-gradient(180deg,
+      rgba(255,240,220,.06) 0 1px, transparent 1px 13px);
+  /* 木纹（竖纹，给竖向构件） */
+  --grain-v:
+    repeating-linear-gradient(90deg,
+      rgba(58,34,14,.10) 0 1px, rgba(255,240,220,.05) 1px 2px, transparent 2px 5px),
+    repeating-linear-gradient(90deg,
+      rgba(58,34,14,.09) 0 2px, transparent 2px 9px,
+      rgba(58,34,14,.06) 9px 11px, transparent 11px 23px),
+    repeating-linear-gradient(90deg,
+      rgba(255,240,220,.06) 0 1px, transparent 1px 13px);
+  /* 大面积木面专用：细纹减半 + 一组宽周期年轮，避免看出重复 */
+  --grain-v-soft:
+    repeating-linear-gradient(90deg,
+      rgba(58,34,14,.05) 0 1px, rgba(255,240,220,.03) 1px 2px, transparent 2px 6px),
+    repeating-linear-gradient(90deg,
+      rgba(58,34,14,.05) 0 3px, transparent 3px 14px,
+      rgba(255,240,220,.035) 14px 16px, transparent 16px 37px),
+    repeating-linear-gradient(90deg,
+      rgba(58,34,14,.07) 0 5px, transparent 5px 28px,
+      rgba(58,34,14,.04) 28px 31px, transparent 31px 61px);
+
+  /* 纸纤维：SVG 分形噪声。透明度烧进 SVG 里——直接当 background-image 用的时候
+     没有别的地方能调强弱，不烧进去就是一层砂纸。 */
+  --fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
+  --fiber-page: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.14'/%3E%3C/svg%3E");
+}
+
+/* 木面：底色自己给，纹理由这个类叠上去 */
+.wood-face {
+  background-image: var(--grain-h);
+  background-color: var(--wood);
+}
+.wood-face--v { background-image: var(--grain-v); }
+
+/* 起伏：一道顶高光 + 一道底暗边，扁平立刻变成有厚度 */
+.raised {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 244, .70),
+    inset 0 -1px 0 rgba(107, 67, 38, .10),
+    var(--shadow);
 }
 
 * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
@@ -89,18 +152,23 @@ body {
   min-height: 812px;
 }
 
-/* ============ 纸纹：极轻的噪点，不铺图 ============ */
+/* ============ 纸：纤维 + 一层极淡的晕，不是纯色块 ============ */
 .phone::before {
   content: '';
   position: absolute; inset: 0;
-  pointer-events: none; z-index: 0;
-  opacity: .5;
-  background-image:
-    radial-gradient(circle at 12% 18%, rgba(107,74,50,.030) 0 1px, transparent 1px),
-    radial-gradient(circle at 64% 42%, rgba(107,74,50,.026) 0 1px, transparent 1px),
-    radial-gradient(circle at 34% 77%, rgba(107,74,50,.030) 0 1px, transparent 1px),
-    radial-gradient(circle at 88% 63%, rgba(107,74,50,.022) 0 1px, transparent 1px);
-  background-size: 37px 41px, 53px 47px, 43px 59px, 61px 53px;
+  pointer-events: none; z-index: 2;
+  mix-blend-mode: multiply;
+  background-image: var(--fiber-page);
+  background-size: 160px 160px;
+}
+/* 四周压一点点暗，中间亮：纸铺在桌上本来就不是均匀的 */
+.phone::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 3;
+  background: radial-gradient(130% 80% at 50% 26%,
+    rgba(255,252,244,.42) 0%, rgba(255,252,244,0) 52%,
+    rgba(107,67,38,.055) 100%);
 }
 .phone > * { position: relative; z-index: 1; }
 
@@ -128,7 +196,7 @@ body {
 /* 棂条是「双线」——真木条有宽度，画成一根发丝线就是网格纸。
    双线之间那条缝才是让人认出"这是木格子"的东西。 */
 .lattice-bg {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52' viewBox='0 0 52 52'%3E%3Cg fill='none' stroke='%236B4A32' stroke-width='0.9' opacity='0.19'%3E%3Cpath d='M0 1.4H52M0 4.2H52M1.4 0V52M4.2 0V52'/%3E%3Cpath d='M14 1.4V14H1.4M38 1.4V14H50.6M14 50.6V38H1.4M38 50.6V38H50.6'/%3E%3Crect x='14' y='14' width='24' height='24'/%3E%3Crect x='16.8' y='16.8' width='18.4' height='18.4'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52' viewBox='0 0 52 52'%3E%3Cg fill='none' stroke='%238A5E38' stroke-width='0.9' opacity='0.22'%3E%3Cpath d='M0 1.4H52M0 4.2H52M1.4 0V52M4.2 0V52'/%3E%3Cpath d='M14 1.4V14H1.4M38 1.4V14H50.6M14 50.6V38H1.4M38 50.6V38H50.6'/%3E%3Crect x='14' y='14' width='24' height='24'/%3E%3Crect x='16.8' y='16.8' width='18.4' height='18.4'/%3E%3C/g%3E%3C/svg%3E");
   background-size: 52px 52px;
 }
 .theme-indigo .lattice-bg {
@@ -139,7 +207,7 @@ body {
 /* 回纹：只做分隔线，不做面 */
 .fret {
   height: 10px; width: 100%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='10' viewBox='0 0 16 10'%3E%3Cpath d='M0.5 10V1.5H13.5V8H4V4.5H9.5' fill='none' stroke='%236B4A32' stroke-width='1' opacity='0.3'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='10' viewBox='0 0 16 10'%3E%3Cpath d='M0.5 10V1.5H13.5V8H4V4.5H9.5' fill='none' stroke='%238A5E38' stroke-width='1' opacity='0.34'/%3E%3C/svg%3E");
   background-size: 16px 10px;
   background-repeat: repeat-x;
 }
@@ -168,8 +236,9 @@ body {
 .search {
   flex: 1; min-width: 0;
   height: 36px; border-radius: var(--r-s);
-  background: var(--paper-card);
+  background: linear-gradient(180deg, #F0E8D8, var(--paper-card) 60%);
   border: 1px solid var(--line);
+  box-shadow: inset 0 1px 3px rgba(107,67,38,.10), 0 1px 0 rgba(255,252,244,.9);
   display: flex; align-items: center; gap: 7px;
   padding: 0 11px;
   color: var(--ink-3); font-size: 12.5px;
@@ -202,10 +271,16 @@ body {
 
 /* ============ 卡片：纸 + 木框 + 冰裂角 ============ */
 .card {
-  background: var(--paper-card);
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 160px 160px;
   border: 1px solid var(--line);
   border-radius: var(--r);
-  box-shadow: var(--shadow);
+  /* 顶高光 + 底暗边 + 落影：三层一起上，卡片才"浮"在纸上而不是画在纸上 */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 252, 244, .85),
+    inset 0 -1px 0 rgba(107, 67, 38, .07),
+    var(--shadow);
   position: relative;
   overflow: hidden;
 }
@@ -223,9 +298,10 @@ body {
   height: 176px; margin-top: 14px;
   display: flex; flex-direction: column; justify-content: flex-end;
   padding: 16px;
-  background: linear-gradient(165deg, #4A3323 0%, #6B4A32 62%, #7C5B3C 100%);
+  background: linear-gradient(165deg, #5E4128 0%, #7A5636 58%, #916B44 100%);
   border: none;
   color: #F6EEDF;
+  box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -24px 40px rgba(40,24,10,.26);
 }
 .theme-indigo .banner { background: linear-gradient(165deg, #1F3346 0%, #2F4A63 62%, #3E6182 100%); }
 .banner > *:not(svg) { position: relative; }
@@ -250,9 +326,10 @@ body {
 .notice {
   margin-top: 12px; padding: 10px 12px;
   display: flex; align-items: center; gap: 8px;
-  background: var(--zhu-soft);
-  border-left: 2px solid var(--zhu);
+  background: linear-gradient(180deg, rgba(168,52,42,.13), rgba(168,52,42,.06));
+  border-left: 3px solid var(--zhu);
   border-radius: 0 var(--r-s) var(--r-s) 0;
+  box-shadow: inset 0 1px 0 rgba(255,252,244,.6), 0 1px 3px rgba(74,50,30,.07);
   font-size: 12.5px; color: var(--ink-2);
 }
 .notice .n-txt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -273,8 +350,11 @@ body {
 }
 /* 上下枋：木色横档 + 一根金线，门的样子一下就出来了 */
 .entries-rail {
-  height: 8px;
-  background: linear-gradient(180deg, var(--wood-light) 0 1px, var(--wood-mid) 1px, var(--wood));
+  height: 10px;
+  background-color: var(--wood);
+  background-image:
+    var(--grain-h),
+    linear-gradient(180deg, var(--wood-pale) 0 1px, var(--wood-mid) 1px 3px, var(--wood) 60%, var(--wood-dark));
   position: relative; flex: none;
 }
 .entries-rail::after {
@@ -326,7 +406,7 @@ body {
 .wadang svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .wadang span {
   position: relative;
-  font-size: 22px; color: var(--wood); line-height: 1;
+  font-size: 22px; color: var(--wood-dark); line-height: 1;
   text-shadow: 0 1px 0 rgba(255,255,255,.7);
 }
 .entry-label {
@@ -340,8 +420,14 @@ body {
   margin-top: 14px;
   padding: 5px;
   border-radius: 7px;
-  background: linear-gradient(180deg, #5C3F29 0%, #3E2A1A 100%);
-  box-shadow: 0 3px 12px rgba(52,34,20,.30), inset 0 1px 0 rgba(212,178,124,.30);
+  background-color: #8A6038;
+  background-image:
+    var(--grain-h),
+    linear-gradient(180deg, #A0764A 0%, #7A5330 46%, #5F3F24 100%);
+  box-shadow:
+    0 4px 14px rgba(52,34,20,.26),
+    inset 0 1px 0 rgba(233,203,158,.55),
+    inset 0 -2px 3px rgba(40,24,10,.35);
   position: relative;
 }
 .theme-indigo .plaque {
@@ -386,12 +472,13 @@ body {
   height: 92px; border-radius: var(--r-s);
   display: flex; align-items: flex-end; padding: 9px;
   border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -16px 26px rgba(40,24,10,.24);
   position: relative; overflow: hidden;
 }
 .hall-cover .hc-lattice { position: absolute; right: -14px; bottom: -14px; width: 76px; height: 76px; opacity: .55; }
-.h1 { background: linear-gradient(160deg, #573C28, #7C5B3C); }
-.h2 { background: linear-gradient(160deg, #27414F, #416A87); }
-.h3 { background: linear-gradient(160deg, #35513F, #557C61); }
+.h1 { background: linear-gradient(160deg, #6F4F30, #906B44); }
+.h2 { background: linear-gradient(160deg, #345470, #4F7796); }
+.h3 { background: linear-gradient(160deg, #3F5D47, #5C8066); }
 .hall-cover span { color: #F6EEDF; font-size: 15px; letter-spacing: 2px; position: relative; }
 .hall-cover .shan { height: 72%; }
 .hall-name { font-size: 12.5px; color: var(--ink-2); margin-top: 7px; text-align: center; }
@@ -400,9 +487,11 @@ body {
 .ncard { display: flex; gap: 11px; padding: 11px; margin-bottom: 10px; }
 .nthumb {
   width: 84px; height: 62px; flex: none; border-radius: var(--r-s);
-  background: linear-gradient(145deg, var(--wood-mid), var(--wood));
+  background-color: var(--wood);
+  background-image: var(--grain-v), linear-gradient(145deg, var(--wood-mid), var(--wood-dark));
   display: flex; align-items: center; justify-content: center;
-  color: rgba(246,238,223,.5); font-size: 20px;
+  color: rgba(250,242,226,.62); font-size: 20px;
+  box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -2px 6px rgba(40,24,10,.22);
 }
 .nbody { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
 .ntitle {
@@ -412,7 +501,9 @@ body {
 .nmeta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .pill {
   font-size: 10.5px; padding: 2px 7px; border-radius: 2px;
-  color: var(--wood); border: 1px solid var(--line); background: transparent;
+  color: var(--wood-dark); border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 1px 0 rgba(255,252,244,.8);
 }
 .pill.zhu { color: var(--zhu); border-color: rgba(168,52,42,.32); }
 .ndate { font-size: 11px; color: var(--ink-3); }
@@ -421,8 +512,11 @@ body {
 .tabbar {
   position: sticky; bottom: 0;
   margin-top: 20px;
-  background: var(--paper-card);
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 160px 160px;
   border-top: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255,252,244,.9), 0 -3px 12px rgba(74,50,30,.06);
   padding: 7px 0 22px;
   display: flex;
 }
@@ -433,9 +527,12 @@ body {
 /* ============ 登录页 ============ */
 .login {
   min-height: 812px;
-  background:
-    radial-gradient(120% 70% at 50% 0%, rgba(184,146,104,.16) 0%, transparent 62%),
-    linear-gradient(175deg, #2B2016 0%, #3B2A1B 42%, #24201C 100%);
+  /* 深色也是木头：老木色 + 真木纹 + 一点灯光感，而不是一块深棕色 */
+  background-color: #463322;
+  background-image:
+    radial-gradient(120% 62% at 50% 4%, rgba(226,188,134,.20) 0%, transparent 60%),
+    var(--grain-v-soft),
+    linear-gradient(175deg, #55402B 0%, #402E1E 44%, #2E251D 100%);
   display: flex; flex-direction: column; align-items: center;
   position: relative; overflow: hidden;
 }
@@ -500,12 +597,12 @@ body {
 
 .art-hero {
   margin: 0 16px; height: 186px; border-radius: var(--r);
-  background: linear-gradient(155deg, var(--wood) 0%, #7A5638 48%, var(--qing) 100%);
+  background: linear-gradient(165deg, #5C4027 0%, #785435 58%, #8E6842 100%);
   display: flex; align-items: flex-end; padding: 18px;
+  box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -26px 44px rgba(40,24,10,.26);
   position: relative; overflow: hidden;
 }
 .art-hero .ah-lattice { position: absolute; right: -24px; top: -24px; width: 156px; height: 156px; opacity: .45; }
-.art-hero { background: linear-gradient(165deg, #46301F 0%, #6B4A32 60%, #7C5B3C 100%); }
 .art-hero .ah-title { color: #F6EEDF; font-size: 23px; line-height: 1.5; letter-spacing: 1px; position: relative; }
 
 .art-body { padding: 18px 20px 0; }
@@ -540,12 +637,20 @@ body {
   font-size: 14px; line-height: 1.9; color: var(--ink-2);
 }
 .art-fig { margin: 18px 0 6px; }
+/* 配图当作"裱"起来的：纸托 + 内凹的画心，不是一块贴上去的灰方块 */
 .art-fig .fig-box {
-  height: 148px; border-radius: var(--r-s);
-  background: linear-gradient(145deg, #7A6A52, #5C5241);
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(246,238,223,.4); font-size: 12px;
+  height: 156px; border-radius: var(--r-s);
+  padding: 7px;
+  background: linear-gradient(180deg, #F3EADA, #E7DCC6);
   border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255,252,244,.9), 0 2px 8px rgba(74,50,30,.10);
+}
+.art-fig .fig-box i {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; border-radius: 3px; font-style: normal;
+  background: linear-gradient(150deg, #6E6350, #514839);
+  color: rgba(246,238,223,.45); font-size: 12px;
+  box-shadow: inset 0 2px 6px rgba(20,14,6,.45), inset 0 0 0 1px rgba(107,67,38,.35);
 }
 .art-fig .fig-cap { font-size: 11.5px; color: var(--ink-3); text-align: center; margin-top: 8px; }
 
@@ -555,7 +660,9 @@ body {
 }
 .act {
   flex: 1; height: 38px; border-radius: var(--r-s);
-  border: 1px solid var(--line); background: var(--paper-card);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #FDFAF3, #F0E8D8);
+  box-shadow: inset 0 1px 0 rgba(255,252,244,.9), 0 1px 2px rgba(74,50,30,.08);
   display: flex; align-items: center; justify-content: center; gap: 5px;
   font-size: 12.5px; color: var(--ink-2);
 }

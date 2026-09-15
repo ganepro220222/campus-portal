@@ -18,26 +18,42 @@
   --paper-card: #FBF7EF;   /* 卡片：更亮一档的纸 */
   --paper-sunk: #EAE2D0;   /* 凹陷/分隔 */
 
-  /* ══ 木 · 金丝楠色阶 ══════════════════════════════════════
-     这是整个小程序的主体色，全站每一处木面都必须从这里取，不许再写死。
-     之前两轮"换了木色却看不出变化"，原因就是大面积的首图、匾额、展馆封面、
-     登录页全是写死的十六进制，根本没走这组变量。
-     色相钉在 38° 左右：咖啡/胡桃是 25° 上下，偏红；金丝楠偏黄，这一条是分水岭。 */
-  --wood-05:    #FAF3E4;
-  --wood-10:    #F1E4C9;
-  --wood-20:    #E3CFA6;
-  --wood-30:    #D3B681;
-  --wood-40:    #C19E62;
-  --wood-50:    #AC8747;   /* 木面主色 */
-  --wood-60:    #927038;
-  --wood-70:    #78592B;
-  --wood-80:    #5E4520;
-  --wood-85:    #513A1B;
-  --wood-90:    #443218;
-  --wood-95:    #332714;
+  /* ══ 木 · 浅原木色阶 ══════════════════════════════════════
+     全站每一处木面都必须从这里取，不许再写死。
+
+     "老气"的根源不是饱和度，是**大面积的中深棕**本身——深 + 高饱和 + 偏红，
+     就是老家具的配方。前几轮我只在色相上挪（25°→38°），面积和明度没动，
+     所以看着几乎没变。这一版换的是配方：
+       · 明度整体提一大截（主色 L 从 48% 提到 64%）
+       · 饱和度从 42% 压到 28%，往中性走
+       · 木头只做**框、线、小件**，不再铺大面
+     结果是浅原木/白橡那种质地，而不是红木家具。 */
+  --wood-05:    #FCF8F1;
+  --wood-10:    #F5EDE0;
+  --wood-20:    #EADFCB;
+  --wood-30:    #DCCCB0;
+  --wood-40:    #CBB795;
+  --wood-50:    #B9A383;   /* 木面主色 */
+  --wood-60:    #9E8A6C;
+  --wood-70:    #7F6E55;
+  --wood-80:    #635640;
+  --wood-85:    #554932;
+  --wood-90:    #463C2B;
+  --wood-95:    #352E21;
+
+  /* ══ 墨 · 深色面 ══════════════════════════════════════════
+     大面积的深色一律走这里，不再用棕。
+     深棕铺满就是老家具；墨（带一点暖的炭色）配纸、配朱砂、配细金线，
+     才是当代中式那种"大气"。匾额也归它——书院祠堂的匾本来就是黑漆金字。 */
+  --mo-40:      #6E6A62;
+  --mo-50:      #5A564E;
+  --mo-60:      #494540;
+  --mo-70:      #3A3733;
+  --mo-80:      #2E2B28;
+  --mo-90:      #232120;
 
   /* 语义别名：组件只用这五个，换木种时只动上面的色阶 */
-  --wood-dark:  var(--wood-70);   /* 文字、细线：要保证在纸上的对比度 */
+  --wood-dark:  var(--wood-80);   /* 文字、细线：要保证在纸上的对比度 */
   --wood:       var(--wood-50);   /* 木面主色 */
   --wood-mid:   var(--wood-40);
   --wood-light: var(--wood-30);
@@ -50,10 +66,10 @@
 
   /* 瓦：黛瓦。屋顶本来就不是木头，给它自己的灰调，
      木构件（椽头、枋、匾）才衬得出来，整页也不再一片棕。 */
-  --tile:       #6A6560;
-  --tile-2:     #7D7772;
-  --tile-dark:  #494541;
-  --tile-hi:    #A29B94;
+  --tile:       #61696E;   /* 黛瓦：带一点青，和暖墨拉开 */
+  --tile-2:     #737C82;
+  --tile-dark:  #414951;
+  --tile-hi:    #99A2A8;
 
   /* —— 墨 —— */
   --ink:        #23262E;   /* 正文 */
@@ -70,7 +86,14 @@
   --zhu-soft:   rgba(168, 52, 42, .10);
   --seal-img:   url('../../brand/logo/extracted/seal-maroon.png');
 
-  --gold:       #C0994E;   /* 只用于 1px 描边，不做面 */
+  --gold:       #C8A45C;   /* 细线、描边 */
+  --gold-lit:   #E6C77C;   /* 黑漆匾上的金字，需要更亮才压得住墨底 */
+
+  /* 展馆分类色：明度与墨同级，只在色相上各偏一点，避免三张封面像来自三个地方 */
+  --hall-qing:   #4C5D68;
+  --hall-qing-d: #262F36;
+  --hall-lv:     #4A5A4C;
+  --hall-lv-d:   #242E27;
   --line:       rgba(107, 67, 38, .22);
   --line-soft:  rgba(107, 67, 38, .12);
 
@@ -86,18 +109,30 @@
   --paper:      #EFEDE4;
   --paper-card: #FAF8F2;
   --paper-sunk: #E4E1D5;
-  --wood-05:    #F2F6F9;
-  --wood-10:    #D9E6EF;
-  --wood-20:    #B9D0E0;
-  --wood-30:    #93B4CB;
-  --wood-40:    #6E96B3;
-  --wood-50:    #4F7A9B;
-  --wood-60:    #3E6182;
-  --wood-70:    #314D69;
-  --wood-80:    #24384B;
-  --wood-85:    #1F3040;
-  --wood-90:    #1A2938;
-  --wood-95:    #131F2B;
+  --wood-05:    #F6FAFC;
+  --wood-10:    #E7F0F6;
+  --wood-20:    #D2E2EC;
+  --wood-30:    #B6CDDC;
+  --wood-40:    #96B4C8;
+  --wood-50:    #7A9CB4;
+  --wood-60:    #62839B;
+  --wood-70:    #4C6980;
+  --wood-80:    #3A5164;
+  --wood-85:    #314455;
+  --wood-90:    #283847;
+  --wood-95:    #1E2B37;
+  --gold:       #B9A46C;
+  --gold-lit:   #DCC98E;
+  --hall-qing:   #4A5F6E;
+  --hall-qing-d: #24313A;
+  --hall-lv:     #4C5C58;
+  --hall-lv-d:   #26302E;
+  --mo-40:      #666B70;
+  --mo-50:      #53585D;
+  --mo-60:      #43484D;
+  --mo-70:      #363A3F;
+  --mo-80:      #2B2E32;
+  --mo-90:      #212427;
   --paper-1:    #F1F1EA;
   --paper-2:    #E7E7DC;
   --paper-3:    #D9D9CB;
@@ -431,7 +466,7 @@ body {
   height: 176px;
   display: flex; flex-direction: column; justify-content: flex-end;
   padding: 16px;
-  background: linear-gradient(165deg, var(--wood-90) 0%, var(--wood-70) 58%, var(--wood-60) 100%);
+  background: linear-gradient(165deg, var(--mo-90) 0%, var(--mo-70) 58%, var(--mo-60) 100%);
   border: none;
   color: var(--wood-05);
   box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -24px 40px rgba(40,24,10,.26);
@@ -560,10 +595,11 @@ body {
   margin-top: 14px;
   padding: 5px;
   border-radius: 7px;
-  background-color: var(--wood-60);
+  /* 黑漆金字匾：书院祠堂的匾本来就是这个规制，比棕木匾"大气"得多 */
+  background-color: var(--mo-70);
   background-image:
     var(--grain-h),
-    linear-gradient(180deg, var(--wood-50) 0%, var(--wood-70) 46%, var(--wood-85) 100%);
+    linear-gradient(180deg, var(--mo-60) 0%, var(--mo-80) 46%, var(--mo-90) 100%);
   box-shadow:
     0 4px 14px rgba(52,34,20,.26),
     inset 0 1px 0 rgba(233,203,158,.55),
@@ -575,7 +611,7 @@ body {
   box-shadow: 0 3px 12px rgba(20,38,54,.30), inset 0 1px 0 rgba(150,186,212,.28);
 }
 .plaque-inner {
-  border: 1px solid rgba(197,160,96,.55);
+  border: 1px solid rgba(214,178,108,.7);
   border-radius: 4px;
   padding: 11px 14px 12px;
   display: flex; align-items: center; gap: 11px;
@@ -584,7 +620,7 @@ body {
 /* 内框再套一根极细的线：双框是匾额和普通横幅的分水岭 */
 .plaque-inner::before {
   content: ''; position: absolute; inset: 2.5px;
-  border: 1px solid rgba(197,160,96,.22); border-radius: 2px;
+  border: 1px solid rgba(214,178,108,.3); border-radius: 2px;
   pointer-events: none;
 }
 /* 登录页那方"钤印的纸"：同样双重镶边，两处呼应 */
@@ -611,13 +647,13 @@ body {
 .plaque-seal { width: 23px; height: 23px; display: block; }
 .plaque-txt { flex: 1; min-width: 0; }
 .plaque-title {
-  font-size: 21px; color: var(--wood-10); letter-spacing: 6px; line-height: 1.2;
+  font-size: 21px; color: var(--gold-lit); letter-spacing: 6px; line-height: 1.2;
 }
 .plaque-sub {
-  font-size: 11px; color: rgba(242,227,194,.52);
+  font-size: 11px; color: rgba(230,199,124,.55);
   letter-spacing: 1.6px; margin-top: 5px;
 }
-.plaque-go { color: rgba(197,160,96,.85); flex: none; display: flex; }
+.plaque-go { color: rgba(214,178,108,.9); flex: none; display: flex; }
 
 /* ============ 横滑：展馆 ============ */
 .halls { display: flex; gap: 11px; overflow: hidden; margin-right: -16px; }
@@ -629,9 +665,11 @@ body {
   position: relative; overflow: hidden;
 }
 .hall-cover .hc-lattice { position: absolute; right: -14px; bottom: -14px; width: 76px; height: 76px; opacity: .55; }
-.h1 { background: linear-gradient(160deg, var(--wood-80), var(--wood-60)); }
-.h2 { background: linear-gradient(160deg, #345470, #4F7796); }
-.h3 { background: linear-gradient(160deg, #3F5D47, #5C8066); }
+/* 三个馆用同一个明度层级、只在色相上各偏一点：墨 / 黛青 / 苔绿。
+   原来那组蓝绿的饱和度高出一大截，摆在一起像三张不同来源的图。 */
+.h1 { background: linear-gradient(160deg, var(--mo-90), var(--mo-60)); }
+.h2 { background: linear-gradient(160deg, var(--hall-qing-d), var(--hall-qing)); }
+.h3 { background: linear-gradient(160deg, var(--hall-lv-d), var(--hall-lv)); }
 .hall-cover span { color: var(--wood-05); font-size: 15px; letter-spacing: 2px; position: relative; }
 .hall-cover .shan { height: 72%; }
 .hall-name { font-size: 12.5px; color: var(--ink-2); margin-top: 7px; text-align: center; }
@@ -640,8 +678,8 @@ body {
 .ncard { display: flex; gap: 11px; padding: 11px; margin-bottom: 10px; }
 .nthumb {
   width: 100%; height: 100%;
-  background-color: var(--wood);
-  background-image: var(--grain-v), linear-gradient(145deg, var(--wood-mid), var(--wood-dark));
+  background-color: var(--mo-70);
+  background-image: var(--grain-v), linear-gradient(145deg, var(--mo-60), var(--mo-90));
   display: flex; align-items: center; justify-content: center;
   color: rgba(250,242,226,.62); font-size: 20px;
   box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -2px 6px rgba(40,24,10,.22);
@@ -681,11 +719,11 @@ body {
 .login {
   min-height: 812px;
   /* 深色也是木头：老木色 + 真木纹 + 一点灯光感，而不是一块深棕色 */
-  background-color: var(--wood-70);
+  background-color: var(--mo-80);
   background-image:
     radial-gradient(120% 62% at 50% 4%, rgba(236,201,142,.24) 0%, transparent 60%),
     var(--grain-v-soft),
-    linear-gradient(175deg, var(--wood-70) 0%, var(--wood-85) 44%, var(--wood-95) 100%);
+    linear-gradient(175deg, var(--mo-60) 0%, var(--mo-80) 44%, var(--mo-90) 100%);
   display: flex; flex-direction: column; align-items: center;
   position: relative; overflow: hidden;
 }
@@ -782,7 +820,7 @@ body {
 
 .art-hero {
   margin: 0 16px; height: 186px; border-radius: var(--r);
-  background: linear-gradient(165deg, var(--wood-90) 0%, var(--wood-70) 58%, var(--wood-60) 100%);
+  background: linear-gradient(165deg, var(--mo-90) 0%, var(--mo-70) 58%, var(--mo-60) 100%);
   display: flex; align-items: flex-end; padding: 18px;
   box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -26px 44px rgba(40,24,10,.26);
   position: relative; overflow: hidden;
@@ -833,7 +871,7 @@ body {
 .art-fig .fig-box i {
   display: flex; align-items: center; justify-content: center;
   height: 100%; border-radius: 3px; font-style: normal;
-  background: linear-gradient(150deg, var(--wood-70), var(--wood-90));
+  background: linear-gradient(150deg, var(--mo-60), var(--mo-90));
   color: rgba(246,238,223,.45); font-size: 12px;
   box-shadow: inset 0 2px 6px rgba(20,14,6,.45), inset 0 0 0 1px rgba(107,67,38,.35);
 }

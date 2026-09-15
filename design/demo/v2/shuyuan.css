@@ -18,14 +18,35 @@
   --paper-card: #FBF7EF;   /* 卡片：更亮一档的纸 */
   --paper-sunk: #EAE2D0;   /* 凹陷/分隔 */
 
-  /* —— 木 ——
-     原来那组（#6B4A32 起）偏深、偏巧克力色，压得整页发闷。
-     换成榉木/楠木那种暖蜜色，只留 --wood-dark 给需要对比度的线和字。 */
-  --wood-dark:  #7A5626;   /* 文字、细线：要保证在纸上的对比度 */
-  --wood:       #AD8248;   /* 木面主色：金丝楠，偏黄不偏红，所以不是咖啡色 */
-  --wood-mid:   #C59C63;
-  --wood-light: #DDBE8E;
-  --wood-pale:  #F2E1C2;   /* 高光棱 */
+  /* ══ 木 · 金丝楠色阶 ══════════════════════════════════════
+     这是整个小程序的主体色，全站每一处木面都必须从这里取，不许再写死。
+     之前两轮"换了木色却看不出变化"，原因就是大面积的首图、匾额、展馆封面、
+     登录页全是写死的十六进制，根本没走这组变量。
+     色相钉在 38° 左右：咖啡/胡桃是 25° 上下，偏红；金丝楠偏黄，这一条是分水岭。 */
+  --wood-05:    #FAF3E4;
+  --wood-10:    #F1E4C9;
+  --wood-20:    #E3CFA6;
+  --wood-30:    #D3B681;
+  --wood-40:    #C19E62;
+  --wood-50:    #AC8747;   /* 木面主色 */
+  --wood-60:    #927038;
+  --wood-70:    #78592B;
+  --wood-80:    #5E4520;
+  --wood-85:    #513A1B;
+  --wood-90:    #443218;
+  --wood-95:    #332714;
+
+  /* 语义别名：组件只用这五个，换木种时只动上面的色阶 */
+  --wood-dark:  var(--wood-70);   /* 文字、细线：要保证在纸上的对比度 */
+  --wood:       var(--wood-50);   /* 木面主色 */
+  --wood-mid:   var(--wood-40);
+  --wood-light: var(--wood-30);
+  --wood-pale:  var(--wood-10);   /* 高光棱 */
+
+  /* ══ 纸 · 同理，不许零散写死 ══ */
+  --paper-1:    #F4EDDD;
+  --paper-2:    #EDE3CE;
+  --paper-3:    #E2D5BA;
 
   /* 瓦：黛瓦。屋顶本来就不是木头，给它自己的灰调，
      木构件（椽头、枋、匾）才衬得出来，整页也不再一片棕。 */
@@ -65,11 +86,21 @@
   --paper:      #EFEDE4;
   --paper-card: #FAF8F2;
   --paper-sunk: #E4E1D5;
-  --wood-dark:  #24384B;
-  --wood:       #456A8A;
-  --wood-mid:   #5A83A4;
-  --wood-light: #8EAEC6;
-  --wood-pale:  #BCD2E2;
+  --wood-05:    #F2F6F9;
+  --wood-10:    #D9E6EF;
+  --wood-20:    #B9D0E0;
+  --wood-30:    #93B4CB;
+  --wood-40:    #6E96B3;
+  --wood-50:    #4F7A9B;
+  --wood-60:    #3E6182;
+  --wood-70:    #314D69;
+  --wood-80:    #24384B;
+  --wood-85:    #1F3040;
+  --wood-90:    #1A2938;
+  --wood-95:    #131F2B;
+  --paper-1:    #F1F1EA;
+  --paper-2:    #E7E7DC;
+  --paper-3:    #D9D9CB;
   --tile:       #5E6266;
   --tile-2:     #71757A;
   --tile-dark:  #414548;
@@ -264,7 +295,7 @@ body {
 .search {
   flex: 1; min-width: 0;
   height: 36px; border-radius: var(--r-s);
-  background: linear-gradient(180deg, #F0E8D8, var(--paper-card) 60%);
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-card) 60%);
   border: 1px solid var(--line);
   box-shadow: inset 0 1px 3px rgba(107,67,38,.10), 0 1px 0 rgba(255,252,244,.9);
   display: flex; align-items: center; gap: 7px;
@@ -387,7 +418,7 @@ body {
   margin: 8px auto 0;
   display: block;
   padding: 3px 10px;
-  background: linear-gradient(180deg, #FBF6EA, #F0E7D4);
+  background: linear-gradient(180deg, var(--paper-card), var(--paper-2));
   border: 1px solid var(--line);
   border-radius: 2px;
   box-shadow: 0 1px 2px rgba(74,50,30,.10);
@@ -400,9 +431,9 @@ body {
   height: 176px;
   display: flex; flex-direction: column; justify-content: flex-end;
   padding: 16px;
-  background: linear-gradient(165deg, #5E4128 0%, #7A5636 58%, #916B44 100%);
+  background: linear-gradient(165deg, var(--wood-90) 0%, var(--wood-70) 58%, var(--wood-60) 100%);
   border: none;
-  color: #F6EEDF;
+  color: var(--wood-05);
   box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -24px 40px rgba(40,24,10,.26);
 }
 .theme-indigo .banner { background: linear-gradient(165deg, #1F3346 0%, #2F4A63 62%, #3E6182 100%); }
@@ -490,7 +521,7 @@ body {
   display: flex; align-items: center; justify-content: center;
   /* 瓦当是烧出来的陶，不是一个空心圆：给它胎体、给它一点起伏 */
   border-radius: 50%;
-  background: radial-gradient(70% 70% at 36% 30%, #FDFAF3 0%, #F4EBD8 58%, #E9DCC2 100%);
+  background: radial-gradient(70% 70% at 36% 30%, var(--wood-05) 0%, var(--paper-2) 58%, var(--paper-3) 100%);
   box-shadow:
     0 2px 5px rgba(74,50,30,.16),
     0 0 0 1px rgba(107,74,50,.30),
@@ -511,6 +542,13 @@ body {
   font-size: 24px; color: var(--wood-dark); line-height: 1;
   text-shadow: 0 1px 0 rgba(255,255,255,.7);
 }
+/* 小篆字形。篆书本来就是瘦长的，按高度对齐、宽度随字，五个字排一行才整齐 */
+.wadang .zhuan {
+  position: relative;
+  width: 40px; height: 40px;
+  color: var(--wood-80);
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,.7));
+}
 .entry-label {
   font-size: 12px; color: var(--ink-2); letter-spacing: .5px;
 }
@@ -522,10 +560,10 @@ body {
   margin-top: 14px;
   padding: 5px;
   border-radius: 7px;
-  background-color: #8A6038;
+  background-color: var(--wood-60);
   background-image:
     var(--grain-h),
-    linear-gradient(180deg, #A0764A 0%, #7A5330 46%, #5F3F24 100%);
+    linear-gradient(180deg, var(--wood-50) 0%, var(--wood-70) 46%, var(--wood-85) 100%);
   box-shadow:
     0 4px 14px rgba(52,34,20,.26),
     inset 0 1px 0 rgba(233,203,158,.55),
@@ -553,7 +591,7 @@ body {
 .seal-plate {
   width: 78px; height: 78px; margin: 0 auto;
   border-radius: 3px;
-  background: linear-gradient(160deg, #F6EFDF, #EADFC6);
+  background: linear-gradient(160deg, var(--paper-1), var(--paper-3));
   display: flex; align-items: center; justify-content: center;
   box-shadow:
     0 0 0 1px rgba(192,153,78,.9),
@@ -566,14 +604,14 @@ body {
 /* 朱印直接压在深木上会糊成一团黑红，垫一方纸——和登录页是同一个手法 */
 .plaque-seal-paper {
   width: 34px; height: 34px; flex: none; border-radius: 2px;
-  background: #EFE6D2;
+  background: var(--paper-2);
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 1px 4px rgba(0,0,0,.28), inset 0 0 0 1px rgba(107,74,50,.16);
 }
 .plaque-seal { width: 23px; height: 23px; display: block; }
 .plaque-txt { flex: 1; min-width: 0; }
 .plaque-title {
-  font-size: 21px; color: #F2E3C2; letter-spacing: 6px; line-height: 1.2;
+  font-size: 21px; color: var(--wood-10); letter-spacing: 6px; line-height: 1.2;
 }
 .plaque-sub {
   font-size: 11px; color: rgba(242,227,194,.52);
@@ -591,10 +629,10 @@ body {
   position: relative; overflow: hidden;
 }
 .hall-cover .hc-lattice { position: absolute; right: -14px; bottom: -14px; width: 76px; height: 76px; opacity: .55; }
-.h1 { background: linear-gradient(160deg, #6F4F30, #906B44); }
+.h1 { background: linear-gradient(160deg, var(--wood-80), var(--wood-60)); }
 .h2 { background: linear-gradient(160deg, #345470, #4F7796); }
 .h3 { background: linear-gradient(160deg, #3F5D47, #5C8066); }
-.hall-cover span { color: #F6EEDF; font-size: 15px; letter-spacing: 2px; position: relative; }
+.hall-cover span { color: var(--wood-05); font-size: 15px; letter-spacing: 2px; position: relative; }
 .hall-cover .shan { height: 72%; }
 .hall-name { font-size: 12.5px; color: var(--ink-2); margin-top: 7px; text-align: center; }
 
@@ -643,15 +681,15 @@ body {
 .login {
   min-height: 812px;
   /* 深色也是木头：老木色 + 真木纹 + 一点灯光感，而不是一块深棕色 */
-  background-color: #55411F;
+  background-color: var(--wood-70);
   background-image:
     radial-gradient(120% 62% at 50% 4%, rgba(236,201,142,.24) 0%, transparent 60%),
     var(--grain-v-soft),
-    linear-gradient(175deg, #6B5330 0%, #4E3C22 44%, #35301F 100%);
+    linear-gradient(175deg, var(--wood-70) 0%, var(--wood-85) 44%, var(--wood-95) 100%);
   display: flex; flex-direction: column; align-items: center;
   position: relative; overflow: hidden;
 }
-.login .statusbar { color: #E8DCC6; width: 100%; }
+.login .statusbar { color: var(--wood-20); width: 100%; }
 .login {
   --tile:      #4B4641;
   --tile-2:    #5C5751;
@@ -724,7 +762,7 @@ body {
 .login-emblem-plate {
   width: 52px; height: 52px; margin: 0 auto 13px;
   border-radius: 50%;
-  background: radial-gradient(70% 70% at 38% 30%, #F8F1E1 0%, #EADFC6 72%, #DFD0B2 100%);
+  background: radial-gradient(70% 70% at 38% 30%, var(--paper-1) 0%, var(--paper-3) 72%, #DCCDAE 100%);
   display: flex; align-items: center; justify-content: center;
   box-shadow:
     0 0 0 1px rgba(192,153,78,.85),
@@ -744,13 +782,13 @@ body {
 
 .art-hero {
   margin: 0 16px; height: 186px; border-radius: var(--r);
-  background: linear-gradient(165deg, #5C4027 0%, #785435 58%, #8E6842 100%);
+  background: linear-gradient(165deg, var(--wood-90) 0%, var(--wood-70) 58%, var(--wood-60) 100%);
   display: flex; align-items: flex-end; padding: 18px;
   box-shadow: inset 0 1px 0 rgba(255,240,220,.22), inset 0 -26px 44px rgba(40,24,10,.26);
   position: relative; overflow: hidden;
 }
 .art-hero .ah-lattice { position: absolute; right: -24px; top: -24px; width: 156px; height: 156px; opacity: .45; }
-.art-hero .ah-title { color: #F6EEDF; font-size: 23px; line-height: 1.5; letter-spacing: 1px; position: relative; }
+.art-hero .ah-title { color: var(--wood-05); font-size: 23px; line-height: 1.5; letter-spacing: 1px; position: relative; }
 
 .art-body { padding: 18px 20px 0; }
 .art-meta {
@@ -788,14 +826,14 @@ body {
 .art-fig .fig-box {
   height: 156px; border-radius: var(--r-s);
   padding: 7px;
-  background: linear-gradient(180deg, #F3EADA, #E7DCC6);
+  background: linear-gradient(180deg, var(--paper-1), var(--paper-3));
   border: 1px solid var(--line);
   box-shadow: inset 0 1px 0 rgba(255,252,244,.9), 0 2px 8px rgba(74,50,30,.10);
 }
 .art-fig .fig-box i {
   display: flex; align-items: center; justify-content: center;
   height: 100%; border-radius: 3px; font-style: normal;
-  background: linear-gradient(150deg, #6E6350, #514839);
+  background: linear-gradient(150deg, var(--wood-70), var(--wood-90));
   color: rgba(246,238,223,.45); font-size: 12px;
   box-shadow: inset 0 2px 6px rgba(20,14,6,.45), inset 0 0 0 1px rgba(107,67,38,.35);
 }
@@ -808,7 +846,7 @@ body {
 .act {
   flex: 1; height: 38px; border-radius: var(--r-s);
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, #FDFAF3, #F0E8D8);
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
   box-shadow: inset 0 1px 0 rgba(255,252,244,.9), 0 1px 2px rgba(74,50,30,.08);
   display: flex; align-items: center; justify-content: center; gap: 5px;
   font-size: 12.5px; color: var(--ink-2);

@@ -217,6 +217,96 @@ def ice_crack(w=343, h=124, cols=9, rows=4, jitter=.36, seed=20260315):
             f'stroke-linecap="round" opacity=".42"/></svg>')
 
 
+# ─────────────────────────────────────────────────────────────
+# 祥云：压在深色块底部，代替原来那两道"波浪"。
+# 波浪读起来是山水或海浪，都不是书院的词；祥云才是。
+# 一朵云 = 若干圆瓣 + 末端一个云卷（那个卷是祥云的签名，没有它就是一排泡泡）。
+# ─────────────────────────────────────────────────────────────
+def _cloud_layer(w, h, base, seed, scale, fill, opacity, curl):
+    """一朵祥云 = 一簇大小不一的圆瓣 + 一两道云卷。
+
+    先用「连续的圆弧带」做过，出来是一排均匀的拱形，像花边不像云——
+    因为真祥云是一团一团断开的，团与团之间有空，团里还有卷。
+    """
+    rnd = random.Random(seed)
+    lumps, curls = [], []
+    x = -scale
+    while x < w + scale:
+        cx = x + scale * rnd.uniform(1.1, 1.8)
+        n = rnd.choice((3, 4, 4, 5))
+        top = base - scale * rnd.uniform(.55, 1.05)
+        for k in range(n):
+            # 中间的瓣大、两边的瓣小，云团才有主次
+            edge = abs(k - (n - 1) / 2) / max(1, (n - 1) / 2)
+            r = scale * (1.02 - .38 * edge) * rnd.uniform(.88, 1.12)
+            px = cx + (k - (n - 1) / 2) * scale * 1.18
+            py = top + edge * scale * .42 + rnd.uniform(-1, 1) * scale * .08
+            lumps.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{r:.1f}"/>')
+        # 云卷：祥云的签名，没有它就是一堆泡泡
+        side = rnd.choice((-1, 1))
+        sx = cx + side * ((n - 1) / 2) * scale * 1.18
+        sy = top + scale * .06
+        cr = scale * .52
+        curls.append(
+            f'<path d="M{sx:.1f},{sy + cr:.1f} a{cr:.1f},{cr:.1f} 0 1,{1 if side > 0 else 0} '
+            f'{side * cr * 2:.1f},0 a{cr * .52:.1f},{cr * .52:.1f} 0 1,{0 if side > 0 else 1} '
+            f'{-side * cr:.1f},0" fill="none" stroke="{curl}" stroke-width="{scale * .13:.2f}" '
+            f'stroke-linecap="round" opacity=".55"/>')
+        x = cx + (n / 2 + 1.5) * scale * 1.18 + scale * rnd.uniform(.2, 1.1)
+    return (f'<g fill="{fill}" opacity="{opacity}">'
+            f'<rect x="-20" y="{base:.1f}" width="{w + 40}" height="{h - base + 20:.1f}"/>'
+            + "".join(lumps) + '</g>' + "".join(curls))
+
+
+def xiangyun(w=375, h=120, seed=20260401):
+    """两层：远处一层提亮、近处一层压暗，和水墨的远淡近浓一致。"""
+    return (f'<svg class="shan" viewBox="0 0 {w} {h}" preserveAspectRatio="none" aria-hidden="true">'
+            + _cloud_layer(w, h, h * .52, seed, 15, "#F6EEDF", ".13", "rgba(246,238,223,.85)")
+            + _cloud_layer(w, h, h * .80, seed + 7, 12, "#231708", ".30", "rgba(246,238,223,.55)")
+            + '</svg>')
+
+
+# ─────────────────────────────────────────────────────────────
+# 如意云头分隔纹：登录页书法字下面那一条。
+# 原来左右两条线和中间的装饰是各画各的，中间还被我换成了一块红菱形。
+# 现在是一整件：两端渐隐的线 + 中间如意云头 + 一点朱砂。
+# ─────────────────────────────────────────────────────────────
+def ruyi_divider(w=210, h=24):
+    """分隔纹：两端渐隐的线 + 中间一朵小祥云。
+
+    走过两次弯路：
+    1) 渐变用 url(%23id) 引用——%23 只在 data URI 里会被解码，内联 SVG 里
+       是字面量，引用失效、线根本不画。改成几段不同透明度的实线做渐隐。
+    2) 中间先画成"如意云头"，怎么调都是一颗心：如意头的辨识度靠两侧的
+       内卷，光靠三个圆瓣区分不开。索性换成祥云的单元——和封面上那批云
+       是同一套词，统一比生造一个新形状更值。
+    """
+    cx, cy = w / 2, h / 2
+    seg = []
+    for x0, x1, op in ((6, 26, .22), (26, 48, .45), (48, cx - 17, .8)):
+        seg.append(f'<path d="M{x0:.0f},{cy} H{x1:.0f}" stroke="var(--gold)" '
+                   f'stroke-width="1.1" opacity="{op}"/>')
+        seg.append(f'<path d="M{w - x0:.0f},{cy} H{w - x1:.0f}" stroke="var(--gold)" '
+                   f'stroke-width="1.1" opacity="{op}"/>')
+    def cloud_group(fill, grow, opacity):
+        return (f'<g fill="{fill}" fill-opacity="{opacity}">'
+                f'<circle cx="{cx - 7.2}" cy="{cy + .6}" r="{4.0 + grow}"/>'
+                f'<circle cx="{cx}" cy="{cy - 2.0}" r="{5.4 + grow}"/>'
+                f'<circle cx="{cx + 7.2}" cy="{cy + .6}" r="{4.0 + grow}"/>'
+                f'<rect x="{cx - 11.2 - grow}" y="{cy - grow}" '
+                f'width="{22.4 + grow * 2}" height="{4.6 + grow}" rx="1.6"/></g>')
+
+    # 圆的并集没法直接描边，就在底下垫一层大一圈的金色，露出来的边就是描边。
+    # 之前试过在云外面画两道金色卷线，结果是两个悬空的整圆，像轮子。
+    cloud = cloud_group("var(--gold)", 1.1, ".95") + cloud_group("var(--zhu)", 0, ".95")
+    curls = (f'<path d="M{cx - 4.6},{cy + 1.2} a2.0,2.0 0 1,1 -1.6,-1.9" fill="none" '
+             f'stroke="var(--wood-pale)" stroke-width=".9" stroke-linecap="round" opacity=".55"/>'
+             f'<path d="M{cx + 4.6},{cy + 1.2} a2.0,2.0 0 1,0 1.6,-1.9" fill="none" '
+             f'stroke="var(--wood-pale)" stroke-width=".9" stroke-linecap="round" opacity=".55"/>')
+    return (f'<svg class="ruyi-div" viewBox="0 0 {w} {h}" aria-hidden="true">'
+            + "".join(seg) + cloud + curls + '</svg>')
+
+
 ENTRIES = [('闻', '书院动态'), ('览', '展馆展示'), ('讲', '课程中心'),
            ('籍', '资源下载'), ('集', '活动报名')]
 
@@ -250,7 +340,8 @@ def inject(path, blocks):
 if __name__ == "__main__":
     full, small = eave(), eave(height=36, top=6, ridge=5, yc=22, rise=12, pitch=9.0, sub=True)
     ice, ent = ice_crack(), entries()
+    yun, ruyi = xiangyun(), ruyi_divider()
     for f in ("home.html", "home-indigo.html"):
-        inject(f, {"eave": full, "ice": ice, "entries": ent})
-    inject("login.html", {"eave": full})
-    inject("news-detail.html", {"eave": small})
+        inject(f, {"eave": full, "ice": ice, "entries": ent, "yun": yun})
+    inject("login.html", {"eave": full, "ruyi": ruyi})
+    inject("news-detail.html", {"eave": small, "yun": yun})

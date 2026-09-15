@@ -47,6 +47,7 @@
   /* —— 印 —— */
   --zhu:        #A8342A;   /* 朱砂：取自校方印章，全站唯一高饱和色 */
   --zhu-soft:   rgba(168, 52, 42, .10);
+  --seal-img:   url('../../brand/logo/extracted/seal-maroon.png');
 
   --gold:       #C0994E;   /* 只用于 1px 描边，不做面 */
   --line:       rgba(107, 67, 38, .22);
@@ -224,12 +225,19 @@ body {
   background-size: 52px 52px;
 }
 
-/* 回纹：只做分隔线，不做面 */
+/* 回纹：一条刻在木上的束腰线脚。
+   同一组纹样画两遍——下面一遍浅色往下错 1px 当受光面，上面一遍深色当刻痕，
+   才是"刻"出来的；只印一遍就是贴上去的贴纸。 */
 .fret {
-  height: 10px; width: 100%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='10' viewBox='0 0 16 10'%3E%3Cpath d='M0.5 10V1.5H13.5V8H4V4.5H9.5' fill='none' stroke='%238A5E38' stroke-width='1' opacity='0.34'/%3E%3C/svg%3E");
-  background-size: 16px 10px;
+  height: 16px; width: 100%;
+  background-color: rgba(173,130,72,.10);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='16' viewBox='0 0 22 16'%3E%3Cg fill='none' stroke='%237A5626' stroke-width='1.05'%3E%3Cpath d='M1 15V3h18v9H6V6.5h8'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='16' viewBox='0 0 22 16'%3E%3Cg fill='none' stroke='%23F2E1C2' stroke-width='1.05'%3E%3Cpath d='M1 15V3h18v9H6V6.5h8'/%3E%3C/g%3E%3C/svg%3E");
+  background-position: 0 0, 0 1.1px;
+  background-size: 22px 16px;
   background-repeat: repeat-x;
+  box-shadow: inset 0 1px 0 rgba(255,252,244,.6), inset 0 -1px 0 rgba(107,67,38,.10);
 }
 
 /* ============ 通栏留白 ============ */
@@ -343,6 +351,36 @@ body {
 }
 /* 画心里的东西必须撑满，否则裱边会从旁边露一大块出来 */
 .mount-art > * { flex: 1 1 auto; width: 100%; min-width: 0; }
+
+/* 包角：装裱用的护角，四角压在画心上。
+   它只吃掉四个角，主体内容一点不挡，但无论换成什么封面图都还在。 */
+.mount-art::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    linear-gradient(135deg, var(--wood-pale) 0 1.5px, var(--wood-mid) 1.5px 13px, transparent 13px) left top,
+    linear-gradient(225deg, var(--wood-pale) 0 1.5px, var(--wood-mid) 1.5px 13px, transparent 13px) right top,
+    linear-gradient(45deg,  var(--wood-pale) 0 1.5px, var(--wood-mid) 1.5px 13px, transparent 13px) left bottom,
+    linear-gradient(315deg, var(--wood-pale) 0 1.5px, var(--wood-mid) 1.5px 13px, transparent 13px) right bottom;
+  background-size: 26px 26px;
+  background-repeat: no-repeat;
+  opacity: .95;
+}
+/* 压角印：中国画的画心右下角本来就钤印。
+   一枚朱砂小印，占地极小，却是全站最强的身份标记——
+   而且它是"盖在画上"的，本来就该压着图，不存在被覆盖的问题。 */
+.mount-art::after {
+  content: '';
+  position: absolute; right: 7px; bottom: 7px; z-index: 3;
+  width: 15px; height: 15px; pointer-events: none;
+  background: var(--seal-img) center / contain no-repeat;
+  opacity: .92;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.35));
+}
+.mount--lg .mount-art::after { width: 26px; height: 26px; right: 11px; bottom: 11px; }
+/* 84×62 的列表缩略图上钤印会比画心还抢眼，这一档不钤 */
+.mount--sm .mount-art::after { content: none; }
+.mount--sm .mount-art::before { background-size: 14px 14px; }
 
 /* 题签：书上贴的签条。栏目名写在签上，图再满也盖不住名字 */
 .tiqian {
@@ -605,11 +643,11 @@ body {
 .login {
   min-height: 812px;
   /* 深色也是木头：老木色 + 真木纹 + 一点灯光感，而不是一块深棕色 */
-  background-color: #463322;
+  background-color: #55411F;
   background-image:
-    radial-gradient(120% 62% at 50% 4%, rgba(226,188,134,.20) 0%, transparent 60%),
+    radial-gradient(120% 62% at 50% 4%, rgba(236,201,142,.24) 0%, transparent 60%),
     var(--grain-v-soft),
-    linear-gradient(175deg, #55402B 0%, #402E1E 44%, #2E251D 100%);
+    linear-gradient(175deg, #6B5330 0%, #4E3C22 44%, #35301F 100%);
   display: flex; flex-direction: column; align-items: center;
   position: relative; overflow: hidden;
 }
@@ -635,7 +673,10 @@ body {
   margin-top: 12px; font-size: 10.5px; letter-spacing: 3.2px;
   color: rgba(232,220,198,.52); text-transform: uppercase;
 }
-.login-div { display: flex; align-items: center; gap: 10px; margin: 16px auto 0; width: 190px; }
+.ruyi-div { display: block; width: 210px; height: 24px; margin: 15px auto 0; }
+/* 校徽内场本来是浅蓝白，压在纸底上会显出一块"白"。
+   用正片叠底让它吃住下面的纸色，深蓝笔画不受影响。 */
+.login-emblem { mix-blend-mode: multiply; }
 .login-div i { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(184,146,104,.6)); }
 .login-div i:last-child { background: linear-gradient(90deg, rgba(184,146,104,.6), transparent); }
 /* 原来那个 ❖ 是灰金的，几乎看不见。换成一枚朱砂菱：
@@ -683,7 +724,7 @@ body {
 .login-emblem-plate {
   width: 52px; height: 52px; margin: 0 auto 13px;
   border-radius: 50%;
-  background: radial-gradient(70% 70% at 38% 30%, #FBF5E7 0%, #EFE4CD 70%, #E2D4B8 100%);
+  background: radial-gradient(70% 70% at 38% 30%, #F8F1E1 0%, #EADFC6 72%, #DFD0B2 100%);
   display: flex; align-items: center; justify-content: center;
   box-shadow:
     0 0 0 1px rgba(192,153,78,.85),
@@ -692,7 +733,7 @@ body {
     0 3px 12px rgba(0,0,0,.34),
     inset 0 1px 2px rgba(255,255,255,.9);
 }
-.login-emblem { width: 36px; height: 36px; display: block; }
+.login-emblem { width: 42px; height: 42px; display: block; }
 
 /* ============ 资讯详情 ============ */
 .navbar {

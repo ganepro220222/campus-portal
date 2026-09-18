@@ -2274,6 +2274,103 @@ def _assert_yankou_complete():
     print("  \u2713 \u6a90\u53e3\uff1a\u74e6\u5f53 %d \u679a / \u6ef4\u6c34 %d \u679a \u76f8\u95f4\uff0c\u91d1\u7ebf\u3001\u6a90\u678b\u3001\u6295\u5f71\u9f50" % (n_wd, n_sx))
 
 
+
+# ── 玉璧 ─────────────────────────────────────
+# 问答悬浮标的本体。
+#
+# 早先有过一版"金镶玉瓦当"做首页五个入口的圆框，后来取消了——
+# 取消的理由是那一小块区域里塞了四种装饰（瓦当、冰裂、木枭、回纹），
+# 装饰和内容抢注意力。但悬浮标不一样：它就一枚，没有人和它抢。
+# 所以那个"圆 + 篆字"的形制在这里反而是合适的，只是按审看意见
+# **去掉瓦当的花纹，换成玉石的质感**。
+#
+# 玉璧的四件：
+#   ① 鐢金的外篍（金镶玉的"金"）；
+#   ② 青白玉的璧面，带"水头"——玉不是平涂的，光会渗进去再透出来，
+#      所以得是一块偏心的柔光加一圈边缘的回光，而不是一个均匀的渐变；
+#   ③ 纹（绛）：两三条极淡的斜纹，玉的天然纹理。没有它就是塑料。
+#   ④ 阴刻的篆字：字是**凹下去**的，所以刻口上沿暗、下沿亮，
+#      和浮雕（上亮下暗）正好相反。反了就是个贴上去的字。
+
+def _seal_glyph_path(ch):
+    """从 design/brand/seal-script/ 读一个小篆字，返回内容与 viewBox。"""
+    p = os.path.join(HERE, "..", "..", "brand", "seal-script", "%s.svg" % ch)
+    p = os.path.normpath(p)
+    assert os.path.exists(p), "找不到篆书字形：%s" % p
+    s = io.open(p, encoding="utf-8").read()
+    m = re.search(r'viewBox="([^"]*)"', s)
+    vb = m.group(1) if m else "0 0 1000 1000"
+    body = re.sub(r"^.*?<svg[^>]*>", "", s, flags=re.S)
+    body = re.sub(r"</svg>\s*$", "", body, flags=re.S)
+    return body.strip(), vb
+
+
+def jade_medallion(ch="\u95fb", size=200):
+    """金镶玉圆牌，当中阴刻一个小篆字。"""
+    body, vb = _seal_glyph_path(ch)
+    vx, vy, vw, vh = [float(t) for t in vb.replace(",", " ").split()]
+    R = size / 2.0
+    gsz = size * 0.50                       # 字的占地
+    k = gsz / max(vw, vh)
+    gx = R - (vx + vw / 2.0) * k
+    gy = R - (vy + vh / 2.0) * k
+
+    out = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %g %g" '
+           'aria-hidden="true">' % (size, size)]
+    out.append('<defs>')
+    # 玉面：偏心的柔光
+    out.append('<radialGradient id="jd" cx="34%" cy="28%" r="78%">'
+               '<stop offset="0" stop-color="#F4F8F3"/>'
+               '<stop offset="46%" stop-color="#DCE8E0"/>'
+               '<stop offset="100%" stop-color="#B9CEC6"/></radialGradient>')
+    # 边缘回光（水头）：只在下右一圈
+    out.append('<radialGradient id="jr" cx="68%" cy="76%" r="52%">'
+               '<stop offset="0" stop-color="#FFFFFF" stop-opacity=".46"/>'
+               '<stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>')
+    # 鐢金外篍
+    out.append('<linearGradient id="jg" x1="0" y1="0" x2="1" y2="1">'
+               '<stop offset="0" stop-color="#F3E3BC"/>'
+               '<stop offset="28%" stop-color="#D8B87A"/>'
+               '<stop offset="56%" stop-color="#A88448"/>'
+               '<stop offset="100%" stop-color="#6E5228"/></linearGradient>')
+    out.append('<clipPath id="jc"><circle cx="%g" cy="%g" r="%g"/></clipPath>'
+               % (R, R, R * 0.845))
+    out.append('</defs>')
+
+    # 外篍
+    out.append('<circle cx="%g" cy="%g" r="%g" fill="url(%sjg)"/>' % (R, R, R * 0.975, "#"))
+    out.append('<circle cx="%g" cy="%g" r="%g" fill="none" stroke="#5E4623" '
+               'stroke-opacity=".38" stroke-width="%g"/>' % (R, R, R * 0.975, size * 0.008))
+    # 玉面
+    out.append('<circle cx="%g" cy="%g" r="%g" fill="url(%sjd)"/>' % (R, R, R * 0.845, "#"))
+    # 绛：两条极淡的斜纹，裁在玉面里
+    out.append('<g clip-path="url(%sjc)" opacity=".30">' % "#")
+    out.append('<path d="M%g,%g C%g,%g %g,%g %g,%g" fill="none" stroke="#7FA096" '
+               'stroke-width="%g" stroke-linecap="round"/>'
+               % (size * .10, size * .58, size * .34, size * .40,
+                  size * .58, size * .52, size * .92, size * .30, size * .012))
+    out.append('<path d="M%g,%g C%g,%g %g,%g %g,%g" fill="none" stroke="#7FA096" '
+               'stroke-width="%g" stroke-linecap="round" opacity=".7"/>'
+               % (size * .18, size * .88, size * .40, size * .74,
+                  size * .62, size * .82, size * .88, size * .62, size * .009))
+    out.append('</g>')
+    # 水头的回光
+    out.append('<circle cx="%g" cy="%g" r="%g" fill="url(%sjr)"/>' % (R, R, R * 0.845, "#"))
+    # 玉面内沿的一圈暗，把玉“嵌”进金篍里
+    out.append('<circle cx="%g" cy="%g" r="%g" fill="none" stroke="#6E5228" '
+               'stroke-opacity=".34" stroke-width="%g"/>'
+               % (R, R, R * 0.845, size * 0.012))
+
+    # 阴刻的字：先一层下沿高光（往下偏），再叠实字
+    out.append('<g transform="translate(%g %g) scale(%g)">' % (gx, gy + size * .012, k))
+    out.append('<g fill="#FFFFFF" fill-opacity=".55">%s</g>' % body)
+    out.append('</g>')
+    out.append('<g transform="translate(%g %g) scale(%g)">' % (gx, gy, k))
+    out.append('<g fill="#3E5A55">%s</g>' % body)
+    out.append('</g>')
+    out.append('</svg>')
+    return "".join(out)
+
 if __name__ == "__main__":
     _assert_no_duplicate_defs()
     _assert_brush_continuous()

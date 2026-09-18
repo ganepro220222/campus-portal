@@ -1,24 +1,33 @@
 /* 书院助手浮标 + 底部抽屉 */
+/* 上一版是蓝色渐变圆 + 白色机器人图标 + 金色脉冲环：
+   配色不搭，形制也不是这套东西（机器人是 AI 的国际符号）。
+   现在是一枚金镶玉圆牌，牌面本身就是图，所以这里不再画底色与边框——
+   再加一层圆底会把玉的边缘盖住。 */
 .ai-fab {
   position: fixed;
   right: 32rpx;
   width: 112rpx;
   height: 112rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  box-shadow: 0 20rpx 48rpx rgba(96,78,44, 0.42);
+  /* 玉牌是实心的，投影用暖褐；金属件离纸面比按钮更近，压得比原来轻 */
+  box-shadow: 0 12rpx 30rpx rgba(96,78,44, 0.34);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 400;
-  border: 4rpx solid rgba(255, 255, 255, 0.5);
 }
 .ai-fab:active { transform: scale(0.94); }
+.ai-fab-img {
+  width: 112rpx;
+  height: 112rpx;
+  display: block;
+}
+/* 脉冲环收细、改成金线的颜色：原来 4rpx 的环压在玉牌边上会糊掉金箍 */
 .pulse {
   position: absolute;
-  left: -4rpx; top: -4rpx; right: -4rpx; bottom: -4rpx;
+  left: -6rpx; top: -6rpx; right: -6rpx; bottom: -6rpx;
   border-radius: 50%;
-  border: 4rpx solid rgba(190, 156, 68, 0.6);
+  border: 2rpx solid rgba(203, 168, 107, 0.7);
   animation: aiPulse 2.2s infinite;
 }
 @keyframes aiPulse {

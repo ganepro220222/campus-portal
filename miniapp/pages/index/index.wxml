@@ -101,7 +101,9 @@
           bindtap="onEntryTap"
           data-index="{{index}}"
         >
-          <view class="ico {{item.toneClass}}"><icon name="{{item.icon}}" size="25" color="#FFFBF2" /></view>
+          <!-- 多色器物图；后台配了表外的图标名才退回单色线描 -->
+          <image wx:if="{{item.iconImage}}" class="ico" src="{{item.iconImage}}" mode="aspectFit" />
+          <view wx:else class="ico ico-fallback"><icon name="{{item.icon}}" size="25" color="#7E6134" /></view>
           <text class="entry-label">{{item.label}}</text>
         </view>
       </view>

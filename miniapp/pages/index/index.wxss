@@ -239,7 +239,9 @@
    两侧的圆角与阴影全被压在屏幕边上。缩进改用 margin 表达，就不会再和 padding 打架。 */
 .entries-wrap {
   margin: 24rpx 32rpx 0;
-  background: var(--card);
+  /* 定稿里入口区是一张**浅杏的书页**，比页面底更暖更深一点点，
+     页面才有"层"。用比底更亮的白时它是挖空的，整页只剩一个明度。 */
+  background: var(--xing-05);
   border-radius: 28rpx;
   padding: 30rpx 12rpx 24rpx;
   border: 1rpx solid var(--line);
@@ -260,15 +262,19 @@
   min-width: 0;
 }
 .entry:active .ico { transform: translateY(-4rpx); }
+/* 入口图标：定稿里是**多色器物直接放在书页上**，没有色块底。
+   原来那五个蓝紫渐变圆块（.e1~.e5）和这套配色完全不搭，一并去掉；
+   器物本身有颜色有体积，再压一层色块只会把它盖住。 */
 .ico {
   width: 100rpx;
   height: 100rpx;
-  border-radius: 32rpx;
+  display: block;
+  transition: transform 0.15s;
+}
+.ico-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12rpx 28rpx rgba(74,50,30, 0.16);
-  transition: transform 0.15s;
 }
  /* ── 五个入口的色阶 ──────────────────────────────────────
    旧版是五个几乎一样的蓝（var(--blue) / #4E7CC4 / #5867B8 / #6E8FCB / #5C79C8），
@@ -285,11 +291,11 @@
 
    实测白色图标对比度：6.21 / 6.16 / 6.20 / 6.23 / 6.14（图形类要求 ≥3）。
    数值由 scratchpad 的色板脚本二分算出，改任一格都要重算，别手调。 */
-.e1 { background: linear-gradient(135deg, #5256B8, #383B90); }
-.e2 { background: linear-gradient(135deg, #475CAE, #324280); }
-.e3 { background: linear-gradient(135deg, #3F619A, #2A436D); }
-.e4 { background: linear-gradient(135deg, #39648B, #24435D); }
-.e5 { background: linear-gradient(135deg, #33687E, #1F4150); }
+/* .e1~.e5 那五个蓝紫渐变色块已删。
+   它们是旧配色留下的最后一块——W0-1 那轮机械替换扫不到它们，
+   因为这五个值不在旧调色板的对照表里，是这一页自己的语义色。
+   定稿里入口本来就没有色块底，所以不是改配色，是去掉一件多余的东西。
+   toneClass 字段先留着（后台数据里有），不再对应任何样式。 */
 /* 后台可以填任意长度的名字，超出格宽就省略号，不许挤到邻格上去 */
 .entry-label {
   font-size: 23rpx;

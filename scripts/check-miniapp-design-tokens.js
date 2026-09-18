@@ -75,7 +75,7 @@ const BUDGET = {
   'packageC/search/index.wxss': 1,
   'packageD/poster/generate.wxss': 2,
   'pages/hall/index.wxss': 1,
-  'pages/index/index.wxss': 18,
+  'pages/index/index.wxss': 8,
   'pages/login/index.wxss': 2,
   'pages/profile/index.wxss': 7,
   'styles/login-page.wxss': 2

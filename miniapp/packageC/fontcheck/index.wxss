@@ -1,0 +1,92 @@
+/* packageC/fontcheck/index.wxss */
+.fc-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+.fc-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.fc-hint {
+  margin: 20rpx 28rpx 0;
+  padding: 20rpx 24rpx;
+  background: var(--sky-2);
+  border-radius: 16rpx;
+}
+.fc-hint-tx {
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: var(--sub);
+}
+
+.fc-sec {
+  margin: 24rpx 28rpx 0;
+  padding: 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: 20rpx;
+}
+.fc-label {
+  font-size: 24rpx;
+  color: var(--muted);
+  margin-bottom: 18rpx;
+}
+
+.fc-big {
+  font-size: 40rpx;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.fc-huge {
+  font-size: 88rpx;
+  line-height: 1.4;
+  color: var(--ink);
+  letter-spacing: 4rpx;
+}
+.fc-body {
+  font-size: 30rpx;
+  line-height: 1.95;
+  color: var(--ink);
+  text-align: justify;
+  margin-bottom: 8rpx;
+}
+
+.fc-kv {
+  display: flex;
+  align-items: flex-start;
+  padding: 10rpx 0;
+}
+.fc-k {
+  width: 150rpx;
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: var(--muted);
+}
+.fc-v {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.fc-copy {
+  margin-top: 20rpx;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 44rpx;
+  background: var(--sky-2);
+  color: var(--navy);
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.fc-copy-hover { background: var(--sky); }
+
+.fc-bottom {
+  height: calc(40rpx + env(safe-area-inset-bottom));
+}

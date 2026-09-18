@@ -18,10 +18,17 @@
  *   ③ 四个角的图互不相同 —— 四个角是分别生成的，翻转复用会把投影方向也翻过去。
  *      这一条防的是「四张图其实是同一张」，同类 bug 在标志 A/B 对照那轮真的发生过。
  */
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs'
+import { existsSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+
+const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+if (!existsSync(CHROME)) {
+  console.log('跳过：本机没有设计稿浏览器环境')
+  process.exit(0)
+}
+const { chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'design')
 const PORT = 8000 + Math.floor(Math.random() * 900)
@@ -38,7 +45,7 @@ const SLOTS = ['.mount-art', '.art-fig .fig-box > i']
 const CORNERS = 4
 const MAX_RATIO = 1 / 3    // 边长 / 短边
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })
+const b = await chromium.launch({ executablePath: CHROME })
 const p = await (await b.newContext({ viewport: { width: 375, height: 900 } })).newPage()
 let bad = 0, checked = 0
 for (const f of PAGES) {

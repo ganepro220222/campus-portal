@@ -94,3 +94,7 @@ exhibits/player.deploy.html
 # build-viewer.mjs --upload 临时目录（进程号后缀，成功后会自动删）
 /exhibits-upload.staging-*/
 /exhibits-upload.backup-*/
+
+# 设计稿截图：36 MB，而且是 scripts/ 里的渲染脚本随时能重出的产物。
+# 源文件（HTML + shuyuan.css + _ornaments.py）都在库里，截图不进库。
+design/demo/v2/shots/

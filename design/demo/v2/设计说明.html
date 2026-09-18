@@ -1,0 +1,611 @@
+<title>书院 · 檐棂印</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700&display=swap">
+
+<style>
+:root{
+  /* 纸 */
+  --paper:#F5F2E9; --paper-card:#FCFAF4; --paper-2:#EEE9DA; --paper-3:#E2DCC8;
+  /* 墨 */
+  --mo-60:#494540; --mo-70:#3A3733; --mo-80:#2E2B28; --mo-90:#232120;
+  /* 木 */
+  --wood-20:#EADFCB; --wood-30:#DCCCB0; --wood-50:#B9A383; --wood-70:#7F6E55; --wood-80:#635640;
+  /* 青 */
+  --qing-10:#E7F0EC; --qing-20:#D5E2DC; --qing-50:#87A099; --qing-80:#445651;
+  /* 其余 */
+  --tile:#9FAEB2; --zhu:#A8342A; --gold:#C8A45C; --gold-lit:#E6C77C;
+  --ink:#23262E; --ink-2:#4C505C; --ink-3:#6B6659;
+
+  --bg:var(--paper); --surface:var(--paper-card); --surface-2:var(--paper-2);
+  --text:var(--ink); --text-2:var(--ink-2); --text-3:var(--ink-3);
+  --accent:var(--zhu); --rule:rgba(107,67,38,.20); --rule-soft:rgba(107,67,38,.11);
+  --frame:var(--wood-50); --deep:var(--mo-70); --on-deep:#FCF8F1;
+  --shadow:0 1px 2px rgba(74,50,30,.06), 0 4px 14px rgba(74,50,30,.08);
+
+  --fiber:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --bg:#1D1B1A; --surface:#262422; --surface-2:#2F2C29;
+    --text:#F1EADC; --text-2:#C3BBAA; --text-3:#9A9384;
+    --accent:#CE6050; --rule:rgba(220,204,176,.20); --rule-soft:rgba(220,204,176,.10);
+    --frame:var(--wood-70); --deep:#141312; --on-deep:#F1EADC;
+    --gold:#D6B472; --gold-lit:#E8CE93;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.30);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1D1B1A; --surface:#262422; --surface-2:#2F2C29;
+  --text:#F1EADC; --text-2:#C3BBAA; --text-3:#9A9384;
+  --accent:#CE6050; --rule:rgba(220,204,176,.20); --rule-soft:rgba(220,204,176,.10);
+  --frame:var(--wood-70); --deep:#141312; --on-deep:#F1EADC;
+  --gold:#D6B472; --gold-lit:#E8CE93;
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.30);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:15px; line-height:1.85;
+  background-image:var(--fiber); background-size:160px 160px;
+}
+.serif{font-family:"Noto Serif SC","Songti SC","STSong",serif}
+
+.wrap{max-width:980px; margin:0 auto; padding-inline:20px; padding-block:0 72px}
+.col{max-width:68ch}
+
+/* ── 檐：文档的报头，也是方案的签名 ── */
+.eave{display:block; width:100%; height:44px}
+.masthead{padding-block:34px 30px; border-bottom:1px solid var(--rule)}
+h1{
+  font-family:"Noto Serif SC",serif; font-weight:500;
+  font-size:clamp(34px,7vw,52px); line-height:1.2; letter-spacing:.06em;
+  margin:0 0 14px; text-wrap:balance;
+}
+.lede{font-size:17px; color:var(--text-2); margin:0 0 20px; max-width:56ch}
+.meta{
+  display:flex; flex-wrap:wrap; gap:8px 20px;
+  font-size:12.5px; color:var(--text-3); letter-spacing:.04em;
+  font-variant-numeric:tabular-nums;
+}
+.meta b{color:var(--text-2); font-weight:600}
+
+/* ── 章节：印 + 中文序号 ── */
+section{padding-block:44px; border-bottom:1px solid var(--rule-soft)}
+section:last-of-type{border-bottom:none}
+h2{
+  display:flex; align-items:center; gap:13px;
+  font-family:"Noto Serif SC",serif; font-weight:500;
+  font-size:clamp(22px,3.4vw,27px); letter-spacing:.04em;
+  margin:0 0 8px; text-wrap:balance;
+}
+.seal{
+  flex:none; width:30px; height:30px; border-radius:3px;
+  background:var(--zhu); color:#F6EEDF;
+  display:grid; place-items:center;
+  font-family:"Noto Serif SC",serif; font-size:16px; line-height:1;
+  box-shadow:inset 0 0 0 1px rgba(246,238,223,.35), 0 1px 3px rgba(0,0,0,.25);
+  transform:rotate(-2.2deg);
+}
+h3{
+  font-family:"Noto Serif SC",serif; font-weight:500;
+  font-size:18px; letter-spacing:.03em; margin:30px 0 6px;
+  padding-left:11px; border-left:3px solid var(--accent);
+}
+h4{font-size:14px; font-weight:600; letter-spacing:.06em; color:var(--text-2); margin:22px 0 4px}
+p{margin:10px 0}
+.sub{color:var(--text-2)}
+strong{font-weight:600}
+code{
+  font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.87em;
+  background:var(--surface-2); padding:1px 5px; border-radius:3px;
+}
+
+/* ── 稿件三联 ── */
+.shots{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:26px}
+.shot{
+  background:var(--surface); border:1px solid var(--rule); border-radius:8px;
+  box-shadow:var(--shadow); overflow:hidden;
+  display:flex; flex-direction:column;
+}
+.shot-frame{height:620px; overflow-y:auto; background:var(--surface-2)}
+.shot img{display:block; width:100%; height:auto}
+.shot figcaption{
+  padding:9px 12px; font-size:12.5px; color:var(--text-2);
+  border-top:1px solid var(--rule-soft);
+  display:flex; justify-content:space-between; gap:8px;
+}
+.shot figcaption span:last-child{color:var(--text-3); font-size:11.5px}
+
+/* ── 引文：一条朱边，右端化开 ── */
+blockquote{
+  margin:22px 0; padding:15px 20px 16px 17px;
+  border-left:3px solid var(--accent);
+  background:linear-gradient(94deg,var(--surface) 0%,var(--surface) 62%,transparent 100%);
+  font-family:"Noto Serif SC",serif; font-size:16.5px; line-height:1.8;
+}
+blockquote p{margin:0}
+blockquote p+p{margin-top:6px}
+
+/* ── 表 ── */
+.tw{overflow-x:auto; margin:18px 0}
+table{border-collapse:collapse; width:100%; min-width:min(520px,100%); font-size:13.5px}
+th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--rule-soft); vertical-align:top}
+th{
+  font-size:11.5px; font-weight:600; letter-spacing:.08em; color:var(--text-3);
+  border-bottom:1px solid var(--rule); white-space:nowrap;
+}
+td:first-child{white-space:nowrap}
+.num{font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap}
+.ok{color:var(--text-3); font-size:12px}
+
+/* ── 色阶 ── */
+.ramp{display:flex; border-radius:5px; overflow:hidden; margin:12px 0 4px;
+      box-shadow:inset 0 0 0 1px var(--rule)}
+.ramp i{flex:1; height:46px; display:block}
+.ramp-key{display:flex; gap:0; font-size:10.5px; color:var(--text-3);
+          font-variant-numeric:tabular-nums; margin-bottom:18px}
+.ramp-key i{flex:1; font-style:normal; text-align:center}
+
+.chips{display:flex; flex-wrap:wrap; gap:10px; margin:14px 0 4px}
+.chip{
+  display:flex; align-items:center; gap:9px;
+  background:var(--surface); border:1px solid var(--rule); border-radius:6px;
+  padding:7px 12px 7px 8px; font-size:12.5px;
+}
+.chip i{width:26px; height:26px; border-radius:4px; flex:none;
+        box-shadow:inset 0 0 0 1px rgba(0,0,0,.14)}
+.chip b{font-weight:600}
+.chip span{color:var(--text-3); font-variant-numeric:tabular-nums}
+
+/* ── 两栏对照 ── */
+.split{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:20px 0}
+.panel{
+  background:var(--surface); border:1px solid var(--rule); border-radius:8px;
+  padding:16px 18px; box-shadow:var(--shadow);
+}
+.panel--deep{background:var(--deep); color:var(--on-deep); border-color:rgba(200,164,92,.30)}
+.panel h4{margin:0 0 8px; color:inherit; opacity:.75}
+.panel ul{margin:0; padding-left:18px}
+.panel li{margin:5px 0; font-size:13.5px}
+.panel--deep li{color:rgba(252,248,241,.88)}
+
+/* ── 构件清单：木框的感觉 ── */
+.parts{
+  margin:18px 0; border:1px solid var(--rule); border-radius:8px;
+  background:var(--surface); box-shadow:inset 0 0 0 1px rgba(200,164,92,.20), var(--shadow);
+  overflow:hidden;
+}
+.parts div{display:flex; gap:14px; padding:10px 16px; font-size:13.5px;
+           border-bottom:1px solid var(--rule-soft)}
+.parts div:last-child{border-bottom:none}
+.parts b{flex:none; width:5.5em; font-family:"Noto Serif SC",serif; font-weight:500; color:var(--text)}
+.parts span{color:var(--text-2)}
+
+.foot{padding-top:30px; font-size:12.5px; color:var(--text-3); line-height:1.8}
+hr{border:none; border-top:1px solid var(--rule); margin:0}
+
+@media (max-width:860px){
+  .shots{grid-template-columns:1fr}
+  .shot-frame{height:520px}
+  .split{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <!-- 檐：整套方案的签名，也用在这份文档的报头 -->
+  <svg class="eave" viewBox="0 0 980 44" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,6 H980 V15 C760,33 220,33 0,15 Z" fill="var(--tile)"/>
+    <rect x="0" y="4" width="980" height="6" fill="#414951"/>
+    <rect x="0" y="4" width="980" height="1.1" fill="#99A2A8" opacity=".5"/>
+    <path d="M0,15 C220,33 760,33 980,15" fill="none" stroke="#414951" stroke-width="1.6"/>
+    <path d="M0,13.4 C220,31.4 760,31.4 980,13.4" fill="none" stroke="var(--gold)" stroke-width=".9" opacity=".7"/>
+    <path d="M0,18.4 C220,36.4 760,36.4 980,18.4" fill="none" stroke="#737C82"
+          stroke-width="6" stroke-linecap="round" stroke-dasharray="0.01 16"/>
+    <path d="M0,27 C220,45 760,45 980,27" fill="none" stroke="var(--frame)" stroke-width="3"/>
+  </svg>
+
+  <header class="masthead">
+    <h1 class="serif">书院 · 檐棂印</h1>
+    <p class="lede">中华文化书院小程序视觉方案。这份说明讲清楚每一处为什么这样做——一幅通栏的青绿山水、三件记忆装置、一套配色、五种材质，以及它们各自要解决的问题。</p>
+    <div class="meta">
+      <span><b>方案</b> 檐 · 棂 · 印</span>
+      <span><b>稿件</b> 主页 / 登录页 / 资讯详情</span>
+      <span><b>对比度</b> 16 项全部达标</span>
+      <span><b>主包</b> 1530 / 2048 KB</span>
+    </div>
+
+    <div class="shots">
+      <figure class="shot">
+        <div class="shot-frame"><img src="shots/home.png" alt="主页设计稿"></div>
+        <figcaption><span>主页</span><span>可滚动</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="shot-frame"><img src="shots/login.png" alt="登录页设计稿"></div>
+        <figcaption><span>登录页</span><span>可滚动</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="shot-frame"><img src="shots/news-detail.png" alt="资讯详情设计稿"></div>
+        <figcaption><span>资讯详情</span><span>可滚动</span></figcaption>
+      </figure>
+    </div>
+  </header>
+
+  <section class="col">
+    <h2><i class="seal serif">一</i>要解决的问题</h2>
+    <p>审看反馈是：现有界面<strong>不是不好看，是看不出这是书院</strong>——不够「书香门第」，一眼留不下印象。</p>
+    <p>诊断下来，缺的不是装饰，是<strong>主体</strong>。</p>
+    <p>参照物是故宫博物院小程序。它之所以让人一眼记住，并不在于多精致，而在于它贴着自己的主体：紫禁城的建筑、院藏的文物。换句话说，它的视觉就是它自己。</p>
+    <p>我们的主体是「中华文化书院」——<strong>一个概念，不是一处建筑</strong>。由此定下两条边界：</p>
+    <p class="sub">· <strong>不照搬故宫。</strong>故宫的识别度来自它自己的藏品与宫殿，借过来只会得到一个「像博物馆的东西」。<br>
+       · <strong>不迁就校园实景。</strong>书院是虚拟概念，线下校区是现代建筑，硬去对应只会两头不着。</p>
+    <blockquote><p>目标因此很明确：让人一眼认出「这是书院」，并且耐看。</p></blockquote>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">二</i>卷首：一幅青绿山水</h2>
+    <div class="col">
+      <p>审看时指出「特别对故宫博物院那种感觉情有独钟」。那种感觉的来源不是纹样，是<strong>结构</strong>：一张院藏的画通栏铺满、一直顶到状态栏后面，内容以一张纸的形式从下面浮上来压住画脚。这一条是可以学的，而且学的是<strong>做法</strong>不是画面。</p>
+      <p>画的内容学不来，但<strong>画种</strong>可以。青绿山水是石青、石绿两种矿物颜料画在绢上的，它自带三条规矩：远淡近浓、山脊勾泥金、山与山之间留白。于是卷首是一幅我们自己生成的青绿山水——四层山脊，每层四件事。</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>要素</th><th>做法</th><th>为什么</th></tr></thead>
+        <tbody>
+          <tr><td>山形</td><td>峰的两侧各加一个「肩」，并随机带子峰</td><td>只有峰谷交替时曲线只能是正弦，出来是波不是山</td></tr>
+          <tr><td>设色</td><td><strong>每一层自己也是渐变</strong>：山头压到本层石青，山脚退到下一层的浅色</td><td>平涂色块是矢量图，分染才是画</td></tr>
+          <tr><td>皴</td><td>近两层落披麻皴，从峰肩往下拖</td><td>皴是中国山水画和「色块山」唯一的区别</td></tr>
+          <tr><td>点景</td><td>中景一排米点树，近景两三丛松</td><td>米点是米芾的办法，这个尺寸下比画树形准确</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="serif">四季</h3>
+    <div class="col">
+      <p>同一幅画换四套颜料：<strong>春青绿 / 夏烟雨 / 秋浅绛 / 冬雪霁</strong>。</p>
+      <p>画不用重画。山形、皴、点景、勾线全部走变量，一个季节换的只是<strong>颜料</strong>——这正是青绿与浅绛在传统里的关系：同一套笔墨，换一套矿物色。</p>
+    </div>
+    <figure class="shot" style="max-width:100%">
+      <div class="shot-frame" style="height:auto"><img src="shots/seasons.png" alt="卷首四季：春青绿 / 夏烟雨 / 秋浅绛 / 冬雪霁" style="width:100%;height:auto;position:static"></div>
+      <figcaption><span>同一幅画，四套颜料</span><span>春 · 夏 · 秋 · 冬</span></figcaption>
+    </figure>
+    <div class="chips">
+      <span class="chip"><i style="background:#467A86"></i><b>春 · 青绿</b><span>石青</span></span>
+      <span class="chip"><i style="background:#5C8B93"></i><b>夏 · 烟雨</b><span>压饱和</span></span>
+      <span class="chip"><i style="background:#8C6B45"></i><b>秋 · 浅绛</b><span>赭石</span></span>
+      <span class="chip"><i style="background:#8A9AA2"></i><b>冬 · 雪霁</b><span>退成绢色</span></span>
+    </div>
+
+    <h3 class="serif">二级页用同一套卷首</h3>
+    <div class="col">
+      <p>资讯详情也是「一幅画顶到最上缘 + 檐叠在画上 + 纸从画脚浮起」，只是矮 100px（这一页的主角是正文），并且换了一幅画——同一支笔、不同一张画，比两页共用一张图更像书院自己的东西。</p>
+      <p>标题<strong>不压在画上</strong>，落到纸上第一行。理由和封面图是同一条：画是用户传的，标题的可读性不能交给它。导航标题与返回键都垫一方半透明的纸——实测直接压在近景石青上只有 <span class="num">3.16</span>:1，垫上之后即便底下是纯黑封面图也有 <span class="num">8.15</span>:1。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">三</i>三件记忆装置</h2>
+    <p class="col">记忆点必须<strong>少而重复</strong>。堆十种纹样等于没有纹样。整套只立三件，外加几件配角。</p>
+
+    <h3 class="serif">檐</h3>
+    <div class="col">
+      <p><strong>为什么是檐。</strong>讲堂、山门、书院——中式建筑最先被认出来的永远是屋顶。更重要的是，它可以出现在<strong>每一页的同一个位置</strong>。重复即记忆。</p>
+      <p><strong>它是由构件拼起来的，不是一条装饰线。</strong></p>
+    </div>
+    <div class="parts">
+      <div><b>正脊 · 鸱吻</b><span>屋顶的顶，两端各一只吻</span></div>
+      <div><b>筒瓦</b><span>半圆截面的瓦垄，一根根排开；左侧转折暗、中间受光、右侧落影</span></div>
+      <div><b>檐口金线</b><span>屋面与檐口的分界</span></div>
+      <div><b>瓦当</b><span>筒瓦的圆形收头，左上高光、右下落影</span></div>
+      <div><b>滴水</b><span>板瓦沟里的如意形垂片，与瓦当相间</span></div>
+      <div><b>檐檩</b><span>一根圆木梁，把椽头串起来</span></div>
+      <div><b>椽头</b><span>露在外面的木方端头，顶亮 / 正面 / 底暗三个面</span></div>
+    </div>
+    <div class="col">
+      <p><strong>起翘曲线用八次方。</strong>真屋檐正面看是「中间一条近乎平直的檐口，只在最外两端急促翘起」。二次、三次方会做成整幅下垂的弧——远看就是一块挂着的布。这一版曲线让中间 70% 几乎不动，翘全部集中在最外侧，才是翼角。</p>
+      <p><strong>二级页的檐矮一半</strong>：身份保留，版面不被吃掉。</p>
+      <p><strong>瓦是青灰的，不是木色的。</strong>屋顶本来就不是木头。给瓦自己的黛青色调之后，木构件才衬得出来，整页也不会一片棕。</p>
+    </div>
+
+    <h3 class="serif">棂</h3>
+    <div class="col">
+      <p><strong>用冰裂纹，不用步步锦。</strong>步步锦是规整的几何，画出来很容易被读成棋盘格或网格纸。冰裂是无规则的，一眼就是中式窗棂或瓷器开片，不会认错。</p>
+      <p><strong>它是结构，不是贴花。</strong>冰裂纹铺在功能入口区的「格心」里，而那一整块被做成一扇<strong>槅扇门</strong>：上下枋夹着格心，四角有角叶。装饰与结构合一——这一点是和市面上「在旁边贴一朵花纹」的中国风拉开距离的地方。</p>
+    </div>
+
+    <h3 class="serif">印</h3>
+    <div class="col">
+      <p><strong>朱砂取自校方印章本身。</strong>所以全站的按钮红、栏目印、选中态、标签，永远是同一个红——不会出现两种红打架。它是全站<strong>唯一</strong>的高饱和色，只出现在小面积。</p>
+      <p><strong>钤印不能是印得完美的。</strong>真印章有三个特征，缺一件就成了「贴了张图片」：</p>
+    </div>
+    <div class="parts">
+      <div><b>歪</b><span>歪一点点，而且左右交替——两枚印不会歪成同一个角度</span></div>
+      <div><b>缺墨</b><span>边缘零星漏白，用噪声遮罩实现</span></div>
+      <div><b>不匀</b><span>深浅有变化，不是一块实心红</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">四</i>配角装置</h2>
+
+    <h3 class="serif">瓦当与小篆</h3>
+    <div class="col">
+      <p>五个功能入口装在同一枚瓦当里，当心是小篆单字：<span class="serif">闻 · 览 · 讲 · 籍 · 集</span>。</p>
+      <p>瓦当按<strong>文字瓦当</strong>的规制做：外缘、联珠纹、弦纹、界格。汉代瓦当分两路，一路用纹样（莲瓣、云纹）占满当面，一路是文字瓦当（「长乐未央」那种），中间是字、四周是界格——<strong>两者不混</strong>。既然当心要放字，就按文字瓦当来。</p>
+      <p>小篆字形由校方提供，取自《说文解字》小篆，是<strong>玉箸</strong>一路（笔画粗细均匀、体势端正对称），与这套细线几何完全合拍。</p>
+      <p><strong>当面做成金镶玉。</strong>玉不是均匀的半透明体——有絮、有棉、有两处不在同一个位置的高光，这点不匀才是玉和塑料的分界。所以当面是：两道高光 + 一层低频的「玉花」噪声 + 一道从青白到豆青的四段径向渐变。外缘、联珠、弦纹、界格全部改成金，弦纹里侧留一道暗线当「坎」——金是<strong>镶</strong>上去的，不是画上去的。</p>
+      <p>字也跟着改：不再是阴刻的陶字，而是<strong>嵌在玉里的金字</strong>——字身走一道由亮金转暗金再回亮的渐变（金件的受光就是这样），上沿一道暗坎、下沿一道白反光，于是字是沉在玉面里的。</p>
+    </div>
+
+    <h3 class="serif">匾额</h3>
+    <div class="col">
+      <p>「精品好物」做成一方<strong>浅木阴刻匾</strong>。</p>
+      <p>这里改过一次。上一版是黑漆金字匾——规制没错（书院祠堂的匾本来就是这个），但整页转向清新典雅之后，它成了第一屏唯一的深色块，自己变成了那个「古板」的点。</p>
+      <p>换浅木之后金字失去对比，所以字也跟着换：<strong>阴刻填墨</strong>。这本来就是木匾的做法，描金是黑漆匾的做法，<strong>两者不混</strong>。字是墨色，字的下沿有一条木本色的高光——那是刻槽的下壁在受光；少了这条高光，字就只是印上去的。</p>
+      <p>框与面分两档：框是竖纹（框条竖着开料）、比面深两档；面是横纹（匾板是横着的一块整料）、微微凹进去。内框是一道刻出来的槽，金线躺在槽里。</p>
+    </div>
+
+    <h3 class="serif">冰裂棂</h3>
+    <div class="col">
+      <p>五个入口背后是一扇冰裂纹窗棂。棂条不是单线——每根是<strong>四道叠起来的</strong>：落影、暗边、条身、顶部高光。四道叠完，条子才是有厚度的木，而不是画在纸上的线。</p>
+    </div>
+
+    <h3 class="serif">祥云</h3>
+    <div class="col">
+      <p>深色块底部压两层祥云，代替常见的波浪——波浪读起来是山水或海浪，都不是书院的词。</p>
+      <p>一朵祥云 = <strong>一簇大小不一的圆瓣 + 云卷 + 沿上缘的内轮廓双钩</strong>。连续均匀的圆弧带做出来是花边，不是云：真祥云是一团一团断开的，团里还有卷。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">五</i>配色</h2>
+    <p class="col">全站颜色分七族，<strong>每一处都从令牌取，不允许写死</strong>。这条由构建期护栏强制执行（见第九节）——第一次跑出来抓到 <span class="num">43</span> 处写死的棕色。</p>
+
+    <h4>木 · 浅原木色阶</h4>
+    <div class="ramp" aria-hidden="true">
+      <i style="background:#FCF8F1"></i><i style="background:#F5EDE0"></i><i style="background:#EADFCB"></i>
+      <i style="background:#DCCCB0"></i><i style="background:#CBB795"></i><i style="background:#B9A383"></i>
+      <i style="background:#9E8A6C"></i><i style="background:#7F6E55"></i><i style="background:#635640"></i>
+      <i style="background:#463C2B"></i>
+    </div>
+    <div class="ramp-key"><i>05</i><i>10</i><i>20</i><i>30</i><i>40</i><i>50</i><i>60</i><i>70</i><i>80</i><i>90</i></div>
+
+    <h4>青 · 天青／影青</h4>
+    <div class="ramp" aria-hidden="true">
+      <i style="background:#F4F8F6"></i><i style="background:#E7F0EC"></i><i style="background:#D5E2DC"></i>
+      <i style="background:#BDCEC7"></i><i style="background:#A2B8B0"></i><i style="background:#87A099"></i>
+      <i style="background:#6E8880"></i><i style="background:#586E68"></i><i style="background:#445651"></i>
+      <i style="background:#33423E"></i>
+    </div>
+    <div class="ramp-key"><i>05</i><i>10</i><i>20</i><i>30</i><i>40</i><i>50</i><i>60</i><i>70</i><i>80</i><i>90</i></div>
+
+    <h4>山 · 青绿山水的四层矿物色</h4>
+    <div class="chips">
+      <span class="chip"><i style="background:#D2E2DA"></i><b>最远</b><span>#D2E2DA</span></span>
+      <span class="chip"><i style="background:#A9C8B9"></i><b>次远</b><span>#A9C8B9</span></span>
+      <span class="chip"><i style="background:#74A092"></i><b>石绿</b><span>#74A092</span></span>
+      <span class="chip"><i style="background:#467A86"></i><b>石青</b><span>#467A86</span></span>
+    </div>
+
+    <h4>墨 · 深色面</h4>
+    <div class="ramp" aria-hidden="true">
+      <i style="background:#6E6A62"></i><i style="background:#5A564E"></i><i style="background:#494540"></i>
+      <i style="background:#3A3733"></i><i style="background:#2E2B28"></i><i style="background:#232120"></i>
+    </div>
+    <div class="ramp-key"><i>40</i><i>50</i><i>60</i><i>70</i><i>80</i><i>90</i></div>
+
+    <h4>其余四族</h4>
+    <div class="chips">
+      <span class="chip"><i style="background:#F5F2E9"></i><b>纸</b><span>#F5F2E9</span></span>
+      <span class="chip"><i style="background:#9FAEB2"></i><b>黛瓦</b><span>#9FAEB2</span></span>
+      <span class="chip"><i style="background:#A8342A"></i><b>朱砂</b><span>#A8342A</span></span>
+      <span class="chip"><i style="background:#C8A45C"></i><b>金</b><span>#C8A45C</span></span>
+    </div>
+
+    <h3 class="serif">三条关键判断</h3>
+    <div class="col">
+      <p><strong>① 木色色相钉在 36–38°。</strong>咖啡与胡桃在 25° 上下，<strong>偏红</strong>——那是老家具的色相。金丝楠、白橡偏黄。这一条就是「老气」与「上档次」的分水岭。</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>版本</th><th>色值</th><th class="num">色相</th><th class="num">饱和</th><th class="num">明度</th><th>观感</th></tr></thead>
+        <tbody>
+          <tr><td>最初</td><td><code>#6B4A32</code></td><td class="num">25.3°</td><td class="num">36%</td><td class="num">31%</td><td>咖啡</td></tr>
+          <tr><td>中途</td><td><code>#9A6E48</code></td><td class="num">27.8°</td><td class="num">36%</td><td class="num">44%</td><td>还是咖啡</td></tr>
+          <tr><td><strong>现在</strong></td><td><code>#B9A383</code></td><td class="num"><strong>36.0°</strong></td><td class="num"><strong>28%</strong></td><td class="num"><strong>62%</strong></td><td><strong>浅原木</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p><strong>② 只调色相是没用的。</strong>前两轮只在色相上挪（25°→27.8°→34.5°），明度、饱和度、面积一个没动，所以审看时连着说了三次「木色好像还是没什么变化」——他说得对。</p>
+    </div>
+    <blockquote>
+      <p>「老气」的完整配方是：<strong>深 + 高饱和 + 偏红 + 铺大面</strong>。</p>
+    </blockquote>
+    <div class="col">
+      <p>这一版四条同时改：明度提上去、饱和度压下来、深色面换掉、木头退回到裱边与枋、包角、椽头、棂条这些构件上，不铺大面。</p>
+      <p><strong>③ 「古板」是可以量出来的，量完再改。</strong>审看时指出「显得有些古板，尤其是色调」。没有凭感觉改，先量了第一屏：</p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>指标</th><th class="num">改版前</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>深色块面积</td><td class="num">36%</td><td>第一屏三分之一是深色</td></tr>
+          <tr><td>彩色像素色相中位数</td><td class="num">40°</td><td>整页挤在暖黄区</td></tr>
+          <tr><td>冷色像素占比</td><td class="num">1.9%</td><td><strong>一个冷色都没有</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p>三个数字指向同一件事：整页又深又暖又没有对照。暖 + 深 = 陈旧；清新必须有冷色。天青这一族就是为这三个数字加的，它同时接管了原先用墨铺的那些「图位」。</p>
+      <p class="sub">顺带一条教训：判断冷暖不能用 HLS 的饱和度。纸色 <code>#F5F2E9</code> 在 HLS 里是 38% 饱和，看着像个高饱和色，其实彩度只有 5%——近白色会把 HLS 饱和度撑爆。要用彩度 <code>(max−min)/255</code>。</p>
+      <p><strong>展馆分类色</strong>用同一个明度层级，只在色相上各偏一点：天青 / 苔绿 / 影青。原先那组蓝绿饱和度高出一大截，三张封面摆在一起像来自三个地方。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">六</i>材质与光</h2>
+    <blockquote>
+      <p><strong>光从上方来。</strong></p>
+      <p>阴刻（凿进去）＝ 上沿暗、下沿亮。<br>阳刻（凸出来）＝ 上沿亮、下沿暗。</p>
+    </blockquote>
+    <p class="col">方向一旦反了，立刻就是「贴纸」。这一条是所有立体效果的总开关。</p>
+
+    <div class="parts">
+      <div><b>纸</b><span>页面、卡片、签条、选中的输入框 —— 纤维噪声 + 中亮四周暗的晕</span></div>
+      <div><b>墨漆</b><span>首图、匾额、登录页 —— 漆面 + 竖纹 + 斜掠漆光</span></div>
+      <div><b>木</b><span>裱边、上下枋、包角、椽头 —— 三层不同周期的木纹</span></div>
+      <div><b>石</b><span>次按钮 —— 比纸纤维更高频的颗粒</span></div>
+      <div><b>陶</b><span>瓦当 —— 径向渐变胎体 + 内高光 + 落影</span></div>
+    </div>
+
+    <div class="col">
+      <p><strong>纹理全部是 CSS 渐变与内联 SVG 噪声，零位图。</strong>可换色、可主题化、不占包体积——这对小程序 2MB 的主包限制是硬要求。</p>
+      <p>木纹用三层不同周期（5 / 23 / 13）叠加，错开周期才不会看出规则条纹；大面积木面另配一组宽周期年轮再打散一次。</p>
+    </div>
+
+    <h3 class="serif">状态与反馈</h3>
+    <div class="parts">
+      <div><b>输入框</b><span>未选中是凿进漆面的凹槽：不透明底，内阴影在上沿，底沿一道极细金反光</span></div>
+      <div><b>选中</b><span>整块翻成纸，描边转朱砂。在书院里「输入」就是在纸上写字</span></div>
+      <div><b>主按钮</b><span>朱漆块：顶棱高光 + 底棱暗边 + 金圈 + 侧壁。那道侧壁是「能按下去」的来源</span></div>
+      <div><b>次按钮</b><span>石青块，与页面、与主按钮都不是一种材质</span></div>
+      <div><b>按下</b><span>下沉 1–3px、侧壁收掉。瓦当按下是下沉 + 朱砂一闪，像落了个印</span></div>
+    </div>
+    <p class="col sub">幅度一律很小（1px / 0.6%）——大了就成弹簧。</p>
+
+    <h3 class="serif">毛边</h3>
+    <p class="col"><strong>只给「一张纸」用</strong>：题签、钤印那方纸。界面里的卡片是印刷品，边就该是齐的。抖幅只有一两个百分点——毛边是纸纤维的断口，不是撕破的口子。</p>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">七</i>上了封面图之后</h2>
+    <p class="col">这是最实际的一个问题，答案是<strong>部分会被盖住，而且是设计好的</strong>。</p>
+    <div class="split">
+      <div class="panel panel--deep">
+        <h4>会被盖住</h4>
+        <ul>
+          <li>画心里的祥云</li>
+          <li>画心里的木纹底</li>
+        </ul>
+        <p style="font-size:12.5px;opacity:.7;margin:10px 0 0">它们本来就在「图的位置」上。</p>
+      </div>
+      <div class="panel">
+        <h4>盖不住</h4>
+        <ul>
+          <li>裱边木纹</li>
+          <li>四角包角</li>
+          <li>右下压角印</li>
+          <li>竖排题签</li>
+          <li>标题绢条</li>
+          <li>题签签条</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col">
+      <p>做法是把纹样<strong>一律挪到画心之外，或压在画心之上</strong>：</p>
+    </div>
+    <div class="parts">
+      <div><b>裱边</b><span>木框，永远露在外面</span></div>
+      <div><b>包角</b><span>装裱护角，只吃四个角，主体内容一点不挡</span></div>
+      <div><b>压角印</b><span>中国画的画心右下角本来就钤印——它本来就该压在图上，不存在被覆盖的问题</span></div>
+      <div><b>题签</b><span>名字写在签条上，图再满也盖不住</span></div>
+      <div><b>绢条</b><span>标题落在半透明的绢上，同时保证任何照片上文字都读得清</span></div>
+    </div>
+    <blockquote><p>以后每张封面图都会自动带上包角和一枚朱印，看起来就是一张裱好的画。</p></blockquote>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">八</i>字</h2>
+    <h3 class="serif">正文与标题：内嵌宋体子集</h3>
+    <div class="tw">
+      <table>
+        <tbody>
+          <tr><td>字体</td><td>思源宋体 Noto Serif SC，SIL OFL 1.1，可商用、可嵌入、可子集化</td></tr>
+          <tr><td>子集</td><td>4009 字符（GB2312 一级 3755 + 项目全语料 + 书法繁体雅字 + 标点），单字重 400</td></tr>
+          <tr><td>体积</td><td>woff2 689 KB → base64 919 KB</td></tr>
+          <tr><td>主包</td><td>1530 / 2048 KB，余量 518 KB</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p><strong>为什么内嵌而不用网络字体接口。</strong>后者只收网络地址，要配合法域名白名单，还必须返回 <code>Access-Control-Allow-Origin: *</code>（设成 <code>servicewechat.com</code> 时 iOS 能过、安卓挂），荣耀 / vivo 等机型对字体跨域的校验更严——<strong>做不到「所有设备都正常显示」</strong>。内嵌进代码包则不走网络、不需要白名单、没有机型分裂。</p>
+      <p>回退栈保持完整：字体万一没生效就退回系统字，<strong>不会白屏、不会豆腐块</strong>。</p>
+    </div>
+    <h3 class="serif">入口：小篆字形</h3>
+    <div class="col">
+      <p>校方提供的《说文》小篆 SVG，清洗做了两件事：</p>
+      <p class="sub">· <strong>剔除水印</strong>——原始文件每个字都夹着两条近白色路径，白底上看不见，落到纸色或深色底上会显形。<br>
+         · <strong>归一化</strong>——字面统一到 1000×1000、居中占 760，五个字的高度与线宽这才一致。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">九</i>可访问性与护栏</h2>
+    <p class="col">所有前景／背景组合逐对实算（WCAG 相对亮度），<strong>16 项全部达标，0 项不合格</strong>。</p>
+    <div class="tw">
+      <table>
+        <thead><tr><th>用途</th><th class="num">对比度</th><th>标准</th></tr></thead>
+        <tbody>
+          <tr><td>正文（纸底 15px）</td><td class="num">12.84:1</td><td class="ok">AA</td></tr>
+          <tr><td>栏目标题（卡片 19px）</td><td class="num">14.16:1</td><td class="ok">AA</td></tr>
+          <tr><td>首图标题（墨底 22px）</td><td class="num">8.98:1</td><td class="ok">AA</td></tr>
+          <tr><td>匾额金字（黑漆 21px）</td><td class="num">8.59:1</td><td class="ok">AA</td></tr>
+          <tr><td>次按钮文字（石青 14px）</td><td class="num">7.03:1</td><td class="ok">AA</td></tr>
+          <tr><td>题签文字（签条 12.5px）</td><td class="num">6.32:1</td><td class="ok">AA</td></tr>
+          <tr><td>瓦当篆字（陶饼）</td><td class="num">5.61:1</td><td class="ok">AA</td></tr>
+          <tr><td>登录按钮文字（朱漆 16px）</td><td class="num">5.39:1</td><td class="ok">AA</td></tr>
+          <tr><td>匾额副题（黑漆 11px）</td><td class="num">5.20:1</td><td class="ok">AA</td></tr>
+          <tr><td>输入框占位字（凹槽 13.5px）</td><td class="num">5.13:1</td><td class="ok">AA</td></tr>
+          <tr><td>说明 / 时间（纸底 11–12px）</td><td class="num">4.86:1</td><td class="ok">AA</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p>设计过程中有<strong>四处是算出来才发现不合格</strong>的，肉眼完全看不出来：说明文字曾只有 3.51、输入框占位字曾只有 3.23、匾额副题曾只有 3.70、深棕底上的标题曾只有 4.13。都已修正。</p>
+    </div>
+
+    <h3 class="serif">两条构建期护栏</h3>
+    <div class="parts">
+      <div><b>令牌</b><span>令牌定义区之外不允许出现写死的木色／纸色。第一次运行就审计出 <strong>43 处</strong>——首图、匾额、展馆封面、登录页这些大面积的颜色全都没走变量，这正是前两轮「改了木色却看不出变化」的原因</span></div>
+      <div><b>字体</b><span>字体产物与源文件一致、所有写死的中文都在子集内、主包体积留有余量。三条都做过变异验证</span></div>
+    </div>
+    <p class="col sub">设计要能长期不走样，靠的不是自觉，是护栏。这类错误人眼查不出来，只能靠机器挡。</p>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">十</i>校方素材怎么用</h2>
+    <div class="parts">
+      <div><b>书法字</b><span>首页顶部用<strong>墨色版</strong>——原来的海军蓝版落在纸色底上会跳；登录页用米白版压深色</span></div>
+      <div><b>印章</b><span>栏目印、匾额印、登录页视觉中心、封面压角印。全站朱砂即取自这枚印章</span></div>
+      <div><b>校徽</b><span>登录页页脚圆牌、关于页、海报角标。不当主视觉——圆形带英文环，缩小后会糊</span></div>
+      <div><b>小篆五字</b><span>五个功能入口的当心</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><i class="seal serif">十一</i>还没定的两件事</h2>
+    <div class="split">
+      <div class="panel">
+        <h4>靛青备选</h4>
+        <p style="margin:0;font-size:13.5px">目前是把主推方案换个颜色，材质语言没跟着换（现在是「蓝色的木纹」）。真要走靛青，材质应换成青砖／靛染／青瓷开片。</p>
+      </div>
+      <div class="panel">
+        <h4>实拍素材</h4>
+        <p style="margin:0;font-size:13.5px">首图与封面现在是纯色 + 祥云占位。若能提供书院活动、讲座现场、书法作品、图书室的实拍图，这几块换成照片会明显更厚——装裱那一套就是为此准备的。</p>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+  <p class="foot">
+    稿件：主页 · 登录页 · 资讯详情 · 已上传封面图对照 · 控件状态演示 · 靛青备选<br>
+    屋檐、瓦当、冰裂纹、祥云、毛边由脚本按数学摆放生成——沿曲线排布的瓦件、绕心旋转的纹样、抖动网格，手写这类坐标必然出错。
+  </p>
+
+</div>

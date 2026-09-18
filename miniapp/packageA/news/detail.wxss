@@ -1,12 +1,12 @@
 /* packageA/news/detail.wxss */
-.detail-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.detail-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 .detail-scroll { flex: 1; overflow: hidden; }
 .detail-wrap { padding: 24rpx 28rpx 0; }
 .detail-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }
 
 /* 文章 */
 .article {
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   overflow: hidden;
@@ -27,7 +27,7 @@
   align-items: flex-end;
   padding: 28rpx;
   overflow: hidden;
-  background: linear-gradient(120deg, #1E2654, #3F57B5);
+  background: linear-gradient(120deg, var(--navy-deep), var(--blue));
 }
 /* 封面铺满整块，压在装饰层与标题之下 */
 .art-hero-img {
@@ -57,7 +57,7 @@
 .art-hero-title {
   position: relative;
   z-index: 2;
-  color: #fff;
+  color: var(--card);
   font-size: 38rpx;
   font-weight: 700;
   line-height: 1.4;
@@ -143,7 +143,7 @@
   height: 78rpx;
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
-  background: #fff;
+  background: var(--card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -152,7 +152,7 @@
   color: var(--sub);
 }
 .act:active { background: var(--sky-3); }
-.act-on { color: #C0392B; border-color: #F3C9C2; background: #FDF1EF; }
+.act-on { color: var(--color-danger); border-color: #F3C9C2; background: #FDF1EF; }
 .act-share-btn {
   flex: 1;
   height: 78rpx;
@@ -171,7 +171,7 @@
 
 /* AI 推荐 */
 .reco {
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   padding: 26rpx;
@@ -188,8 +188,8 @@
 }
 .reco-ai {
   font-size: 20rpx;
-  background: #FBF3DD;
-  color: #9C7C2E;
+  background: var(--xing-05);
+  color: var(--jin-70);
   padding: 4rpx 16rpx;
   border-radius: 20rpx;
   font-weight: 600;

@@ -1,11 +1,11 @@
 /* packageC/feedback/index.wxss */
-.fb-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.fb-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 /* 横向内边距放到内容层：scroll-view 的右侧 padding 会被微信滚动容器忽略，导致右侧内容贴边被截 */
 .fb-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
 
 .fb-card {
   margin: 0 28rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 28rpx;
@@ -25,8 +25,8 @@
   border-radius: 30rpx;
 }
 .fb-type.on {
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
-  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  color: var(--card);
   border-color: transparent;
 }
 
@@ -72,7 +72,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(31, 37, 71, 0.45);
-  color: #fff;
+  color: var(--card);
   font-size: 22rpx;
 }
 .fb-img-fail {
@@ -96,7 +96,7 @@
   height: 48rpx;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: var(--card);
   font-size: 30rpx;
   line-height: 48rpx;
   text-align: center;
@@ -161,13 +161,13 @@
   justify-content: center;
   height: 88rpx;
   border-radius: 44rpx;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
-  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  color: var(--card);
   font-size: 30rpx;
   font-weight: 600;
   letter-spacing: 2rpx;
   border: none;
-  box-shadow: 0 12rpx 30rpx rgba(43, 53, 110, 0.32);
+  box-shadow: 0 12rpx 30rpx rgba(96,78,44, 0.32);
 }
 .fb-submit::after { border: none; }
 .fb-submit.ing { opacity: 0.7; }

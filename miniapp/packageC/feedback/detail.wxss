@@ -3,12 +3,12 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #F5F8FC;
+  background: var(--paper);
 }
 .fb-detail-scroll { flex: 1; min-height: 0; padding-top: 16rpx; }
 .fb-card {
   margin: 0 28rpx 16rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 28rpx;
@@ -29,7 +29,7 @@
   font-size: 22rpx;
   color: var(--muted);
 }
-.fb-row-status.on { color: #BE9C44; font-weight: 600; }
+.fb-row-status.on { color: var(--jin-60); font-weight: 600; }
 .fb-detail-time {
   display: block;
   margin-top: 10rpx;

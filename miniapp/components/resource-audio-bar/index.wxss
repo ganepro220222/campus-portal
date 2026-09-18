@@ -17,7 +17,7 @@
   padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.96);
   border-top: 1rpx solid var(--line);
-  box-shadow: 0 -8rpx 24rpx rgba(31, 40, 90, 0.08);
+  box-shadow: 0 -8rpx 24rpx rgba(74,50,30, 0.08);
 }
 .rab-btn {
   width: 72rpx;
@@ -74,7 +74,7 @@
   display: block;
   margin-top: 4rpx;
   font-size: 20rpx;
-  color: #C0392B;
+  color: var(--color-danger);
 }
 .rab-hint {
   display: block;

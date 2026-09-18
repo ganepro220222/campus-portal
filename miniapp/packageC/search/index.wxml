@@ -5,10 +5,10 @@
   <!-- 搜索栏 -->
   <view class="sbar">
     <view class="sbox">
-      <icon name="search" size="17" color="#67708C" />
+      <icon name="search" size="17" color="#6B6459" />
       <input class="sinput" placeholder="搜索动态、课程、展馆、资源…" placeholder-class="sph"
         value="{{keyword}}" focus confirm-type="search" bindinput="onInput" bindconfirm="onConfirm" />
-      <view wx:if="{{keyword}}" class="sclear" bindtap="onClear"><icon name="close" size="14" color="#67708C" /></view>
+      <view wx:if="{{keyword}}" class="sclear" bindtap="onClear"><icon name="close" size="14" color="#6B6459" /></view>
     </view>
     <view class="sbtn" bindtap="onConfirm">搜索</view>
   </view>
@@ -35,7 +35,7 @@
       <view class="sec" wx:if="{{history.length}}">
         <view class="sec-h-row">
           <text class="sec-h serif">搜索历史</text>
-          <view class="sec-clear" bindtap="clearHistory"><icon name="logout" size="15" color="#67708C" /><text>清空</text></view>
+          <view class="sec-clear" bindtap="clearHistory"><icon name="logout" size="15" color="#6B6459" /><text>清空</text></view>
         </view>
         <view class="tags">
           <view class="tag tag-ghost" wx:for="{{history}}" wx:key="*this" data-k="{{item}}" bindtap="onTag">{{item}}</view>
@@ -52,21 +52,21 @@
           <text class="sres-title">{{item.title}}</text>
           <text wx:if="{{item.sub}}" class="sres-sub">{{item.sub}}</text>
         </view>
-        <icon name="chevron-right" size="16" color="#C3CCE0" />
+        <icon name="chevron-right" size="16" color="#D6CDB8" />
       </view>
 
       <view wx:if="{{errorText}}" class="empty-state">
-        <icon name="search" size="40" color="#C3CCE0" />
+        <icon name="search" size="40" color="#D6CDB8" />
         <text>{{errorText}}</text>
       </view>
 
       <view wx:elif="{{loading}}" class="empty-state">
-        <icon name="search" size="40" color="#C3CCE0" />
+        <icon name="search" size="40" color="#D6CDB8" />
         <text>正在搜索…</text>
       </view>
 
       <view wx:elif="{{!results.length}}" class="empty-state">
-        <icon name="search" size="40" color="#C3CCE0" />
+        <icon name="search" size="40" color="#D6CDB8" />
         <text>未找到「{{activeKeyword}}」相关内容</text>
       </view>
 

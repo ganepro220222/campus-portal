@@ -3,7 +3,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #EAF1FB 0, #F5F8FC 320rpx);
+  background: linear-gradient(180deg, var(--sky-2) 0, var(--paper) 320rpx);
 }
 .chat-body { flex: 1; overflow: hidden; padding: 0 28rpx; }
 
@@ -12,11 +12,11 @@
 .ci-avatar {
   width: 112rpx; height: 112rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  background: linear-gradient(135deg, var(--blue), var(--navy));
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12rpx 30rpx rgba(43, 53, 110, 0.32);
+  box-shadow: 0 12rpx 30rpx rgba(96,78,44, 0.32);
 }
 .ci-name { font-size: 34rpx; font-weight: 700; color: var(--ink); margin-top: 18rpx; }
 .ci-desc { font-size: 22rpx; color: var(--muted); margin-top: 6rpx; }
@@ -37,7 +37,7 @@
 .avt {
   width: 56rpx; height: 56rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  background: linear-gradient(135deg, var(--blue), var(--navy));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -52,17 +52,17 @@
   word-break: break-word;
 }
 .bubble.ai {
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
   border: 1rpx solid var(--line);
   border-bottom-left-radius: 8rpx;
   box-shadow: var(--shadow-sm);
 }
 .bubble.me {
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
-  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  color: var(--card);
   border-bottom-right-radius: 8rpx;
-  box-shadow: 0 8rpx 20rpx rgba(43, 53, 110, 0.28);
+  box-shadow: 0 8rpx 20rpx rgba(96,78,44, 0.28);
 }
 
 /* 快捷问题 */
@@ -70,7 +70,7 @@
 .chip {
   font-size: 24rpx;
   color: var(--navy);
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--sky);
   padding: 14rpx 24rpx;
   border-radius: 30rpx;
@@ -115,11 +115,11 @@
 .send {
   width: 76rpx; height: 76rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  background: linear-gradient(135deg, var(--blue), var(--navy));
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 8rpx 20rpx rgba(43, 53, 110, 0.3);
+  box-shadow: 0 8rpx 20rpx rgba(96,78,44, 0.3);
 }
 .send:active { opacity: 0.85; }

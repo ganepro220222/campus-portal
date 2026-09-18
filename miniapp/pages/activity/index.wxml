@@ -26,11 +26,11 @@
       <view class="acard-body">
         <view class="acard-title">{{item.title}}</view>
         <view class="acard-meta">
-          <icon name="calendar" size="14" color="#67708C" />
+          <icon name="calendar" size="14" color="#6B6459" />
           <text class="acard-mt">{{item.startTime}}</text>
         </view>
         <view class="acard-meta">
-          <icon name="pin" size="14" color="#67708C" />
+          <icon name="pin" size="14" color="#6B6459" />
           <text class="acard-mt">{{item.location}}</text>
         </view>
         <view class="acard-foot">
@@ -44,13 +44,13 @@
     </view>
 
     <view wx:if="{{error && !loading && !activityList.length}}" class="page-state-box">
-      <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+      <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
       <text class="page-state-text">加载失败，请检查网络后重试</text>
       <view class="page-state-action" bindtap="onRetry">重新加载</view>
     </view>
 
     <view wx:elif="{{!loading && !activityList.length && !error}}" class="empty-state">
-      <icon name="entry-enroll" size="40" color="#C3CCE0" />
+      <icon name="entry-enroll" size="40" color="#D6CDB8" />
       <text>暂无活动</text>
     </view>
 

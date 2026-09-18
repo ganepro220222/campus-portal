@@ -1,5 +1,5 @@
 /* packageB/course/detail.wxss */
-.detail-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.detail-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 .detail-scroll { flex: 1; overflow: hidden; }
 .detail-wrap { padding: 24rpx 28rpx 0; }
 .detail-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }
@@ -19,7 +19,7 @@
 .player-bg {
   position: absolute;
   left: 0; top: 0; right: 0; bottom: 0;
-  background: linear-gradient(120deg, #1E2654, #3F57B5);
+  background: linear-gradient(120deg, var(--navy-deep), var(--blue));
   opacity: 0.85;
 }
 .play {
@@ -40,7 +40,7 @@
   top: 22rpx; right: 22rpx;
   z-index: 3;
   font-size: 21rpx;
-  color: #fff;
+  color: var(--card);
   background: rgba(190, 156, 68, 0.9);
   padding: 7rpx 16rpx;
   border-radius: 18rpx;
@@ -61,7 +61,7 @@
 
 /* 课程信息 */
 .cmeta {
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   padding: 28rpx;
@@ -105,13 +105,13 @@
   width: 6rpx;
   height: 26rpx;
   border-radius: 3rpx;
-  background: linear-gradient(180deg, #3F57B5, #2B356E);
+  background: linear-gradient(180deg, var(--blue), var(--navy));
 }
 .res {
   display: flex;
   align-items: center;
   gap: 22rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 22rpx;
   padding: 20rpx 24rpx;
@@ -125,7 +125,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--card);
   font-size: 20rpx;
   font-weight: 700;
   text-transform: uppercase;

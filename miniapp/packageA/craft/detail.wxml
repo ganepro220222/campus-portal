@@ -7,7 +7,7 @@
   </view>
 
   <view wx:elif="{{loadError}}" class="page-state-box">
-    <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+    <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
     <text class="page-state-text">文创加载失败，请检查网络后重试</text>
     <view class="page-state-action" bindtap="onRetry">重新加载</view>
     <view class="page-state-link" bindtap="onBackList">返回文创列表</view>
@@ -29,7 +29,7 @@
       <!-- 多角度图片轮播 -->
       <view class="gal">
         <swiper class="gslides" circular="{{slides.length > 1}}" bindchange="onGallery"
-          indicator-dots="{{slides.length > 1}}" indicator-color="rgba(255,255,255,.4)" indicator-active-color="#ffffff">
+          indicator-dots="{{slides.length > 1}}" indicator-color="rgba(255,255,255,.4)" indicator-active-color="#FFFBF2">
           <swiper-item wx:for="{{slides}}" wx:key="angleLabel">
             <view class="gimg {{item.cls}}" bindtap="onPreview" data-index="{{index}}">
               <image wx:if="{{item.imageUrl && !item.imageFailed}}" src="{{item.imageUrl}}" mode="aspectFill" class="gimg-img" data-index="{{index}}" data-cover="{{item.imageUrl}}" data-epoch="{{item.imageEpoch || 0}}" binderror="onSlideError" />
@@ -61,17 +61,17 @@
       <view class="contact">
         <view class="contact-title serif">合作与咨询</view>
         <view class="c-row" bindtap="onPhone" data-val="{{detail.contact.phone}}">
-          <view class="c-ic c-blue"><icon name="megaphone" size="18" color="#ffffff" /></view>
+          <view class="c-ic c-blue"><icon name="megaphone" size="18" color="#FFFBF2" /></view>
           <view class="c-body"><text class="c-k">电话</text><text class="c-v">{{detail.contact.phone}}</text></view>
           <text class="c-act">拨打</text>
         </view>
         <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.wechat}}">
-          <view class="c-ic c-green"><icon name="wechat" size="18" color="#ffffff" /></view>
+          <view class="c-ic c-green"><icon name="wechat" size="18" color="#FFFBF2" /></view>
           <view class="c-body"><text class="c-k">微信</text><text class="c-v">{{detail.contact.wechat}}</text></view>
           <text class="c-act">复制</text>
         </view>
         <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.email}}">
-          <view class="c-ic c-gold"><icon name="send" size="18" color="#ffffff" /></view>
+          <view class="c-ic c-gold"><icon name="send" size="18" color="#FFFBF2" /></view>
           <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">{{detail.contact.email}}</text></view>
           <text class="c-act">复制</text>
         </view>
@@ -79,14 +79,14 @@
 
       <view class="fav-bar">
         <view class="fav-btn {{collected ? 'fav-on' : ''}}" bindtap="onCollect">
-          <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
+          <icon name="bookmark" size="16" color="{{collected ? '#9E2B25' : '#4C505C'}}" />
           <text>{{collectLabel}}</text>
         </view>
       </view>
 
       <view class="poster-btn-wrap">
         <button class="poster-btn" bindtap="onPoster">
-          <icon name="poster" size="18" color="#ffffff" />
+          <icon name="poster" size="18" color="#FFFBF2" />
           <text>一键生成分享海报</text>
         </button>
       </view>

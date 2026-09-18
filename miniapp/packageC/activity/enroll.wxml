@@ -28,18 +28,18 @@
       <view class="summary-card">
         <view class="summary-title serif">{{detail.title}}</view>
         <view class="summary-meta">
-          <icon name="calendar" size="14" color="#67708C" />
+          <icon name="calendar" size="14" color="#6B6459" />
           <text>{{detail.startTime}}</text>
         </view>
         <view class="summary-meta">
-          <icon name="pin" size="14" color="#67708C" />
+          <icon name="pin" size="14" color="#6B6459" />
           <text>{{detail.location}}</text>
         </view>
       </view>
 
       <!-- 报名成功 -->
       <view wx:if="{{success}}" class="result-card">
-        <icon name="medal" size="40" color="#C9A227" />
+        <icon name="medal" size="40" color="#9E7D45" />
         <text class="result-title">{{result.statusLabel || '报名成功'}}</text>
         <text wx:if="{{result.voucherCode}}" class="result-code">凭证码：{{result.voucherCode}}</text>
         <view wx:if="{{showVoucherQr && voucherQrSrc && result.status === 'approved'}}" class="voucher-qr-box">

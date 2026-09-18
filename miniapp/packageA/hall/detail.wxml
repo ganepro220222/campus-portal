@@ -6,7 +6,7 @@
   </view>
 
   <view wx:elif="{{loadError}}" class="page-state-box">
-    <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+    <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
     <text class="page-state-text">展馆加载失败，请检查网络后重试</text>
     <view class="page-state-action" bindtap="onRetry">重新加载</view>
     <view class="page-state-link" bindtap="onBackList">返回展馆列表</view>
@@ -35,7 +35,7 @@
 
       <!-- 画廊轮播 -->
       <view class="gal">
-        <swiper class="gslides" circular bindchange="onGallery" indicator-dots indicator-color="rgba(255,255,255,.4)" indicator-active-color="#ffffff">
+        <swiper class="gslides" circular bindchange="onGallery" indicator-dots indicator-color="rgba(255,255,255,.4)" indicator-active-color="#FFFBF2">
           <swiper-item wx:for="{{hall.slides}}" wx:key="index">
             <view
               class="gimg {{item.cls}}"
@@ -53,7 +53,7 @@
       <!-- VR 展厅入口 -->
       <view class="vr-block">
         <button class="vr-btn {{hall.vrReady ? '' : 'vr-btn-off'}}" bindtap="onEnterVr">
-          <icon name="museum" size="20" color="#ffffff" />
+          <icon name="museum" size="20" color="#FFFBF2" />
           <text>{{hall.vrReady ? '进入 VR 展厅' : 'VR 链接筹备中'}}</text>
         </button>
         <text wx:if="{{hall.vrReady}}" class="vr-hint">720 云全景漫游 · 建议在 Wi-Fi 环境下体验</text>
@@ -62,8 +62,8 @@
       <!-- 语音讲解 -->
       <view class="audio">
         <view class="ap {{audioPlaying ? 'ap-on' : ''}}" bindtap="onAudio">
-          <icon wx:if="{{audioPlaying}}" name="pause" size="18" color="#ffffff" />
-          <icon wx:else name="play" size="18" color="#ffffff" />
+          <icon wx:if="{{audioPlaying}}" name="pause" size="18" color="#FFFBF2" />
+          <icon wx:else name="play" size="18" color="#FFFBF2" />
         </view>
         <view class="aw {{audioPlaying ? '' : 'aw-paused'}}">
           <view class="wv-bar" wx:for="{{waveBars}}" wx:key="index" style="animation-delay:{{item}}s"></view>
@@ -129,14 +129,14 @@
 
       <view class="fav-bar">
         <view class="fav-btn {{collected ? 'fav-on' : ''}}" bindtap="onCollect">
-          <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
+          <icon name="bookmark" size="16" color="{{collected ? '#9E2B25' : '#4C505C'}}" />
           <text>{{collectLabel}}</text>
         </view>
       </view>
 
       <view class="poster-btn-wrap">
         <button class="poster-btn" bindtap="onPoster">
-          <icon name="poster" size="18" color="#ffffff" />
+          <icon name="poster" size="18" color="#FFFBF2" />
           <text>一键生成分享海报</text>
         </button>
       </view>

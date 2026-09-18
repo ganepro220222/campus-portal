@@ -14,8 +14,8 @@
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(16rpx);
   -webkit-backdrop-filter: blur(16rpx);
-  border-top: 1rpx solid #E7ECF6;
-  box-shadow: 0 -4rpx 20rpx rgba(31, 40, 90, 0.05);
+  border-top: 1rpx solid var(--line);
+  box-shadow: 0 -4rpx 20rpx rgba(74,50,30, 0.05);
 }
 
 .tab {
@@ -36,11 +36,11 @@
   font-size: 21rpx;
   font-weight: 600;
   line-height: 1;
-  color: #67708C;
+  color: var(--muted);
   transition: color 0.2s;
   white-space: nowrap;
 }
 
 .tab-txt.on {
-  color: #2B356E;
+  color: var(--navy);
 }

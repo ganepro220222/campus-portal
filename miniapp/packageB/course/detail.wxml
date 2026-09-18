@@ -7,7 +7,7 @@
   </view>
 
   <view wx:elif="{{loadError}}" class="page-state-box">
-    <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+    <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
     <text class="page-state-text">课程加载失败，请检查网络后重试</text>
     <view class="page-state-action" bindtap="onRetry">重新加载</view>
     <view class="page-state-link" bindtap="onBackList">返回课程列表</view>
@@ -30,9 +30,9 @@
         <view class="player">
           <view class="player-bg"></view>
           <view class="cc" bindtap="onCC">
-            <icon name="cc" size="13" color="#ffffff" /> 字幕
+            <icon name="cc" size="13" color="#FFFBF2" /> 字幕
           </view>
-          <view class="play" bindtap="onPlay"><icon name="play" size="26" color="#2B356E" /></view>
+          <view class="play" bindtap="onPlay"><icon name="play" size="26" color="#7E6134" /></view>
         </view>
 
         <!-- 课程信息 -->
@@ -43,15 +43,15 @@
             <text wx:for="{{course.tags}}" wx:key="*this" class="pill {{item === '字幕' ? 'gold' : ''}}">{{item}}</text>
           </view>
           <view class="minfo">
-            <view class="mi"><icon name="users" size="15" color="#2B356E" /><text>授课对象：{{course.audience}}</text></view>
-            <view class="mi"><icon name="clock" size="15" color="#2B356E" /><text>课程时长：{{course.duration}}</text></view>
-            <view class="mi"><icon name="calendar" size="15" color="#2B356E" /><text>开课时间：{{course.openTime}}</text></view>
-            <view class="mi"><icon name="book" size="15" color="#2B356E" /><text>分类：{{course.category}}</text></view>
+            <view class="mi"><icon name="users" size="15" color="#7E6134" /><text>授课对象：{{course.audience}}</text></view>
+            <view class="mi"><icon name="clock" size="15" color="#7E6134" /><text>课程时长：{{course.duration}}</text></view>
+            <view class="mi"><icon name="calendar" size="15" color="#7E6134" /><text>开课时间：{{course.openTime}}</text></view>
+            <view class="mi"><icon name="book" size="15" color="#7E6134" /><text>分类：{{course.category}}</text></view>
           </view>
           <view class="intro">{{course.intro}}</view>
           <view class="fav-bar fav-bar-inline">
             <view class="fav-btn {{collected ? 'fav-on' : ''}}" bindtap="onCollect">
-              <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
+              <icon name="bookmark" size="16" color="{{collected ? '#9E2B25' : '#4C505C'}}" />
               <text>{{collectLabel}}</text>
             </view>
           </view>
@@ -67,7 +67,7 @@
           </view>
           <view class="res-dl {{downloadingId === item.id ? 'is-loading' : ''}}" bindtap="onDownload" data-id="{{item.id}}" data-name="{{item.name}}" data-file-type="{{item.fileType || item.type}}">
             <text wx:if="{{downloadingId === item.id}}" class="res-dl-loading">下载中</text>
-            <icon wx:else name="download" size="17" color="#2B356E" />
+            <icon wx:else name="download" size="17" color="#7E6134" />
           </view>
         </view>
 

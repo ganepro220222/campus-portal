@@ -4,7 +4,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #EAF1FB 0%, #F5F8FC 500rpx);
+  background: linear-gradient(180deg, var(--sky-2) 0%, var(--paper) 500rpx);
 }
 .home-error-box { padding-top: 80rpx; }
 .home-page .page-refresh-bar { margin-left: 32rpx; margin-right: 32rpx; }
@@ -16,8 +16,8 @@
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(20rpx);
   padding: 8rpx 28rpx 18rpx;
-  border-bottom: 1rpx solid #E7ECF6;
-  box-shadow: 0 4rpx 28rpx rgba(31, 40, 90, 0.05);
+  border-bottom: 1rpx solid var(--line);
+  box-shadow: 0 4rpx 28rpx rgba(74,50,30, 0.05);
 }
 
 /* 校名行（居中）——书法字改用图片，规避 Android/鸿蒙无楷体的回退问题 */
@@ -50,7 +50,7 @@
   align-items: center;
   justify-content: center;
 }
-.header-icon:active { background: #F2F7FC; }
+.header-icon:active { background: var(--sky-3); }
 .bell-dot {
   position: absolute;
   top: 10rpx;
@@ -58,8 +58,8 @@
   width: 14rpx;
   height: 14rpx;
   border-radius: 50%;
-  background: #BE9C44;
-  border: 3rpx solid #fff;
+  background: var(--jin-60);
+  border: 3rpx solid var(--card);
 }
 
 /* 搜索框 */
@@ -67,12 +67,12 @@
   flex: 1;
   min-width: 0;
   height: 72rpx;
-  /* 搜索框坐在纯白 header 上，原来填充 #F2F7FC 与白底只差 1.08:1、
-     描边 #E7ECF6 只差 1.18:1——描边其实一直都在，只是两个颜色都太接近白，
+  /* 搜索框坐在纯白 header 上，原来填充 var(--sky-3) 与白底只差 1.08:1、
+     描边 var(--line) 只差 1.18:1——描边其实一直都在，只是两个颜色都太接近白，
      整个框几乎看不出边界。填充与描边各加深一档（1.15 / 1.38），
      框的轮廓清楚了，又不至于变成"描边输入框"那种硬边。
      再深就压过 header 里那两个图标的分量了。 */
-  background: #EAF0F9;
+  background: var(--sky-2);
   border: 1rpx solid #D3DCEC;
   border-radius: 36rpx;
   display: flex;
@@ -81,7 +81,7 @@
   gap: 14rpx;
 }
 .search-bar:active { background: #E1E9F5; }
-.search-placeholder { font-size: 26rpx; color: #67708C; }
+.search-placeholder { font-size: 26rpx; color: var(--muted); }
 
 /* ── 可滚动内容区 ── */
 .scroll-body { flex: 1; overflow: hidden; }
@@ -95,7 +95,7 @@
   overflow: hidden;
   height: 316rpx;
   margin-top: 24rpx;
-  box-shadow: 0 16rpx 48rpx rgba(31, 40, 90, 0.12);
+  box-shadow: 0 16rpx 48rpx rgba(74,50,30, 0.12);
 }
 .bslide {
   width: 100%;
@@ -105,7 +105,7 @@
   flex-direction: column;
   justify-content: center;
   padding: 32rpx 40rpx;
-  color: #fff;
+  color: var(--card);
   overflow: hidden;
 }
 .bslide-deco {
@@ -169,10 +169,10 @@
   width: 12rpx;
   height: 12rpx;
   border-radius: 50%;
-  background: rgba(43, 53, 110, 0.25);
+  background: rgba(96,78,44, 0.25);
   transition: 0.3s;
 }
-.bdot-on { width: 30rpx; border-radius: 6rpx; background: #2B356E; }
+.bdot-on { width: 30rpx; border-radius: 6rpx; background: var(--navy); }
 
 /* ── 公告条 ── */
 .notice-bar {
@@ -180,16 +180,16 @@
   align-items: center;
   gap: 14rpx;
   margin-top: 22rpx;
-  background: #fff;
-  border: 1rpx solid #E7ECF6;
+  background: var(--card);
+  border: 1rpx solid var(--line);
   border-radius: 20rpx;
   padding: 16rpx 22rpx;
-  box-shadow: 0 4rpx 14rpx rgba(31, 40, 90, 0.06);
+  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.06);
 }
 .notice-text {
   flex: 1;
   font-size: 24rpx;
-  color: #5A648A;
+  color: var(--sub);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -203,7 +203,7 @@
   gap: 22rpx;
   padding: 28rpx 30rpx;
   border-radius: 28rpx;
-  background: linear-gradient(135deg, #8C5A2B 0%, #BE9C44 55%, #D4B76A 100%);
+  background: linear-gradient(135deg, #8C5A2B 0%, var(--jin-60) 55%, #D4B76A 100%);
   box-shadow: 0 16rpx 40rpx rgba(140, 90, 43, 0.22);
 }
 .craft-banner:active { opacity: 0.92; }
@@ -222,7 +222,7 @@
   display: block;
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--card);
   letter-spacing: 2rpx;
 }
 .craft-sub {
@@ -239,11 +239,11 @@
    两侧的圆角与阴影全被压在屏幕边上。缩进改用 margin 表达，就不会再和 padding 打架。 */
 .entries-wrap {
   margin: 24rpx 32rpx 0;
-  background: #fff;
+  background: var(--card);
   border-radius: 28rpx;
   padding: 30rpx 12rpx 24rpx;
-  border: 1rpx solid #E7ECF6;
-  box-shadow: 0 4rpx 14rpx rgba(31, 40, 90, 0.06);
+  border: 1rpx solid var(--line);
+  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.06);
 }
 /* B2 之后这一排由后台配置，条数和文案都不再是写死的 5 个 4 字词。
    原来 flex:1 均分：6 条时每格 111rpx、7 条只剩 95rpx，而 .ico 是死的 100rpx，
@@ -267,11 +267,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12rpx 28rpx rgba(31, 40, 90, 0.16);
+  box-shadow: 0 12rpx 28rpx rgba(74,50,30, 0.16);
   transition: transform 0.15s;
 }
  /* ── 五个入口的色阶 ──────────────────────────────────────
-   旧版是五个几乎一样的蓝（#3F57B5 / #4E7CC4 / #5867B8 / #6E8FCB / #5C79C8），
+   旧版是五个几乎一样的蓝（var(--blue) / #4E7CC4 / #5867B8 / #6E8FCB / #5C79C8），
    100rpx 的尺寸下分不出来，看着像没调准而不像有意为之；早先第五格还是金色，
    金是全站的强调色（印章、徽记、精品好物大卡），放在五个平级入口之一上会让
    「报名」看着像主操作。
@@ -293,7 +293,7 @@
 /* 后台可以填任意长度的名字，超出格宽就省略号，不许挤到邻格上去 */
 .entry-label {
   font-size: 23rpx;
-  color: #1F2547;
+  color: var(--ink);
   font-weight: 500;
   white-space: nowrap;
   max-width: 100%;
@@ -312,7 +312,7 @@
 .sec-title {
   font-size: 34rpx;
   font-weight: 700;
-  color: #1F2547;
+  color: var(--ink);
   position: relative;
   padding-left: 22rpx;
 }
@@ -325,11 +325,11 @@
   width: 6rpx;
   height: 30rpx;
   border-radius: 3rpx;
-  background: linear-gradient(180deg, #3F57B5, #2B356E);
+  background: linear-gradient(180deg, var(--blue), var(--navy));
 }
 .sec-more {
   font-size: 24rpx;
-  color: #67708C;
+  color: var(--muted);
   display: flex;
   align-items: center;
   gap: 2rpx;
@@ -349,9 +349,9 @@
   width: 240rpx;
   border-radius: 24rpx;
   overflow: hidden;
-  background: #fff;
-  border: 1rpx solid #E7ECF6;
-  box-shadow: 0 8rpx 22rpx rgba(31, 40, 90, 0.12);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  box-shadow: 0 8rpx 22rpx rgba(74,50,30, 0.12);
   flex-shrink: 0;
 }
 .hall-card:active { transform: translateY(-4rpx); }
@@ -370,7 +370,7 @@
 .hc-ct {
   position: relative;
   z-index: 2;
-  color: #fff;
+  color: var(--card);
   font-size: 27rpx;
   font-weight: 700;
   text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.3);
@@ -383,7 +383,7 @@
   padding: 16rpx 20rpx;
   font-size: 25rpx;
   font-weight: 600;
-  color: #1F2547;
+  color: var(--ink);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -396,11 +396,11 @@
 .ncard, .ccard {
   display: flex;
   gap: 22rpx;
-  background: #fff;
-  border: 1rpx solid #E7ECF6;
+  background: var(--card);
+  border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 18rpx;
-  box-shadow: 0 4rpx 14rpx rgba(31, 40, 90, 0.07);
+  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.07);
   align-items: center;
   transition: transform 0.15s;
 }
@@ -430,7 +430,7 @@
 .ncard-title, .ccard-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #1F2547;
+  color: var(--ink);
   line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -444,4 +444,4 @@
   margin-top: 14rpx;
   flex-wrap: wrap;
 }
-.ncard-date, .ccard-sub { font-size: 22rpx; color: #67708C; }
+.ncard-date, .ccard-sub { font-size: 22rpx; color: var(--muted); }

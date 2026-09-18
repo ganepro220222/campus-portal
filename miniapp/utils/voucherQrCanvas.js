@@ -15,7 +15,7 @@ function drawMatrix(ctx, qr, size, margin = 12) {
   const cell = (size - margin * 2) / count
   ctx.fillStyle = '#FFFFFF'
   ctx.fillRect(0, 0, size, size)
-  ctx.fillStyle = '#1F2547'
+  ctx.fillStyle = '#23262E'
   for (let row = 0; row < count; row++) {
     for (let col = 0; col < count; col++) {
       if (qr.isDark(row, col)) {

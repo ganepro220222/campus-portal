@@ -1,5 +1,5 @@
 /* packageB/resource/list.wxss */
-.res-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.res-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 
 /* 顶部搜索 + 分类 */
 .res-top {
@@ -8,7 +8,7 @@
   backdrop-filter: blur(16rpx);
   border-bottom: 1rpx solid var(--line);
   padding: 18rpx 0 10rpx;
-  box-shadow: 0 2rpx 14rpx rgba(31, 40, 90, 0.05);
+  box-shadow: 0 2rpx 14rpx rgba(74,50,30, 0.05);
 }
 .res-search {
   margin: 0 28rpx;
@@ -30,11 +30,11 @@
   font-size: 25rpx;
   padding: 12rpx 30rpx;
   border-radius: 32rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   color: var(--sub);
 }
-.rc-on { background: linear-gradient(135deg, #3F57B5, #2B356E); color: #fff; border-color: transparent; }
+.rc-on { background: linear-gradient(135deg, var(--blue), var(--navy)); color: var(--card); border-color: transparent; }
 
 /* 列表 */
 .res-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
@@ -42,7 +42,7 @@
   display: flex;
   align-items: center;
   gap: 22rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 22rpx;
   padding: 22rpx 24rpx;
@@ -56,7 +56,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--card);
   font-size: 22rpx;
   font-weight: 700;
   letter-spacing: 1rpx;

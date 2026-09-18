@@ -5,7 +5,7 @@
   position: relative;
   overflow: hidden;
   background: radial-gradient(120% 88% at 50% 12%,
-    #233362 0%, #273667 42%, #2B356E 80%, #36427C 100%);
+    var(--navy) 0%, #273667 42%, var(--navy) 80%, #36427C 100%);
   display: flex;
   flex-direction: column;
 }
@@ -127,7 +127,7 @@
 /* ── 校名 ── */
 .brand { margin-top: 44rpx; text-align: center; }
 .brand-zh {
-  color: #fff;
+  color: var(--card);
   font-size: 60rpx;
   font-weight: 700;
   letter-spacing: 18rpx;
@@ -136,7 +136,7 @@
 }
 /* 「书」字：金色镶边（呼应管理后台印章书字）*/
 .brand-zh-gold {
-  color: #ECCF82;
+  color: var(--jin-20);
   -webkit-text-stroke: 0.6rpx rgba(122, 90, 28, 0.55);
   text-shadow:
     0 1rpx 0 rgba(255, 247, 219, 0.45),
@@ -161,7 +161,7 @@
   background: linear-gradient(90deg, rgba(190,156,68,.85), transparent);
 }
 .brand-div-orn {
-  color: #BE9C44;
+  color: var(--jin-60);
   font-size: 22rpx;
   line-height: 1;
 }
@@ -201,7 +201,7 @@
   border: 1rpx solid rgba(255,255,255,.18);
   border-radius: 30rpx;
   padding: 0 32rpx 0 92rpx;
-  color: #fff;
+  color: var(--card);
   font-size: 30rpx;
   box-sizing: border-box;
 }
@@ -251,14 +251,14 @@
 .lbtn::after { border: none; }
 .lbtn-tx { line-height: 1; white-space: nowrap; flex-shrink: 0; }
 .lbtn-primary {
-  background: linear-gradient(135deg, #ffffff, #F3F6FF);
-  color: #2B356E;
+  background: linear-gradient(135deg, var(--card), var(--sky-3));
+  color: var(--navy);
   box-shadow: 0 16rpx 40rpx rgba(255,255,255,.16);
   margin-top: 8rpx;
 }
 .lbtn-ghost {
   background: rgba(255,255,255,.10);
-  color: #fff;
+  color: var(--card);
   border: 1rpx solid rgba(255,255,255,.28);
 }
 

@@ -11,14 +11,14 @@
     bindtap="onBack"
     hover-class="login-back-hover"
   >
-    <icon name="chevron-left" size="22" color="#ffffff" sw="2.6" />
+    <icon name="chevron-left" size="22" color="#FFFBF2" sw="2.6" />
   </view>
 
   <view class="login-inner">
     <view style="height: {{statusBarHeight}}px; flex-shrink: 0;"></view>
 
     <view class="cp-badge">
-      <icon name="lock" size="32" color="#ECCF82" />
+      <icon name="lock" size="32" color="#E2CB9E" />
     </view>
     <view class="brand compact">
       <view class="brand-zh serif">{{title}}</view>

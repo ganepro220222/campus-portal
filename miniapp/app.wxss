@@ -2,53 +2,131 @@
 page {
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   font-size: 28rpx;
-  color: #1F2547;
-  background-color: #F5F8FC;
+  color: var(--ink);
+  background-color: var(--paper);
   box-sizing: border-box;
 }
 
-/* 品牌色与设计变量 */
+/* ══ 令牌区开始 · 书院 · 檐棂印 ══ */
+/* 「书院 · 檐棂印」全套令牌。取值与设计稿 design/demo/v2/shuyuan.css 一致，
+   那边是唯一的出处，这里是搬运。
+
+   旧名（--navy / --blue / --sky-* / --color-*）全部保留，但指向新值：
+   页面里已经在用 var(--navy) 的地方一行不用改就跟着换色调，
+   这是这一批"版面不动、只换色调"的关键。旧名的语义也标在后面，
+   后续逐页收拾时再换成新名。 */
 page {
-  --navy:        #2B356E;
-  --navy-deep:   #1E2654;
-  --navy-ink:    #141A38;
-  --blue:        #3F57B5;
-  --blue-soft:   #5C72C9;
-  --sky:         #D0E7F7;
-  --sky-2:       #E8F2FB;
-  --sky-3:       #F2F7FC;
-  --paper:       #F5F8FC;
-  --card:        #FFFFFF;
-  --gold:        #BE9C44;
-  --gold-soft:   #E7D9AE;
-  --gold-line:   #D8C79A;
-  --ink:         #1F2547;
-  --sub:         #5A648A;
-  /* 由 #8A93B2 调深到 #67708C。旧值在白底上的对比度只有 3.04:1、在 --paper 上 2.86:1，
-     都低于 WCAG AA 对正文的 4.5:1；而它承担的是全站的提示文字、tabBar 未选中标签、
-     空态说明这些"看不清就真的看不见"的角色。新值白底 4.91、paper 底 4.61，两处都过线。
-     与 --sub(#5A648A, 5.79) 的层级仍在，只是拉近了一点——sub 用在更大的字号与更重的字重上。 */
-  --muted:       #67708C;
-  --line:        #E7ECF6;
-  --shadow:      0 10px 30px rgba(31,40,90,.10);
-  --shadow-sm:   0 4px 14px rgba(31,40,90,.08);
+  /* ── 纸 ── */
+  --paper:       #F7F3E8;   /* 页底 */
+  --paper-card:  #FFFBF2;   /* 卡片 */
+  --paper-sunk:  #EEE6D4;   /* 凹进去的底（输入框、代码块） */
+  --paper-1:     #F6F2E6;
+  --paper-2:     #EEE9DA;
+  --paper-3:     #E2DCC8;
 
-  /* 兼容旧变量名 */
-  --color-primary:   #2B356E;
-  --color-primary-light: #3F57B5;
-  --color-text:      #1F2547;
-  --color-text-sub:  #5A648A;
-  --color-text-hint: #67708C;
-  --color-border:    #E7ECF6;
-  --color-bg:        #F5F8FC;
-  --color-bg-white:  #FFFFFF;
-  --color-success:   #52C41A;
-  --color-warning:   #FAAD14;
-  --color-danger:    #FF4D4F;
+  /* ── 杏 · 功能卡的暖沙底 ── */
+  --xing-05:     #FCF3E4;
+  --xing-10:     #F8E6C9;
+  --xing-20:     #F2D9B4;
+  --xing-30:     #E6C99C;
+
+  /* ── 山 · 石青石绿 ── */
+  --shan-4:      #A9CBBD;
+  --shan-3:      #6FAE92;
+  --shan-2:      #3E8FA2;
+  --shan-1:      #2B6B92;
+
+  /* ── 绢 · 青白天色 ── */
+  --juan-1:      #F2F5EE;
+  --juan-2:      #E2EDE6;
+  --juan-3:      #CFE2DC;
+
+  /* ── 金棕 · UI 强调色 ── */
+  --jin-20:      #E2CB9E;
+  --jin-40:      #E2BB87;
+  --jin-50:      #C69E62;
+  --jin-60:      #9E7D45;
+  --jin-70:      #7E6134;
+  --jin-80:      #614923;
+
+  /* ── 黛瓦 · 屋檐 ── */
+  --tile:        #6E93A3;
+  --tile-2:      #8AACBA;
+  --tile-dark:   #456A7B;
+  --tile-hi:     #ACC7D3;
+
+  /* ── 木 · 裱边与檐木 ── */
+  --wood-05:     #FEF9EF;
+  --wood-20:     #EBD9BC;
+  --wood-30:     #DCC49F;
+  --wood-40:     #CFB38B;
+  --wood-50:     #C2A57A;
+  --wood-60:     #A98B63;
+  --wood-70:     #856F4F;
+  --wood-85:     #54462F;
+
+  /* ── 朱 · 点缀 ── */
+  --zhu:         #9E2B25;
+  --zhu-soft:    #F2E0DA;
+
+  /* ── 金线 ── */
+  --gold:        #CBA86B;   /* 装饰用的浅金（细线、描边） */
+  --gold-soft:   #E2CB9E;
+  --gold-line:   #D9BE8E;
+
+  /* ── 墨 · 文字 ──
+     三档都用 scripts/check-contrast.js 量过：
+       --ink   卡片 14.65 / 页底 13.64
+       --sub   卡片  7.79 / 页底  7.26
+       --muted 卡片  5.66 / 页底  5.27
+     全部高于 WCAG AA 对正文的 4.5:1。--muted 承担提示文字、
+     tabBar 未选中标签、空态说明这些"看不清就真的看不见"的角色，
+     往浅里调之前先跑那个脚本。 */
+  --ink:         #23262E;
+  --sub:         #4C505C;
+  --muted:       #6B6459;
+  --ghost:       #D6CDB8;   /* 空态大图标、占位符这类纯装饰的浅色 */
+  --line:        #E4DCC8;
+  --line-soft:   #EFE8D8;
+
+  /* 投影改暖：原来是 rgba(31,40,90,…) 的冷灰蓝，压在纸色上会发灰 */
+  --shadow:      0 10px 30px rgba(74,50,30,.12);
+  --shadow-sm:   0 4px 14px rgba(74,50,30,.10);
+
+  /* ── 旧名兼容层 ──
+     语义写在后面，后续逐页替换时照着这张表改。 */
+  --navy:        #7E6134;   /* 旧：主色。现在是金棕深，用于强调文字、选中态、深色按钮底 */
+  --navy-deep:   #614923;   /* 旧：主色更深一档 */
+  --navy-ink:    #3F2F17;   /* 旧：主色最深 */
+  --blue:        #9E7D45;   /* 旧：次强调 */
+  --blue-soft:   #C69E62;   /* 旧：次强调浅 */
+  --sky:         #CFE2DC;   /* 旧：浅色块 → 绢青 */
+  --sky-2:       #E2EDE6;
+  --sky-3:       #F2F5EE;
+  --card:        #FFFBF2;   /* 旧：卡片底 = --paper-card */
+
+  --color-primary:       #7E6134;
+  --color-primary-light: #9E7D45;
+  --color-text:          #23262E;
+  --color-text-sub:      #4C505C;
+  --color-text-hint:     #6B6459;
+  --color-border:        #E4DCC8;
+  --color-bg:            #F7F3E8;
+  --color-bg-white:      #FFFBF2;
+  /* 功能色也换成这套里的颜色：成功走石绿、危险走朱、警告走赭。
+     三个都在纸底上量过 ≥4.5:1（石绿 4.89 / 朱 7.19 / 赭 4.63）。 */
+  --color-success:       #3F7A5E;
+  --color-warning:       #8F6216;
+  --color-danger:        #9E2B25;
 }
+/* ══ 令牌区结束 ══ */
 
-/* ── 宋体辅助类 ── */
-.serif { font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif; }
+/* ── 宋体辅助类 ──
+   ShuyuanSong 是内嵌子集（见 styles/font-shuyuan-song.wxss）。
+   回退栈保持完整：字体万一没生效，观感退回原来的系统字，不会白屏也不会豆腐块。
+   之所以内嵌而不是 wx.loadFontFace：安卓多个品牌对网络字体的 CORS 校验不一致，
+   做不到「所有设备都正常显示」。 */
+.serif { font-family: "ShuyuanSong", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif; }
 
 /* ── Flex 工具类 ── */
 .flex        { display: flex; }
@@ -89,7 +167,7 @@ page {
   color: var(--ink);
   position: relative;
   padding-left: 20rpx;
-  font-family: "Noto Serif SC", serif;
+  font-family: "ShuyuanSong", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
 .sec-title::before {
   content: "";
@@ -100,7 +178,7 @@ page {
   width: 6rpx;
   height: 28rpx;
   border-radius: 3rpx;
-  background: linear-gradient(180deg, #3F57B5, #2B356E);
+  background: linear-gradient(180deg, var(--blue), var(--navy));
 }
 
 /* ── 分类胶囊 ── */
@@ -116,8 +194,8 @@ page {
   flex-shrink: 0;
 }
 .cat-tag.cat-active {
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
-  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  color: var(--card);
   border-color: transparent;
 }
 
@@ -153,7 +231,7 @@ page {
   padding: 120rpx 40rpx;
   text-align: center;
 }
-/* 同页的空态（.empty-state）都有 40px / #C3CCE0 的图标，错误态原本只有一行灰字，
+/* 同页的空态（.empty-state）都有 40px / var(--ghost) 的图标，错误态原本只有一行灰字，
    两个全页状态看着不像一家人。用同样的尺寸与颜色补上——警示语义由三角形和文案表达，
    红色留给正文中间那条必须抢注意力的 .page-refresh-bar。 */
 .page-state-icon {
@@ -194,7 +272,7 @@ page {
   text-align: center;
   font-size: 24rpx;
   font-weight: 600;
-  color: #C0392B;
+  color: var(--color-danger);
 }
 .page-refresh-bar:active { background: rgba(192, 57, 43, 0.12); }
 
@@ -213,8 +291,8 @@ page {
 }
 .btn-navy {
   height: 88rpx;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
-  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  color: var(--card);
   border-radius: 44rpx;
   font-size: 30rpx;
   font-weight: 700;
@@ -222,8 +300,8 @@ page {
 }
 .btn-gold {
   height: 88rpx;
-  background: linear-gradient(135deg, #CDA94E, #B58A2F);
-  color: #fff;
+  background: linear-gradient(135deg, var(--jin-50), var(--jin-60));
+  color: var(--card);
   border-radius: 44rpx;
   font-size: 30rpx;
   font-weight: 700;
@@ -232,7 +310,7 @@ page {
 .btn-ghost {
   height: 88rpx;
   background: rgba(255,255,255,.10);
-  color: #fff;
+  color: var(--card);
   border-radius: 44rpx;
   font-size: 30rpx;
   border: 1rpx solid rgba(255,255,255,.28);
@@ -279,35 +357,35 @@ button.btn-primary[disabled],
 button.save-btn[disabled],
 button.fb-submit[disabled],
 button.pe-submit[disabled] {
-  color: #fff;
+  color: var(--card);
 }
 button.btn-outline[disabled] {
-  color: #2B356E;
+  color: var(--navy);
 }
 button.lbtn-primary[disabled] {
-  color: #2B356E;
+  color: var(--navy);
 }
 button.lbtn-ghost[disabled] {
-  color: #fff;
+  color: var(--card);
 }
 
 /* ── 文件类型色标 ── */
-.ft-pdf  { background: #C0392B; }
+.ft-pdf  { background: var(--color-danger); }
 .ft-ppt  { background: #D27B2C; }
-.ft-mp4  { background: #3F57B5; }
+.ft-mp4  { background: var(--blue); }
 .ft-mp3  { background: #3F9A6B; }
 .ft-doc  { background: #2C66C2; }
 .ft-xlsx { background: #1E7A45; }
 
 /* 展馆/封面渐变色阶 hc1-hc5 */
-.hc1 { background: linear-gradient(135deg, #2B356E, #475BA6); }
+.hc1 { background: linear-gradient(135deg, var(--navy), #475BA6); }
 .hc2 { background: linear-gradient(135deg, #365E8C, #2E7C8C); }
 .hc3 { background: linear-gradient(135deg, #7A2E36, #A0505A); }
 .hc4 { background: linear-gradient(135deg, #3F6B4A, #5C9A6B); }
 .hc5 { background: linear-gradient(135deg, #5A4E86, #7E72B0); }
 
 /* Banner 渐变色阶 s1-s3 */
-.s1 { background: linear-gradient(120deg, #1E2654, #3F57B5); }
+.s1 { background: linear-gradient(120deg, var(--navy-deep), var(--blue)); }
 .s2 { background: linear-gradient(120deg, #243056, #4A4E86); }
 .s3 { background: linear-gradient(120deg, #1B2A4A, #2E5C7A); }
 
@@ -317,13 +395,13 @@ button.lbtn-ghost[disabled] {
   display: flex;
   align-items: center;
   gap: 24rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   padding: 24rpx 26rpx;
-  box-shadow: 0 8rpx 22rpx rgba(31, 40, 90, 0.08);
+  box-shadow: 0 8rpx 22rpx rgba(74,50,30, 0.08);
 }
-.app-row-hover { transform: translateY(-2rpx); box-shadow: 0 12rpx 28rpx rgba(31, 40, 90, 0.14); }
+.app-row-hover { transform: translateY(-2rpx); box-shadow: 0 12rpx 28rpx rgba(74,50,30, 0.14); }
 /* 真·圆角 App 图标：aspectFit 铺满方形（满版方图完美填充；透明/长图则以色阶托底居中） */
 .app-icon {
   width: 104rpx;
@@ -334,16 +412,16 @@ button.lbtn-ghost[disabled] {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6rpx 16rpx rgba(31, 40, 90, 0.2);
+  box-shadow: 0 6rpx 16rpx rgba(74,50,30, 0.2);
 }
 .app-icon--circle { border-radius: 50%; }
 /* 有图时用白底托住，避免透明 PNG 叠在 hc1 深蓝上只剩月牙 */
 .app-icon--plate {
-  background: #fff;
-  box-shadow: 0 6rpx 16rpx rgba(31, 40, 90, 0.12);
+  background: var(--card);
+  box-shadow: 0 6rpx 16rpx rgba(74,50,30, 0.12);
 }
 .app-icon-img { width: 100%; height: 100%; }
-.app-icon-seal { color: #fff; font-size: 34rpx; font-weight: 700; letter-spacing: 1rpx; }
+.app-icon-seal { color: var(--card); font-size: 34rpx; font-weight: 700; letter-spacing: 1rpx; }
 .app-body { flex: 1; min-width: 0; }
 .app-name {
   font-size: 30rpx;
@@ -358,7 +436,7 @@ button.lbtn-ghost[disabled] {
   align-items: center;
   margin-top: 10rpx;
   font-size: 21rpx;
-  color: #2B356E;
+  color: var(--navy);
   background: #EEF2FB;
   padding: 4rpx 16rpx;
   border-radius: 20rpx;
@@ -377,7 +455,7 @@ button.lbtn-ghost[disabled] {
   gap: 2rpx;
   font-size: 25rpx;
   font-weight: 600;
-  color: #2B356E;
+  color: var(--navy);
   flex-shrink: 0;
 }
 
@@ -391,7 +469,7 @@ button.lbtn-ghost[disabled] {
   font-weight: 600;
   flex-shrink: 0;
 }
-.pill.gold { background: #FBF3DD; color: #9C7C2E; }
+.pill.gold { background: var(--xing-05); color: var(--jin-70); }
 
 /* 详情页收藏按钮（展馆/文创/课程/资源共用） */
 /* 三处调用都在 .detail-wrap（padding: 24rpx 28rpx）里，这里再给 28rpx 横向外边距
@@ -409,14 +487,14 @@ button.lbtn-ghost[disabled] {
   padding: 12rpx 28rpx;
   border-radius: 30rpx;
   border: 1rpx solid var(--line);
-  background: #fff;
+  background: var(--card);
   font-size: 25rpx;
   color: var(--sub);
   box-sizing: border-box;
   min-width: 172rpx;
 }
 .fav-btn.fav-on {
-  color: #C0392B;
+  color: var(--color-danger);
   border-color: #F3C9C2;
   background: #FDF1EF;
 }

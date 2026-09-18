@@ -5,8 +5,8 @@
   width: 112rpx;
   height: 112rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
-  box-shadow: 0 20rpx 48rpx rgba(43, 53, 110, 0.42);
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  box-shadow: 0 20rpx 48rpx rgba(96,78,44, 0.42);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -29,13 +29,13 @@
 .ai-badge {
   position: absolute;
   top: -8rpx; right: -8rpx;
-  background: #BE9C44;
-  color: #fff;
+  background: var(--jin-60);
+  color: var(--card);
   font-size: 18rpx;
   font-weight: 700;
   padding: 3rpx 12rpx;
   border-radius: 20rpx;
-  border: 3rpx solid #fff;
+  border: 3rpx solid var(--card);
 }
 
 .mask {
@@ -53,7 +53,7 @@
   position: fixed;
   left: 0; right: 0; bottom: 0;
   height: 80vh;
-  background: #fff;
+  background: var(--card);
   border-radius: 44rpx 44rpx 0 0;
   transform: translateY(100%);
   transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
@@ -84,7 +84,7 @@
 }
 .avt {
   width: 76rpx; height: 76rpx; border-radius: 50%;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  background: linear-gradient(135deg, var(--blue), var(--navy));
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -119,8 +119,8 @@
   border: 1rpx solid var(--line);
 }
 .bubble.me {
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
-  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  color: var(--card);
   border-top-right-radius: 8rpx;
   margin-left: auto;
 }
@@ -129,7 +129,7 @@
   font-size: 24rpx;
   padding: 14rpx 24rpx;
   border-radius: 32rpx;
-  background: #fff;
+  background: var(--card);
   color: var(--navy);
   border: 1rpx solid var(--sky);
 }
@@ -167,7 +167,7 @@
 .ai-ph { color: var(--muted); }
 .send {
   width: 84rpx; height: 84rpx; border-radius: 50%;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  background: linear-gradient(135deg, var(--blue), var(--navy));
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }

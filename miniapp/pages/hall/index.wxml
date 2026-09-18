@@ -7,7 +7,7 @@
     <view class="nav-row" style="height: {{navContentHeight}}px; padding-right: {{capsulePadding}}px;">
       <text class="nav-title serif">线上展馆</text>
       <view class="nav-search" bindtap="onSearch">
-        <icon name="search" size="20" color="#1F2547" />
+        <icon name="search" size="20" color="#23262E" />
       </view>
     </view>
     <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
@@ -54,13 +54,13 @@
     </view>
 
     <view wx:if="{{error && !loading && !hallList.length}}" class="page-state-box">
-      <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+      <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
       <text class="page-state-text">加载失败，请检查网络后重试</text>
       <view class="page-state-action" bindtap="onRetry">重新加载</view>
     </view>
 
     <view wx:elif="{{!loading && !hallList.length && !error}}" class="empty-state">
-      <icon name="museum" size="40" color="#C3CCE0" />
+      <icon name="museum" size="40" color="#D6CDB8" />
       <text>暂无展馆内容</text>
     </view>
 

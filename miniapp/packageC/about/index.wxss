@@ -1,5 +1,5 @@
 /* packageC/about/index.wxss */
-.about-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.about-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 .about-scroll { flex: 1; overflow: hidden; }
 
 /* 品牌头 */
@@ -8,8 +8,8 @@
   flex-direction: column;
   align-items: center;
   padding: 48rpx 40rpx 40rpx;
-  background: linear-gradient(160deg, #233362 0%, #2B356E 60%, #1E2654 100%);
-  color: #fff;
+  background: linear-gradient(160deg, var(--navy) 0%, var(--navy) 60%, var(--navy-deep) 100%);
+  color: var(--card);
 }
 /* 与登录页同一套语言，按 150/248 等比缩放：圆角 34rpx、外框间距 13rpx、印面 0.70 */
 .ab-seal {
@@ -39,7 +39,7 @@
 
 /* 卡片 */
 .ab-card {
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 28rpx;
@@ -56,7 +56,7 @@
   width: 64rpx;
   height: 64rpx;
   border-radius: 18rpx;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  background: linear-gradient(135deg, var(--blue), var(--navy));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -90,8 +90,8 @@
   justify-content: space-between;
   padding: 20rpx 0 4rpx;
 }
-.legal-link-tx { font-size: 28rpx; color: #2B356E; }
-.legal-link-arr { font-size: 32rpx; color: #67708C; }
+.legal-link-tx { font-size: 28rpx; color: var(--navy); }
+.legal-link-arr { font-size: 32rpx; color: var(--muted); }
 
 /* 页脚 */
 .ab-foot { text-align: center; padding: 40rpx 40rpx 0; }

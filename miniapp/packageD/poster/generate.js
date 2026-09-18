@@ -18,10 +18,12 @@ const TITLE_FONT = 'bold 22px serif'
 const TITLE_BOX = 220          // 画布可用宽 = W(300) - 80
 
 const TEMPLATES = [
-  { key: 'blue', name: '阳明蓝', c1: '#1E2654', c2: '#3F57B5', accent: '#BE9C44' },
-  { key: 'ink',  name: '屯堡墨', c1: '#141A38', c2: '#2E3A66', accent: '#C9A24E' },
-  { key: 'red',  name: '红韵',   c1: '#5A1E22', c2: '#A0505A', accent: '#E7C86A' },
-  { key: 'gold', name: '鎏金',   c1: '#3A2E12', c2: '#8A6A2E', accent: '#F0DCA0' }
+  // 海报四套配色跟着「书院 · 檐棂印」走。画布是 canvas，
+  // 取不到 wxss 的令牌，所以这里是字面值——改配色时要和 app.wxss 一起改。
+  { key: 'tile', name: '青瓦', c1: '#2F5364', c2: '#6E93A3', accent: '#E2CB9E' },
+  { key: 'ink',  name: '墨色', c1: '#23262E', c2: '#4C505C', accent: '#CBA86B' },
+  { key: 'zhu',  name: '朱韵', c1: '#5E1714', c2: '#9E2B25', accent: '#E2CB9E' },
+  { key: 'gold', name: '鎏金', c1: '#3F2F17', c2: '#7E6134', accent: '#E2CB9E' }
 ]
 
 const WXACODE_ERR = { type: 'wxacode' }

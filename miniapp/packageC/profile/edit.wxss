@@ -1,5 +1,5 @@
 /* packageC/profile/edit.wxss */
-.pe-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.pe-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 .pe-state {
   flex: 1;
   display: flex;
@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: center;
   gap: 24rpx;
-  color: #67708C;
+  color: var(--muted);
   font-size: 28rpx;
 }
 .pe-retry {
@@ -19,7 +19,7 @@
 
 .pe-card {
   margin: 0 28rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 28rpx;
@@ -53,7 +53,7 @@
 .pe-pad { height: 40rpx; }
 .pe-bar {
   padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  background: var(--card);
   border-top: 1rpx solid var(--line);
 }
 .pe-submit {
@@ -62,13 +62,13 @@
   justify-content: center;
   height: 88rpx;
   border-radius: 44rpx;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
-  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  color: var(--card);
   font-size: 30rpx;
   font-weight: 600;
   letter-spacing: 2rpx;
   border: none;
-  box-shadow: 0 12rpx 30rpx rgba(43, 53, 110, 0.32);
+  box-shadow: 0 12rpx 30rpx rgba(96,78,44, 0.32);
 }
 .pe-submit::after { border: none; }
 .pe-submit.ing { opacity: 0.7; }

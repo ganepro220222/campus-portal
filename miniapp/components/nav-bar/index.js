@@ -4,7 +4,7 @@ const { getNavBarLayout } = require('../../utils/navbar')
 Component({
   properties: {
     title: { type: String, value: '' },
-    bg: { type: String, value: '#2B356E' },
+    bg: { type: String, value: '#7E6134' },
     color: { type: String, value: '#ffffff' },
     back: { type: Boolean, value: true }
   },

@@ -7,7 +7,7 @@
     <view class="nav-row" style="height: {{navContentHeight}}px; padding-right: {{capsulePadding}}px;">
       <text class="nav-title serif">课程中心</text>
       <view class="nav-search" bindtap="onSearch">
-        <icon name="search" size="20" color="#1F2547" />
+        <icon name="search" size="20" color="#23262E" />
       </view>
     </view>
     <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
@@ -46,8 +46,8 @@
           <view class="ccard-title serif">{{item.name}}</view>
           <view class="ccard-desc">{{item.desc}}</view>
           <view class="ccard-meta">
-            <view class="meta-i"><icon name="users" size="13" color="#67708C" /><text>{{item.audience}}</text></view>
-            <view class="meta-i"><icon name="clock" size="13" color="#67708C" /><text>{{item.lessonCount}} 课时</text></view>
+            <view class="meta-i"><icon name="users" size="13" color="#6B6459" /><text>{{item.audience}}</text></view>
+            <view class="meta-i"><icon name="clock" size="13" color="#6B6459" /><text>{{item.lessonCount}} 课时</text></view>
             <view class="ccard-tags">
               <text
                 wx:for="{{item.tags}}"
@@ -61,13 +61,13 @@
       </view>
 
       <view wx:if="{{error && !loading && !courseList.length}}" class="page-state-box">
-        <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+        <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
         <text class="page-state-text">加载失败，请检查网络后重试</text>
         <view class="page-state-action" bindtap="onRetry">重新加载</view>
       </view>
 
       <view wx:elif="{{!loading && !courseList.length && !error}}" class="empty-state">
-        <icon name="course" size="40" color="#C3CCE0" />
+        <icon name="course" size="40" color="#D6CDB8" />
         <text>暂无课程</text>
       </view>
 

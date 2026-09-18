@@ -1,5 +1,5 @@
 /* packageC/search/index.wxss */
-.search-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.search-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 
 /* 搜索栏 */
 .sbar {
@@ -17,7 +17,7 @@
   /* 与首页搜索框同一组值：这条也坐在近白的 .sbar 上，
      用 --sky-3 / --line 时边界与白底只差 1.08 / 1.18，几乎看不见。
      这里写死而不动那两个 token —— 它们在别处（浅底分隔线）是合适的。 */
-  background: #EAF0F9;
+  background: var(--sky-2);
   border: 1rpx solid #D3DCEC;
   border-radius: 37rpx;
   display: flex;
@@ -50,7 +50,7 @@
 .tag {
   font-size: 25rpx;
   color: var(--sub);
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   padding: 12rpx 28rpx;
   border-radius: 32rpx;
@@ -65,7 +65,7 @@
   display: flex;
   align-items: center;
   gap: 20rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   padding: 24rpx;
@@ -108,7 +108,7 @@
   color: var(--muted);
   padding: 8rpx 0 24rpx;
 }
-.list-foot-done { color: #C3CCE0; }
+.list-foot-done { color: var(--ghost); }
 .list-foot-retry { color: var(--navy); }
 
 .list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

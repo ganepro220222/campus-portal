@@ -55,14 +55,14 @@
         bindtap="onPick"
       >
         <view class="tpl-sw" style="background: linear-gradient(160deg, {{item.c1}}, {{item.c2}});">
-          <view wx:if="{{active === index}}" class="tpl-check"><icon name="thumb" size="14" color="#ffffff" /></view>
+          <view wx:if="{{active === index}}" class="tpl-check"><icon name="thumb" size="14" color="#FFFBF2" /></view>
         </view>
         <text class="tpl-name">{{item.name}}</text>
       </view>
     </view>
 
     <view class="poster-tip">
-      <icon name="star" size="14" color="#BE9C44" />
+      <icon name="star" size="14" color="#9E7D45" />
       <text>保存时将嵌入可识别的小程序码；若码生成失败将提示重试，不会保存无效海报</text>
     </view>
 
@@ -72,7 +72,7 @@
   <!-- 保存 -->
   <view class="save-bar">
     <button class="save-btn {{saving ? 'saving' : ''}}" bindtap="onSave" disabled="{{saving}}">
-      <icon name="download" size="18" color="#ffffff" />
+      <icon name="download" size="18" color="#FFFBF2" />
       <text>{{saving ? '生成中…' : '保存到相册'}}</text>
     </button>
   </view>

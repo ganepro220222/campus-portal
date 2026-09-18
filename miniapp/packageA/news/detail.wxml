@@ -7,7 +7,7 @@
   </view>
 
   <view wx:elif="{{loadError}}" class="page-state-box">
-    <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+    <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
     <text class="page-state-text">内容加载失败，请检查网络后重试</text>
     <view class="page-state-action" bindtap="onRetry">重新加载</view>
     <view class="page-state-link" bindtap="onBackList">返回动态列表</view>
@@ -61,15 +61,15 @@
 
             <view class="act-row">
               <view class="act {{liked ? 'act-on' : ''}}" bindtap="onLike">
-                <icon name="thumb" size="16" color="{{liked ? '#C0392B' : '#5A648A'}}" />
+                <icon name="thumb" size="16" color="{{liked ? '#9E2B25' : '#4C505C'}}" />
                 <text>{{likeLabel}}</text>
               </view>
               <view class="act {{collected ? 'act-on' : ''}}" bindtap="onCollect">
-                <icon name="bookmark" size="16" color="{{collected ? '#C0392B' : '#5A648A'}}" />
+                <icon name="bookmark" size="16" color="{{collected ? '#9E2B25' : '#4C505C'}}" />
                 <text>{{collectLabel}}</text>
               </view>
               <button class="act act-share-btn" open-type="share" hover-class="act-share-hover">
-                <icon name="share" size="16" color="#5A648A" />
+                <icon name="share" size="16" color="#4C505C" />
                 <text>分享</text>
               </button>
             </view>

@@ -7,7 +7,7 @@
     <view class="nav-row" style="height: {{navContentHeight}}px; padding-right: {{capsulePadding}}px;">
       <text class="nav-title serif">书院动态</text>
       <view class="nav-search" bindtap="onSearch">
-        <icon name="search" size="20" color="#1F2547" />
+        <icon name="search" size="20" color="#23262E" />
       </view>
     </view>
     <!-- 分类 chips -->
@@ -61,13 +61,13 @@
       </view>
 
       <view wx:if="{{error && !loading && !newsList.length}}" class="page-state-box">
-        <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+        <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
         <text class="page-state-text">加载失败，请检查网络后重试</text>
         <view class="page-state-action" bindtap="onRetryInitial">重新加载</view>
       </view>
 
       <view wx:elif="{{!loading && !newsList.length && !error}}" class="empty-state">
-        <icon name="file" size="40" color="#C3CCE0" />
+        <icon name="file" size="40" color="#D6CDB8" />
         <text>暂无动态</text>
       </view>
 

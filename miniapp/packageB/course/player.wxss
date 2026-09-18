@@ -1,5 +1,5 @@
 /* packageB/course/player.wxss */
-.player-page { height: 100vh; display: flex; flex-direction: column; background: #F5F8FC; }
+.player-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 
 .stage {
   position: relative;
@@ -19,12 +19,12 @@
   align-items: center;
   justify-content: center;
   gap: 16rpx;
-  color: #67708C;
+  color: var(--muted);
   font-size: 26rpx;
 }
 .video-empty-ic {
   font-size: 48rpx;
-  color: #67708C;
+  color: var(--muted);
   line-height: 1;
 }
 .player-retry {
@@ -37,7 +37,7 @@
   justify-content: center;
   border-radius: 28rpx;
   border: 1rpx solid rgba(255, 255, 255, 0.28);
-  color: #E7D9AE;
+  color: var(--gold-soft);
   font-size: 24rpx;
 }
 .cc-badge {
@@ -45,7 +45,7 @@
   top: 24rpx; right: 24rpx;
   z-index: 3;
   font-size: 21rpx;
-  color: #fff;
+  color: var(--card);
   background: rgba(255, 255, 255, 0.18);
   padding: 8rpx 18rpx;
   border-radius: 20rpx;
@@ -63,7 +63,7 @@
   gap: 14rpx;
   margin: 18rpx 28rpx 0;
   padding: 18rpx 22rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   box-shadow: var(--shadow-sm);
@@ -86,17 +86,17 @@
 .now { font-size: 34rpx; font-weight: 700; color: var(--ink); margin-top: 26rpx; }
 .now-sub { font-size: 23rpx; color: var(--muted); margin-top: 8rpx; }
 .player-resume-bar {
-  background: rgba(43, 53, 110, 0.08);
-  border-color: rgba(43, 53, 110, 0.18);
-  color: #2B356E;
+  background: rgba(96,78,44, 0.08);
+  border-color: rgba(96,78,44, 0.18);
+  color: var(--navy);
 }
-.player-resume-bar:active { background: rgba(43, 53, 110, 0.12); }
+.player-resume-bar:active { background: rgba(96,78,44, 0.12); }
 .intro {
   margin-top: 20rpx;
   font-size: 26rpx;
   line-height: 1.7;
   color: var(--ink-2);
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   padding: 22rpx;

@@ -4,7 +4,7 @@
 
   <view class="res-top">
     <view class="res-search">
-      <icon name="search" size="17" color="#67708C" />
+      <icon name="search" size="17" color="#6B6459" />
       <input class="rs-input" placeholder="搜索资源名称…" placeholder-class="rs-ph"
         value="{{keyword}}" bindinput="onSearch" confirm-type="search" />
     </view>
@@ -37,23 +37,23 @@
       </view>
       <view class="res-actions">
         <view class="fav-icon {{item.collected ? 'fav-on' : ''}}" catchtap="onCollect" data-id="{{item.id}}">
-          <icon name="bookmark" size="16" color="{{item.collected ? '#C0392B' : '#5A648A'}}" />
+          <icon name="bookmark" size="16" color="{{item.collected ? '#9E2B25' : '#4C505C'}}" />
         </view>
         <view class="res-dl {{downloadingId === item.id ? 'is-loading' : ''}}" catchtap="onDownload" data-id="{{item.id}}" data-name="{{item.name}}" data-file-type="{{item.fileType}}">
           <text wx:if="{{downloadingId === item.id}}" class="res-dl-loading">下载中</text>
-          <icon wx:else name="download" size="18" color="#2B356E" />
+          <icon wx:else name="download" size="18" color="#7E6134" />
         </view>
       </view>
     </view>
 
     <view wx:if="{{error && !loading && !all.length}}" class="page-state-box">
-      <icon class="page-state-icon" name="alert" size="40" color="#C3CCE0" />
+      <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
       <text class="page-state-text">加载失败，请检查网络后重试</text>
       <view class="page-state-action" bindtap="onRetry">重新加载</view>
     </view>
 
     <view wx:elif="{{!loading && !resourceList.length && !error}}" class="empty-state">
-      <icon name="download" size="40" color="#C3CCE0" />
+      <icon name="download" size="40" color="#D6CDB8" />
       <text>暂无相关资源</text>
     </view>
 

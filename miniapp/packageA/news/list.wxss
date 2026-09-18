@@ -1,7 +1,7 @@
 /* packageA/news/list.wxss */
 .news-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #EAF1FB 0, #F5F8FC 220rpx);
+  background: linear-gradient(180deg, var(--sky-2) 0, var(--paper) 220rpx);
 }
 
 /* 分类栏（吸顶） */
@@ -22,13 +22,13 @@
   font-size: 25rpx;
   padding: 12rpx 28rpx;
   border-radius: 32rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   color: var(--sub);
 }
 .cat-on {
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
-  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--navy));
+  color: var(--card);
   border-color: transparent;
 }
 
@@ -38,7 +38,7 @@
   display: flex;
   align-items: center;
   gap: 20rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   padding: 18rpx;

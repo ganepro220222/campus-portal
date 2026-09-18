@@ -9,7 +9,7 @@
       <view class="hero-row" bindtap="onEditProfile">
         <view class="avatar">
           <image wx:if="{{userInfo.avatar}}" src="{{userInfo.avatar}}" mode="aspectFill" class="avatar-img" />
-          <icon wx:else name="user-circle" size="40" color="#ffffff" />
+          <icon wx:else name="user-circle" size="40" color="#FFFBF2" />
         </view>
         <view class="hero-info">
           <text class="nickname">{{userInfo.nickname || '书院用户'}}</text>
@@ -18,18 +18,18 @@
         </view>
         <view class="edit-chip">
           <text>编辑</text>
-          <icon name="chevron-right" size="14" color="#ffffff" />
+          <icon name="chevron-right" size="14" color="#FFFBF2" />
         </view>
       </view>
     </block>
     <block wx:else>
       <view class="hero-row" bindtap="onLoginTap">
-        <view class="avatar"><icon name="user-circle" size="40" color="#ffffff" /></view>
+        <view class="avatar"><icon name="user-circle" size="40" color="#FFFBF2" /></view>
         <view class="hero-info">
           <text class="nickname">点击登录</text>
           <text class="college">解锁收藏 · 报名 · 学习足迹</text>
         </view>
-        <view class="login-chip">登录<icon name="chevron-right" size="14" color="#ffffff" /></view>
+        <view class="login-chip">登录<icon name="chevron-right" size="14" color="#FFFBF2" /></view>
       </view>
     </block>
   </view>
@@ -46,63 +46,63 @@
     <view class="stat-dv"></view>
     <view class="stat" bindtap="onStatTap" data-type="downloads"><text class="stat-num">{{statsNumbersHidden ? '—' : (stats.downloads || 0)}}</text><text class="stat-lbl">下载</text></view>
     <view class="stat-dv"></view>
-    <view class="stat" bindtap="onStatTap" data-type="footprints"><view class="stat-ic"><icon name="footprint" size="26" color="#2B356E" /></view><text class="stat-lbl">足迹</text></view>
+    <view class="stat" bindtap="onStatTap" data-type="footprints"><view class="stat-ic"><icon name="footprint" size="26" color="#7E6134" /></view><text class="stat-lbl">足迹</text></view>
     </view>
   </view>
 
   <!-- 功能菜单 -->
   <view class="menu">
     <view wx:if="{{isLoggedIn}}" class="menu-item" bindtap="onEditProfile">
-      <view class="mi-ic mi-blue"><icon name="user-circle" size="20" color="#ffffff" /></view>
+      <view class="mi-ic mi-blue"><icon name="user-circle" size="20" color="#FFFBF2" /></view>
       <text class="mi-tx">个人资料</text>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
     <view wx:if="{{isLoggedIn}}" class="menu-item" bindtap="onChangePassword">
-      <view class="mi-ic mi-blue"><icon name="lock" size="20" color="#ffffff" /></view>
+      <view class="mi-ic mi-blue"><icon name="lock" size="20" color="#FFFBF2" /></view>
       <text class="mi-tx">修改密码</text>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
     <view class="menu-item" bindtap="onMessages">
-      <view class="mi-ic mi-blue"><icon name="bell" size="20" color="#ffffff" /></view>
+      <view class="mi-ic mi-blue"><icon name="bell" size="20" color="#FFFBF2" /></view>
       <text class="mi-tx">消息中心</text>
       <view wx:if="{{stats.unreadMessages > 0}}" class="mi-badge">{{stats.unreadMessages > 99 ? '99+' : stats.unreadMessages}}</view>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
     <view wx:if="{{showAiChat}}" class="menu-item" bindtap="onAiChat">
-      <view class="mi-ic mi-blue"><icon name="robot" size="20" color="#ffffff" /></view>
+      <view class="mi-ic mi-blue"><icon name="robot" size="20" color="#FFFBF2" /></view>
       <text class="mi-tx">知识问答</text>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
     <view wx:if="{{showAiChat}}" class="menu-item" bindtap="onAiHistory">
-      <view class="mi-ic mi-blue"><icon name="chat" size="20" color="#ffffff" /></view>
+      <view class="mi-ic mi-blue"><icon name="chat" size="20" color="#FFFBF2" /></view>
       <text class="mi-tx">问答历史</text>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
     <view class="menu-item" bindtap="onColleges">
-      <view class="mi-ic mi-gold"><icon name="grid" size="20" color="#ffffff" /></view>
+      <view class="mi-ic mi-gold"><icon name="grid" size="20" color="#FFFBF2" /></view>
       <text class="mi-tx">关联小程序</text>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
     <view class="menu-item" bindtap="onStatTap" data-type="badges">
-      <view class="mi-ic mi-gold"><icon name="medal" size="20" color="#ffffff" /></view>
+      <view class="mi-ic mi-gold"><icon name="medal" size="20" color="#FFFBF2" /></view>
       <text class="mi-tx">学习徽章</text>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
     <view class="menu-item" bindtap="onFeedback">
-      <view class="mi-ic mi-blue"><icon name="chat" size="20" color="#ffffff" /></view>
+      <view class="mi-ic mi-blue"><icon name="chat" size="20" color="#FFFBF2" /></view>
       <text class="mi-tx">意见反馈</text>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
     <view class="menu-item" bindtap="onAbout">
-      <view class="mi-ic mi-slate"><icon name="grid" size="20" color="#ffffff" /></view>
+      <view class="mi-ic mi-slate"><icon name="grid" size="20" color="#FFFBF2" /></view>
       <text class="mi-tx">关于云端书院</text>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
   </view>
 
   <view wx:if="{{isLoggedIn}}" class="logout-area">
     <button class="logout-btn" bindtap="onLogout">
-      <icon name="logout" size="18" color="#C0392B" />
+      <icon name="logout" size="18" color="#9E2B25" />
       <text>退出登录</text>
     </button>
   </view>

@@ -1,12 +1,12 @@
 /* pages/profile/index.wxss — 个人中心 */
-.profile-page { min-height: 100vh; background: #F5F8FC; }
+.profile-page { min-height: 100vh; background: var(--paper); }
 
 /* 顶部头区 */
 .hero {
   position: relative;
   overflow: hidden;
   padding: 48rpx 36rpx 96rpx;
-  background: linear-gradient(135deg, #1E2654, #3F57B5);
+  background: linear-gradient(135deg, var(--navy-deep), var(--blue));
 }
 .hero-deco {
   position: absolute;
@@ -22,7 +22,7 @@
   height: 112rpx;
   border-radius: 50%;
   border: 3rpx solid rgba(255, 255, 255, 0.55);
-  background: linear-gradient(135deg, #5C72C9, #2B356E);
+  background: linear-gradient(135deg, var(--blue-soft), var(--navy));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,7 +32,7 @@
 }
 .avatar-img { width: 100%; height: 100%; }
 .hero-info { flex: 1; margin-left: 26rpx; min-width: 0; }
-.nickname { display: block; font-size: 34rpx; font-weight: 700; color: #fff; }
+.nickname { display: block; font-size: 34rpx; font-weight: 700; color: var(--card); }
 .college {
   display: block;
   font-size: 22rpx;
@@ -45,7 +45,7 @@
 .points-inline {
   display: block;
   font-size: 22rpx;
-  color: #E7D9AE;
+  color: var(--gold-soft);
   margin-top: 10rpx;
 }
 .points {
@@ -58,7 +58,7 @@
   padding: 12rpx 24rpx;
   flex-shrink: 0;
 }
-.points-num { font-size: 34rpx; font-weight: 700; color: #E7D9AE; }
+.points-num { font-size: 34rpx; font-weight: 700; color: var(--gold-soft); }
 .points-lbl { font-size: 20rpx; color: rgba(231, 217, 174, 0.75); }
 .edit-chip {
   display: flex;
@@ -66,7 +66,7 @@
   gap: 2rpx;
   background: rgba(255, 255, 255, 0.18);
   border: 1rpx solid rgba(255, 255, 255, 0.35);
-  color: #fff;
+  color: var(--card);
   font-size: 24rpx;
   font-weight: 600;
   padding: 10rpx 20rpx;
@@ -78,7 +78,7 @@
   align-items: center;
   gap: 2rpx;
   background: rgba(255, 255, 255, 0.92);
-  color: #2B356E;
+  color: var(--navy);
   font-size: 26rpx;
   font-weight: 700;
   padding: 12rpx 26rpx;
@@ -97,25 +97,25 @@
 .stats-card {
   display: flex;
   align-items: center;
-  background: #fff;
+  background: var(--card);
   border-radius: 28rpx;
   padding: 34rpx 0;
-  box-shadow: 0 12rpx 32rpx rgba(31, 40, 90, 0.12);
+  box-shadow: 0 12rpx 32rpx rgba(74,50,30, 0.12);
 }
 .stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6rpx; }
-.stat-num { font-size: 40rpx; font-weight: 700; color: #2B356E; line-height: 1; }
+.stat-num { font-size: 40rpx; font-weight: 700; color: var(--navy); line-height: 1; }
 .stat-ic { height: 40rpx; display: flex; align-items: center; }
-.stat-lbl { font-size: 22rpx; color: #67708C; }
-.stat-dv { width: 1rpx; height: 48rpx; background: #E7ECF6; }
+.stat-lbl { font-size: 22rpx; color: var(--muted); }
+.stat-dv { width: 1rpx; height: 48rpx; background: var(--line); }
 
 /* 菜单 */
 .menu {
-  background: #fff;
+  background: var(--card);
   margin: 28rpx 32rpx 0;
   border-radius: 28rpx;
   overflow: hidden;
-  border: 1rpx solid #E7ECF6;
-  box-shadow: 0 4rpx 14rpx rgba(31, 40, 90, 0.06);
+  border: 1rpx solid var(--line);
+  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.06);
 }
 .menu-item {
   display: flex;
@@ -135,18 +135,18 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.mi-gold { background: linear-gradient(135deg, #C0A24E, #9C7C2E); }
+.mi-gold { background: linear-gradient(135deg, #C0A24E, var(--jin-70)); }
 .mi-blue { background: linear-gradient(135deg, #4E7CC4, #2F5E92); }
 .mi-slate { background: linear-gradient(135deg, #5867B8, #39418A); }
-.mi-tx { flex: 1; font-size: 29rpx; color: #1F2547; }
+.mi-tx { flex: 1; font-size: 29rpx; color: var(--ink); }
 .mi-badge {
   min-width: 36rpx;
   height: 36rpx;
   line-height: 36rpx;
   padding: 0 10rpx;
   border-radius: 18rpx;
-  background: #BE9C44;
-  color: #fff;
+  background: var(--jin-60);
+  color: var(--card);
   font-size: 20rpx;
   font-weight: 700;
   text-align: center;
@@ -160,8 +160,8 @@
   align-items: center;
   justify-content: center;
   gap: 10rpx;
-  background: #fff;
-  color: #C0392B;
+  background: var(--card);
+  color: var(--color-danger);
   border: 1rpx solid rgba(192, 57, 43, 0.3);
   border-radius: 44rpx;
   font-size: 28rpx;

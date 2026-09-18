@@ -1,14 +1,14 @@
 /* pages/activity/index.wxss — 活动报名（二级页）*/
-.act-page { min-height: 100vh; background: #F5F8FC; }
+.act-page { min-height: 100vh; background: var(--paper); }
 .act-wrap { padding: 24rpx 32rpx; }
 
 .acard {
   display: flex;
   gap: 22rpx;
-  background: #fff;
+  background: var(--card);
   border-radius: 26rpx;
-  border: 1rpx solid #E7ECF6;
-  box-shadow: 0 8rpx 22rpx rgba(31, 40, 90, 0.09);
+  border: 1rpx solid var(--line);
+  box-shadow: 0 8rpx 22rpx rgba(74,50,30, 0.09);
   padding: 20rpx;
   margin-bottom: 22rpx;
   transition: transform 0.15s;
@@ -30,7 +30,7 @@
   left: 12rpx;
   top: 12rpx;
   font-size: 19rpx;
-  color: #fff;
+  color: var(--card);
   background: rgba(0, 0, 0, 0.28);
   border: 1rpx solid rgba(255, 255, 255, 0.35);
   padding: 3rpx 12rpx;
@@ -40,7 +40,7 @@
 .acard-title {
   font-size: 29rpx;
   font-weight: 700;
-  color: #1F2547;
+  color: var(--ink);
   line-height: 1.4;
   font-family: "Noto Serif SC", serif;
   display: -webkit-box;
@@ -51,7 +51,7 @@
 .acard-meta { display: flex; align-items: center; gap: 8rpx; margin-top: 10rpx; }
 .acard-mt {
   font-size: 22rpx;
-  color: #5A648A;
+  color: var(--sub);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -65,23 +65,23 @@
 }
 .quota {
   font-size: 21rpx;
-  color: #2B356E;
-  background: #E8F2FB;
+  color: var(--navy);
+  background: var(--sky-2);
   border-radius: 12rpx;
   padding: 6rpx 16rpx;
   font-weight: 600;
 }
-.quota-full { color: #67708C; background: #F0F3F8; }
+.quota-full { color: var(--muted); background: var(--sky-3); }
 .enroll-btn {
   font-size: 22rpx;
   font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  color: var(--card);
+  background: linear-gradient(135deg, var(--blue), var(--navy));
   border-radius: 30rpx;
   padding: 10rpx 18rpx;
   flex-shrink: 0;
 }
-.enroll-off { background: #C3CCE0; }
+.enroll-off { background: var(--ghost); }
 
 .safe-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }
 

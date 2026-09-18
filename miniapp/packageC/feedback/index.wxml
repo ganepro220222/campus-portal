@@ -73,7 +73,7 @@
     </view>
 
     <view class="fb-tip">
-      <icon name="chat" size="14" color="#BE9C44" />
+      <icon name="chat" size="14" color="#9E7D45" />
       <text>提交后可在「我的反馈」查看处理进度；管理员回复也会发到消息中心</text>
     </view>
 

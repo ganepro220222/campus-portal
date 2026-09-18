@@ -3,7 +3,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #EAF1FB 0, #F5F8FC 240rpx);
+  background: linear-gradient(180deg, var(--sky-2) 0, var(--paper) 240rpx);
 }
 .craft-scroll { flex: 1; overflow: hidden; }
 
@@ -20,9 +20,9 @@
 .ccard {
   border-radius: 26rpx;
   overflow: hidden;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
-  box-shadow: 0 8rpx 22rpx rgba(31, 40, 90, 0.10);
+  box-shadow: 0 8rpx 22rpx rgba(74,50,30, 0.10);
   transition: transform 0.15s;
 }
 .ccard:active { transform: translateY(-4rpx); }
@@ -41,7 +41,7 @@
   top: 14rpx; right: 14rpx;
   font-size: 18rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--card);
   background: rgba(12, 16, 36, 0.32);
   border: 1rpx solid rgba(255, 255, 255, 0.5);
   padding: 3rpx 12rpx;

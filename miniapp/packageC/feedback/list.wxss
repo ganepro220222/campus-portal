@@ -3,7 +3,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #F5F8FC;
+  background: var(--paper);
 }
 .fb-empty-sub {
   font-size: 24rpx;
@@ -15,7 +15,7 @@
 .fb-row {
   margin: 0 28rpx 16rpx;
   padding: 24rpx;
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   box-shadow: var(--shadow-sm);
@@ -36,7 +36,7 @@
   font-size: 22rpx;
   color: var(--muted);
 }
-.fb-row-status.on { color: #BE9C44; font-weight: 600; }
+.fb-row-status.on { color: var(--jin-60); font-weight: 600; }
 .fb-row-content {
   margin-top: 12rpx;
   font-size: 27rpx;
@@ -67,8 +67,8 @@
   line-height: 88rpx;
   font-size: 30rpx;
   font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #3F57B5, #2B356E);
+  color: var(--card);
+  background: linear-gradient(135deg, var(--blue), var(--navy));
   border: none;
   border-radius: 44rpx;
 }

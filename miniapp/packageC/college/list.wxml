@@ -33,7 +33,7 @@
           <view class="app-name">{{item.name}}</view>
           <view class="app-sub">{{item.desc || item.en}}</view>
         </view>
-        <view class="app-open">打开<icon name="chevron-right" size="12" color="#2B356E" /></view>
+        <view class="app-open">打开<icon name="chevron-right" size="12" color="#7E6134" /></view>
       </view>
     </view>
 

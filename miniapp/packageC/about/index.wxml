@@ -23,7 +23,7 @@
     <view class="ab-card">
       <view class="ab-title serif">平台特色</view>
       <view class="feat" wx:for="{{features}}" wx:key="name">
-        <view class="feat-ic"><icon name="{{item.icon}}" size="20" color="#ffffff" /></view>
+        <view class="feat-ic"><icon name="{{item.icon}}" size="20" color="#FFFBF2" /></view>
         <view class="feat-body">
           <text class="feat-name">{{item.name}}</text>
           <text class="feat-desc">{{item.desc}}</text>
@@ -35,15 +35,15 @@
     <view class="ab-card ab-card-tight">
       <view class="ab-title serif">联系我们</view>
       <view wx:if="{{address}}" class="c-row" bindtap="onCopy" data-val="{{address}}">
-        <view class="c-ic"><icon name="pin" size="18" color="#2B356E" /></view>
+        <view class="c-ic"><icon name="pin" size="18" color="#7E6134" /></view>
         <view class="c-body"><text class="c-k">地址</text><text class="c-v">{{address}}</text></view>
       </view>
       <view wx:if="{{phone}}" class="c-row" bindtap="onCopy" data-val="{{phone}}">
-        <view class="c-ic"><icon name="megaphone" size="18" color="#2B356E" /></view>
+        <view class="c-ic"><icon name="megaphone" size="18" color="#7E6134" /></view>
         <view class="c-body"><text class="c-k">电话</text><text class="c-v">{{phone}}</text></view>
       </view>
       <view wx:if="{{email}}" class="c-row" bindtap="onCopy" data-val="{{email}}">
-        <view class="c-ic"><icon name="send" size="18" color="#2B356E" /></view>
+        <view class="c-ic"><icon name="send" size="18" color="#7E6134" /></view>
         <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">{{email}}</text></view>
       </view>
     </view>

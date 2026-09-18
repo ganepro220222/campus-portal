@@ -6,13 +6,13 @@
   </view>
 
   <view wx:elif="{{error && !list.length}}" class="empty-state">
-    <icon name="robot" size="42" color="#C3CCE0" />
+    <icon name="robot" size="42" color="#D6CDB8" />
     <text class="empty-text">加载失败，请重试</text>
     <button class="btn-outline" bindtap="onRetry">重新加载</button>
   </view>
 
   <view wx:elif="{{!list.length}}" class="empty-state">
-    <icon name="robot" size="42" color="#C3CCE0" />
+    <icon name="robot" size="42" color="#D6CDB8" />
     <text class="empty-text">暂无历史会话</text>
     <text class="empty-hint">向知识问答提问后，会话会保存在这里</text>
     <button class="btn-primary" bindtap="onNewChat">开始提问</button>
@@ -27,13 +27,13 @@
       bindtap="onItemTap"
     >
       <view class="history-ic">
-        <icon name="robot" size="22" color="#ffffff" />
+        <icon name="robot" size="22" color="#FFFBF2" />
       </view>
       <view class="history-body">
         <text class="history-title">{{item.title}}</text>
         <text class="history-time">{{item.createdAt}}</text>
       </view>
-      <icon name="chevron-right" size="16" color="#C3CCE0" />
+      <icon name="chevron-right" size="16" color="#D6CDB8" />
     </view>
   </view>
 

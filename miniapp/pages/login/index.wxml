@@ -5,7 +5,7 @@
   <view class="wave-deco"></view>
 
   <view class="login-back" style="top: calc({{statusBarHeight}}px + 12rpx);" bindtap="onBack" hover-class="login-back-hover">
-    <icon name="chevron-left" size="22" color="#ffffff" sw="2.6" />
+    <icon name="chevron-left" size="22" color="#FFFBF2" sw="2.6" />
   </view>
 
   <view class="login-inner">
@@ -69,7 +69,7 @@
       </view>
 
       <button class="lbtn lbtn-primary" bindtap="{{bindMode ? 'onBindWxAccount' : 'onAccountLogin'}}" loading="{{loading}}" disabled="{{loading}}">
-        <icon name="login" size="18" color="#2B356E" />
+        <icon name="login" size="18" color="#7E6134" />
         <text class="lbtn-tx">{{bindMode ? '绑定账号并登录' : '登 录'}}</text>
       </button>
 
@@ -78,7 +78,7 @@
       <view class="divider">其他登录方式</view>
 
       <button class="lbtn lbtn-ghost" bindtap="onWxLogin" loading="{{loading}}" disabled="{{loading}}" wx:if="{{!bindMode}}">
-        <icon name="wechat" size="20" color="#ffffff" />
+        <icon name="wechat" size="20" color="#FFFBF2" />
         <text class="lbtn-tx">微信授权登录</text>
       </button>
     </view>

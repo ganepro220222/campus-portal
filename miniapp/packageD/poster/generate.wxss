@@ -35,7 +35,7 @@
 .p-seal {
   width: 150rpx; height: 150rpx;
   border-radius: 34rpx;
-  background: #fff;
+  background: var(--card);
   margin-top: 60rpx;
   display: flex;
   align-items: center;
@@ -67,7 +67,7 @@
   width: 84rpx;
   height: 84rpx;
   border-radius: 19rpx;
-  background: #fff;
+  background: var(--card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -83,7 +83,7 @@
 .p-title {
   font-size: 40rpx;
   font-weight: 700;
-  color: #fff;
+  color: var(--card);
   text-align: center;
   line-height: 1.4;
   margin-top: 54rpx;
@@ -133,7 +133,7 @@
 .p-qr {
   position: relative;
   width: 96rpx; height: 96rpx;
-  background: #fff;
+  background: var(--card);
   border-radius: 12rpx;
   flex-shrink: 0;
 }
@@ -142,11 +142,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1rpx dashed rgba(43, 53, 110, 0.35);
+  border: 1rpx dashed rgba(96,78,44, 0.35);
   background: rgba(255, 255, 255, 0.92);
 }
 /* 两行同色：第二行原来是 #A9B2C8，在白底占位板上只有 2.3:1，看不清；
-   调到 --muted 的 #67708C（4.91:1）后与第一行同色，.p-qr-sub 也就没有存在意义了，
+   调到 --muted 的 var(--muted)（4.91:1）后与第一行同色，.p-qr-sub 也就没有存在意义了，
    一并删掉——留着一条不起作用的规则，下次很容易被人"顺手调浅一点"再破坏对比度。
    两行的层级靠行序与内容区分即可，这块只是保存前的占位板。
 
@@ -157,11 +157,11 @@
   font-size: 17rpx;
   line-height: 1.4;
   text-align: center;
-  color: #67708C;
+  color: var(--muted);
   white-space: nowrap;
 }
 .p-foot-tx { display: flex; flex-direction: column; gap: 6rpx; }
-.pf-1 { font-size: 22rpx; color: #fff; font-weight: 600; }
+.pf-1 { font-size: 22rpx; color: var(--card); font-weight: 600; }
 .pf-2 { font-size: 19rpx; color: rgba(232, 240, 252, 0.75); }
 
 /* 模板选择 */
@@ -178,7 +178,7 @@
   border-radius: 16rpx;
   position: relative;
   border: 3rpx solid transparent;
-  box-shadow: 0 6rpx 16rpx rgba(31, 40, 90, 0.18);
+  box-shadow: 0 6rpx 16rpx rgba(74,50,30, 0.18);
 }
 .tpl-on .tpl-sw { border-color: var(--navy); }
 .tpl-check {
@@ -200,10 +200,10 @@
   gap: 10rpx;
   margin: 28rpx 32rpx 0;
   padding: 18rpx 22rpx;
-  background: #FBF3DD;
+  background: var(--xing-05);
   border-radius: 16rpx;
 }
-.poster-tip text { font-size: 22rpx; color: #9C7C2E; }
+.poster-tip text { font-size: 22rpx; color: var(--jin-70); }
 
 .poster-bottom { height: calc(160rpx + env(safe-area-inset-bottom)); }
 
@@ -222,8 +222,8 @@
   box-sizing: border-box;
   height: 92rpx;
   border-radius: 46rpx;
-  background: linear-gradient(135deg, #CDA94E, #B58A2F);
-  color: #fff;
+  background: linear-gradient(135deg, var(--jin-50), var(--jin-60));
+  color: var(--card);
   font-size: 31rpx;
   font-weight: 700;
   border: none;

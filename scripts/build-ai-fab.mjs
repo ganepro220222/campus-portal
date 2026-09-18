@@ -14,8 +14,12 @@
  * 和这套配色完全不搭；而且"机器人"是 AI 的国际符号，不是这套东西。
  *
  * 字形取自 design/brand/seal-script/（校方素材那一套的小篆）。
- * 现用「闻」——"朝闻道"，请益、闻道，比"问"更书院，而且库里现成有矢量。
- * 要换成「问」需要一个篆体的「問」字形，放进那个目录再改这里的 CH 即可。
+ * 用「问」——校方给了篆体的「問」字形。早先临时用过「闻」，
+ * 理由是库里只有那一枚现成的矢量；既然「問」到位了就换回来，
+ * 这枚浮标点开是问答，字面对上功能比"朝闻道"的巧劲更要紧。
+ * 外来字形不能直接放进那个目录，先跑 scripts/normalize-seal-glyph.mjs 归一
+ * （洗水印、去烤死的 fill、统一到 1000 框居中 760 墨迹），
+ * 否则玉牌给字上不了色、水印会显在牌面上。
  *
  * 用法：node scripts/build-ai-fab.mjs
  */
@@ -29,7 +33,7 @@ import path from 'node:path'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = path.join(ROOT, 'miniapp/assets/images/ai-fab.png')
 const HASH_FILE = path.join(ROOT, 'scripts/ai-fab.hash')
-const CH = '闻'
+const CH = '问'
 const SIZE = 56          // .ai-fab 是 112rpx = 56px
 const SCALE = 3
 

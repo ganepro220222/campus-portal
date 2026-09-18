@@ -2302,15 +2302,27 @@ def _seal_glyph_path(ch):
     vb = m.group(1) if m else "0 0 1000 1000"
     body = re.sub(r"^.*?<svg[^>]*>", "", s, flags=re.S)
     body = re.sub(r"</svg>\s*$", "", body, flags=re.S)
-    return body.strip(), vb
+    body = body.strip()
+    # 字身里不许有 fill。玉牌是拿 <g fill="#FFFFFF">（下沿高光）和
+    # <g fill="#3E5A55">（实字）套在外面上色的，字身自带 fill 会把两层全盖掉，
+    # 阴刻就变成一枚黑墨疙瘩。字库导出的 SVG 默认就带 fill，
+    # 所以这里必须拦——用 scripts/normalize-seal-glyph.mjs 洗过再放进来。
+    assert 'fill=' not in body, (
+        "篆书字形 %s.svg 的字身里有写死的 fill，玉牌上不了色；"
+        "先跑 node scripts/normalize-seal-glyph.mjs 归一" % ch)
+    return body, vb
 
 
-def jade_medallion(ch="\u95fb", size=200):
+def jade_medallion(ch="\u95ee", size=200):
     """金镶玉圆牌，当中阴刻一个小篆字。"""
     body, vb = _seal_glyph_path(ch)
     vx, vy, vw, vh = [float(t) for t in vb.replace(",", " ").split()]
     R = size / 2.0
-    gsz = size * 0.50                       # 字的占地
+    # 字的占地。字形文件按 scripts/normalize-seal-glyph.mjs 的约定归一过：
+    # 1000 的框、墨迹居中、最长边 760。所以字**渲染出来**的最长边是
+    # 0.76 * gsz * size，玉面直径是 0.845 * size —— gsz 0.68 时字占玉面 61%。
+    # 原来是 0.50（占 45%），在 112rpx 的浮标上太秀气，56px 下笔画快连不成字。
+    gsz = size * 0.68
     k = gsz / max(vw, vh)
     gx = R - (vx + vw / 2.0) * k
     gy = R - (vy + vh / 2.0) * k

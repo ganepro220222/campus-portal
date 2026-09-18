@@ -4,7 +4,6 @@ const mock = require('../../mock/defaults')
 const mockGuard = require('../../utils/mockGuard')
 const { decorateNewsFeed } = require('../../utils/decorate')
 const { loadCategoryNames } = require('../../utils/category')
-const { getNavBarLayout } = require('../../utils/navbar')
 const {
   FEED_LOAD,
   normalizeFeedLoadOptions,
@@ -29,9 +28,6 @@ const { applyCoverFailed } = require('../../utils/coverFallback')
 
 Page({
   data: {
-    statusBarHeight: 20,
-    navContentHeight: 44,
-    capsulePadding: 96,
     cats: ['全部'],
     activeCat: 0,
     newsList: [],
@@ -45,7 +41,6 @@ Page({
   },
 
   onLoad() {
-    this.setData(getNavBarLayout())
     enablePageShare()
     loadCategoryNames('news').then(cats => {
       this.setData({ cats, activeCat: Math.min(this.data.activeCat, cats.length - 1) })

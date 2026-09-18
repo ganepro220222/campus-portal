@@ -6,9 +6,15 @@
 const { getNavBarLayout } = require('../../utils/navbar')
 
 Component({
+  // action / below 两个插槽要同时存在，必须开多插槽
+  options: { multipleSlots: true },
+
   properties: {
     title: { type: String, value: '' },
-    back: { type: Boolean, value: true }
+    back: { type: Boolean, value: true },
+    // tab 页传 false：它们是 flex 列 + 内层 scroll-view，
+    // 顶栏 position:fixed 会把内层滚动区顶乱，留在流里才对。
+    fixed: { type: Boolean, value: true }
   },
 
   data: {

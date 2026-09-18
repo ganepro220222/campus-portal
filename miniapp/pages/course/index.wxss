@@ -6,27 +6,10 @@
   background: linear-gradient(180deg, var(--sky-2) 0, var(--paper) 240rpx);
 }
 
-/* 顶栏 */
-.nav {
-  flex: 0 0 auto;
-  position: relative;
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(20rpx);
-  border-bottom: 1rpx solid var(--line);
-  box-shadow: 0 2rpx 14rpx rgba(74,50,30, 0.05);
-}
-.nav-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-sizing: border-box;
-  min-height: 80rpx; /* 无 navContentHeight 时的回退，实际高度由 JS 按胶囊几何注入 */
-  padding: 0 0 0 32rpx;
-}
-.nav-title { font-size: 38rpx; font-weight: 700; color: var(--ink); }
+/* 顶栏：宿主要在 flex 列里占住自身高度，不能被列表挤扁 */
+nav-bar { flex: 0 0 auto; }
 .nav-search {
-  width: 64rpx; height: 64rpx; border-radius: 50%;
+  width: 88rpx; height: 88rpx; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
 }
 .nav-search:active { background: var(--sky-3); }

@@ -2,8 +2,15 @@
      结构自上而下：状态栏（纸色）→ 屋檐 → 标题行（纸色）。
      屋檐是一张 PNG 而不是内联 SVG：WXML 不渲染内联 SVG，
      WXSS 的 background-image 又不收本地路径，所以用 <image>。
-     图由 scripts/build-navbar-eave.mjs 生成，颜色从 app.wxss 的令牌现烤。 -->
-<view class="nb-fixed">
+     图由 scripts/build-navbar-eave.mjs 生成，颜色从 app.wxss 的令牌现烤。
+
+     两个插槽，给 tab 页用：
+       action —— 标题行右端的操作键（搜索）。绝对定位在右边，和左边的返回键对称，
+                 标题不管有没有按钮都保持居中。
+       below  —— 标题行下面整条（分类 chips）。
+     fixed=false 时顶栏留在文档流里（tab 页是 flex 列 + 内层 scroll-view 的结构，
+     顶栏浮起来会把内层滚动区顶乱）。 -->
+<view class="nb-fixed {{fixed ? '' : 'nb-static'}}">
   <view class="nb-status" style="height: {{statusBarHeight}}px;"></view>
   <!-- 微信胶囊固定在 y≈状态栏下 4px 处，正好落在瓦面上。
        这是定好的取舍：版面优先，胶囊压在纹样上但不挡任何字、不和任何按钮重叠。 -->
@@ -15,7 +22,9 @@
       </view>
     </view>
     <text class="nb-title serif">{{title}}</text>
+    <view class="nb-action"><slot name="action"></slot></view>
   </view>
+  <slot name="below"></slot>
 </view>
-<view class="nb-holder"
+<view wx:if="{{fixed}}" class="nb-holder"
       style="height: calc({{statusBarHeight}}px + var(--nb-eave-h) + var(--nb-row-h) - var(--nb-lap));"></view>

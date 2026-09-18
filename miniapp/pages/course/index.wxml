@@ -1,27 +1,26 @@
 <!-- pages/course/index.wxml -->
 <view class="course-page">
 
-  <!-- 自定义顶栏 -->
-  <view class="nav">
-    <view style="height: {{statusBarHeight}}px;"></view>
-    <view class="nav-row" style="height: {{navContentHeight}}px; padding-right: {{capsulePadding}}px;">
-      <text class="nav-title serif">课程中心</text>
-      <view class="nav-search" bindtap="onSearch">
-        <icon name="search" size="20" color="#23262E" />
-      </view>
+  <!-- 顶栏走公共满檐组件。fixed=false：本页是 flex 列 + 内层
+       scroll-view，顶栏留在文档流里；搜索键进 action 槽，分类 chips 进 below 槽。 -->
+  <nav-bar title="课程中心" back="{{false}}" fixed="{{false}}">
+    <view slot="action" class="nav-search" bindtap="onSearch">
+      <icon name="search" size="20" color="#23262E" />
     </view>
-    <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
-      <view class="cats-inner">
-        <view
-          wx:for="{{cats}}"
-          wx:key="*this"
-          class="cat {{activeCat === index ? 'cat-on' : ''}}"
-          data-index="{{index}}"
-          bindtap="switchCat"
-        >{{item}}</view>
-      </view>
-    </scroll-view>
-  </view>
+    <view slot="below">
+      <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
+        <view class="cats-inner">
+          <view
+            wx:for="{{cats}}"
+            wx:key="*this"
+            class="cat {{activeCat === index ? 'cat-on' : ''}}"
+            data-index="{{index}}"
+            bindtap="switchCat"
+          >{{item}}</view>
+        </view>
+      </scroll-view>
+    </view>
+  </nav-bar>
 
   <!-- 课程列表 -->
   <scroll-view scroll-y class="course-scroll" enhanced show-scrollbar="{{false}}">

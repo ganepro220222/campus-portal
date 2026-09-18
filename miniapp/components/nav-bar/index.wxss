@@ -23,6 +23,11 @@
   width: 100%;
   flex-shrink: 0;
 }
+/* 留在文档流里的那一档：tab 页用 */
+.nb-static {
+  position: relative;
+  flex: 0 0 auto;
+}
 .nb-eave {
   display: block;
   width: 100%;
@@ -64,8 +69,18 @@
 .nb-back-hover .nb-back-disc {
   background: var(--xing-05);
 }
+/* 操作键：和返回键同一套触点尺寸（88rpx 触区 / 64rpx 视觉），左右对称 */
+.nb-action {
+  position: absolute;
+  right: 8rpx;
+  min-width: 88rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .nb-title {
-  max-width: 60%;
+  max-width: 56%;
   font-size: 34rpx;
   letter-spacing: 4rpx;
   color: var(--ink);

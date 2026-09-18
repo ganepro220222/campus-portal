@@ -85,6 +85,26 @@ function main() {
     errs.push(`顶栏返回 .nb-back 热区 ${nbW}×${nbH}rpx，低于 ${MIN_RPX}rpx（44pt）`)
   }
 
+  const nbAction = ruleBlock('miniapp/components/nav-bar/index.wxss', '.nb-action')
+  const actH = rpx(nbAction, 'height')
+  const actMinW = rpx(nbAction, 'min-width')
+  if (actH == null || actMinW == null || actH < MIN_RPX || actMinW < MIN_RPX) {
+    errs.push(`顶栏操作槽 .nb-action 热区 ${actMinW}×${actH}rpx，低于 ${MIN_RPX}rpx（44pt）`)
+  }
+
+  for (const rel of [
+    'miniapp/pages/news/index.wxss',
+    'miniapp/pages/hall/index.wxss',
+    'miniapp/pages/course/index.wxss'
+  ]) {
+    const search = ruleBlock(rel, '.nav-search')
+    const sw = rpx(search, 'width')
+    const sh = rpx(search, 'height')
+    if (sw == null || sh == null || sw < MIN_RPX || sh < MIN_RPX) {
+      errs.push(`${rel} .nav-search 热区 ${sw}×${sh}rpx，低于 ${MIN_RPX}rpx（44pt）`)
+    }
+  }
+
   const retry = ruleBlock('miniapp/packageB/course/player.wxss', '.player-retry')
   const retryH = rpx(retry, 'min-height')
   if (retryH == null || retryH < MIN_RPX) {
@@ -101,7 +121,7 @@ function main() {
     for (const e of errs) console.error('  ✗ ' + e)
     process.exit(1)
   }
-  console.log(`check-touch-targets OK（密码显隐 / 搜索清空 / 反馈删除 / 播放器重试 / 顶栏返回均 ≥${MIN_RPX}rpx，tabBar 色已同步）`)
+  console.log(`check-touch-targets OK（密码显隐 / 搜索清空 / 反馈删除 / 播放器重试 / 顶栏返回与搜索均 ≥${MIN_RPX}rpx，tabBar 色已同步）`)
 }
 
 main()

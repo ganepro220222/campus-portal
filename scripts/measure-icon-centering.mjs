@@ -50,11 +50,32 @@ window.__measure = (list) => list.map((n) => {
   svg.innerHTML = def.i
   document.body.appendChild(svg)
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9
-  for (const el of svg.children) {
+  /*
+   * 逐个**叶子图形**求并，并把它到 svg 用户空间的完整矩阵算进去。
+   *
+   * 这里返工过两次，都是"尺子没读全"：
+   *   一版逐个 svg.children 调 getBBox()，而 getBBox() 不含元素自己的 transform；
+   *   二版补了直接子元素的 scale/translate，但线性器物里"二儒生"是
+   *   <g transform> 套 <g transform> 的，内层那一层又漏了。
+   * 用 getScreenCTM 做差得到累积矩阵，嵌套多少层都不会再漏。
+   *
+   * 描边也被矩阵缩过，所以每个元素的留白按它自己的有效缩放算，
+   * 不能统一用 def.w / 2。
+   */
+  const inv = svg.getScreenCTM().inverse()
+  const SHAPES = 'path,circle,rect,ellipse,line,polyline,polygon'
+  for (const el of svg.querySelectorAll(SHAPES)) {
     const b = el.getBBox()
-    const sw = def.m === 'fill' ? 0 : (def.w || 2) / 2
-    x0 = Math.min(x0, b.x - sw); y0 = Math.min(y0, b.y - sw)
-    x1 = Math.max(x1, b.x + b.width + sw); y1 = Math.max(y1, b.y + b.height + sw)
+    const m = inv.multiply(el.getScreenCTM())
+    const s = Math.hypot(m.a, m.b)            // 等比缩放下的有效系数
+    const sw = def.m === 'fill' ? 0 : (def.w || 2) * s / 2
+    for (const [px, py] of [[b.x, b.y], [b.x + b.width, b.y],
+                            [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]]) {
+      const X = m.a * px + m.c * py + m.e
+      const Y = m.b * px + m.d * py + m.f
+      x0 = Math.min(x0, X - sw); y0 = Math.min(y0, Y - sw)
+      x1 = Math.max(x1, X + sw); y1 = Math.max(y1, Y + sw)
+    }
   }
   svg.remove()
   const c = def.c || [0, 0]

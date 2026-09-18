@@ -46,7 +46,8 @@
         "feedback/detail",
         "feedback/index",
         "about/index",
-        "legal/privacy"
+        "legal/privacy",
+        "fontcheck/index"
       ]
     },
     {
@@ -92,7 +93,7 @@
     "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#7E6134",
     "navigationBarTitleText": "云端书院",
-    "navigationBarTextStyle": "white",
+    "navigationBarTextStyle": "black",
     "backgroundColor": "#F7F3E8"
   },
   "style": "v2",

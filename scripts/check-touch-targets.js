@@ -78,6 +78,13 @@ function main() {
     }
   }
 
+  const nbBack = ruleBlock('miniapp/components/nav-bar/index.wxss', '.nb-back')
+  const nbW = rpx(nbBack, 'width')
+  const nbH = rpx(nbBack, 'height')
+  if (nbW == null || nbH == null || nbW < MIN_RPX || nbH < MIN_RPX) {
+    errs.push(`顶栏返回 .nb-back 热区 ${nbW}×${nbH}rpx，低于 ${MIN_RPX}rpx（44pt）`)
+  }
+
   const retry = ruleBlock('miniapp/packageB/course/player.wxss', '.player-retry')
   const retryH = rpx(retry, 'min-height')
   if (retryH == null || retryH < MIN_RPX) {
@@ -94,7 +101,7 @@ function main() {
     for (const e of errs) console.error('  ✗ ' + e)
     process.exit(1)
   }
-  console.log(`check-touch-targets OK（密码显隐 / 搜索清空 / 反馈删除 / 播放器重试均 ≥${MIN_RPX}rpx，tabBar 色已同步）`)
+  console.log(`check-touch-targets OK（密码显隐 / 搜索清空 / 反馈删除 / 播放器重试 / 顶栏返回均 ≥${MIN_RPX}rpx，tabBar 色已同步）`)
 }
 
 main()

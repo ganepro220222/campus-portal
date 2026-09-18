@@ -1,4 +1,10 @@
 /* app.wxss — 全局样式 */
+/* 宋体子集。走内嵌而不是 wx.loadFontFace：后者只收网络地址，
+   还要域名白名单 + Access-Control-Allow-Origin，安卓多个品牌的校验又不一致，
+   做不到「所有设备都正常显示」。内嵌是唯一各端都稳的办法。
+   产物由 scripts/build-font-subset.js 生成，check:font-subset 守着它和源字体一致。 */
+@import "styles/font-shuyuan-song.wxss";
+
 page {
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   font-size: 28rpx;
@@ -57,13 +63,16 @@ page {
 
   /* ── 木 · 裱边与檐木 ── */
   --wood-05:     #FEF9EF;
-  --wood-20:     #EBD9BC;
-  --wood-30:     #DCC49F;
-  --wood-40:     #CFB38B;
+  --wood-20:     #F0E1C5;
+  --wood-30:     #E4CEA8;
+  --wood-40:     #D5BA8B;
   --wood-50:     #C2A57A;
-  --wood-60:     #A98B63;
+  --wood-60:     #A68C64;
+  --wood-65:     #957C58;
   --wood-70:     #856F4F;
-  --wood-85:     #54462F;
+  --wood-85:     #5A4A2D;
+  --wood-90:     #493D28;
+  --wood-95:     #372F1F;
 
   /* ── 朱 · 点缀 ── */
   --zhu:         #9E2B25;

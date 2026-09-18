@@ -1,40 +1,74 @@
-/* components/nav-bar/index.wxss */
+/* components/nav-bar/index.wxss — 屋檐顶栏
+   高度构成：状态栏(px，随机型) + 屋檐 92rpx + 标题行 80rpx。
+   屋檐与标题行走 rpx，跟着屏宽等比缩，和页面其它元素一致；
+   状态栏走 px，因为它是系统给的实测值。 */
+/* 三个尺寸常量只写一处，wxml 里算占位高度也用它们 */
+.nb-fixed,
+.nb-holder {
+  --nb-eave-h: 92rpx;    /* 屋檐 */
+  --nb-row-h:  80rpx;    /* 标题行 */
+  --nb-lap:     4rpx;    /* 檐压在标题行上的重叠量 */
+}
 .nb-fixed {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 100;
+  /* 顶栏底色是纸，不是深色块。顶部变浅之后胶囊图标要跟着改黑，
+     已在 app.json 里把 navigationBarTextStyle 设成 black。 */
+  background: var(--paper);
 }
 .nb-holder {
   width: 100%;
   flex-shrink: 0;
 }
+.nb-eave {
+  display: block;
+  width: 100%;
+  height: var(--nb-eave-h);
+  /* 檐要压在标题行上面一点点，中间不能透出一条纸缝。
+     占位高度里减掉的就是这个重叠量，两处用同一个变量，不会对不上。 */
+  margin-bottom: calc(-1 * var(--nb-lap));
+}
 .nb-row {
   position: relative;
+  height: var(--nb-row-h);
   display: flex;
   align-items: center;
   justify-content: center;
 }
+/* 返回键：金棕描边的纸色圆钮，和图片框四角的角叶同一族金。
+   挂在檐下而不是和胶囊平齐 —— 和胶囊对齐成一条导航栏确实好看，
+   但那要求屋檐先让位，为一枚按钮动整页不划算。 */
 .nb-back {
   position: absolute;
   left: 8rpx;
-  top: 0;
-  bottom: 0;
-  width: 68rpx;
+  width: 88rpx;
+  height: 88rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
 }
-.nb-back-hover {
-  background: rgba(255, 255, 255, 0.14);
+.nb-back-disc {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(252, 250, 244, 0.8);
+  box-shadow: 0 2rpx 8rpx rgba(96, 78, 44, 0.16),
+              inset 0 0 0 2rpx rgba(150, 120, 66, 0.26);
+}
+.nb-back-hover .nb-back-disc {
+  background: var(--xing-05);
 }
 .nb-title {
   max-width: 60%;
-  font-size: 32rpx;
-  font-weight: 600;
-  letter-spacing: 1rpx;
+  font-size: 34rpx;
+  letter-spacing: 4rpx;
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

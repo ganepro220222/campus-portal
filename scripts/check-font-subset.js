@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 /**
- * 内嵌宋体子集的护栏，三件事：
+ * 内嵌宋体子集的护栏，四件事：
+ *
+ * 0. app.wxss 必须真的 @import 了字体产物，.serif 也必须真的排到 ShuyuanSong。
+ *    这条是补上的：前面三条全绿过一段时间，可那会儿 app.wxss 根本没 import，
+ *    字体躺在包里没生效，.serif 一路退回系统字——护栏是空过的。
+ *    「产物没问题」和「产物接上了」是两件事，都得量。
  *
  * 1. miniapp/styles/font-shuyuan-song.wxss 必须和 design/fonts/shuyuan-serif-400.woff2 一致
  *    （防止有人改了源字体却忘了重新生成，或反过来手改产物）。
@@ -141,6 +146,31 @@ function checkSize() {
   }
 }
 
+/* ── 0. 字体真的接通了吗 ── */
+function checkWiredIn() {
+  const appWxss = path.join(MINIAPP, 'app.wxss')
+  if (!fs.existsSync(appWxss)) {
+    errors.push('✗ 找不到 miniapp/app.wxss')
+    return
+  }
+  const src = fs.readFileSync(appWxss, 'utf8')
+  const imported = /@import\s+["']styles\/font-shuyuan-song\.wxss["']/.test(src)
+  if (!imported) {
+    errors.push('✗ app.wxss 没有 @import "styles/font-shuyuan-song.wxss"，' +
+                '字体躺在包里但没生效，.serif 会一路退回系统字')
+  }
+  // .serif 的字体栈第一位必须是 ShuyuanSong，否则接了也白接
+  const m = src.match(/\.serif\s*\{[^}]*font-family:\s*([^;}]+)/)
+  if (!m) {
+    errors.push('✗ app.wxss 里找不到 .serif 的字体栈')
+  } else if (!/^\s*["']?ShuyuanSong["']?/.test(m[1])) {
+    errors.push(`✗ .serif 的字体栈第一位不是 ShuyuanSong，现在是：${m[1].trim()}`)
+  }
+  if (imported && m && /^\s*["']?ShuyuanSong["']?/.test(m[1])) {
+    console.log('✓ app.wxss 已 @import 字体产物，.serif 首选 ShuyuanSong')
+  }
+}
+
 function main() {
   if (!fs.existsSync(CHARSET)) {
     console.error(`✗ 找不到字集清单 ${path.relative(ROOT, CHARSET)}`)
@@ -148,6 +178,7 @@ function main() {
   }
   const subset = new Set([...fs.readFileSync(CHARSET, 'utf8')])
 
+  checkWiredIn()
   checkGenerated()
   checkStaticText(subset)
   checkSize()

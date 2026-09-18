@@ -1902,6 +1902,102 @@ def _assert_jiaoye_sound():
     assert max(ys) <= 100.0 and max(xs) <= 100.0, "角叶画出了 100×100 的框"
     print("  ✓ 角叶：四角齐、轮廓对称、投影同向")
 
+
+# ── 檐口 ──────────────────────────────────
+# 二级页顶栏要用的一条“压缩版屋檐”。
+#
+# 主页那条完整的檐（62px）放在二级页上太高：二级页有 25 个，
+# 每页顶上吃掉 126px，正文就只剩一半屏。但顶栏又必须一眼认出是同一家人。
+#
+# 第一版只画了一排筒瓦埄 + 金线 + 檐柋，渲出来像一条有条纹的色带，
+# 不像檐。原因是漏了檐口真正的特征：**瓦当与滴水相间悬在檐口下沿**。
+# 圆瓦当、尖滴水，一圆一尖排过去，这是中国屋檐远看时最先认出的一排。
+#
+# 构件自上而下：筒瓦埄 → 瓦当/滴水 → 檀口金线 → 檐柋 → 檐下投影。
+def yankou(width=375, height=18, pitch=11.0, seed=20260518):
+    import random
+    rnd = random.Random(seed)
+    y_tile = height * 0.39          # 筒瓦埄底
+    y_drop = height * 0.70          # 瓦当/滴水的最下沿
+    y_gold = y_drop
+    fang_h = height * 0.22
+    out = [f'<svg class="yankou" viewBox="0 0 {width} {height}" '
+           f'preserveAspectRatio="none" aria-hidden="true">']
+
+    # 檐柋（木）：先画，其它压在它上面
+    out.append(f'<rect x="0" y="{y_gold:.2f}" width="{width}" height="{fang_h:.2f}" '
+               f'fill="var(--wood-70)"/>')
+    out.append(f'<rect x="0" y="{y_gold:.2f}" width="{width}" height="{fang_h*.34:.2f}" '
+               f'fill="var(--wood-50)" opacity=".55"/>')
+    # 檐下投影
+    out.append(f'<rect x="0" y="{y_gold+fang_h:.2f}" width="{width}" '
+               f'height="{height-y_gold-fang_h:.2f}" fill="var(--wood-85)" opacity=".26"/>')
+
+    # 筒瓦埄：一根根圆转的瓦，左亮右暗。间距与宽度都拖一点——
+    # 等距是最像 AI 的地方。
+    out.append(f'<rect x="0" y="0" width="{width}" height="{y_tile:.2f}" fill="var(--tile)"/>')
+    xs = []
+    x = -pitch * .5
+    while x < width + pitch:
+        w = pitch * (1 + rnd.uniform(-.06, .06))
+        xs.append((x, w))
+        out.append(f'<rect x="{x:.2f}" y="0" width="{w*.26:.2f}" height="{y_tile:.2f}" '
+                   f'fill="var(--tile-2)" opacity=".90"/>')
+        out.append(f'<rect x="{x+w*.84:.2f}" y="0" width="{w*.16:.2f}" '
+                   f'height="{y_tile:.2f}" fill="var(--tile-dark)" opacity=".50"/>')
+        x += w * (1 + rnd.uniform(-.10, .10))
+
+    # 瓦当与滴水相间：圆一枚、尖一枚。这一排是檐口的灵魂。
+    r = (y_drop - y_tile)
+    for i, (x, w) in enumerate(xs):
+        cx = x + w * .5
+        if i % 2 == 0:
+            # 瓦当：半圆，带一圈深边和一点高光
+            out.append(f'<path d="M{cx-r:.2f},{y_tile:.2f} a{r:.2f},{r:.2f} 0 0 0 {2*r:.2f},0 Z" '
+                       f'fill="var(--tile-2)"/>')
+            out.append(f'<path d="M{cx-r*.62:.2f},{y_tile:.2f} '
+                       f'a{r*.62:.2f},{r*.62:.2f} 0 0 0 {1.24*r:.2f},0 Z" '
+                       f'fill="var(--tile-hi)" opacity=".62"/>')
+        else:
+            # 滴水：垂尖（如意尖的简化）
+            out.append(f'<path d="M{cx-r*.86:.2f},{y_tile:.2f} '
+                       f'L{cx:.2f},{y_drop:.2f} L{cx+r*.86:.2f},{y_tile:.2f} Z" '
+                       f'fill="var(--tile-dark)"/>')
+
+    # 檀口金线：压在瓦当/滴水的根部
+    out.append(f'<rect x="0" y="{y_tile-0.55:.2f}" width="{width}" height="1.1" '
+               f'fill="var(--gold)"/>')
+    out.append('</svg>')
+    return "".join(out)
+
+
+def _assert_yankou_complete():
+    """檐口自检。
+
+    第一版的判法是不算数的：用 fill="var(--tile-dark)" 当作“滴水在”的凭据，
+    可筒瓦的暗边也是这个色——变异测试里把滴水整段删掉，它照样绿。
+    现在改成数形状：瓦当是半圆弧（a… 0 0 0 … Z），
+    滴水是三角（M…L…L…Z 且填色不带 opacity），两者各数各的。"""
+    s = yankou()
+    need = {
+        "\u7b52\u74e6\u5784": 'fill="var(--tile)"',
+        "\u6a90\u53e3\u91d1\u7ebf": 'fill="var(--gold)"',
+        "\u6a90\u678b": 'fill="var(--wood-70)"',
+        "\u6a90\u4e0b\u6295\u5f71": 'fill="var(--wood-85)"',
+    }
+    miss = [k for k, v in need.items() if v not in s]
+    assert not miss, "\u6a90\u53e3 \u5c11\u4e86\u6784\u4ef6\uff1a" + "\u3001".join(miss)
+
+    n_wd = len(re.findall(r'<path d="M[^"]*a[^"]*0 0 0[^"]*Z" fill="var\(--tile-2\)"/>', s))
+    n_sx = len(re.findall(r'<path d="M[^"]*L[^"]*L[^"]*Z" fill="var\(--tile-dark\)"/>', s))
+    assert n_wd >= 10, "\u74e6\u5f53\u53ea\u6709 %d \u679a\uff0c\u6a90\u53e3\u4f1a\u9000\u56de\u4e00\u6761\u6709\u6761\u7eb9\u7684\u8272\u5e26" % n_wd
+    assert n_sx >= 10, "\u6ef4\u6c34\u53ea\u6709 %d \u679a\uff0c\u74e6\u5f53\u4e0e\u6ef4\u6c34\u76f8\u95f4\u624d\u662f\u6a90\u53e3\u7684\u7075\u9b42" % n_sx
+    assert abs(n_wd - n_sx) <= 1, \
+        "\u74e6\u5f53 %d \u679a\u3001\u6ef4\u6c34 %d \u679a\uff0c\u6ca1\u6709\u76f8\u95f4" % (n_wd, n_sx)
+    assert "url(%23" not in s, "\u6a90\u53e3\u91cc\u51fa\u73b0\u4e86 url(%23\uff0c\u5185\u8054 SVG \u91cc\u5b83\u662f\u5b57\u9762\u91cf"
+    print("  \u2713 \u6a90\u53e3\uff1a\u74e6\u5f53 %d \u679a / \u6ef4\u6c34 %d \u679a \u76f8\u95f4\uff0c\u91d1\u7ebf\u3001\u6a90\u678b\u3001\u6295\u5f71\u9f50" % (n_wd, n_sx))
+
+
 if __name__ == "__main__":
     _assert_no_duplicate_defs()
     _assert_brush_continuous()
@@ -1928,6 +2024,7 @@ if __name__ == "__main__":
               "news-detail.html", "login-states.html"):
         post_process(f)
     _assert_jiaoye_sound()
+    _assert_yankou_complete()
     write_jiaoye_tokens()
     build_cover_page()
     build_news_cover_page()

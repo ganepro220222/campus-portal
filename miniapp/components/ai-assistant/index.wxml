@@ -1,8 +1,10 @@
 <!-- 知识问答浮标；ENABLE_AI_CHAT=false 时整块不渲染 -->
 <block wx:if="{{enabled}}">
+<!-- 金镶玉圆牌：鎏金外箍 + 青白玉牌面 + 当中阴刻小篆「问」。
+     玉的质感（水头、绺、阴刻）在 PNG 里，图由 scripts/build-ai-fab.mjs 生成。 -->
 <view class="ai-fab" style="bottom: calc({{bottom}}rpx + env(safe-area-inset-bottom));" bindtap="open">
   <view class="pulse"></view>
-  <icon name="robot" size="26" color="#FFFBF2" />
+  <image class="ai-fab-img" src="/assets/images/ai-fab.png" mode="aspectFit" />
 </view>
 
 <!-- 遮罩 -->

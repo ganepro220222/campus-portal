@@ -13,6 +13,9 @@ const defaults = mergeHomeNavItems(null)
 assert.strictEqual(defaults.length, DEFAULT_ENTRIES.length)
 assert.strictEqual(defaults[0].label, '书院动态')
 assert.strictEqual(defaults[0].toneClass, 'e1')
+assert.ok(defaults[0].iconImage.endsWith('entry-news.png'))
+assert.ok(defaults[1].iconImage.endsWith('entry-hall.png'))
+assert.ok(defaults[2].iconImage.endsWith('entry-course.png'))
 
 const mapped = mergeHomeNavItems([
   { id: 9, label: '智能问答', icon: 'robot', path: '/packageD/ai-chat/index' },
@@ -26,6 +29,7 @@ if (ENABLE_AI_CHAT) {
   assert.strictEqual(mapped.length, 1)
   assert.strictEqual(mapped[0].path, '/pages/hall/index')
 }
+assert.ok(mapped.some((item) => item.path === '/pages/hall/index' && item.iconImage.endsWith('entry-hall.png')))
 
 const mappedKb = mergeHomeNavItems([
   { id: 9, label: '知识问答', icon: 'robot', path: '/packageD/ai-chat/index' },

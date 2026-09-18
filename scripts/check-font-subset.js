@@ -16,7 +16,8 @@
  *
  * 3. 主包体积必须留有余量。字体是一次性、永久占用主包的，越界了整个包发不出去。
  *
- * 注意：JS 里的注释不参与校验（注释不会渲染给用户），避免写个注释就把护栏搞红。
+ * 注意：JS / WXSS / WXML 里的注释都不参与校验（注释不会渲染给用户），
+ * 避免写个注释就把护栏搞红。
  */
 const fs = require('fs')
 const path = require('path')
@@ -102,6 +103,10 @@ function checkStaticText(subset) {
     let text = raw
     if (ext === '.js') text = stripJsComments(text)
     if (ext === '.wxss') text = text.replace(/\/\*[\s\S]*?\*\//g, '')
+    // wxml 的注释同理——注释不渲染给用户。
+    // 漏了这一条的代价是真出现过：在组件注释里写了个「绺」（玉石的纹理），
+    // 护栏就红了，而那个字根本不会显示出来。
+    if (ext === '.wxml') text = text.replace(/<!--[\s\S]*?-->/g, '')
     scanned++
     for (const ch of text.match(CN) || []) {
       if (subset.has(ch) || allowed.has(ch)) continue

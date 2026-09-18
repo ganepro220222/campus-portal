@@ -75,10 +75,53 @@ const BUDGET = {
   'packageC/search/index.wxss': 1,
   'packageD/poster/generate.wxss': 2,
   'pages/hall/index.wxss': 1,
-  'pages/index/index.wxss': 18,
+  'pages/index/index.wxss': 8,
   'pages/login/index.wxss': 2,
   'pages/profile/index.wxss': 7,
   'styles/login-page.wxss': 2
+}
+
+/**
+ * 旧调色板换了写法之后，每个文件还剩多少处（棘轮，只减不增）。
+ * 没列在这里的文件预算是 0。数字是补上这条检查当天量出来的实际分布。
+ * 两个招牌页（pages/login、pages/index）的数字留到第 4 批整页重做时归零；
+ * styles/login-page.wxss **没有任何文件 @import 它**，是份死文件，
+ * 里面这 5 处随它一起删掉就没了。
+ */
+const DISGUISED_BUDGET = {
+  'app.wxss': 3,
+  'packageA/news/detail.wxss': 1,
+  'packageA/news/list.wxss': 1,
+  'packageB/course/detail.wxss': 1,
+  'packageB/course/player.wxss': 1,
+  'packageC/activity/detail.wxss': 4,
+  'packageC/activity/enroll.wxss': 2,
+  'packageC/feedback/index.wxss': 1,
+  'packageC/profile/list.wxss': 4,
+  'packageD/poster/generate.wxss': 1,
+  'pages/index/index.wxss': 1,
+  'pages/login/index.wxss': 6,
+  'pages/profile/index.wxss': 4,
+  'styles/login-page.wxss': 6
+}
+
+/** 旧调色板的 rgb 形式查找表：'r,g,b' → hex */
+const LEGACY_RGB = {}
+for (const hex of Object.keys(LEGACY)) {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+  LEGACY_RGB[`${r},${g},${b}`] = hex
+}
+
+/** 数一个文件里旧调色板的「伪装写法」有多少处 */
+function countDisguised(src) {
+  let n = 0
+  for (const m of src.matchAll(/rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/g)) {
+    if (LEGACY_RGB[`${+m[1]},${+m[2]},${+m[3]}`]) n++
+  }
+  for (const m of src.matchAll(/%23([0-9A-Fa-f]{6})\b/g)) {
+    if (LEGACY['#' + m[1].toUpperCase()]) n++
+  }
+  return n
 }
 
 const SKIP_DIRS = new Set(['node_modules', 'miniprogram_npm'])
@@ -98,6 +141,7 @@ function main() {
 
   // ① 旧调色板不许回潮
   const scanExt = new Set(['.wxss', '.wxml', '.js', '.json'])
+  const disguised = {}                      // rel → 该文件的伪装形式命中数
   for (const abs of files) {
     if (!scanExt.has(path.extname(abs))) continue
     const rel = path.relative(MINI, abs).split(path.sep).join('/')
@@ -107,6 +151,38 @@ function main() {
       const re = new RegExp(hex.replace('#', '#') + '\\b(?![0-9a-fA-F])', 'ig')
       const hits = src.match(re)
       if (hits) errs.push(`${rel}：还有 ${hits.length} 处 ${hex}（${role}）`)
+    }
+    const n = countDisguised(src)
+    if (n) disguised[rel] = n
+  }
+
+  // ①-b 同一批颜色的**另外两种写法**。
+  //
+  // 上面那段只认 `#RRGGBB`。可这批色值还能写成别的样子，写出来一模一样：
+  //   · `rgba(208, 231, 247, .22)` —— 就是 #D0E7F7；
+  //   · data-URI 里的 `%23D0E7F7` —— `#` 在 URI 里要转义，所以写成 %23。
+  // 两种写法上面的正则一个都抓不到。结果是护栏打印"旧调色板已清零"，
+  // 登录页的波浪装饰里却一直躺着 %23D0E7F7 和 rgba(208,231,247)，
+  // 整页还是旧配色，而流水线是绿的。这条护栏自己说了假话一个周期。
+  //
+  // 补上之后一次冒出 31 处，分布在 15 个文件里，多数属于后面几批的页面。
+  // 所以这里不是一刀切成红，而是和 ② 一样上棘轮：数字**只能减不能增**，
+  // 收掉一页就把那一行改小或删掉。比"先全绿着"诚实，比"全红着"能落地。
+  for (const [rel, n] of Object.entries(disguised)) {
+    const budget = DISGUISED_BUDGET[rel] || 0
+    if (n > budget) {
+      errs.push(`${rel}：旧调色板换了写法混进来 ${n} 处（rgb()/rgba() 或 %23），` +
+                `超出预算 ${budget} 处\n` +
+                `      这些值和 #hex 写法是同一批颜色，请一并换成令牌`)
+    }
+  }
+  for (const [rel, budget] of Object.entries(DISGUISED_BUDGET)) {
+    const n = disguised[rel] || 0
+    if (!fs.existsSync(path.join(MINI, rel))) {
+      errs.push(`DISGUISED_BUDGET 里的 ${rel} 已经不存在了，请把这一行删掉`)
+    } else if (n < budget) {
+      errs.push(`${rel}：伪装形式只剩 ${n} 处，预算却还写着 ${budget} —— ` +
+                `请改成 ${n}（或整行删掉），别让棘轮松掉`)
     }
   }
 
@@ -142,8 +218,10 @@ function main() {
     process.exit(1)
   }
   const left = Object.values(BUDGET).reduce((a, b) => a + b, 0)
-  console.log(`check-miniapp-design-tokens OK（旧调色板已清零；` +
-              `各页还剩 ${left} 处写死色值，随后按页收）`)
+  const dis = Object.values(DISGUISED_BUDGET).reduce((a, b) => a + b, 0)
+  console.log(`check-miniapp-design-tokens OK（旧调色板的 #hex 写法已清零，` +
+              `但换成 rgb()/%23 的还有 ${dis} 处压着棘轮；` +
+              `另有 ${left} 处写死色值，都按页收）`)
 }
 
 main()

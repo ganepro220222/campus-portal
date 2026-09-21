@@ -170,7 +170,30 @@ function checkPng(p, maxKB) {
   }
 }
 
-// ── 四、问答悬浮标 ───────────────────────────────────────────────
+// ── 四、纹理贴图（写进 app.wxss 的三张 feTurbulence 噪声）──────────
+{
+  const tx = await import('./build-texture-tokens.mjs')
+  const t = tx.textureTokens()               // 它自己会验 data URI、%23 转义、三张互不相同
+  checkHash('纹理令牌', path.join(ROOT, 'scripts/textures.hash'), tx.fingerprint(t),
+    'node scripts/build-texture-tokens.mjs')
+  const cur = tx.currentBlock()
+  if (cur === null) {
+    errs.push('app.wxss 里找不到纹理那一段，跑 node scripts/build-texture-tokens.mjs')
+  } else if (cur !== tx.block(t)) {
+    errs.push('app.wxss 里的纹理和设计稿对不上，跑 node scripts/build-texture-tokens.mjs 重出')
+  }
+  // 和角叶同一条：光有令牌不算数，得真有规则去用
+  const app = read(path.join(ROOT, 'miniapp/app.wxss'))
+  const page = read(path.join(ROOT, 'miniapp/pages/index/index.wxss'))
+  for (const k of Object.keys(t)) {
+    if (!new RegExp(`var\\(${k}\\)`).test(app + page)) {
+      errs.push(`定义了 ${k} 却没有任何规则 var(${k}) 用它 —— 纹理白躺着，` +
+                `木面和纸面会退成平涂色块`)
+    }
+  }
+}
+
+// ── 五、问答悬浮标 ───────────────────────────────────────────────
 {
   const src = read(path.join(ROOT, 'scripts/build-ai-fab.mjs'))
   const m = src.match(/^const CH = '(.+?)'/m)

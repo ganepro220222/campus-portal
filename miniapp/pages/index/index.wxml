@@ -70,7 +70,7 @@
         <text>公告加载失败，点击重试</text>
       </view>
       <view wx:if="{{announcements.length}}" class="notice-bar" bindtap="onNoticeTap">
-        <icon name="megaphone" size="16" color="#9E7D45" />
+        <icon name="megaphone" size="16" color="#9E2B25" />
         <text class="notice-text">{{announcements[0].content}}</text>
         <icon name="chevron-right" size="15" color="#6B6459" />
       </view>
@@ -196,10 +196,15 @@
                   binderror="onCoverError"
                 />
                 <view wx:else class="thumb-blank"><icon name="museum" size="30" color="#A68C64" /></view>
+                <!-- 封面上那方白牌：简称 + 一枚器物小图标。
+                     图再满也盖不住馆名，这是定稿里就有的一件。 -->
+                <view class="hc-plate">
+                  <icon class="hc-mark" name="museum" size="13" color="#7E6134" />
+                  <text class="hc-plate-tx serif">{{item.shortName || item.name}}</text>
+                </view>
               </view>
             </view>
-            <text class="tiqian">{{item.shortName || item.name}}</text>
-            <view class="hall-name">{{item.name}}</view>
+            <text class="tiqian">{{item.name}}</text>
           </view>
         </view>
       </scroll-view>

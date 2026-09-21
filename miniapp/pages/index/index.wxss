@@ -238,23 +238,29 @@
   background: var(--line);
   transition: 0.3s;
 }
-.bdot-on { width: 26rpx; border-radius: 5rpx; background: var(--jin-60); }
+/* 选中态是**朱**，不是金。金是全站的强调色（印、匾、段头箭头），
+   轮播的当前页是"位置指示"不是"强调"，定稿给的就是朱。 */
+.bdot-on { width: 28rpx; border-radius: 6rpx; background: var(--zhu); }
 
-/* ── 公告条 ── */
+/* ── 公告条 ──
+   定稿是**杏色底 + 朱红左竖条**，不是白卡片。左沿方角、右沿圆角，
+   像一张从左边压进来的笺。原来是 var(--card) 白底 + 四周 --line 描边，
+   和它上下的纸底几乎一个色，整条看不出边界；图标也是金的，
+   定稿里那枚铃是朱的——朱是这套设计唯一的点缀色，公告正该用它。 */
 .notice-bar {
   display: flex;
   align-items: center;
-  gap: 14rpx;
-  margin-top: 22rpx;
-  background: var(--card);
-  border: 1rpx solid var(--line);
-  border-radius: 20rpx;
-  padding: 16rpx 22rpx;
-  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.06);
+  gap: 16rpx;
+  margin-top: 24rpx;
+  padding: 20rpx 24rpx;
+  background: linear-gradient(180deg, var(--xing-10), var(--xing-20));
+  border-left: 6rpx solid var(--zhu);
+  border-radius: 0 12rpx 12rpx 0;
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.6), 0 2rpx 6rpx rgba(74,50,30,.07);
 }
 .notice-text {
   flex: 1;
-  font-size: 24rpx;
+  font-size: 25rpx;
   color: var(--sub);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -277,15 +283,45 @@
   /* 匾框比匾心深两档：匾本来就该比它挂的那面墙深，
      不然摆在米白页面上和纸一个色，"匾"这件事就没了。 */
   background-color: var(--wood-75);
+  /* 木理用设计稿那张竖向木射线贴图（--wood-fig-v，feTurbulence 生成），
+     不是我早先手搓的等距细纹——等距细纹出来是瓦楞纸，不是木头。 */
   background-image:
-    repeating-linear-gradient(90deg,
-      rgba(58,34,14,.12) 0 2rpx, rgba(255,240,220,.06) 2rpx 4rpx, transparent 4rpx 11rpx),
+    var(--wood-fig-v),
     linear-gradient(150deg, var(--wood-65), var(--wood-75) 52%, var(--wood-85));
+  background-size: 92rpx 380rpx, auto;
   box-shadow: 0 8rpx 28rpx rgba(82,66,44,.20),
               inset 0 2rpx 0 rgba(255,250,240,.55),
               inset 0 -4rpx 6rpx rgba(70,56,36,.30);
 }
-.plaque:active { transform: translateY(2rpx); }
+.plaque:active {
+  transform: translateY(2rpx);
+  box-shadow: 0 2rpx 10rpx rgba(82,66,44,.26);
+}
+/* 匾面斜斜扫过一道光。少了它整块匾是平的——
+   木头是有光泽的，"平涂两块棕色"和"一块木头"的差别一半在这道光上。 */
+.plaque::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  border-radius: 14rpx;
+  pointer-events: none;
+  background: linear-gradient(104deg,
+    transparent 0 32%, rgba(255,252,242,.16) 44%, rgba(255,252,242,.26) 50%,
+    rgba(255,252,242,.10) 57%, transparent 70% 100%);
+}
+/* 匾心内一圈**金线 + 朱红环**。这是匾的规制里最要紧的一道，
+   我上一版整个漏了，匾心就成了一块光板木头。 */
+.plaque-inner::before {
+  content: '';
+  position: absolute;
+  left: 6rpx; top: 6rpx; right: 6rpx; bottom: 6rpx;
+  border: 2rpx solid rgba(214,178,108,.85);
+  border-radius: 4rpx;
+  pointer-events: none;
+  box-shadow: 0 0 0 3rpx var(--zhu),
+              inset 0 2rpx 2rpx rgba(56,46,30,.38),
+              0 2rpx 0 rgba(255,250,238,.30);
+}
 .plaque-inner {
   border-radius: 8rpx;
   padding: 22rpx 28rpx 24rpx;
@@ -293,12 +329,13 @@
   align-items: center;
   gap: 22rpx;
   /* 匾心的木理是**横**的，和框条的竖纹交叉——实木匾就是这么开料的 */
+  position: relative;
   background-color: var(--wood-45);
+  /* 匾心的木理是**横**的，和框条的竖纹交叉——实木匾就是这么开料的 */
   background-image:
-    repeating-linear-gradient(0deg,
-      rgba(58,34,14,.09) 0 2rpx, transparent 2rpx 13rpx,
-      rgba(58,34,14,.05) 13rpx 15rpx, transparent 15rpx 34rpx),
+    var(--wood-fig),
     linear-gradient(180deg, var(--wood-35) 0%, var(--wood-45) 58%, var(--wood-55) 100%);
+  background-size: 520rpx 152rpx, auto;
   box-shadow: inset 0 4rpx 10rpx rgba(62,52,34,.34),
               inset 0 -2rpx 0 rgba(255,250,238,.45),
               0 2rpx 0 rgba(255,250,238,.22);
@@ -337,26 +374,50 @@
 }
 .plaque-go { color: var(--wood-90); flex: none; display: flex; }
 
-/* ── 功能入口矩阵 ── */
-/* 元素上写的是 class="entries-wrap wrap"，但本规则在文件里排在 .wrap 之后、
-   specificity 又相同，padding 简写把 .wrap 的 0 32rpx 整个盖掉了——于是这张带描边、
-   圆角和投影的白卡是唯一一个贴着屏幕左右边跑的（轮播、精品好物、各 section 都缩进 32rpx），
-   两侧的圆角与阴影全被压在屏幕边上。缩进改用 margin 表达，就不会再和 padding 打架。 */
+/* ── 功能入口矩阵：一张书页的版框 ──
+   定稿里这一块是**一张书页**：杏色纸底 + 纸纤维纹 + 一圈金棕实边，
+   里面再退 5rpx 描一道细线（双线版框），正上方中缝压一枚朱红圭形标记。
+   那三件我上一版全漏了，剩下一个浅杏圆角方块，说不出是什么。
+
+   逐项和定稿对过的差：
+     底色  --xing-05 → --xing-10（原来浅了一整档，压不住页底）
+     描边  var(--line) 几乎看不见 → rgba(132,102,44,.92) 金棕实边
+     圆角  28rpx 太圆，像卡片 → 12rpx（设计稿 6px），版框就该是方的
+     纸纹  无 → var(--fiber-page) */
 .entries-wrap {
-  margin: 24rpx 32rpx 0;
-  /* 定稿里入口区是一张**浅杏的书页**，比页面底更暖更深一点点，
-     页面才有"层"。用比底更亮的白时它是挖空的，整页只剩一个明度。 */
-  background: var(--xing-05);
-  border-radius: 28rpx;
-  padding: 30rpx 12rpx 24rpx;
-  border: 1rpx solid var(--line);
-  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.06);
+  position: relative;
+  margin: 32rpx 32rpx 0;
+  padding: 34rpx 8rpx 28rpx;
+  border-radius: 12rpx;
+  background-color: var(--xing-10);
+  background-image: var(--fiber-page);
+  background-size: 320rpx 320rpx;
+  border: 3rpx solid rgba(132, 102, 44, 0.92);
+  box-shadow: 0 2rpx 4rpx rgba(120, 96, 52, 0.09);
 }
-/* B2 之后这一排由后台配置，条数和文案都不再是写死的 5 个 4 字词。
-   原来 flex:1 均分：6 条时每格 111rpx、7 条只剩 95rpx，而 .ico 是死的 100rpx，
-   第 7 条起图标就顶出格子；文案又是 nowrap，5 字以上会和邻格叠在一起。
-   改成固定 5 列换行——5 条时每格仍是 670/5 = 134rpx，与改前逐像素一致，
-   第 6 条起自然落到第二行。列间距必须为 0，否则 5×20% 加间距就挤不下 5 列。 */
+/* 版框的内线：往里退 5rpx 再描一道，两道之间留出的空就是"版框" */
+.entries-wrap::after {
+  content: '';
+  position: absolute;
+  left: 5rpx; top: 5rpx; right: 5rpx; bottom: 5rpx;
+  pointer-events: none;
+  border-radius: 4rpx;
+  border: 2rpx solid rgba(150, 118, 54, 0.42);
+}
+/* 中缝上那枚朱红圭形小标记。clip-path 不支持时退化成一小块朱红方片，
+   位置和分量都还在，不会散版。 */
+.entries-wrap::before {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: -3rpx;
+  transform: translateX(-50%);
+  width: 30rpx;
+  height: 18rpx;
+  background: var(--zhu);
+  clip-path: polygon(0 0, 100% 0, 100% 52%, 50% 100%, 0 52%);
+}
 .entries { display: flex; flex-wrap: wrap; gap: 26rpx 0; }
 .entry {
   display: flex;
@@ -446,8 +507,25 @@
   align-items: center;
   gap: 4rpx;
 }
-/* 双线：上粗下细，下面那道半透明——两道之间留 2rpx 空，是版框的做法 */
-.sec-rule { margin: 12rpx 0 24rpx; }
+/* 双线：上粗下细，下面那道半透明——两道之间留 2rpx 空，是版框的做法。
+   正中压一枚**朱红菱形**，外面描一圈纸色把线断开：
+   线是版框，菱形是版框中缝的鱼尾，少了它两道线就只是普通分割线。 */
+.sec-rule {
+  margin: 12rpx 0 24rpx;
+  position: relative;
+}
+.sec-rule::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: 11rpx;
+  height: 11rpx;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--zhu);
+  box-shadow: 0 0 0 5rpx var(--paper);
+}
 .sec-rule-a,
 .sec-rule-b {
   display: block;
@@ -471,26 +549,39 @@
 .hall-card {
   display: inline-flex;
   flex-direction: column;
-  width: 248rpx;
+  width: 264rpx;          /* ＝设计稿 132px */
   flex-shrink: 0;
 }
 .hall-card:active { transform: translateY(-4rpx); }
 .hc-art { height: 184rpx; }
 /* 题签：比封面略窄，居中贴在裱框下沿 */
-/* 全名留在题签底下。题签一行放得下的是简称（「交通博物馆」），
-   全名往往有十几个字（「贵州交通博物馆·教育基地」），挤进签里只会被截断，
-   而它是这张卡真正的标题——改版之前就是两行并存，这里不减信息。 */
-.hall-name {
-  margin-top: 10rpx;
-  padding: 0 4rpx;
-  font-size: 24rpx;
-  color: var(--sub);
-  line-height: 1.35;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+/* 封面上那方白牌：半透明的纸垫着馆名，左边一枚小器物。
+   定稿里它和题签是**两件**——牌在图上写简称，签在框下写全名。
+   我上一版把牌删了、又在签底下加了一行全名，于是签和那一行两条文字
+   叠在一起，看着就是排版乱了。现在按定稿收回来：牌 + 签，各写各的。 */
+.hc-plate {
+  position: absolute;
+  z-index: 4;
+  left: 14rpx;
+  bottom: 14rpx;
+  max-width: calc(100% - 28rpx);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 6rpx 16rpx 6rpx 12rpx;
+  border-radius: 4rpx;
+  background: linear-gradient(135deg, rgba(252,250,244,.86), rgba(252,250,244,.66));
+  box-shadow: inset 0 0 0 2rpx rgba(122,110,85,.24);
+}
+.hc-mark { flex: none; opacity: .9; }
+.hc-plate-tx {
+  font-size: 27rpx;
+  letter-spacing: 3rpx;
+  color: var(--ink);
   overflow: hidden;
-  white-space: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tiqian {
   margin: 14rpx auto 0;
@@ -505,10 +596,18 @@
   color: var(--sub);
   text-align: center;
   text-shadow: 0 2rpx 0 rgba(255,252,244,.85);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   box-sizing: border-box;
+  /* 定稿的签是一行、超了就截断，因为那边的签写的是展览名（「礼乐文明展」，五个字）。
+     这边的签写的是馆的**全名**（「贵州交通博物馆·教育基地」十几个字），
+     一行截断之后只剩「贵州交通博物…」，还不如不写。所以放到两行。
+     两行放不下再截断——比一行截断多出一倍的可读长度。 */
+  line-height: 1.32;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-all;
 }
 
 /* ── 动态 / 课程卡片 ── */

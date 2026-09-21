@@ -1,30 +1,52 @@
 <!-- pages/index/index.wxml -->
 <view class="home-page">
 
-  <!-- 吸顶 Header：校名居中 + （我的 · 搜索 · 铃铛）一行 -->
-  <view class="header">
+  <!-- 细吸顶搜索条：卷首那条搜索行滑到它底下时接手，
+       保证任何时刻屏幕上只有一个搜索框。右侧留出胶囊的位置。 -->
+  <view class="topbar {{topbarOn ? 'topbar-on' : ''}}">
     <view style="height: {{statusBarHeight}}px;"></view>
-    <!-- 校名（书法字·图片，跨机型显示一致；高度随胶囊几何对齐） -->
-    <view class="header-titlebar" style="height: {{navContentHeight}}px;">
-      <image class="header-name-img" src="/assets/images/home-title-calligraphy.png" mode="heightFix" />
-    </view>
-    <!-- 我的 + 搜索 + 铃铛（同一行，一左一右） -->
-    <view class="header-actionbar">
-      <view class="header-icon" bindtap="onProfileTap">
-        <icon name="user-circle" size="24" color="#7E6134" />
-      </view>
-      <view class="search-bar" bindtap="onSearchTap">
-        <icon name="search" size="17" color="#6B6459" />
-        <text class="search-placeholder">搜索动态、课程、展馆、资源…</text>
-      </view>
-      <view class="header-icon" bindtap="onBellTap">
-        <icon name="bell" size="22" color="#7E6134" />
-        <view wx:if="{{hasNewAnnouncement}}" class="bell-dot"></view>
+    <view class="topbar-row" style="height: {{navContentHeight}}px; padding-right: {{capsulePadding}}px;">
+      <view class="search search-mini" bindtap="onSearchTap">
+        <icon name="search" size="15" color="#6B6459" />
+        <text class="search-ph">搜索动态、课程、展馆、资源…</text>
       </view>
     </view>
   </view>
 
-  <scroll-view class="scroll-body" scroll-y enhanced show-scrollbar="{{false}}">
+  <scroll-view class="scroll-body" scroll-y enhanced show-scrollbar="{{false}}" bindscroll="onBodyScroll">
+
+    <!-- ── 卷首：通栏出血的一幅青绿山水，屋檐压在画上 ──
+         画是这套方案最强的身份标记，所以它在最上面、通栏、不被任何东西挤掉。
+         檐、书法题名、搜索行都排在画上；下半幅留白，纸从那里翻上来。 -->
+    <view class="hero">
+      <image class="hero-shan" src="/assets/images/hero-shan.png" mode="scaleToFill" />
+      <view class="hero-flow">
+        <!-- 状态栏让位。这里**不再给胶囊单独让位**：实测胶囊落在瓦面上，
+             合成后黑色图标对比度 10.11:1，远在 AA 之上，所以照设计稿让檐顶到最上面。 -->
+        <view style="height: {{statusBarHeight}}px;"></view>
+        <image class="hero-eave" src="/assets/images/hero-eave.png" mode="scaleToFill" />
+        <view class="hero-brand">
+          <image class="hero-brand-img" src="/assets/images/home-title-calligraphy.png" mode="heightFix" />
+        </view>
+        <!-- 我的 · 搜索 · 铃铛，浮在画上。画的颜色不定，所以三件都垫一方半透明的纸。 -->
+        <view class="head-row">
+          <view class="hi" bindtap="onProfileTap" hover-class="hi-hover">
+            <icon name="user-circle" size="22" color="#614923" />
+          </view>
+          <view class="search" bindtap="onSearchTap">
+            <icon name="search" size="15" color="#6B6459" />
+            <text class="search-ph">搜索动态、课程、展馆、资源…</text>
+          </view>
+          <view class="hi" bindtap="onBellTap" hover-class="hi-hover">
+            <icon name="bell" size="21" color="#614923" />
+            <view wx:if="{{hasNewAnnouncement}}" class="hi-dot"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ── 纸：从卷首下沿翻上来，上沿留一道轴头 ── -->
+    <view class="sheet">
 
     <skeleton show="{{loading && !homeError}}" type="home" count="5" />
     <view wx:if="{{homeError}}" class="page-state-box home-error-box">
@@ -37,8 +59,23 @@
       <text>首页刷新失败，点击重试</text>
     </view>
 
-    <!-- Banner 轮播 -->
     <view class="wrap">
+      <!-- 公告条：定稿里它在轮播**上面**——公告是"今天这一条"，
+           先看见它再看轮播；压在轮播下面就成了轮播的附注。
+           失败不伪装成「没有公告」。 -->
+      <view wx:if="{{announcementError && announcements.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryAnnouncements">
+        <text>公告刷新失败，点击重试</text>
+      </view>
+      <view wx:elif="{{announcementError && !announcements.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryAnnouncements">
+        <text>公告加载失败，点击重试</text>
+      </view>
+      <view wx:if="{{announcements.length}}" class="notice-bar" bindtap="onNoticeTap">
+        <icon name="megaphone" size="16" color="#9E7D45" />
+        <text class="notice-text">{{announcements[0].content}}</text>
+        <icon name="chevron-right" size="15" color="#6B6459" />
+      </view>
+
+      <!-- Banner 轮播 -->
       <view wx:if="{{sectionErrors.banners && !banners.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
         <text>轮播加载失败，点击重试</text>
       </view>
@@ -75,19 +112,6 @@
           wx:key="id"
           class="bdot {{bannerIndex === index ? 'bdot-on' : ''}}"
         ></view>
-      </view>
-
-      <!-- 公告条：失败不伪装成「没有公告」 -->
-      <view wx:if="{{announcementError && announcements.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryAnnouncements">
-        <text>公告刷新失败，点击重试</text>
-      </view>
-      <view wx:elif="{{announcementError && !announcements.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryAnnouncements">
-        <text>公告加载失败，点击重试</text>
-      </view>
-      <view wx:if="{{announcements.length}}" class="notice-bar" bindtap="onNoticeTap">
-        <icon name="megaphone" size="16" color="#9E7D45" />
-        <text class="notice-text">{{announcements[0].content}}</text>
-        <icon name="chevron-right" size="15" color="#6B6459" />
       </view>
     </view>
 
@@ -255,6 +279,7 @@
 
     <view class="scroll-bottom"></view>
     </block>
+    </view><!-- /sheet -->
   </scroll-view>
 
   <ai-assistant />

@@ -111,7 +111,34 @@ function checkPng(p, maxKB) {
   }
 }
 
-// ── 二、问答悬浮标 ───────────────────────────────────────────────
+// ── 二、首页卷首（青绿山水 + 满檐 + 书法题名）────────────────────
+{
+  const hero = await import('./build-hero.mjs')
+  checkHash('首页卷首', path.join(ROOT, 'scripts/hero.hash'),
+    hero.fingerprint(hero.bakedSvgs()),
+    'node scripts/build-hero.mjs')
+  for (const [name, [, , , maxKB]] of Object.entries(hero.PIECES)) {
+    checkPng(path.join(ROOT, `miniapp/assets/images/${name}.png`), maxKB)
+  }
+  checkPng(path.join(ROOT, 'miniapp/assets/images', hero.BRAND.out), hero.BRAND.maxKB)
+
+  // 书法字必须是**墨色版**。包里曾经躺着 academy-cn-navy.png（实心像素 #2B356E，
+  // 旧调色板的 navy），护栏禁了这个色值却看不进 PNG 里，于是它在首页
+  // 最显眼的位置待了整整一轮没人发现。这里直接比源文件，不比色值。
+  if (!/academy-cn-ink\.png$/.test(hero.BRAND.src)) {
+    errs.push(`build-hero.mjs 的 BRAND.src 不是 academy-cn-ink.png —— ` +
+              `方案 A 的校名用墨色版，别又换回 navy/gold/cream`)
+  }
+
+  const wxml = read(path.join(ROOT, 'miniapp/pages/index/index.wxml'))
+  for (const f of [...Object.keys(hero.PIECES), hero.BRAND.out.replace('.png', '')]) {
+    if (!wxml.includes(`/assets/images/${f}.png`)) {
+      errs.push(`pages/index/index.wxml 没有引 ${f}.png —— 卷首缺一件`)
+    }
+  }
+}
+
+// ── 三、问答悬浮标 ───────────────────────────────────────────────
 {
   const src = read(path.join(ROOT, 'scripts/build-ai-fab.mjs'))
   const m = src.match(/^const CH = '(.+?)'/m)

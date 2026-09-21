@@ -48,7 +48,8 @@ Page({
     sectionErrors:      { banners: false, recommends: false, colleges: false },
     statusBarHeight:    20,
     navContentHeight:   44,
-    capsulePadding:     96
+    capsulePadding:     96,
+    topbarOn:           false
   },
 
   onLoad() {
@@ -56,6 +57,38 @@ Page({
     this.setData(nav)
     enablePageShare()
     this._loadPage()
+  },
+
+  onReady() {
+    this._measureSticky()
+  },
+
+  /**
+   * 量出细吸顶搜索条该在什么时候接手。
+   *
+   * 规则是「屏幕上任何时刻只有一个搜索框」：等卷首那条搜索行的**下沿**
+   * 滑到吸顶条底下，吸顶条才亮。所以阈值 = 搜索行下沿相对卷首顶的距离
+   * − 吸顶条自己的高度，两个数都现量，不写死——
+   * 卷首里有状态栏（px，随机型）和 rpx 混排，写死一个数换机型就错位。
+   */
+  _measureSticky() {
+    const q = wx.createSelectorQuery().in(this)
+    q.select('.hero').boundingClientRect()
+    q.select('.head-row').boundingClientRect()
+    q.select('.topbar').boundingClientRect()
+    q.exec((res) => {
+      const [hero, row, bar] = res || []
+      if (!hero || !row || !bar) return          // 结构变了就退回"永不吸顶"，不至于闪
+      this._stickyAt = Math.max(0, (row.bottom - hero.top) - bar.height)
+    })
+  },
+
+  onBodyScroll(e) {
+    if (this._stickyAt == null) return
+    const on = e.detail.scrollTop > this._stickyAt
+    // 只在翻转的那一下 setData：bindscroll 一秒能来几十次，
+    // 每次都 setData 会把 setData 队列堵死，列表跟着掉帧。
+    if (on !== this.data.topbarOn) this.setData({ topbarOn: on })
   },
 
   onShareAppMessage() {

@@ -75,7 +75,7 @@ const BUDGET = {
   'packageC/search/index.wxss': 1,
   'packageD/poster/generate.wxss': 2,
   'pages/hall/index.wxss': 1,
-  'pages/index/index.wxss': 8,
+  'pages/index/index.wxss': 6,
   'pages/login/index.wxss': 2,
   'pages/profile/index.wxss': 7,
   'styles/login-page.wxss': 2
@@ -165,7 +165,7 @@ function main() {
   // 登录页的波浪装饰里却一直躺着 %23D0E7F7 和 rgba(208,231,247)，
   // 整页还是旧配色，而流水线是绿的。这条护栏自己说了假话一个周期。
   //
-  // 补上之后一次冒出 31 处，分布在 15 个文件里，多数属于后面几批的页面。
+  // 补上之后一次冒出 36 处，分布在 14 个文件里，多数属于后面几批的页面。
   // 所以这里不是一刀切成红，而是和 ② 一样上棘轮：数字**只能减不能增**，
   // 收掉一页就把那一行改小或删掉。比"先全绿着"诚实，比"全红着"能落地。
   for (const [rel, n] of Object.entries(disguised)) {

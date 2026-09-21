@@ -4,84 +4,179 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, var(--sky-2) 0%, var(--paper) 500rpx);
+  /* 卷首那幅画顶在最上面，页面底色只在画以下露出来，所以是平铺的纸，
+     不再是原来那道冷蓝到纸色的渐变。 */
+  background: var(--paper);
 }
 .home-error-box { padding-top: 80rpx; }
 .home-page .page-refresh-bar { margin-left: 32rpx; margin-right: 32rpx; }
 .home-section-bar { margin: 0 0 16rpx; }
 
-/* ── 吸顶 Header ── */
-.header {
-  flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(20rpx);
-  padding: 8rpx 28rpx 18rpx;
-  border-bottom: 1rpx solid var(--line);
-  box-shadow: 0 4rpx 28rpx rgba(74,50,30, 0.05);
-}
+/* ══════════════ 卷首 ══════════════
+   定稿里首页开篇是**通栏出血的一幅青绿山水，屋檐压在画上**，
+   书法题名和搜索行都落在画里。这幅画是整套方案最强的身份标记。
 
-/* 校名行（居中）——书法字改用图片，规避 Android/鸿蒙无楷体的回退问题 */
-.header-titlebar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  min-height: 72rpx; /* 回退值；实际高度由 JS 按胶囊几何注入 */
-}
-.header-name-img {
-  height: 52rpx;
-  width: auto;
-}
+   它有 736rpx（＝设计稿 368px）高，占掉小半屏，所以不可能吸顶——
+   卷首整体跟着内容滚走，滚过去之后由下面那条 .topbar 接手搜索。
 
-/* 操作行：我的 · 搜索 · 铃铛 */
-.header-actionbar {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 6rpx;
-}
-.header-icon {
+   画和檐是两张 PNG（scripts/build-hero.mjs 生成）：
+   WXML 不渲染内联 SVG，WXSS 的 background-image 也不收本地路径。
+   分两张而不是合成一张，是因为**檐的位置跟着机型走**——
+   状态栏高度各机型不同，合成就把檐钉死在某一个偏移上了。 */
+.hero {
   position: relative;
-  flex-shrink: 0;
-  width: 64rpx;
-  height: 64rpx;
+  min-height: 736rpx;
+  overflow: hidden;
+}
+/* 画铺满整个卷首。scaleToFill 对应设计稿那个 preserveAspectRatio="none"：
+   画本来就是按屏宽拉伸用的，换机型只是纵向拉高一点。 */
+.hero-shan {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+.hero-flow { position: relative; z-index: 2; }
+.hero-eave {
+  display: block;
+  width: 100%;
+  height: 124rpx;        /* ＝设计稿 62px，满檐；顶栏组件那张是矮一档的 46px，两张不通用 */
+  margin-bottom: -4rpx;  /* 檐脚压住下面一点点，中间不透缝 */
+}
+/* 画上的题名：比二级页顶栏那一档大，它现在是这幅画的题款 */
+.hero-brand {
+  padding: 44rpx 0 0;
+  display: flex;
+  justify-content: center;
+}
+.hero-brand-img {
+  height: 80rpx;         /* ＝设计稿 40px */
+  width: auto;
+  /* 墨字压在浅色的绢底上，垫一层极淡的白让笔画离开背景 */
+  filter: drop-shadow(0 1rpx 0 rgba(255,255,255,.9))
+          drop-shadow(0 4rpx 12rpx rgba(74,102,96,.22));
+}
+
+/* 我的 · 搜索 · 铃铛：浮在画上 */
+.head-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 36rpx 32rpx 0;
+}
+/* 画的颜色不定（后面还会换图），所以三件工具都垫一方半透明的纸，
+   和二级页返回键同一个办法——直接落在绢底最深处只有 3.74:1。 */
+.hi {
+  position: relative;
+  flex: none;
+  width: 60rpx;
+  height: 60rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(252, 250, 244, 0.74);
+  box-shadow: 0 2rpx 8rpx rgba(96,78,44,.18),
+              inset 0 0 0 2rpx rgba(150,120,66,.22);
 }
-.header-icon:active { background: var(--sky-3); }
-.bell-dot {
+.hi-hover { background: var(--xing-05); }
+.hi-dot {
   position: absolute;
-  top: 10rpx;
-  right: 12rpx;
-  width: 14rpx;
-  height: 14rpx;
+  top: 6rpx;
+  right: 8rpx;
+  width: 12rpx;
+  height: 12rpx;
   border-radius: 50%;
-  background: var(--jin-60);
-  border: 3rpx solid var(--card);
+  background: var(--zhu);
 }
-
-/* 搜索框 */
-.search-bar {
+/* 搜索框（卷首上那一条）。原来是冷蓝灰的填充加一圈冷蓝灰描边——
+   那两个值是旧配色留下的，又不在旧调色板对照表里，所以护栏一直扫不到。
+   这里换成"半透明的纸 + 木色描边"，和它脚下那幅画是一家人。 */
+.search {
   flex: 1;
   min-width: 0;
   height: 72rpx;
-  /* 搜索框坐在纯白 header 上，原来填充 var(--sky-3) 与白底只差 1.08:1、
-     描边 var(--line) 只差 1.18:1——描边其实一直都在，只是两个颜色都太接近白，
-     整个框几乎看不出边界。填充与描边各加深一档（1.15 / 1.38），
-     框的轮廓清楚了，又不至于变成"描边输入框"那种硬边。
-     再深就压过 header 里那两个图标的分量了。 */
-  background: var(--sky-2);
-  border: 1rpx solid #D3DCEC;
-  border-radius: 36rpx;
+  border-radius: 16rpx;
+  background: rgba(252, 250, 244, 0.80);
+  border: 1rpx solid rgba(122, 110, 85, 0.26);
+  box-shadow: inset 0 2rpx 6rpx rgba(107,67,38,.10),
+              0 2rpx 0 rgba(255,252,244,.9);
   display: flex;
   align-items: center;
-  padding: 0 24rpx;
+  padding: 0 22rpx;
   gap: 14rpx;
 }
-.search-bar:active { background: #E1E9F5; }
-.search-placeholder { font-size: 26rpx; color: var(--muted); }
+.search:active {
+  transform: translateY(1rpx);
+  background: var(--xing-05);
+}
+.search-ph {
+  font-size: 26rpx;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 细吸顶搜索条 ──
+   卷首滚走之后顶上淡入这一条，搜索始终点得到。
+   触发点由 JS 量出来（卷首那条搜索行的下沿减去本条高度），
+   所以两个搜索框不会同时出现在屏幕上。 */
+.topbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 60;
+  background: rgba(247, 243, 232, 0.94);
+  backdrop-filter: blur(20rpx);
+  border-bottom: 1rpx solid var(--line);
+  box-shadow: 0 4rpx 20rpx rgba(74,50,30,.06);
+  /* 默认收起：不可见、不挡点击，也不参与无障碍焦点 */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8rpx);
+  transition: opacity .22s ease, transform .22s ease, visibility .22s;
+  pointer-events: none;
+}
+.topbar-on {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.topbar-row {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding-left: 32rpx;   /* 右侧内边距由 JS 按胶囊位置注入 */
+}
+.search-mini { height: 64rpx; }
+
+/* ── 纸：从卷首下沿翻上来 ── */
+.sheet {
+  position: relative;
+  z-index: 3;
+  margin-top: -52rpx;                     /* ＝设计稿 -26px，纸盖住画的下沿 */
+  border-radius: 36rpx 36rpx 0 0;
+  background: var(--paper);
+  box-shadow: 0 -4rpx 0 rgba(200,164,92,.30),
+              0 -20rpx 52rpx rgba(74,102,96,.13);
+}
+/* 纸的上沿留一道提手，像卷轴的轴头 */
+.sheet::before {
+  content: '';
+  display: block;
+  width: 92rpx;
+  height: 6rpx;
+  margin: 18rpx auto 8rpx;
+  border-radius: 4rpx;
+  background: var(--wood-40);
+  opacity: .7;
+}
 
 /* ── 可滚动内容区 ── */
 .scroll-body { flex: 1; overflow: hidden; }

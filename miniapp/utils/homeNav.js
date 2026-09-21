@@ -10,7 +10,7 @@ const DEFAULT_ENTRIES = [
   { id: 2, label: '展馆展示', icon: 'entry-hall', path: '/pages/hall/index', toneClass: 'e2' },
   { id: 3, label: '课程中心', icon: 'entry-course', path: '/pages/course/index', toneClass: 'e3' },
   { id: 4, label: '资源下载', icon: 'entry-resource', path: '/packageB/resource/list', toneClass: 'e4' },
-  { id: 5, label: '报名', icon: 'entry-enroll', path: '/pages/activity/index', toneClass: 'e5' }
+  { id: 5, label: '活动报名', icon: 'entry-enroll', path: '/pages/activity/index', toneClass: 'e5' }
 ]
 
 /*

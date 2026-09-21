@@ -59,13 +59,22 @@ export const PIECES = {
   'banner-shan': ['o.qinglv(w=343, h=176, seed=20261101, step_k=1.15)', 343, 176, 24]
 }
 
-/** 字标裁切的那一张：源文件、目标高度（px，= 设计稿 40px × 3 倍图）、上限 KB */
-export const BRAND = {
-  out: 'home-title-calligraphy.png',
-  src: 'design/brand/logo/extracted/academy-cn-ink.png',
-  h: 120,
-  maxKB: 40
-}
+/**
+ * 现成字标裁切出来的那几张：源文件、目标高度（px，= 设计稿高度 × 3 倍图）、上限 KB。
+ *
+ * 这几张都是**单色 + alpha**：校名墨迹 73% 的实心像素是 #231916，
+ * 朱印更彻底，100% 是 #540B0F。也就是说 RGB 三个通道不携带信息，
+ * 笔锋、飞白、印泥的斑驳全在 alpha 里。所以下面统一把 RGB 压平成主色、
+ * 形状整个交给 alpha —— 肉眼没区别，PNG 对常量色面的压缩率高得多。
+ */
+export const BRANDS = [
+  { out: 'home-title-calligraphy.png',
+    src: 'design/brand/logo/extracted/academy-cn-ink.png',
+    h: 120, maxKB: 40 },            // 卷首题名，设计稿 40px
+  { out: 'seal-zhu.png',
+    src: 'design/brand/logo/extracted/mark-maroon.png',
+    h: 72, maxKB: 12 }              // 段头小印 22px / 匾上那枚 23px，取 24px × 3
+]
 
 export function tokens() {
   const src = fs.readFileSync(path.join(ROOT, 'miniapp/app.wxss'), 'utf8')
@@ -99,12 +108,13 @@ sys.stdout.write(json.dumps({${exprs}}, ensure_ascii=False))
   return out
 }
 
-/** 书法字那张的指纹按**源文件内容**算，源素材换了这里就对不上 */
+/** 字标那几张的指纹按**源文件内容**算，源素材换了这里就对不上 */
 export function brandFingerprint() {
-  return crypto.createHash('sha256')
-    .update(fs.readFileSync(path.join(ROOT, BRAND.src)))
-    .update(JSON.stringify(BRAND))
-    .digest('hex')
+  const h = crypto.createHash('sha256')
+  for (const b of BRANDS) {
+    h.update(fs.readFileSync(path.join(ROOT, b.src))).update(JSON.stringify(b))
+  }
+  return h.digest('hex')
 }
 
 export function fingerprint(svgs) {
@@ -114,36 +124,31 @@ export function fingerprint(svgs) {
     .digest('hex')
 }
 
-/** 把书法字缩到卷首要的高度，顺手量化 */
-function buildBrand() {
-  const src = path.join(ROOT, BRAND.src)
-  const out = path.join(OUT_DIR, BRAND.out)
-  if (!fs.existsSync(src)) throw new Error(`找不到字标源文件 ${BRAND.src}`)
+/** 把一张字标缩到要的高度、压平成单色，顺手量化 */
+function buildBrand(b) {
+  const src = path.join(ROOT, b.src)
+  const out = path.join(OUT_DIR, b.out)
+  if (!fs.existsSync(src)) throw new Error(`找不到字标源文件 ${b.src}`)
   const before = fs.existsSync(out) ? fs.statSync(out).size : 0
   execFileSync('python', ['-c', `
 from PIL import Image
 import collections
 im = Image.open(${JSON.stringify(src)}).convert('RGBA')
-w = round(im.width * ${BRAND.h} / im.height)
-im = im.resize((w, ${BRAND.h}), Image.LANCZOS)
+w = round(im.width * ${b.h} / im.height)
+im = im.resize((w, ${b.h}), Image.LANCZOS)
 
-# 这张书法字实际上是**单色墨迹**：实心像素里 73% 恰好是 #231916，
-# 全图饱和度差最大只有 15，没有朱印之类的彩色元素。
-# 也就是说 RGB 三个通道不携带信息，笔锋、飞白、浓淡全在 alpha 里。
-# 于是把 RGB 压平成那一个主色、形状整个交给 alpha —— 肉眼没有区别，
-# 文件从 46 KB 掉到 26 KB（PNG 对常量色面的压缩率高得多）。
-#
-# 不走 quantize()：它会连 alpha 一起量化，笔锋边缘会被啃出锯齿。
+# 单色 + alpha：把 RGB 压平成出现最多的那个主色，形状整个交给 alpha。
+# 不走 quantize()：它会连 alpha 一起量化，笔锋和印边会被啃出锯齿。
 src_px = [p for p in im.getdata() if p[3] > 200]
 ink = collections.Counter((p[0], p[1], p[2]) for p in src_px).most_common(1)[0][0]
 flat = Image.new('RGB', im.size, ink)
 flat.putalpha(im.getchannel('A'))
 flat.save(${JSON.stringify(out)}, optimize=True)
-print('ink=#%02X%02X%02X' % ink)
+print('  %s 主色 #%02X%02X%02X' % (${JSON.stringify(b.out)}, *ink))
 `], { encoding: 'utf8', stdio: ['pipe', 'inherit', 'inherit'] })
   const kb = fs.statSync(out).size / 1024
-  if (kb > BRAND.maxKB) throw new Error(`${BRAND.out} 有 ${kb.toFixed(1)} KB，超过 ${BRAND.maxKB} KB`)
-  return { 图: BRAND.out.replace('.png', ''), 尺寸: `?×${BRAND.h}`,
+  if (kb > b.maxKB) throw new Error(`${b.out} 有 ${kb.toFixed(1)} KB，超过 ${b.maxKB} KB`)
+  return { 图: b.out.replace('.png', ''), 尺寸: `?×${b.h}`,
            KB: +kb.toFixed(1), 量化前: +(before / 1024).toFixed(1) }
 }
 
@@ -181,9 +186,9 @@ im.quantize(colors=255, method=Image.FASTOCTREE).save(p, optimize=True)
                 KB: +kb.toFixed(1), 量化前: +(raw / 1024).toFixed(1) })
   }
   await b.close()
-  rows.push(buildBrand())
+  for (const b of BRANDS) rows.push(buildBrand(b))
   fs.writeFileSync(HASH_FILE, fingerprint(svgs) + '\n')
-  console.log('✓ 卷首三张图')
+  console.log(`✓ 首页烤图 ${rows.length} 张`)
   console.table(rows)
   console.log(`  合计 ${rows.reduce((a, r) => a + r.KB, 0).toFixed(1)} KB`)
 }

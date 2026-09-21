@@ -147,24 +147,29 @@
       </view>
     </view>
 
-    <!-- 精品好物（工艺品展示，无在线购买） -->
-    <view class="craft-banner wrap" bindtap="onCraftTap">
-      <view class="craft-banner-inner">
-        <view class="craft-ic"><icon name="medal" size="28" color="#FFFBF2" /></view>
-        <view class="craft-text">
-          <text class="craft-title serif">精品好物</text>
-          <text class="craft-sub">工艺品鉴赏 · 合作咨询</text>
+    <!-- 精品好物：一方木匾。朱印钤在纸上，字是阴刻填墨 -->
+    <view class="plaque" bindtap="onCraftTap">
+      <view class="plaque-inner">
+        <view class="plaque-seal-paper">
+          <image class="plaque-seal" src="/assets/images/seal-zhu.png" mode="aspectFit" />
         </view>
-        <icon name="chevron-right" size="18" color="rgba(255,255,255,0.85)" />
+        <view class="plaque-txt">
+          <text class="plaque-title serif">精品好物</text>
+          <text class="plaque-sub">工艺品鉴赏 · 合作咨询</text>
+        </view>
+        <view class="plaque-go"><icon name="chevron-right" size="18" color="#493D28" /></view>
       </view>
     </view>
 
     <!-- 线上展馆 -->
     <view class="section wrap">
       <view class="sec-head">
-        <view class="sec-title serif">线上展馆</view>
-        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/hall/index">全部<icon name="chevron-right" size="13" color="#6B6459" /></view>
+        <view class="sec-title serif">
+          <image class="seal-sm" src="/assets/images/seal-zhu.png" mode="aspectFit" />
+          线上展馆</view>
+        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/hall/index">全部<icon name="chevron-right" size="13" color="#7E6134" /></view>
       </view>
+      <view class="sec-rule"><view class="sec-rule-a"></view><view class="sec-rule-b"></view></view>
       <view wx:if="{{sectionErrors.recommends && !hallList.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
         <text>展馆加载失败，点击重试</text>
       </view>
@@ -177,14 +182,24 @@
             bindtap="onHallTap"
             data-id="{{item.id}}"
           >
-            <view class="hc-cover {{item.colorClass || 'hc1'}}">
-              <view wx:if="{{item.cover && !item.coverFailed}}" class="hc-bg">
-                <image src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="hc-img" data-list="hallList" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
+            <!-- 裱起来的封面：角叶收到最小一档；名字改贴在框下的题签上 -->
+            <view class="mount mount--sm">
+              <view class="mount-art hc-art {{item.cover && !item.coverFailed ? 'has-cover' : ''}}">
+                <image
+                  wx:if="{{item.cover && !item.coverFailed}}"
+                  class="mount-cover"
+                  src="{{item.cover}}"
+                  mode="{{item.coverImageMode || 'aspectFill'}}"
+                  data-list="hallList"
+                  data-id="{{item.id}}"
+                  data-cover="{{item.cover}}"
+                  binderror="onCoverError"
+                />
+                <view wx:else class="thumb-blank"><icon name="museum" size="30" color="#A68C64" /></view>
               </view>
-              <view class="hc-corner"><icon name="museum" size="30" color="rgba(255,255,255,0.34)" /></view>
-              <text class="hc-ct serif">{{item.shortName}}</text>
             </view>
-            <view class="hc-name">{{item.name}}</view>
+            <text class="tiqian">{{item.shortName || item.name}}</text>
+            <view class="hall-name">{{item.name}}</view>
           </view>
         </view>
       </scroll-view>
@@ -193,9 +208,12 @@
     <!-- 最新动态 -->
     <view class="section wrap">
       <view class="sec-head">
-        <view class="sec-title serif">最新动态</view>
-        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/news/index">更多<icon name="chevron-right" size="13" color="#6B6459" /></view>
+        <view class="sec-title serif">
+          <image class="seal-sm" src="/assets/images/seal-zhu.png" mode="aspectFit" />
+          最新动态</view>
+        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/news/index">更多<icon name="chevron-right" size="13" color="#7E6134" /></view>
       </view>
+      <view class="sec-rule"><view class="sec-rule-a"></view><view class="sec-rule-b"></view></view>
       <view wx:if="{{sectionErrors.recommends && !newsList.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
         <text>动态加载失败，点击重试</text>
       </view>
@@ -207,9 +225,11 @@
           bindtap="onNewsCardTap"
           data-id="{{item.id}}"
         >
-          <view class="ncard-thumb {{item.colorClass || 'hc1'}}">
-            <image wx:if="{{item.cover && !item.coverFailed}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ncard-img" data-list="newsList" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
-            <icon wx:else name="{{item.icon}}" size="26" color="rgba(255,255,255,0.92)" />
+          <view class="ncard-thumb mount mount--sm">
+            <view class="mount-art {{item.cover && !item.coverFailed ? 'has-cover' : ''}}">
+              <image wx:if="{{item.cover && !item.coverFailed}}" class="mount-cover ncard-img" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" data-list="newsList" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
+              <view wx:else class="thumb-blank"><icon name="{{item.icon}}" size="26" color="#A68C64" /></view>
+            </view>
           </view>
           <view class="ncard-body">
             <view class="ncard-title">{{item.title}}</view>
@@ -225,9 +245,12 @@
     <!-- 热门课程 -->
     <view class="section wrap">
       <view class="sec-head">
-        <view class="sec-title serif">热门课程</view>
-        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/course/index">更多<icon name="chevron-right" size="13" color="#6B6459" /></view>
+        <view class="sec-title serif">
+          <image class="seal-sm" src="/assets/images/seal-zhu.png" mode="aspectFit" />
+          热门课程</view>
+        <view class="sec-more" bindtap="onSectionMore" data-path="/pages/course/index">更多<icon name="chevron-right" size="13" color="#7E6134" /></view>
       </view>
+      <view class="sec-rule"><view class="sec-rule-a"></view><view class="sec-rule-b"></view></view>
       <view wx:if="{{sectionErrors.recommends && !courseList.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
         <text>课程加载失败，点击重试</text>
       </view>
@@ -239,9 +262,11 @@
           bindtap="onCourseCardTap"
           data-id="{{item.id}}"
         >
-          <view class="ccard-thumb {{item.colorClass || 'hc3'}}">
-            <image wx:if="{{item.cover && !item.coverFailed}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ccard-img" data-list="courseList" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
-            <icon wx:else name="{{item.icon}}" size="30" color="rgba(255,255,255,0.92)" />
+          <view class="ccard-thumb mount mount--sm">
+            <view class="mount-art {{item.cover && !item.coverFailed ? 'has-cover' : ''}}">
+              <image wx:if="{{item.cover && !item.coverFailed}}" class="mount-cover ccard-img" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" data-list="courseList" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
+              <view wx:else class="thumb-blank"><icon name="{{item.icon}}" size="30" color="#A68C64" /></view>
+            </view>
           </view>
           <view class="ccard-body">
             <view class="ccard-title serif">{{item.name}}</view>
@@ -262,9 +287,12 @@
     <!-- 协同育人 · 关联小程序（App 入口横条；1→N 统一，首页至多 3 条，余下进「更多」） -->
     <view wx:if="{{collegeList.length || sectionErrors.colleges}}" class="section wrap">
       <view class="sec-head">
-        <view class="sec-title serif">关联应用</view>
-        <view class="sec-more" bindtap="onCollegeMore">全部<icon name="chevron-right" size="13" color="#6B6459" /></view>
+        <view class="sec-title serif">
+          <image class="seal-sm" src="/assets/images/seal-zhu.png" mode="aspectFit" />
+          关联应用</view>
+        <view class="sec-more" bindtap="onCollegeMore">全部<icon name="chevron-right" size="13" color="#7E6134" /></view>
       </view>
+      <view class="sec-rule"><view class="sec-rule-a"></view><view class="sec-rule-b"></view></view>
       <view wx:if="{{sectionErrors.colleges && !collegeHome.length}}" class="page-refresh-bar home-section-bar" bindtap="onRetryHome">
         <text>关联应用加载失败，点击重试</text>
       </view>

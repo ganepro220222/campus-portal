@@ -120,20 +120,31 @@ function checkPng(p, maxKB) {
   for (const [name, [, , , maxKB]] of Object.entries(hero.PIECES)) {
     checkPng(path.join(ROOT, `miniapp/assets/images/${name}.png`), maxKB)
   }
-  checkPng(path.join(ROOT, 'miniapp/assets/images', hero.BRAND.out), hero.BRAND.maxKB)
+  for (const b of hero.BRANDS) {
+    checkPng(path.join(ROOT, 'miniapp/assets/images', b.out), b.maxKB)
+  }
 
-  // 书法字必须是**墨色版**。包里曾经躺着 academy-cn-navy.png（实心像素 #2B356E，
+  // 校名必须是**墨色版**。包里曾经躺着 academy-cn-navy.png（实心像素 #2B356E，
   // 旧调色板的 navy），护栏禁了这个色值却看不进 PNG 里，于是它在首页
   // 最显眼的位置待了整整一轮没人发现。这里直接比源文件，不比色值。
-  if (!/academy-cn-ink\.png$/.test(hero.BRAND.src)) {
-    errs.push(`build-hero.mjs 的 BRAND.src 不是 academy-cn-ink.png —— ` +
-              `方案 A 的校名用墨色版，别又换回 navy/gold/cream`)
+  // 朱印同理：mark-maroon 是朱砂那一版，换成 ink/cream 就不是"印"了。
+  const WANT_SRC = {
+    'home-title-calligraphy.png': 'academy-cn-ink.png',
+    'seal-zhu.png': 'mark-maroon.png'
+  }
+  for (const b of hero.BRANDS) {
+    const want = WANT_SRC[b.out]
+    if (want && !b.src.endsWith(want)) {
+      errs.push(`build-hero.mjs 里 ${b.out} 的源文件不是 ${want} —— ` +
+                `方案 A 指定的就是这一版，别换成别的配色`)
+    }
   }
 
   const wxml = read(path.join(ROOT, 'miniapp/pages/index/index.wxml'))
-  for (const f of [...Object.keys(hero.PIECES), hero.BRAND.out.replace('.png', '')]) {
-    if (!wxml.includes(`/assets/images/${f}.png`)) {
-      errs.push(`pages/index/index.wxml 没有引 ${f}.png —— 卷首缺一件`)
+  for (const f of [...Object.keys(hero.PIECES).map(k => k + '.png'),
+                   ...hero.BRANDS.map(b => b.out)]) {
+    if (!wxml.includes(`/assets/images/${f}`)) {
+      errs.push(`pages/index/index.wxml 没有引 ${f} —— 首页缺一件`)
     }
   }
 }

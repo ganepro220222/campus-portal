@@ -261,42 +261,81 @@
   white-space: nowrap;
 }
 
-/* ── 虚拟文创展厅入口 ── */
-.craft-banner { margin-top: 24rpx; }
-.craft-banner-inner {
+/* ── 精品好物：一方匾额 ──
+   原来是一条金棕渐变横条（#8C5A2B → --jin-60 → #D4B76A）。
+   那条渐变正好撞上审看意见里点名不要的"暗沉像黄昏"，
+   而且它是整页唯一一块大面积高饱和暖色，什么内容都压不住它。
+
+   定稿是**一方木匾**：一圈竖纹实木的框、里面一面横纹的匾心，
+   左边一枚朱印钤在纸上，字是**阴刻填墨**——浅原木匾就该这么做，
+   描金是黑漆匾的规矩，浅木上描金反而没对比。 */
+.plaque {
+  margin: 28rpx 32rpx 0;
+  padding: 10rpx;
+  border-radius: 14rpx;
+  position: relative;
+  /* 匾框比匾心深两档：匾本来就该比它挂的那面墙深，
+     不然摆在米白页面上和纸一个色，"匾"这件事就没了。 */
+  background-color: var(--wood-75);
+  background-image:
+    repeating-linear-gradient(90deg,
+      rgba(58,34,14,.12) 0 2rpx, rgba(255,240,220,.06) 2rpx 4rpx, transparent 4rpx 11rpx),
+    linear-gradient(150deg, var(--wood-65), var(--wood-75) 52%, var(--wood-85));
+  box-shadow: 0 8rpx 28rpx rgba(82,66,44,.20),
+              inset 0 2rpx 0 rgba(255,250,240,.55),
+              inset 0 -4rpx 6rpx rgba(70,56,36,.30);
+}
+.plaque:active { transform: translateY(2rpx); }
+.plaque-inner {
+  border-radius: 8rpx;
+  padding: 22rpx 28rpx 24rpx;
   display: flex;
   align-items: center;
   gap: 22rpx;
-  padding: 28rpx 30rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #8C5A2B 0%, var(--jin-60) 55%, #D4B76A 100%);
-  box-shadow: 0 16rpx 40rpx rgba(140, 90, 43, 0.22);
+  /* 匾心的木理是**横**的，和框条的竖纹交叉——实木匾就是这么开料的 */
+  background-color: var(--wood-45);
+  background-image:
+    repeating-linear-gradient(0deg,
+      rgba(58,34,14,.09) 0 2rpx, transparent 2rpx 13rpx,
+      rgba(58,34,14,.05) 13rpx 15rpx, transparent 15rpx 34rpx),
+    linear-gradient(180deg, var(--wood-35) 0%, var(--wood-45) 58%, var(--wood-55) 100%);
+  box-shadow: inset 0 4rpx 10rpx rgba(62,52,34,.34),
+              inset 0 -2rpx 0 rgba(255,250,238,.45),
+              0 2rpx 0 rgba(255,250,238,.22);
 }
-.craft-banner:active { opacity: 0.92; }
-.craft-ic {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.16);
+/* 印章钤在一方纸上——纸给了印章对比度，直接盖在木头上会糊 */
+.plaque-seal-paper {
+  width: 68rpx;
+  height: 68rpx;
+  flex: none;
+  border-radius: 4rpx;
+  background: var(--paper-2);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  box-shadow: 0 4rpx 10rpx rgba(82,66,44,.30),
+              inset 0 0 0 2rpx rgba(107,74,50,.30);
 }
-.craft-text { flex: 1; min-width: 0; }
-.craft-title {
+.plaque-seal { width: 46rpx; height: 46rpx; display: block; }
+.plaque-txt { flex: 1; min-width: 0; }
+/* 阴刻：上沿暗、下沿亮，和浮雕正好相反 */
+.plaque-title {
   display: block;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: var(--card);
-  letter-spacing: 2rpx;
+  font-size: 42rpx;
+  color: var(--mo-90);
+  letter-spacing: 12rpx;
+  line-height: 1.2;
+  text-shadow: 0 2rpx 0 rgba(255,250,238,.55), 0 -1rpx 0 rgba(48,40,26,.45);
 }
-.craft-sub {
+.plaque-sub {
   display: block;
-  font-size: 23rpx;
-  color: rgba(255, 255, 255, 0.88);
-  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: var(--wood-95);
+  letter-spacing: 3rpx;
+  margin-top: 10rpx;
+  text-shadow: 0 2rpx 0 rgba(255,250,238,.42);
 }
+.plaque-go { color: var(--wood-90); flex: none; display: flex; }
 
 /* ── 功能入口矩阵 ── */
 /* 元素上写的是 class="entries-wrap wrap"，但本规则在文件里排在 .wrap 之后、
@@ -375,39 +414,53 @@
 
 /* ── Section 通用 ── */
 .section { margin-top: 40rpx; }
+/* ── 段头：小印 + 题名 + 双线 ──
+   原来题名前面是一条朱红竖条（其实是 var(--blue)→var(--navy) 的渐变条，
+   别名令牌把它换算成了棕金）。竖条是通用 UI 的做法，说不出是什么。
+   定稿用的是**一枚朱印**——占地极小，却是全站最强的身份标记；
+   题名底下再压一道双线，粗细不等、下面那道半透明，是版框的做法。 */
 .sec-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 22rpx;
+  margin-bottom: 0;
 }
 .sec-title {
-  font-size: 34rpx;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  font-size: 38rpx;
   color: var(--ink);
-  position: relative;
-  padding-left: 22rpx;
+  letter-spacing: 2rpx;
 }
-.sec-title::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6rpx;
-  height: 30rpx;
-  border-radius: 3rpx;
-  background: linear-gradient(180deg, var(--blue), var(--navy));
+.seal-sm {
+  width: 44rpx;
+  height: 44rpx;
+  flex: none;
+  display: block;
 }
 .sec-more {
   font-size: 24rpx;
-  color: var(--muted);
+  color: var(--jin-70);
   display: flex;
   align-items: center;
-  gap: 2rpx;
+  gap: 4rpx;
 }
+/* 双线：上粗下细，下面那道半透明——两道之间留 2rpx 空，是版框的做法 */
+.sec-rule { margin: 12rpx 0 24rpx; }
+.sec-rule-a,
+.sec-rule-b {
+  display: block;
+  height: 2rpx;
+  background: var(--line);
+}
+.sec-rule-b { margin-top: 2rpx; opacity: .5; }
 
-/* ── 展馆横滑（两层卡：封面 + 白底名）── */
+/* ── 展馆横滑：裱起来的封面 + 一张题签 ──
+   原来是"封面色块 + 白底卡片包住名字"，色块走 .hc1~.hc5 那套旧蓝紫色阶。
+   定稿里展馆封面和轮播是同一件东西的两个尺寸档：都是裱起来的画心，
+   只是角叶收到 28rpx。名字不再压在图上，而是裱框下面**贴一张题签**——
+   签是手裁的纸，图再满也盖不住名字。 */
 .halls-scroll { width: 100%; }
 .halls-inner {
   display: flex;
@@ -418,49 +471,44 @@
 .hall-card {
   display: inline-flex;
   flex-direction: column;
-  width: 240rpx;
-  border-radius: 24rpx;
-  overflow: hidden;
-  background: var(--card);
-  border: 1rpx solid var(--line);
-  box-shadow: 0 8rpx 22rpx rgba(74,50,30, 0.12);
+  width: 248rpx;
   flex-shrink: 0;
 }
 .hall-card:active { transform: translateY(-4rpx); }
-.hc-cover {
-  position: relative;
-  height: 150rpx;
-  padding: 16rpx;
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-}
-/* 与展馆列表 .hcard-bg/.hcard-img 对齐：否则 image 没有宽高，mode 不生效，封面缩在色块里 */
-.hc-bg { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
-.hc-img { width: 100%; height: 100%; }
-.hc-corner { position: absolute; right: 14rpx; top: 12rpx; }
-.hc-ct {
-  position: relative;
-  z-index: 2;
-  color: var(--card);
-  font-size: 27rpx;
-  font-weight: 700;
-  text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-.hc-name {
-  padding: 16rpx 20rpx;
-  font-size: 25rpx;
-  font-weight: 600;
-  color: var(--ink);
+.hc-art { height: 184rpx; }
+/* 题签：比封面略窄，居中贴在裱框下沿 */
+/* 全名留在题签底下。题签一行放得下的是简称（「交通博物馆」），
+   全名往往有十几个字（「贵州交通博物馆·教育基地」），挤进签里只会被截断，
+   而它是这张卡真正的标题——改版之前就是两行并存，这里不减信息。 */
+.hall-name {
+  margin-top: 10rpx;
+  padding: 0 4rpx;
+  font-size: 24rpx;
+  color: var(--sub);
+  line-height: 1.35;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  line-height: 1.35;
+  white-space: normal;
+}
+.tiqian {
+  margin: 14rpx auto 0;
+  display: block;
+  max-width: 92%;
+  padding: 8rpx 20rpx;
+  background: linear-gradient(180deg, var(--paper-card), var(--paper-2));
+  border: 1rpx solid var(--line);
+  border-radius: 4rpx;
+  box-shadow: 0 2rpx 4rpx rgba(74,50,30,.10);
+  font-size: 25rpx;
+  color: var(--sub);
+  text-align: center;
+  text-shadow: 0 2rpx 0 rgba(255,252,244,.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 /* ── 动态 / 课程卡片 ── */
@@ -477,25 +525,21 @@
   transition: transform 0.15s;
 }
 .ncard:active, .ccard:active { transform: scale(0.99); }
-.ncard-thumb {
-  flex-shrink: 0;
-  width: 172rpx;
-  height: 124rpx;
-  border-radius: 18rpx;
-  overflow: hidden;
+/* 缩略图也是裱起来的画心，只是最小的那一档（角叶 28rpx）。
+   没有封面图时里面垫一层绢底 + 器物图标，不再用 .hc* 那套旧色块。 */
+.ncard-thumb { flex-shrink: 0; width: 176rpx; }
+.ccard-thumb { flex-shrink: 0; width: 152rpx; }
+.ncard-thumb .mount-art { height: 128rpx; }
+.ccard-thumb .mount-art { height: 152rpx; }
+.thumb-blank {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: var(--juan-1);
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.ccard-thumb {
-  flex-shrink: 0;
-  width: 148rpx;
-  height: 148rpx;
-  border-radius: 18rpx;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.7),
+              inset 0 0 0 2rpx rgba(150,120,66,.10);
 }
 .ncard-img, .ccard-img { width: 100%; height: 100%; }
 .ncard-body, .ccard-body { flex: 1; min-width: 0; }

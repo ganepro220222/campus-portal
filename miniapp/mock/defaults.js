@@ -12,9 +12,9 @@
 
 module.exports = {
   banners: [
-    { id: 1, title: '示例：春季学期选课通道开放', description: '选课时间、操作指引与常见问题说明', colorClass: 's1', category: '书院动态', linkType: 'news', linkValue: '1' },
-    { id: 2, title: '示例：线上展馆新增语音讲解', description: '六座展馆支持 VR 漫游与语音导览', colorClass: 's2', category: '书院动态', linkType: 'fixed', linkValue: 'hall' },
-    { id: 3, title: '示例：职业素养系列课程上线', description: '沟通表达、数字素养与安全基础', colorClass: 's3', category: '专题学习', linkType: 'fixed', linkValue: 'course' }
+    { id: 1, title: '示例：春季学期选课通道开放', description: '选课时间、操作指引与常见问题说明', category: '书院动态', linkType: 'news', linkValue: '1' },
+    { id: 2, title: '示例：线上展馆新增语音讲解', description: '六座展馆支持 VR 漫游与语音导览', category: '书院动态', linkType: 'fixed', linkValue: 'hall' },
+    { id: 3, title: '示例：职业素养系列课程上线', description: '沟通表达、数字素养与安全基础', category: '专题学习', linkType: 'fixed', linkValue: 'course' }
   ],
 
   // 各模块默认分类（接口 /categories 不可用时的兜底）

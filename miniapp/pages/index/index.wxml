@@ -95,14 +95,28 @@
           data-link-type="{{item.linkType}}"
           data-link-value="{{item.linkValue}}"
         >
-          <view class="bslide {{item.colorClass || 's1'}}">
-            <view class="bslide-deco"></view>
-            <view wx:if="{{item.imageUrl && !item.coverFailed}}" class="bslide-bg">
-              <image src="{{item.imageUrl}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="bslide-img" data-list="banners" data-id="{{item.id}}" data-cover="{{item.imageUrl}}" binderror="onCoverError" />
+          <!-- 裱起来的画心：木纹裱边 → 画心 → 四角角叶 → 竖排题签 + 绢条 -->
+          <view class="mount mount--lg bslide">
+            <view class="mount-art banner-art {{item.imageUrl && !item.coverFailed ? 'has-cover' : ''}}">
+              <!-- 真封面图：满强度铺满，可读性交给暗角和绢条，不靠把图压淡 -->
+              <image
+                wx:if="{{item.imageUrl && !item.coverFailed}}"
+                class="mount-cover"
+                src="{{item.imageUrl}}"
+                mode="{{item.coverImageMode || 'aspectFill'}}"
+                data-list="banners"
+                data-id="{{item.id}}"
+                data-cover="{{item.imageUrl}}"
+                binderror="onCoverError"
+              />
+              <!-- 还没传封面图时顶上的兜底：一幅横幅小青绿，和卷首同一支笔 -->
+              <image wx:else class="mount-cover ban-shan" src="/assets/images/banner-shan.png" mode="scaleToFill" />
+              <view class="tag-v serif">{{item.category || '书院动态'}}</view>
+              <view class="silk">
+                <view class="b-title serif">{{item.title}}</view>
+                <view class="b-desc">{{item.description}}</view>
+              </view>
             </view>
-            <view class="bslide-tag">{{item.category || '书院动态'}}</view>
-            <view class="bslide-title serif">{{item.title}}</view>
-            <view class="bslide-desc">{{item.description}}</view>
           </view>
         </swiper-item>
       </swiper>

@@ -60,6 +60,11 @@ const LEGACY_EXEMPT = new Set(['utils/content.test.js'])
  * 免得棘轮松掉之后没人发现。
  */
 const BUDGET = {
+  /* app.wxss 令牌区**以下**那段共用样式。原来整个文件被跳过，
+     这 18 处就藏在那个盲区里：.hc1~.hc5 的展馆色阶（旧蓝紫）、
+     .ft-* 的文件类型色、收藏态那几个冷粉。展馆封面改成装裱画心时
+     .hc* 会一起收掉，这里跟着往下调。 */
+  'app.wxss': 18,
   'components/loading/index.wxss': 2,
   'components/skeleton/index.wxss': 1,
   'packageA/craft/detail.wxss': 7,
@@ -99,10 +104,35 @@ const DISGUISED_BUDGET = {
   'packageC/feedback/index.wxss': 1,
   'packageC/profile/list.wxss': 4,
   'packageD/poster/generate.wxss': 1,
-  'pages/index/index.wxss': 1,
   'pages/login/index.wxss': 6,
   'pages/profile/index.wxss': 4,
   'styles/login-page.wxss': 6
+}
+
+/**
+ * 把 app.wxss 的令牌区切掉，只留下面那些共用样式。
+ *
+ * 这条原来是 `if (rel === 'app.wxss') continue` —— **整个文件跳过**。
+ * 理由写的是"令牌本体住在这里"，没错，但 app.wxss 里住的不止令牌：
+ * 令牌区下面还有一大段共用组件样式（.hc1~.hc5 的展馆色阶、
+ * .s1~.s3 的轮播色阶、.ft-* 的文件类型色…），那些是**界面颜色**，
+ * 本来就该走令牌。整文件跳过等于把它们放进了一个谁也看不见的角落：
+ * 旧蓝紫调色板的一批硬编码色值就一直在那儿，流水线全绿。
+ *
+ * 轮播那块灰褐方块就是这么来的——.s1 写着
+ * linear-gradient(var(--navy-deep), var(--blue))，别名令牌把它换算成棕金，
+ * 照片又被压到 32% 叠在上面，出来谁也认不出是什么。
+ *
+ * 现在只跳过两个 sentinel 之间的令牌区，其余照常上棘轮。
+ */
+function stripTokenBlock(src) {
+  const a = src.indexOf('/* ══ 令牌区开始')
+  const b = src.indexOf('/* ══ 令牌区结束')
+  if (a < 0 || b < 0 || b < a) {
+    // 标记没了就别默默放行——那正是这条检查要防的情况
+    throw new Error('app.wxss 里找不到令牌区的起止标记，无法判断哪些颜色该上棘轮')
+  }
+  return src.slice(0, a) + src.slice(b)
 }
 
 /** 旧调色板的 rgb 形式查找表：'r,g,b' → hex */
@@ -191,8 +221,8 @@ function main() {
   for (const abs of files) {
     if (path.extname(abs) !== '.wxss') continue
     const rel = path.relative(MINI, abs).split(path.sep).join('/')
-    if (rel === 'app.wxss') continue          // 令牌本体住在这里
-    const src = fs.readFileSync(abs, 'utf8')
+    let src = fs.readFileSync(abs, 'utf8')
+    if (rel === 'app.wxss') src = stripTokenBlock(src)
     const n = (src.match(/#[0-9a-fA-F]{3,6}\b/g) || []).length
     const budget = BUDGET[rel] || 0
     if (n > budget) {

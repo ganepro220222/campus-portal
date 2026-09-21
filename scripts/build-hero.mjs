@@ -49,10 +49,14 @@ const OUT_DIR = path.join(ROOT, 'miniapp/assets/images')
 const HASH_FILE = path.join(ROOT, 'scripts/hero.hash')
 const SCALE = 3
 
-/** 画出来的那两张：名字 → [生成表达式, 宽, 高, 量化后的上限 KB] */
+/** 画出来的那几张：名字 → [生成表达式, 宽, 高, 量化后的上限 KB] */
 export const PIECES = {
   'hero-shan': ['o.qinglv()', 375, 368, 40],
-  'hero-eave': ['o.eave()', 375, 62, 32]
+  'hero-eave': ['o.eave()', 375, 62, 32],
+  /* 轮播的兜底图：一幅横幅小青绿，和卷首同一支笔、另一个 seed。
+     参数抄自设计稿 post_process() 里注入 .card.banner 的那一行。
+     这条还没传封面图时它顶上，传了就整张退到图下面（不出现）。 */
+  'banner-shan': ['o.qinglv(w=343, h=176, seed=20261101, step_k=1.15)', 343, 176, 24]
 }
 
 /** 字标裁切的那一张：源文件、目标高度（px，= 设计稿 40px × 3 倍图）、上限 KB */

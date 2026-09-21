@@ -3,7 +3,6 @@
 const { formatCount } = require('./format')
 
 const HALL_COLORS     = ['hc1', 'hc2', 'hc3', 'hc4', 'hc5']
-const BANNER_COLORS   = ['s1', 's2', 's3']
 const NEWS_FEED_COLORS = ['hc1', 'hc3', 'hc2', 'hc4', 'hc5']
 const NEWS_FEED_ICONS  = ['file', 'flag', 'star', 'course', 'megaphone']
 const NEWS_ICONS      = ['file', 'flag', 'star', 'megaphone']
@@ -96,11 +95,11 @@ function decorateCourseCards(list) {
 }
 
 function decorateBanners(list) {
-  return (list || []).map((it, i) => withCoverFields({
+  return (list || []).map((it) => withCoverFields({
     ...it,
     linkType: it.linkType || it.link_type,
-    linkValue: it.linkValue || it.link_value,
-    colorClass: it.colorClass || BANNER_COLORS[i % BANNER_COLORS.length]
+    linkValue: it.linkValue || it.link_value
+    // 轮播不再配色阶：画心要么是封面图、要么是兜底的小青绿，没有色块底
   }))
 }
 

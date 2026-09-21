@@ -135,6 +135,13 @@ page {
   --color-success:       #3F7A5E;
   --color-warning:       #8F6216;
   --color-danger:        #9E2B25;
+
+  /* ══ 角叶开始 · 由 scripts/build-jiaoye-tokens.mjs 生成，勿手改 ══ */
+  --jiaoye-tl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='jhtl' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='0' y2='19'%3E%3Cstop offset='0' stop-color='%23FBF3DE'/%3E%3Cstop offset='0.07' stop-color='%23EBD6A6'/%3E%3Cstop offset='0.24' stop-color='%23D4AC6E'/%3E%3Cstop offset='0.55' stop-color='%23B98E4E'/%3E%3Cstop offset='0.84' stop-color='%238B6B36'/%3E%3Cstop offset='1' stop-color='%235E4623'/%3E%3C/linearGradient%3E%3ClinearGradient id='jvtl' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='19' y2='0'%3E%3Cstop offset='0' stop-color='%23FBF3DE'/%3E%3Cstop offset='0.07' stop-color='%23EBD6A6'/%3E%3Cstop offset='0.24' stop-color='%23D4AC6E'/%3E%3Cstop offset='0.55' stop-color='%23B98E4E'/%3E%3Cstop offset='0.84' stop-color='%238B6B36'/%3E%3Cstop offset='1' stop-color='%235E4623'/%3E%3C/linearGradient%3E%3CradialGradient id='jntl' cx='.34' cy='.30' r='.78'%3E%3Cstop offset='0' stop-color='%23FBF2D8'/%3E%3Cstop offset='.55' stop-color='%23CDA76A'/%3E%3Cstop offset='1' stop-color='%237A5C2E'/%3E%3C/radialGradient%3E%3CclipPath id='jchtl'%3E%3Cpolygon points='0,0 100,0 100,100'/%3E%3C/clipPath%3E%3CclipPath id='jcvtl'%3E%3Cpolygon points='0,0 0,100 100,100'/%3E%3C/clipPath%3E%3Cfilter id='jbtl' x='-30%25' y='-30%25' width='170%25' height='170%25'%3E%3CfeGaussianBlur stdDeviation='.9'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23jbtl)' opacity='.34'%3E%3Cpath d='M 0,0 L 100,0 C 93,3.2 89,6.8 87,12 C 84.5,18 80,22.6 74,22.6 C 68.4,22.6 65,19.4 63.4,16 L 26,16 C 29,19 27,21 25,25 C 21,27 19,29 16,26 L 16,63.4 C 19.4,65 22.6,68.4 22.6,74 C 22.6,80 18,84.5 12,87 C 6.8,89 3.2,93 0,100 Z' fill='%23302210' transform='translate(1.4 1.4)'/%3E%3C/g%3E%3Cg clip-path='url(%23jchtl)'%3E%3Cpath d='M 0,0 L 100,0 C 93,3.2 89,6.8 87,12 C 84.5,18 80,22.6 74,22.6 C 68.4,22.6 65,19.4 63.4,16 L 26,16 C 29,19 27,21 25,25 C 21,27 19,29 16,26 L 16,63.4 C 19.4,65 22.6,68.4 22.6,74 C 22.6,80 18,84.5 12,87 C 6.8,89 3.2,93 0,100 Z' fill='url(%23jhtl)'/%3E%3C/g%3E%3Cg clip-path='url(%23jcvtl)'%3E%3Cpath d='M 0,0 L 100,0 C 93,3.2 89,6.8 87,12 C 84.5,18 80,22.6 74,22.6 C 68.4,22.6 65,19.4 63.4,16 L 26,16 C 29,19 27,21 25,25 C 21,27 19,29 16,26 L 16,63.4 C 19.4,65 22.6,68.4 22.6,74 C 22.6,80 18,84.5 12,87 C 6.8,89 3.2,93 0,100 Z' fill='url(%23jvtl)'/%3E%3C/g%3E%3Cpath d='M 0,0 L 100,0 C 93,3.2 89,6.8 87,12 C 84.5,18 80,22.6 74,22.6 C 68.4,22.6 65,19.4 63.4,16 L 26,16 C 29,19 27,21 25,25 C 21,27 19,29 16,26 L 16,63.4 C 19.4,65 22.6,68.4 22.6,74 C 22.6,80 18,84.5 12,87 C 6.8,89 3.2,93 0,100 Z' fill='none' stroke='%234A3618' stroke-opacity='.66' stroke-width='1.05' stroke-linejoin='round'/%3E%3Ccircle cx='8' cy='8' r='3.6' fill='url(%23jntl)'/%3E%3Ccircle cx='8' cy='8' r='3.6' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3Ccircle cx='78' cy='8' r='2.4' fill='url(%23jntl)'/%3E%3Ccircle cx='78' cy='8' r='2.4' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3Ccircle cx='8' cy='78' r='2.4' fill='url(%23jntl)'/%3E%3Ccircle cx='8' cy='78' r='2.4' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3C/svg%3E");
+  --jiaoye-tr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='jhtr' gradientUnits='userSpaceOnUse' x1='100' y1='0' x2='100' y2='19'%3E%3Cstop offset='0' stop-color='%23F5EBD0'/%3E%3Cstop offset='0.07' stop-color='%23E3CB98'/%3E%3Cstop offset='0.24' stop-color='%23CBA362'/%3E%3Cstop offset='0.55' stop-color='%23AF8444'/%3E%3Cstop offset='0.84' stop-color='%237F612F'/%3E%3Cstop offset='1' stop-color='%23543E1E'/%3E%3C/linearGradient%3E%3ClinearGradient id='jvtr' gradientUnits='userSpaceOnUse' x1='100' y1='0' x2='81' y2='0'%3E%3Cstop offset='0' stop-color='%23F5EBD0'/%3E%3Cstop offset='0.07' stop-color='%23E3CB98'/%3E%3Cstop offset='0.24' stop-color='%23CBA362'/%3E%3Cstop offset='0.55' stop-color='%23AF8444'/%3E%3Cstop offset='0.84' stop-color='%237F612F'/%3E%3Cstop offset='1' stop-color='%23543E1E'/%3E%3C/linearGradient%3E%3CradialGradient id='jntr' cx='.34' cy='.30' r='.78'%3E%3Cstop offset='0' stop-color='%23FBF2D8'/%3E%3Cstop offset='.55' stop-color='%23CDA76A'/%3E%3Cstop offset='1' stop-color='%237A5C2E'/%3E%3C/radialGradient%3E%3CclipPath id='jchtr'%3E%3Cpolygon points='100,0 0,0 0,100'/%3E%3C/clipPath%3E%3CclipPath id='jcvtr'%3E%3Cpolygon points='100,0 100,100 0,100'/%3E%3C/clipPath%3E%3Cfilter id='jbtr' x='-30%25' y='-30%25' width='170%25' height='170%25'%3E%3CfeGaussianBlur stdDeviation='.9'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23jbtr)' opacity='.34'%3E%3Cpath d='M 100,0 L 0,0 C 7,3.2 11,6.8 13,12 C 15.5,18 20,22.6 26,22.6 C 31.6,22.6 35,19.4 36.6,16 L 74,16 C 71,19 73,21 75,25 C 79,27 81,29 84,26 L 84,63.4 C 80.6,65 77.4,68.4 77.4,74 C 77.4,80 82,84.5 88,87 C 93.2,89 96.8,93 100,100 Z' fill='%23302210' transform='translate(1.4 1.4)'/%3E%3C/g%3E%3Cg clip-path='url(%23jchtr)'%3E%3Cpath d='M 100,0 L 0,0 C 7,3.2 11,6.8 13,12 C 15.5,18 20,22.6 26,22.6 C 31.6,22.6 35,19.4 36.6,16 L 74,16 C 71,19 73,21 75,25 C 79,27 81,29 84,26 L 84,63.4 C 80.6,65 77.4,68.4 77.4,74 C 77.4,80 82,84.5 88,87 C 93.2,89 96.8,93 100,100 Z' fill='url(%23jhtr)'/%3E%3C/g%3E%3Cg clip-path='url(%23jcvtr)'%3E%3Cpath d='M 100,0 L 0,0 C 7,3.2 11,6.8 13,12 C 15.5,18 20,22.6 26,22.6 C 31.6,22.6 35,19.4 36.6,16 L 74,16 C 71,19 73,21 75,25 C 79,27 81,29 84,26 L 84,63.4 C 80.6,65 77.4,68.4 77.4,74 C 77.4,80 82,84.5 88,87 C 93.2,89 96.8,93 100,100 Z' fill='url(%23jvtr)'/%3E%3C/g%3E%3Cpath d='M 100,0 L 0,0 C 7,3.2 11,6.8 13,12 C 15.5,18 20,22.6 26,22.6 C 31.6,22.6 35,19.4 36.6,16 L 74,16 C 71,19 73,21 75,25 C 79,27 81,29 84,26 L 84,63.4 C 80.6,65 77.4,68.4 77.4,74 C 77.4,80 82,84.5 88,87 C 93.2,89 96.8,93 100,100 Z' fill='none' stroke='%234A3618' stroke-opacity='.66' stroke-width='1.05' stroke-linejoin='round'/%3E%3Ccircle cx='92' cy='8' r='3.6' fill='url(%23jntr)'/%3E%3Ccircle cx='92' cy='8' r='3.6' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3Ccircle cx='22' cy='8' r='2.4' fill='url(%23jntr)'/%3E%3Ccircle cx='22' cy='8' r='2.4' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3Ccircle cx='92' cy='78' r='2.4' fill='url(%23jntr)'/%3E%3Ccircle cx='92' cy='78' r='2.4' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3C/svg%3E");
+  --jiaoye-bl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='jhbl' gradientUnits='userSpaceOnUse' x1='0' y1='100' x2='0' y2='81'%3E%3Cstop offset='0' stop-color='%23F5EBD0'/%3E%3Cstop offset='0.07' stop-color='%23E3CB98'/%3E%3Cstop offset='0.24' stop-color='%23CBA362'/%3E%3Cstop offset='0.55' stop-color='%23AF8444'/%3E%3Cstop offset='0.84' stop-color='%237F612F'/%3E%3Cstop offset='1' stop-color='%23543E1E'/%3E%3C/linearGradient%3E%3ClinearGradient id='jvbl' gradientUnits='userSpaceOnUse' x1='0' y1='100' x2='19' y2='100'%3E%3Cstop offset='0' stop-color='%23F5EBD0'/%3E%3Cstop offset='0.07' stop-color='%23E3CB98'/%3E%3Cstop offset='0.24' stop-color='%23CBA362'/%3E%3Cstop offset='0.55' stop-color='%23AF8444'/%3E%3Cstop offset='0.84' stop-color='%237F612F'/%3E%3Cstop offset='1' stop-color='%23543E1E'/%3E%3C/linearGradient%3E%3CradialGradient id='jnbl' cx='.34' cy='.30' r='.78'%3E%3Cstop offset='0' stop-color='%23FBF2D8'/%3E%3Cstop offset='.55' stop-color='%23CDA76A'/%3E%3Cstop offset='1' stop-color='%237A5C2E'/%3E%3C/radialGradient%3E%3CclipPath id='jchbl'%3E%3Cpolygon points='0,100 100,100 100,0'/%3E%3C/clipPath%3E%3CclipPath id='jcvbl'%3E%3Cpolygon points='0,100 0,0 100,0'/%3E%3C/clipPath%3E%3Cfilter id='jbbl' x='-30%25' y='-30%25' width='170%25' height='170%25'%3E%3CfeGaussianBlur stdDeviation='.9'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23jbbl)' opacity='.34'%3E%3Cpath d='M 0,100 L 100,100 C 93,96.8 89,93.2 87,88 C 84.5,82 80,77.4 74,77.4 C 68.4,77.4 65,80.6 63.4,84 L 26,84 C 29,81 27,79 25,75 C 21,73 19,71 16,74 L 16,36.6 C 19.4,35 22.6,31.6 22.6,26 C 22.6,20 18,15.5 12,13 C 6.8,11 3.2,7 0,0 Z' fill='%23302210' transform='translate(1.4 1.4)'/%3E%3C/g%3E%3Cg clip-path='url(%23jchbl)'%3E%3Cpath d='M 0,100 L 100,100 C 93,96.8 89,93.2 87,88 C 84.5,82 80,77.4 74,77.4 C 68.4,77.4 65,80.6 63.4,84 L 26,84 C 29,81 27,79 25,75 C 21,73 19,71 16,74 L 16,36.6 C 19.4,35 22.6,31.6 22.6,26 C 22.6,20 18,15.5 12,13 C 6.8,11 3.2,7 0,0 Z' fill='url(%23jhbl)'/%3E%3C/g%3E%3Cg clip-path='url(%23jcvbl)'%3E%3Cpath d='M 0,100 L 100,100 C 93,96.8 89,93.2 87,88 C 84.5,82 80,77.4 74,77.4 C 68.4,77.4 65,80.6 63.4,84 L 26,84 C 29,81 27,79 25,75 C 21,73 19,71 16,74 L 16,36.6 C 19.4,35 22.6,31.6 22.6,26 C 22.6,20 18,15.5 12,13 C 6.8,11 3.2,7 0,0 Z' fill='url(%23jvbl)'/%3E%3C/g%3E%3Cpath d='M 0,100 L 100,100 C 93,96.8 89,93.2 87,88 C 84.5,82 80,77.4 74,77.4 C 68.4,77.4 65,80.6 63.4,84 L 26,84 C 29,81 27,79 25,75 C 21,73 19,71 16,74 L 16,36.6 C 19.4,35 22.6,31.6 22.6,26 C 22.6,20 18,15.5 12,13 C 6.8,11 3.2,7 0,0 Z' fill='none' stroke='%234A3618' stroke-opacity='.66' stroke-width='1.05' stroke-linejoin='round'/%3E%3Ccircle cx='8' cy='92' r='3.6' fill='url(%23jnbl)'/%3E%3Ccircle cx='8' cy='92' r='3.6' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3Ccircle cx='78' cy='92' r='2.4' fill='url(%23jnbl)'/%3E%3Ccircle cx='78' cy='92' r='2.4' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3Ccircle cx='8' cy='22' r='2.4' fill='url(%23jnbl)'/%3E%3Ccircle cx='8' cy='22' r='2.4' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3C/svg%3E");
+  --jiaoye-br: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='jhbr' gradientUnits='userSpaceOnUse' x1='100' y1='100' x2='100' y2='81'%3E%3Cstop offset='0' stop-color='%23EDE0BF'/%3E%3Cstop offset='0.07' stop-color='%23D6BC8A'/%3E%3Cstop offset='0.24' stop-color='%23BE9455'/%3E%3Cstop offset='0.55' stop-color='%23A2773A'/%3E%3Cstop offset='0.84' stop-color='%23735628'/%3E%3Cstop offset='1' stop-color='%234A3619'/%3E%3C/linearGradient%3E%3ClinearGradient id='jvbr' gradientUnits='userSpaceOnUse' x1='100' y1='100' x2='81' y2='100'%3E%3Cstop offset='0' stop-color='%23EDE0BF'/%3E%3Cstop offset='0.07' stop-color='%23D6BC8A'/%3E%3Cstop offset='0.24' stop-color='%23BE9455'/%3E%3Cstop offset='0.55' stop-color='%23A2773A'/%3E%3Cstop offset='0.84' stop-color='%23735628'/%3E%3Cstop offset='1' stop-color='%234A3619'/%3E%3C/linearGradient%3E%3CradialGradient id='jnbr' cx='.34' cy='.30' r='.78'%3E%3Cstop offset='0' stop-color='%23FBF2D8'/%3E%3Cstop offset='.55' stop-color='%23CDA76A'/%3E%3Cstop offset='1' stop-color='%237A5C2E'/%3E%3C/radialGradient%3E%3CclipPath id='jchbr'%3E%3Cpolygon points='100,100 0,100 0,0'/%3E%3C/clipPath%3E%3CclipPath id='jcvbr'%3E%3Cpolygon points='100,100 100,0 0,0'/%3E%3C/clipPath%3E%3Cfilter id='jbbr' x='-30%25' y='-30%25' width='170%25' height='170%25'%3E%3CfeGaussianBlur stdDeviation='.9'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23jbbr)' opacity='.34'%3E%3Cpath d='M 100,100 L 0,100 C 7,96.8 11,93.2 13,88 C 15.5,82 20,77.4 26,77.4 C 31.6,77.4 35,80.6 36.6,84 L 74,84 C 71,81 73,79 75,75 C 79,73 81,71 84,74 L 84,36.6 C 80.6,35 77.4,31.6 77.4,26 C 77.4,20 82,15.5 88,13 C 93.2,11 96.8,7 100,0 Z' fill='%23302210' transform='translate(1.4 1.4)'/%3E%3C/g%3E%3Cg clip-path='url(%23jchbr)'%3E%3Cpath d='M 100,100 L 0,100 C 7,96.8 11,93.2 13,88 C 15.5,82 20,77.4 26,77.4 C 31.6,77.4 35,80.6 36.6,84 L 74,84 C 71,81 73,79 75,75 C 79,73 81,71 84,74 L 84,36.6 C 80.6,35 77.4,31.6 77.4,26 C 77.4,20 82,15.5 88,13 C 93.2,11 96.8,7 100,0 Z' fill='url(%23jhbr)'/%3E%3C/g%3E%3Cg clip-path='url(%23jcvbr)'%3E%3Cpath d='M 100,100 L 0,100 C 7,96.8 11,93.2 13,88 C 15.5,82 20,77.4 26,77.4 C 31.6,77.4 35,80.6 36.6,84 L 74,84 C 71,81 73,79 75,75 C 79,73 81,71 84,74 L 84,36.6 C 80.6,35 77.4,31.6 77.4,26 C 77.4,20 82,15.5 88,13 C 93.2,11 96.8,7 100,0 Z' fill='url(%23jvbr)'/%3E%3C/g%3E%3Cpath d='M 100,100 L 0,100 C 7,96.8 11,93.2 13,88 C 15.5,82 20,77.4 26,77.4 C 31.6,77.4 35,80.6 36.6,84 L 74,84 C 71,81 73,79 75,75 C 79,73 81,71 84,74 L 84,36.6 C 80.6,35 77.4,31.6 77.4,26 C 77.4,20 82,15.5 88,13 C 93.2,11 96.8,7 100,0 Z' fill='none' stroke='%234A3618' stroke-opacity='.66' stroke-width='1.05' stroke-linejoin='round'/%3E%3Ccircle cx='92' cy='92' r='3.6' fill='url(%23jnbr)'/%3E%3Ccircle cx='92' cy='92' r='3.6' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3Ccircle cx='22' cy='92' r='2.4' fill='url(%23jnbr)'/%3E%3Ccircle cx='22' cy='92' r='2.4' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3Ccircle cx='92' cy='22' r='2.4' fill='url(%23jnbr)'/%3E%3Ccircle cx='92' cy='22' r='2.4' fill='none' stroke='%235A441F' stroke-opacity='.45' stroke-width='.7'/%3E%3C/svg%3E");
+  /* ══ 角叶结束 ══ */
 }
 /* ══ 令牌区结束 ══ */
 
@@ -401,10 +408,124 @@ button.lbtn-ghost[disabled] {
 .hc4 { background: linear-gradient(135deg, #3F6B4A, #5C9A6B); }
 .hc5 { background: linear-gradient(135deg, #5A4E86, #7E72B0); }
 
-/* Banner 渐变色阶 s1-s3 */
-.s1 { background: linear-gradient(120deg, var(--navy-deep), var(--blue)); }
-.s2 { background: linear-gradient(120deg, #243056, #4A4E86); }
-.s3 { background: linear-gradient(120deg, #1B2A4A, #2E5C7A); }
+/* 轮播色阶 .s1~.s3 已删。
+   轮播现在是裱起来的画心：有封面图就满强度铺图，没有就顶一幅横幅小青绿，
+   两种都不需要色块垫底。这三块本来就是旧蓝紫调色板剩下的，
+   而且藏在 app.wxss 里，棘轮当初整文件跳过，一直没扫到。 */
+
+/* ══════════════ 装裱 ══════════════
+   设计稿里每一个图片框（轮播、展馆封面、资讯缩略图）都是**裱起来**的：
+   木纹裱边 → 画心 → 四角角叶 → 竖排题签 / 绢条。
+   这几个类放在 app.wxss 是因为三处都要用，样式必须是同一套。
+
+   小程序不保证支持 :has()，所以设计稿里那些 .mount-art:has(> img.cover)
+   全部改成 WXML 上挂一个 .has-cover —— 由数据算出来，确定且可测。 */
+.mount {
+  padding: 7rpx;
+  border-radius: 12rpx;
+  background-color: var(--wood-50);
+  /* 木纹：三道不同疏密的竖条纹叠出来的。设计稿里还叠了一张 --wood-fig-v
+     的木射线贴图（data URI），那张在小程序上收益不大、体积不小，这里不搬。 */
+  background-image:
+    repeating-linear-gradient(90deg,
+      rgba(58,34,14,.10) 0 2rpx, rgba(255,240,220,.05) 2rpx 4rpx, transparent 4rpx 10rpx),
+    repeating-linear-gradient(90deg,
+      rgba(58,34,14,.09) 0 4rpx, transparent 4rpx 18rpx,
+      rgba(58,34,14,.06) 18rpx 22rpx, transparent 22rpx 46rpx),
+    linear-gradient(150deg, var(--wood-30), var(--wood-40) 55%, var(--wood-60));
+  box-shadow:
+    inset 0 2rpx 0 rgba(255,240,220,.45),
+    inset 0 -2rpx 0 rgba(58,34,14,.35),
+    0 4rpx 12rpx rgba(74,50,30,.16);
+}
+.mount--lg { padding: 10rpx; border-radius: 20rpx; }
+.mount-art {
+  position: relative;
+  width: 100%;
+  border-radius: 6rpx;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 2rpx rgba(58,34,14,.45),
+              inset 0 4rpx 14rpx rgba(20,14,6,.40);
+}
+/* 角叶：四个角分别一张图，--bj 是边长。
+   边长永远不超过短边的 1/3 —— 早先那版实心三角占了 33%，
+   两个角一接头就把短边吃没了，125×92 的卡片直接变成八边形。 */
+.mount-art::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+  --bj: 44rpx;
+  background:
+    var(--jiaoye-tl) left top / var(--bj) var(--bj) no-repeat,
+    var(--jiaoye-tr) right top / var(--bj) var(--bj) no-repeat,
+    var(--jiaoye-bl) left bottom / var(--bj) var(--bj) no-repeat,
+    var(--jiaoye-br) right bottom / var(--bj) var(--bj) no-repeat;
+}
+.mount--lg .mount-art::before { --bj: 64rpx; }
+.mount--sm .mount-art::before { --bj: 28rpx; }
+/* 真封面图：铺满画心、垫在最底层，**满强度**。
+   角叶(z2)、题签与绢条(z4/z5) 都在它上面，所以图再满也压不住这几件。 */
+.mount-cover {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+/* 有真封面图时压一层暗角。照片千差万别，没有它浅色照片上的字没法读；
+   没有照片的兜底态是自家那幅浅青的画，不需要压暗。 */
+.mount-art.has-cover::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 -92rpx 112rpx -40rpx rgba(20,16,12,.50),
+              inset 0 52rpx 68rpx -36rpx rgba(20,16,12,.30);
+}
+/* 竖排题签：栏目名写在签上，图再满也盖不住名字。签脚一道朱。
+   竖排**不走 writing-mode**：各端 WebView 对它的支持参差，
+   实测一试就把四个字挤成一团。改用"签条只有一个字宽"——
+   中文本来就能逐字断行，一个字宽的盒子里自然每行一个字，
+   哪儿都一样，也不需要 text-orientation 把字扶正。 */
+.tag-v {
+  position: absolute;
+  z-index: 5;
+  right: 28rpx;
+  top: 0;
+  box-sizing: content-box;
+  width: 26rpx;                /* ＝一个字宽；再宽就会两个字挤一行 */
+  padding: 22rpx 12rpx 16rpx;
+  font-size: 26rpx;
+  line-height: 1.32;
+  text-align: center;
+  color: var(--wood-90);
+  background: linear-gradient(180deg, var(--paper-1), var(--paper-3));
+  border-radius: 0 0 6rpx 6rpx;
+  border-bottom: 6rpx solid var(--zhu);
+  box-shadow: 0 6rpx 20rpx rgba(0,0,0,.34), inset 0 0 0 2rpx rgba(122,110,85,.35);
+}
+/* 绢条：标题压在一条半透明的绢上，左沿一道朱。
+   绢本来就是浅的，所以兜底态用浅绢；压在照片上时才转深，否则字读不出来。 */
+.silk {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  bottom: 32rpx;
+  max-width: 78%;
+  padding: 24rpx 68rpx 26rpx 30rpx;
+  border-left: 5rpx solid var(--zhu);
+  background: linear-gradient(94deg,
+    rgba(252,250,244,.90) 0%, rgba(252,250,244,.78) 58%,
+    rgba(252,250,244,.34) 86%, rgba(252,250,244,0) 100%);
+}
+.has-cover .silk {
+  background: linear-gradient(94deg,
+    rgba(26,23,20,.78) 0%, rgba(26,23,20,.64) 58%,
+    rgba(26,23,20,.28) 86%, rgba(26,23,20,0) 100%);
+}
 
 /* 关联小程序「App 入口横条」——首页与二级页共用，1→N 统一样式 */
 .app-list { display: flex; flex-direction: column; gap: 20rpx; }

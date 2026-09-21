@@ -138,7 +138,28 @@ function checkPng(p, maxKB) {
   }
 }
 
-// ── 三、问答悬浮标 ───────────────────────────────────────────────
+// ── 三、角叶（写进 app.wxss 的四个令牌）──────────────────────────
+{
+  const jy = await import('./build-jiaoye-tokens.mjs')
+  const t = jy.jiaoyeTokens()                 // 它自己会验 %23 转义、四角互不相同
+  checkHash('角叶令牌', path.join(ROOT, 'scripts/jiaoye.hash'), jy.fingerprint(t),
+    'node scripts/build-jiaoye-tokens.mjs')
+  const cur = jy.currentBlock()
+  if (cur === null) {
+    errs.push('app.wxss 里找不到角叶那一段，跑 node scripts/build-jiaoye-tokens.mjs')
+  } else if (cur !== jy.block(t)) {
+    errs.push('app.wxss 里的角叶和设计源对不上，跑 node scripts/build-jiaoye-tokens.mjs 重出')
+  }
+  // 光有令牌不算数：得真有规则去用它，否则图片框还是光板的
+  const app = read(path.join(ROOT, 'miniapp/app.wxss'))
+  for (const k of Object.keys(t)) {
+    if (!new RegExp(`var\\(${k}\\)`).test(app)) {
+      errs.push(`app.wxss 定义了 ${k} 却没有任何规则 var(${k}) 用它 —— 角叶白躺着`)
+    }
+  }
+}
+
+// ── 四、问答悬浮标 ───────────────────────────────────────────────
 {
   const src = read(path.join(ROOT, 'scripts/build-ai-fab.mjs'))
   const m = src.match(/^const CH = '(.+?)'/m)

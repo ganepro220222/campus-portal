@@ -13,7 +13,9 @@
 <!-- 底部抽屉 -->
 <view class="sheet {{open ? 'show' : ''}} {{onTabBar ? 'above-tabbar' : ''}}">
   <view class="sheet-head">
-    <view class="avt"><icon name="robot" size="20" color="#FFFBF2" /></view>
+    <!-- 抽屉头像就是浮标本身那枚玉牌：点开前后是同一件东西，不该换脸。
+         原来是棕色圆底 + 单色线描「问」牌，和首页那枚对不上。 -->
+    <view class="avt"><image class="avt-img" src="/assets/images/ai-fab.png" mode="aspectFit" /></view>
     <view class="sheet-head-txt">
       <view class="sheet-title">知识问答</view>
       <view class="sheet-sub" wx:if="{{quotaText}}">{{quotaText}}</view>
@@ -44,7 +46,8 @@
         bindinput="onInput"
         bindconfirm="send"
       />
-      <view class="send" bindtap="send"><icon name="send" size="18" color="#FFFBF2" /></view>
+      <!-- 发送 = 雁字。纸飞机是西方符号；中文里"寄信"的本相是雁阵排成人字 -->
+      <view class="send" bindtap="send"><icon name="send" size="25" color="#FFFBF2" /></view>
     </view>
     <view class="ai-note">摘自平台已录入资料</view>
   </view>

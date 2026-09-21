@@ -4,14 +4,15 @@
   <scroll-view scroll-y class="chat-body" scroll-into-view="{{scrollTo}}" scroll-with-animation enhanced show-scrollbar="{{false}}">
 
     <view class="chat-intro">
-      <view class="ci-avatar"><icon name="robot" size="32" color="#FFFBF2" /></view>
+      <!-- 和首页浮标、抽屉头像是同一枚玉牌：一个功能一张脸 -->
+      <view class="ci-avatar"><image class="ci-avatar-img" src="/assets/images/ai-fab.png" mode="aspectFit" /></view>
       <view class="ci-name serif">知识问答</view>
       <view class="ci-desc" wx:if="{{quotaText}}">{{quotaText}}</view>
       <view class="ci-history" bindtap="onHistory">历史会话</view>
     </view>
 
     <view class="row {{item.role}}" wx:for="{{messages}}" wx:key="index" id="m{{index}}">
-      <view wx:if="{{item.role === 'ai'}}" class="avt"><icon name="robot" size="18" color="#FFFBF2" /></view>
+      <view wx:if="{{item.role === 'ai'}}" class="avt"><image class="avt-img" src="/assets/images/ai-fab.png" mode="aspectFit" /></view>
       <view class="bubble {{item.role}}">{{item.text}}</view>
     </view>
 
@@ -34,7 +35,7 @@
         bindinput="onInput"
         bindconfirm="send"
       />
-      <view class="send" bindtap="send"><icon name="send" size="18" color="#FFFBF2" /></view>
+      <view class="send" bindtap="send"><icon name="send" size="23" color="#FFFBF2" /></view>
     </view>
     <view class="ai-note">摘自平台已录入资料</view>
   </view>

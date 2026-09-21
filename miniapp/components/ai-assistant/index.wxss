@@ -91,12 +91,15 @@
   padding: 32rpx 36rpx 20rpx;
   border-bottom: 1rpx solid var(--line);
 }
+/* 抽屉头像 = 浮标那枚玉牌本身。牌面自带金箍和玉的质感，
+   所以这里不画底色也不画描边，再压一层圆底会把金箍盖住（和 .ai-fab 同理）。 */
 .avt {
-  width: 76rpx; height: 76rpx; border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  display: flex; align-items: center; justify-content: center;
+  width: 76rpx; height: 76rpx;
   flex-shrink: 0;
+  border-radius: 50%;
+  box-shadow: 0 4rpx 12rpx rgba(96,78,44,.22);
 }
+.avt-img { width: 76rpx; height: 76rpx; display: block; }
 .sheet-head-txt { flex: 1; }
 .sheet-title { font-weight: 700; color: var(--ink); font-size: 30rpx; }
 .sheet-sub { font-size: 22rpx; color: var(--muted); margin-top: 4rpx; }
@@ -174,10 +177,20 @@
   background: var(--paper);
 }
 .ai-ph { color: var(--muted); }
+/* 发送键改朱砂。抽屉里唯一的主操作，朱是这套设计的点缀色，
+   全站用得极省（印、菱形、轮播当前页、公告左沿），落在这里正好；
+   原来那道棕金渐变和左上角的玉牌抢，两个圆看着像一对，分不出谁是按钮。 */
 .send {
   width: 84rpx; height: 84rpx; border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue), var(--navy));
+  /* 平涂的朱，不做渐变。设计稿里朱一律是平的（菱形、圆点、公告左沿、
+     绢条左沿），一做渐变就成了"另一种红"；深浅两头也没有对应的令牌，
+     硬调两个色值出来等于在令牌体系外面自立一套。
+     立体感交给一道内高光和一层投影，两件都用 rgba，不占新颜色。 */
+  background: var(--zhu);
+  box-shadow: 0 6rpx 16rpx rgba(110,30,26,.28),
+              inset 0 2rpx 0 rgba(255,236,232,.30),
+              inset 0 -3rpx 6rpx rgba(70,16,14,.26);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.send:active { opacity: 0.85; }
+.send:active { transform: translateY(2rpx); box-shadow: 0 2rpx 6rpx rgba(110,30,26,.30); }

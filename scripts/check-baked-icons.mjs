@@ -230,9 +230,13 @@ function checkPng(p, maxKB) {
   }
   checkPng(path.join(ROOT, 'miniapp/assets/images/ai-fab.png'), 12)
 
-  const wxml = read(path.join(ROOT, 'miniapp/components/ai-assistant/index.wxml'))
-  if (!wxml.includes('/assets/images/ai-fab.png')) {
-    errs.push('ai-assistant/index.wxml 没有引 ai-fab.png，浮标还是旧的那枚')
+  // 一个功能一张脸：浮标、抽屉头像、整页问答的头像，三处都得是这枚玉牌。
+  // 早先抽屉和整页用的是棕色圆底 + 单色线描，点开之后跟首页那枚对不上。
+  for (const f of ['miniapp/components/ai-assistant/index.wxml',
+                   'miniapp/packageD/ai-chat/index.wxml']) {
+    if (!read(path.join(ROOT, f)).includes('/assets/images/ai-fab.png')) {
+      errs.push(`${f} 没有引 ai-fab.png —— 问答的脸在这里和别处对不上`)
+    }
   }
 }
 

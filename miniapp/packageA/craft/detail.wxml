@@ -33,7 +33,7 @@
           <swiper-item wx:for="{{slides}}" wx:key="angleLabel">
             <view class="gimg {{item.cls}}" bindtap="onPreview" data-index="{{index}}">
               <image wx:if="{{item.imageUrl && !item.imageFailed}}" src="{{item.imageUrl}}" mode="aspectFill" class="gimg-img" data-index="{{index}}" data-cover="{{item.imageUrl}}" data-epoch="{{item.imageEpoch || 0}}" binderror="onSlideError" />
-              <icon wx:else name="{{item.icon}}" size="60" color="rgba(255,255,255,0.55)" />
+              <icon wx:else name="{{item.icon}}" size="60" color="rgba(68,86,81,0.7)" />
             </view>
           </swiper-item>
         </swiper>
@@ -61,17 +61,17 @@
       <view class="contact">
         <view class="contact-title serif">合作与咨询</view>
         <view class="c-row" bindtap="onPhone" data-val="{{detail.contact.phone}}">
-          <view class="c-ic c-blue"><icon name="megaphone" size="18" color="#FFFBF2" /></view>
+          <view class="c-ic"><icon name="megaphone" size="18" color="#614923" /></view>
           <view class="c-body"><text class="c-k">电话</text><text class="c-v">{{detail.contact.phone}}</text></view>
           <text class="c-act">拨打</text>
         </view>
         <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.wechat}}">
-          <view class="c-ic c-green"><icon name="wechat" size="18" color="#FFFBF2" /></view>
+          <view class="c-ic"><icon name="wechat" size="18" color="#614923" /></view>
           <view class="c-body"><text class="c-k">微信</text><text class="c-v">{{detail.contact.wechat}}</text></view>
           <text class="c-act">复制</text>
         </view>
         <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.email}}">
-          <view class="c-ic c-gold"><icon name="send" size="18" color="#FFFBF2" /></view>
+          <view class="c-ic"><icon name="send" size="18" color="#614923" /></view>
           <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">{{detail.contact.email}}</text></view>
           <text class="c-act">复制</text>
         </view>

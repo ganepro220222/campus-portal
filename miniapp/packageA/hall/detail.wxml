@@ -43,7 +43,7 @@
               data-index="{{index}}"
             >
               <image wx:if="{{item.imageUrl && !item.imageFailed}}" class="gimg-photo" src="{{item.imageUrl}}" mode="aspectFill" lazy-load data-index="{{index}}" data-cover="{{item.imageUrl}}" data-epoch="{{item.imageEpoch || 0}}" binderror="onSlideError" />
-              <icon wx:else name="{{item.icon}}" size="54" color="rgba(255,255,255,0.55)" />
+              <icon wx:else name="{{item.icon}}" size="54" color="rgba(68,86,81,0.7)" />
             </view>
           </swiper-item>
         </swiper>
@@ -119,7 +119,7 @@
             >
               <view class="imm-img {{media.cls}}">
                 <image wx:if="{{media.imageUrl && !media.imageFailed}}" src="{{media.imageUrl}}" mode="aspectFill" class="imm-photo" lazy-load data-sidx="{{sidx}}" data-midx="{{midx}}" data-cover="{{media.imageUrl}}" data-epoch="{{media.imageEpoch || 0}}" binderror="onSectionImageError" />
-                <icon wx:else name="{{media.icon}}" size="48" color="rgba(255,255,255,0.55)" />
+                <icon wx:else name="{{media.icon}}" size="48" color="rgba(68,86,81,0.7)" />
               </view>
               <view class="imm-cap">{{media.caption}}</view>
             </view>

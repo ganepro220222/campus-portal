@@ -1,20 +1,31 @@
 /* packageC/profile/list.wxss */
-.pl-page { min-height: 100vh; background: linear-gradient(180deg, var(--sky-2) 0, var(--paper) 220rpx); }
+/* 页顶原来是一道 --sky-2 的淡绿往下褪成纸，旧稿的"顶部有色"套路。
+   改成纸 + 淡纤维，全站一致。 */
+.pl-page {
+  min-height: 100vh;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 .pl-state { padding: 100rpx 40rpx; text-align: center; color: var(--muted); font-size: 28rpx; }
 
 .pl-retry {
   margin-top: 28rpx;
   font-size: 26rpx;
   font-weight: 600;
-  color: var(--navy);
-  background: var(--sky-2);
+  color: var(--jin-70);
+  /* 素钮，同 .page-state-action。原来是 --sky-2 淡绿底 + 28rpx 全圆胶囊 */
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  border: 1rpx solid var(--line);
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.9);
   padding: 16rpx 40rpx;
-  border-radius: 28rpx;
+  border-radius: 10rpx;
 }
-/* 全仓 19 处可点面的按下反馈里，17 处是变深（.res-dl、.fav-icon、.chip、.legal-retry…），
-   只有本文件这两处用 --sky-3 变浅，按下去像是「弹起来」而不是「按下去」。
-   静息同为 --sky-2，按深一档到 --sky，与 .res-dl / .fav-icon 完全对齐。 */
-.pl-retry:active { background: var(--sky); }
+/* 按下一律变深，不变浅——变浅看着像「弹起来」而不是「按下去」 */
+.pl-retry:active {
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-3));
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.14);
+}
 
 .pl-refresh-bar {
   margin: 16rpx 28rpx 0;
@@ -29,7 +40,7 @@
 .pl-refresh-text {
   font-size: 24rpx;
   font-weight: 600;
-  color: var(--color-danger);
+  color: var(--zhu);
 }
 
 .pl-list { padding: 24rpx 28rpx 0; }
@@ -37,7 +48,7 @@
   display: flex;
   align-items: center;
   gap: 22rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   padding: 24rpx;
@@ -127,10 +138,13 @@
 .pl-redownload {
   font-size: 22rpx;
   font-weight: 600;
-  color: var(--navy);
-  background: var(--sky-2);
+  color: var(--jin-70);
+  /* 小签：直角、纸底、细框、一道受光白线 */
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  border: 1rpx solid var(--line);
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   padding: 10rpx 20rpx;
-  border-radius: 22rpx;
+  border-radius: 6rpx;
   white-space: nowrap;
   box-sizing: border-box;
   min-width: 128rpx;
@@ -140,7 +154,8 @@
   opacity: 0.65;
 }
 .pl-redownload:active {
-  background: var(--sky);
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-3));
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.14);
 }
 
 .pl-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }
@@ -186,7 +201,7 @@
   position: relative;
 }
 .fp-item:active .fp-card {
-  background: var(--sky-3);
+  background: var(--paper-2);
 }
 .fp-rail {
   width: 24rpx;
@@ -208,7 +223,7 @@
 .fp-card {
   flex: 1;
   min-width: 0;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 18rpx;
   padding: 20rpx 22rpx;
@@ -228,10 +243,13 @@
 .fp-tag {
   font-size: 21rpx;
   font-weight: 600;
-  color: var(--navy);
-  background: var(--sky-2);
+  color: var(--jin-70);
+  /* 小签，同 .pill */
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  border: 1rpx solid var(--line);
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   padding: 4rpx 14rpx;
-  border-radius: 16rpx;
+  border-radius: 4rpx;
 }
 .fp-title {
   display: block;

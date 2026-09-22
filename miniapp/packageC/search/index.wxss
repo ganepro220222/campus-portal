@@ -1,5 +1,11 @@
 /* packageC/search/index.wxss */
-.search-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
+/* 页底：纸 + 淡纤维 */
+.search-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 
 /* 搜索栏 */
 .sbar {
@@ -8,18 +14,22 @@
   align-items: center;
   gap: 18rpx;
   padding: 18rpx 28rpx;
-  background: rgba(255, 255, 255, 0.94);
+  /* 顶栏是纸，不是白玻璃 */
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-bottom: 1rpx solid var(--line);
 }
 .sbox {
   flex: 1;
   height: 74rpx;
-  /* 与首页搜索框同一组值：这条也坐在近白的 .sbar 上，
-     用 --sky-3 / --line 时边界与白底只差 1.08 / 1.18，几乎看不见。
-     这里写死而不动那两个 token —— 它们在别处（浅底分隔线）是合适的。 */
-  background: var(--sky-2);
-  border: 1rpx solid #D3DCEC;
-  border-radius: 37rpx;
+  /* 搜索面凹进纸里。原来是 --sky-2 的淡绿 + 写死的 #D3DCEC 冷蓝描边 +
+     37rpx 全圆药丸；边界看不清的问题现在由"凹进去"这件事本身解决——
+     内阴影比任何一条描边都更说明它是个可以往里写字的槽。 */
+  background: var(--paper-sunk);
+  border: 1rpx solid var(--line);
+  border-radius: 14rpx;
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.12);
   display: flex;
   align-items: center;
   gap: 12rpx;
@@ -36,7 +46,7 @@
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.sbtn { flex-shrink: 0; font-size: 28rpx; font-weight: 600; color: var(--navy); }
+.sbtn { flex-shrink: 0; font-size: 28rpx; font-weight: 600; color: var(--jin-70); }
 
 /* 内容 */
 .search-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
@@ -50,14 +60,20 @@
 .tag {
   font-size: 25rpx;
   color: var(--sub);
-  background: var(--card);
+  /* 历史/热门词是可点的小签：直角 8rpx、纸底、细框、一道受光白线。
+     原来是 32rpx 全圆胶囊。 */
+  background: linear-gradient(180deg, rgba(255,252,244,.95), rgba(234,226,208,.6));
   border: 1rpx solid var(--line);
   padding: 12rpx 28rpx;
-  border-radius: 32rpx;
-  box-shadow: var(--shadow-sm);
+  border-radius: 8rpx;
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8), var(--shadow-sm);
 }
-.tag:active { background: var(--sky-2); }
-.tag-ghost { background: var(--sky-3); box-shadow: none; }
+.tag:active {
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-3));
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.14);
+}
+/* 虚位的那一枚（"暂无记录"之类）：平的、没有受光线，一眼看出点不动 */
+.tag-ghost { background: var(--paper-2); box-shadow: none; }
 
 /* 结果 */
 .res-count { font-size: 23rpx; color: var(--muted); margin-bottom: 18rpx; }
@@ -65,22 +81,25 @@
   display: flex;
   align-items: center;
   gap: 20rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   padding: 24rpx;
   margin-bottom: 16rpx;
   box-shadow: var(--shadow-sm);
 }
-.sres:active { background: var(--sky-3); }
+.sres:active { background: var(--paper-2); }
 .sres-tag {
   flex-shrink: 0;
   font-size: 21rpx;
   font-weight: 600;
-  color: var(--navy);
-  background: var(--sky-2);
+  color: var(--jin-70);
+  /* 小签，同 .pill */
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  border: 1rpx solid var(--line);
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   padding: 8rpx 16rpx;
-  border-radius: 14rpx;
+  border-radius: 4rpx;
 }
 .sres-body { flex: 1; min-width: 0; }
 .sres-title {
@@ -109,6 +128,6 @@
   padding: 8rpx 0 24rpx;
 }
 .list-foot-done { color: var(--ghost); }
-.list-foot-retry { color: var(--navy); }
+.list-foot-retry { color: var(--jin-70); }
 
 .list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

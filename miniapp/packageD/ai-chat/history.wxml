@@ -27,7 +27,7 @@
       bindtap="onItemTap"
     >
       <view class="history-ic">
-        <icon name="robot" size="22" color="#FFFBF2" />
+        <icon name="robot" size="22" color="#614923" />
       </view>
       <view class="history-body">
         <text class="history-title">{{item.title}}</text>

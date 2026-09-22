@@ -210,7 +210,7 @@ page {
 .flex-between{ display: flex; align-items: center; justify-content: space-between; }
 .flex-1      { flex: 1; }
 
-.text-navy   { color: var(--navy); }
+/* 原来这儿还有个 .text-navy，全仓没人用，名字又还是旧调色板的，留着只会误导 */
 .text-sub    { color: var(--sub); }
 .text-hint   { color: var(--muted); }
 .text-center { text-align: center; }
@@ -227,7 +227,7 @@ page {
 
 /* ── 卡片容器（白底 + 海军蓝阴影）── */
 .card {
-  background: var(--card);
+  background: var(--paper-card);
   border-radius: 24rpx;
   padding: 24rpx;
   margin: 0 24rpx 20rpx;
@@ -253,33 +253,14 @@ page {
   width: 6rpx;
   height: 28rpx;
   border-radius: 3rpx;
-  background: linear-gradient(180deg, var(--blue), var(--navy));
+  /* 段头的竖标：朱。和活动详情的 .section-title::before、首页段头那枚印
+     是同一条线索——朱只做**标记位**，不做色块。 */
+  background: var(--zhu);
 }
 
-/* ── 分类胶囊 ── */
-.cat-tag {
-  display: inline-block;
-  padding: 10rpx 28rpx;
-  border-radius: 32rpx;
-  font-size: 26rpx;
-  color: var(--sub);
-  background: var(--card);
-  border: 1rpx solid var(--line);
-  margin-right: 16rpx;
-  flex-shrink: 0;
-}
-.cat-tag.cat-active {
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  color: var(--card);
-  border-color: transparent;
-}
-
-/* ── 封面图占位 ── */
-.cover-image {
-  width: 100%;
-  border-radius: 24rpx;
-  background-color: var(--sky-2);
-}
+/* 这里原先还有 .cat-tag / .cat-active（32rpx 全圆胶囊 + blue→navy 渐变）
+   和 .cover-image（--sky-2 底）。全仓 wxml / js / 其它 wxss 都没有引用，
+   是旧版面留下的死规则，跟着这次收口一起删掉，免得下次照着它再抄一份出去。 */
 
 /* ── 空状态 ── */
 .empty-state {
@@ -319,77 +300,54 @@ page {
   color: var(--muted);
   line-height: 1.6;
 }
+/* 「重新加载」：素钮。它是错误态里的次操作，不该比正文还抢眼——
+   原来是 --sky-2 的淡绿底 + 28rpx 全圆胶囊，两样都是旧稿留下的。
+   现在同登录页的次按钮：纸面从亮到暗压一道，顶上一条受光白线，直角 10rpx。 */
 .page-state-action {
   display: inline-block;
   margin-top: 28rpx;
   font-size: 26rpx;
   font-weight: 600;
-  color: var(--navy);
-  background: var(--sky-2);
+  color: var(--jin-70);
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  border: 1rpx solid var(--line);
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.9);
   padding: 16rpx 40rpx;
-  border-radius: 28rpx;
+  border-radius: 10rpx;
 }
-.page-state-action:active { background: var(--sky); }
+/* 按下变深一档：纸被按进去，受光的白线随之收掉 */
+.page-state-action:active {
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-3));
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.14);
+}
 .page-state-link {
   display: block;
   margin-top: 20rpx;
   font-size: 26rpx;
-  color: var(--blue);
+  color: var(--jin-70);
 }
 .page-state-link:active { opacity: 0.7; }
 /* 文案是无 class 的 <text> 子节点，字号/字重/颜色靠继承落到它身上 */
 .page-refresh-bar {
   margin: 16rpx 28rpx 0;
   padding: 20rpx 24rpx;
-  background: rgba(192, 57, 43, 0.08);
-  border: 1rpx solid rgba(192, 57, 43, 0.18);
+  background: rgba(158, 43, 37, 0.08);
+  border: 1rpx solid rgba(158, 43, 37, 0.18);
   border-radius: 16rpx;
   text-align: center;
   font-size: 24rpx;
   font-weight: 600;
-  color: var(--color-danger);
+  color: var(--zhu);
 }
-.page-refresh-bar:active { background: rgba(192, 57, 43, 0.12); }
+.page-refresh-bar:active { background: rgba(158, 43, 37, 0.12); }
 
 /* ── 底部安全区 ── */
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
-/* ── 通用按钮 ── */
-.btn-navy,
-.btn-gold,
-.btn-ghost {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  line-height: normal;
-}
-.btn-navy {
-  height: 88rpx;
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  color: var(--card);
-  border-radius: 44rpx;
-  font-size: 30rpx;
-  font-weight: 700;
-  border: none;
-}
-.btn-gold {
-  height: 88rpx;
-  background: linear-gradient(135deg, var(--jin-50), var(--jin-60));
-  color: var(--card);
-  border-radius: 44rpx;
-  font-size: 30rpx;
-  font-weight: 700;
-  border: none;
-}
-.btn-ghost {
-  height: 88rpx;
-  background: rgba(255,255,255,.10);
-  color: var(--card);
-  border-radius: 44rpx;
-  font-size: 30rpx;
-  border: 1rpx solid rgba(255,255,255,.28);
-}
+/* 这里原先是 .btn-navy / .btn-gold / .btn-ghost 三个通用按钮，
+   44rpx 全圆胶囊 + blue→navy 渐变。全仓 wxml / js / 其它 wxss 一处没引用
+   （登录页用的是自己的 .lbtn-ghost，不是这个），一并删掉。
+   各页的主/次按钮现在统一走朱砂漆钮与素钮两种，见登录页与活动详情。 */
 
 /*
  * 原生 button 垂直居中：勿用 line-height = height（基础库内边距会导致文字偏下）。
@@ -432,16 +390,16 @@ button.btn-primary[disabled],
 button.save-btn[disabled],
 button.fb-submit[disabled],
 button.pe-submit[disabled] {
-  color: var(--card);
+  color: var(--paper-card);
 }
 button.btn-outline[disabled] {
-  color: var(--navy);
+  color: var(--jin-70);
 }
 button.lbtn-primary[disabled] {
-  color: var(--navy);
+  color: var(--jin-70);
 }
 button.lbtn-ghost[disabled] {
-  color: var(--card);
+  color: var(--paper-card);
 }
 
 /* ── 文件类型色标 ── */
@@ -693,7 +651,7 @@ button.lbtn-ghost[disabled] {
   display: flex;
   align-items: center;
   gap: 24rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   padding: 24rpx 26rpx;
@@ -715,11 +673,11 @@ button.lbtn-ghost[disabled] {
 .app-icon--circle { border-radius: 50%; }
 /* 有图时用白底托住，避免透明 PNG 叠在 hc1 深蓝上只剩月牙 */
 .app-icon--plate {
-  background: var(--card);
+  background: var(--paper-card);
   box-shadow: 0 6rpx 16rpx rgba(74,50,30, 0.12);
 }
 .app-icon-img { width: 100%; height: 100%; }
-.app-icon-seal { color: var(--card); font-size: 34rpx; font-weight: 700; letter-spacing: 1rpx; }
+.app-icon-seal { color: var(--paper-card); font-size: 34rpx; font-weight: 700; letter-spacing: 1rpx; }
 .app-body { flex: 1; min-width: 0; }
 .app-name {
   font-size: 30rpx;
@@ -758,7 +716,7 @@ button.lbtn-ghost[disabled] {
   gap: 2rpx;
   font-size: 25rpx;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--jin-70);
   flex-shrink: 0;
 }
 
@@ -795,29 +753,36 @@ button.lbtn-ghost[disabled] {
 /* 文案在「收藏」(2 字) 与「已收藏」(3 字) 之间切换 = 25rpx 宽度差，
    而胶囊是右对齐的，不锁宽就会每点一次左边缘蹦一下。按长的那个态定死下限：
    图标 32rpx + gap 8rpx + 3×25rpx 文字 + 28rpx×2 内边距 = 171rpx。 */
+/* 收藏本身是个"盖不盖章"的动作，所以未收藏是一方空白小签、
+   收了就把签盖成朱的。原来是 30rpx 全圆胶囊 + 白底，
+   选中态另写了 #F3C9C2 / #FDF1EF 两个旧调色板的粉色。 */
 .fav-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8rpx;
   padding: 12rpx 28rpx;
-  border-radius: 30rpx;
+  border-radius: 8rpx;
   border: 1rpx solid var(--line);
-  background: var(--card);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   font-size: 25rpx;
   color: var(--sub);
   box-sizing: border-box;
   min-width: 172rpx;
 }
 .fav-btn.fav-on {
-  color: var(--color-danger);
-  border-color: #F3C9C2;
-  background: #FDF1EF;
+  color: var(--zhu);
+  border-color: rgba(158,43,37,.32);
+  background: var(--zhu-soft);
+  box-shadow: none;
 }
 .fav-bar-inline { margin: 20rpx 0 0; justify-content: flex-start; }
 /* 资源列表里它与 .res-dl 并排。两颗都是正圆，尺寸/底色必须一致，
-   否则同一行里一大一小、一个带描边一个不带，看着像没对齐。跟 .res-dl 取齐：
-   72rpx + var(--sky-2) + 无描边，选中态再用红系区分。 */
+   否则同一行里一大一小、一个带描边一个不带，看着像没对齐。
+   现在两颗一起换成**纸钮 + 金线**（同「我的」页的菜单图标）：
+   72rpx、纸面压一道、一圈细金线。原来是 --sky-2 的淡绿底 + 无描边，
+   选中态另写了 #FDF1EF / #F8E3DF 两个旧粉色。 */
 .fav-icon {
   width: 72rpx;
   height: 72rpx;
@@ -825,9 +790,22 @@ button.lbtn-ghost[disabled] {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--sky-2);
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 0 rgba(255,252,244,.9);
   flex-shrink: 0;
 }
-.fav-icon:active { background: var(--sky); }
-.fav-icon.fav-on { background: #FDF1EF; }
-.fav-icon.fav-on:active { background: #F8E3DF; }
+.fav-icon:active {
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-3));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 4rpx rgba(74,50,30,.14);
+}
+/* 已收藏：钮面盖成朱，金线换朱线 */
+.fav-icon.fav-on {
+  background: var(--zhu-soft);
+  box-shadow: inset 0 0 0 1rpx rgba(158,43,37,.32);
+}
+/* 按下不再另配一个更深的粉色，改成在同一张朱纸上压一层朱的薄影：
+   少一个写死的色值，深浅关系反而更准。 */
+.fav-icon.fav-on:active {
+  background: linear-gradient(rgba(124,28,23,.10), rgba(124,28,23,.10)), var(--zhu-soft);
+  box-shadow: inset 0 0 0 1rpx rgba(158,43,37,.32), inset 0 2rpx 4rpx rgba(124,28,23,.16);
+}

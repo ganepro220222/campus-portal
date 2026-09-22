@@ -22,29 +22,32 @@
   margin-top: 28rpx;
   font-size: 26rpx;
   font-weight: 600;
-  color: var(--navy);
-  background: var(--sky-2);
+  /* 重试键：素钮，不是绢青胶囊 */
+  color: var(--jin-70);
   padding: 16rpx 40rpx;
-  border-radius: 28rpx;
+  border-radius: 10rpx;
+  border: 1rpx solid var(--line);
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.9);
 }
-.detail-retry:active { background: var(--sky); }
+.detail-retry:active { background: var(--paper-3); }
 
 .detail-retry-link {
   margin-top: 20rpx;
   font-size: 26rpx;
-  color: var(--blue);
+  color: var(--jin-70);
 }
 .detail-retry-link:active { opacity: 0.7; }
 
 .detail-refresh-bar {
   margin: 16rpx 24rpx 0;
   padding: 20rpx 24rpx;
-  background: rgba(192, 57, 43, 0.08);
-  border: 1rpx solid rgba(192, 57, 43, 0.18);
+  background: rgba(158, 43, 37, 0.08);
+  border: 1rpx solid rgba(158, 43, 37, 0.18);
   border-radius: 16rpx;
   text-align: center;
 }
-.detail-refresh-bar:active { background: rgba(192, 57, 43, 0.12); }
+.detail-refresh-bar:active { background: rgba(158, 43, 37, 0.12); }
 .detail-refresh-text {
   font-size: 24rpx;
   font-weight: 600;
@@ -67,7 +70,7 @@
   inset: 0;
   background:
     radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.18), transparent 60%),
-    linear-gradient(180deg, transparent 55%, rgba(12, 16, 36, 0.32) 100%);
+    linear-gradient(180deg, transparent 55%, rgba(20, 16, 12, 0.34) 100%);
   z-index: 1;
 }
 .hero-img { width: 100%; height: 100%; position: absolute; left: 0; top: 0; }
@@ -123,18 +126,25 @@
 .quota-chip {
   font-size: 24rpx;
   font-weight: 600;
-  color: var(--navy);
-  background: linear-gradient(135deg, var(--sky-2), #E1ECF9);
-  border-radius: 14rpx;
+  /* 名额：小签。原来是绢青 → 冷蓝白的渐变胶囊 */
+  color: var(--jin-70);
+  border-radius: 4rpx;
+  color: var(--wood-80);
+  border: 1rpx solid var(--line);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   padding: 10rpx 22rpx;
 }
-.quota-chip.full { color: var(--muted); background: var(--sky-3); }
+.quota-chip.full { color: var(--muted); }
 .review-chip {
   font-size: 22rpx;
   font-weight: 600;
-  color: var(--jin-70);
-  background: var(--xing-05);
-  border-radius: 14rpx;
+  color: var(--wood-80);
+  border-radius: 4rpx;
+  color: var(--wood-80);
+  border: 1rpx solid var(--line);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   padding: 10rpx 18rpx;
 }
 
@@ -154,15 +164,16 @@
   border-left: 8rpx solid transparent;
 }
 .status-pending { color: var(--jin-70); background: var(--xing-05); border-left-color: var(--jin-60); }
-.status-approved { color: var(--navy); background: var(--sky-2); border-left-color: var(--blue); }
-.status-rejected { color: var(--color-danger); background: rgba(192, 57, 43, 0.08); border-left-color: var(--color-danger); }
+/* 三档状态只用这套自己的颜色：待审素、通过金、驳回朱（同 packageC/profile/list） */
+.status-approved { color: var(--jin-70); background: var(--xing-05); border-left-color: var(--jin-60); }
+.status-rejected { color: var(--zhu); background: var(--zhu-soft); border-left-color: var(--zhu); }
 .voucher-inline {
   display: block;
   font-size: 26rpx;
   font-weight: 700;
   letter-spacing: 2rpx;
   margin-top: 10rpx;
-  color: var(--navy);
+  color: var(--jin-80);
 }
 
 .section {
@@ -187,7 +198,8 @@
   width: 6rpx;
   height: 28rpx;
   border-radius: 3rpx;
-  background: linear-gradient(180deg, var(--blue), var(--navy));
+  /* 段头的竖标：朱，和首页段头那枚印是同一条线索 */
+  background: var(--zhu);
 }
 .intro {
   font-size: 27rpx;
@@ -208,8 +220,11 @@
   right: 0;
   bottom: 0;
   padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.97);
-  backdrop-filter: blur(16rpx);
+  /* 底栏是纸，不是白玻璃 —— 和标签栏同一条账（白玻璃压在米白纸上会显出
+     一条更白的带，整页的纸感在最底下断掉） */
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-top: 1rpx solid var(--line);
   box-shadow: 0 -4rpx 20rpx rgba(74,50,30, 0.06);
   display: flex;
@@ -222,7 +237,7 @@
 .btn-disabled {
   flex: 1;
   height: 92rpx;
-  border-radius: 46rpx;
+  border-radius: 12rpx;
   font-size: 31rpx;
   font-weight: 700;
   border: none;
@@ -232,18 +247,23 @@
 .btn-primary::after,
 .btn-outline::after,
 .btn-disabled::after { border: none; }
+/* 报名 = 这一页的主操作，走朱砂漆钮（同登录页、展馆 VR 键） */
 .btn-primary {
-  color: var(--card);
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  box-shadow: 0 12rpx 30rpx rgba(96,78,44, 0.32);
+  color: var(--paper-card);
+  background: linear-gradient(180deg, var(--zhu-lit), var(--zhu) 52%, var(--zhu-d));
+  box-shadow: inset 0 2rpx 0 rgba(255,236,228,.30),
+              inset 0 -2rpx 0 rgba(78,18,14,.45),
+              0 4rpx 10rpx rgba(158,43,37,.28);
 }
+/* 次操作：素钮 */
 .btn-outline {
-  color: var(--navy);
-  background: var(--card);
-  border: 2rpx solid var(--navy);
+  color: var(--jin-80);
+  border: 1rpx solid var(--line);
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.9);
 }
 .btn-disabled {
   color: var(--muted);
-  background: var(--sky-3);
+  background: var(--paper-2);
 }
 .btn-half { flex: 1; }

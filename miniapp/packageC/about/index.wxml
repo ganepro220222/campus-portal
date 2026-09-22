@@ -5,8 +5,9 @@
 
     <!-- 品牌头 -->
     <view class="ab-hero">
+      <view class="ab-hero-deco"></view>
       <view class="ab-seal">
-        <image class="ab-seal-img" src="/assets/images/academy-seal-gold.png" mode="aspectFit" />
+        <image class="ab-seal-img" src="/assets/images/seal-zhu.png" mode="aspectFit" />
       </view>
       <view class="ab-name serif">云端书院</view>
       <view class="ab-ver">版本 v{{version}}</view>
@@ -23,7 +24,7 @@
     <view class="ab-card">
       <view class="ab-title serif">平台特色</view>
       <view class="feat" wx:for="{{features}}" wx:key="name">
-        <view class="feat-ic"><icon name="{{item.icon}}" size="20" color="#FFFBF2" /></view>
+        <view class="feat-ic"><icon name="{{item.icon}}" size="20" color="#614923" /></view>
         <view class="feat-body">
           <text class="feat-name">{{item.name}}</text>
           <text class="feat-desc">{{item.desc}}</text>

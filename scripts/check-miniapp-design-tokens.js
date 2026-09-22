@@ -63,23 +63,17 @@ const BUDGET = {
   /* app.wxss 令牌区**以下**那段共用样式。原来整个文件被跳过，
      旧蓝紫就藏在那个盲区里。.hc1~.hc5 的兜底色阶已经换成本套的山水色
      （18 → 9），首页「关联应用」那条 .app-tag 的冷蓝白也收了（9 → 8）。
-     剩下的 8 处是 .ft-* 的文件类型色标：
+     收藏按钮那三个旧粉色（#F3C9C2 / #FDF1EF / #F8E3DF）也换成 --zhu-soft 了（8 → 4）。
+     剩下的 4 处是 .ft-* 的文件类型色标：
      PDF 红 / PPT 橙 / DOC 蓝 / XLSX 绿这几个是**办公软件自己的识别色**，
      用户是照着颜色认文件类型的，换成金棕一家人反而分不出来。
      这一档留着，不往下收。 */
-  'app.wxss': 8,
+  'app.wxss': 4,
   'components/loading/index.wxss': 2,
   'components/skeleton/index.wxss': 1,
-  'packageA/craft/detail.wxss': 7,
-  'packageA/hall/detail.wxss': 7,
-  'packageB/course/detail.wxss': 1,
   'packageB/course/player.wxss': 1,
-  'packageC/activity/detail.wxss': 1,
-  'packageC/activity/enroll.wxss': 2,
   'packageC/legal/privacy.wxss': 4,
   'packageC/message/index.wxss': 2,
-  'packageC/search/index.wxss': 1,
-  'packageD/poster/generate.wxss': 1,
   'pages/login/index.wxss': 2
 }
 
@@ -91,12 +85,10 @@ const BUDGET = {
  * 是 pages/login/index.wxss 的旧副本）连同它那 8 处一起删掉了。
  */
 const DISGUISED_BUDGET = {
-  'app.wxss': 3,
+  'app.wxss': 0,
   'packageA/news/list.wxss': 1,
   'packageB/course/detail.wxss': 1,
   'packageB/course/player.wxss': 1,
-  'packageC/activity/detail.wxss': 4,
-  'packageC/activity/enroll.wxss': 2,
   'packageC/feedback/index.wxss': 1,
   'packageD/poster/generate.wxss': 1
 }

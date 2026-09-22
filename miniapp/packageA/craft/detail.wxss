@@ -1,30 +1,62 @@
 /* packageA/craft/detail.wxss */
-.detail-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
+/* 页底：纸 + 淡纤维，和展馆详情、活动详情同一档 */
+.detail-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 .detail-scroll { flex: 1; overflow: hidden; }
 .detail-wrap { padding: 24rpx 28rpx 0; }
 .detail-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }
 
-/* 图集 */
-.gal { border-radius: 28rpx; overflow: hidden; box-shadow: var(--shadow); position: relative; }
-.gslides { height: 460rpx; }
-.gimg { height: 460rpx; display: flex; align-items: center; justify-content: center; position: relative; }
+/* ── 图集：裱起来的画心 ──
+   与展馆详情 .gal 同一套装裱：木纹裱边 10rpx + 画心内框金线。
+   原来是 28rpx 圆角直接切图，三张兜底还是旧稿的蓝紫/靛青渐变。 */
+.gal {
+  position: relative;
+  padding: 10rpx;
+  border-radius: 20rpx;
+  background-color: var(--wood-50);
+  background-image:
+    repeating-linear-gradient(90deg,
+      rgba(58,34,14,.10) 0 2rpx, rgba(255,240,220,.05) 2rpx 4rpx, transparent 4rpx 10rpx),
+    linear-gradient(150deg, var(--wood-30), var(--wood-40) 55%, var(--wood-60));
+  box-shadow: 0 8rpx 24rpx rgba(74,50,30,.16);
+}
+.gslides {
+  height: 460rpx;
+  border-radius: 6rpx;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 2rpx rgba(58,34,14,.45);
+}
+.gimg {
+  height: 460rpx;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
 .gimg-img { width: 100%; height: 100%; }
-.gi1 { background: linear-gradient(135deg, var(--navy), #475BA6); }
-.gi2 { background: linear-gradient(135deg, #5A4E86, #7E72B0); }
-.gi3 { background: linear-gradient(135deg, #365E8C, #2E7C8C); }
+/* 没有图时垫绢底。三档只差一点点色相，是为了相邻两张不同色，
+   不是为了"这张是什么角度"——角度是下面那行字说的事。 */
+.gi1 { background: var(--juan-1); }
+.gi2 { background: var(--juan-2); }
+.gi3 { background: var(--juan-3); }
 .gcap {
   position: absolute;
-  left: 0; right: 0; bottom: 0;
-  padding: 48rpx 28rpx 22rpx;
+  left: 10rpx; right: 10rpx; bottom: 10rpx;
+  padding: 48rpx 24rpx 20rpx;
   z-index: 2;
-  background: linear-gradient(transparent, rgba(12, 16, 36, 0.7));
-  color: var(--card);
+  /* 原来是 rgba(12,16,36,.7) 的冷蓝黑，压在暖调页面上发灰 */
+  background: linear-gradient(transparent, rgba(20, 16, 12, 0.66));
+  color: var(--paper-card);
   font-size: 23rpx;
+  line-height: 1.45;
 }
 
 /* 介绍 */
 .craft-intro {
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   padding: 28rpx;
@@ -38,10 +70,13 @@
   gap: 16rpx;
 }
 .ci-title { font-size: 38rpx; font-weight: 700; color: var(--ink); flex: 1; }
+/* 中／EN 切换：一副对开的小签，选中的那一扇盖成朱。
+   原来选中态是 --sky-2 的淡绿底 + 金棕字，两个颜色互不相干，
+   小尺寸下根本看不出哪扇是开着的。 */
 .lang-switch {
   display: flex;
   border: 1rpx solid var(--line);
-  border-radius: 16rpx;
+  border-radius: 8rpx;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -49,11 +84,11 @@
   padding: 10rpx 20rpx;
   font-size: 22rpx;
   color: var(--muted);
-  background: var(--card);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
 }
 .lang-btn.lang-on {
-  background: var(--sky-2);
-  color: var(--navy);
+  background: var(--zhu);
+  color: var(--paper-card);
   font-weight: 700;
 }
 .ci-tags { display: flex; gap: 14rpx; margin: 18rpx 0 22rpx; }
@@ -61,7 +96,7 @@
 
 /* 联系方式 */
 .contact {
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   padding: 12rpx 28rpx;
@@ -71,21 +106,25 @@
 .contact-title { font-size: 30rpx; font-weight: 700; color: var(--ink); padding: 18rpx 0 10rpx; }
 .c-row { display: flex; align-items: center; gap: 20rpx; padding: 20rpx 0; border-top: 1rpx solid var(--line); }
 .c-row:active { opacity: 0.7; }
+/* 三颗图标钮统一成**纸钮 + 金线**（同「我的」页菜单、同 .fav-icon）。
+   原来是蓝／绿／金三块渐变：电话蓝、微信绿、邮箱金——那是照搬各家品牌色，
+   和这套纸墨没关系，三块饱和色并排还盖过了它们右边的正文。
+   要分辨哪一行是什么，左边有图形、中间有「电话/微信/邮箱」四个字，够了。 */
 .c-ic {
   width: 64rpx; height: 64rpx;
   border-radius: 18rpx;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 0 rgba(255,252,244,.9);
 }
-.c-blue { background: linear-gradient(135deg, var(--blue), var(--navy)); }
-.c-green { background: linear-gradient(135deg, #3F9A6B, #2E7C55); }
-.c-gold { background: linear-gradient(135deg, var(--jin-50), var(--jin-60)); }
 .c-body { flex: 1; min-width: 0; }
 .c-k { font-size: 22rpx; color: var(--muted); display: block; }
 .c-v { font-size: 27rpx; color: var(--ink); font-weight: 500; margin-top: 4rpx; display: block; }
-.c-act { font-size: 22rpx; color: var(--navy); font-weight: 600; flex-shrink: 0; }
+.c-act { font-size: 22rpx; color: var(--jin-70); font-weight: 600; flex-shrink: 0; }
 
-/* 海报按钮：居中、随内容宽度，上限不超过卡片 */
+/* 海报按钮：居中、随内容宽度，上限不超过卡片。
+   金钮，直角 12rpx——同展馆详情那一枚，两页的同一个动作长一个样。 */
 .poster-btn-wrap {
   display: flex;
   justify-content: center;
@@ -98,9 +137,9 @@
   margin: 0;
   padding: 0 32rpx;
   height: 92rpx;
-  border-radius: 20rpx;
-  background: linear-gradient(135deg, var(--jin-50), var(--jin-60));
-  color: var(--card);
+  border-radius: 12rpx;
+  background: linear-gradient(180deg, var(--jin-50), var(--jin-70));
+  color: var(--paper-card);
   font-size: 28rpx;
   font-weight: 700;
   border: none;
@@ -110,7 +149,7 @@
   gap: 10rpx;
   white-space: nowrap;
   overflow: hidden;
-  box-shadow: 0 16rpx 44rpx rgba(150, 110, 30, 0.35);
+  box-shadow: inset 0 2rpx 0 rgba(255,250,240,.35), 0 6rpx 18rpx rgba(126,97,52,.26);
 }
 .poster-btn text {
   flex-shrink: 0;

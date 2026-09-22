@@ -1,5 +1,11 @@
 /* packageC/about/index.wxss */
-.about-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
+/* 页底：纸 + 淡纤维 */
+.about-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 .about-scroll { flex: 1; overflow: hidden; }
 
 /* 品牌头 */
@@ -7,39 +13,64 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+  overflow: hidden;
   padding: 48rpx 40rpx 40rpx;
-  background: linear-gradient(160deg, var(--navy) 0%, var(--navy) 60%, var(--navy-deep) 100%);
-  color: var(--card);
+  /* 品牌头原来是一整块深棕金（--navy→--navy-deep），上面压着金印和两行浅蓝白小字。
+     那是旧稿"深色品牌头"的套路，和登录页、首页、「我的」的纸面全不搭。
+     换成「我的」页同一张杏纸 + 棂格：纸在上面，印钤在纸上。 */
+  background-color: var(--xing-10);
+  background-image: var(--fiber-page);
+  background-size: 320rpx 320rpx;
+  box-shadow: inset 0 -2rpx 0 rgba(150, 120, 66, .14);
+  color: var(--ink);
 }
-/* 与登录页同一套语言，按 150/248 等比缩放：圆角 34rpx、外框间距 13rpx、印面 0.70 */
+/* 棂格只在右上角浮现、往四周化开——满屏铺就成了网格纸 */
+.ab-hero-deco {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  opacity: .32;
+  background-image: var(--lattice);
+  background-size: 96rpx 96rpx;
+  /* 遮罩只看 alpha，这里的 black 是"这一档全留"的意思，不是界面颜色 */
+  -webkit-mask-image: radial-gradient(74% 86% at 84% 8%, black 0%, transparent 72%);
+  mask-image: radial-gradient(74% 86% at 84% 8%, black 0%, transparent 72%);
+}
+/* 印钤在一方纸上，和登录页 .seal-plate 是同一件东西（只是小一号）。
+   纸给了印对比度，直接落在底纹上会糊；一圈金线、一圈木框、再一圈金线，
+   三道箍把这方纸裱起来。印本身也跟着登录页换成朱砂那一版——
+   原来的 academy-seal-gold 是金印浮在深色上的，这一页翻成纸之后它就没底了。 */
 .ab-seal {
+  position: relative;
+  z-index: 2;
   width: 150rpx;
   height: 150rpx;
-  border-radius: 34rpx;
-  position: relative;
+  border-radius: 6rpx;
   box-sizing: border-box;
-  background: linear-gradient(165deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035) 58%, rgba(255, 255, 255, 0.02));
-  border: 2rpx solid rgba(201, 162, 39, 0.78);
+  background: linear-gradient(160deg, var(--paper-1), var(--paper-3));
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 36rpx rgba(201, 162, 39, 0.28), 0 0 24rpx rgba(150, 180, 235, 0.24);
+  box-shadow: 0 0 0 2rpx rgba(192,153,78,.9),
+              0 0 0 7rpx rgba(122,86,38,.6),
+              0 0 0 9rpx rgba(192,153,78,.5),
+              0 10rpx 28rpx rgba(74,50,30,.24),
+              inset 0 4rpx 6rpx rgba(255,255,255,.9),
+              inset 0 -6rpx 12rpx rgba(107,74,50,.16);
 }
-.ab-seal::after {
-  content: "";
-  position: absolute;
-  left: -13rpx; top: -13rpx; right: -13rpx; bottom: -13rpx;
-  border-radius: 47rpx;
-  border: 1rpx solid rgba(201, 162, 39, 0.5);
+.ab-seal-img { width: 100rpx; height: 100rpx; }
+.ab-name {
+  position: relative; z-index: 2;
+  font-size: 42rpx; font-weight: 700; letter-spacing: 6rpx;
+  margin-top: 34rpx; color: var(--ink);
 }
-.ab-seal-img { width: 105rpx; height: 94rpx; }
-.ab-name { font-size: 42rpx; font-weight: 700; letter-spacing: 6rpx; margin-top: 26rpx; }
-.ab-ver { font-size: 22rpx; color: rgba(214, 224, 248, 0.75); margin-top: 12rpx; }
-.ab-org { font-size: 23rpx; color: rgba(214, 224, 248, 0.9); margin-top: 8rpx; letter-spacing: 1rpx; }
+.ab-ver { position: relative; z-index: 2; font-size: 22rpx; color: var(--ink-3); margin-top: 12rpx; }
+.ab-org { position: relative; z-index: 2; font-size: 23rpx; color: var(--ink-3); margin-top: 8rpx; letter-spacing: 1rpx; }
 
 /* 卡片 */
 .ab-card {
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 28rpx;
@@ -56,7 +87,10 @@
   width: 64rpx;
   height: 64rpx;
   border-radius: 18rpx;
-  background: linear-gradient(135deg, var(--blue), var(--navy));
+  /* 纸钮 + 金线，同全站。原来是 blue→navy 的渐变方块，
+     四条特色一排下来就是四个一模一样的深色方块。 */
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 0 rgba(255,252,244,.9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -74,7 +108,9 @@
   width: 60rpx;
   height: 60rpx;
   border-radius: 16rpx;
-  background: var(--sky-2);
+  /* 同上，纸钮 + 金线。原来是 --sky-2 的淡绿方块 */
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 0 rgba(255,252,244,.9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -90,7 +126,7 @@
   justify-content: space-between;
   padding: 20rpx 0 4rpx;
 }
-.legal-link-tx { font-size: 28rpx; color: var(--navy); }
+.legal-link-tx { font-size: 28rpx; color: var(--jin-70); }
 .legal-link-arr { font-size: 32rpx; color: var(--muted); }
 
 /* 页脚 */

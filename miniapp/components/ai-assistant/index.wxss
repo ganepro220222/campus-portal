@@ -39,18 +39,19 @@
   position: absolute;
   top: -8rpx; right: -8rpx;
   background: var(--jin-60);
-  color: var(--card);
+  color: var(--paper-card);
   font-size: 18rpx;
   font-weight: 700;
   padding: 3rpx 12rpx;
   border-radius: 20rpx;
-  border: 3rpx solid var(--card);
+  border: 3rpx solid var(--paper-card);
 }
 
 .mask {
   position: fixed;
   left: 0; top: 0; right: 0; bottom: 0;
-  background: rgba(15, 20, 46, 0.45);
+  /* 原来是 rgba(15,20,46,.45) 的冷蓝黑，压在暖调页面上发灰 */
+  background: rgba(20, 16, 12, 0.5);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s;
@@ -62,7 +63,9 @@
   position: fixed;
   left: 0; right: 0; bottom: 0;
   height: 80vh;
-  background: var(--card);
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-radius: 44rpx 44rpx 0 0;
   transform: translateY(100%);
   transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
@@ -146,27 +149,39 @@
   word-break: break-word;
 }
 .bubble.ai {
-  background: var(--sky-3);
+  /* 对面说的话：白纸。原来是 --sky-3 的淡绿 */
+  background: var(--paper-1);
   color: var(--ink);
   border-top-left-radius: 8rpx;
   border: 1rpx solid var(--line);
 }
 .bubble.me {
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  color: var(--card);
+  /* 自己说的话：杏色纸，同全屏对话页的 .bubble.me。
+     原来是 blue→navy 的深色渐变块，一屏几句就把纸面全压住了。 */
+  background-color: var(--xing-10);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+  color: var(--ink);
+  border: 1rpx solid var(--xing-30);
   border-top-right-radius: 8rpx;
+  box-shadow: inset 0 1rpx 0 rgba(255,252,244,.8);
   margin-left: auto;
 }
 .chips { display: flex; flex-wrap: wrap; gap: 16rpx; }
 .chip {
   font-size: 24rpx;
   padding: 14rpx 24rpx;
-  border-radius: 32rpx;
-  background: var(--card);
-  color: var(--navy);
-  border: 1rpx solid var(--sky);
+  /* 可点的小签，同全屏对话页的 .chip。原来是 32rpx 全圆胶囊 + --sky 描边 */
+  border-radius: 8rpx;
+  background: linear-gradient(180deg, rgba(255,252,244,.95), rgba(234,226,208,.6));
+  color: var(--jin-70);
+  border: 1rpx solid var(--line);
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
 }
-.chip:active { background: var(--sky-3); }
+.chip:active {
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-3));
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.14);
+}
 
 /* 底栏：输入区 + AI 生成标识 */
 .sheet-foot {
@@ -192,10 +207,12 @@
   flex: 1;
   height: 84rpx;
   border: 1rpx solid var(--line);
-  border-radius: 42rpx;
+  /* 输入面凹进纸里；圆角收到 14rpx，不再是一颗 42rpx 的全圆药丸 */
+  border-radius: 14rpx;
   padding: 0 32rpx;
   font-size: 28rpx;
-  background: var(--paper);
+  background: var(--paper-sunk);
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.10);
 }
 .ai-ph { color: var(--muted); }
 /* 发送键改朱砂。抽屉里唯一的主操作，朱是这套设计的点缀色，

@@ -1,5 +1,14 @@
 /* packageD/poster/generate.wxss */
-.poster-page { height: 100vh; display: flex; flex-direction: column; background: #EAEEF6; }
+/* 页底原来是写死的 #EAEEF6 冷蓝灰——海报本身是深色的，底色只是个托盘，
+   托盘换成纸，海报浮在纸上，和全站一致。
+   注意：海报**里面**的四套模板（青瓦/墨色/朱韵/鎏金）本就是这套调色板，
+   它是要存下来分享出去的一张图，不跟着页面翻浅。 */
+.poster-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 .poster-scroll { flex: 1; overflow: hidden; }
 
 /* 预览 */
@@ -10,7 +19,8 @@
   height: 800rpx;
   border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 24rpx 60rpx rgba(20, 26, 56, 0.4);
+  /* 投影改暖：原来是 rgba(20,26,56,.4) 的冷蓝灰，压在纸上会发灰 */
+  box-shadow: 0 24rpx 60rpx rgba(74, 50, 30, 0.34);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -35,7 +45,7 @@
 .p-seal {
   width: 150rpx; height: 150rpx;
   border-radius: 34rpx;
-  background: var(--card);
+  background: var(--paper-card);
   margin-top: 60rpx;
   display: flex;
   align-items: center;
@@ -67,7 +77,7 @@
   width: 84rpx;
   height: 84rpx;
   border-radius: 19rpx;
-  background: var(--card);
+  background: var(--paper-card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -83,7 +93,7 @@
 .p-title {
   font-size: 40rpx;
   font-weight: 700;
-  color: var(--card);
+  color: var(--paper-card);
   text-align: center;
   line-height: 1.4;
   margin-top: 54rpx;
@@ -133,7 +143,7 @@
 .p-qr {
   position: relative;
   width: 96rpx; height: 96rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border-radius: 12rpx;
   flex-shrink: 0;
 }
@@ -161,7 +171,7 @@
   white-space: nowrap;
 }
 .p-foot-tx { display: flex; flex-direction: column; gap: 6rpx; }
-.pf-1 { font-size: 22rpx; color: var(--card); font-weight: 600; }
+.pf-1 { font-size: 22rpx; color: var(--paper-card); font-weight: 600; }
 .pf-2 { font-size: 19rpx; color: rgba(232, 240, 252, 0.75); }
 
 /* 模板选择 */
@@ -180,19 +190,21 @@
   border: 3rpx solid transparent;
   box-shadow: 0 6rpx 16rpx rgba(74,50,30, 0.18);
 }
-.tpl-on .tpl-sw { border-color: var(--navy); }
+/* 选中态走朱——朱在这套里只做标记位。原来是 --navy（棕金），
+   和模板色板里的「鎏金」那一张撞在一起，分不出哪张被选中 */
+.tpl-on .tpl-sw { border-color: var(--zhu); }
 .tpl-check {
   position: absolute;
   right: 8rpx; top: 8rpx;
   width: 34rpx; height: 34rpx;
   border-radius: 50%;
-  background: var(--navy);
+  background: var(--zhu);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .tpl-name { font-size: 23rpx; color: var(--sub); }
-.tpl-on .tpl-name { color: var(--navy); font-weight: 600; }
+.tpl-on .tpl-name { color: var(--zhu); font-weight: 600; }
 
 .poster-tip {
   display: flex;
@@ -213,22 +225,25 @@
   left: 0; right: 0; bottom: 0;
   padding: 16rpx 32rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.97);
-  backdrop-filter: blur(16rpx);
+  /* 底栏是纸，不是白玻璃 */
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-top: 1rpx solid var(--line);
 }
 .save-btn {
   width: 100%;
   box-sizing: border-box;
   height: 92rpx;
-  border-radius: 46rpx;
-  background: linear-gradient(135deg, var(--jin-50), var(--jin-60));
-  color: var(--card);
+  /* 金钮，直角 12rpx——同展馆/文创详情的海报键，一个动作一个样子 */
+  border-radius: 12rpx;
+  background: linear-gradient(180deg, var(--jin-50), var(--jin-70));
+  color: var(--paper-card);
   font-size: 31rpx;
   font-weight: 700;
   border: none;
   gap: 12rpx;
-  box-shadow: 0 14rpx 34rpx rgba(150, 110, 30, 0.35);
+  box-shadow: inset 0 2rpx 0 rgba(255,250,240,.35), 0 6rpx 18rpx rgba(126,97,52,.26);
 }
 .save-btn::after { border: none; }
 .saving { opacity: 0.7; }

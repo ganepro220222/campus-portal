@@ -1,11 +1,19 @@
 /* packageB/resource/list.wxss */
-.res-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
+/* 页底：纸 + 淡纤维 */
+.res-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 
 /* 顶部搜索 + 分类 */
 .res-top {
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(16rpx);
+  /* 顶栏是纸，不是白玻璃 */
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-bottom: 1rpx solid var(--line);
   padding: 18rpx 0 10rpx;
   box-shadow: 0 2rpx 14rpx rgba(74,50,30, 0.05);
@@ -13,9 +21,11 @@
 .res-search {
   margin: 0 28rpx;
   height: 72rpx;
-  background: var(--sky-3);
+  /* 搜索面凹进纸里，直角 14rpx——不再是一颗 36rpx 的全圆药丸 */
+  background: var(--paper-sunk);
   border: 1rpx solid var(--line);
-  border-radius: 36rpx;
+  border-radius: 14rpx;
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.10);
   display: flex;
   align-items: center;
   gap: 12rpx;
@@ -29,12 +39,20 @@
   flex: 0 0 auto;
   font-size: 25rpx;
   padding: 12rpx 30rpx;
-  border-radius: 32rpx;
-  background: var(--card);
+  /* 分类：一排小签，选中的那一方盖成朱印。
+     原来是 32rpx 全圆胶囊，选中态是 blue→navy 的渐变色块。 */
+  border-radius: 8rpx;
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   border: 1rpx solid var(--line);
   color: var(--sub);
 }
-.rc-on { background: linear-gradient(135deg, var(--blue), var(--navy)); color: var(--card); border-color: transparent; }
+.rc-on {
+  background: var(--zhu);
+  box-shadow: none;
+  color: var(--paper-card);
+  border-color: var(--zhu-d);
+}
 
 /* 列表 */
 .res-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
@@ -42,7 +60,7 @@
   display: flex;
   align-items: center;
   gap: 22rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 22rpx;
   padding: 22rpx 24rpx;
@@ -56,7 +74,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--card);
+  color: var(--paper-card);
   font-size: 22rpx;
   font-weight: 700;
   letter-spacing: 1rpx;
@@ -82,14 +100,20 @@
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  background: var(--sky-2);
+  /* 纸钮 + 金线，和同一行里的 .fav-icon 取齐（两颗并排，形制必须一样）。
+     原来是 --sky-2 的淡绿底、无描边。 */
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 0 rgba(255,252,244,.9);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.res-dl:active { background: var(--sky); }
-.res-dl.is-loading { background: var(--sky); }
-.res-dl-loading { font-size: 18rpx; color: var(--navy); }
+.res-dl:active,
+.res-dl.is-loading {
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-3));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 4rpx rgba(74,50,30,.14);
+}
+.res-dl-loading { font-size: 18rpx; color: var(--jin-70); }
 
 .list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

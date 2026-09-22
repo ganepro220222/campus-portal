@@ -1,11 +1,17 @@
 /* packageC/feedback/index.wxss */
-.fb-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
+/* 页底：纸 + 淡纤维 */
+.fb-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 /* 横向内边距放到内容层：scroll-view 的右侧 padding 会被微信滚动容器忽略，导致右侧内容贴边被截 */
 .fb-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
 
 .fb-card {
   margin: 0 28rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 28rpx;
@@ -13,27 +19,31 @@
 }
 .fb-label { font-size: 27rpx; font-weight: 600; color: var(--ink); margin-bottom: 18rpx; }
 .fb-label:not(:first-child) { margin-top: 30rpx; }
-.req { color: var(--color-danger); margin-left: 4rpx; }
+.req { color: var(--zhu); margin-left: 4rpx; }
 
 .fb-types { display: flex; flex-wrap: wrap; gap: 16rpx; }
+/* 反馈类型：一排小签，选中的那一方盖成朱印。
+   原来是 30rpx 全圆胶囊 + --sky-3 淡绿底，选中态另来一条 blue→navy 渐变色块。 */
 .fb-type {
   font-size: 25rpx;
   color: var(--sub);
-  background: var(--sky-3);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   border: 1rpx solid var(--line);
   padding: 12rpx 30rpx;
-  border-radius: 30rpx;
+  border-radius: 8rpx;
 }
 .fb-type.on {
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  color: var(--card);
-  border-color: transparent;
+  background: var(--zhu);
+  box-shadow: none;
+  color: var(--paper-card);
+  border-color: var(--zhu-d);
 }
 
 .fb-textarea {
   width: 100%;
   height: 240rpx;
-  background: var(--sky-3);
+  background: var(--paper-sunk);
   border: 1rpx solid var(--line);
   border-radius: 18rpx;
   padding: 22rpx;
@@ -63,7 +73,7 @@
   width: 100%;
   height: 100%;
   display: block;
-  background: var(--sky-3);
+  background: var(--paper-sunk);
 }
 .fb-img-mask {
   position: absolute;
@@ -71,14 +81,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(31, 37, 71, 0.45);
-  color: var(--card);
+  /* 原来是 rgba(31,37,71,.45) 的冷蓝黑 */
+  background: rgba(20, 16, 12, 0.55);
+  color: var(--paper-card);
   font-size: 22rpx;
 }
 .fb-img-fail {
   flex-direction: column;
   gap: 6rpx;
-  background: rgba(180, 60, 60, 0.55);
+  /* 失败遮罩改用这套里的朱，不是另一支番茄红 */
+  background: rgba(158, 43, 37, 0.62);
 }
 .fb-img-retry { font-size: 20rpx; opacity: 0.92; }
 /* 可见圆点仍 48rpx，热区靠透明 ::after 扩到 88rpx（44pt）。
@@ -95,8 +107,8 @@
   width: 48rpx;
   height: 48rpx;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
-  color: var(--card);
+  background: rgba(35, 28, 20, 0.58);
+  color: var(--paper-card);
   font-size: 30rpx;
   line-height: 48rpx;
   text-align: center;
@@ -114,7 +126,7 @@
   align-items: center;
   justify-content: center;
   gap: 6rpx;
-  background: var(--sky-3);
+  background: var(--paper-sunk);
   border: 1rpx dashed var(--line);
 }
 .fb-img-add-plus {
@@ -130,7 +142,7 @@
 .fb-input {
   width: 100%;
   height: 88rpx;
-  background: var(--sky-3);
+  background: var(--paper-sunk);
   border: 1rpx solid var(--line);
   border-radius: 18rpx;
   padding: 0 24rpx;
@@ -152,7 +164,10 @@
   flex-shrink: 0;
   padding: 16rpx 28rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.97);
+  /* 底栏是纸，不是白玻璃——白玻璃压在米白纸上会显出一条更白的带 */
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-top: 1rpx solid var(--line);
 }
 .fb-submit {
@@ -160,14 +175,17 @@
   align-items: center;
   justify-content: center;
   height: 88rpx;
-  border-radius: 44rpx;
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  color: var(--card);
+  /* 这一页的主操作：朱砂漆钮，直角 12rpx。四层缺一层就是一块平涂的红方块 */
+  border-radius: 12rpx;
+  background: linear-gradient(180deg, var(--zhu-lit), var(--zhu) 52%, var(--zhu-d));
+  box-shadow: inset 0 2rpx 0 rgba(255,236,228,.30),
+              inset 0 -2rpx 0 rgba(78,18,14,.45),
+              0 4rpx 10rpx rgba(158,43,37,.28);
+  color: var(--paper-card);
   font-size: 30rpx;
   font-weight: 600;
   letter-spacing: 2rpx;
   border: none;
-  box-shadow: 0 12rpx 30rpx rgba(96,78,44, 0.32);
 }
 .fb-submit::after { border: none; }
 .fb-submit.ing { opacity: 0.7; }

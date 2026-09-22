@@ -34,7 +34,13 @@ const HASH_FILE = path.join(ROOT, 'scripts/textures.hash')
 const BEGIN = '  /* ══ 纹理开始 · 由 scripts/build-texture-tokens.mjs 生成，勿手改 ══ */'
 const END = '  /* ══ 纹理结束 ══ */'
 
-export const NAMES = ['fiber-page', 'wood-fig', 'wood-fig-v']
+export const NAMES = [
+  'fiber-page',    // 纸纤维（入口区那张书页、登录页的纸底）
+  'wood-fig',      // 木射线 · 横（匾心）
+  'wood-fig-v',    // 木射线 · 竖（匾框、裱边）
+  'speckle',       // 石面的麻点（登录页那枚石青次按钮）
+  'lattice'        // 棂格（登录页的底纹）
+]
 
 /**
  * 从设计稿里取这三张。
@@ -55,20 +61,31 @@ export function textureTokens() {
   if (!blocks.length) throw new Error('shuyuan.css 里一个 :root 都找不到')
   const block = blocks.join('\n')
 
+  /* 棂格在设计稿里没有独立令牌，它是写死在 .login-lattice 的 background-image 里的。
+     与其在小程序侧另抄一份（抄错了没人发现），不如从那条规则里取。 */
+  const latticeRule = css.match(/\.login-lattice\s*\{[^}]*?background-image:\s*(url\("data:[^"]+"\))/)
+
   const out = {}
   const bad = []
   for (const n of NAMES) {
-    const m = block.match(new RegExp(`--${n}:\\s*([^;]+);`))
-    if (!m) { bad.push(`shuyuan.css 的 :root 里没有 --${n}`); continue }
+    const m = n === 'lattice'
+      ? (latticeRule && [null, latticeRule[1]])
+      : block.match(new RegExp(`--${n}:\\s*([^;]+);`))
+    if (!m) { bad.push(`shuyuan.css 里取不到 ${n === 'lattice' ? '.login-lattice 的 background-image' : '--' + n}`); continue }
     const v = m[1].split('\n').map(s => s.trim()).join(' ').trim()
     if (!v.startsWith('url("data:image/svg+xml,')) bad.push(`--${n} 不是 data URI`)
     if (/#[0-9A-Fa-f]{3,6}/.test(v)) bad.push(`--${n} 里有没转义的 #，data URI 会被截断`)
-    if (!/feTurbulence/.test(v)) bad.push(`--${n} 里没有 feTurbulence，大概取错了值`)
+    // 前四张是 feTurbulence 噪声，棂格那张是规则线条，两类分别验
+    if (n === 'lattice') {
+      if (!/stroke=/.test(v)) bad.push(`--${n} 里没有 stroke，棂格是线条画的，大概取错了值`)
+    } else if (!/feTurbulence/.test(v)) {
+      bad.push(`--${n} 里没有 feTurbulence，大概取错了值`)
+    }
     out[`--${n}`] = v
   }
   if (bad.length) throw new Error('纹理不合格：\n  ' + bad.join('\n  '))
   // 三张必须互不相同：横纹和竖纹只差 baseFrequency 的两个分量，复制粘贴很容易写反
-  if (new Set(Object.values(out)).size !== NAMES.length) throw new Error('三张纹理里有重复的')
+  if (new Set(Object.values(out)).size !== NAMES.length) throw new Error('几张纹理里有重复的')
   return out
 }
 
@@ -103,7 +120,7 @@ function main() {
   fs.writeFileSync(WXSS, src)
   fs.writeFileSync(HASH_FILE, fingerprint(t) + '\n')
   const kb = Object.values(t).reduce((a, v) => a + v.length, 0) / 1024
-  console.log(`✓ 三张纹理写进 app.wxss（合计 ${kb.toFixed(1)} KB）`)
+  console.log(`✓ ${Object.keys(t).length} 张纹理写进 app.wxss（合计 ${kb.toFixed(1)} KB）`)
   for (const [k, v] of Object.entries(t)) console.log(`  ${k}  ${v.length} 字符`)
 }
 

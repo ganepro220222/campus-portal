@@ -104,7 +104,6 @@ const DISGUISED_BUDGET = {
   'packageC/feedback/index.wxss': 1,
   'packageC/profile/list.wxss': 4,
   'packageD/poster/generate.wxss': 1,
-  'pages/login/index.wxss': 6,
   'pages/profile/index.wxss': 4,
   'styles/login-page.wxss': 6
 }

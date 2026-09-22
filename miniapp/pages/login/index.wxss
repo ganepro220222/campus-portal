@@ -4,13 +4,38 @@
   min-height: 100vh;
   position: relative;
   overflow: hidden;
-  background: radial-gradient(120% 88% at 50% 12%,
-    var(--navy) 0%, #273667 42%, var(--navy) 80%, #36427C 100%);
   display: flex;
   flex-direction: column;
+  /* 定稿是**纸**，不是夜空。原来这里是
+     radial-gradient(var(--navy), 两个深蓝紫) ——
+     别名令牌把 --navy 换算成棕金之后，它和两个深蓝紫混在一起，
+     出来正是审看意见点名不要的"暗沉像黄昏"。
+     现在三层：顶上一道白光、一层纸纤维、底下从绢青化到纸。 */
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(120% 56% at 50% 6%, rgba(255,255,255,.75) 0%, transparent 60%),
+    var(--fiber-page),
+    linear-gradient(176deg, var(--juan-1) 0%, var(--paper) 34%, var(--paper) 100%);
+  background-size: auto, 320rpx 320rpx, auto;
 }
 
-/* 返回 / 关闭 */
+/* 棂格底纹：只在中上部浮现、往四周化开。
+   满屏铺就成了网格纸——遮罩是这件事成立的关键。 */
+.login-lattice {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  opacity: .3;
+  pointer-events: none;
+  background-image: var(--lattice);
+  background-size: 96rpx 96rpx;
+  /* 遮罩里这个颜色只当 alpha 用（不透明 = 显示），不是调色板里的颜色，
+     写成关键字免得被当成写死的色值统计进来。 */
+  -webkit-mask-image: radial-gradient(90% 60% at 50% 34%, black 0%, transparent 74%);
+  mask-image: radial-gradient(90% 60% at 50% 34%, black 0%, transparent 74%);
+}
+
+/* 返回键：纸色圆钮 + 木色描边，和二级页顶栏那一枚同一族。
+   原来是深色底上的半透明白，页面翻浅之后那一枚就看不见了。 */
 .login-back {
   position: absolute;
   left: 32rpx;
@@ -18,166 +43,134 @@
   width: 66rpx;
   height: 66rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1rpx solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(12rpx);
-  -webkit-backdrop-filter: blur(12rpx);
+  background: rgba(252, 250, 244, 0.86);
+  box-shadow: 0 2rpx 8rpx rgba(96,78,44,.18),
+              inset 0 0 0 2rpx rgba(150,120,66,.26);
   display: flex;
   align-items: center;
   justify-content: center;
   padding-right: 4rpx;
   box-sizing: border-box;
 }
-.login-back-hover { background: rgba(255, 255, 255, 0.24); }
+.login-back-hover { background: var(--xing-05); }
 
-/* 星光 */
-.stars {
-  position: fixed;
-  left: 0; top: 0; right: 0; bottom: 0;
-  background-image:
-    radial-gradient(2rpx 2rpx at 20% 22%, rgba(255,255,255,.55), transparent),
-    radial-gradient(1.6rpx 1.6rpx at 70% 16%, rgba(255,255,255,.45), transparent),
-    radial-gradient(2rpx 2rpx at 84% 30%, rgba(255,255,255,.5), transparent),
-    radial-gradient(1.4rpx 1.4rpx at 35% 12%, rgba(255,255,255,.4), transparent),
-    radial-gradient(1.2rpx 1.2rpx at 55% 8%, rgba(255,255,255,.35), transparent),
-    radial-gradient(1.8rpx 1.8rpx at 90% 45%, rgba(255,255,255,.4), transparent),
-    radial-gradient(1.2rpx 1.2rpx at 10% 60%, rgba(255,255,255,.3), transparent);
-  opacity: .7;
-  pointer-events: none;
+/* 檐：压在纸上，檐脚再落一层影，才是"压在上面"而不是"画在上面"。
+   檐必须**通栏出血**。.login-inner 有 76rpx 的左右内边距、又是 align-items:center，
+   檐若只写 width:100% 就被挤进内容区（375pt 上只剩 299px）居中摆着，
+   两边各露 38px 的纸——屋檐悬在半空，不是压在页面上。
+   用负外边距把它顶回屏幕两边。 */
+.login-eave {
+  display: block;
+  width: calc(100% + 152rpx);
+  margin-left: -76rpx;
+  margin-right: -76rpx;
+  height: 124rpx;
+  flex: none;
+}
+.eave-shadow {
+  height: 28rpx;
+  width: calc(100% + 152rpx);
+  margin-left: -76rpx;
+  margin-right: -76rpx;
+  margin-top: -28rpx;
+  position: relative;
+  z-index: 0;
+  flex: none;
+  background: linear-gradient(180deg, rgba(74,102,96,.20), rgba(74,102,96,0));
 }
 
-/* 顶部光晕 */
-.glow {
-  position: absolute;
-  top: 120rpx; left: 50%;
-  transform: translateX(-50%);
-  width: 620rpx; height: 620rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(208,231,247,.22) 0%, rgba(208,231,247,0) 66%);
-  filter: blur(8rpx);
-  pointer-events: none;
-}
-
-/* 底部波浪 */
-.wave-deco {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 320rpx;
-  opacity: .16;
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  background-position: bottom;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 392 160' preserveAspectRatio='none'%3E%3Cpath d='M0 90 Q60 60 120 86 T240 86 T392 70 V160 H0 Z' fill='%23D0E7F7'/%3E%3Cpath d='M0 116 Q70 92 150 112 T300 110 T392 100 V160 H0 Z' fill='%239CB6E8' opacity='.7'/%3E%3C/svg%3E");
-  pointer-events: none;
-}
-
-/* 小屏隔条塌掉时，顶距仍要盖住状态栏 */
 .login-inner {
   position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* 左右 76rpx，表单与标题大致同轴 */
-  padding: 108rpx 76rpx 40rpx;
+  /* 左右 76rpx，表单与标题大致同轴。
+     顶上原来还有 108rpx —— 那是旧夜空稿给印章留的空。现在顶上是状态栏
+     占位 + 屋檐，再留 108rpx 就把檐整个往下推了 54px，所以去掉。 */
+  padding: 0 76rpx 40rpx;
   min-height: 100vh;
   box-sizing: border-box;
 }
 
 /* 高屏剩余高度按 3:1:3 分给顶、中、底；不够时隔条为 0 */
 .lg-sp { width: 100%; }
-.lg-sp-top { flex-grow: 3; }
+/* 印章离檐的间距有**下限**。原来只有 flex-grow，屏一矮隔条就被压成 0，
+   印章直接贴在檐脚上——设计稿量出来檐底到印章顶是 20px（= 40rpx），
+   这里给下限 44rpx（设计稿 .seal-plate 的 margin-top 是 22px），
+   还有余量时照旧按 flex 分配。 */
+.lg-sp-top { flex-grow: 3; min-height: 44rpx; }
 .lg-sp-mid { flex-grow: 1; }
 .lg-sp-bot { flex-grow: 3; }
 
-/* ── 书院篆印 ──────────────────────────────────────────
-   印面是方的，就不该再套圆环——旧版把方印塞进 300rpx 的圆里，四角空荡、
-   两种形状互相打架。改用管理后台登录页那套语言：圆角方框 + 金边 + 内发光，
-   两端视觉统一，也贴合「印匣」的意象。
-
-   尺寸不照搬后台的 68px：方形的视觉重量比同尺寸圆大约 1.27 倍，
-   等尺寸换过来会压住下面的「云端书院」，故由 300rpx 收到 248rpx。
-   印面占比 0.70 —— 后台在 68px 的小尺寸下 0.647 显紧凑，放大四倍后同比例会显空，
-   渲染比对后 0.70 最饱满；0.74 就贴到内框了。
-   外框（::after）延续旧版双环的层次语言，只是跟着改成圆角方形。 */
-.seal {
-  width: 248rpx; height: 248rpx;
-  border-radius: 56rpx;
-  position: relative;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  display: flex; align-items: center; justify-content: center;
-  /* 165deg 顶光：与页面 170deg 的深蓝渐变同向，光感才连得上 */
-  background: linear-gradient(165deg, rgba(255,255,255,.11), rgba(255,255,255,.035) 58%, rgba(255,255,255,.02));
-  border: 2rpx solid rgba(201,162,39,.78);
-  box-shadow:
-    0 0 60rpx rgba(201,162,39,.30),
-    0 0 40rpx rgba(150,180,235,.26);
-}
-.seal::after {
-  content: "";
-  position: absolute;
-  left: -22rpx; top: -22rpx; right: -22rpx; bottom: -22rpx;
-  border-radius: 78rpx;
-  border: 1rpx solid rgba(201,162,39,.55);
-}
-/* 印面 560×499（1.122）：174 / 1.122 = 155，给准比例，aspectFit 才既不留空也不变形 */
-.seal-img { width: 174rpx; height: 155rpx; }
-
-/* ── 校名 ── */
-.brand { margin-top: 44rpx; text-align: center; }
-.brand-zh {
-  color: var(--card);
-  font-size: 60rpx;
-  font-weight: 700;
-  letter-spacing: 18rpx;
-  text-indent: 18rpx;
-  text-shadow: 0 4rpx 28rpx rgba(0,0,0,.35);
-}
-/* 「书」字：金色镶边（呼应管理后台印章书字）*/
-.brand-zh-gold {
-  color: var(--jin-20);
-  -webkit-text-stroke: 0.6rpx rgba(122, 90, 28, 0.55);
-  text-shadow:
-    0 1rpx 0 rgba(255, 247, 219, 0.45),
-    0 2rpx 16rpx rgba(190, 156, 68, 0.42),
-    0 4rpx 28rpx rgba(0, 0, 0, 0.35);
-}
-
-/* 分隔：线 — ❖ — 线（呼应管理后台登录）*/
-.brand-div {
+/* ── 印章钤在一方纸上：这一页的视觉中心 ──
+   纸给了印章对比度，直接落在底纹上会糊。一圈金线、一圈木框、再一圈金线，
+   三道箍把这方纸"裱"起来，才像一件东西而不是一个白方块。
+   原来这里是 academy-seal-gold.png（金印浮在深色上），换成朱砂那一版。 */
+.seal-plate {
+  width: 156rpx;
+  height: 156rpx;
+  margin: 0 auto;
+  border-radius: 6rpx;
+  background: linear-gradient(160deg, var(--paper-1), var(--paper-3));
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20rpx;
-  margin: 28rpx auto 34rpx;
+  box-shadow: 0 0 0 2rpx rgba(192,153,78,.9),
+              0 0 0 7rpx rgba(122,86,38,.6),
+              0 0 0 9rpx rgba(192,153,78,.5),
+              0 10rpx 28rpx rgba(74,50,30,.24),
+              inset 0 4rpx 6rpx rgba(255,255,255,.9),
+              inset 0 -6rpx 12rpx rgba(107,74,50,.16);
+}
+.seal-img { width: 104rpx; height: 104rpx; }
+
+/* ── 校名：书法字图片 ──
+   原来是文字排版「云端书院」+ ❖ + 「中华文化书院」+ EN，三行。
+   定稿只有书法字一行 + 如意云头分隔 + 英文，而且「云端书院」
+   这个名字在定稿里根本没出现。 */
+.brand { margin-top: 52rpx; text-align: center; }
+.brand-img {
+  height: 72rpx;
+  width: auto;
+  filter: drop-shadow(0 1rpx 0 rgba(255,255,255,.9))
+          drop-shadow(0 4rpx 10rpx rgba(74,102,96,.18));
+}
+.brand-div {
+  margin: 26rpx auto 0;
+  width: 320rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14rpx;
 }
 .brand-div-line {
-  width: 92rpx;
-  height: 1rpx;
-  background: linear-gradient(90deg, transparent, rgba(190,156,68,.85));
+  flex: 1;
+  height: 2rpx;
+  background: linear-gradient(90deg, transparent, rgba(192,153,78,.85));
 }
 .brand-div-line-r {
-  background: linear-gradient(90deg, rgba(190,156,68,.85), transparent);
+  background: linear-gradient(90deg, rgba(192,153,78,.85), transparent);
 }
+/* 中间那枚朱红菱形，和首页段头分隔线上的是同一件——
+   两处都是"线中间的一个记号"，用同一个形，两页才是一套。
+   原来试的是 clip-path: path() 画如意云头，各端 WebView 支持参差，
+   实测渲出来就是一个圆点，形没了还多一层不确定性。 */
 .brand-div-orn {
-  color: var(--jin-60);
-  font-size: 22rpx;
-  line-height: 1;
-}
-.brand-sub {
-  color: rgba(214,224,248,.92);
-  font-size: 26rpx;
-  letter-spacing: 5rpx;
+  flex: none;
+  width: 14rpx;
+  height: 14rpx;
+  background: var(--zhu);
+  transform: rotate(45deg);
 }
 .brand-en {
-  color: rgba(170,184,224,.85);
-  font-size: 20rpx;
-  margin-top: 10rpx;
-  letter-spacing: 1rpx;
+  margin-top: 22rpx;
+  font-size: 21rpx;
+  letter-spacing: 6rpx;
+  color: var(--ink-3);
+  text-transform: uppercase;
 }
 
-/* ── 表单 ── */
 .login-form {
   width: 100%;
   padding-top: 44rpx;
@@ -194,15 +187,20 @@
   display: flex; align-items: center; justify-content: center;
   z-index: 2;
 }
+/* 输入框：一方**凹进去的纸**。原来是深色底上的半透明白，页面翻浅之后
+   那层白在纸上什么都看不见。内阴影负责"凹"，下沿一道白负责"边"。 */
 .field-input {
   width: 100%;
-  height: 104rpx;
-  background: rgba(255,255,255,.10);
-  border: 1rpx solid rgba(255,255,255,.18);
-  border-radius: 30rpx;
+  height: 92rpx;
+  background: linear-gradient(180deg, var(--paper-3) 0%, var(--paper-2) 100%);
+  border: 1rpx solid rgba(88,110,104,.22);
+  border-radius: 12rpx;
+  box-shadow: inset 0 4rpx 8rpx rgba(88,110,104,.26),
+              inset 0 -2rpx 0 rgba(255,255,255,.75),
+              0 2rpx 0 rgba(255,255,255,.55);
   padding: 0 32rpx 0 92rpx;
-  color: var(--card);
-  font-size: 30rpx;
+  color: var(--ink);
+  font-size: 28rpx;
   box-sizing: border-box;
 }
 /* 密码框右侧要给眼睛键让位，左右内边距对称 */
@@ -227,50 +225,85 @@
   justify-content: flex-end;
   margin: 4rpx 12rpx 12rpx;
 }
+/* 定稿这里写的是 --wood-70，但那是在设计稿的纸上量的；
+   小程序的页底 --paper 稍浅，同一个色只剩 4.32:1，低于 AA 的 4.5。
+   往深一档到 --wood-75（5.25:1），色相不变、版面不变。 */
 .forgot-link {
-  color: rgba(214, 224, 248, 0.85);
+  color: var(--wood-75);
   font-size: 24rpx;
-  text-decoration: underline;
 }
-/* 深蓝底上的弱化文字，之前一律用 .55~.7 的透明度，量下来对比度只有 3.1~3.8，
-   低于 WCAG AA 的 4.5。这几处只调透明度、不动色相，版面一点不变：
-   占位 .55→.70（5.12）、分隔文字 .55→.70、英文名 .7→.85（4.65）、页脚次行 .6→.85。 */
-.field-ph { color: rgba(214,224,248,.70); }
+.field-ph { color: var(--ink-3); }
 
-/* 聚焦态。深色表单上两个输入框长得一模一样，点进去只有一个光标，
-   很容易忘了自己在填哪一格。描边换成印章那支金色并加一层内发光，
-   与页面既有的金色语言一致，不引入新颜色。 */
+/* 聚焦态：两个输入框长得一样，点进去只有一个光标，容易忘了在填哪一格。
+   描边换成金、再加一圈很淡的外发光，不引入新颜色。 */
 .field-input.on {
-  border-color: rgba(201,162,39,.62);
-  background: rgba(255,255,255,.14);
-  box-shadow: 0 0 0 2rpx rgba(201,162,39,.18);
+  border-color: rgba(192,153,78,.75);
+  box-shadow: inset 0 4rpx 8rpx rgba(88,110,104,.20),
+              0 0 0 4rpx rgba(192,153,78,.18);
 }
 
 /* 按钮 */
+/* 两枚按钮都是**有厚度的钮**：底下垫一道深色边（0 Nrpx 0 var(--*-edge)），
+   按下去往下沉、那道边同时变薄，手感就出来了。
+   平涂 + 圆角那种做法在这套里不成立——页面全是有材质的东西，
+   只有按钮是两块平色块，会显得是另一套东西贴上来的。 */
 .lbtn {
   width: 100%;
-  height: 104rpx;
-  border-radius: 30rpx;
-  font-size: 32rpx;
-  font-weight: 700;
+  height: 92rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 14rpx;
+  transition: transform .09s, box-shadow .09s;
 }
 .lbtn::after { border: none; }
 .lbtn-tx { line-height: 1; white-space: nowrap; flex-shrink: 0; }
+
+/* 登录：朱砂漆钮。取的是印章同一支朱——这一页的主操作和它的视觉中心同色。 */
 .lbtn-primary {
-  background: linear-gradient(135deg, var(--card), var(--sky-3));
-  color: var(--navy);
-  box-shadow: 0 16rpx 40rpx rgba(255,255,255,.16);
+  background: linear-gradient(180deg, var(--zhu-lit) 0%, var(--zhu) 44%, var(--zhu-d) 100%);
+  color: #F5E7CE;   /* 朱钮上的字：设计稿指定的暖米，比纯白柔，不在令牌表里 */
+  font-size: 32rpx;
+  letter-spacing: 12rpx;
   margin-top: 8rpx;
+  box-shadow: inset 0 2rpx 0 rgba(255,214,200,.45),
+              inset 0 -4rpx 0 rgba(70,16,12,.55),
+              inset 0 0 0 2rpx rgba(214,178,108,.32),
+              0 8rpx 0 var(--zhu-edge),
+              0 14rpx 26rpx rgba(74,50,30,.30);
 }
+.lbtn-primary:active {
+  transform: translateY(6rpx);
+  box-shadow: inset 0 2rpx 0 rgba(255,214,200,.25),
+              inset 0 4rpx 12rpx rgba(70,16,12,.55),
+              inset 0 0 0 2rpx rgba(214,178,108,.26),
+              0 2rpx 0 var(--zhu-edge),
+              0 6rpx 14rpx rgba(74,50,30,.28);
+}
+
+/* 微信授权：石青灰的石钮。不用中性灰——这套里没有中性灰。 */
 .lbtn-ghost {
-  background: rgba(255,255,255,.10);
-  color: var(--card);
-  border: 1rpx solid rgba(255,255,255,.28);
+  background-color: var(--shi);
+  background-image: var(--speckle),
+    linear-gradient(180deg, var(--shi-lit) 0%, var(--shi) 48%, var(--shi-d) 100%);
+  background-size: 180rpx 180rpx, auto;
+  color: var(--ink);
+  box-shadow: inset 0 2rpx 0 rgba(255,255,255,.85),
+              inset 0 -4rpx 0 rgba(120,138,142,.45),
+              inset 0 0 0 2rpx rgba(122,110,85,.16),
+              0 6rpx 0 var(--shi-edge),
+              0 12rpx 22rpx rgba(88,110,104,.24);
+}
+.lbtn-ghost:active {
+  transform: translateY(4rpx);
+  box-shadow: inset 0 2rpx 0 rgba(255,255,255,.5),
+              inset 0 4rpx 10rpx rgba(120,138,142,.45),
+              inset 0 0 0 2rpx rgba(122,110,85,.14),
+              0 2rpx 0 var(--shi-edge),
+              0 4rpx 12rpx rgba(88,110,104,.22);
 }
 
 .divider {
@@ -278,14 +311,14 @@
   align-items: center;
   gap: 24rpx;
   margin: 40rpx 4rpx;
-  color: rgba(214,224,248,.70);
-  font-size: 24rpx;
+  color: var(--ink-3);
+  font-size: 23rpx;
 }
 .divider::before, .divider::after {
   content: "";
   flex: 1;
-  height: 1rpx;
-  background: rgba(255,255,255,.16);
+  height: 2rpx;
+  background: var(--line);
 }
 
 /* 40rpx 是隔条塌成 0 时的保底间距；flex 里外边距不会合并，
@@ -296,30 +329,47 @@
   line-height: 1.8;
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 }
+/* 校徽退到页脚、收到 104rpx，不抢书法字。
+   multiply 让它压进纸里，不像一枚贴上去的贴纸。 */
+.foot-emblem-plate {
+  width: 104rpx;
+  height: 104rpx;
+  margin: 0 auto 26rpx;
+  border-radius: 50%;
+  background: radial-gradient(70% 70% at 38% 30%, var(--paper-1) 0%, var(--paper-3) 72%, #DCCDAE 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2rpx rgba(192,153,78,.85),
+              0 0 0 7rpx rgba(122,86,38,.55),
+              0 0 0 9rpx rgba(192,153,78,.55),
+              0 4rpx 14rpx rgba(74,50,30,.22),
+              inset 0 2rpx 4rpx rgba(255,255,255,.9);
+}
+.foot-emblem { width: 72rpx; height: 72rpx; mix-blend-mode: multiply; }
 .foot-b {
   display: block;
-  color: rgba(214,224,248,.85);
-  font-size: 22rpx;
-  font-weight: 600;
-  letter-spacing: 1rpx;
+  color: var(--ink-2);
+  font-size: 25rpx;
+  letter-spacing: 2rpx;
 }
 .foot-s {
   display: block;
-  color: rgba(170,184,224,.85);
-  font-size: 21rpx;
+  color: var(--ink-3);
+  font-size: 22rpx;
   letter-spacing: 1rpx;
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 
 .bind-tip {
   margin-top: 16rpx;
   text-align: center;
-  color: rgba(255, 220, 160, .9);
+  color: var(--wood-75);   /* 同上：--wood-70 在这张纸上只有 4.32:1 */
   font-size: 22rpx;
   line-height: 1.6;
 }
 .bind-tip.muted {
-  color: rgba(214, 224, 248, 0.75);
+  color: var(--ink-3);
 }
 /* 改密模式：徽记 + 标题 + 表单整体垂直居中（上下 auto 外边距成组居中） */
 .cp-badge {
@@ -327,16 +377,32 @@
   width: 128rpx;
   height: 128rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.10);
-  border: 1rpx solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(160deg, var(--paper-1), var(--paper-3));
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12rpx 34rpx rgba(8, 12, 30, 0.35);
+  box-shadow: 0 0 0 2rpx rgba(192,153,78,.85),
+              0 0 0 7rpx rgba(122,86,38,.55),
+              0 0 0 9rpx rgba(192,153,78,.55),
+              0 6rpx 18rpx rgba(74,50,30,.22),
+              inset 0 2rpx 4rpx rgba(255,255,255,.9);
 }
 .brand.compact {
   margin-top: 30rpx;
   margin-bottom: 44rpx;
+}
+/* 改密页标题仍走文字，不走书法图。纸底上用墨色。 */
+.brand-zh {
+  color: var(--ink);
+  font-size: 48rpx;
+  font-weight: 700;
+  letter-spacing: 8rpx;
+}
+.brand-sub {
+  margin-top: 12rpx;
+  color: var(--ink-3);
+  font-size: 26rpx;
+  letter-spacing: 4rpx;
 }
 .login-form.cp-form {
   margin-top: 0;
@@ -344,7 +410,7 @@
 }
 .cp-policy {
   margin: 2rpx 6rpx 20rpx;
-  color: rgba(214, 224, 248, 0.62);
+  color: var(--ink-3);
   font-size: 22rpx;
   letter-spacing: 0.5rpx;
 }

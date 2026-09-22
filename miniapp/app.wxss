@@ -13,6 +13,21 @@ page {
   box-sizing: border-box;
 }
 
+/* ══════════════ 原生控件让位的四条原则 ══════════════
+   navigationStyle:custom 之后，页面顶上永远有两个画不了、也挪不动的东西：
+   状态栏和右上角的胶囊（375pt 机型上胶囊在 x 281–368、y 48–80）。
+   每一页都要和它们协调，顺序是**从上往下**，上面的压倒下面的：
+
+     ① 优先保证页面布局。不要为了躲胶囊把整页的版式改了。
+     ② 不能压在按钮上 —— 压住就按不到，这是功能损失，不是观感问题。
+     ③ 尽量别压在文字上 —— 压住就读不到。
+     ④ 压在装饰元素（屋檐、山水、底纹）上**可以接受**。
+
+   所以胶囊落在屋檐的瓦面上是允许的；自绘的返回键不要和胶囊挤在同一行——
+   挤在一起要么互相压，要么逼着整页给它让位，两条都违背①。
+   返回键挂在檐下。这四条对所有页面有效。
+   ══════════════════════════════════════════════════ */
+
 /* ══ 令牌区开始 · 书院 · 檐棂印 ══ */
 /* 「书院 · 檐棂印」全套令牌。取值与设计稿 design/demo/v2/shuyuan.css 一致，
    那边是唯一的出处，这里是搬运。
@@ -92,6 +107,18 @@ page {
   /* ── 朱 · 点缀 ── */
   --zhu:         #9E2B25;
   --zhu-soft:    #F2E0DA;
+  /* 登录键那一枚是**立体的漆钮**：上沿提亮、下沿压深、底下再垫一道边，
+     四个色缺一不可，少了就是一块平涂的红方块。 */
+  --zhu-lit:     #B33A2C;
+  --zhu-d:       #7C1C17;
+  --zhu-edge:    #4E120E;
+
+  /* ── 石 · 次按钮（微信授权那一枚）──
+     不用灰：这套里没有中性灰，石青灰才是它的家族色。同样四档，同样的立体做法。 */
+  --shi:         #C2D3D8;
+  --shi-lit:     #D9E6E9;
+  --shi-d:       #ADC2C8;
+  --shi-edge:    #8DA5AD;
 
   /* ── 金线 ── */
   --gold:        #CBA86B;   /* 装饰用的浅金（细线、描边） */
@@ -109,6 +136,11 @@ page {
   --ink:         #23262E;
   --sub:         #4C505C;
   --muted:       #6B6459;
+  /* 设计稿里另有 --ink-2 / --ink-3 两个名字：ink-2 和 --sub 同值，
+     ink-3 比 --muted 暖一点，专给"纸上的小字"（题签、页脚、输入框占位）。
+     搬过来是为了登录页那几处能照抄设计稿的值，不用换算。 */
+  --ink-2:       #4C505C;
+  --ink-3:       #5D584B;
   --ghost:       #D6CDB8;   /* 空态大图标、占位符这类纯装饰的浅色 */
   --line:        #E4DCC8;
   --line-soft:   #EFE8D8;
@@ -154,6 +186,8 @@ page {
   --fiber-page: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.14'/%3E%3C/svg%3E");
   --wood-fig: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='90'%3E%3Cfilter id='wf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.30' numOctaves='5' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='90' filter='url(%23wf)' opacity='0.34'/%3E%3C/svg%3E");
   --wood-fig-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='220'%3E%3Cfilter id='wv'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.30 0.004' numOctaves='5' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='90' height='220' filter='url(%23wv)' opacity='0.34'/%3E%3C/svg%3E");
+  --speckle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23s)' opacity='0.10'/%3E%3C/svg%3E");
+  --lattice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%237F6E55' stroke-width='1' opacity='0.22'%3E%3Cpath d='M0 0H48M0 0V48'/%3E%3Cpath d='M12 0V12H0M36 0V12H48M12 48V36H0M36 48V36H48'/%3E%3Crect x='12' y='12' width='24' height='24'/%3E%3C/g%3E%3C/svg%3E");
   /* ══ 纹理结束 ══ */
 }
 /* ══ 令牌区结束 ══ */

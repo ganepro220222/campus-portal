@@ -182,11 +182,19 @@ function checkPng(p, maxKB) {
   } else if (cur !== tx.block(t)) {
     errs.push('app.wxss 里的纹理和设计稿对不上，跑 node scripts/build-texture-tokens.mjs 重出')
   }
-  // 和角叶同一条：光有令牌不算数，得真有规则去用
-  const app = read(path.join(ROOT, 'miniapp/app.wxss'))
-  const page = read(path.join(ROOT, 'miniapp/pages/index/index.wxss'))
+  // 和角叶同一条：光有令牌不算数，得真有规则去用。
+  // 扫**全部** wxss，不写死某两个文件——纹理用在哪一页是会变的，
+  // 写死的话新页面用上了旧页面不用了，护栏就开始说假话。
+  const allWxss = (function walk(dir, out = []) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) {
+        if (!['node_modules', 'miniprogram_npm'].includes(e.name)) walk(path.join(dir, e.name), out)
+      } else if (e.name.endsWith('.wxss')) out.push(read(path.join(dir, e.name)))
+    }
+    return out
+  })(path.join(ROOT, 'miniapp')).join('\n')
   for (const k of Object.keys(t)) {
-    if (!new RegExp(`var\\(${k}\\)`).test(app + page)) {
+    if (!new RegExp(`var\\(${k}\\)`).test(allWxss)) {
       errs.push(`定义了 ${k} 却没有任何规则 var(${k}) 用它 —— 纹理白躺着，` +
                 `木面和纸面会退成平涂色块`)
     }

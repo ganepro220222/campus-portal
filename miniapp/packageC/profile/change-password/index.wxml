@@ -1,24 +1,24 @@
 <!-- pages/change-password/index.wxml -->
 <view class="login-page">
-  <view class="glow"></view>
-  <view class="stars"></view>
-  <view class="wave-deco"></view>
+  <view class="login-lattice"></view>
 
   <view
     wx:if="{{canLeave}}"
     class="login-back"
-    style="top: calc({{statusBarHeight}}px + 12rpx);"
+    style="top: calc({{statusBarHeight}}px + 124rpx + 20rpx);"
     bindtap="onBack"
     hover-class="login-back-hover"
   >
-    <icon name="chevron-left" size="22" color="#FFFBF2" sw="2.6" />
+    <icon name="chevron-left" size="22" color="#614923" sw="2.6" />
   </view>
 
   <view class="login-inner">
     <view style="height: {{statusBarHeight}}px; flex-shrink: 0;"></view>
+    <image class="login-eave" src="/assets/images/hero-eave.png" mode="scaleToFill" />
+    <view class="eave-shadow"></view>
 
     <view class="cp-badge">
-      <icon name="lock" size="32" color="#E2CB9E" />
+      <icon name="lock" size="32" color="#614923" />
     </view>
     <view class="brand compact">
       <view class="brand-zh serif">{{title}}</view>
@@ -27,7 +27,7 @@
 
     <view class="login-form cp-form">
       <view class="field" wx:if="{{showOldPassword}}">
-        <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
+        <view class="field-ic"><icon name="lock" size="18" color="#856F4F" /></view>
         <input
           class="field-input has-eye {{focusField === 'oldPassword' ? 'on' : ''}}"
           placeholder="请输入当前密码"
@@ -41,11 +41,11 @@
           maxlength="50"
         />
         <view class="field-eye" data-field="oldPassword" bindtap="onTogglePwd" hover-class="field-eye-hover">
-          <icon name="{{pwdVisible.oldPassword ? 'eye-off' : 'eye'}}" size="18" color="rgba(214,224,248,0.7)" />
+          <icon name="{{pwdVisible.oldPassword ? 'eye-off' : 'eye'}}" size="18" color="#856F4F" />
         </view>
       </view>
       <view class="field">
-        <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
+        <view class="field-ic"><icon name="lock" size="18" color="#856F4F" /></view>
         <input
           class="field-input has-eye {{focusField === 'newPassword' ? 'on' : ''}}"
           placeholder="请输入新密码"
@@ -59,11 +59,11 @@
           maxlength="50"
         />
         <view class="field-eye" data-field="newPassword" bindtap="onTogglePwd" hover-class="field-eye-hover">
-          <icon name="{{pwdVisible.newPassword ? 'eye-off' : 'eye'}}" size="18" color="rgba(214,224,248,0.7)" />
+          <icon name="{{pwdVisible.newPassword ? 'eye-off' : 'eye'}}" size="18" color="#856F4F" />
         </view>
       </view>
       <view class="field">
-        <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
+        <view class="field-ic"><icon name="lock" size="18" color="#856F4F" /></view>
         <input
           class="field-input has-eye {{focusField === 'confirmPassword' ? 'on' : ''}}"
           placeholder="请再次输入新密码"
@@ -77,7 +77,7 @@
           maxlength="50"
         />
         <view class="field-eye" data-field="confirmPassword" bindtap="onTogglePwd" hover-class="field-eye-hover">
-          <icon name="{{pwdVisible.confirmPassword ? 'eye-off' : 'eye'}}" size="18" color="rgba(214,224,248,0.7)" />
+          <icon name="{{pwdVisible.confirmPassword ? 'eye-off' : 'eye'}}" size="18" color="#856F4F" />
         </view>
       </view>
 

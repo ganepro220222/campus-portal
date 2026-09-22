@@ -74,7 +74,7 @@ const MAP = {
      雁阵排成人字，一封信跟着飞走（「云中谁寄锦书来，雁字回时」）。
      这一枚不在"国际通用符号别动"那条里：关闭、返回没有中式对应物，
      发送有，而且是这套语汇里现成的。 */
-  'send':           ['yanzi',       '雁字']
+  'send':           ['yan',         '鸿雁']
 }
 
 function designBodies() {
@@ -86,10 +86,12 @@ out = {}
 for k, svg in o.line_icon_set().items():
     m = re.search(r'aria-hidden="true">(.*)</svg>$', svg, re.S)
     assert m, k
-    out[k] = m.group(1)
+    # 实心的那几枚外壳是 fill="currentColor"，描边的是 fill="none" stroke=...
+    out[k] = {"body": m.group(1),
+              "fill": 'fill="currentColor"' in svg.split('>', 1)[0]}
 sys.stdout.write(json.dumps(out, ensure_ascii=False))
 `
-  return JSON.parse(execFileSync('python', ['-c', py], { encoding: 'utf8' }))
+  return JSON.parse(execFileSync('python', ['-c', py], { encoding: 'utf8' }).replace(/\r\n/g, '\n'))
 }
 
 /** 在真 SVG 引擎里量每个器物的墨迹（32 框内，不含描边） */
@@ -102,8 +104,8 @@ async function measure(bodies) {
     for (const [k, inner] of Object.entries(bodies)) {
       const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
       el.setAttribute('viewBox', '0 0 32 32')
-      el.setAttribute('fill', 'none')
-      el.innerHTML = inner
+      el.setAttribute('fill', inner.fill ? 'currentColor' : 'none')
+      el.innerHTML = inner.body
       document.body.appendChild(el)
       const bb = el.getBBox()
       out[k] = { w: bb.width, h: bb.height, cx: bb.x + bb.width / 2, cy: bb.y + bb.height / 2 }
@@ -135,9 +137,9 @@ async function main() {
      */
     const tx = +(12 - ink[key].cx * s).toFixed(3)
     const ty = +(12 - ink[key].cy * s).toFixed(3)
-    rows.push({ 图标: name, 器物: label, 原墨迹最长边: +longest.toFixed(1), 缩放: s, 线宽: w,
-                平移: `${tx}, ${ty}` })
-    const inner = `<g transform="translate(${tx} ${ty}) scale(${s})">${bodies[key]}</g>`
+    rows.push({ 图标: name, 器物: label, 原墨迹最长边: +longest.toFixed(1), 缩放: s,
+                线宽: bodies[key].fill ? '实心' : w, 平移: `${tx}, ${ty}` })
+    const inner = `<g transform="translate(${tx} ${ty}) scale(${s})">${bodies[key].body}</g>`
     /*
      * 只替换这一枚的定义行。行尾那个 `(\\s*\\/\\*[^\\n]*\\*\\/)?` 不能省——
      * 这个脚本自己会在行尾写一条 /* 器物名 *\u200b/ 的注释，
@@ -146,9 +148,13 @@ async function main() {
     const re = new RegExp(
       `^(\\s*)'${name}':(\\s*)\\{[^\\n]*\\}(,?)(\\s*\\/\\*[^\\n]*\\*\\/)?$`, 'm')
     if (!re.test(src)) throw new Error(`icons.js 里找不到 '${name}' 的定义行`)
+    /* 实心的那几枚不写 w：buildSrc 在 m:'fill' 分支里根本不看线宽，
+       写一个反向补偿出来的数字只会让人以为它起作用。 */
+    const def = bodies[key].fill
+      ? `{ i: '${inner}', m: 'fill' }`
+      : `{ i: '${inner}', m: 'stroke', w: ${w} }`
     src = src.replace(re, (_m, indent, gap, comma) =>
-      `${indent}'${name}':${gap}{ i: '${inner}', m: 'stroke', w: ${w} }${comma}` +
-      `  /* ${label} */`)
+      `${indent}'${name}':${gap}${def}${comma}  /* ${label} */`)
     done++
   }
   fs.writeFileSync(ICONS_JS, src)

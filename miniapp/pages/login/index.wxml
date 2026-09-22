@@ -1,30 +1,35 @@
 <!-- pages/login/index.wxml -->
 <view class="login-page">
-  <view class="glow"></view>
-  <view class="stars"></view>
-  <view class="wave-deco"></view>
+  <!-- 棂格：只在中上部浮现，往四周化开，不满屏。满屏会变成网格纸。 -->
+  <view class="login-lattice"></view>
 
-  <view class="login-back" style="top: calc({{statusBarHeight}}px + 12rpx);" bindtap="onBack" hover-class="login-back-hover">
-    <icon name="chevron-left" size="22" color="#FFFBF2" sw="2.6" />
+  <!-- 返回键挂在檐下，不和胶囊抢那一行。檐底再往下 20rpx。 -->
+  <view class="login-back" style="top: calc({{statusBarHeight}}px + 124rpx + 20rpx);" bindtap="onBack" hover-class="login-back-hover">
+    <icon name="chevron-left" size="22" color="#614923" sw="2.6" />
   </view>
 
   <view class="login-inner">
     <view style="height: {{statusBarHeight}}px; flex-shrink: 0;"></view>
+    <!-- 檐：登录页这一道压在纸上，檐脚再落一层影 -->
+    <image class="login-eave" src="/assets/images/hero-eave.png" mode="scaleToFill" />
+    <view class="eave-shadow"></view>
 
     <!-- 弹性隔条分配印章、表单、页脚之间的剩余高度 -->
     <view class="lg-sp lg-sp-top"></view>
-    <view class="seal">
-      <image class="seal-img" src="/assets/images/academy-seal-gold.png" mode="aspectFit" />
+
+    <!-- 这一页的视觉中心：印章钤在一方纸上。
+         纸给了印章对比度，也是"印"这个装置全站最大的一次亮相。 -->
+    <view class="seal-plate">
+      <image class="seal-img" src="/assets/images/seal-zhu.png" mode="aspectFit" />
     </view>
 
     <view class="brand">
-      <view class="brand-zh serif">云端<text class="brand-zh-gold">书</text>院</view>
+      <image class="brand-img" src="/assets/images/home-title-calligraphy.png" mode="heightFix" />
       <view class="brand-div">
         <view class="brand-div-line"></view>
-        <text class="brand-div-orn">❖</text>
+        <view class="brand-div-orn"></view>
         <view class="brand-div-line brand-div-line-r"></view>
       </view>
-      <view class="brand-sub serif">中华文化书院</view>
       <view class="brand-en">Academy of Chinese Culture</view>
     </view>
     <view class="lg-sp lg-sp-mid"></view>
@@ -32,7 +37,7 @@
     <!-- 登录表单 -->
     <view class="login-form">
       <view class="field">
-        <view class="field-ic"><icon name="user" size="18" color="rgba(214,224,248,0.7)" /></view>
+        <view class="field-ic"><icon name="user" size="18" color="#856F4F" /></view>
         <input
           class="field-input {{focusField === 'studentNo' ? 'on' : ''}}"
           placeholder="请输入账号"
@@ -46,7 +51,7 @@
         />
       </view>
       <view class="field">
-        <view class="field-ic"><icon name="lock" size="18" color="rgba(214,224,248,0.7)" /></view>
+        <view class="field-ic"><icon name="lock" size="18" color="#856F4F" /></view>
         <input
           class="field-input has-eye {{focusField === 'password' ? 'on' : ''}}"
           placeholder="请输入密码"
@@ -60,7 +65,7 @@
           maxlength="50"
         />
         <view class="field-eye" data-field="password" bindtap="onTogglePwd" hover-class="field-eye-hover">
-          <icon name="{{pwdVisible.password ? 'eye-off' : 'eye'}}" size="18" color="rgba(214,224,248,0.7)" />
+          <icon name="{{pwdVisible.password ? 'eye-off' : 'eye'}}" size="18" color="#856F4F" />
         </view>
       </view>
 
@@ -68,8 +73,7 @@
         <text class="forgot-link">忘记密码</text>
       </view>
 
-      <button class="lbtn lbtn-primary" bindtap="{{bindMode ? 'onBindWxAccount' : 'onAccountLogin'}}" loading="{{loading}}" disabled="{{loading}}">
-        <icon name="login" size="18" color="#7E6134" />
+      <button class="lbtn lbtn-primary serif" bindtap="{{bindMode ? 'onBindWxAccount' : 'onAccountLogin'}}" loading="{{loading}}" disabled="{{loading}}">
         <text class="lbtn-tx">{{bindMode ? '绑定账号并登录' : '登 录'}}</text>
       </button>
 
@@ -78,7 +82,7 @@
       <view class="divider">其他登录方式</view>
 
       <button class="lbtn lbtn-ghost" bindtap="onWxLogin" loading="{{loading}}" disabled="{{loading}}" wx:if="{{!bindMode}}">
-        <icon name="wechat" size="20" color="#FFFBF2" />
+        <icon name="wechat" size="20" color="#23262E" />
         <text class="lbtn-tx">微信授权登录</text>
       </button>
     </view>
@@ -86,7 +90,11 @@
     <!-- 页脚放在 login-inner 下，才能吃到下方隔条的剩余空间 -->
     <view class="lg-sp lg-sp-bot"></view>
     <view class="foot">
-      <text class="foot-b">校园学习与活动服务平台</text>
+      <!-- 校徽退到页脚小尺寸，不抢书法字 -->
+      <view class="foot-emblem-plate">
+        <image class="foot-emblem" src="/assets/images/school-emblem.png" mode="aspectFit" />
+      </view>
+      <text class="foot-b serif">校园学习与活动服务平台</text>
       <text class="foot-s">线上线下相结合 · 随时随地学习</text>
     </view>
   </view>

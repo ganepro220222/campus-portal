@@ -13,6 +13,13 @@
  *
  * 另：主包 page 的 wxss 不能「只有 @import」——在 bundle:true 下曾触发主包白屏。
  *
+ * 再另：不许有**够不着的 wxss**。一个 wxss 只有两条路能生效——
+ * 要么和同名的 wxml 并排（页面/组件自带的样式表），要么被别的 wxss @import。
+ * 两条都不沾就是死文件：它照样进包、照样占体积，却一行都不会渲染。
+ * miniapp/styles/login-page.wxss 当过这种文件——339 行，是 pages/login/index.wxss
+ * 的旧副本，谁也没 @import 它，里面还压着 8 处旧调色板的色值，
+ * 把棘轮的数字撑得比实际难看。没有护栏的话这种文件只会越攒越多。
+ *
  * 用法：node scripts/check-miniapp-page-paths.js
  */
 const fs = require('fs')
@@ -120,11 +127,39 @@ function main() {
     }
   }
 
+  // ── 够不着的 wxss ──
+  const allWxss = []
+  ;(function walk(dir) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) {
+        if (!['node_modules', 'miniprogram_npm'].includes(e.name)) walk(path.join(dir, e.name))
+      } else if (e.name.endsWith('.wxss')) allWxss.push(path.join(dir, e.name))
+    }
+  })(miniappDir)
+
+  // 谁被 @import 了（相对路径统一解析成绝对路径再比，免得 ../../ 对不上）
+  const imported = new Set()
+  for (const abs of allWxss) {
+    for (const m of fs.readFileSync(abs, 'utf8').matchAll(/@import\s+["']([^"']+)["']/g)) {
+      imported.add(path.resolve(path.dirname(abs), m[1]))
+    }
+  }
+  for (const abs of allWxss) {
+    const rel = path.relative(miniappDir, abs).split(path.sep).join('/')
+    if (rel === 'app.wxss') continue                       // 全局样式表，入口本身
+    if (fs.existsSync(abs.replace(/\.wxss$/, '.wxml'))) continue  // 页面/组件自带
+    if (imported.has(abs)) continue                        // 被别人 @import
+    errs.push(
+      `${rel} 够不着：既没有同名的 wxml 与它并排，也没有任何 wxss @import 它。` +
+      '它会进包占体积，但一行都不会渲染——要么接上，要么删掉'
+    )
+  }
+
   if (errs.length) {
     console.error('check-miniapp-page-paths 失败：\n' + errs.map((e) => '  - ' + e).join('\n'))
     process.exit(1)
   }
-  console.log(`check-miniapp-page-paths OK（${pages.length} 个页面）`)
+  console.log(`check-miniapp-page-paths OK（${pages.length} 个页面，${allWxss.length} 个 wxss 都够得着）`)
 }
 
 main()

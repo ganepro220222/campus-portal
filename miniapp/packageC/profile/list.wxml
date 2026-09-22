@@ -61,8 +61,8 @@
       bindtap="onItemTap"
       data-route="{{item.route}}"
     >
-      <view class="pl-ic {{typeCls}} {{type === 'badges' && !item.earned ? 'pl-ic-off' : ''}}">
-        <icon name="{{typeIcon}}" size="22" color="#FFFBF2" />
+      <view class="pl-ic {{type === 'badges' && !item.earned ? 'pl-ic-off' : ''}}">
+        <icon name="{{typeIcon}}" size="22" color="#614923" />
       </view>
 
       <view class="pl-body">

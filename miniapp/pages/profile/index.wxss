@@ -1,42 +1,66 @@
 /* pages/profile/index.wxss — 个人中心 */
-.profile-page { min-height: 100vh; background: var(--paper); }
+/* 页底是纸 + 淡纤维，和三张 tab 列表页同一档 */
+.profile-page {
+  min-height: 100vh;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 
 /* 顶部头区 */
+/* ── 头区 ──────────────────────────────────────────────────
+   原来是 navy-deep → blue 的深色渐变块（别名令牌换算成金棕），
+   顶上那团浅蓝光晕用的正是旧调色板的 --sky，
+   页面最显眼的一块还留着旧配色。
+
+   换成首页入口区那张**杏色的纸**（--xing-10 + 纸纤维）：
+   比页底深一档，下面的白统计卡才浮得起来；
+   右上角的光晕换成棂格（--lattice，登录页底纹同一张），
+   往四周化开，不满铺——满铺就成网格纸了（登录页的注释里写过）。
+   文字随之从白翻成墨：昵称 12.36、学院 5.79、积分 4.70，都量过。 */
 .hero {
   position: relative;
   overflow: hidden;
   padding: 48rpx 36rpx 96rpx;
-  background: linear-gradient(135deg, var(--navy-deep), var(--blue));
+  background-color: var(--xing-10);
+  background-image: var(--fiber-page);
+  background-size: 320rpx 320rpx;
+  box-shadow: inset 0 -2rpx 0 rgba(150, 120, 66, .14);
 }
 .hero-deco {
   position: absolute;
-  right: -60rpx; top: -60rpx;
-  width: 300rpx; height: 300rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(208, 231, 247, 0.2), transparent 70%);
+  left: 0; top: 0; right: 0; bottom: 0;
   pointer-events: none;
+  opacity: .34;
+  background-image: var(--lattice);
+  background-size: 96rpx 96rpx;
+  /* 遮罩只看 alpha，这里的 black 就是"这一档全留"的意思，不是界面颜色 */
+  -webkit-mask-image: radial-gradient(76% 88% at 84% 10%, black 0%, transparent 72%);
+  mask-image: radial-gradient(76% 88% at 84% 10%, black 0%, transparent 72%);
 }
 .hero-row { position: relative; z-index: 2; display: flex; align-items: center; }
+/* 头像：纸钮 + 一圈金线，和 nav-bar 的返回键、搜索键同一族。
+   原来是白描边 + blue-soft→navy 的渐变底 + 纯黑投影。 */
 .avatar {
   width: 112rpx;
   height: 112rpx;
   border-radius: 50%;
-  border: 3rpx solid rgba(255, 255, 255, 0.55);
-  background: linear-gradient(135deg, var(--blue-soft), var(--navy));
+  background: rgba(252, 250, 244, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4rpx 12rpx rgba(96, 78, 44, 0.18),
+              inset 0 0 0 3rpx rgba(150, 120, 66, 0.34);
   flex-shrink: 0;
 }
 .avatar-img { width: 100%; height: 100%; }
 .hero-info { flex: 1; margin-left: 26rpx; min-width: 0; }
-.nickname { display: block; font-size: 34rpx; font-weight: 700; color: var(--card); }
+.nickname { display: block; font-size: 34rpx; font-weight: 700; color: var(--ink); }
 .college {
   display: block;
   font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--ink-3);
   margin-top: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -45,45 +69,39 @@
 .points-inline {
   display: block;
   font-size: 22rpx;
-  color: var(--gold-soft);
+  color: var(--jin-70);
   margin-top: 10rpx;
 }
-.points {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: rgba(190, 156, 68, 0.22);
-  border: 1rpx solid rgba(190, 156, 68, 0.5);
-  border-radius: 16rpx;
-  padding: 12rpx 24rpx;
-  flex-shrink: 0;
-}
-.points-num { font-size: 34rpx; font-weight: 700; color: var(--gold-soft); }
-.points-lbl { font-size: 20rpx; color: rgba(231, 217, 174, 0.75); }
-.edit-chip {
-  display: flex;
-  align-items: center;
-  gap: 2rpx;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1rpx solid rgba(255, 255, 255, 0.35);
-  color: var(--card);
-  font-size: 24rpx;
-  font-weight: 600;
-  padding: 10rpx 20rpx;
-  border-radius: 40rpx;
-  flex-shrink: 0;
-}
+/* .points / .points-num / .points-lbl 三条删了：wxml 里只有 .points-inline，
+   那三条**没有任何节点在用**（积分早改成一行小字了）。
+   它们还带着旧调色板那支金，是死代码，也是三处旧色值。 */
+/* 两枚签：素签（编辑）和朱签（登录，这一页唯一的主操作）。
+   和 .pill / 活动页报名键同一套写法——直角、纸底、细框。
+   原来是两枚半透明白的全圆角胶囊，压在深色块上才成立。 */
+.edit-chip,
 .login-chip {
   display: flex;
   align-items: center;
   gap: 2rpx;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--navy);
-  font-size: 26rpx;
-  font-weight: 700;
-  padding: 12rpx 26rpx;
-  border-radius: 40rpx;
+  font-size: 24rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 6rpx;
   flex-shrink: 0;
+}
+.edit-chip {
+  color: var(--wood-80);
+  border: 1rpx solid var(--line);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
+}
+.login-chip {
+  font-size: 26rpx;
+  font-weight: 600;
+  padding: 12rpx 26rpx;
+  color: var(--zhu);
+  border: 1rpx solid rgba(158,43,37,.34);
+  background: var(--zhu-soft);
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.55), 0 2rpx 4rpx rgba(74,50,30,.08);
 }
 
 /* 统计卡（上浮覆盖 hero 底部）*/
@@ -98,12 +116,13 @@
   display: flex;
   align-items: center;
   background: var(--card);
-  border-radius: 28rpx;
+  border: 1rpx solid var(--line);
+  border-radius: 24rpx;
   padding: 34rpx 0;
-  box-shadow: 0 12rpx 32rpx rgba(74,50,30, 0.12);
+  box-shadow: 0 8rpx 24rpx rgba(74,50,30, 0.10);
 }
 .stat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6rpx; }
-.stat-num { font-size: 40rpx; font-weight: 700; color: var(--navy); line-height: 1; }
+.stat-num { font-size: 40rpx; font-weight: 700; color: var(--jin-70); line-height: 1; }
 .stat-ic { height: 40rpx; display: flex; align-items: center; }
 .stat-lbl { font-size: 22rpx; color: var(--muted); }
 .stat-dv { width: 1rpx; height: 48rpx; background: var(--line); }
@@ -112,7 +131,7 @@
 .menu {
   background: var(--card);
   margin: 28rpx 32rpx 0;
-  border-radius: 28rpx;
+  border-radius: 24rpx;
   overflow: hidden;
   border: 1rpx solid var(--line);
   box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.06);
@@ -122,22 +141,32 @@
   align-items: center;
   gap: 22rpx;
   padding: 28rpx 30rpx;
-  border-bottom: 1rpx solid #F2F5FB;
+  /* 原来是 #F2F5FB / #F7FAFE 两个冷蓝白：分隔线偏蓝、按下去是一块淡蓝 */
+  border-bottom: 1rpx solid var(--line-soft);
 }
 .menu-item:last-child { border-bottom: none; }
-.menu-item:active { background: #F7FAFE; }
+.menu-item:active { background: var(--paper-2); }
+/* ── 菜单图标 ──
+   原来是三种彩色圆角方块：.mi-blue（#4E7CC4→#2F5E92 亮蓝，占了 6 项）、
+   .mi-slate（#5867B8→#39418A 蓝紫）、.mi-gold（#C0A24E→金棕）。
+   九个亮蓝紫方块排一列，是这一页"色调不对"最直接的来源；
+   那套分组（账号=蓝 / 关联=金 / 关于=灰蓝）本来也是随手分的，没有语义。
+
+   统一成纸钮 + 一圈金线，器物图标走 --jin-80（纸上 8.18）。
+   和 nav-bar 的返回键、头像是同一族——这一页因此只剩两个高饱和落点：
+   登录朱签和未读徽标，正合方案 A 说的"朱只做标记位"。 */
 .mi-ic {
   width: 64rpx;
   height: 64rpx;
-  border-radius: 18rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: rgba(252, 250, 244, 0.8);
+  box-shadow: 0 2rpx 8rpx rgba(96, 78, 44, 0.16),
+              inset 0 0 0 2rpx rgba(150, 120, 66, 0.26);
 }
-.mi-gold { background: linear-gradient(135deg, #C0A24E, var(--jin-70)); }
-.mi-blue { background: linear-gradient(135deg, #4E7CC4, #2F5E92); }
-.mi-slate { background: linear-gradient(135deg, #5867B8, #39418A); }
 .mi-tx { flex: 1; font-size: 29rpx; color: var(--ink); }
 .mi-badge {
   min-width: 36rpx;
@@ -145,8 +174,9 @@
   line-height: 36rpx;
   padding: 0 10rpx;
   border-radius: 18rpx;
-  background: var(--jin-60);
-  color: var(--card);
+  /* 未读数是"这一件要紧"，走朱；纸白压朱量到 7.19 */
+  background: var(--zhu);
+  color: var(--paper-card);
   font-size: 20rpx;
   font-weight: 700;
   text-align: center;
@@ -161,9 +191,10 @@
   justify-content: center;
   gap: 10rpx;
   background: var(--card);
-  color: var(--color-danger);
-  border: 1rpx solid rgba(192, 57, 43, 0.3);
-  border-radius: 44rpx;
+  color: var(--zhu);
+  /* 原来这条边框用的是旧调色板的危险红 */
+  border: 1rpx solid rgba(158, 43, 37, 0.3);
+  border-radius: 12rpx;
   font-size: 28rpx;
   font-weight: 600;
   height: 88rpx;

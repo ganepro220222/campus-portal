@@ -19,12 +19,13 @@
 .pl-refresh-bar {
   margin: 16rpx 28rpx 0;
   padding: 20rpx 24rpx;
-  background: rgba(192, 57, 43, 0.08);
-  border: 1rpx solid rgba(192, 57, 43, 0.18);
-  border-radius: 16rpx;
+  /* 原来这三处走的是旧调色板的危险红，换成本套的朱 */
+  background: rgba(158, 43, 37, 0.08);
+  border: 1rpx solid rgba(158, 43, 37, 0.18);
+  border-radius: 12rpx;
   text-align: center;
 }
-.pl-refresh-bar:active { background: rgba(192, 57, 43, 0.12); }
+.pl-refresh-bar:active { background: rgba(158, 43, 37, 0.12); }
 .pl-refresh-text {
   font-size: 24rpx;
   font-weight: 600;
@@ -43,24 +44,30 @@
   margin-bottom: 18rpx;
   box-shadow: var(--shadow-sm);
 }
-.pl-item:active { background: var(--sky-3); }
+.pl-item:active { background: var(--paper-2); }
 
+/* ── 行首的器物 ──
+   原来是五种彩色圆角方块（玫红 / 蓝 / 绿 / 灰蓝 / 金），按列表类型换色。
+   可一页只有一种类型，那个色在页内不区分任何东西——它只是把十几行
+   排成一列的彩块，而且玫红、绿、灰蓝三支根本不在这套配色里。
+   统一成纸钮 + 一圈金线，和「我的」菜单、nav-bar 的返回键同一族。 */
 .pl-ic {
   width: 76rpx;
   height: 76rpx;
-  border-radius: 20rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 6rpx 16rpx rgba(74,50,30, 0.16);
+  background: rgba(252, 250, 244, 0.8);
+  box-shadow: 0 2rpx 8rpx rgba(96, 78, 44, 0.16),
+              inset 0 0 0 2rpx rgba(150, 120, 66, 0.26);
 }
-.tc-rose { background: linear-gradient(135deg, #C0607A, #8E3B52); }
-.tc-blue { background: linear-gradient(135deg, var(--blue), var(--navy)); }
-.tc-green { background: linear-gradient(135deg, #3F9A6B, #2E7C55); }
-.tc-slate { background: linear-gradient(135deg, #5A6488, #39406A); }
-.tc-gold { background: linear-gradient(135deg, var(--jin-50), var(--jin-60)); }
-.pl-ic-off { background: var(--ghost); box-shadow: none; }
+/* 未获得的徽章：钮还在，只是褪成纸色、没有金圈，一眼看出是"空着的" */
+.pl-ic-off {
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 2rpx rgba(150, 120, 66, 0.12);
+}
 
 .pl-body { flex: 1; min-width: 0; }
 .pl-title {
@@ -85,25 +92,34 @@
 .pl-time { font-size: 21rpx; color: var(--muted); margin-top: 10rpx; display: block; }
 
 .pl-right { flex-shrink: 0; display: flex; align-items: center; }
-.pl-status {
-  font-size: 21rpx;
-  font-weight: 600;
-  padding: 8rpx 18rpx;
-  border-radius: 20rpx;
-}
-.st-pending { color: var(--jin-70); background: var(--xing-05); }
-.st-approved { color: var(--navy); background: var(--sky-2); }
-.st-rejected { color: var(--color-danger); background: rgba(192, 57, 43, 0.10); }
-
+/* 状态与徽章都走小签（同 app.wxss 的 .pill）：直角、纸底、细框。
+   原来是全圆角芯片，且「通过」用绢青底、「驳回」用旧危险红、
+   「未获得」用 #EEF1F8 的冷蓝白 —— 一行里三种不搭的底色。
+   现在只换字色和框色，底纸不换：底纸一换就又变回色块了。 */
+.pl-status,
 .pl-badge {
   font-size: 21rpx;
-  font-weight: 600;
-  padding: 8rpx 18rpx;
-  border-radius: 20rpx;
-  background: #EEF1F8;
-  color: var(--muted);
+  padding: 8rpx 16rpx;
+  border-radius: 4rpx;
+  color: var(--wood-80);
+  border: 1rpx solid var(--line);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
 }
-.pl-badge.on { background: rgba(201, 162, 39, 0.15); color: var(--jin-60); }
+/* 三档状态只用这套自己的颜色，不另起一支绿。
+   「已通过」本来用 --color-success（石绿 #3F7A5E）—— 那是我当初为功能色
+   自己配的，在页底纸上量到 4.89 够用，可小签的底是一道渐变，
+   到下沿那一档只剩 **4.33**，21rpx 的小字过不了 4.5。
+   而且它是全仓**唯一**一处拿这个令牌当文字色的地方，没有历史包袱。
+
+   改成按这套自己的逻辑分三档：
+     待审核 → 素签（默认那一档，什么都不覆写）——"还在等"，不需要标记
+     已通过 → 金签（字与框都上金）——标记了，但安静
+     已驳回 → 朱签 —— 朱是全站唯一的高饱和色，留给"这一件要紧"
+   三档靠"有没有上色的框"分得开，文字本身也写着状态。量过 4.93~6.37。 */
+.st-approved { color: var(--jin-70); border-color: rgba(158,125,69,.34); }
+.st-rejected { color: var(--zhu);    border-color: rgba(158,43,37,.34); }
+.pl-badge.on { color: var(--jin-70); border-color: rgba(158,125,69,.34); }
 
 /* 文案在「再次下载」(4 字 = 88rpx) 与「下载中」(3 字 = 66rpx) 之间切换，
    而 .pl-right 是 flex-shrink:0、.pl-body 是 flex:1——不锁宽的话点一下芯片缩 22rpx，
@@ -147,8 +163,8 @@
   width: 18rpx;
   height: 18rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  box-shadow: 0 0 0 6rpx rgba(158,125,69, 0.15);
+  background: var(--zhu);
+  box-shadow: 0 0 0 6rpx rgba(158,43,37, 0.12);
   flex-shrink: 0;
 }
 .fp-day-label {

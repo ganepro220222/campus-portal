@@ -78,20 +78,17 @@ const BUDGET = {
   'packageC/activity/enroll.wxss': 2,
   'packageC/legal/privacy.wxss': 4,
   'packageC/message/index.wxss': 2,
-  'packageC/profile/list.wxss': 7,
   'packageC/search/index.wxss': 1,
   'packageD/poster/generate.wxss': 1,
-  'pages/login/index.wxss': 2,
-  'pages/profile/index.wxss': 7,
-  'styles/login-page.wxss': 2
+  'pages/login/index.wxss': 2
 }
 
 /**
  * 旧调色板换了写法之后，每个文件还剩多少处（棘轮，只减不增）。
  * 没列在这里的文件预算是 0。数字是补上这条检查当天量出来的实际分布。
- * 两个招牌页（pages/login、pages/index）的数字留到第 4 批整页重做时归零；
- * styles/login-page.wxss **没有任何文件 @import 它**，是份死文件，
- * 里面这 5 处随它一起删掉就没了。
+ * pages/index、pages/profile、packageC/profile 已经归零。
+ * styles/login-page.wxss 那份死文件（339 行、没有任何 @import 指向它，
+ * 是 pages/login/index.wxss 的旧副本）连同它那 8 处一起删掉了。
  */
 const DISGUISED_BUDGET = {
   'app.wxss': 3,
@@ -101,10 +98,7 @@ const DISGUISED_BUDGET = {
   'packageC/activity/detail.wxss': 4,
   'packageC/activity/enroll.wxss': 2,
   'packageC/feedback/index.wxss': 1,
-  'packageC/profile/list.wxss': 4,
-  'packageD/poster/generate.wxss': 1,
-  'pages/profile/index.wxss': 4,
-  'styles/login-page.wxss': 6
+  'packageD/poster/generate.wxss': 1
 }
 
 /**

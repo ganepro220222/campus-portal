@@ -208,39 +208,34 @@
 .act-share-btn::after { border: none; }
 .act-share-hover { background: var(--paper-2); }
 
-/* AI 推荐。卷首出血之后 .detail-wrap 不再给横距，这一段自己留。 */
+/* 相关推荐。卷首出血之后 .detail-wrap 不再给横距，这一段自己留。
+
+   原来这里包了一张白卡（--paper-card + 描边 + 24rpx 圆角 + 投影）。
+   设计稿 news-detail.html 里它**不是卡片**：
+       .reco { margin: 22px 16px 0; padding: 4px 0 18px }
+   —— 直接落在纸上，靠上面那条回纹带分段，不用再画一个盒子。
+   多出来的那张卡还有个副作用：卡顶紧贴回纹带，中间只剩卡的 13px 内边距，
+   就是「靠太紧」的来源。设计稿的节奏是
+       回纹带 → .reco 的 22px → .sec-head 的 14px = 36px，
+   这里按 2 倍换算成 44rpx + 28rpx。 */
 .reco {
-  margin: 0 28rpx;
-  background: var(--paper-card);
-  border: 1rpx solid var(--line);
-  border-radius: 24rpx;
-  padding: 26rpx;
-  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.07);
+  margin: 44rpx 28rpx 0;
+  padding: 0 0 36rpx;
 }
-.reco-head {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  font-size: 28rpx;
-  font-weight: 700;
-  color: var(--ink);
-  margin-bottom: 20rpx;
-}
-.reco-ai {
-  font-size: 20rpx;
-  background: var(--xing-05);
-  color: var(--jin-70);
-  padding: 4rpx 16rpx;
-  border-radius: 20rpx;
-  font-weight: 600;
-}
+/* 段头与首页各段同一件（.sec-head / .sec-title / .seal-sm 在 app.wxss）。
+   设计稿给它 margin-top:14px —— 回纹带之后那口气就靠这一段。 */
+.reco .sec-head { margin-top: 28rpx; margin-bottom: 8rpx; }
 .reco-it {
   display: flex;
+  align-items: flex-start;
   gap: 18rpx;
   padding: 20rpx 0;
-  border-top: 1rpx solid var(--line);
+  /* 设计稿是 border-bottom + 最后一条不画。和 border-top + 第一条不画
+     画出来的线是同一批，但段头底下要**有**一条线把标题和列表分开，
+     所以跟着设计稿走下边线。 */
+  border-bottom: 1rpx solid var(--line-soft);
 }
-.reco-it:first-of-type { border-top: none; }
+.reco-it:last-of-type { border-bottom: none; }
 /* 序号：凹进纸里的一方，不是一块绢青色块（设计稿的 .reco-num） */
 .reco-num {
   flex: 0 0 44rpx;
@@ -253,6 +248,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* 三条里第一条的序号盖成朱——朱在这套里只做标记位，标的是"最该先看的那条"。
+   设计稿写的是 .reco-it:nth-child(2)：那是因为 .sec-head 占了第 1 个孩子，
+   算下来正好是第一条推荐。这里不抄那个下标——它依赖"段头一定在里面、
+   一定只有一个"，谁往 .reco 里再塞一个元素就整体错位。
+   改成 wxml 按 index 给类，意思写在脸上。 */
+.reco-num.reco-num--mark {
+  background: var(--zhu);
+  color: var(--paper-card);
 }
 .reco-n { font-size: 26rpx; color: var(--ink); line-height: 1.45; }
 .reco-m { font-size: 22rpx; color: var(--muted); margin-top: 6rpx; }

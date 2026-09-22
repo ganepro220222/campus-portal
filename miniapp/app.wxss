@@ -193,6 +193,12 @@ page {
   --fret-cut: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Cg fill='none' stroke='%237A5626' stroke-width='1.15' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M3.2,17.6 V4.4 H20.8 V15.2 H7.2 V7.2 H16.8 V12.8 H11.2 V9.6'/%3E%3Cpath d='M44.8,17.6 V4.4 H27.2 V15.2 H40.8 V7.2 H31.2 V12.8 H36.8 V9.6'/%3E%3C/g%3E%3Cg fill='none' stroke='%237A5626' stroke-width='0.75' stroke-linecap='square'%3E%3Cpath d='M0,2.2 H48 M0,19.0 H48 M0,17.6 H3.2 M20.8,17.6 H27.2 M44.8,17.6 H48'/%3E%3C/g%3E%3C/svg%3E");
   --fret-lit: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Cg fill='none' stroke='%23F6E9D2' stroke-width='1.15' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M3.2,17.6 V4.4 H20.8 V15.2 H7.2 V7.2 H16.8 V12.8 H11.2 V9.6'/%3E%3Cpath d='M44.8,17.6 V4.4 H27.2 V15.2 H40.8 V7.2 H31.2 V12.8 H36.8 V9.6'/%3E%3C/g%3E%3Cg fill='none' stroke='%23F6E9D2' stroke-width='0.75' stroke-linecap='square'%3E%3Cpath d='M0,2.2 H48 M0,19.0 H48 M0,17.6 H3.2 M20.8,17.6 H27.2 M44.8,17.6 H48'/%3E%3C/g%3E%3C/svg%3E");
   /* ══ 纹理结束 ══ */
+
+  /* ══ 祥云开始 · 由 scripts/build-ruyi-token.mjs 生成，勿手改 ══ */
+  --ruyi: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='49.20' height='28.40' viewBox='0 0 24.600 14.200'><g fill='%23CBA86B' fill-opacity='.95'><circle cx='5.100' cy='9.100' r='5.100'/><circle cx='12.300' cy='6.500' r='6.500'/><circle cx='19.500' cy='9.100' r='5.100'/><rect x='0.000' y='7.400' width='24.600' height='5.700' rx='1.6'/></g><g fill='%239E2B25' fill-opacity='.95'><circle cx='5.100' cy='9.100' r='4.000'/><circle cx='12.300' cy='6.500' r='5.400'/><circle cx='19.500' cy='9.100' r='4.000'/><rect x='1.100' y='8.500' width='22.400' height='4.600' rx='1.6'/></g><path d='M7.700,9.700 a2.0,2.0 0 1,1 -1.6,-1.9' fill='none' stroke='%23F9EEDC' stroke-width='.9' stroke-linecap='round' opacity='.55'/><path d='M16.900,9.700 a2.0,2.0 0 1,0 1.6,-1.9' fill='none' stroke='%23F9EEDC' stroke-width='.9' stroke-linecap='round' opacity='.55'/></svg>");
+  --ruyi-w: 49.2rpx;
+  --ruyi-h: 28.4rpx;
+  /* ══ 祥云结束 ══ */
 }
 /* ══ 令牌区结束 ══ */
 
@@ -235,28 +241,72 @@ page {
   box-shadow: var(--shadow-sm);
 }
 
-/* ── section 标题（左侧蓝色竖线）── */
+/* ══ 装置③ 印 —— 栏目标题旁的朱红方印 ══
+   对照 design/demo/v2/shuyuan.css 的 .sec-head / .sec-title / .seal-sm /
+   .sec-rule，以及 home.html、news-detail.html 里的用法。
+
+   这一族原来住在 pages/index/index.wxss，只有首页能用；而 app.wxss 这边
+   另有一条同名的 .sec-title——34rpx 粗体 + 一道 ::before 竖条。
+   两条撞在一起的后果是**首页每个段头同时挂着一枚印和一根朱竖条**：
+   页面那条盖不住 ::before（它压根没写这个伪元素），于是竖条一直画着。
+   全仓 .sec-title 只有首页在用，那条竖条版本连自己的位置都没有，
+   现在整条删掉，只留定稿这一版，搬到这里供首页与二级页共用。
+
+   竖条是通用 UI 的做法，说不出是什么；定稿用的是**一枚朱印**——
+   占地极小，却是全站最强的身份标记。 */
+.sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
 .sec-title {
-  font-size: 34rpx;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  font-size: 38rpx;
   color: var(--ink);
+  letter-spacing: 2rpx;
+}
+.seal-sm {
+  width: 44rpx;                 /* ＝设计稿 22px */
+  height: 44rpx;
+  flex: none;
+  display: block;
+}
+.sec-more {
+  font-size: 24rpx;
+  color: var(--jin-70);
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+/* 双线：上粗下细，下面那道半透明——两道之间留 2rpx 空，是版框的做法。
+   正中压一枚**朱红菱形**，外面描一圈纸色把线断开：
+   线是版框，菱形是版框中缝的鱼尾，少了它两道线就只是普通分割线。 */
+.sec-rule {
+  margin: 12rpx 0 24rpx;
   position: relative;
-  padding-left: 20rpx;
-  font-family: "ShuyuanSong", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
 }
-.sec-title::before {
-  content: "";
+.sec-rule::after {
+  content: '';
   position: absolute;
-  left: 0;
+  z-index: 1;
+  left: 50%;
   top: 50%;
-  transform: translateY(-50%);
-  width: 6rpx;
-  height: 28rpx;
-  border-radius: 3rpx;
-  /* 段头的竖标：朱。和活动详情的 .section-title::before、首页段头那枚印
-     是同一条线索——朱只做**标记位**，不做色块。 */
+  width: 11rpx;
+  height: 11rpx;
+  transform: translate(-50%, -50%) rotate(45deg);
   background: var(--zhu);
+  box-shadow: 0 0 0 5rpx var(--paper);
 }
+.sec-rule-a,
+.sec-rule-b {
+  display: block;
+  height: 2rpx;
+  background: var(--line);
+}
+.sec-rule-b { margin-top: 2rpx; opacity: .5; }
 
 /* 这里原先还有 .cat-tag / .cat-active（32rpx 全圆胶囊 + blue→navy 渐变）
    和 .cover-image（--sky-2 底）。全仓 wxml / js / 其它 wxss 都没有引用，

@@ -455,64 +455,12 @@
 
 /* ── Section 通用 ── */
 .section { margin-top: 40rpx; }
-/* ── 段头：小印 + 题名 + 双线 ──
-   原来题名前面是一条朱红竖条（其实是 var(--blue)→var(--navy) 的渐变条，
-   别名令牌把它换算成了棕金）。竖条是通用 UI 的做法，说不出是什么。
-   定稿用的是**一枚朱印**——占地极小，却是全站最强的身份标记；
-   题名底下再压一道双线，粗细不等、下面那道半透明，是版框的做法。 */
-.sec-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0;
-}
-.sec-title {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  font-size: 38rpx;
-  color: var(--ink);
-  letter-spacing: 2rpx;
-}
-.seal-sm {
-  width: 44rpx;
-  height: 44rpx;
-  flex: none;
-  display: block;
-}
-.sec-more {
-  font-size: 24rpx;
-  color: var(--jin-70);
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-}
-/* 双线：上粗下细，下面那道半透明——两道之间留 2rpx 空，是版框的做法。
-   正中压一枚**朱红菱形**，外面描一圈纸色把线断开：
-   线是版框，菱形是版框中缝的鱼尾，少了它两道线就只是普通分割线。 */
-.sec-rule {
-  margin: 12rpx 0 24rpx;
-  position: relative;
-}
-.sec-rule::after {
-  content: '';
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  top: 50%;
-  width: 11rpx;
-  height: 11rpx;
-  transform: translate(-50%, -50%) rotate(45deg);
-  background: var(--zhu);
-  box-shadow: 0 0 0 5rpx var(--paper);
-}
-.sec-rule-a,
-.sec-rule-b {
-  display: block;
-  height: 2rpx;
-  background: var(--line);
-}
-.sec-rule-b { margin-top: 2rpx; opacity: .5; }
+/* 段头那一族（.sec-head / .sec-title / .seal-sm / .sec-more / .sec-rule）
+   已经搬到 app.wxss —— 动态详情的「相关推荐」也要用同一枚印，
+   留在这里只有首页够得着。搬家的另一半原因写在那边：
+   app.wxss 本来还有一条同名的 .sec-title（带 ::before 竖条），
+   和这一版撞在一起，首页的段头一直是「印 + 竖条」两件。 */
+
 
 /* ── 展馆横滑：裱起来的封面 + 一张题签 ──
    原来是"封面色块 + 白底卡片包住名字"，色块走 .hc1~.hc5 那套旧蓝紫色阶。

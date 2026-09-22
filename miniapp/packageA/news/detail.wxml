@@ -102,11 +102,16 @@
              在这个位置放的就是 .fret）。tab 页那条在标签栏上方，同一件东西。 -->
         <view class="fret fret--div"></view>
 
-        <!-- 相关推荐 -->
+        <!-- 相关推荐。段头和首页各段是同一件：一枚朱印 + 题名（设计稿
+             news-detail.html 用的就是 .sec-head > .sec-title > .seal-sm）。 -->
         <view class="reco">
-          <view class="reco-head">相关推荐</view>
+          <view class="sec-head">
+            <view class="sec-title serif">
+              <image class="seal-sm" src="/assets/images/seal-zhu.png" mode="aspectFit" />
+              相关推荐</view>
+          </view>
           <view class="reco-it" wx:for="{{reco}}" wx:key="id" data-id="{{item.id}}" bindtap="onRecoTap">
-            <view class="reco-num">{{index + 1}}</view>
+            <view class="reco-num {{index === 0 ? 'reco-num--mark' : ''}}">{{index + 1}}</view>
             <view class="reco-txt">
               <view class="reco-n">{{item.n}}</view>
               <view class="reco-m">{{item.m}}</view>

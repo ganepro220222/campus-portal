@@ -184,6 +184,34 @@ function checkPng(p, maxKB) {
   }
 }
 
+// ── 三之二、祥云（登录页那一朵，同样是写进 app.wxss 的令牌）──────────
+{
+  const ry = await import('./build-ruyi-token.mjs')
+  // ruyiToken() 自己会验：%23 转义、三个色与令牌表一致、
+  // **两道内卷在不在**、金层必须画在朱层前面（金是垫在底下当描边的）
+  const t = ry.ruyiToken()
+  checkHash('祥云令牌', path.join(ROOT, 'scripts/ruyi.hash'), ry.fingerprint(t),
+    'node scripts/build-ruyi-token.mjs')
+  const cur = ry.currentBlock()
+  if (cur === null) {
+    errs.push('app.wxss 里找不到祥云那一段，跑 node scripts/build-ruyi-token.mjs')
+  } else if (cur !== ry.block(t)) {
+    errs.push('app.wxss 里的祥云和设计源对不上，跑 node scripts/build-ruyi-token.mjs 重出')
+  }
+  const app2 = read(path.join(ROOT, 'miniapp/app.wxss'))
+  const login = read(path.join(ROOT, 'miniapp/pages/login/index.wxss'))
+  for (const k of Object.keys(t)) {
+    if (!new RegExp(`var\\(${k}\\)`).test(app2 + login)) {
+      errs.push(`定义了 ${k} 却没有任何规则 var(${k}) 用它 —— 祥云白躺着`)
+    }
+  }
+  // 旧的 8 个 view 版本必须真的下线，不然两套并存，改一边另一边不跟
+  if (/ruyi-lobe|ruyi-gold|ruyi-zhu/.test(login + read(path.join(ROOT, 'miniapp/pages/login/index.wxml')))) {
+    errs.push('登录页还留着 8 个 view 摞的旧祥云（.ruyi-lobe/.ruyi-gold/.ruyi-zhu），' +
+              '那一版没有内卷，删干净只留 var(--ruyi)')
+  }
+}
+
 // ── 四、纹理贴图（写进 app.wxss 的三张 feTurbulence 噪声）──────────
 {
   const tx = await import('./build-texture-tokens.mjs')

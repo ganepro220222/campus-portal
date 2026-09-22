@@ -326,6 +326,55 @@ def ruyi_divider(w=210, h=24):
             + "".join(seg) + cloud + curls + '</svg>')
 
 
+def ruyi_cloud_token(k=2.0):
+    """祥云本体的 CSS 令牌（data URI），给小程序的登录页用。
+
+    为什么不接着用 8 个 view 摞出来：**两道内卷画不出来**。
+    ruyi_divider() 的注释里写得很清楚——"如意头的辨识度靠两侧的内卷，
+    光靠三个圆瓣区分不开"。小程序那一版正是只搬了三个圆瓣和一道横条，
+    内卷当时按"1.8rpx 这个尺寸上画不出来"跳过了，结果就是一坨红团：
+    外形对、辨识度没了。CSS 画不了 0.9 单位宽的弧，SVG 可以，
+    所以改成和角叶、纹样同一条路——生成 data URI，页面只留一个盒子。
+
+    颜色必须写成字面量并把 # 转义成 %23：data URI 里 var() 不解析，
+    裸 # 还会把 url() 提前截断。取值与令牌表一致：
+    --gold #CBA86B / --zhu #9E2B25 / --wood-pale(=--wood-10) #F9EEDC。
+
+    k 是相对设计单位的倍数，默认 2（1 设计 px = 2rpx）。
+    """
+    # 画布就按云的包围盒来：金层（grow=1.1）最外
+    w, h = 24.6, 14.2
+    cx, cy = w / 2, 8.5          # 金层顶 = 中瓣顶 = cy-2.0-6.5 = 0
+    gold, zhu, pale = "%23CBA86B", "%239E2B25", "%23F9EEDC"
+
+    def cloud_group(fill, grow, opacity):
+        return ("<g fill='%s' fill-opacity='%s'>"
+                "<circle cx='%.3f' cy='%.3f' r='%.3f'/>"
+                "<circle cx='%.3f' cy='%.3f' r='%.3f'/>"
+                "<circle cx='%.3f' cy='%.3f' r='%.3f'/>"
+                "<rect x='%.3f' y='%.3f' width='%.3f' height='%.3f' rx='1.6'/></g>"
+                % (fill, opacity,
+                   cx - 7.2, cy + .6, 4.0 + grow,
+                   cx, cy - 2.0, 5.4 + grow,
+                   cx + 7.2, cy + .6, 4.0 + grow,
+                   cx - 11.2 - grow, cy - grow, 22.4 + grow * 2, 4.6 + grow))
+
+    # 两道内卷：和 ruyi_divider() 里那两段路径同一组数
+    curls = ("<path d='M%.3f,%.3f a2.0,2.0 0 1,1 -1.6,-1.9' fill='none' stroke='%s' "
+             "stroke-width='.9' stroke-linecap='round' opacity='.55'/>"
+             "<path d='M%.3f,%.3f a2.0,2.0 0 1,0 1.6,-1.9' fill='none' stroke='%s' "
+             "stroke-width='.9' stroke-linecap='round' opacity='.55'/>"
+             % (cx - 4.6, cy + 1.2, pale, cx + 4.6, cy + 1.2, pale))
+
+    svg = ("<svg xmlns='http://www.w3.org/2000/svg' width='%.2f' height='%.2f' "
+           "viewBox='0 0 %.3f %.3f'>%s%s%s</svg>"
+           % (w * k, h * k, w, h,
+              cloud_group(gold, 1.1, ".95"), cloud_group(zhu, 0, ".95"), curls))
+    return {"--ruyi": 'url("data:image/svg+xml,%s")' % svg,
+            "--ruyi-w": "%.1frpx" % (w * k),
+            "--ruyi-h": "%.1frpx" % (h * k)}
+
+
 def _ridge(w, base, seed, amp, bias, step=46):
     """一道山脊。
 

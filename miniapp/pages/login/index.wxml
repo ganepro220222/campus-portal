@@ -27,20 +27,10 @@
       <image class="brand-img" src="/assets/images/home-title-calligraphy.png" mode="heightFix" />
       <view class="brand-div">
         <view class="brand-div-line"></view>
-        <!-- 祥云：三个圆瓣压一道横条，金边朱面（设计稿 ruyi_divider()）。
-             金边是垫在底下大一圈的金色露出来的那一圈，所以要画**两层**：
-             先金（grow=1.1）后朱（grow=0），共 8 个 view。
-             不用 clip-path —— 各端 WebView 对 path() 支持参差。 -->
-      <view class="ruyi">
-        <view class="ruyi-lobe ruyi-gold ruyi-l"></view>
-        <view class="ruyi-lobe ruyi-gold ruyi-m"></view>
-        <view class="ruyi-lobe ruyi-gold ruyi-r"></view>
-        <view class="ruyi-bar ruyi-gold"></view>
-        <view class="ruyi-lobe ruyi-zhu ruyi-l"></view>
-        <view class="ruyi-lobe ruyi-zhu ruyi-m"></view>
-        <view class="ruyi-lobe ruyi-zhu ruyi-r"></view>
-        <view class="ruyi-bar ruyi-zhu"></view>
-      </view>
+        <!-- 祥云：金边朱面 + 两侧内卷。整朵是一枚生成的 data URI 令牌
+             （--ruyi，见 scripts/build-ruyi-token.mjs）；原来是 8 个 view
+             摞出来的，摞不出那两道内卷。 -->
+        <view class="ruyi"></view>
         <view class="brand-div-line brand-div-line-r"></view>
       </view>
       <view class="brand-en">Academy of Chinese Culture</view>

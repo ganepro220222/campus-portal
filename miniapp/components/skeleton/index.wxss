@@ -30,7 +30,7 @@
 .sk-lines { flex: 1; padding: 10rpx 0; }
 
 /* grid */
-.sk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24rpx; }
+.sk-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24rpx; }
 .sk-gcard {
   background: var(--card);
   border: 1rpx solid var(--line);

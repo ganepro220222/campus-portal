@@ -14,10 +14,14 @@
 .craft-grid {
   padding: 20rpx 32rpx 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24rpx;
 }
 .ccard {
+  /* 和展馆卡同一条：网格项默认 min-width: auto，撑不下就顶开列宽。
+     这里原来靠 overflow: hidden 把那个下限按成 0 —— 那是副作用，
+     哪天为了别的原因删掉 overflow，溢出就回来了（展馆卡就是这么翻车的）。 */
+  min-width: 0;
   border-radius: 26rpx;
   overflow: hidden;
   background: var(--card);

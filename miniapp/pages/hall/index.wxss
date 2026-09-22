@@ -52,15 +52,27 @@ nav-bar { flex: 0 0 auto; }
 
 /* 网格 */
 .hall-scroll { flex: 1; overflow: hidden; }
+/* 两列必须写 minmax(0, 1fr)，不能写 1fr。
+   `1fr` 展开是 `minmax(auto, 1fr)`，那个 auto 下限 = 这一列内容的
+   **最小内容宽度**；卡片里的 .hcard-desc 是 white-space: nowrap 的一整句，
+   于是最小内容宽度 = 那句话的完整长度，列宽被它顶开。
+   实测：一句 366px、另一句 313px，两列加起来 707px 铺在 375pt 的屏上，
+   而且**两列不等宽**（谁的简介长谁就宽）——截图里"有的差那么一截、
+   有的横着排"就是这么来的。minmax(0, …) 把下限按回 0。 */
 .hall-grid {
   padding: 24rpx 32rpx 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24rpx;
 }
 /* 卡片是一张纸，裱框搁在纸上。裱框自己有 12rpx 圆角，
    所以卡片留 12rpx 内边距、圆角放到 20rpx —— 框贴着卡片边会像没裱好。 */
+/* min-width: 0 是第二道：网格项自己的默认 min-width 也是 auto。
+   上一版靠 overflow: hidden（裁铺满的封面）把这个下限按成 0；
+   封面改成裱框之后不再裁，那个副作用没了，溢出就回来。
+   现在写明 min-width: 0，不再依赖 overflow。 */
 .hcard {
+  min-width: 0;
   border-radius: 20rpx;
   padding: 12rpx;
   background: var(--card);

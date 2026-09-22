@@ -62,11 +62,12 @@ const LEGACY_EXEMPT = new Set(['utils/content.test.js'])
 const BUDGET = {
   /* app.wxss 令牌区**以下**那段共用样式。原来整个文件被跳过，
      旧蓝紫就藏在那个盲区里。.hc1~.hc5 的兜底色阶已经换成本套的山水色
-     （18 → 9）。剩下的 9 处是 .ft-* 的文件类型色标：
+     （18 → 9），首页「关联应用」那条 .app-tag 的冷蓝白也收了（9 → 8）。
+     剩下的 8 处是 .ft-* 的文件类型色标：
      PDF 红 / PPT 橙 / DOC 蓝 / XLSX 绿这几个是**办公软件自己的识别色**，
      用户是照着颜色认文件类型的，换成金棕一家人反而分不出来。
      这一档留着，不往下收。 */
-  'app.wxss': 9,
+  'app.wxss': 8,
   'components/loading/index.wxss': 2,
   'components/skeleton/index.wxss': 1,
   'packageA/craft/detail.wxss': 7,

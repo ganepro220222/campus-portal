@@ -70,7 +70,7 @@
 }
 .cmeta-title { font-size: 38rpx; font-weight: 700; color: var(--ink); }
 .cmeta-tags { display: flex; gap: 14rpx; margin: 18rpx 0 24rpx; flex-wrap: wrap; }
-.minfo { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; }
+.minfo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18rpx; }
 .mi {
   display: flex;
   align-items: center;

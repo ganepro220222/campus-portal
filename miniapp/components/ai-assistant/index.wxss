@@ -77,10 +77,30 @@
    页面里给再高的 z-index 也盖不住它（真机实测：输入框与发送键被整条切掉）。
    144rpx = custom-tab-bar 的 .fret 40rpx（回纹带）+ .tabbar 104rpx（栏身）；
    回纹带和栏身在同一个 fixed 容器里，只让 104 的话抽屉会被那条纹样压掉一截。
-   安全区那段由 tabbar 自己的 padding-bottom 占在 104rpx 之外，所以这里要加上。 */
+   安全区那段由 tabbar 自己的 padding-bottom 占在 104rpx 之外，所以这里要加上。
+
+   ⚠ 抬了 bottom 就必须**连着改收起态的位移**。
+   收起态是 translateY(100%)，100% 只等于抽屉自身的高度；
+   而它的底边已经被 bottom 顶高了 144rpx，往下推完自身高度之后，
+   顶边正好停在离屏幕底 144rpx 处 —— 也就是整条标签栏那么高的一截头
+   一直露在外面。浏览器里量过：视口 812，收起时顶边 740，
+   露出 72px = 144rpx，和标签栏容器（顶边 739、高 73）严丝合缝。
+
+   以前没露馅，是因为旧标签栏 108rpx 不透明，正好把那一截盖住；
+   这一版回纹带只有 7% 的底色，抽屉的白纸直接从纹样里透出来，
+   就成了"能看到回答页的上边，且雷纹没有了"。
+   两条都得治：这里把位移补上，回纹带那边补一层不透明的纸底。 */
 .sheet.above-tabbar {
   bottom: calc(144rpx + env(safe-area-inset-bottom));
+  /* 两条 transform 是渐进增强：前一条不含 env()，任何端都认，
+     68rpx ≥ 目前所有机型的安全区（最大 34pt），多推一点无所谓——
+     反正是屏幕外。后一条精确，端上认 env() 就用它。 */
+  transform: translateY(calc(100% + 144rpx + 68rpx));
+  transform: translateY(calc(100% + 144rpx + env(safe-area-inset-bottom)));
 }
+/* .sheet.show 和 .sheet.above-tabbar 权重相同，而后者写在下面——
+   不再写一条更specific的，展开态会被上面那条位移覆盖，抽屉永远打不开。 */
+.sheet.above-tabbar.show { transform: translateY(0); }
 .sheet.above-tabbar .sheet-foot {
   padding-bottom: 16rpx;
 }

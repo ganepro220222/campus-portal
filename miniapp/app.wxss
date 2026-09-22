@@ -703,15 +703,20 @@ button.lbtn-ghost[disabled] {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 「协同小程序 · 点击打开」那一条。原来是 #EEF2FB 的冷蓝白全圆角胶囊——
+   旧调色板漏下来的，而它就挂在首页「关联应用」那一行，天天看得见。
+   收成和 .pill 同一方小签：直角、纸底、细框、一道受光白线。 */
 .app-tag {
   display: inline-flex;
   align-items: center;
   margin-top: 10rpx;
   font-size: 21rpx;
-  color: var(--navy);
-  background: #EEF2FB;
-  padding: 4rpx 16rpx;
-  border-radius: 20rpx;
+  color: var(--wood-80);
+  border: 1rpx solid var(--line);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
+  padding: 4rpx 14rpx;
+  border-radius: 4rpx;
 }
 .app-sub {
   font-size: 22rpx;

@@ -110,11 +110,85 @@ function main() {
 
   // 让位用的数值直接写在 ai-assistant 的 wxss 里，也要跟着这个高度
   const sheet = read('components/ai-assistant/index.wxss')
-  const m = sheet.match(/\.sheet\.above-tabbar\s*\{[\s\S]*?bottom:\s*calc\((\d+)rpx/)
+  const rule = (sheet.match(/\.sheet\.above-tabbar\s*\{[\s\S]*?\}/) || [''])[0]
+  const m = rule.match(/bottom:\s*calc\((\d+)rpx/)
   if (!m) {
     errs.push('components/ai-assistant/index.wxss 里没找到 .sheet.above-tabbar 的让位规则')
   } else if (hWxss !== null && Number(m[1]) !== hWxss) {
     errs.push(`书院助手抽屉让位 ${m[1]}rpx，但 tabbar 实际高 ${hWxss}rpx`)
+  }
+
+  /*
+   * 抬了 bottom 就必须连着改**收起态的位移**。
+   *
+   * 抽屉收起靠 transform: translateY(100%)，而 100% 只等于抽屉自身的高度。
+   * 一旦 bottom 把它的底边顶高 N，往下推完自身高度之后顶边正好停在
+   * 离屏幕底 N 的位置 —— 也就是有 N 那么高的一截头一直露在屏幕上。
+   *
+   * 这个 bug 真出过：标签栏从 108rpx 长到 144rpx（加了回纹带），
+   * bottom 跟着改了、位移没改，于是问答抽屉的头（玉牌 + 「知识问答」
+   * + 那行小字）整条压在标签栏上。以前 108rpx 时没露馅，
+   * 纯粹因为旧标签栏是不透明的、正好盖住 108rpx。
+   *
+   * 所以这里要求：收起态的位移里至少补上 bottom 那么多 rpx。
+   */
+  const tf = [...rule.matchAll(/transform:\s*translateY\(calc\(100%\s*\+\s*(\d+)rpx/g)]
+  if (m && !tf.length) {
+    errs.push('.sheet.above-tabbar 抬了 bottom 却没改收起态的位移 —— ' +
+      `抽屉会有 ${m[1]}rpx 高的一截头露在标签栏上。\n` +
+      '      收起态要写 transform: translateY(calc(100% + <让位高度> + 安全区))')
+  } else if (m) {
+    for (const t of tf) {
+      if (Number(t[1]) < Number(m[1])) {
+        errs.push(`.sheet.above-tabbar 收起态只往下推了 ${t[1]}rpx，` +
+          `但 bottom 把它顶高了 ${m[1]}rpx —— 会露出 ${Number(m[1]) - Number(t[1])}rpx 的头`)
+      }
+    }
+  }
+  // 位移写在 .sheet.show 后面、权重又相同，必须另给一条更 specific 的展开态，
+  // 否则抽屉永远打不开（点了没反应，比露头更难查）
+  if (tf.length && !/\.sheet\.above-tabbar\.show\s*\{[^}]*translateY\(0\)/.test(sheet)) {
+    errs.push('.sheet.above-tabbar 覆写了 transform，却没有 .sheet.above-tabbar.show —— ' +
+      '展开态会被收起态的位移盖掉，抽屉打不开')
+  }
+
+  /*
+   * 问答浮标的默认高度要盖过整条标签栏。
+   *
+   * 浮标是 fixed 的，离屏幕底 <bottom>rpx。标签栏一长高，这段距离就被吃掉：
+   * 108 → 144 之后余量从 42rpx 掉到 6rpx，浮标的投影压在回纹带上，
+   * 再高一点就压到 tab 按钮——那是「原生控件让位」的②，压住就按不到。
+   *
+   * ⚠ 这一条第一版只写了"盖过标签栏就行"。变异测试里把值改回 150
+   * （= 真出过的那个回归，余量只剩 6rpx）**没报红** —— 150 确实 > 144。
+   * 也就是说它守不住自己声称要守的东西。所以改成要求一段真正的余量：
+   * 浮标的投影是 `0 12rpx 30rpx`，30rpx 的模糊半径意味着余量小于 30rpx
+   * 时投影就已经糊在回纹带上了。取 40rpx，比模糊半径再宽一点。
+   */
+  const FAB_CLEARANCE_RPX = 40
+  const fabDefault = (read('components/ai-assistant/index.js')
+    .match(/bottom:\s*\{\s*type:\s*Number,\s*value:\s*(\d+)\s*\}/) || [])[1]
+  if (!fabDefault) {
+    errs.push('components/ai-assistant/index.js 里没解析到浮标的默认 bottom')
+  } else if (hWxss !== null && Number(fabDefault) - hWxss < FAB_CLEARANCE_RPX) {
+    errs.push(`问答浮标默认离底 ${fabDefault}rpx，标签栏占 ${hWxss}rpx，` +
+      `只剩 ${Number(fabDefault) - hWxss}rpx 余量（要 ≥ ${FAB_CLEARANCE_RPX}rpx）—— ` +
+      '浮标的投影会糊在回纹带上，再挤一点就压到 tab 按钮，按不到了')
+  }
+
+  /*
+   * 回纹带必须有不透明的底。
+   *
+   * 设计稿里 .fret 是画在页面那张纸上的，自己的底色只有 7% 的金棕水。
+   * 小程序这边整条栏住在一个 fixed 的空层里，背后什么都没有 ——
+   * 不补一层纸，页面滚上来的内容和收起的抽屉会直接从纹样里透出来，
+   * 回纹就"不见了"。真机上出过。
+   */
+  const barCss = read('custom-tab-bar/index.wxss')
+  const wrap = (barCss.match(/\.tabbar-wrap\s*\{[\s\S]*?\}/) || [''])[0]
+  if (!/background(-color)?:\s*var\(--paper\)/.test(wrap)) {
+    errs.push('custom-tab-bar 的 .tabbar-wrap 没有不透明底色（background-color: var(--paper)）—— ' +
+      '回纹带只有 7% 的底，背后的东西会透出来，纹样等于没画')
   }
 
   if (errs.length) {

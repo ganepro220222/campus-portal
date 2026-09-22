@@ -177,6 +177,41 @@ function main() {
   }
 
   /*
+   * 回纹带有**两份**，必须画得一模一样。
+   *
+   * 自定义 tabBar 是页面之外的独立层，app.wxss 的 class 规则到不了那儿
+   * （同理它也继承不到 page 上的令牌，见 build-tabbar-tokens.mjs），
+   * 所以 .fret 在 app.wxss 和 custom-tab-bar/index.wxss 里各存一份：
+   * 前者给二级页当分隔，后者给标签栏当收底。
+   * 两份是同一个纹样，drift 了就是两处长得不一样的回纹。
+   * 这里只比"画法"那几条（底色、两层贴图、错位、平铺、内阴影），
+   * 不比 height/margin —— 那两处本来就该不同。
+   */
+  const PAINT = ['background-color', 'background-image', 'background-position',
+                 'background-size', 'background-repeat', 'box-shadow']
+  const fretPaint = (css, where) => {
+    const rule = (css.replace(/\/\*[\s\S]*?\*\//g, '').match(/\.fret\s*\{[^}]*\}/) || [''])[0]
+    if (!rule) { errs.push(`${where} 里找不到 .fret 规则`); return null }
+    const out = {}
+    for (const k of PAINT) {
+      const m = rule.match(new RegExp(`${k}\\s*:\\s*([^;]+);`))
+      if (m) out[k] = m[1].replace(/\s+/g, ' ').trim()
+    }
+    return out
+  }
+  const pApp = fretPaint(read('app.wxss'), 'app.wxss')
+  const pBar = fretPaint(read('custom-tab-bar/index.wxss'), 'custom-tab-bar/index.wxss')
+  if (pApp && pBar) {
+    for (const k of PAINT) {
+      if (pApp[k] !== pBar[k]) {
+        errs.push(`两份 .fret 的 ${k} 不一致 —— 回纹带在二级页和标签栏上会长得不一样\n` +
+          `      app.wxss                    → ${pApp[k] || '(没写)'}\n` +
+          `      custom-tab-bar/index.wxss   → ${pBar[k] || '(没写)'}`)
+      }
+    }
+  }
+
+  /*
    * 回纹带必须有不透明的底。
    *
    * 设计稿里 .fret 是画在页面那张纸上的，自己的底色只有 7% 的金棕水。
@@ -184,8 +219,10 @@ function main() {
    * 不补一层纸，页面滚上来的内容和收起的抽屉会直接从纹样里透出来，
    * 回纹就"不见了"。真机上出过。
    */
+  // 注意：.tabbar-wrap 在这个文件里有**两条**规则——生成的令牌副本占了第一条。
+  // 只取第一条会永远取到副本（里面当然没有底色），所以把所有同名规则拼起来看。
   const barCss = read('custom-tab-bar/index.wxss')
-  const wrap = (barCss.match(/\.tabbar-wrap\s*\{[\s\S]*?\}/) || [''])[0]
+  const wrap = [...barCss.matchAll(/\.tabbar-wrap\s*\{[^}]*\}/g)].map(x => x[0]).join('\n')
   if (!/background(-color)?:\s*var\(--paper\)/.test(wrap)) {
     errs.push('custom-tab-bar 的 .tabbar-wrap 没有不透明底色（background-color: var(--paper)）—— ' +
       '回纹带只有 7% 的底，背后的东西会透出来，纹样等于没画')

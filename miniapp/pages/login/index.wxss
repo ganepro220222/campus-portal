@@ -152,37 +152,45 @@
 .brand-div-line-r {
   background: linear-gradient(90deg, rgba(192,153,78,.85), transparent);
 }
-/* 中间那枚朱红菱形，和首页段头分隔线上的是同一件——
-   两处都是"线中间的一个记号"，用同一个形，两页才是一套。
-   原来试的是 clip-path: path() 画如意云头，各端 WebView 支持参差，
-   实测渲出来就是一个圆点，形没了还多一层不确定性。 */
-/* 如意云头。设计稿 ruyi_divider() 是三个圆瓣压一道横条，金边朱面；
-   这里按 2.03 倍（50rpx / 24.6 设计单位）换算成四个 view。
-   金边只有 1.1 个设计单位（≈2rpx），这个尺寸上读不出来，所以只留朱面。
-   上一版是一枚菱形，不是定稿的形。 */
+/* ── 祥云分隔 ──────────────────────────────────────────────
+   设计稿是 ruyi_divider()。名字叫「如意」，画的其实是**祥云**——
+   那边的注释写得很清楚：如意云头怎么调都像一颗心，辨识度靠两侧的内卷，
+   光靠三个圆瓣区分不开，所以换成和封面那批云同一套的祥云单元。
+
+   形制：三个圆瓣压一道圆角横条，**金边朱面**。
+   金边不是描边（圆的并集没法直接描边），是在底下垫一层大一圈的金色，
+   露出来的那一圈就是边 —— 设计稿写的是
+   cloud_group(gold, grow=1.1) + cloud_group(zhu, grow=0)，两层叠。
+
+   上一版只画了一层，而且把金色那一层的尺寸填成了朱色
+   （半径写的是 5.1/6.5/5.1，那是 grow=1.1 的值）。
+   于是外形对、金边整个没了 —— 看上去就是一坨纯红。
+   现在两层都画：8 个 view，金的在下、朱的在上。
+   下面每个数都是按 50rpx / 24.6 设计单位（k=2.0325）算出来的，不是估的。
+
+   没搬的只有设计稿那两道 0.9 单位宽的内卷（curls）——
+   换算过来 1.8rpx，这个尺寸上画不出来。 */
 .ruyi {
   flex: none;
   position: relative;
   width: 50rpx;
-  height: 30rpx;
+  height: 28.9rpx;
 }
-.ruyi-lobe {
-  position: absolute;
-  border-radius: 50%;
-  background: var(--zhu);
-}
-.ruyi-l { width: 21rpx; height: 21rpx; left: 0;    top: 9rpx; }
-.ruyi-m { width: 26rpx; height: 26rpx; left: 12rpx; top: 0; }
-.ruyi-r { width: 21rpx; height: 21rpx; left: 29rpx; top: 9rpx; }
-.ruyi-bar {
-  position: absolute;
-  left: 2rpx;
-  top: 18rpx;
-  width: 46rpx;
-  height: 9rpx;
-  border-radius: 4rpx;
-  background: var(--zhu);
-}
+.ruyi-lobe, .ruyi-bar { position: absolute; }
+.ruyi-lobe { border-radius: 50%; }
+.ruyi-bar { border-radius: 3.3rpx; }
+/* 下层：金，比朱面各方向大 1.1 个设计单位（≈2.2rpx），露出来就是边 */
+.ruyi-gold { background: var(--gold); }
+.ruyi-gold.ruyi-l { left: 0;      top: 8.1rpx;  width: 20.7rpx; height: 20.7rpx; }
+.ruyi-gold.ruyi-m { left: 11.8rpx; top: 0;      width: 26.4rpx; height: 26.4rpx; }
+.ruyi-gold.ruyi-r { left: 29.3rpx; top: 8.1rpx; width: 20.7rpx; height: 20.7rpx; }
+.ruyi-gold.ruyi-bar { left: 0;     top: 15.0rpx; width: 50rpx;   height: 11.6rpx; }
+/* 上层：朱面 */
+.ruyi-zhu { background: var(--zhu); }
+.ruyi-zhu.ruyi-l { left: 2.2rpx;  top: 10.4rpx; width: 16.3rpx; height: 16.3rpx; }
+.ruyi-zhu.ruyi-m { left: 14.0rpx; top: 2.2rpx;  width: 22.0rpx; height: 22.0rpx; }
+.ruyi-zhu.ruyi-r { left: 31.5rpx; top: 10.4rpx; width: 16.3rpx; height: 16.3rpx; }
+.ruyi-zhu.ruyi-bar { left: 2.2rpx; top: 17.3rpx; width: 45.5rpx; height: 9.3rpx; }
 .brand-en {
   margin-top: 22rpx;
   font-size: 21rpx;

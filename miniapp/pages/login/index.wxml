@@ -27,14 +27,19 @@
       <image class="brand-img" src="/assets/images/home-title-calligraphy.png" mode="heightFix" />
       <view class="brand-div">
         <view class="brand-div-line"></view>
-        <!-- 如意云头：三个圆瓣 + 一道横条，形制抄设计稿 ruyi_divider()
-           （圆心 97.8/105.0/112.2、半径 5.1/6.5/5.1、横条 22.4×4.6）。
-           用四个 view 拼，不用 clip-path —— 各端 WebView 对 path() 支持参差。 -->
+        <!-- 祥云：三个圆瓣压一道横条，金边朱面（设计稿 ruyi_divider()）。
+             金边是垫在底下大一圈的金色露出来的那一圈，所以要画**两层**：
+             先金（grow=1.1）后朱（grow=0），共 8 个 view。
+             不用 clip-path —— 各端 WebView 对 path() 支持参差。 -->
       <view class="ruyi">
-        <view class="ruyi-lobe ruyi-l"></view>
-        <view class="ruyi-lobe ruyi-m"></view>
-        <view class="ruyi-lobe ruyi-r"></view>
-        <view class="ruyi-bar"></view>
+        <view class="ruyi-lobe ruyi-gold ruyi-l"></view>
+        <view class="ruyi-lobe ruyi-gold ruyi-m"></view>
+        <view class="ruyi-lobe ruyi-gold ruyi-r"></view>
+        <view class="ruyi-bar ruyi-gold"></view>
+        <view class="ruyi-lobe ruyi-zhu ruyi-l"></view>
+        <view class="ruyi-lobe ruyi-zhu ruyi-m"></view>
+        <view class="ruyi-lobe ruyi-zhu ruyi-r"></view>
+        <view class="ruyi-bar ruyi-zhu"></view>
       </view>
         <view class="brand-div-line brand-div-line-r"></view>
       </view>

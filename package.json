@@ -9,6 +9,7 @@
     "check:admin-menu-icons": "node scripts/check-admin-menu-icons.js",
     "check:press-feedback": "node scripts/check-press-feedback.js",
     "check:tabbar-routes": "node scripts/check-tabbar-routes.js",
+    "build:tabbar-tokens": "node scripts/build-tabbar-tokens.mjs",
     "check:grid-tracks": "node scripts/check-grid-tracks.mjs",
     "check:miniapp-page-paths": "node scripts/check-miniapp-page-paths.js",
     "check:ui-copy": "node scripts/check-ui-copy.js",

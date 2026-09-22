@@ -215,6 +215,41 @@ function checkPng(p, maxKB) {
   }
 }
 
+// ── 四点五、自定义 tabBar 的令牌副本 ───────────────────────────
+{
+  const tb = await import('./build-tabbar-tokens.mjs')
+  const t = tb.tabbarTokens()          // 它自己会验：都能在 app.wxss 找到、摊得平、%23 没漏
+  checkHash('tabBar 令牌副本', path.join(ROOT, 'scripts/tabbar-tokens.hash'), tb.fingerprint(t),
+    'node scripts/build-tabbar-tokens.mjs')
+  const cur = tb.currentBlock()
+  if (cur === null) {
+    errs.push('custom-tab-bar/index.wxss 里找不到令牌副本那一段，' +
+              '跑 node scripts/build-tabbar-tokens.mjs')
+  } else if (cur !== tb.block(t)) {
+    errs.push('custom-tab-bar 的令牌副本和 app.wxss 对不上，' +
+              '跑 node scripts/build-tabbar-tokens.mjs 重出')
+  }
+  /*
+   * 最要紧的一条：组件里用到的每一个 var()，副本里都得有。
+   *
+   * 自定义 tabBar 不是 page 的后代，继承到不了，少抄一个那条声明就整条作废：
+   * 底色少抄 → 整条栏透明；回纹少抄 → 纹样不画；字色少抄 → 标签回落成黑。
+   * 真机上出过，而且**没有任何护栏会红** —— wxss 语法是合法的。
+   */
+  const need = tb.neededNames()
+  for (const n of need) {
+    if (!(n in t)) errs.push(`custom-tab-bar 用了 var(${n})，令牌副本里却没有`)
+  }
+  if (cur !== null) {
+    for (const n of need) {
+      if (!cur.includes(`${n}:`)) {
+        errs.push(`custom-tab-bar 用了 var(${n})，但副本那一段里没写出来 —— ` +
+                  '这条声明在真机上会整条作废')
+      }
+    }
+  }
+}
+
 // ── 五、问答悬浮标 ───────────────────────────────────────────────
 {
   const src = read(path.join(ROOT, 'scripts/build-ai-fab.mjs'))

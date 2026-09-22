@@ -98,6 +98,10 @@
           </view><!-- /sheet -->
         </view>
 
+        <!-- 回纹带：正文和「相关推荐」之间的分隔（设计稿 news-detail.html
+             在这个位置放的就是 .fret）。tab 页那条在标签栏上方，同一件东西。 -->
+        <view class="fret fret--div"></view>
+
         <!-- 相关推荐 -->
         <view class="reco">
           <view class="reco-head">相关推荐</view>

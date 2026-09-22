@@ -538,6 +538,32 @@ button.lbtn-ghost[disabled] {
   height: 100%;
   z-index: 0;
 }
+/* ── 回纹（雷纹）带 ──
+   「万字不到头」的刻痕带。设计稿里它出现在两处：
+     · 首页等 tab 页：标签栏上方，页面收底的那一笔；
+     · 二级页（动态详情）：正文和「相关推荐」之间的分隔。
+   这一份给**页面**用。自定义 tabBar 是页面之外的独立层，
+   app.wxss 的 class 规则到不了那儿，所以它在
+   custom-tab-bar/index.wxss 里另有一份一样的 —— 两份必须同步，
+   check-tabbar-routes 会把两边的画法比一遍。
+
+   同一组纹样画两遍：深色（--fret-cut）当刻痕在上，
+   浅色（--fret-lit）往下错 2.2rpx 当受光面在下。
+   两层缺一层就不是「刻」出来的，是贴上去的。 */
+.fret {
+  height: 40rpx;
+  background-color: rgba(173, 130, 72, .07);
+  background-image: var(--fret-cut), var(--fret-lit);
+  background-position: 0 0, 0 2.2rpx;
+  background-size: 96rpx 40rpx;
+  background-repeat: repeat-x;
+  box-shadow:
+    inset 0 2rpx 0 rgba(255, 252, 244, .55),
+    inset 0 -2rpx 0 rgba(107, 67, 38, .10);
+}
+/* 二级页那一档：上下各留一段，当分隔用（设计稿写的是 margin: 22px 0 0） */
+.fret--div { margin: 44rpx 0 0; }
+
 /* ── 内容纸 ──
    卷首是一幅画顶到屏幕最上缘，内容纸从画脚浮起来压住山脚。
    首页和动态详情页是同一件东西，所以住在这儿。

@@ -134,6 +134,28 @@ function stripTokenBlock(src) {
 }
 
 /**
+ * custom-tab-bar/index.wxss 里的**令牌副本**同样不上棘轮。
+ *
+ * 自定义 tabBar 是页面之外的独立层，继承不到 page 上的令牌，
+ * 所以 scripts/build-tabbar-tokens.mjs 会把它用到的那几个现抄一份进去。
+ * 那一段是**生成的令牌定义**，不是这个组件自己挑的颜色，和 app.wxss
+ * 的令牌区是同一种东西，判它没有意义（而且一判就逼着人去手改生成区）。
+ *
+ * 和上面那条一样：标记没了就报错，不默默放行 ——
+ * 不然谁把生成区删了，组件里的 var() 会集体失效而流水线全绿，
+ * 正是这次"底部导航变透明"那个 bug 的形状。
+ */
+function stripTabbarTokenCopy(src) {
+  const a = src.indexOf('/* ══ 令牌副本开始')
+  const b = src.indexOf('/* ══ 令牌副本结束')
+  if (a < 0 || b < 0 || b < a) {
+    throw new Error('custom-tab-bar/index.wxss 里找不到令牌副本的起止标记；' +
+      '跑 node scripts/build-tabbar-tokens.mjs 重出')
+  }
+  return src.slice(0, a) + src.slice(b)
+}
+
+/**
  * 去掉 CSS 注释再数颜色。
  *
  * 这一条是补的。原来注释也算进去了，于是"这里原来写的是 #E2EDE6"
@@ -238,6 +260,7 @@ function main() {
     const rel = path.relative(MINI, abs).split(path.sep).join('/')
     let src = fs.readFileSync(abs, 'utf8')
     if (rel === 'app.wxss') src = stripTokenBlock(src)
+    if (rel === 'custom-tab-bar/index.wxss') src = stripTabbarTokenCopy(src)
     src = stripComments(src)
     const n = (src.match(/#[0-9a-fA-F]{3,6}\b/g) || []).length
     const budget = BUDGET[rel] || 0

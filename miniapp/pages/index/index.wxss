@@ -224,7 +224,7 @@
 
 /* ── 公告条 ──
    定稿是**杏色底 + 朱红左竖条**，不是白卡片。左沿方角、右沿圆角，
-   像一张从左边压进来的笺。原来是 var(--card) 白底 + 四周 --line 描边，
+   像一张从左边压进来的笺。原来是 var(--paper-card) 白底 + 四周 --line 描边，
    和它上下的纸底几乎一个色，整条看不出边界；图标也是金的，
    定稿里那枚铃是朱的——朱是这套设计唯一的点缀色，公告正该用它。 */
 .notice-bar {
@@ -567,7 +567,7 @@
 .ncard, .ccard {
   display: flex;
   gap: 22rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 18rpx;

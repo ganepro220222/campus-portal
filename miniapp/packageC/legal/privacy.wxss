@@ -1,19 +1,27 @@
 /* packageC/legal/privacy.wxss */
-.legal-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
+/* 页底：纸 + 淡纤维 */
+.legal-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 .legal-scroll { flex: 1; padding: 24rpx 0; box-sizing: border-box; }
 .legal-card {
-  background: var(--card);
+  background: var(--paper-card);
   border-radius: 24rpx;
   padding: 32rpx 28rpx;
   margin: 0 28rpx 24rpx;
-  border: 1rpx solid #E8EDF5;
+  /* 原来是写死的 #E8EDF5 冷蓝白描边 */
+  border: 1rpx solid var(--line);
 }
-.legal-title { font-size: 34rpx; font-weight: 700; color: var(--navy); margin-bottom: 16rpx; }
+.legal-title { font-size: 34rpx; font-weight: 700; color: var(--ink); margin-bottom: 16rpx; }
 .legal-rt {
   display: block;
   font-size: 26rpx;
   line-height: 1.75;
-  color: #4A5568;
+  /* 正文原来是写死的 #4A5568 冷灰蓝，和 --sub 同一档亮度但偏蓝 */
+  color: var(--sub);
 }
 .legal-hint {
   margin: 0 28rpx 16rpx;
@@ -21,22 +29,28 @@
   font-size: 23rpx;
   line-height: 1.65;
   color: var(--sub);
-  background: var(--sky-3);
-  border-radius: 16rpx;
-  border: 1rpx solid #D6DEEE;
+  /* 提示条：凹进纸里的一条，原来是 --sky-3 淡绿 + 写死的 #D6DEEE 冷蓝描边 */
+  background: var(--paper-sunk);
+  border-radius: 12rpx;
+  border: 1rpx solid var(--line);
 }
 .legal-loading { text-align: center; color: var(--muted); font-size: 26rpx; padding: 80rpx 0; }
 .legal-empty { font-size: 25rpx; line-height: 1.7; color: var(--muted); padding: 8rpx 0 4rpx; }
 .legal-retry-wrap { display: flex; justify-content: center; padding: 4rpx 0 12rpx; }
 .legal-retry {
   font-size: 26rpx;
-  color: var(--navy);
+  color: var(--jin-70);
   font-weight: 600;
   padding: 16rpx 44rpx;
-  background: var(--card);
-  border: 1rpx solid #D6DEEE;
-  border-radius: 40rpx;
+  /* 素钮，同 .page-state-action。原来是 40rpx 全圆胶囊 + 写死的 #D6DEEE 描边 */
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  border: 1rpx solid var(--line);
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.9);
+  border-radius: 10rpx;
 }
-.legal-retry:active { background: var(--sky-3); }
+.legal-retry:active {
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-3));
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.14);
+}
 .legal-foot { text-align: center; font-size: 22rpx; color: var(--muted); padding: 16rpx 0 40rpx; }
 .legal-bottom { height: env(safe-area-inset-bottom); }

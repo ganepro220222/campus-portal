@@ -54,7 +54,8 @@
   z-index: 3;
   font-size: 21rpx;
   color: var(--paper-card);
-  background: rgba(190, 156, 68, 0.9);
+  /* 旧调色板的那支金换成本套的 --jin-50 */
+  background: rgba(198, 158, 98, 0.92);
   padding: 7rpx 16rpx;
   /* 直角小签，不是胶囊 */
   border-radius: 6rpx;

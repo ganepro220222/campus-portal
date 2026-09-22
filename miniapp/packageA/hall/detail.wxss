@@ -62,7 +62,7 @@
 /* VR 入口 */
 .vr-block {
   margin-top: 24rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 26rpx;
   padding: 24rpx 26rpx;
@@ -108,7 +108,7 @@
   display: flex;
   align-items: center;
   gap: 22rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 26rpx;
   padding: 22rpx 26rpx;
@@ -131,7 +131,8 @@
 }
 /* 播放中：换成金钮，一眼分得出两个态 */
 .ap-on {
-  background: linear-gradient(180deg, var(--jin-50), var(--jin-70));
+  /* 金钮压深一档：--jin-50 上白图标只有 2.40:1；jin-60 起步是 3.72:1，过图形要的 3 */
+  background: linear-gradient(180deg, var(--jin-60), var(--jin-80));
   box-shadow: inset 0 2rpx 0 rgba(255,250,240,.35), 0 3rpx 8rpx rgba(126,97,52,.26);
   padding-left: 0;
 }
@@ -152,7 +153,7 @@
 
 /* 介绍 */
 .hall-intro {
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   padding: 28rpx;
@@ -189,7 +190,9 @@
   padding: 0 32rpx;
   height: 92rpx;
   border-radius: 12rpx;
-  background: linear-gradient(180deg, var(--jin-50), var(--jin-70));
+  /* 金钮压深一档：--jin-50 太亮，纸白的字压上去只有 2.40:1。
+     jin-70 起步量到 5.57:1，过正文要的 4.5。 */
+  background: linear-gradient(180deg, var(--jin-70), var(--jin-80));
   box-shadow: inset 0 2rpx 0 rgba(255,250,240,.35);
   color: var(--paper-card);
   font-size: 28rpx;
@@ -213,7 +216,7 @@
 /* 沉浸式长卷 */
 .immersive {
   margin-top: 24rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   overflow: hidden;

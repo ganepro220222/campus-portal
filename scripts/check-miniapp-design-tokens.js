@@ -69,11 +69,6 @@ const BUDGET = {
      用户是照着颜色认文件类型的，换成金棕一家人反而分不出来。
      这一档留着，不往下收。 */
   'app.wxss': 4,
-  'components/loading/index.wxss': 2,
-  'components/skeleton/index.wxss': 1,
-  'packageB/course/player.wxss': 1,
-  'packageC/legal/privacy.wxss': 4,
-  'packageC/message/index.wxss': 2,
   'pages/login/index.wxss': 2
 }
 
@@ -85,12 +80,7 @@ const BUDGET = {
  * 是 pages/login/index.wxss 的旧副本）连同它那 8 处一起删掉了。
  */
 const DISGUISED_BUDGET = {
-  'app.wxss': 0,
-  'packageA/news/list.wxss': 1,
-  'packageB/course/detail.wxss': 1,
-  'packageB/course/player.wxss': 1,
-  'packageC/feedback/index.wxss': 1,
-  'packageD/poster/generate.wxss': 1
+  'app.wxss': 0
 }
 
 /**
@@ -274,9 +264,11 @@ function main() {
   }
   const left = Object.values(BUDGET).reduce((a, b) => a + b, 0)
   const dis = Object.values(DISGUISED_BUDGET).reduce((a, b) => a + b, 0)
+  const disTx = dis === 0
+    ? '换成 rgb()/%23 的那一批也清零了'
+    : `但换成 rgb()/%23 的还有 ${dis} 处压着棘轮`
   console.log(`check-miniapp-design-tokens OK（旧调色板的 #hex 写法已清零，` +
-              `但换成 rgb()/%23 的还有 ${dis} 处压着棘轮；` +
-              `另有 ${left} 处写死色值，都按页收）`)
+              `${disTx}；另有 ${left} 处写死色值，都按页收）`)
 }
 
 main()

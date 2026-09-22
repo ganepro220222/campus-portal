@@ -100,7 +100,9 @@
 }
 .nb-overlay .nb-title {
   padding: 8rpx 32rpx 10rpx;
-  border-radius: 999rpx;
+  /* 它就是一方**题签**，所以是直角（6rpx），不是药丸。
+     圆角只影响形，上面量过的对比度不受影响。 */
+  border-radius: 6rpx;
   background: rgba(252, 250, 244, 0.78);
   box-shadow: 0 2rpx 8rpx rgba(74, 102, 96, 0.18),
               inset 0 0 0 2rpx rgba(122, 110, 85, 0.20);

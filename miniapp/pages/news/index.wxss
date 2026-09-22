@@ -70,7 +70,7 @@ nav-bar { flex: 0 0 auto; }
 .ncard {
   display: flex;
   gap: 22rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 18rpx;
@@ -114,7 +114,8 @@ nav-bar { flex: 0 0 auto; }
   color: var(--muted);
   padding: 8rpx 0 24rpx;
 }
-.list-foot-done { color: var(--ghost); }
+/* --ghost 是"几乎看不见"的那一档（纸上 1.43:1），当字色读不出来 */
+.list-foot-done { color: var(--muted); }
 .list-foot-retry { color: var(--jin-70); }
 
 /* 全局 .page-refresh-bar 默认 28rpx 横向边距（对齐详情页栏距），本页内容栏距是 32rpx（.news-wrap），

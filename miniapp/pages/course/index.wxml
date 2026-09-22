@@ -41,7 +41,7 @@
         <view class="ccard-thumb mount mount--sm">
           <view class="mount-art {{item.cover && !item.coverFailed ? 'has-cover' : ''}}">
             <image wx:if="{{item.cover && !item.coverFailed}}" class="mount-cover ccard-img" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
-            <view wx:else class="thumb-blank"><icon name="{{item.icon}}" size="30" color="#A68C64" /></view>
+            <view wx:else class="thumb-blank"><icon name="{{item.icon}}" size="30" color="#856F4F" /></view>
           </view>
         </view>
         <view class="ccard-body">
@@ -63,13 +63,13 @@
       </view>
 
       <view wx:if="{{error && !loading && !courseList.length}}" class="page-state-box">
-        <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
+        <icon class="page-state-icon" name="alert" size="40" color="#957C58" />
         <text class="page-state-text">加载失败，请检查网络后重试</text>
         <view class="page-state-action" bindtap="onRetry">重新加载</view>
       </view>
 
       <view wx:elif="{{!loading && !courseList.length && !error}}" class="empty-state">
-        <icon name="course" size="40" color="#D6CDB8" />
+        <icon name="course" size="40" color="#957C58" />
         <text>暂无课程</text>
       </view>
 

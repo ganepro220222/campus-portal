@@ -11,13 +11,13 @@
   </view>
 
   <view wx:elif="{{error}}" class="page-state-box">
-    <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
+    <icon class="page-state-icon" name="alert" size="40" color="#957C58" />
     <text class="page-state-text">消息加载失败，请检查网络后重试</text>
     <view class="page-state-action" bindtap="onRetry">重新加载</view>
   </view>
 
   <view wx:elif="{{!list.length}}" class="empty-state">
-    <icon name="bell" size="42" color="#D6CDB8" />
+    <icon name="bell" size="42" color="#957C58" />
     <text>暂无消息</text>
     <text class="msg-empty-sub">报名结果、反馈回复等将显示在这里</text>
   </view>
@@ -43,7 +43,7 @@
           <text class="msg-content">{{item.content}}</text>
           <text class="msg-time">{{item.createdAt}}</text>
         </view>
-        <icon wx:if="{{item.route}}" name="chevron-right" size="16" color="#D6CDB8" />
+        <icon wx:if="{{item.route}}" name="chevron-right" size="16" color="#957C58" />
       </view>
       <view class="msg-bottom"></view>
     </scroll-view>

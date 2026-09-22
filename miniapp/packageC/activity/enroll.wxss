@@ -44,7 +44,7 @@
 /* 活动摘要 */
 .summary-card {
   margin: 24rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border-radius: 24rpx;
   padding: 28rpx 28rpx 28rpx 32rpx;
   border: 1rpx solid var(--line);
@@ -80,7 +80,7 @@
 /* 表单 */
 .form-card {
   margin: 24rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border-radius: 24rpx;
   padding: 30rpx 28rpx 32rpx;
   border: 1rpx solid var(--line);
@@ -139,7 +139,7 @@
   display: block;
   margin-top: 10rpx;
   font-size: 22rpx;
-  color: var(--color-danger);
+  color: var(--zhu);
 }
 
 .btn-primary {
@@ -162,7 +162,7 @@
 /* 报名结果 */
 .result-card {
   margin: 24rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border-radius: 24rpx;
   padding: 52rpx 32rpx 40rpx;
   border: 1rpx solid var(--line);

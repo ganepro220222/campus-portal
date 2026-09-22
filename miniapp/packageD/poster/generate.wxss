@@ -19,7 +19,7 @@
   height: 800rpx;
   border-radius: 24rpx;
   overflow: hidden;
-  /* 投影改暖：原来是 rgba(20,26,56,.4) 的冷蓝灰，压在纸上会发灰 */
+  /* 投影改暖：原来是旧调色板的冷蓝灰，压在纸上会发灰 */
   box-shadow: 0 24rpx 60rpx rgba(74, 50, 30, 0.34);
   display: flex;
   flex-direction: column;
@@ -237,7 +237,9 @@
   height: 92rpx;
   /* 金钮，直角 12rpx——同展馆/文创详情的海报键，一个动作一个样子 */
   border-radius: 12rpx;
-  background: linear-gradient(180deg, var(--jin-50), var(--jin-70));
+  /* 金钮压深一档：--jin-50 太亮，纸白的字压上去只有 2.40:1。
+     jin-70 起步量到 5.57:1，过正文要的 4.5。 */
+  background: linear-gradient(180deg, var(--jin-70), var(--jin-80));
   color: var(--paper-card);
   font-size: 31rpx;
   font-weight: 700;

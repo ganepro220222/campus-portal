@@ -3,7 +3,10 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, var(--sky-2) 0, var(--paper) 240rpx);
+  /* 页顶原来是一道 --sky-2 的淡绿往下褪成纸，旧稿的"顶部有色"套路 */
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
 }
 .craft-scroll { flex: 1; overflow: hidden; }
 
@@ -24,7 +27,7 @@
   min-width: 0;
   border-radius: 26rpx;
   overflow: hidden;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   box-shadow: 0 8rpx 22rpx rgba(74,50,30, 0.10);
   transition: transform 0.15s;
@@ -45,11 +48,13 @@
   top: 14rpx; right: 14rpx;
   font-size: 18rpx;
   font-weight: 700;
-  color: var(--card);
-  background: rgba(12, 16, 36, 0.32);
-  border: 1rpx solid rgba(255, 255, 255, 0.5);
+  color: var(--paper-card);
+  /* 原来是 rgba(12,16,36,.32) 的冷蓝黑 + 白描边 + 16rpx 胶囊；
+     换成暖墨 + 金线 + 直角，和全站的小签同族 */
+  background: rgba(20, 16, 12, 0.42);
+  border: 1rpx solid rgba(203, 168, 107, 0.55);
   padding: 3rpx 12rpx;
-  border-radius: 16rpx;
+  border-radius: 4rpx;
 }
 .ccard-foot { padding: 18rpx 20rpx 22rpx; }
 .ccard-name {

@@ -1,5 +1,11 @@
 /* packageC/profile/edit.wxss */
-.pe-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
+/* 页底：纸 + 淡纤维 */
+.pe-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 .pe-state {
   flex: 1;
   display: flex;
@@ -13,13 +19,15 @@
 .pe-retry {
   padding: 12rpx 28rpx;
   font-size: 26rpx;
-  color: var(--sky);
+  /* 原来是 var(--sky)，那是个**浅色块**的令牌，拿来当字色在纸上只有 1.3:1，
+     基本等于看不见。改成和全站"可点的字"一样的金棕。 */
+  color: var(--jin-70);
 }
 .pe-scroll { flex: 1; overflow: hidden; padding: 24rpx 0 0; }
 
 .pe-card {
   margin: 0 28rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 28rpx;
@@ -31,19 +39,22 @@
   line-height: 1.6;
   margin-bottom: 24rpx;
   padding: 18rpx 20rpx;
-  background: var(--sky-3);
-  border-radius: 16rpx;
+  /* 提示条凹进纸里，原来是 --sky-3 的淡绿 */
+  background: var(--paper-sunk);
+  border-radius: 12rpx;
 }
 .pe-label { font-size: 27rpx; font-weight: 600; color: var(--ink); margin-bottom: 14rpx; }
 .pe-label:not(:first-of-type) { margin-top: 26rpx; }
-.req { color: var(--color-danger); margin-left: 4rpx; }
+.req { color: var(--zhu); margin-left: 4rpx; }
 
 .pe-input {
   width: 100%;
   height: 84rpx;
-  background: var(--sky-3);
+  /* 输入面凹进纸里 */
+  background: var(--paper-sunk);
   border: 1rpx solid var(--line);
-  border-radius: 18rpx;
+  border-radius: 14rpx;
+  box-shadow: inset 0 2rpx 4rpx rgba(74,50,30,.10);
   padding: 0 22rpx;
   font-size: 27rpx;
   color: var(--ink);
@@ -53,7 +64,10 @@
 .pe-pad { height: 40rpx; }
 .pe-bar {
   padding: 20rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
-  background: var(--card);
+  /* 底栏是纸 */
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-top: 1rpx solid var(--line);
 }
 .pe-submit {
@@ -61,14 +75,17 @@
   align-items: center;
   justify-content: center;
   height: 88rpx;
-  border-radius: 44rpx;
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  color: var(--card);
+  /* 主操作：朱砂漆钮，直角 12rpx */
+  border-radius: 12rpx;
+  background: linear-gradient(180deg, var(--zhu-lit), var(--zhu) 52%, var(--zhu-d));
+  box-shadow: inset 0 2rpx 0 rgba(255,236,228,.30),
+              inset 0 -2rpx 0 rgba(78,18,14,.45),
+              0 4rpx 10rpx rgba(158,43,37,.28);
+  color: var(--paper-card);
   font-size: 30rpx;
   font-weight: 600;
   letter-spacing: 2rpx;
   border: none;
-  box-shadow: 0 12rpx 30rpx rgba(96,78,44, 0.32);
 }
 .pe-submit::after { border: none; }
 .pe-submit.ing { opacity: 0.7; }

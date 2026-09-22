@@ -1,7 +1,10 @@
 /* packageA/news/list.wxss */
 .news-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, var(--sky-2) 0, var(--paper) 220rpx);
+  /* 页顶原来是一道 --sky-2 的淡绿往下褪成纸，旧稿的"顶部有色"套路 */
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
 }
 
 /* 分类栏（吸顶） */
@@ -11,9 +14,11 @@
   z-index: 10;
   white-space: nowrap;
   padding: 16rpx 0;
-  background: rgba(245, 248, 252, 0.94);
-  backdrop-filter: blur(16rpx);
-  -webkit-backdrop-filter: blur(16rpx);
+  /* 吸顶的分类栏是纸，不是旧调色板那层冷蓝白玻璃。
+     吸顶就必须不透明——半透明的话下面的卡片滚过去会从纹样里透出来。 */
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-bottom: 1rpx solid var(--line);
 }
 .cats-inner { display: inline-flex; gap: 16rpx; padding: 0 28rpx; }
@@ -21,15 +26,19 @@
   flex: 0 0 auto;
   font-size: 25rpx;
   padding: 12rpx 28rpx;
-  border-radius: 32rpx;
-  background: var(--card);
+  /* 分类：一排小签，选中的那一方盖成朱印。
+     原来是 32rpx 全圆胶囊，选中态是 blue→navy 的渐变色块。 */
+  border-radius: 8rpx;
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   border: 1rpx solid var(--line);
   color: var(--sub);
 }
 .cat-on {
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  color: var(--card);
-  border-color: transparent;
+  background: var(--zhu);
+  box-shadow: none;
+  color: var(--paper-card);
+  border-color: var(--zhu-d);
 }
 
 /* 列表 */
@@ -38,14 +47,14 @@
   display: flex;
   align-items: center;
   gap: 20rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   padding: 18rpx;
   margin-bottom: 18rpx;
   box-shadow: var(--shadow-sm);
 }
-.ncard:active { background: var(--sky-3); }
+.ncard:active { background: var(--paper-2); }
 .nthumb {
   flex: 0 0 184rpx;
   height: 132rpx;
@@ -80,5 +89,5 @@
 .ndate { font-size: 21rpx; color: var(--muted); }
 
 .list-tip { text-align: center; color: var(--muted); font-size: 23rpx; padding: 30rpx; }
-.list-tip-retry { color: var(--navy); }
+.list-tip-retry { color: var(--jin-70); }
 .list-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }

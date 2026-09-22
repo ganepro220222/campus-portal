@@ -81,7 +81,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 原来是 rgba(31,37,71,.45) 的冷蓝黑 */
+  /* 原来是旧调色板的冷蓝黑遮罩 */
   background: rgba(20, 16, 12, 0.55);
   color: var(--paper-card);
   font-size: 22rpx;

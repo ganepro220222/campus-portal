@@ -11,13 +11,13 @@
   </view>
 
   <view wx:elif="{{loadError}}" class="page-state-box">
-    <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
+    <icon class="page-state-icon" name="alert" size="40" color="#957C58" />
     <text class="page-state-text">反馈加载失败，请检查网络后重试</text>
     <view class="page-state-action" bindtap="onRetry">重新加载</view>
   </view>
 
   <view wx:elif="{{!list.length}}" class="empty-state">
-    <icon name="chat" size="42" color="#D6CDB8" />
+    <icon name="chat" size="42" color="#957C58" />
     <text>暂无反馈</text>
     <text class="fb-empty-sub">提交后，管理员回复会显示在这里</text>
     <view class="page-state-action" bindtap="onCreate">提交新反馈</view>

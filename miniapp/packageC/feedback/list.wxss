@@ -3,7 +3,10 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--paper);
+  /* 页底：纸 + 淡纤维 */
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
 }
 .fb-empty-sub {
   font-size: 24rpx;
@@ -15,12 +18,12 @@
 .fb-row {
   margin: 0 28rpx 16rpx;
   padding: 24rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   box-shadow: var(--shadow-sm);
 }
-.fb-row:active { background: var(--sky-3); }
+.fb-row:active { background: var(--paper-2); }
 .fb-row-top {
   display: flex;
   justify-content: space-between;
@@ -30,7 +33,7 @@
 .fb-row-type {
   font-size: 24rpx;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--jin-70);
 }
 .fb-row-status {
   font-size: 22rpx;
@@ -58,7 +61,10 @@
 .fb-list-bar {
   flex-shrink: 0;
   padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.96);
+  /* 底栏是纸，不是白玻璃 */
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-top: 1rpx solid var(--line);
 }
 .fb-list-bar .fb-submit {
@@ -67,9 +73,13 @@
   line-height: 88rpx;
   font-size: 30rpx;
   font-weight: 700;
-  color: var(--card);
-  background: linear-gradient(135deg, var(--blue), var(--navy));
+  /* 主操作：朱砂漆钮，直角 12rpx */
+  color: var(--paper-card);
+  background: linear-gradient(180deg, var(--zhu-lit), var(--zhu) 52%, var(--zhu-d));
+  box-shadow: inset 0 2rpx 0 rgba(255,236,228,.30),
+              inset 0 -2rpx 0 rgba(78,18,14,.45),
+              0 4rpx 10rpx rgba(158,43,37,.28);
   border: none;
-  border-radius: 44rpx;
+  border-radius: 12rpx;
 }
 .fb-list-bar .fb-submit:active { opacity: 0.88; }

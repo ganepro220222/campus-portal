@@ -127,7 +127,8 @@
   color: var(--muted);
   padding: 8rpx 0 24rpx;
 }
-.list-foot-done { color: var(--ghost); }
+/* --ghost 是"几乎看不见"的那一档（纸上 1.43:1），当字色读不出来 */
+.list-foot-done { color: var(--muted); }
 .list-foot-retry { color: var(--jin-70); }
 
 .list-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

@@ -51,7 +51,7 @@
               data-cover="{{item.cover}}"
               binderror="onCoverError"
             />
-            <view wx:else class="thumb-blank"><icon name="museum" size="30" color="#A68C64" /></view>
+            <view wx:else class="thumb-blank"><icon name="museum" size="30" color="#856F4F" /></view>
             <view class="hc-plate">
               <icon class="hc-mark" name="museum" size="13" color="#7E6134" />
               <text class="hc-plate-tx serif">{{item.shortName || item.name}}</text>
@@ -69,13 +69,13 @@
     </view>
 
     <view wx:if="{{error && !loading && !hallList.length}}" class="page-state-box">
-      <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
+      <icon class="page-state-icon" name="alert" size="40" color="#957C58" />
       <text class="page-state-text">加载失败，请检查网络后重试</text>
       <view class="page-state-action" bindtap="onRetry">重新加载</view>
     </view>
 
     <view wx:elif="{{!loading && !hallList.length && !error}}" class="empty-state">
-      <icon name="museum" size="40" color="#D6CDB8" />
+      <icon name="museum" size="40" color="#957C58" />
       <text>暂无展馆内容</text>
     </view>
 

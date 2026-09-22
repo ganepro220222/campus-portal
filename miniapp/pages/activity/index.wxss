@@ -12,7 +12,7 @@
 .acard {
   display: flex;
   gap: 22rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border-radius: 24rpx;
   border: 1rpx solid var(--line);
   box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.07);

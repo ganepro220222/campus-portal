@@ -1,9 +1,12 @@
 /* components/skeleton/index.wxss */
 .sk { padding: 24rpx 32rpx 0; }
 
+/* 骨架屏的那道流光。原来底是 --sky-3 的淡绿、亮头是写死的 #F7FAFD 冷蓝白，
+   一整屏占位块全是淡绿的，真内容一进来页面整个色调都变一次。
+   改成纸：底用 --paper-2，亮头用更亮一档的 --wood-05。 */
 .sk-sh {
-  background: var(--sky-3);
-  background-image: linear-gradient(100deg, var(--sky-3) 30%, #F7FAFD 50%, var(--sky-3) 70%);
+  background: var(--paper-2);
+  background-image: linear-gradient(100deg, var(--paper-2) 30%, var(--wood-05) 50%, var(--paper-2) 70%);
   background-size: 220% 100%;
   animation: sk-move 1.3s ease-in-out infinite;
 }
@@ -19,7 +22,7 @@
 .sk-card {
   display: flex;
   gap: 20rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   padding: 18rpx;
@@ -32,7 +35,7 @@
 /* grid */
 .sk-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24rpx; }
 .sk-gcard {
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 26rpx;
   overflow: hidden;
@@ -41,17 +44,22 @@
 .sk-gcover { height: 180rpx; }
 
 /* home */
-.sk-banner { height: 316rpx; border-radius: 32rpx; margin-top: 24rpx; }
+/* 跟首页真 banner 对齐：372rpx 高（裱边 20 + 画心 352）、20rpx 圆角。
+   原来是 316rpx / 32rpx，骨架屏换成真内容时整页会往下跳 56rpx。 */
+.sk-banner { height: 372rpx; border-radius: 20rpx; margin-top: 24rpx; }
 .sk-entries {
   display: flex;
   justify-content: space-around;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 28rpx;
   padding: 30rpx 12rpx;
   margin-top: 24rpx;
 }
 .sk-entry { display: flex; flex-direction: column; align-items: center; gap: 14rpx; }
-.sk-eico { width: 100rpx; height: 100rpx; border-radius: 32rpx; }
+/* 首页那五个入口是**器物图直接落在书页上**，没有色块底（见 pages/index 的 .ico），
+   所以这里只占它 100rpx 的地方，圆角收到 12rpx：
+   原来的 32rpx 会读成一个"圆角方块底"，真内容进来时那块底凭空消失。 */
+.sk-eico { width: 100rpx; height: 100rpx; border-radius: 12rpx; }
 .sk-hrow { display: flex; gap: 22rpx; overflow: hidden; }
 .sk-hcard { width: 240rpx; height: 226rpx; border-radius: 24rpx; flex-shrink: 0; }

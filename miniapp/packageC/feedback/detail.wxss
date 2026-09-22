@@ -8,7 +8,7 @@
 .fb-detail-scroll { flex: 1; min-height: 0; padding-top: 16rpx; }
 .fb-card {
   margin: 0 28rpx 16rpx;
-  background: var(--card);
+  background: var(--paper-card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 28rpx;
@@ -23,7 +23,7 @@
 .fb-row-type {
   font-size: 24rpx;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--jin-70);
 }
 .fb-row-status {
   font-size: 22rpx;
@@ -54,7 +54,7 @@
   width: 168rpx;
   height: 168rpx;
   border-radius: 16rpx;
-  background: var(--sky-3);
+  background: var(--paper-sunk);
 }
 .fb-img:active { opacity: 0.86; }
 .fb-label {

@@ -1,5 +1,11 @@
 /* packageC/college/list.wxss */
-.college-page { height: 100vh; display: flex; flex-direction: column; background: linear-gradient(180deg, var(--sky-2) 0, var(--paper) 240rpx); }
+/* 页顶原来是一道 --sky-2 的淡绿往下褪成纸，旧稿的"顶部有色"套路 */
+.college-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 .college-scroll { flex: 1; overflow: hidden; }
 
 .college-intro { padding: 28rpx 32rpx 4rpx; }

@@ -50,7 +50,7 @@
         <view class="ncard-thumb mount mount--sm">
           <view class="mount-art {{item.cover && !item.coverFailed ? 'has-cover' : ''}}">
             <image wx:if="{{item.cover && !item.coverFailed}}" class="mount-cover ncard-img" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" lazy-load data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
-            <view wx:else class="thumb-blank"><icon name="{{item.icon}}" size="26" color="#A68C64" /></view>
+            <view wx:else class="thumb-blank"><icon name="{{item.icon}}" size="26" color="#856F4F" /></view>
           </view>
         </view>
         <view class="ncard-body">
@@ -63,13 +63,13 @@
       </view>
 
       <view wx:if="{{error && !loading && !newsList.length}}" class="page-state-box">
-        <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
+        <icon class="page-state-icon" name="alert" size="40" color="#957C58" />
         <text class="page-state-text">加载失败，请检查网络后重试</text>
         <view class="page-state-action" bindtap="onRetryInitial">重新加载</view>
       </view>
 
       <view wx:elif="{{!loading && !newsList.length && !error}}" class="empty-state">
-        <icon name="file" size="40" color="#D6CDB8" />
+        <icon name="file" size="40" color="#957C58" />
         <text>暂无动态</text>
       </view>
 

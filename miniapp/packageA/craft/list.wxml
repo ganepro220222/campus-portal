@@ -40,13 +40,13 @@
     </view>
 
     <view wx:if="{{error && !loading && !craftList.length}}" class="page-state-box">
-      <icon class="page-state-icon" name="alert" size="40" color="#D6CDB8" />
+      <icon class="page-state-icon" name="alert" size="40" color="#957C58" />
       <text class="page-state-text">加载失败，请检查网络后重试</text>
       <view class="page-state-action" bindtap="onRetry">重新加载</view>
     </view>
 
     <view wx:elif="{{!loading && !craftList.length && !error}}" class="empty-state">
-      <icon name="medal" size="40" color="#D6CDB8" />
+      <icon name="medal" size="40" color="#957C58" />
       <text>暂无文创内容</text>
     </view>
 

@@ -15,7 +15,10 @@
   align-items: center;
   gap: 12rpx;
   padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.96);
+  /* 底栏是纸，不是白玻璃 */
+  background-color: var(--paper-card);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
   border-top: 1rpx solid var(--line);
   box-shadow: 0 -8rpx 24rpx rgba(74,50,30, 0.08);
 }
@@ -23,20 +26,27 @@
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  background: var(--sky-2);
+  /* 纸钮 + 金线，同 .fav-icon / .res-dl。原来是 --sky-2 的淡绿底 */
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 0 rgba(255,252,244,.9);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
+/* 播放中：朱钮。朱在这套里只做标记位，"正在响"正是要标记的那个状态；
+   原来是 --navy 的棕金实心块，和静息的淡绿差得不明显。 */
 .rab-btn-on {
-  background: var(--navy);
+  background: var(--zhu);
+  box-shadow: inset 0 2rpx 0 rgba(255,236,232,.28), 0 2rpx 6rpx rgba(110,30,26,.24);
 }
 .rab-btn-hover {
-  background: var(--sky);
+  background: linear-gradient(180deg, var(--paper-2), var(--paper-3));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 4rpx rgba(74,50,30,.14);
 }
 .rab-btn-on.rab-btn-hover {
-  background: var(--navy-deep);
+  background: linear-gradient(rgba(124,28,23,.16), rgba(124,28,23,.16)), var(--zhu);
+  box-shadow: inset 0 2rpx 4rpx rgba(70,16,14,.28);
 }
 .rab-main {
   flex: 1;
@@ -74,7 +84,7 @@
   display: block;
   margin-top: 4rpx;
   font-size: 20rpx;
-  color: var(--color-danger);
+  color: var(--zhu);
 }
 .rab-hint {
   display: block;

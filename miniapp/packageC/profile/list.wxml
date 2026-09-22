@@ -9,13 +9,13 @@
   <view wx:if="{{loading}}" class="pl-state"><text>加载中…</text></view>
 
   <view wx:elif="{{error && isEmpty}}" class="empty-state">
-    <icon name="{{typeIcon}}" size="42" color="#D6CDB8" />
+    <icon name="{{typeIcon}}" size="42" color="#957C58" />
     <text>加载失败，请重试</text>
     <view class="pl-retry" bindtap="onRetry">重新加载</view>
   </view>
 
   <view wx:elif="{{isEmpty}}" class="empty-state">
-    <icon name="{{typeIcon}}" size="42" color="#D6CDB8" />
+    <icon name="{{typeIcon}}" size="42" color="#957C58" />
     <text>{{emptyText}}</text>
   </view>
 
@@ -47,7 +47,7 @@
             <text class="fp-title">{{fp.title}}</text>
             <text wx:if="{{fp.targetTypeLabel}}" class="fp-sub">{{fp.targetTypeLabel}}</text>
           </view>
-          <icon wx:if="{{fp.route}}" class="fp-arrow" name="chevron-right" size="16" color="#D6CDB8" />
+          <icon wx:if="{{fp.route}}" class="fp-arrow" name="chevron-right" size="16" color="#957C58" />
         </view>
       </view>
     </view>
@@ -82,7 +82,7 @@
         >{{redownloadingId === item.resourceId ? '下载中' : '再次下载'}}</view>
         <view wx:if="{{item.statusLabel}}" class="pl-status st-{{item.statusClass}}">{{item.statusLabel}}</view>
         <view wx:elif="{{type === 'badges'}}" class="pl-badge {{item.earned ? 'on' : ''}}">{{item.earned ? '已获得' : '未获得'}}</view>
-        <icon wx:elif="{{item.route}}" name="chevron-right" size="16" color="#D6CDB8" />
+        <icon wx:elif="{{item.route}}" name="chevron-right" size="16" color="#957C58" />
       </view>
     </view>
   </view>

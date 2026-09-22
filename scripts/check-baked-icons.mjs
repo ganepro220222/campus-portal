@@ -140,11 +140,25 @@ function checkPng(p, maxKB) {
     }
   }
 
-  const wxml = read(path.join(ROOT, 'miniapp/pages/index/index.wxml'))
+  // 光烤出来不算数，得真有页面引。
+  //
+  // 这里原来只扫 pages/index/index.wxml —— 默认每一张都归首页。
+  // 补二级页的卷首（hero-shan-art）时这条立刻误报：图在包里、
+  // 动态详情页在用，护栏却说"首页缺一件"。烤出来的图用在哪一页是会变的，
+  // 写死页面的护栏迟早说假话（纹理那条已经踩过一次同样的坑）。
+  // 改成扫全部 wxml：只要求「有人用」，不规定是谁用。
+  const allWxml = (function walk(dir, out = []) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) {
+        if (!['node_modules', 'miniprogram_npm'].includes(e.name)) walk(path.join(dir, e.name), out)
+      } else if (e.name.endsWith('.wxml')) out.push(read(path.join(dir, e.name)))
+    }
+    return out
+  })(path.join(ROOT, 'miniapp')).join('\n')
   for (const f of [...Object.keys(hero.PIECES).map(k => k + '.png'),
                    ...hero.BRANDS.map(b => b.out)]) {
-    if (!wxml.includes(`/assets/images/${f}`)) {
-      errs.push(`pages/index/index.wxml 没有引 ${f} —— 首页缺一件`)
+    if (!allWxml.includes(`/assets/images/${f}`)) {
+      errs.push(`烤出了 ${f}，却没有任何 wxml 引它 —— 图白躺在包里占体积`)
     }
   }
 }

@@ -55,7 +55,7 @@ const MAP = {
   'entry-resource': ['xianzhuang',  '线装书'],
   'entry-enroll':   ['bi',          '毛笔'],
   'megaphone':      ['fan',         '幡'],
-  'robot':          ['wenpai',      '小篆「问」牌'],
+  'robot':          ['wen',         '小篆「问」'],
 
   /* 控件类里有中式对应物、且换了不伤可用性的那批。
      返回/关闭/搜索/播放/眼睛这些国际通用符号不换——换形用户就得现学。 */

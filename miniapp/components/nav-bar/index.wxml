@@ -10,7 +10,7 @@
        below  —— 标题行下面整条（分类 chips）。
      fixed=false 时顶栏留在文档流里（tab 页是 flex 列 + 内层 scroll-view 的结构，
      顶栏浮起来会把内层滚动区顶乱）。 -->
-<view class="nb-fixed {{fixed ? '' : 'nb-static'}}">
+<view class="nb-fixed {{fixed ? '' : 'nb-static'}} {{overlay ? 'nb-overlay' : ''}}">
   <view class="nb-status" style="height: {{statusBarHeight}}px;"></view>
   <!-- 微信胶囊固定在 y≈状态栏下 4px 处，正好落在瓦面上。
        这是定好的取舍：版面优先，胶囊压在纹样上但不挡任何字、不和任何按钮重叠。 -->
@@ -26,5 +26,5 @@
   </view>
   <slot name="below"></slot>
 </view>
-<view wx:if="{{fixed}}" class="nb-holder"
+<view wx:if="{{fixed && !overlay}}" class="nb-holder"
       style="height: calc({{statusBarHeight}}px + var(--nb-eave-h) + var(--nb-row-h) - var(--nb-lap));"></view>

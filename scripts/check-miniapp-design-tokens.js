@@ -61,15 +61,16 @@ const LEGACY_EXEMPT = new Set(['utils/content.test.js'])
  */
 const BUDGET = {
   /* app.wxss 令牌区**以下**那段共用样式。原来整个文件被跳过，
-     这 18 处就藏在那个盲区里：.hc1~.hc5 的展馆色阶（旧蓝紫）、
-     .ft-* 的文件类型色、收藏态那几个冷粉。展馆封面改成装裱画心时
-     .hc* 会一起收掉，这里跟着往下调。 */
-  'app.wxss': 18,
+     旧蓝紫就藏在那个盲区里。.hc1~.hc5 的兜底色阶已经换成本套的山水色
+     （18 → 9）。剩下的 9 处是 .ft-* 的文件类型色标：
+     PDF 红 / PPT 橙 / DOC 蓝 / XLSX 绿这几个是**办公软件自己的识别色**，
+     用户是照着颜色认文件类型的，换成金棕一家人反而分不出来。
+     这一档留着，不往下收。 */
+  'app.wxss': 9,
   'components/loading/index.wxss': 2,
   'components/skeleton/index.wxss': 1,
   'packageA/craft/detail.wxss': 7,
   'packageA/hall/detail.wxss': 7,
-  'packageA/news/detail.wxss': 2,
   'packageB/course/detail.wxss': 1,
   'packageB/course/player.wxss': 1,
   'packageC/activity/detail.wxss': 1,
@@ -78,9 +79,7 @@ const BUDGET = {
   'packageC/message/index.wxss': 2,
   'packageC/profile/list.wxss': 7,
   'packageC/search/index.wxss': 1,
-  'packageD/poster/generate.wxss': 2,
-  'pages/hall/index.wxss': 1,
-  'pages/index/index.wxss': 6,
+  'packageD/poster/generate.wxss': 1,
   'pages/login/index.wxss': 2,
   'pages/profile/index.wxss': 7,
   'styles/login-page.wxss': 2
@@ -95,7 +94,6 @@ const BUDGET = {
  */
 const DISGUISED_BUDGET = {
   'app.wxss': 3,
-  'packageA/news/detail.wxss': 1,
   'packageA/news/list.wxss': 1,
   'packageB/course/detail.wxss': 1,
   'packageB/course/player.wxss': 1,
@@ -132,6 +130,23 @@ function stripTokenBlock(src) {
     throw new Error('app.wxss 里找不到令牌区的起止标记，无法判断哪些颜色该上棘轮')
   }
   return src.slice(0, a) + src.slice(b)
+}
+
+/**
+ * 去掉 CSS 注释再数颜色。
+ *
+ * 这一条是补的。原来注释也算进去了，于是"这里原来写的是 #E2EDE6"
+ * 这种**说明文字**被当成一处写死的色值。实测 pages/index/index.wxss
+ * 的预算 6 **整整六处全是注释**——那一页的样式里一个硬编码色都没有，
+ * 棘轮却一直给它留着 6 的余量，等于这一页没上棘轮。
+ * 注释里的颜色不会画到屏幕上，本来就不该算。
+ *
+ * 只对 wxss 做，而且只用在②。①（旧调色板禁令）和①-b（伪装形式）
+ * 实测没有一处命中落在注释里，改了没有区别，就不动它们——
+ * 那两条宁可多报也不要漏报。
+ */
+function stripComments(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '')
 }
 
 /** 旧调色板的 rgb 形式查找表：'r,g,b' → hex */
@@ -222,6 +237,7 @@ function main() {
     const rel = path.relative(MINI, abs).split(path.sep).join('/')
     let src = fs.readFileSync(abs, 'utf8')
     if (rel === 'app.wxss') src = stripTokenBlock(src)
+    src = stripComments(src)
     const n = (src.match(/#[0-9a-fA-F]{3,6}\b/g) || []).length
     const budget = BUDGET[rel] || 0
     if (n > budget) {

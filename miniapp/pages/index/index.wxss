@@ -157,26 +157,6 @@
 .search-mini { height: 64rpx; }
 
 /* ── 纸：从卷首下沿翻上来 ── */
-.sheet {
-  position: relative;
-  z-index: 3;
-  margin-top: -52rpx;                     /* ＝设计稿 -26px，纸盖住画的下沿 */
-  border-radius: 36rpx 36rpx 0 0;
-  background: var(--paper);
-  box-shadow: 0 -4rpx 0 rgba(200,164,92,.30),
-              0 -20rpx 52rpx rgba(74,102,96,.13);
-}
-/* 纸的上沿留一道提手，像卷轴的轴头 */
-.sheet::before {
-  content: '';
-  display: block;
-  width: 92rpx;
-  height: 6rpx;
-  margin: 18rpx auto 8rpx;
-  border-radius: 4rpx;
-  background: var(--wood-40);
-  opacity: .7;
-}
 
 /* ── 可滚动内容区 ── */
 .scroll-body { flex: 1; overflow: hidden; }
@@ -555,34 +535,6 @@
 .hall-card:active { transform: translateY(-4rpx); }
 .hc-art { height: 184rpx; }
 /* 题签：比封面略窄，居中贴在裱框下沿 */
-/* 封面上那方白牌：半透明的纸垫着馆名，左边一枚小器物。
-   定稿里它和题签是**两件**——牌在图上写简称，签在框下写全名。
-   我上一版把牌删了、又在签底下加了一行全名，于是签和那一行两条文字
-   叠在一起，看着就是排版乱了。现在按定稿收回来：牌 + 签，各写各的。 */
-.hc-plate {
-  position: absolute;
-  z-index: 4;
-  left: 14rpx;
-  bottom: 14rpx;
-  max-width: calc(100% - 28rpx);
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 6rpx 16rpx 6rpx 12rpx;
-  border-radius: 4rpx;
-  background: linear-gradient(135deg, rgba(252,250,244,.86), rgba(252,250,244,.66));
-  box-shadow: inset 0 0 0 2rpx rgba(122,110,85,.24);
-}
-.hc-mark { flex: none; opacity: .9; }
-.hc-plate-tx {
-  font-size: 27rpx;
-  letter-spacing: 3rpx;
-  color: var(--ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .tiqian {
   margin: 14rpx auto 0;
   display: block;
@@ -630,16 +582,6 @@
 .ccard-thumb { flex-shrink: 0; width: 152rpx; }
 .ncard-thumb .mount-art { height: 128rpx; }
 .ccard-thumb .mount-art { height: 152rpx; }
-.thumb-blank {
-  position: absolute;
-  left: 0; top: 0; right: 0; bottom: 0;
-  background: var(--juan-1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.7),
-              inset 0 0 0 2rpx rgba(150,120,66,.10);
-}
 .ncard-img, .ccard-img { width: 100%; height: 100%; }
 .ncard-body, .ccard-body { flex: 1; min-width: 0; }
 .ncard-title, .ccard-title {

@@ -1,6 +1,7 @@
 <!-- packageA/news/detail.wxml -->
 <view class="detail-page">
-  <nav-bar title="书院动态" />
+  <!-- 加载 / 失败 / 下架时卷首还没出来，顶栏不能跟着藏进画里。 -->
+  <nav-bar wx:if="{{loading || loadError || notFound}}" title="书院动态" />
 
   <view wx:if="{{loading}}" class="page-state-box">
     <text class="page-state-text">加载中…</text>
@@ -28,26 +29,46 @@
 
         <!-- 文章 -->
         <view class="article">
-          <view class="art-hero {{article.colorClass}}">
-            <block wx:if="{{article.cover && !article.coverFailed}}">
-              <image
-                class="art-hero-img"
-                src="{{article.cover}}"
-                mode="{{article.coverImageMode}}"
-                lazy-load
-                data-cover="{{article.cover}}"
-                binderror="onCoverError"
-              />
-              <view class="art-hero-scrim"></view>
-            </block>
-            <view wx:else class="art-hero-deco"></view>
-            <view class="art-hero-title serif">{{article.title}}</view>
+          <!-- 卷首：和首页同一幅小青绿，矮一档（这一页的主角是正文不是画）。
+               上传了封面图时，图**裱成一方册页压在画上**，画不退场——
+               画是这套方案的身份，不该被一张用户上传的图挤掉。
+               屋檐、返回键、题签都在图之上，所以图再满也压不住它们。 -->
+          <view class="art-hero">
+            <image class="art-hero-shan" src="/assets/images/hero-shan-art.png" mode="scaleToFill" aria-hidden="true" />
+            <view wx:if="{{article.cover && !article.coverFailed}}" class="art-hero-veil"></view>
+            <!-- 这里**不加** has-cover：那个类带的是一层很重的暗角，
+                 是给"图上压着字"的框用的（轮播、展馆封面）。册页上没有字，
+                 加了只会把封面压成一块黑。 -->
+            <view wx:if="{{article.cover && !article.coverFailed}}" class="hero-mount mount">
+              <view class="mount-art">
+                <image
+                  class="mount-cover art-hero-img"
+                  src="{{article.cover}}"
+                  mode="{{article.coverImageMode}}"
+                  lazy-load
+                  data-cover="{{article.cover}}"
+                  binderror="onCoverError"
+                />
+              </view>
+            </view>
+            <!-- 题签：竖着写的一条签，贴在画的右上。封面图再满也压不住它——
+                 它本来就在画心之外。 -->
+            <text wx:if="{{article.category}}" class="tag-v serif">{{article.category}}</text>
+            <nav-bar title="书院动态" overlay="{{true}}" />
+          </view>
+
+          <view class="sheet">
+          <!-- 标题落在纸上，不压在画上：封面图是用户传的，
+               花成什么样都不该影响读标题。 -->
+          <view class="art-head">
+            <text wx:if="{{article.category}}" class="ah-cat">{{article.category}}</text>
+            <view class="ah-title serif">{{article.title}}</view>
           </view>
           <view class="art-body">
             <view class="art-meta">
-              <text>📅 {{article.date}}</text>
-              <text>👁 阅读 {{article.read}}</text>
-              <text class="pill">{{article.category}}</text>
+              <text>{{article.date}}</text>
+              <text>阅读 {{article.read}}</text>
+              <text wx:if="{{article.category}}" class="pill zhu">{{article.category}}</text>
             </view>
             <view wx:if="{{article.showLead && article.lead}}" class="art-lead {{article.dropCap ? '' : 'art-lead--plain'}}">
               <text class="drop serif {{article.dropCap ? '' : 'drop--raised'}}">{{article.drop}}</text>{{article.leadRest}}
@@ -74,6 +95,7 @@
               </button>
             </view>
           </view>
+          </view><!-- /sheet -->
         </view>
 
         <!-- 相关推荐 -->

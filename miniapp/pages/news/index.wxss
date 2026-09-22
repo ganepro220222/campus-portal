@@ -1,65 +1,89 @@
 /* pages/news/index.wxss */
+/* 页底是纸，不是色晕。
+   原来这里是 sky-2 → paper 的渐变：sky-2 在新调色板里是绢青 #E2EDE6，
+   于是顶上 120px 铺了一块淡绿，屋檐底下直接接一层绿雾。
+   拿"浅色块"令牌去铺页面背景本来就经不起调色板改动——
+   首页那一版已经因为同样的原因把天青晕去掉了，这页跟上。 */
 .news-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: linear-gradient(180deg, var(--sky-2) 0, var(--paper) 240rpx);
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
 }
 
 /* 顶栏：宿主要在 flex 列里占住自身高度，不能被列表挤扁 */
 nav-bar { flex: 0 0 auto; }
+/* 搜索键和 nav-bar 的返回键是同一枚钮：88rpx 触区 / 64rpx 纸色圆钮 / 一圈金线。
+   原来是一块 88rpx 的透明方，按下去底色变 sky-3（现在是绢青），
+   既和左边不对称，按下的反馈也是一块淡绿方块。 */
 .nav-search {
-  width: 88rpx; height: 88rpx; border-radius: 50%;
+  width: 88rpx; height: 88rpx;
   display: flex; align-items: center; justify-content: center;
 }
-.nav-search:active { background: var(--sky-3); }
+.nav-search-disc {
+  width: 64rpx; height: 64rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(252, 250, 244, 0.8);
+  box-shadow: 0 2rpx 8rpx rgba(96, 78, 44, 0.16),
+              inset 0 0 0 2rpx rgba(150, 120, 66, 0.26);
+}
+.nav-search-hover .nav-search-disc { background: var(--xing-05); }
 
-/* 分类 chips */
+/* ── 分类：一排小签，选中的那一枚是朱印 ──
+   原来是全圆角胶囊 + 金棕渐变选中态。圆角胶囊是旧稿的语汇；
+   这一套里同类的东西是**签**：直角、纸底、一圈细框（见 app.wxss 的 .pill）。
+   选中态走朱砂——方案 A 写明朱是全站唯一的高饱和色，
+   只出现在栏目印、标签、**选中态**这三处，这里正是第三处。
+   纸白压朱量到 7.19，25rpx 的字远够。 */
 .cats { white-space: nowrap; padding: 6rpx 0 18rpx; }
-.cats-inner { display: inline-flex; gap: 16rpx; padding: 0 32rpx; }
+.cats-inner { display: inline-flex; gap: 14rpx; padding: 0 32rpx; }
 .cat {
   flex: 0 0 auto;
   font-size: 25rpx;
-  padding: 12rpx 28rpx;
-  border-radius: 32rpx;
-  background: var(--card);
+  padding: 10rpx 26rpx;
+  border-radius: 4rpx;
+  color: var(--wood-80);
   border: 1rpx solid var(--line);
-  color: var(--sub);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   transition: 0.15s;
 }
+/* 印的立体感：上沿一道提亮、下沿压深，外面垫一圈朱的余晕。
+   少了这三层就是一块平涂的红方块。 */
 .cat-on {
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  color: var(--card);
-  border-color: transparent;
+  color: var(--paper-card);
+  border-color: var(--zhu-d);
+  background: linear-gradient(180deg, var(--zhu), var(--zhu-d));
+  box-shadow: inset 0 2rpx 0 rgba(255,236,228,.28),
+              inset 0 -2rpx 0 rgba(78,18,14,.45),
+              0 2rpx 6rpx rgba(158,43,37,.26);
 }
 
 /* 列表 */
 .news-scroll { flex: 1; overflow: hidden; }
 .news-wrap { padding: 22rpx 32rpx 0; }
 
+/* 卡片和首页「最新动态」那一档对齐：同样的圆角、同样的内边距、
+   同样的暖投影。两处画同一种东西，不该是两套数。 */
 .ncard {
   display: flex;
   gap: 22rpx;
   background: var(--card);
   border: 1rpx solid var(--line);
-  border-radius: 28rpx;
-  padding: 20rpx;
-  box-shadow: var(--shadow-sm);
+  border-radius: 24rpx;
+  padding: 18rpx;
+  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.07);
+  align-items: center;
   margin-bottom: 22rpx;
   transition: transform 0.15s;
 }
 .ncard:active { transform: scale(0.99); }
-.ncard-thumb {
-  flex: 0 0 176rpx;
-  height: 132rpx;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
+.ncard-thumb { flex-shrink: 0; width: 176rpx; }
+.ncard-thumb .mount-art { height: 132rpx; }
 .ncard-img { width: 100%; height: 100%; }
-.ncard-body { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.ncard-body { flex: 1; min-width: 0; }
 .ncard-title {
   font-size: 29rpx;
   font-weight: 600;
@@ -70,12 +94,15 @@ nav-bar { flex: 0 0 auto; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* 原来是 margin-top:auto 把这一行顶到卡片底。缩略图裱起来之后
+   卡片高度由裱框定，标题只有一行时这一行会被顶到很远的下面，
+   和标题断成两截。改成跟着标题走。 */
 .ncard-meta {
-  margin-top: auto;
   display: flex;
   align-items: center;
   gap: 14rpx;
-  padding-top: 12rpx;
+  margin-top: 14rpx;
+  flex-wrap: wrap;
 }
 .ncard-sub { font-size: 22rpx; color: var(--muted); }
 
@@ -88,7 +115,7 @@ nav-bar { flex: 0 0 auto; }
   padding: 8rpx 0 24rpx;
 }
 .list-foot-done { color: var(--ghost); }
-.list-foot-retry { color: var(--navy); }
+.list-foot-retry { color: var(--jin-70); }
 
 /* 全局 .page-refresh-bar 默认 28rpx 横向边距（对齐详情页栏距），本页内容栏距是 32rpx（.news-wrap），
    不覆写的话红条会比下方卡片各窄 4rpx，边缘对不齐。加根类提权，避免依赖样式表先后顺序。 */

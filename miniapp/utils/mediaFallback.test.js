@@ -131,7 +131,11 @@ assert.match(readMini('packageC/activity/detail.js'), /applyItemCoverFailed\(thi
 const newsWxml = readMini('packageA/news/detail.wxml')
 assert.match(newsWxml, /article\.cover && !article\.coverFailed/)
 assert.match(newsWxml, /binderror="onCoverError"/)
-assert.match(newsWxml, /art-hero-deco/)
+// 封面缺失/加载失败时顶上得有东西兜着。
+// 原来兜底的是 art-hero-deco（一团浅蓝的装饰光晕）；版面改成「画 + 册页」之后，
+// 兜底的就是那幅画本身——它无条件渲染，封面只是压在它上面的一方册页。
+assert.match(newsWxml, /class="art-hero-shan"[\s\S]*?hero-shan-art\.png/)
+assert.doesNotMatch(newsWxml, /art-hero-deco/)
 assert.match(readMini('packageA/news/detail.js'), /applyItemCoverFailed\(this, 'article', e\)/)
 
 const craftWxml = readMini('packageA/craft/detail.wxml')

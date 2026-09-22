@@ -4,8 +4,8 @@
   <!-- 顶栏走公共满檐组件。fixed=false：本页是 flex 列 + 内层
        scroll-view，顶栏留在文档流里；搜索键进 action 槽，分类 chips 进 below 槽。 -->
   <nav-bar title="书院动态" back="{{false}}" fixed="{{false}}">
-    <view slot="action" class="nav-search" bindtap="onSearch">
-      <icon name="search" size="20" color="#23262E" />
+    <view slot="action" class="nav-search" hover-class="nav-search-hover" hover-stay-time="60" bindtap="onSearch">
+      <view class="nav-search-disc"><icon name="search" size="18" color="#614923" /></view>
     </view>
     <view slot="below">
       <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
@@ -45,9 +45,13 @@
         bindtap="onCardTap"
         data-id="{{item.id}}"
       >
-        <view class="ncard-thumb {{item.colorClass}}">
-          <image wx:if="{{item.cover && !item.coverFailed}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ncard-img" lazy-load data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
-          <icon wx:else name="{{item.icon}}" size="30" color="rgba(255,255,255,0.92)" />
+        <!-- 缩略图和首页「最新动态」是同一件东西：裱起来的画心（最小一档，角叶 28rpx）。
+             没有封面图时里面垫一层绢底 + 器物图标，不再用 .hc* 那套色块垫底。 -->
+        <view class="ncard-thumb mount mount--sm">
+          <view class="mount-art {{item.cover && !item.coverFailed ? 'has-cover' : ''}}">
+            <image wx:if="{{item.cover && !item.coverFailed}}" class="mount-cover ncard-img" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" lazy-load data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
+            <view wx:else class="thumb-blank"><icon name="{{item.icon}}" size="26" color="#A68C64" /></view>
+          </view>
         </view>
         <view class="ncard-body">
           <view class="ncard-title">{{item.title}}</view>

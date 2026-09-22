@@ -52,6 +52,11 @@ const SCALE = 3
 /** 画出来的那几张：名字 → [生成表达式, 宽, 高, 量化后的上限 KB] */
 export const PIECES = {
   'hero-shan': ['o.qinglv()', 375, 368, 40],
+  /* 二级页（动态详情）的卷首：同一支笔，矮一档。
+     不能拿 hero-shan 缩着用——它是 368 高，压到 268 就是把山压扁 27%，
+     山头变矮、点景的树变墩。设计稿那边是同一个 svg 按 268 现画的
+     （preserveAspectRatio="none"，viewBox 250 → 268，只有 7% 的拉伸）。 */
+  'hero-shan-art': ['o.qinglv(h=268)', 375, 268, 32],
   'hero-eave': ['o.eave()', 375, 62, 32],
   /* 轮播的兜底图：一幅横幅小青绿，和卷首同一支笔、另一个 seed。
      参数抄自设计稿 post_process() 里注入 .card.banner 的那一行。

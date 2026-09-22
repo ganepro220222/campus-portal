@@ -1,78 +1,108 @@
 /* packageA/news/detail.wxss */
 .detail-page { height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
 .detail-scroll { flex: 1; overflow: hidden; }
-.detail-wrap { padding: 24rpx 28rpx 0; }
+/* 卷首要出血到屏幕边，所以外层不再留横向内边距；
+   横距下放给纸里的各段（.art-head / .art-body / .reco）。 */
+.detail-wrap { padding: 0; }
 .detail-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }
 
-/* 文章 */
-.article {
-  background: var(--card);
-  border: 1rpx solid var(--line);
-  border-radius: 28rpx;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 24rpx;
-}
-/*
- * 头图区。标题是白字，所以这块**必须**始终有深色底，否则白字压白底就消失了。
- *
- * 底色不能指望 colorClass：那是列表页装饰用的，详情接口根本不下发它，
- * 真实数据里 class 是空的——于是没有封面时整块是纯白，标题只剩一点 text-shadow
- * 的影子。这里给 .art-hero 自身一个兜底深色渐变，colorClass 有值时再覆盖。
- */
+/* 文章。原来整篇裹在一张 28rpx 圆角的卡片里，卷首也只是卡片顶上的一条图。
+   定稿的二级页和首页是同一套：画顶到屏幕最上缘，纸从画脚浮起来压住山脚。
+   所以这里不再是卡片，只是一个容纳「画 + 纸」的壳。 */
+.article { margin-bottom: 24rpx; }
+/* ── 卷首 ──────────────────────────────────────────────
+   原来这里是「深色渐变兜底 + 封面铺满 + 冷蓝压暗层 + 白色标题压在图上」。
+   三个毛病：兜底那道渐变走 navy-deep→blue（旧名令牌，换算成金棕，
+   和整页不搭）；压暗层是 rgba(15,20,45) 的冷蓝黑；
+   最要紧的是标题压在图上——封面是用户传的，花成什么样都会影响读标题。
+
+   定稿的做法：标题落在纸上；画通栏；封面图裱成一方册页压在画上。
+   于是卷首永远看得到，封面图也永远看得到，两者不抢。 */
 .art-hero {
-  height: 320rpx;
   position: relative;
-  display: flex;
-  align-items: flex-end;
-  padding: 28rpx;
+  height: 536rpx;             /* ＝设计稿 268px，比首页矮一档 */
   overflow: hidden;
-  background: linear-gradient(120deg, var(--navy-deep), var(--blue));
 }
-/* 封面铺满整块，压在装饰层与标题之下 */
-.art-hero-img {
+.art-hero-shan {
   position: absolute;
   left: 0; top: 0;
   width: 100%; height: 100%;
-  z-index: 0;
+  /* 这一张是按 268 高**现画**的（scripts/build-hero.mjs 的 hero-shan-art），
+     不是把首页那张 368 的压下来——压 27% 会把山头压矮、点景的树压墩。 */
 }
-/*
- * 有封面时的压暗层：封面可能是浅色照片，白色标题照样会糊在上面。
- * 只压底部，保留上半部分的画面。
- */
-.art-hero-scrim {
+/* 册页压在画上时，画要退一步——不压的话两幅图抢焦点 */
+.art-hero-veil {
   position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 70%;
-  z-index: 1;
-  background: linear-gradient(to bottom, rgba(15, 20, 45, 0), rgba(15, 20, 45, 0.68));
-}
-.art-hero-deco {
-  position: absolute;
-  right: -40rpx; top: -40rpx;
-  width: 300rpx; height: 300rpx;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(208, 231, 247, 0.3), transparent 70%);
-}
-.art-hero-title {
-  position: relative;
+  left: 0; top: 0; right: 0; bottom: 0;
   z-index: 2;
-  color: var(--card);
-  font-size: 38rpx;
-  font-weight: 700;
-  line-height: 1.4;
-  text-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  background: rgba(248, 243, 230, .30);
 }
-.art-body { padding: 28rpx; }
+/* 册页：横幅，不是竖轴——文章封面绝大多数是横图，竖框会把它裁烂。
+   宽度按比例给，高度由 3:2 定，换机型时册页和卷首一起缩放。 */
+/* 位置和设计稿不同，这一处是量出来改的，理由写清楚：
+   设计稿给的是 top:86px / width:52%，但那份演示稿里**没有封面图**，
+   册页那一档没跟顶栏一起验过。按它摆，册页会盖住返回键和标题——
+   违反「原生控件让位」的②③两条（压住按钮就按不到，压住文字就读不到）。
+   所以改成从标题行下沿起排：
+     顶栏行底 = 状态栏 + 檐 92rpx - 重叠 4rpx + 标题行 80rpx ≈ 256rpx
+     纸从 536 - 52 = 484rpx 处盖上来
+   册页落在 258→478 这一段里（44% 宽 → 330rpx，3:2 → 220rpx 高），
+   上下各留一线，谁也不压谁。 */
+.hero-mount {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 258rpx;
+  width: 44%;
+}
+.hero-mount .mount-art {
+  height: 0;
+  padding-bottom: 66.67%;     /* 3 : 2 */
+}
+.art-hero-img { width: 100%; height: 100%; }
+/* 题签：贴在画的右上，比标题行再低一点，不和它抢那一行 */
+.art-hero .tag-v { top: 208rpx; right: 40rpx; z-index: 6; }
+
+/* ── 标题落在纸上 ── */
+.art-head { padding: 8rpx 40rpx 0; }
+.ah-cat {
+  display: inline-flex;
+  align-items: center;
+  font-size: 23rpx;
+  letter-spacing: 4.8rpx;
+  color: var(--zhu-d);
+}
+/* 签前一道朱短线，和栏目印是同一门语言 */
+.ah-cat::before {
+  content: '';
+  width: 30rpx;
+  height: 2rpx;
+  margin-right: 14rpx;
+  background: var(--zhu);
+  opacity: .8;
+}
+.ah-title {
+  margin-top: 18rpx;
+  font-size: 46rpx;
+  line-height: 1.52;
+  letter-spacing: 1.2rpx;
+  color: var(--ink);
+}
+.art-body { padding: 30rpx 40rpx 0; }
+/* 原来这一行是「📅 日期」「👁 阅读」两个 emoji 加文字。
+   emoji 由系统字体画，各端长得都不一样，而且是整页唯一的彩色元素。
+   定稿里这一行就是素素的三段小字，分类另走小签。 */
 .art-meta {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 24rpx;
   font-size: 23rpx;
-  color: var(--muted);
-  margin-bottom: 22rpx;
-  padding-bottom: 22rpx;
-  border-bottom: 1rpx dashed var(--line);
+  color: var(--ink-3);
+  padding-bottom: 26rpx;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid var(--line-soft);
 }
 .art-p {
   font-size: 29rpx;
@@ -120,20 +150,26 @@
   border-radius: 12rpx;
   margin: 16rpx 0;
 }
+/* 首字下沉：书口的做法，压一枚朱色底。
+   原来是金棕的粗体字、没有底 —— 那只是"第一个字大一号"，
+   不是书口那枚印。照设计稿的 .drop 收：朱字、朱晕底、直角。 */
 .drop {
   float: left;
   font-size: 78rpx;
   line-height: 0.92;
-  font-weight: 700;
-  color: var(--navy);
-  margin: 4rpx 14rpx 0 0;
+  color: var(--zhu);
+  padding: 10rpx 18rpx;
+  margin: 8rpx 18rpx 0 0;
+  background: var(--zhu-soft);
+  border-radius: 4rpx;
 }
 .drop--raised {
   float: none;
   display: inline;
   font-size: 42rpx;
   line-height: 1.2;
-  margin: 0 4rpx 0 0;
+  padding: 2rpx 8rpx;
+  margin: 0 6rpx 0 0;
   vertical-align: -2rpx;
 }
 
@@ -142,8 +178,9 @@
   flex: 1;
   height: 78rpx;
   border: 1rpx solid var(--line);
-  border-radius: 20rpx;
-  background: var(--card);
+  border-radius: 12rpx;
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.9), 0 2rpx 4rpx rgba(74,50,30,.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -151,15 +188,17 @@
   font-size: 25rpx;
   color: var(--sub);
 }
-.act:active { background: var(--sky-3); }
-.act-on { color: var(--color-danger); border-color: #F3C9C2; background: #FDF1EF; }
+/* 按下去是纸被按了一下，不是换一块绢青 */
+.act:active { background: var(--paper-2); }
+/* 选中态照设计稿的 .act.on：朱字 + 朱框 + 朱晕底 */
+.act-on { color: var(--zhu); border-color: rgba(158,43,37,.34); background: var(--zhu-soft); }
 .act-share-btn {
   flex: 1;
   height: 78rpx;
   margin: 0;
   padding: 0;
   font-weight: normal;
-  border-radius: 20rpx;
+  border-radius: 12rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -167,15 +206,16 @@
   line-height: normal;
 }
 .act-share-btn::after { border: none; }
-.act-share-hover { background: var(--sky-3); }
+.act-share-hover { background: var(--paper-2); }
 
-/* AI 推荐 */
+/* AI 推荐。卷首出血之后 .detail-wrap 不再给横距，这一段自己留。 */
 .reco {
+  margin: 0 28rpx;
   background: var(--card);
   border: 1rpx solid var(--line);
-  border-radius: 28rpx;
+  border-radius: 24rpx;
   padding: 26rpx;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.07);
 }
 .reco-head {
   display: flex;
@@ -201,12 +241,13 @@
   border-top: 1rpx solid var(--line);
 }
 .reco-it:first-of-type { border-top: none; }
+/* 序号：凹进纸里的一方，不是一块绢青色块（设计稿的 .reco-num） */
 .reco-num {
   flex: 0 0 44rpx;
   height: 44rpx;
-  border-radius: 12rpx;
-  background: var(--sky-2);
-  color: var(--navy);
+  border-radius: 4rpx;
+  background: var(--paper-sunk);
+  color: var(--wood-80);
   font-size: 24rpx;
   font-weight: 700;
   display: flex;

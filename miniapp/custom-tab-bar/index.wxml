@@ -1,13 +1,18 @@
-<view class="tabbar">
-  <view
-    class="tab"
-    wx:for="{{list}}"
-    wx:key="path"
-    data-index="{{index}}"
-    data-path="{{item.path}}"
-    bindtap="onTap"
-  >
-    <icon name="{{item.icon}}" size="23" color="{{selected === index ? active : inactive}}" />
-    <text class="tab-txt {{selected === index ? 'on' : ''}}">{{item.text}}</text>
+<view class="tabbar-wrap">
+  <!-- 回纹（雷纹）带：方案 A 里标签栏上方那条「万字不到头」的刻痕带。
+       它是页面收底的那一笔——没有它，页面到底就是一条细线戛然而止。 -->
+  <view class="fret"></view>
+  <view class="tabbar">
+    <view
+      class="tab {{selected === index ? 'on' : ''}}"
+      wx:for="{{list}}"
+      wx:key="path"
+      data-index="{{index}}"
+      data-path="{{item.path}}"
+      bindtap="onTap"
+    >
+      <icon name="{{item.icon}}" size="21" color="{{selected === index ? active : inactive}}" />
+      <text class="tab-txt">{{item.text}}</text>
+    </view>
   </view>
 </view>

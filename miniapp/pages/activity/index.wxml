@@ -18,10 +18,13 @@
       bindtap="onCardTap"
       data-id="{{item.id}}"
     >
-      <view class="acard-cover {{item.colorClass}}">
-        <image wx:if="{{item.cover && !item.coverFailed}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="acard-img" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
-        <icon wx:else name="{{item.icon}}" size="34" color="rgba(255,255,255,0.9)" />
-        <text class="acard-tag">{{item.tag}}</text>
+      <!-- 封面也是裱起来的画心，和三张列表页同一套 -->
+      <view class="acard-cover mount mount--sm">
+        <view class="mount-art {{item.cover && !item.coverFailed ? 'has-cover' : ''}}">
+          <image wx:if="{{item.cover && !item.coverFailed}}" class="mount-cover acard-img" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
+          <view wx:else class="thumb-blank"><icon name="{{item.icon}}" size="30" color="#A68C64" /></view>
+          <view class="hc-plate hc-plate--tl acard-tag"><text class="hc-plate-tx">{{item.tag}}</text></view>
+        </view>
       </view>
       <view class="acard-body">
         <view class="acard-title">{{item.title}}</view>

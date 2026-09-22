@@ -14,7 +14,12 @@ Component({
     back: { type: Boolean, value: true },
     // tab 页传 false：它们是 flex 列 + 内层 scroll-view，
     // 顶栏 position:fixed 会把内层滚动区顶乱，留在流里才对。
-    fixed: { type: Boolean, value: true }
+    fixed: { type: Boolean, value: true },
+    // 卷首页（动态详情）传 true：顶栏**叠在画上**，底色透明、不占位。
+    // 设计稿的二级页就是这么摆的——屋檐压在画上，不是页面顶上另起一条横带。
+    // 画的颜色不定（用户可以传任意封面），所以标题和返回键各自垫一方半透明的纸，
+    // 而不是指望画一直是浅的。
+    overlay: { type: Boolean, value: false }
   },
 
   data: {

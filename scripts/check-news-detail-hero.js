@@ -9,10 +9,22 @@
  *    展示一律 drop + leadRest；正文是不是富文本都要首字下沉，
  *    否则后台一保存（content 变成 HTML）摘要首字会突然变回正常大小。
  *
- * 2) 头图必须始终有深色底：标题是白字。底色不能指望 colorClass——那是列表页的装饰，
- *    详情接口不下发它，真实数据里 class 是空的，于是没有封面时整块纯白、
- *    标题只剩一点 text-shadow 的影子。而且详情页一度压根没接封面，
- *    上传了封面也只在列表里露脸。
+ * 2) 卷首的三条约定。这一条**换过一次前提**，原因写在下面。
+ *
+ *    旧约定是「头图必须始终有深色底，因为标题是白字」。那是上一版的版面：
+ *    标题压在图上。真实数据里 colorClass 是空的（详情接口不下发它），
+ *    所以没封面时整块纯白、白标题只剩一点 text-shadow 的影子——
+ *    那一条防的就是这个。
+ *
+ *    定稿把版面换了：**标题落在纸上，不压在画上**（封面是用户传的，
+ *    花成什么样都不该影响读标题）。于是「深色底 + 压暗层」两条一起失去意义：
+ *    再留着就是两条守着不存在的东西的空护栏。换成这一版的三条：
+ *
+ *      a. 封面要渲染，且按 coverImageMode 渲染（这一条没变，
+ *         详情页一度压根没接封面，上传了也只在列表里露脸）。
+ *      b. 卷首的画**始终在**：封面图是裱成册页压在画上的，不是替掉画。
+ *         画没了，没封面的文章顶上就是一块白。
+ *      c. 标题在纸上，不在画上：.ah-title 要在，.art-hero-title 不许回来。
  *
  * 用法：node scripts/check-news-detail-hero.js
  */
@@ -89,7 +101,7 @@ if (/drop:\s*'/.test(mockCode)) {
 }
 
 // ---------- 2) 头图 ----------
-if (!/class="art-hero-img"/.test(wxml)) {
+if (!/class="[^"]*\bart-hero-img\b[^"]*"/.test(wxml)) {
   errs.push('detail.wxml 未渲染封面（art-hero-img）—— 上传的封面只会出现在列表里')
 }
 if (!/mode="\{\{article\.coverImageMode\}\}"/.test(wxml)) {
@@ -98,15 +110,40 @@ if (!/mode="\{\{article\.coverImageMode\}\}"/.test(wxml)) {
 if (!/coverImageMode:/.test(content)) {
   errs.push('content.js 未产出 coverImageMode，详情页拿不到封面展示方式')
 }
-// 取 .art-hero 规则本身（先剥注释，否则注释里提到的 .art-hero 会把匹配带偏）
-const heroRule = (wxss.replace(/\/\*[\s\S]*?\*\//g, '').match(/\.art-hero\s*\{[^}]*\}/) || [''])[0]
-if (!heroRule) {
-  errs.push('detail.wxss 里找不到 .art-hero 规则')
-} else if (!/background:/.test(heroRule)) {
-  errs.push('.art-hero 没有兜底背景色 —— 无封面时白色标题会压在白底上，等于看不见')
+// b. 卷首那幅画始终在，封面只是裱在它上面的一方册页
+if (!/class="art-hero-shan"[\s\S]*?hero-shan-art\.png/.test(wxml)) {
+  errs.push('卷首少了那幅画（art-hero-shan / hero-shan-art.png）—— ' +
+            '没有封面的文章顶上会是一块白，而画是这套方案的身份')
 }
-if (!/class="art-hero-scrim"/.test(wxml) || !/\.art-hero-scrim/.test(wxss)) {
-  errs.push('缺少封面压暗层 art-hero-scrim —— 浅色封面上白色标题会糊掉')
+{
+  // 取那张 <image> 的整个开标签。
+  // 不能写成 /<image class="art-hero-shan"[^>]*>/ —— 那要求 class 紧跟 <image，
+  // 一旦有人在前面插了 wx:if（正是这里要防的那种改动）就匹配不到，
+  // 于是 `|| ['']` 兜出空串，测试通过。变异测试里就是这么漏掉的。
+  // 改成「先找到 art-hero-shan，再往两边扩到标签边界」，属性顺序随便写。
+  const i = wxml.indexOf('art-hero-shan')
+  const tag = i < 0 ? '' : wxml.slice(wxml.lastIndexOf('<', i), wxml.indexOf('>', i) + 1)
+  if (tag && /wx:if|wx:elif|wx:else/.test(tag)) {
+    errs.push('卷首那幅画挂了条件 —— 它必须无条件渲染，封面是压在它上面的，不是替掉它')
+  }
+}
+if (!/class="hero-mount mount"/.test(wxml) || !/\.hero-mount/.test(wxss)) {
+  errs.push('封面没有裱成册页（hero-mount + mount）—— 封面会直接铺满卷首把画挤掉')
+}
+// c. 标题在纸上
+if (/art-hero-title/.test(wxml) || /\.art-hero-title/.test(wxss)) {
+  errs.push('标题又压回画上了（art-hero-title）—— ' +
+            '封面是用户传的，花成什么样都不该影响读标题；标题走 .ah-title，落在纸上')
+}
+if (!/class="ah-title serif"/.test(wxml)) {
+  errs.push('detail.wxml 少了纸上的标题 .ah-title')
+}
+{
+  // .ah-title 必须在 .sheet 里面 —— 在 .art-hero 里就又压回画上了
+  const heroBlock = wxml.slice(wxml.indexOf('class="art-hero"'), wxml.indexOf('class="sheet"'))
+  if (heroBlock && /ah-title/.test(heroBlock)) {
+    errs.push('.ah-title 落在 .art-hero 里 —— 标题应该在 .sheet（纸）上')
+  }
 }
 
 if (errs.length) {

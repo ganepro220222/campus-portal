@@ -1,14 +1,11 @@
 #!/usr/bin/env node
 /**
- * 把设计稿里三张**纹理贴图**的令牌搬进 miniapp/app.wxss。
+ * 把设计稿里那几张**纹理贴图**搬进 miniapp/app.wxss。清单见下面的 SRCS。
  *
- *   --fiber-page   纸纤维（入口区那张书页的底）
- *   --wood-fig     木射线 · 横（匾心）
- *   --wood-fig-v   木射线 · 竖（匾框、裱边）
- *
- * 三张都是 feTurbulence 生成的噪声，各 ~365 字符的 data URI，一共 1.1 KB。
- * 它们是"平涂色块"和"一块木头/一张纸"之间的全部差别 —— 少了这三张，
+ * 大半是 feTurbulence 生成的噪声，各 ~365 字符的 data URI。
+ * 它们是"平涂色块"和"一块木头/一张纸"之间的全部差别 —— 少了这几张，
  * 匾就是两块棕色矩形、入口区就是一块杏色方块，颜色对了、材质没了。
+ * 棂格和回纹是另一路：规则线条，不是噪声，但同样只能从设计稿搬。
  *
  * 为什么搬而不是自己另写一套：design/demo/v2/shuyuan.css 是令牌的唯一出处，
  * 这里只做搬运。自己在小程序侧另写一份，两边迟早对不上。
@@ -34,16 +31,35 @@ const HASH_FILE = path.join(ROOT, 'scripts/textures.hash')
 const BEGIN = '  /* ══ 纹理开始 · 由 scripts/build-texture-tokens.mjs 生成，勿手改 ══ */'
 const END = '  /* ══ 纹理结束 ══ */'
 
-export const NAMES = [
-  'fiber-page',    // 纸纤维（入口区那张书页、登录页的纸底）
-  'wood-fig',      // 木射线 · 横（匾心）
-  'wood-fig-v',    // 木射线 · 竖（匾框、裱边）
-  'speckle',       // 石面的麻点（登录页那枚石青次按钮）
-  'lattice'        // 棂格（登录页的底纹）
-]
+/**
+ * 每张贴图从哪儿取、怎么验。
+ *
+ *   from: 'root'          —— 设计稿 :root 里的同名 custom property
+ *         ['规则', n]     —— 某条规则的 background-image 里第 n 个 url()
+ *   want: 值里必须出现的特征串，取错了值时用它兜住
+ *
+ * 为什么要 want：几张贴图长得都像「一长串 data URI」，肉眼看不出取没取对。
+ * 横纹和竖纹只差 baseFrequency 的两个分量，回纹的受光面和刻痕只差一个色，
+ * 复制粘贴写反了不会报错，只会画歪。
+ */
+const SRCS = {
+  'fiber-page': { from: 'root', want: 'feTurbulence' },   // 纸纤维 · 浓（书页、登录页的纸底，opacity .14）
+  'fiber':      { from: 'root', want: 'feTurbulence' },   // 纸纤维 · 淡（标签栏那层纸，opacity .05）
+  'wood-fig':   { from: 'root', want: 'feTurbulence' },   // 木射线 · 横（匾心）
+  'wood-fig-v': { from: 'root', want: 'feTurbulence' },   // 木射线 · 竖（匾框、裱边）
+  'speckle':    { from: 'root', want: 'feTurbulence' },   // 石面的麻点（登录页那枚石青次按钮）
+  'lattice':    { from: ['.login-lattice', 0], want: 'stroke=' },  // 棂格（登录页的底纹）
+  /* 回纹（雷纹）带。设计稿里同一组纹样画两遍：深色是刻痕，浅色往下错 1.1px
+     当受光面——少了任何一层就不是「刻」出来的，是贴上去的。
+     所以这里必须是两枚令牌，不能合成一枚。 */
+  'fret-cut':   { from: ['.fret', 0], want: "stroke='%237A5626'" },   // 刻痕（深）
+  'fret-lit':   { from: ['.fret', 1], want: "stroke='%23F6E9D2'" }    // 受光面（浅）
+}
+
+export const NAMES = Object.keys(SRCS)
 
 /**
- * 从设计稿里取这三张。
+ * 从设计稿里取这几张。
  *
  * shuyuan.css 有**两个** :root：前一个放颜色（15~251 行），
  * 后一个专放纹理贴图（301~362 行）。所以不能只扫第一个——
@@ -61,30 +77,36 @@ export function textureTokens() {
   if (!blocks.length) throw new Error('shuyuan.css 里一个 :root 都找不到')
   const block = blocks.join('\n')
 
-  /* 棂格在设计稿里没有独立令牌，它是写死在 .login-lattice 的 background-image 里的。
-     与其在小程序侧另抄一份（抄错了没人发现），不如从那条规则里取。 */
-  const latticeRule = css.match(/\.login-lattice\s*\{[^}]*?background-image:\s*(url\("data:[^"]+"\))/)
+  /* 有几张在设计稿里没有独立令牌，是写死在某条规则的 background-image 里的
+     （棂格在 .login-lattice，回纹在 .fret）。与其在小程序侧另抄一份
+     （抄错了没人发现），不如从那条规则里按顺序取 url()。 */
+  const fromRule = (sel, idx) => {
+    const rule = css.match(new RegExp(`\\${sel}\\s*\\{[^}]*\\}`))
+    if (!rule) return null
+    const urls = [...rule[0].matchAll(/url\("data:[^"]+"\)/g)].map(m => m[0])
+    return urls[idx] ? [null, urls[idx]] : null
+  }
 
   const out = {}
   const bad = []
-  for (const n of NAMES) {
-    const m = n === 'lattice'
-      ? (latticeRule && [null, latticeRule[1]])
-      : block.match(new RegExp(`--${n}:\\s*([^;]+);`))
-    if (!m) { bad.push(`shuyuan.css 里取不到 ${n === 'lattice' ? '.login-lattice 的 background-image' : '--' + n}`); continue }
+  for (const [n, spec] of Object.entries(SRCS)) {
+    const m = spec.from === 'root'
+      ? block.match(new RegExp(`--${n}:\\s*([^;]+);`))
+      : fromRule(spec.from[0], spec.from[1])
+    if (!m) {
+      bad.push(spec.from === 'root'
+        ? `shuyuan.css 的 :root 里取不到 --${n}`
+        : `shuyuan.css 的 ${spec.from[0]} 里取不到第 ${spec.from[1] + 1} 个 url()`)
+      continue
+    }
     const v = m[1].split('\n').map(s => s.trim()).join(' ').trim()
     if (!v.startsWith('url("data:image/svg+xml,')) bad.push(`--${n} 不是 data URI`)
     if (/#[0-9A-Fa-f]{3,6}/.test(v)) bad.push(`--${n} 里有没转义的 #，data URI 会被截断`)
-    // 前四张是 feTurbulence 噪声，棂格那张是规则线条，两类分别验
-    if (n === 'lattice') {
-      if (!/stroke=/.test(v)) bad.push(`--${n} 里没有 stroke，棂格是线条画的，大概取错了值`)
-    } else if (!/feTurbulence/.test(v)) {
-      bad.push(`--${n} 里没有 feTurbulence，大概取错了值`)
-    }
+    if (!v.includes(spec.want)) bad.push(`--${n} 里没有 ${spec.want}，大概取错了值`)
     out[`--${n}`] = v
   }
   if (bad.length) throw new Error('纹理不合格：\n  ' + bad.join('\n  '))
-  // 三张必须互不相同：横纹和竖纹只差 baseFrequency 的两个分量，复制粘贴很容易写反
+  // 必须互不相同：上面那几对只差一两个字符，取重了不会报错，只会画糊
   if (new Set(Object.values(out)).size !== NAMES.length) throw new Error('几张纹理里有重复的')
   return out
 }

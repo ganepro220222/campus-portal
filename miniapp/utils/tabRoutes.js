@@ -10,8 +10,15 @@ const TAB_ROUTES = [
   'pages/course/index'
 ]
 
-/** 自定义 tabBar 的高度，与 custom-tab-bar/index.wxss 的 .tabbar height 保持一致 */
-const TAB_BAR_HEIGHT_RPX = 108
+/**
+ * 自定义 tabBar 这条固定栏占掉的高度。
+ * = custom-tab-bar/index.wxss 里 .fret（回纹带 40rpx）+ .tabbar（栏身 104rpx）。
+ * 回纹带和栏身装在同一个 fixed 的 .tabbar-wrap 里，一样挡内容，所以要一起算。
+ * 安全区不含在内——它由 .tabbar 自己的 padding-bottom 占，
+ * 用这个数的地方各自再 + env(safe-area-inset-bottom)。
+ * check-tabbar-routes 会把这个数和 wxss 对一遍。
+ */
+const TAB_BAR_HEIGHT_RPX = 144
 
 /** 当前页是否是 tabBar 页面。取不到页面栈时按「不是」处理，宁可少让一段也不错位。 */
 function isOnTabBarPage() {

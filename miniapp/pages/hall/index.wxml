@@ -4,8 +4,8 @@
   <!-- 顶栏走公共满檐组件。fixed=false：本页是 flex 列 + 内层
        scroll-view，顶栏留在文档流里；搜索键进 action 槽，分类 chips 进 below 槽。 -->
   <nav-bar title="线上展馆" back="{{false}}" fixed="{{false}}">
-    <view slot="action" class="nav-search" bindtap="onSearch">
-      <icon name="search" size="20" color="#23262E" />
+    <view slot="action" class="nav-search" hover-class="nav-search-hover" hover-stay-time="60" bindtap="onSearch">
+      <view class="nav-search-disc"><icon name="search" size="18" color="#614923" /></view>
     </view>
     <view slot="below">
       <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
@@ -37,17 +37,33 @@
         bindtap="onCardTap"
         data-id="{{item.id}}"
       >
-        <view class="hcard-cover {{item.colorClass}}">
-          <view wx:if="{{item.cover && !item.coverFailed}}" class="hcard-bg">
-            <image src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="hcard-img" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
+        <!-- 封面和首页展馆横滑是同一件东西：裱起来的画心 + 图上一方白牌。
+             原来是"色块垫底 + 封面压到 40% 不透明度 + 右上角一枚大图标"，
+             照片认不出是什么、色块又是旧蓝紫那套。 -->
+        <view class="mount mount--sm">
+          <view class="mount-art hcard-art {{item.cover && !item.coverFailed ? 'has-cover' : ''}}">
+            <image
+              wx:if="{{item.cover && !item.coverFailed}}"
+              class="mount-cover"
+              src="{{item.cover}}"
+              mode="{{item.coverImageMode || 'aspectFill'}}"
+              data-id="{{item.id}}"
+              data-cover="{{item.cover}}"
+              binderror="onCoverError"
+            />
+            <view wx:else class="thumb-blank"><icon name="museum" size="30" color="#A68C64" /></view>
+            <view class="hc-plate">
+              <icon class="hc-mark" name="museum" size="13" color="#7E6134" />
+              <text class="hc-plate-tx serif">{{item.shortName || item.name}}</text>
+            </view>
           </view>
-          <view class="hcard-corner"><icon name="museum" size="40" color="rgba(255,255,255,0.32)" /></view>
-          <text class="hcard-ct serif">{{item.shortName}}</text>
         </view>
         <view class="hcard-foot">
           <text class="hcard-name">{{item.name}}</text>
           <text class="hcard-desc">{{item.desc}}</text>
-          <text class="hcard-vr {{item.vrReady ? '' : 'hcard-vr-off'}}">{{item.vrReady ? 'VR 可体验' : 'VR 筹备中'}}</text>
+          <!-- VR 状态用小签：可体验走朱签（"这一件要紧"），筹备中走素签。
+               原来筹备中那档是 #F0F2F7 的冷灰，整页只有它一块是蓝灰的。 -->
+          <text class="hcard-vr pill {{item.vrReady ? 'zhu' : ''}}">{{item.vrReady ? 'VR 可体验' : 'VR 筹备中'}}</text>
         </view>
       </view>
     </view>

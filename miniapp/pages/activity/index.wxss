@@ -1,41 +1,33 @@
 /* pages/activity/index.wxss — 活动报名（二级页）*/
-.act-page { min-height: 100vh; background: var(--paper); }
+/* 页底：纸 + 淡纤维，和三张 tab 列表页同一档 */
+.act-page {
+  min-height: 100vh;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
 .act-wrap { padding: 24rpx 32rpx; }
 
+/* 卡片与三张列表页对齐：同样的圆角、内边距、暖投影 */
 .acard {
   display: flex;
   gap: 22rpx;
   background: var(--card);
-  border-radius: 26rpx;
+  border-radius: 24rpx;
   border: 1rpx solid var(--line);
-  box-shadow: 0 8rpx 22rpx rgba(74,50,30, 0.09);
-  padding: 20rpx;
+  box-shadow: 0 4rpx 14rpx rgba(74,50,30, 0.07);
+  padding: 18rpx;
   margin-bottom: 22rpx;
   transition: transform 0.15s;
 }
 .acard:active { transform: scale(0.99); }
-.acard-cover {
-  position: relative;
-  flex: 0 0 180rpx;
-  height: 180rpx;
-  border-radius: 20rpx;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+.acard-cover { flex-shrink: 0; width: 180rpx; }
+.acard-cover .mount-art { height: 180rpx; }
 .acard-img { width: 100%; height: 100%; }
-.acard-tag {
-  position: absolute;
-  left: 12rpx;
-  top: 12rpx;
-  font-size: 19rpx;
-  color: var(--card);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1rpx solid rgba(255, 255, 255, 0.35);
-  padding: 3rpx 12rpx;
-  border-radius: 14rpx;
-}
+/* 活动类型那一条原来是黑 28% 底 + 白字：整页只有它一块是纯黑的。
+   改用封面上那方白牌（.hc-plate），挪到左上角、字号收小。 */
+.acard-tag { padding: 4rpx 12rpx; }
+.acard-tag .hc-plate-tx { font-size: 20rpx; letter-spacing: 1rpx; }
 .acard-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .acard-title {
   font-size: 29rpx;
@@ -63,25 +55,38 @@
   align-items: center;
   justify-content: space-between;
 }
+/* 名额：一方素签（同 app.wxss 的 .pill），不再是绢青色块 */
 .quota {
   font-size: 21rpx;
-  color: var(--navy);
-  background: var(--sky-2);
-  border-radius: 12rpx;
   padding: 6rpx 16rpx;
-  font-weight: 600;
+  border-radius: 4rpx;
+  color: var(--wood-80);
+  border: 1rpx solid var(--line);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
 }
-.quota-full { color: var(--muted); background: var(--sky-3); }
+.quota-full { color: var(--muted); }
+/* 报名键走设计稿的 .act / .act.on 那一对：
+   底是纸不是色块，"可报名"只把字和框换成朱。
+   不做整块朱砂——列表里五张卡就是五块红，
+   而方案 A 写明朱是全站唯一的高饱和色，做点缀不做色块。
+   朱字压朱晕量到 5.82，墨字压纸 6.63~7.67。 */
 .enroll-btn {
   font-size: 22rpx;
-  font-weight: 700;
-  color: var(--card);
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  border-radius: 30rpx;
-  padding: 10rpx 18rpx;
+  font-weight: 600;
+  padding: 10rpx 22rpx;
+  border-radius: 6rpx;
   flex-shrink: 0;
+  color: var(--zhu);
+  border: 1rpx solid rgba(158,43,37,.34);
+  background: var(--zhu-soft);
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.55), 0 2rpx 4rpx rgba(74,50,30,.08);
 }
-.enroll-off { background: var(--ghost); }
+.enroll-off {
+  color: var(--ink-2);
+  border-color: var(--line);
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+}
 
 .safe-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }
 

@@ -4,8 +4,8 @@
   <!-- 顶栏走公共满檐组件。fixed=false：本页是 flex 列 + 内层
        scroll-view，顶栏留在文档流里；搜索键进 action 槽，分类 chips 进 below 槽。 -->
   <nav-bar title="课程中心" back="{{false}}" fixed="{{false}}">
-    <view slot="action" class="nav-search" bindtap="onSearch">
-      <icon name="search" size="20" color="#23262E" />
+    <view slot="action" class="nav-search" hover-class="nav-search-hover" hover-stay-time="60" bindtap="onSearch">
+      <view class="nav-search-disc"><icon name="search" size="18" color="#614923" /></view>
     </view>
     <view slot="below">
       <scroll-view scroll-x class="cats" enhanced show-scrollbar="{{false}}">
@@ -37,9 +37,12 @@
         bindtap="onCardTap"
         data-id="{{item.id}}"
       >
-        <view class="ccard-thumb {{item.colorClass}}">
-          <image wx:if="{{item.cover && !item.coverFailed}}" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" class="ccard-img" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
-          <icon wx:else name="{{item.icon}}" size="34" color="rgba(255,255,255,0.92)" />
+        <!-- 缩略图和首页「热门课程」是同一件东西：裱起来的画心（最小一档）。 -->
+        <view class="ccard-thumb mount mount--sm">
+          <view class="mount-art {{item.cover && !item.coverFailed ? 'has-cover' : ''}}">
+            <image wx:if="{{item.cover && !item.coverFailed}}" class="mount-cover ccard-img" src="{{item.cover}}" mode="{{item.coverImageMode || 'aspectFill'}}" data-id="{{item.id}}" data-cover="{{item.cover}}" binderror="onCoverError" />
+            <view wx:else class="thumb-blank"><icon name="{{item.icon}}" size="30" color="#A68C64" /></view>
+          </view>
         </view>
         <view class="ccard-body">
           <view class="ccard-title serif">{{item.name}}</view>

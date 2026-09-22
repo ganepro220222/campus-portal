@@ -97,6 +97,7 @@ page {
   --wood-65:     #957C58;
   --wood-70:     #856F4F;
   --wood-75:     #766246;
+  --wood-80:     #68573B;   /* ＝设计稿的 --wood-dark：纸上的小字与细线 */
   --wood-85:     #5A4A2D;
   --wood-90:     #493D28;
   --wood-95:     #372F1F;
@@ -184,10 +185,13 @@ page {
 
   /* ══ 纹理开始 · 由 scripts/build-texture-tokens.mjs 生成，勿手改 ══ */
   --fiber-page: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.14'/%3E%3C/svg%3E");
+  --fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
   --wood-fig: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='90'%3E%3Cfilter id='wf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.30' numOctaves='5' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='90' filter='url(%23wf)' opacity='0.34'/%3E%3C/svg%3E");
   --wood-fig-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='220'%3E%3Cfilter id='wv'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.30 0.004' numOctaves='5' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='90' height='220' filter='url(%23wv)' opacity='0.34'/%3E%3C/svg%3E");
   --speckle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23s)' opacity='0.10'/%3E%3C/svg%3E");
   --lattice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%237F6E55' stroke-width='1' opacity='0.22'%3E%3Cpath d='M0 0H48M0 0V48'/%3E%3Cpath d='M12 0V12H0M36 0V12H48M12 48V36H0M36 48V36H48'/%3E%3Crect x='12' y='12' width='24' height='24'/%3E%3C/g%3E%3C/svg%3E");
+  --fret-cut: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Cg fill='none' stroke='%237A5626' stroke-width='1.15' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M3.2,17.6 V4.4 H20.8 V15.2 H7.2 V7.2 H16.8 V12.8 H11.2 V9.6'/%3E%3Cpath d='M44.8,17.6 V4.4 H27.2 V15.2 H40.8 V7.2 H31.2 V12.8 H36.8 V9.6'/%3E%3C/g%3E%3Cg fill='none' stroke='%237A5626' stroke-width='0.75' stroke-linecap='square'%3E%3Cpath d='M0,2.2 H48 M0,19.0 H48 M0,17.6 H3.2 M20.8,17.6 H27.2 M44.8,17.6 H48'/%3E%3C/g%3E%3C/svg%3E");
+  --fret-lit: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Cg fill='none' stroke='%23F6E9D2' stroke-width='1.15' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M3.2,17.6 V4.4 H20.8 V15.2 H7.2 V7.2 H16.8 V12.8 H11.2 V9.6'/%3E%3Cpath d='M44.8,17.6 V4.4 H27.2 V15.2 H40.8 V7.2 H31.2 V12.8 H36.8 V9.6'/%3E%3C/g%3E%3Cg fill='none' stroke='%23F6E9D2' stroke-width='0.75' stroke-linecap='square'%3E%3Cpath d='M0,2.2 H48 M0,19.0 H48 M0,17.6 H3.2 M20.8,17.6 H27.2 M44.8,17.6 H48'/%3E%3C/g%3E%3C/svg%3E");
   /* ══ 纹理结束 ══ */
 }
 /* ══ 令牌区结束 ══ */
@@ -448,12 +452,25 @@ button.lbtn-ghost[disabled] {
 .ft-doc  { background: #2C66C2; }
 .ft-xlsx { background: #1E7A45; }
 
-/* 展馆/封面渐变色阶 hc1-hc5 */
-.hc1 { background: linear-gradient(135deg, var(--navy), #475BA6); }
-.hc2 { background: linear-gradient(135deg, #365E8C, #2E7C8C); }
-.hc3 { background: linear-gradient(135deg, #7A2E36, #A0505A); }
-.hc4 { background: linear-gradient(135deg, #3F6B4A, #5C9A6B); }
-.hc5 { background: linear-gradient(135deg, #5A4E86, #7E72B0); }
+/* ── 没有封面图时的兜底底色 hc1-hc5 ──
+   条目按 index % 5 轮着取（utils/decorate.js），所以相邻几张不能同色，
+   也不能同明度——一列全是深色块就成了一堵墙。
+
+   原来这五档是旧蓝紫调色板：靛蓝、青蓝、酒红、草绿、紫。
+   它们不在这套配色里的任何一条线上，而这五块在动态/展馆/课程/活动
+   四张列表页上占的面积都不小 ——「整体色调不对」有一半出在这儿。
+
+   换成这套自己的山水色：远山的青、黛瓦、石青山、木、朱。
+   每一档都是**同色系里深浅两档**收出来的，不跨色相拉渐变
+   （旧的 hc2 从蓝拉到青、hc4 从墨绿拉到草绿，中间那段是脏的）。
+
+   上面压的是 rgba(255,255,255,.92) 的白图标。浅的那一端最吃紧，
+   量过：5.23 / 5.19 / 8.94 / 7.58 / 6.88，都高于图形要的 3:1。 */
+.hc1 { background: linear-gradient(135deg, var(--qing-90), var(--tile-dark)); }
+.hc2 { background: linear-gradient(135deg, var(--qing-90), var(--shan-1)); }
+.hc3 { background: linear-gradient(135deg, var(--zhu-edge), var(--zhu-d)); }
+.hc4 { background: linear-gradient(135deg, var(--wood-95), var(--wood-85)); }
+.hc5 { background: linear-gradient(135deg, var(--qing-90), var(--qing-80)); }
 
 /* 轮播色阶 .s1~.s3 已删。
    轮播现在是裱起来的画心：有封面图就满强度铺图，没有就顶一幅横幅小青绿，
@@ -521,6 +538,76 @@ button.lbtn-ghost[disabled] {
   height: 100%;
   z-index: 0;
 }
+/* ── 内容纸 ──
+   卷首是一幅画顶到屏幕最上缘，内容纸从画脚浮起来压住山脚。
+   首页和动态详情页是同一件东西，所以住在这儿。
+   设计稿的 .sheet：-26px 上移、18px 圆角、一道金线 + 一层青影，
+   上沿一道提手（卷轴的轴头）。 */
+.sheet {
+  position: relative;
+  z-index: 3;
+  margin-top: -52rpx;                     /* ＝设计稿 -26px，纸盖住画的下沿 */
+  border-radius: 36rpx 36rpx 0 0;
+  background: var(--paper);
+  box-shadow: 0 -4rpx 0 rgba(200,164,92,.30),
+              0 -20rpx 52rpx rgba(74,102,96,.13);
+}
+/* 纸的上沿留一道提手，像卷轴的轴头 */
+.sheet::before {
+  content: '';
+  display: block;
+  width: 92rpx;
+  height: 6rpx;
+  margin: 18rpx auto 8rpx;
+  border-radius: 4rpx;
+  background: var(--wood-40);
+  opacity: .7;
+}
+
+/* 封面上那方白牌：半透明的纸垫着馆名，左边一枚小器物。
+   定稿里它和题签是**两件**——牌在图上写简称，签在框下写全名。
+   牌和签各写各的，不要叠成两行字。 */
+.hc-plate {
+  position: absolute;
+  z-index: 4;
+  left: 14rpx;
+  bottom: 14rpx;
+  max-width: calc(100% - 28rpx);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 6rpx 16rpx 6rpx 12rpx;
+  border-radius: 4rpx;
+  background: linear-gradient(135deg, rgba(252,250,244,.86), rgba(252,250,244,.66));
+  box-shadow: inset 0 0 0 2rpx rgba(122,110,85,.24);
+}
+.hc-mark { flex: none; opacity: .9; }
+/* 同一方牌挪到左上角的那一档（活动卡的类型签） */
+.hc-plate--tl { top: 14rpx; bottom: auto; }
+.hc-plate-tx {
+  font-size: 27rpx;
+  letter-spacing: 3rpx;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 没有封面图时垫在画心里的绢底 + 一枚器物图标。
+   和 .mount-art 一起用，所以住在这儿而不是某一页里——
+   动态、课程、展馆、活动四张列表页是同一件东西。 */
+.thumb-blank {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: var(--juan-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.7),
+              inset 0 0 0 2rpx rgba(150,120,66,.10);
+}
+
 /* 有真封面图时压一层暗角。照片千差万别，没有它浅色照片上的字没法读；
    没有照片的兜底态是自家那幅浅青的画，不需要压暗。 */
 .mount-art.has-cover::after {
@@ -644,17 +731,30 @@ button.lbtn-ghost[disabled] {
   flex-shrink: 0;
 }
 
-/* 胶囊标签 */
+/* ── 小签（原来叫「胶囊标签」）──
+   对照 design/demo/v2/shuyuan.css 的 .pill。
+   原来是 20rpx 全圆角 + --sky-2 底 + --navy 字：那是旧稿的 Material 胶囊，
+   换了调色板之后底色变成一块淡绿、字是金棕，谁也不挨着谁。
+
+   定稿里它不是胶囊，是**一方小签**：直角（2px 圆角）、纸底、一圈细框、
+   底下一道受光的白线。和题签、界标是同一门语言。
+   字色 --wood-80（＝设计稿的 --wood-dark），在这层纸上量到 5.80~6.79，
+   20rpx 的小字按正文算，要 4.5:1，够。 */
 .pill {
-  font-size: 20rpx;
-  padding: 4rpx 16rpx;
-  border-radius: 20rpx;
-  background: var(--sky-2);
-  color: var(--navy);
-  font-weight: 600;
+  font-size: 21rpx;                 /* 设计稿 10.5px */
+  padding: 4rpx 14rpx;              /* 设计稿 2px 7px */
+  border-radius: 4rpx;              /* 设计稿 2px —— 直角，不是胶囊 */
+  color: var(--wood-80);
+  border: 1rpx solid var(--line);
+  background: linear-gradient(180deg, rgba(255,252,244,.9), rgba(234,226,208,.55));
+  box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   flex-shrink: 0;
 }
-.pill.gold { background: var(--xing-05); color: var(--jin-70); }
+/* 两个变体：朱签用在"要紧"的那一条（设计稿的 .pill.zhu）；
+   金签留给既有的「字幕」这类附加说明。两个都只换字色和框色，
+   底纸不换——底纸一换就又变回色块了。 */
+.pill.zhu  { color: var(--zhu);    border-color: rgba(158,43,37,.32); }
+.pill.gold { color: var(--jin-70); border-color: rgba(158,125,69,.34); }
 
 /* 详情页收藏按钮（展馆/文创/课程/资源共用） */
 /* 三处调用都在 .detail-wrap（padding: 24rpx 28rpx）里，这里再给 28rpx 横向外边距

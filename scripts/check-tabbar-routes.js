@@ -11,7 +11,15 @@
  * 多一条 → 非 tab 页平白空出 108rpx。这里把三份比一遍。
  *
  * 顺带检查 tabbar 高度：utils/tabRoutes.js 的 TAB_BAR_HEIGHT_RPX 必须等于
- * custom-tab-bar/index.wxss 里 .tabbar 的 height，让位高度才对得上。
+ * custom-tab-bar/index.wxss 里**这条固定栏占掉的全部高度**，让位才对得上。
+ *
+ * 注意「全部高度」是 .fret + .tabbar 两段之和，不是 .tabbar 一段。
+ * 标签栏上方那条回纹带和栏身一起装在同一个 fixed 的 .tabbar-wrap 里，
+ * 一样挡着页面内容。只按 .tabbar 算的话，浮层会被回纹带压掉 40rpx，
+ * 且这类偏差在模拟器上不明显——真机上是输入框顶着一条纹样。
+ *
+ * 安全区不在这个数里：它由 .tabbar 的 padding-bottom 占，
+ * 让位的地方各自再 + env(safe-area-inset-bottom)，两边都这么算。
  *
  * 用法：node scripts/check-tabbar-routes.js
  */
@@ -42,9 +50,20 @@ function fromTabRoutes() {
   return [...block[1].matchAll(/'([^']+)'/g)].map((m) => norm(m[1]))
 }
 
+/**
+ * 这条固定栏一共占掉多少 rpx = 回纹带 + 栏身。
+ * 两段都要能量到；少量到一段就返回 null，由调用方报错——
+ * 「量不到就当 0」会让让位悄悄少一截，正是这里要防的。
+ */
 function heightFromWxss() {
-  const m = read('custom-tab-bar/index.wxss').match(/\.tabbar\s*\{[\s\S]*?height:\s*(\d+)rpx/)
-  return m ? Number(m[1]) : null
+  const src = read('custom-tab-bar/index.wxss')
+  const parts = {}
+  for (const sel of ['.fret', '.tabbar']) {
+    const m = src.match(new RegExp(`\\${sel}\\s*\\{[\\s\\S]*?height:\\s*(\\d+(?:\\.\\d+)?)rpx`))
+    if (!m) return { total: null, parts }
+    parts[sel] = Number(m[1])
+  }
+  return { total: parts['.fret'] + parts['.tabbar'], parts }
 }
 
 function heightFromUtil() {
@@ -78,12 +97,14 @@ function main() {
       `      custom-tab-bar/index.js → ${bar.join(', ')}`)
   }
 
-  const hWxss = heightFromWxss()
+  const { total: hWxss, parts } = heightFromWxss()
   const hUtil = heightFromUtil()
   if (hWxss === null || hUtil === null) {
-    errs.push('取不到 tabbar 高度（.tabbar height 或 TAB_BAR_HEIGHT_RPX）')
+    errs.push('取不到 tabbar 高度（custom-tab-bar/index.wxss 的 .fret + .tabbar height，' +
+      '或 utils/tabRoutes.js 的 TAB_BAR_HEIGHT_RPX）')
   } else if (hWxss !== hUtil) {
-    errs.push(`tabbar 高度对不上：custom-tab-bar/index.wxss 是 ${hWxss}rpx，` +
+    const detail = Object.entries(parts).map(([k, v]) => `${k} ${v}`).join(' + ')
+    errs.push(`tabbar 高度对不上：custom-tab-bar/index.wxss 是 ${hWxss}rpx（${detail}），` +
       `utils/tabRoutes.js 的 TAB_BAR_HEIGHT_RPX 是 ${hUtil}rpx`)
   }
 

@@ -30,6 +30,61 @@ function stripUnsafeHtml(html) {
 }
 
 /*
+ * 正文里的**引文**和**插图**要按方案 A 的样子出来。
+ *
+ * 为什么不能写在 wxss 里：正文走的是 <rich-text>，它**不认外部 class**，
+ * 节点上只有 style 属性会生效。所以设计稿的 .art-quote / .art-fig .fig-box
+ * 在小程序这边落不了地——那两段样式写了也没人读。
+ * 后台用的是 wangEditor，工具栏没排除 blockQuote、图片上传也开着，
+ * 所以这两种节点是真会出现的，不是假想。
+ *
+ * 取值照搬设计稿（shuyuan.css 的 .art-quote / .art-fig .fig-box），
+ * 令牌换成字面量——data 里同样没有 var() 可用：
+ *   引文：左沿一道木色粗线 + 一层极淡的暖底（设计稿 rgba(107,74,50,.045)）
+ *   插图：纸托 + 细框，图片"裱"在纸上，不是一块贴上去的方块
+ * box-shadow 没搬：rich-text 对它的支持各端不一，不如不画。
+ *
+ * **前缀注入**：把样式拼在原有 style 的前面，编辑器自己写的（居中、字号）
+ * 排在后面，同属性时后者赢——不覆盖作者的排版意图。
+ */
+const QUOTE_STYLE = [
+  'margin:36rpx 0',
+  'padding:24rpx 28rpx',
+  'border-left:6rpx solid #E4CEA8',   /* ＝ --wood-30，设计稿的 --wood-light */
+  'background:rgba(107,74,50,.045)',
+  'font-size:28rpx',
+  'line-height:1.9',
+  'color:#4C505C'                      /* ＝ --ink-2 */
+].join(';')
+
+const FIG_STYLE = [
+  'display:block',
+  'width:100%',
+  'box-sizing:border-box',
+  'margin:36rpx 0',
+  'padding:14rpx',
+  'border:1rpx solid #E4DCC8',         /* ＝ --line */
+  'border-radius:12rpx',
+  'background:#F6F2E6'                 /* ＝ --paper-1 */
+].join(';')
+
+function injectStyle(tag, style, html) {
+  const open = new RegExp('<' + tag + '\\b([^>]*)>', 'gi')
+  return html.replace(open, (full, attrs) => {
+    const has = /\sstyle\s*=\s*("([^"]*)"|'([^']*)')/i.exec(attrs)
+    if (!has) return '<' + tag + attrs + ' style="' + style + '">'
+    const own = (has[2] !== undefined ? has[2] : has[3]).trim().replace(/^;|;$/g, '')
+    const merged = own ? style + ';' + own : style
+    return '<' + tag + attrs.replace(has[0], ' style="' + merged + '"') + '>'
+  })
+}
+
+function styleRichNodes(html) {
+  if (!html) return ''
+  return injectStyle('img', FIG_STYLE, injectStyle('blockquote', QUOTE_STYLE, html))
+}
+
+/*
  * 首字下沉需要文字绕排住那个大字，否则大字会孤零零杵在摘要区的虚线上方。
  * 实测（375px 宽、正文 29rpx/1.9、首字 78rpx/0.92）：
  *   摘要一行 = 28px，撑不住 36px 高的首字；两行 = 55px，才刚好盖住。
@@ -74,7 +129,7 @@ function mergeNewsArticle(raw, fallback) {
   const explicitSummary = String(raw.summary ?? '').trim()
   const showLead = !!explicitSummary
   const lead = showLead ? explicitSummary : ''
-  const contentHtml = isHtmlContent(raw.content) ? stripUnsafeHtml(raw.content) : ''
+  const contentHtml = isHtmlContent(raw.content) ? styleRichNodes(stripUnsafeHtml(raw.content)) : ''
   const useRichText = !!contentHtml
   const paras = useRichText
     ? []

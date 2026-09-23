@@ -462,6 +462,30 @@
 
 /* ── Section 通用 ── */
 .section { margin-top: 40rpx; }
+/* ──「最新动态」整段的暖纸：通栏出血 ──
+   对照 design/demo/v2 的 .news-band。设计稿把理由写得很清楚：
+   页面的明暗节奏是 **深画 → 暖 → 白 → 暖 → 雷纹**，两头都压得住；
+   只在上半铺暖色（卷首那幅画 + 入口版框）整页就是头重脚轻的。
+   这一段一直没搬过来，首页从入口版框往下就一路白到底。
+
+   .wrap 给了 32rpx 的横距，所以这张纸要先用负外边距挣出去通栏，
+   再把同样的横距加回内边距里——出血的是纸，内容的栏距不变。
+   （设计稿是 margin: 4px -16px 0 / padding: 2px 16px 18px，同一回事。） */
+.section--band {
+  margin-top: 8rpx;
+  margin-left: -32rpx;
+  margin-right: -32rpx;
+  padding: 4rpx 32rpx 36rpx;
+  background-color: var(--xing-05);
+  background-image: var(--fiber-page);
+  background-size: 320rpx 320rpx;
+  box-shadow: inset 0 2rpx 0 rgba(255,252,244,.9),
+              inset 0 -2rpx 0 rgba(150,120,66,.10);
+}
+/* 段内的卡片要比这张纸再亮一档，否则卡片就"陷"进去了。
+   .ncard 本来就是 --paper-card，这里写出来是为了**说明这件事是有意的**，
+   哪天有人把卡片底色改成 --paper-1 会先撞上这条注释。 */
+.section--band .ncard { background-color: var(--paper-card); }
 /* 段头那一族（.sec-head / .sec-title / .seal-sm / .sec-more / .sec-rule）
    已经搬到 app.wxss —— 动态详情的「相关推荐」也要用同一枚印，
    留在这里只有首页够得着。搬家的另一半原因写在那边：

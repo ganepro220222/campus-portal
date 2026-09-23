@@ -47,7 +47,7 @@
         bindconfirm="send"
       />
       <!-- 发送 = 雁字。纸飞机是西方符号；中文里"寄信"的本相是雁阵排成人字 -->
-      <view class="send" bindtap="send"><icon name="send" size="25" color="#FFFBF2" /></view>
+      <view class="send" bindtap="send"><icon name="send" size="32" color="#FFFBF2" /></view>
     </view>
     <view class="ai-note">摘自平台已录入资料</view>
   </view>

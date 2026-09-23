@@ -35,7 +35,7 @@
         bindinput="onInput"
         bindconfirm="send"
       />
-      <view class="send" bindtap="send"><icon name="send" size="23" color="#FFFBF2" /></view>
+      <view class="send" bindtap="send"><icon name="send" size="30" color="#FFFBF2" /></view>
     </view>
     <view class="ai-note">摘自平台已录入资料</view>
   </view>

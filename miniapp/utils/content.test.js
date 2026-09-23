@@ -156,6 +156,38 @@ assert.strictEqual(mergeNewsArticle({}, {}).coverImageMode, 'aspectFill')
   assert.ok(a.contentHtml.includes('text-align:justify'))
 }
 
+/* 引文与插图：rich-text 不认外部 class，样式只能内联进去。 */
+{
+  const a = mergeNewsArticle({
+    content: '<p>正文</p><blockquote>引一句</blockquote>'
+      + '<img src="https://cdn.example.com/a.png">'
+  }, {})
+  assert.ok(/<blockquote[^>]*style="[^"]*border-left:6rpx solid/.test(a.contentHtml),
+    'blockquote 应当被注入左沿木线')
+  assert.ok(/<img[^>]*style="[^"]*border:1rpx solid/.test(a.contentHtml),
+    'img 应当被裱在纸托上')
+  assert.ok(a.contentHtml.includes('https://cdn.example.com/a.png'), '原 src 不能丢')
+}
+
+/* 作者自己写的样式排在后面，同属性时**作者赢**——不覆盖排版意图。 */
+{
+  const a = mergeNewsArticle({
+    content: '<blockquote style="text-align:center;color:#111">居中的引文</blockquote>'
+  }, {})
+  const m = /<blockquote[^>]*style="([^"]*)"/.exec(a.contentHtml)
+  assert.ok(m, '应当还有 style')
+  assert.ok(m[1].indexOf('color:#4C505C') < m[1].indexOf('color:#111'),
+    '注入的字色必须排在作者的前面，才会被作者覆盖')
+  assert.ok(m[1].includes('text-align:center'), '作者的排版要保留')
+}
+
+/* 没有这两种节点时一个字都不该动 */
+{
+  const plain = '<p style="text-align:justify">只有段落</p>'
+  const a = mergeNewsArticle({ content: plain }, {})
+  assert.strictEqual(a.contentHtml, plain)
+}
+
 const news = mergeNewsArticle({ id: 1, title: '标题', content: '正文\n第二段' }, {})
 assert.strictEqual(news.id, 1)
 assert.strictEqual(news.title, '标题')

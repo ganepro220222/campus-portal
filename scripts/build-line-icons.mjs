@@ -39,6 +39,21 @@ const ICONS_JS = path.join(ROOT, 'miniapp/components/icon/icons.js')
 const TARGET = 18      // 墨迹最长边的目标值（24 框内），取自控件类那批的中位数
 const STROKE = 1.7     // 渲染出来的描边宽度（24 框内）
 
+/*
+ * 按最长边定尺寸，对**方方正正**的器物是对的，对扁的不对。
+ *
+ * 「看着多大」跟的是墨量，不是最长边。量过一轮：这套里其它图标的墨量
+ * 中位 23.96%（96×96 画布），而鸿雁按最长边 18 缩完只有 6.61% —— 28%。
+ * 它是 2.55:1 的剪影，同样的最长边，墨只有人家四成不到。
+ * 真要把墨量补齐得线性放 1.9 倍，24 的框根本装不下。
+ *
+ * 所以这一枚单独放到**占满整个框**（24）：墨量升到 12.4%，
+ * 和 download（12.87%）一档，比 robot（小篆「问」，9.99%）重。
+ * 再往上没有余地了——剩下的靠调用处的 size 补，见 icons.js 里 send 的注释。
+ * 实心图标没有描边，顶到框边不会被裁。
+ */
+const TARGET_OVERRIDE = { 'send': 24 }
+
 /** 小程序图标名 → 设计稿器物名。一个器物可以供几个名字用。 */
 const MAP = {
   'home':           ['shanmen',     '山门'],
@@ -126,7 +141,7 @@ async function main() {
   for (const [name, [key, label]] of Object.entries(MAP)) {
     if (!bodies[key]) throw new Error(`设计稿里没有 lico_${key}`)
     const longest = Math.max(ink[key].w, ink[key].h)
-    const s = +(TARGET / longest).toFixed(4)
+    const s = +((TARGET_OVERRIDE[name] || TARGET) / longest).toFixed(4)
     const w = +(STROKE / s).toFixed(2)
     /*
      * 除了缩放，还要**把墨迹挪到正中**。

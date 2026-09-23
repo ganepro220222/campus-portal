@@ -71,7 +71,7 @@
           <text class="c-act">复制</text>
         </view>
         <view class="c-row" bindtap="onCopy" data-val="{{detail.contact.email}}">
-          <view class="c-ic"><icon name="send" size="18" color="#614923" /></view>
+          <view class="c-ic"><icon name="send" size="24" color="#614923" /></view>
           <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">{{detail.contact.email}}</text></view>
           <text class="c-act">复制</text>
         </view>

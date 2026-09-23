@@ -44,7 +44,7 @@
         <view class="c-body"><text class="c-k">电话</text><text class="c-v">{{phone}}</text></view>
       </view>
       <view wx:if="{{email}}" class="c-row" bindtap="onCopy" data-val="{{email}}">
-        <view class="c-ic"><icon name="send" size="18" color="#7E6134" /></view>
+        <view class="c-ic"><icon name="send" size="24" color="#7E6134" /></view>
         <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">{{email}}</text></view>
       </view>
     </view>

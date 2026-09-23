@@ -210,8 +210,8 @@
       </scroll-view>
     </view>
 
-    <!-- 最新动态 -->
-    <view class="section wrap">
+    <!-- 最新动态。整段铺一张暖纸（通栏出血），见 wxss 的 .section--band -->
+    <view class="section wrap section--band">
       <view class="sec-head">
         <view class="sec-title serif">
           <image class="seal-sm" src="/assets/images/seal-zhu.png" mode="aspectFit" />

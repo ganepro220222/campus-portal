@@ -105,7 +105,14 @@ nav-bar { flex: 0 0 auto; }
   white-space: nowrap;
 }
 
-.list-bottom { height: calc(150rpx + env(safe-area-inset-bottom)); }
+/* 底部留白要盖过整条标签栏，**再留出设计稿那口气**。
+   标签栏 = 回纹带 40rpx + 栏身 104rpx = 144rpx（安全区两边都另算，抵消）。
+   原来写 150rpx，是标签栏还只有 108rpx 那会儿定的；加了回纹带之后
+   净空隙从 42rpx 掉到 6rpx（3px），最后一块卡片几乎贴着回纹带。
+   设计稿 home.html 给 .fret 的是 margin-top: 20px = 40rpx，
+   所以这里取 144 + 40 = 184rpx。改标签栏高度时这个数要跟着改，
+   check:tabbar-routes 会拦。 */
+.list-bottom { height: calc(184rpx + env(safe-area-inset-bottom)); }
 
 /* 全局 .page-refresh-bar 默认 28rpx 横向边距（对齐详情页栏距），本页内容栏距是 32rpx（.hall-grid），
    不覆写的话红条会比下方卡片各窄 4rpx，边缘对不齐。加根类提权，避免依赖样式表先后顺序。 */

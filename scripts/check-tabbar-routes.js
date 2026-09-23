@@ -177,6 +177,45 @@ function main() {
   }
 
   /*
+   * 每个 tab 页自己也要给标签栏让出位置——而且不是"刚好盖住"就行。
+   *
+   * 上面那条只管住了问答浮标。页面**内容**的那一份当时漏了：
+   * 四个 tab 页的底部留白都写着 150rpx，那是标签栏还只有 108rpx 时定的数。
+   * 加了回纹带长到 144rpx 之后，净空隙从 42rpx 掉到 6rpx（3px）——
+   * 滚到底时最后一块卡片几乎贴着回纹带。
+   * 这条注释的上一段其实已经把"42 掉到 6"写出来了，却只去补了浮标，
+   * 内容这一份就这么留在线上。所以补这一条。
+   *
+   * 余量取 40rpx：设计稿 home.html 给 .fret 的是 margin-top: 20px，
+   * 也就是内容和回纹带之间本来就该有 20px = 40rpx 的一口气。
+   *
+   * 怎么找那块留白：取 wxml 里**最后**一个空 view，它的类在本页 wxss 里
+   * 写着 height: calc(Nrpx + env(safe-area-inset-bottom))。
+   * 找不到就报错——tab 页不给让位，内容一定会被压住。
+   */
+  const CONTENT_CLEARANCE_RPX = 40
+  for (const route of app.routes) {
+    const wxml = read(route + '.wxml')
+    const wxss = read(route + '.wxss')
+    const spacers = [...wxml.matchAll(/<view\s+class="([\w-]+)"\s*>\s*<\/view>/g)].map((m) => m[1])
+    let found = null
+    for (const cls of spacers.reverse()) {
+      const re = new RegExp('\\.' + cls + '\\s*\\{[^}]*height:\\s*calc\\((\\d+)rpx\\s*\\+\\s*env\\(safe-area-inset-bottom\\)\\)')
+      const hit = wxss.replace(/\/\*[\s\S]*?\*\//g, '').match(re)
+      if (hit) { found = { cls, rpx: Number(hit[1]) }; break }
+    }
+    if (!found) {
+      errs.push(`${route} 是 tab 页，却没找到底部留白 —— ` +
+        'wxml 末尾要有一个空 view，它的类在 wxss 里写 ' +
+        'height: calc(<N>rpx + env(safe-area-inset-bottom))，N 要盖过标签栏')
+    } else if (hWxss !== null && found.rpx - hWxss < CONTENT_CLEARANCE_RPX) {
+      errs.push(`${route} 底部只留了 ${found.rpx}rpx（.${found.cls}），标签栏占 ${hWxss}rpx，` +
+        `净空隙 ${found.rpx - hWxss}rpx（要 ≥ ${CONTENT_CLEARANCE_RPX}rpx）—— ` +
+        '滚到底时最后一块内容会贴着回纹带；设计稿那里本来有 20px 的一口气')
+    }
+  }
+
+  /*
    * 回纹带有**两份**，必须画得一模一样。
    *
    * 自定义 tabBar 是页面之外的独立层，app.wxss 的 class 规则到不了那儿

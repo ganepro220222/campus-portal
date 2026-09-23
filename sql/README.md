@@ -112,10 +112,11 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 26 | `patch-update-builtin-knowledge-kb-qa.sql` | **已有库**：把内置使用指南更新为知识问答口径；没有的篇会插入（含展馆导览） | 可重复执行 |
 | 27 | `patch-scrub-demo-ai-copy.sql` | **提审前**：把示例动态/课程/导航/欢迎语里残留的「AI / 智能问答 / 自动字幕」换成中性说法 | 可重复执行；演示数据删除后不必再跑 |
 | 28 | `patch-hall-vr-8-9-20260905.sql` | 8/9 号馆回填 720yun VR 链接，简介去掉「筹备中」 | 仅数据；seed 已同步；**可重复执行** |
-| 29 | `patch-college-app-tongtuxing-appid.sql` | 通途星填入正式 AppID；没有该条则补一条 | 仅数据；seed 已同步；**旧库必跑、可重复执行** |
-| 30 | `patch-college-app-remove-demo.sql` | 删除「示例关联应用 A/B」两条演示行 | 仅数据；**旧库必跑、可重复执行** |
-| 31 | `patch-college-app-icon-display.sql` | 关联小程序图标：`icon_fit_mode` / `icon_shape` | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
-| 32 | `patch-course-video-revision.sql` | 课程教学视频版本：更换文件后旧播放器不能写回旧进度 | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
+| 29 | `patch-hall-vr-host-20260923.sql` | 展馆 VR 主机迁到新业务域名租户（roma / 720yun） | 仅数据；seed 已同步；**旧库必跑、可重复执行** |
+| 30 | `patch-college-app-tongtuxing-appid.sql` | 通途星填入正式 AppID；没有该条则补一条 | 仅数据；seed 已同步；**旧库必跑、可重复执行** |
+| 31 | `patch-college-app-remove-demo.sql` | 删除「示例关联应用 A/B」两条演示行 | 仅数据；**旧库必跑、可重复执行** |
+| 32 | `patch-college-app-icon-display.sql` | 关联小程序图标：`icon_fit_mode` / `icon_shape` | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
+| 33 | `patch-course-video-revision.sql` | 课程教学视频版本：更换文件后旧播放器不能写回旧进度 | ✅ 已并入 init.sql；**旧库必跑、可重复执行** |
 
 `patch-hall-real-data.sql` 是一次性初始化补丁（按 id 覆盖馆名/分类）。8/9 号馆的 `vr_url` 已改为域名防护：已迁到 720yun 的链接不会被写回 `NULL`。合伙人回填新 URL 后**不要**再当「重置脚本」整份重跑；若必须重跑，先确认 8/9 的 CASE 防护仍在。
 

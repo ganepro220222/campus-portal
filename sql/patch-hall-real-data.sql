@@ -23,7 +23,7 @@ UPDATE `hall` SET
   `name` = '贵州交通博物馆·教育馆',
   `short_name` = '交通博物馆',
   `intro` = '贵州交通发展历程与教育成果数字化展陈，支持 VR 全景漫游与图文介绍。',
-  `vr_url` = 'https://a28c11ea.720roma.com/vr/515a9635070ca212/',
+  `vr_url` = 'https://9c03e1f7.720roma.com/vr/515a9635070ca212/',
   `category_id` = 4,
   `sort` = 1,
   `status` = 1
@@ -33,7 +33,7 @@ UPDATE `hall` SET
   `name` = '校史馆',
   `short_name` = '校史馆',
   `intro` = '学校办学历程与重要发展节点的线上展陈，支持 VR 全景漫游与图文介绍。',
-  `vr_url` = 'https://a28c11ea.720roma.com/vr/b5b7196093f3c25a/',
+  `vr_url` = 'https://9c03e1f7.720roma.com/vr/b5b7196093f3c25a/',
   `category_id` = 4,
   `sort` = 2,
   `status` = 1
@@ -43,7 +43,7 @@ UPDATE `hall` SET
   `name` = '贵州交通红色教育基地',
   `short_name` = '红色教育基地',
   `intro` = '基地实体展陈的线上导览入口，支持 VR 全景漫游与图文介绍。',
-  `vr_url` = 'https://a28c11ea.720roma.com/vr/59e140eb05f9e134/',
+  `vr_url` = 'https://9c03e1f7.720roma.com/vr/59e140eb05f9e134/',
   `category_id` = 5,
   `sort` = 3,
   `status` = 1
@@ -53,7 +53,7 @@ UPDATE `hall` SET
   `name` = '交旅融合研学服务中心',
   `short_name` = '交旅研学',
   `intro` = '交旅融合主题研学服务展示，连接线上云游与线下研学实践。',
-  `vr_url` = 'https://a28c11ea.720roma.com/vr/96cb6946cefd5b99/',
+  `vr_url` = 'https://9c03e1f7.720roma.com/vr/96cb6946cefd5b99/',
   `category_id` = 6,
   `sort` = 4,
   `status` = 1
@@ -63,7 +63,7 @@ UPDATE `hall` SET
   `name` = '学生素质发展中心',
   `short_name` = '素质发展中心',
   `intro` = '学生综合素质培养成果与活动空间线上展示。',
-  `vr_url` = 'https://2e6zb07zn85.720yun.com/vr/374j5dyvrf2',
+  `vr_url` = 'https://c73zd07zrkz.720yun.com/vr/374j5dyvrf2',
   `category_id` = 7,
   `sort` = 5,
   `status` = 1
@@ -73,7 +73,7 @@ UPDATE `hall` SET
   `name` = '学生科普体验中心',
   `short_name` = '科普体验中心',
   `intro` = '交通科技与学生科普互动体验场景，激发科学探索兴趣。',
-  `vr_url` = 'https://2e6zb07zn85.720yun.com/vr/7a0j5dyksk9',
+  `vr_url` = 'https://c73zd07zrkz.720yun.com/vr/7a0j5dyksk9',
   `category_id` = 7,
   `sort` = 6,
   `status` = 1
@@ -83,7 +83,7 @@ UPDATE `hall` SET
   `name` = '文化千岛艺术馆',
   `short_name` = '千岛艺术馆',
   `intro` = '汇聚多元文化艺术作品，展现交通院校美育与文创成果。',
-  `vr_url` = 'https://2e6zb07zn85.720yun.com/vr/660j5dyvsv5',
+  `vr_url` = 'https://c73zd07zrkz.720yun.com/vr/660j5dyvsv5',
   `category_id` = 16,
   `sort` = 7,
   `status` = 1
@@ -129,7 +129,7 @@ UPDATE `hall` SET
   `name` = '节水宣传教育中心',
   `short_name` = '节水宣传中心',
   `intro` = '节水理念、技术与宣传教育成果展示。',
-  `vr_url` = 'https://2e6zb07zn85.720yun.com/vr/f7bj5pmOkO2',
+  `vr_url` = 'https://c73zd07zrkz.720yun.com/vr/f7bj5pmOkO2',
   `category_id` = 18,
   `sort` = 10,
   `status` = 1
@@ -139,7 +139,7 @@ UPDATE `hall` SET
   `name` = '牙舟陶数字展厅',
   `short_name` = '牙舟陶展厅',
   `intro` = '国家级非物质文化遗产牙舟陶数字展陈，汇集百余件 3D 数字化展品，依托 VR 全景漫游赏析器物造型、窑变釉色与民俗纹饰，感受贵州本土陶艺魅力。',
-  `vr_url` = 'https://2e6zb07zn85.720yun.com/vr/e96je04kew9',
+  `vr_url` = 'https://c73zd07zrkz.720yun.com/vr/e96je04kew9',
   `category_id` = 16,
   `sort` = 11,
   `status` = 1

@@ -336,29 +336,45 @@
 /* 40rpx 是隔条塌成 0 时的保底间距；flex 里外边距不会合并，
    有剩余空间时它与上面那根隔条相加。 */
 .foot {
-  margin-top: 40rpx;
+  /* 40→60rpx：校徽这枚牌放大之后，最外那道金环（12rpx 的 spread）
+     是画在 .foot 盒子**外面**的，等于凭空往上吃掉 6px；
+     加上牌本身高了 32rpx，把上面 flex 隔条的余量挤没了——
+     量出来微信键到金环只剩 14px（原来 33px）。这 20rpx 是补回那口气。 */
+  margin-top: 60rpx;
   text-align: center;
   line-height: 1.8;
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 }
-/* 校徽退到页脚、收到 104rpx，不抢书法字。
-   multiply 让它压进纸里，不像一枚贴上去的贴纸。 */
+/* 校徽做成一枚圆牌：纸底 + 内外双金环。
+   白方块里嵌一个圆徽是最廉价的做法，边缘还会硬切。
+   multiply 让它压进纸里，不像一枚贴上去的贴纸。
+
+   尺寸这里有过一处**没按设计稿**：设计稿是牌 52px、徽 42px（徽占牌 0.81），
+   小程序牌换算成 104rpx 是对的，徽却只给了 72rpx（0.69）——
+   牌面空出一圈，看着就是"徽偏小"。
+
+   这一版在补回那个比例的同时整体放大 30%（牌 104→136rpx）：
+   设计稿那句"校徽退到页脚小尺寸，不抢书法字"仍然成立——
+   书法字高 72rpx 且横向通栏，这枚牌再大一圈也压不过它。
+   金环三道、投影、内高光全部按 136/104 同比缩放，形制不变。
+   徽的原图是 288×288，136rpx 在 3 倍屏上要 204 物理像素，还有余量。 */
 .foot-emblem-plate {
-  width: 104rpx;
-  height: 104rpx;
-  margin: 0 auto 26rpx;
+  width: 136rpx;
+  height: 136rpx;
+  margin: 0 auto 34rpx;
   border-radius: 50%;
   background: radial-gradient(70% 70% at 38% 30%, var(--paper-1) 0%, var(--paper-3) 72%, #DCCDAE 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 2rpx rgba(192,153,78,.85),
-              0 0 0 7rpx rgba(122,86,38,.55),
-              0 0 0 9rpx rgba(192,153,78,.55),
-              0 4rpx 14rpx rgba(74,50,30,.22),
-              inset 0 2rpx 4rpx rgba(255,255,255,.9);
+  box-shadow: 0 0 0 3rpx rgba(192,153,78,.85),
+              0 0 0 9rpx rgba(122,86,38,.55),
+              0 0 0 12rpx rgba(192,153,78,.55),
+              0 5rpx 18rpx rgba(74,50,30,.22),
+              inset 0 3rpx 5rpx rgba(255,255,255,.9);
 }
-.foot-emblem { width: 72rpx; height: 72rpx; mix-blend-mode: multiply; }
+/* 136 × 0.81（设计稿 42/52）＝ 110 */
+.foot-emblem { width: 110rpx; height: 110rpx; mix-blend-mode: multiply; }
 .foot-b {
   display: block;
   color: var(--ink-2);

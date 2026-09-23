@@ -129,8 +129,11 @@
       </view>
     </view>
 
-    <!-- 功能入口矩阵 -->
-    <view class="entries-wrap wrap">
+    <!-- 功能入口矩阵。这里**不挂 .wrap**：.entries-wrap 自己写了
+         padding: 34rpx 8rpx 28rpx，同权重且写在后面，.wrap 的 0 32rpx
+         会被整条覆盖——挂着它一个像素也不动，只会让人以为栏距是它给的。
+         量过：挂与不挂，版框 16…359、内容 21…354，完全一致。 -->
+    <view class="entries-wrap">
       <view class="entries">
         <view
           wx:for="{{navEntries}}"

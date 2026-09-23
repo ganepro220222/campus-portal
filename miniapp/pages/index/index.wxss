@@ -468,13 +468,16 @@
    只在上半铺暖色（卷首那幅画 + 入口版框）整页就是头重脚轻的。
    这一段一直没搬过来，首页从入口版框往下就一路白到底。
 
-   .wrap 给了 32rpx 的横距，所以这张纸要先用负外边距挣出去通栏，
-   再把同样的横距加回内边距里——出血的是纸，内容的栏距不变。
-   （设计稿是 margin: 4px -16px 0 / padding: 2px 16px 18px，同一回事。） */
+   ⚠ 这里**不需要**负外边距，设计稿那对 -16px 不能照抄。
+   设计稿的 .news-band 是包在 .wrap **外面**的一层，那 -16px 是用来
+   抵消父级 wrap 的缩进；小程序这边把 band 加在了和 .wrap **同一个元素**上，
+   而 .sheet 没有横向内边距，.section 本来就通栏——再叠一对 -32rpx，
+   纸横跨到 -32…屏宽+32（两边各 32rpx 白白被裁），
+   内容也跟着整体左移 32rpx，段头那枚印就和上下两段对不齐了。
+   量过：印的左边缘 展馆 16px / 动态 0px / 课程 16px。
+   去掉之后三段都是 16px，纸正好 0…屏宽。 */
 .section--band {
   margin-top: 8rpx;
-  margin-left: -32rpx;
-  margin-right: -32rpx;
   padding: 4rpx 32rpx 36rpx;
   background-color: var(--xing-05);
   background-image: var(--fiber-page);

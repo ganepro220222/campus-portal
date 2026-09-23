@@ -60,7 +60,7 @@
     <view class="ab-foot">
       <text class="ab-slogan">校园学习与活动服务平台</text>
       <text class="ab-src">内容由中华文化书院提供</text>
-      <text class="ab-copy">© 2026 贵州云漫科技有限公司</text>
+      <text class="ab-copy">© 2026 贵州交通职业大学</text>
       <text wx:if="{{icp}}" class="ab-icp">{{icp}}</text>
     </view>
 

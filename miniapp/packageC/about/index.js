@@ -21,7 +21,7 @@ Page({
     phone: '',
     email: '',
     // 备案号须在小程序内可见；后台可覆盖，这里给兜底值。
-    icp: '黔ICP备17005610号-10X',
+    icp: '黔ICP备05000595号-6X',
     features: ENABLE_AI_CHAT ? ALL_FEATURES : ALL_FEATURES.filter((f) => f.name !== '知识问答')
   },
 

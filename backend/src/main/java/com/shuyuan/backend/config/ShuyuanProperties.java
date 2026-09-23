@@ -130,15 +130,15 @@ public class ShuyuanProperties {
         static SubscribeTemplateFields enrollSuccessDefaults() {
             SubscribeTemplateFields f = new SubscribeTemplateFields();
             f.setTitle("thing1");
-            f.setStartTime("time3");
+            f.setStartTime("time2");
             return f;
         }
 
         static SubscribeTemplateFields enrollApprovedDefaults() {
             SubscribeTemplateFields f = new SubscribeTemplateFields();
-            f.setPhrase("phrase1");
-            f.setTitle("thing8");
-            f.setStartTime("time11");
+            f.setPhrase("phrase4");
+            f.setTitle("thing3");
+            f.setStartTime("time5");
             return f;
         }
 

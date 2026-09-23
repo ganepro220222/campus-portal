@@ -137,8 +137,8 @@ public class SubscribeService {
 
     /**
      * 字段 key 须与公众平台「我的模板」详情一致（公库模板编号因选用关键词而异）。
-     * enroll_success：活动报名成功通知 → thing1 + time3
-     * enroll_approved：报名审核通知 → phrase1 + thing8 + time11
+     * enroll_success：活动报名通知 → thing1（活动名称）+ time2（活动时间）
+     * enroll_approved：报名审核通知 → phrase4（审核结果）+ thing3（温馨提示/活动名）+ time5（审核时间）
      */
     private Map<String, String> buildKeywordData(String scene, SubscribeOutboxPayload payload) {
         Map<String, String> data = new HashMap<>();

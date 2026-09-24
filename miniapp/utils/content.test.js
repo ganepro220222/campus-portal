@@ -188,6 +188,36 @@ assert.strictEqual(mergeNewsArticle({}, {}).coverImageMode, 'aspectFill')
   assert.strictEqual(a.contentHtml, plain)
 }
 
+/* 粘来的白底要摘掉——否则纸底 #F7F3E8 上每段正文后面拖一块纯白。
+   用户报的就是这个：「后台编辑并上传的动态，在小程序端看到文字会有一个白底」。 */
+{
+  const a = mergeNewsArticle({
+    content: '<p style="background:#fff;text-align:justify">第一段</p>'
+      + '<section style="background-color: rgb(255, 255, 255)"><span>第二段</span></section>'
+  }, {})
+  assert.ok(!/background/i.test(a.contentHtml), '正文里不该再有任何背景声明：' + a.contentHtml)
+  assert.ok(a.contentHtml.includes('text-align:justify'), '作者的对齐方式要留着')
+  assert.ok(a.contentHtml.includes('第二段'), '文字一个都不能丢')
+}
+
+/* 有意打的荧光笔是排版意图，不替人做主删 */
+{
+  const a = mergeNewsArticle({
+    content: '<p>看<span style="background-color:#FFFF00">这里</span></p>'
+  }, {})
+  assert.ok(a.contentHtml.includes('background-color:#FFFF00'), '饱和色高亮要保留')
+}
+
+/* 插图的纸托 #F6F2E6 得活下来。
+   它躲过这一刀靠的是阈值（最小通道 230 < 240），不是先后顺序——
+   顺序调换过来这条一样过。真正的理由在 content.js 里：只过作者的 HTML，
+   我们自己注入的样式压根不进这道过滤。 */
+{
+  const a = mergeNewsArticle({ content: '<p>正文</p><img src="a.png">' }, {})
+  assert.ok(/<img[^>]*background:#F6F2E6/.test(a.contentHtml),
+    '插图的纸托底色不能被白底过滤吃掉：' + a.contentHtml)
+}
+
 const news = mergeNewsArticle({ id: 1, title: '标题', content: '正文\n第二段' }, {})
 assert.strictEqual(news.id, 1)
 assert.strictEqual(news.title, '标题')

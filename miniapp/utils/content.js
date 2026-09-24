@@ -30,6 +30,70 @@ function stripUnsafeHtml(html) {
 }
 
 /*
+ * 正文里从别处粘来的**白底**要去掉。
+ *
+ * 真出过：后台编辑的动态发到小程序上，每一段文字背后都拖着一块纯白，
+ * 而页面的纸是 #F7F3E8。量过截图：底 #F7F3E8 占 407 行、纯 #FFFFFF 占 237 行，
+ * 而 #FFFFFF 不在这套令牌里的任何一个——不是我们画的，是正文自带的。
+ * 从公众号 / Word / 网页里粘进编辑器的内容，常在 <p>/<span>/<section> 上
+ * 带着 `background:#fff` 或 `background-color:rgb(255,255,255)`；
+ * <rich-text> 认内联 style，于是忠实地把那块白画了出来。
+ *
+ * 只删**浅且近中性**的那一档：
+ *   浅  —— 三个通道的最小值 ≥ 240
+ *   中性 —— 最大通道减最小通道 ≤ 12
+ * 这样纯白、#FAFAFA、rgb(255,255,255) 都会被清掉，
+ * 而作者**有意**打的荧光笔（黄、绿这类饱和色）留得住——
+ * 那是排版意图，不该替人做主删掉。
+ * 值里带 url() 的一概不动：那是背景图，改不干净不如不改。
+ *
+ * ⚠ 后台 admin/src/utils/pastedBackground.mjs 里有一份一模一样的实现（两个包不能
+ *   互相 import：小程序是独立的 CommonJS 包）。两边必须同步，
+ *   scripts/test-pasted-background-parity.mjs 会拿同一张用例表逐条比对。
+ *
+ * 为什么在这里删而不是只在后台删：已经发出去的那些改不了了，
+ * 在渲染这一侧兜住，老内容不用回去重编。后台那边也加了同样一条，
+ * 免得新内容继续带进来（admin/src/utils/html.ts）。
+ *
+ * 放在 styleRichNodes **之前**：这一刀只过作者的 HTML，
+ * 我们自己往引文和插图上注入的样式压根不进这道过滤。
+ * （插图纸托 #F6F2E6 最小通道 230，本来也够不着 240 的线；
+ *   但把注入排在后面，将来换个更浅的纸也不会被自己吃掉。）
+ */
+function isPastedWhite(color) {
+  const t = String(color || '').trim().toLowerCase()
+  if (!t) return false
+  if (t === 'white' || t === 'transparent') return true
+  let rgb = null
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(t)
+  if (hex) {
+    const h = hex[1].length === 3 ? hex[1].split('').map((c) => c + c).join('') : hex[1]
+    rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16))
+  }
+  const fn = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(t)
+  if (fn) rgb = [+fn[1], +fn[2], +fn[3]]
+  if (!rgb) return false
+  const lo = Math.min(rgb[0], rgb[1], rgb[2])
+  const hi = Math.max(rgb[0], rgb[1], rgb[2])
+  return lo >= 240 && hi - lo <= 12
+}
+
+function dropPastedBackgrounds(html) {
+  if (!html) return ''
+  return String(html).replace(/\sstyle\s*=\s*("([^"]*)"|'([^']*)')/gi, (full, _q, dq, sq) => {
+    const raw = dq !== undefined ? dq : sq
+    const kept = raw.split(';').filter((decl) => {
+      const m = /^\s*(background|background-color)\s*:\s*([\s\S]+)$/i.exec(decl)
+      if (!m) return true
+      if (/url\(/i.test(m[2])) return true        // 背景图，别碰
+      return !isPastedWhite(m[2])
+    })
+    const out = kept.join(';').replace(/^;+|;+$/g, '').trim()
+    return out ? ' style="' + out + '"' : ''
+  })
+}
+
+/*
  * 正文里的**引文**和**插图**要按方案 A 的样子出来。
  *
  * 为什么不能写在 wxss 里：正文走的是 <rich-text>，它**不认外部 class**，
@@ -129,7 +193,9 @@ function mergeNewsArticle(raw, fallback) {
   const explicitSummary = String(raw.summary ?? '').trim()
   const showLead = !!explicitSummary
   const lead = showLead ? explicitSummary : ''
-  const contentHtml = isHtmlContent(raw.content) ? styleRichNodes(stripUnsafeHtml(raw.content)) : ''
+  const contentHtml = isHtmlContent(raw.content)
+    ? styleRichNodes(dropPastedBackgrounds(stripUnsafeHtml(raw.content)))
+    : ''
   const useRichText = !!contentHtml
   const paras = useRichText
     ? []
@@ -244,6 +310,8 @@ module.exports = {
   formatDate,
   isHtmlContent,
   stripUnsafeHtml,
+  isPastedWhite,
+  dropPastedBackgrounds,
   mergeNewsArticle,
   mergeHallDetail,
   mergeCourseDetail,

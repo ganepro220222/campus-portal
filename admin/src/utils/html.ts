@@ -1,4 +1,10 @@
-/** 富文本入库前基础净化：去除 script/iframe、事件属性与 javascript: 链接 */
+import { dropPastedBackgrounds } from '@/utils/pastedBackground.mjs'
+
+/**
+ * 富文本入库前基础净化：去除 script/iframe、事件属性与 javascript: 链接，
+ * 外加把粘贴带进来的白底摘掉——见 utils/pastedBackground.mjs 的说明。
+ * 在这里做是为了**新写的内容不再带进来**；已经发出去的旧内容由小程序端兜住。
+ */
 export function sanitizeRichHtml(html?: string): string {
   if (!html) return ''
   let out = html
@@ -6,6 +12,7 @@ export function sanitizeRichHtml(html?: string): string {
   out = out.replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
   out = out.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
   out = out.replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '')
+  out = dropPastedBackgrounds(out)
   return out
 }
 

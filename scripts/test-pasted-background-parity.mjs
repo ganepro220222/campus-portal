@@ -103,9 +103,21 @@ for (const [name, hex, want] of TOKENS) {
 
 /* 两份源码的核心实现应当逐字相同（注释可以各写各的） */
 const body = (src) => {
-  const i = src.indexOf('function isPastedWhite')
-  const j = src.indexOf('}\n', src.indexOf('return out ? '))
-  return src.slice(i, j)
+  const start = src.indexOf('function isPastedWhite')
+  const drop = src.indexOf('function dropPastedBackgrounds', start)
+  if (start < 0 || drop < 0) return ''
+  let depth = 0
+  let begun = false
+  let end = drop
+  for (let k = drop; k < src.length; k++) {
+    const ch = src[k]
+    if (ch === '{') { depth++; begun = true }
+    else if (ch === '}') {
+      depth--
+      if (begun && depth === 0) { end = k + 1; break }
+    }
+  }
+  return src.slice(start, end)
     .replace(/\/\*[\s\S]*?\*\//g, '')          // 注释各写各的，不比
     .replace(/\/\/[^\n]*/g, '')
     .replace(/^export /gm, '')

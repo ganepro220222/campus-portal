@@ -55,9 +55,12 @@
 .hero-brand-img {
   height: 80rpx;         /* ＝设计稿 40px */
   width: auto;
-  /* 墨字压在浅色的绢底上，垫一层极淡的白让笔画离开背景 */
-  filter: drop-shadow(0 1rpx 0 rgba(255,255,255,.9))
-          drop-shadow(0 4rpx 12rpx rgba(74,102,96,.22));
+  /* 刻痕的两面墙烤在图里了（scripts/build-hero.mjs 的 carve）：
+     上壁背光压暗、下壁受光提亮。CSS 的 drop-shadow 只画得到笔画**外面**，
+     再往下压白边就会和图里那道受光叠成一圈光晕，沟反而看不出来。
+     所以外面只留两样：沟口那一点唇光，和一道很浅的远影（压在绿山上也读得住）。 */
+  filter: drop-shadow(0 1rpx 0 rgba(255,255,255,.55))
+          drop-shadow(0 3rpx 5rpx rgba(46,66,60,.16));
 }
 
 /* 我的 · 搜索 · 铃铛：浮在画上 */

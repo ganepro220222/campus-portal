@@ -75,7 +75,16 @@ export const PIECES = {
 export const BRANDS = [
   { out: 'home-title-calligraphy.png',
     src: 'design/brand/logo/extracted/academy-cn-ink.png',
-    h: 120, maxKB: 40 },            // 卷首题名，设计稿 40px
+    h: 120, maxKB: 44,              // 卷首题名，设计稿 40px。
+    // 刻了两面墙之后 RGB 不再是单色，PNG 从 25.6 KB 涨到 38.9 KB
+    // （减色到 32/48/64 都是 38.9——胖的是 alpha 那一层，不是调色板），
+    // 所以上限从 40 抬到 44 留一点余量。主包当时还剩 339 KB。
+    // 刻痕的两面墙：光从上来，上壁背光压暗、下壁受光提亮。
+    // 这一步必须烤进图里——CSS 的 drop-shadow 只能画在笔画**外面**，
+    // 怎么调都是一圈光晕，沟是画不出来的（外面那点唇光仍旧交给 CSS）。
+    // k 是两壁的宽度（源图 653×120 上的像素，落到屏上约 1/3）。
+    carve: { k: 4, blur: 1.4, base: [40, 33, 27], dark: [10, 9, 7],
+             light: [138, 140, 126], da: 0.82, la: 0.64 } },
   { out: 'seal-zhu.png',
     src: 'design/brand/logo/extracted/mark-maroon.png',
     h: 72, maxKB: 12 }              // 段头小印 22px / 匾上那枚 23px，取 24px × 3
@@ -147,9 +156,44 @@ im = im.resize((w, ${b.h}), Image.LANCZOS)
 src_px = [p for p in im.getdata() if p[3] > 200]
 ink = collections.Counter((p[0], p[1], p[2]) for p in src_px).most_common(1)[0][0]
 flat = Image.new('RGB', im.size, ink)
-flat.putalpha(im.getchannel('A'))
+alpha = im.getchannel('A')
+flat.putalpha(alpha)
+
+carve = ${b.carve ? JSON.stringify(b.carve) : 'None'}   # JSON 的 null 不是 Python 的 None
+if carve:
+    # 刻痕的两面墙。把掩膜往下挪再减掉，剩下的就是笔画里贴着上缘的一条；
+    # 往上挪再减，得到贴着下缘的一条。上壁背光、下壁受光。
+    from PIL import ImageChops, ImageFilter
+    k, blur = carve['k'], carve['blur']
+    def wall(dy):
+        b = ImageChops.subtract(alpha, ImageChops.offset(alpha, 0, dy))
+        return b.filter(ImageFilter.GaussianBlur(blur)).load()
+    up, lo = wall(k), wall(-k)
+    px, ap = flat.load(), alpha.load()
+    base, dk, lt = carve['base'], carve['dark'], carve['light']
+    for y in range(flat.height):
+        for x in range(flat.width):
+            av = ap[x, y]
+            if av < 8:
+                continue
+            u = up[x, y] / 255.0 * carve['da']
+            l = lo[x, y] / 255.0 * carve['la']
+            c = [base[i] * (1 - u) + dk[i] * u for i in range(3)]
+            c = [c[i] * (1 - l) + lt[i] * l for i in range(3)]
+            px[x, y] = (int(c[0]), int(c[1]), int(c[2]), av)
+
+if carve:
+    # 只把 RGB 减色，alpha 原样贴回去。
+    # 上面那条注释说的"不走 quantize()"是**连 alpha 一起量化**会啃掉笔锋；
+    # 刻了两面墙之后 RGB 不再是单色，不减色 PNG 要 50 KB（原来 25.6 KB），
+    # 所以这里只减 RGB —— 形完全没动，体积回到 30 KB 上下。
+    rgb = flat.convert('RGB').quantize(colors=64, method=Image.FASTOCTREE).convert('RGB')
+    rgb.putalpha(alpha)
+    flat = rgb
+
 flat.save(${JSON.stringify(out)}, optimize=True)
-print('  %s 主色 #%02X%02X%02X' % (${JSON.stringify(b.out)}, *ink))
+print('  %s 主色 #%02X%02X%02X%s' % (${JSON.stringify(b.out)}, *ink,
+      '（已刻两面墙）' if carve else ''))
 `], { encoding: 'utf8', stdio: ['pipe', 'inherit', 'inherit'] })
   const kb = fs.statSync(out).size / 1024
   if (kb > b.maxKB) throw new Error(`${b.out} 有 ${kb.toFixed(1)} KB，超过 ${b.maxKB} KB`)

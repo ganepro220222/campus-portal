@@ -681,9 +681,14 @@ body {
 
 /* 卷首上的书法字：比原来大一档，它现在是画上的题名 */
 .hero-brand { padding: 22px 0 0; display: flex; justify-content: center; }
+/* 小程序那边把**刻痕的两面墙**烤进了题名图里（scripts/build-hero.mjs 的 carve）：
+   上壁背光压暗、下壁受光提亮。CSS 的 drop-shadow 只画得到笔画外面，画不出沟。
+   这一页用的是未加工的字标源文件，所以看不到那两面墙；外沿这一档两边一样：
+   沟口一点唇光 + 一道很浅的远影。原来底下那道 (255,255,255,.9) 的白边太重，
+   和图里那道受光会叠成一圈光晕，沟反而看不出来。 */
 .hero-brand img {
   height: 40px; width: auto;
-  filter: drop-shadow(0 1px 0 rgba(255,255,255,.9)) drop-shadow(0 2px 6px rgba(74,102,96,.22));
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,.55)) drop-shadow(0 1.5px 2.5px rgba(46,66,60,.16));
 }
 .hero .head-row { padding-top: 18px; }
 .hero .search {

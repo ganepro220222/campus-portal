@@ -133,8 +133,9 @@
 .brand-img {
   height: 72rpx;
   width: auto;
-  filter: drop-shadow(0 1rpx 0 rgba(255,255,255,.9))
-          drop-shadow(0 4rpx 10rpx rgba(74,102,96,.18));
+  /* 和首页卷首同一枚图、同一套外沿：两面墙在图里，外面只留唇光和远影。 */
+  filter: drop-shadow(0 1rpx 0 rgba(255,255,255,.55))
+          drop-shadow(0 3rpx 5rpx rgba(46,66,60,.16));
 }
 .brand-div {
   margin: 26rpx auto 0;

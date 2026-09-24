@@ -98,3 +98,7 @@ exhibits/player.deploy.html
 # 设计稿截图：36 MB，而且是 scripts/ 里的渲染脚本随时能重出的产物。
 # 源文件（HTML + shuyuan.css + _ornaments.py）都在库里，截图不进库。
 design/demo/v2/shots/
+
+# 交给你看的产物：format-patch 出来的补丁和对照截图。
+# 补丁的内容就是分支上那几枚提交，截图是 scripts 随时能重出的，都不入库。
+/.patches/

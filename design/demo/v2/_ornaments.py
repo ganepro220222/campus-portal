@@ -817,6 +817,32 @@ def _shadow(cx, cy, rx, ry=2.2):
             % (cx, cy, rx, ry, _IC["dd"]))
 
 
+def _spiral(cx, cy, rx, ry, f0, f1, turns, w, c, o=None, phase=0.0, n=None):
+    """一条从外缘旋进中心的细带 —— 卷起来的那一叠的**层缝**。
+
+    为什么是"带"不是"线"：这套器物图标一条描边都没有（见本节开头第 1 条），
+    形都是色块切出来的。所以顺着螺线走一遍外沿、再倒着走一遍内沿，围成一个面。
+
+    f 是半径的比例（1.0＝到外缘），w 是带宽，同样按比例给——
+    端面是压扁的椭圆，按比例给才能让缝在横竖两个方向都跟着压扁，
+    否则横着看是细缝、竖着看是粗杠。
+    """
+    import math
+    n = n or max(32, int(turns * 56))
+    span = turns * 2 * math.pi
+
+    def pt(t, d):
+        th = phase + span * t
+        f = f0 + (f1 - f0) * t + d
+        return cx + f * rx * math.cos(th), cy + f * ry * math.sin(th)
+
+    fore = [pt(i / n, +w / 2) for i in range(n + 1)]
+    back = [pt(i / n, -w / 2) for i in range(n, -1, -1)]
+    d = ("M%.2f,%.2f " % fore[0]
+         + " ".join("L%.2f,%.2f" % q for q in fore[1:] + back) + " Z")
+    return _p(d, c, o)
+
+
 def ico_jiandu():
     """简策 —— 书院动态。
 
@@ -833,17 +859,58 @@ def ico_jiandu():
     for x in (26.3, 32.9, 39.5):
         for k in range(3):
             o.append(_r(x, 22.6 + k * 5.6, 2.9, 1.2, "dd", .6, ".52"))
-    # 两道编绳 + 一个结
-    o.append(_r(23.6, 19.4, 34, 1.5, "z", .7))
-    o.append(_r(23.6, 42.4, 34, 1.5, "z", .7))
+    # ── 卷起的一头 ────────────────────────────────────────
+    # 这里错过两版，错的都是**视角**，不是画工。
+    #
+    # 简策是一片片竖简用两道绳编起来的席子，卷的时候绕的是一根**竖轴**。
+    # 所以正面看过去，那一卷是一段**立着的圆柱**——看见的是最外那片简的
+    # 正面，顺着柱面绕过去；那圈螺旋只在**从上往下看**的时候才露出来，
+    # 在柱子的顶面上。前两版把一枚立起来的大椭圆当成端面摆在正面，
+    # 等于把一根横着的柱子塞进了一张竖简的画里：先是三个同心椭圆（像个洞），
+    # 改成螺线之后又像木头桩子的年轮——竹简卷起来，正面根本不长这样。
+    #
+    # 这一版照实画：
+    #   · 柱面在正面，简缝**往左边越挤越密**（cos 收窄），这是圆柱的透视，
+    #     也是"这一卷还是那几片简"的凭据；
+    #   · 螺旋挪到**顶面**那一小圈椭圆里，它本来就该在那儿；
+    #   · 外层收口留一道**翘起的边**（亮线 + 它压下去的影），
+    #     一张席子卷完总有个头，这一处是"卷"最实在的证据；
+    #   · 两道编绳**横穿整卷**——绳是绕着整张席子的，卷起来也还在外面。
+    CX, TOP, BOT = 18.6, 12.4, 50.8
+    RAD = 6.8                                    # 柱半径；右缘 25.4 正好接上摊开的第一片
+
+    def narrow(x):
+        """柱面上 x 处的收窄比例：正中是 1，越靠侧影越窄（圆柱透视）"""
+        u = max(-1.0, min(1.0, (x - CX) / RAD))
+        return math.sqrt(1.0 - u * u)
+
+    o.append(_r(CX - RAD, TOP, RAD * 2, BOT - TOP, "m", 2.2))
+    # 圆柱的明暗：两侧转开去，压两档暗；受光在中间偏左。
+    # 分档而不是一档，是为了让它看着是"圆的"，不是一块竖着的板。
+    o.append(_r(CX - RAD, TOP, 2.2, BOT - TOP, "d", 1.2, ".34"))
+    o.append(_r(CX - RAD + 2.0, TOP, 1.8, BOT - TOP, "d", 0, ".16"))
+    o.append(_r(CX - 3.4, TOP, 4.8, BOT - TOP, "l", 0, ".46"))
+    # 右侧：席子从这里切出去变成摊开的那几片，边上压一道暗
+    o.append(_r(CX + RAD - 2.8, TOP, 2.8, BOT - TOP, "d", 0, ".26"))
+    # 绕过去的简缝：越靠左越窄。这是圆柱透视，也是
+    # "这一卷还是那几片简"的凭据——它和摊开那几片是同一张席子。
+    for x in (12.9, 14.9, 17.2):
+        w = 1.3 * narrow(x)
+        if w < .3:
+            continue
+        o.append(_r(x - w / 2, TOP, w, BOT - TOP, "d", .5, ".38"))
+    # 顶面：螺旋只在这儿——**从上往下看**才看得见卷的层，正面是看不见的。
+    # 一圈挂零，接不上的那一段台阶就是"卷"和"环"的分界。
+    o.append(_e(CX, TOP, RAD, 3.2, "d", ".5"))
+    o.append(_e(CX, TOP, RAD - .6, 2.7, "l", ".9"))
+    o.append(_spiral(CX, TOP, RAD - .6, 2.7, .84, .30, 1.15, .15, "d", ".40"))
+
+    # 两道编绳 + 绳头的结。绳绕的是整张席子，卷起来也在外面，所以横穿整卷；
+    # 画在一卷之后，否则会被柱面盖掉。
+    o.append(_r(12.4, 19.4, 45.2, 1.5, "z", .7))
+    o.append(_r(12.4, 42.4, 45.2, 1.5, "z", .7))
     o.append(_e(57.2, 20.1, 1.9, 1.9, "z"))
     o.append(_e(57.2, 43.1, 1.9, 1.9, "z"))
-    # 卷起的一头：一个筒 + 筒口的旋线
-    o.append(_r(10.4, 12.4, 15.2, 38.4, "d", 2.2))
-    o.append('<path d="M18,12.4 a7.6,19.2 0 0 0 0,38.4 a7.6,19.2 0 0 0 0,-38.4 Z" fill="%s"/>' % _IC["m"])
-    o.append(_e(18, 31.6, 7.6, 19.2, "m"))
-    o.append(_e(18, 31.6, 4.9, 12.4, "l", ".9"))
-    o.append(_e(18, 31.6, 2.3, 5.8, "d", ".55"))
     return _svg("".join(o))
 
 
@@ -1839,7 +1906,11 @@ def post_process(path):
     # 线性图标：标签栏、顶部工具位、公告、搜索
     if '<span class="t-ic">' in s:
         s = _seq_replace(s, r'<span class="t-ic">' + _SVG24 + r'</span>',
-                         [li["shanmen"], li["jian"], li["zhou"], li["ce"]], "标签栏", path)
+                         # 早先叫 jian / zhou，改画之后是 jiandu（简牍·动态）和
+                         # ding（鼎·展馆）。名字没跟着改，这一行一直在 KeyError，
+                         # 于是 post_process 整段没跑过——icons.html 和两张封面页
+                         # 从那以后就停在旧图上了。
+                         [li["shanmen"], li["jiandu"], li["ding"], li["ce"]], "标签栏", path)
         s = _seq_replace(s, r'<span class="hi">\s*' + _SVG24,
                          [li["rusheng"], li["xinzha"]], "顶部工具位", path)
         s = _seq_replace(s, r'(<svg width="14" height="14" viewBox="0 0 24 24" fill="none" '
@@ -1952,6 +2023,61 @@ def _assert_no_duplicate_defs():
     dup = [n for n, c in collections.Counter(names).items() if c > 1]
     if dup:
         raise SystemExit(f"✗ 顶层重复定义：{', '.join(dup)} —— 后一份会覆盖前一份，先删干净再跑")
+
+
+_ICONS_BIG = ("jiandu", "huazhou", "yinzhang")   # icons.html 底下"放大看"那一行的顺序
+
+
+def refresh_icons_page():
+    """把 icons.html 里那几枚器物图标按 icon_set() 重铺一遍。
+
+    icons.html 是张静态图册，不在 inject() 的链子上——器物改了画它不会跟着变。
+    真吃过亏：简策改了两版这页还停在最早那版；连"印"都还是更早一版的坐标。
+
+    上面那格子按每个 cell 后面的 <div class="nm">名字</div> 认图（名字来自 _ICONS，
+    改画不会动它）；底下"放大看"那一行没有名字，按 _ICONS_BIG 的顺序对位，
+    数量对不上就报错，而不是猜。
+    """
+    import io, os, re
+    path = os.path.join(HERE, "icons.html")
+    s = io.open(path, encoding="utf-8").read()
+    cur = icon_set()
+    by_name = {nm: k for k, (nm, _use) in _ICONS.items()}
+
+    # 不能写成 <svg class="ico"...>.*?</svg>：`.*?` 会回溯着跨过 </svg> 一路吞到
+    # 下一枚，把线描图标那几格也卷进来。下面这条"温和"写法保证体内不含 </svg>。
+    svg = r'<svg class="ico"[^>]*>(?:(?!</svg>).)*?</svg>'
+    n = [0]
+
+    # ① 格子：svg 后面紧跟着 <div class="nm">名字</div>
+    def cell(m):
+        nm = m.group(2)
+        key = by_name.get(nm)
+        if key is None or key not in cur:
+            raise SystemExit('icons.html：名字"%s"在 _ICONS / icon_set() 里对不上' % nm)
+        n[0] += 1
+        return cur[key] + m.group(1) + nm
+    s2 = re.sub(svg + r'(</div><div class="nm">)([^<]+)', cell, s, flags=re.S)
+
+    # ② 放大看那一行：按约定的顺序对位
+    big = re.search(r'<div class="big">(.*?)</div>\s*(?:<|$)', s2, re.S)
+    if not big:
+        raise SystemExit("icons.html：找不到 <div class=\"big\">，页面结构变了？")
+    inner = big.group(1)
+    got = re.findall(svg, inner, flags=re.S)
+    if len(got) != len(_ICONS_BIG):
+        raise SystemExit("icons.html：放大看那一行有 %d 枚，_ICONS_BIG 写着 %d 枚"
+                         % (len(got), len(_ICONS_BIG)))
+    it = iter(_ICONS_BIG)
+    new_inner = re.sub(svg, lambda m: cur[next(it)], inner, flags=re.S)
+    n[0] += len(got)
+    s2 = s2[:big.start(1)] + new_inner + s2[big.end(1):]
+
+    if s2 != s:
+        io.open(path, "w", encoding="utf-8").write(s2)
+        print("✓ icons.html：%d 枚器物按设计源重铺" % n[0])
+    else:
+        print("  icons.html：%d 枚器物已是最新" % n[0])
 
 
 def build_cover_page():
@@ -2516,6 +2642,7 @@ if __name__ == "__main__":
     _assert_jiaoye_sound()
     _assert_yankou_complete()
     write_jiaoye_tokens()
+    refresh_icons_page()
     build_cover_page()
     build_news_cover_page()
     for f in ("home-cover.html", "news-detail-cover.html"):

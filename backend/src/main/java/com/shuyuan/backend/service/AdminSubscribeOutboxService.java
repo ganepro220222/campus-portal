@@ -30,11 +30,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 后台「通知发送记录」。
- *
- * <p>页面是给老师看的，不是给开发看的，所以这里要把「哪个活动、发给谁、为什么没发出去」
- * 三件事补齐：活动名称藏在 payload_json 里，接收人要按 member 查姓名/学号，
- * 失败原因则统一成一个 reasonCode 交给前端翻译成人话与处置指引。
+ * 后台「通知发送记录」：补活动名、接收人、失败原因码。
  */
 @Slf4j
 @Service

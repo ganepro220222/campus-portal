@@ -1,27 +1,9 @@
 /**
- * 去掉从别处粘进编辑器的**白底**。
- *
- * 真出过：后台编辑的动态发到小程序上，每一段正文背后都拖着一块纯白，
- * 而页面的纸是 #F7F3E8。量过用户的截图：底 #F7F3E8 占 407 行、
- * 纯 #FFFFFF 占 237 行；#FFFFFF 不在那套令牌里的任何一个——
- * 不是小程序画的，是正文自带的。从公众号 / Word / 网页里粘进来的内容，
- * 常在 <p>/<span>/<section> 上带着 `background:#fff`；WangEditor 不过滤
- * 内联样式（没开 pasteFilterStyle，bgColor 也没禁），入库时 sanitizeRichHtml
- * 也只管 script/iframe/on*，于是这块白一路跟到 <rich-text> 上被忠实画出。
- *
- * 只删**浅且近中性**的那一档：
- *   浅  —— 三个通道的最小值 ≥ 240
- *   中性 —— 最大通道减最小通道 ≤ 12
- * 纯白、#FAFAFA、rgb(255,255,255) 都清掉，而作者**有意**打的荧光笔
- * （黄、绿这类饱和色）留得住——那是排版意图，不该替人做主。
- * 值里带 url() 的一概不动：那是背景图，改不干净不如不改。
- *
- * ⚠ 小程序端 miniapp/utils/content.js 里有一份一模一样的实现（两个包不能互相
- *   import：小程序是独立的 CommonJS 包）。两边必须同步，
- *   scripts/test-pasted-background-parity.mjs 会拿同一张用例表逐条比对。
+ * 去掉粘贴带来的近白背景（min≥240 且色差≤12）。
+ * 荧光笔与含 url() 的 background 保留。与 miniapp/utils/content.js 同逻辑。
  */
 
-/** 这个颜色算不算「粘来的白」——浅且近中性 */
+/** 是否为粘贴常见的近白底色 */
 export function isPastedWhite(color) {
   const t = String(color || '').trim().toLowerCase()
   if (!t) return false
@@ -40,7 +22,7 @@ export function isPastedWhite(color) {
   return lo >= 240 && hi - lo <= 12
 }
 
-/** 把内联 style 里的白底声明摘掉；style 摘空了就连属性一起去掉 */
+/** 摘掉内联 style 里的近白背景；style 空了则去掉该属性 */
 export function dropPastedBackgrounds(html) {
   if (!html) return ''
   return String(html).replace(/\sstyle\s*=\s*("([^"]*)"|'([^']*)')/gi, (full, _q, dq, sq) => {

@@ -21,11 +21,7 @@ const CONFIG = {
   badges:     { title: '学习徽章',   api: '/profile/badges',     empty: '暂无徽章数据' }
 }
 
-/* 每一类列表配一枚器物图标。
-   原来还各配一个底色（tc-rose / tc-blue / tc-green / tc-slate / tc-gold），
-   但一页只有一种类型，那个色在页内不区分任何东西 —— 它只是把十几行
-   排成一列的彩色方块。方案 A 说朱是全站唯一的高饱和色、做点缀不做色块，
-   所以底色统一收成纸钮（见 list.wxss 的 .pl-ic），cls 这一维去掉。 */
+/* 列表类型 → 器物图标（底色见 list.wxss .pl-ic） */
 const TYPE_META = {
   favorites:  { icon: 'heart' },
   enrolls:    { icon: 'calendar' },

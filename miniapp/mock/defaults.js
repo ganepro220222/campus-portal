@@ -1,13 +1,6 @@
 /*
- * mock/defaults.js — 仅 dev 环境的本地兜底数据。
- *
- * env.js 里 prod/staging 的 useMock 都是 false，mockGuard 会让这份数据一律返回空，
- * 所以线上与提审时审核员都看不到它。只用于本地开发演示。
- *
- * 两条约定：
- * 1. 展馆（hallsHome / hallsFull / hallDetail）是**真实**的，带真实 720 云 VR 链接——不要动。
- * 2. 关联小程序（colleges / collegesHome）仅「通途星」；其它模块一律用中性占位，不挂真实地标与人物。
- *    后台配置分类和内容时**不要照抄这里**，那才是线上真正会显示的东西。
+ * mock/defaults.js — 仅 dev 本地兜底；prod/staging 的 useMock 为 false。
+ * 展馆含真实 VR 链接勿改；关联应用仅「通途星」；其它用中性占位。
  */
 
 module.exports = {

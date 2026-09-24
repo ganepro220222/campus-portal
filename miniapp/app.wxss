@@ -1,8 +1,5 @@
 /* app.wxss — 全局样式 */
-/* 宋体子集。走内嵌而不是 wx.loadFontFace：后者只收网络地址，
-   还要域名白名单 + Access-Control-Allow-Origin，安卓多个品牌的校验又不一致，
-   做不到「所有设备都正常显示」。内嵌是唯一各端都稳的办法。
-   产物由 scripts/build-font-subset.js 生成，check:font-subset 守着它和源字体一致。 */
+/* 宋体子集内嵌（styles/font-shuyuan-song.wxss）；scripts/build-font-subset.js 生成 */
 @import "styles/font-shuyuan-song.wxss";
 
 page {
@@ -13,29 +10,9 @@ page {
   box-sizing: border-box;
 }
 
-/* ══════════════ 原生控件让位的四条原则 ══════════════
-   navigationStyle:custom 之后，页面顶上永远有两个画不了、也挪不动的东西：
-   状态栏和右上角的胶囊（375pt 机型上胶囊在 x 281–368、y 48–80）。
-   每一页都要和它们协调，顺序是**从上往下**，上面的压倒下面的：
+/* 自定义导航：状态栏与胶囊不可画；优先保版式，勿压按钮/正文，可压装饰；返回键挂檐下 */
 
-     ① 优先保证页面布局。不要为了躲胶囊把整页的版式改了。
-     ② 不能压在按钮上 —— 压住就按不到，这是功能损失，不是观感问题。
-     ③ 尽量别压在文字上 —— 压住就读不到。
-     ④ 压在装饰元素（屋檐、山水、底纹）上**可以接受**。
-
-   所以胶囊落在屋檐的瓦面上是允许的；自绘的返回键不要和胶囊挤在同一行——
-   挤在一起要么互相压，要么逼着整页给它让位，两条都违背①。
-   返回键挂在檐下。这四条对所有页面有效。
-   ══════════════════════════════════════════════════ */
-
-/* ══ 令牌区开始 · 书院 · 檐棂印 ══ */
-/* 「书院 · 檐棂印」全套令牌。取值与设计稿 design/demo/v2/shuyuan.css 一致，
-   那边是唯一的出处，这里是搬运。
-
-   旧名（--navy / --blue / --sky-* / --color-*）全部保留，但指向新值：
-   页面里已经在用 var(--navy) 的地方一行不用改就跟着换色调，
-   这是这一批"版面不动、只换色调"的关键。旧名的语义也标在后面，
-   后续逐页收拾时再换成新名。 */
+/* 令牌与设计稿一致；旧名 --navy/--blue/--sky-* 仍指向新值 */
 page {
   /* ── 纸 ── */
   --paper:       #F7F3E8;   /* 页底 */
@@ -56,8 +33,7 @@ page {
   --shan-3:      #6FAE92;
   --shan-2:      #3E8FA2;
   --shan-1:      #2B6B92;
-  /* 山脚：每道山的下沿要褪成土黄，不然四道山叠起来是四条硬边。
-     只有卷首那幅画用得到，当初搬令牌时页面上没人用，就漏下了。 */
+  /* 山脚下沿土黄，避免山层硬边 */
   --shan-foot:   #C09256;
   --shan-foot-l: #D8BA88;
 
@@ -101,45 +77,33 @@ page {
   --wood-85:     #5A4A2D;
   --wood-90:     #493D28;
   --wood-95:     #372F1F;
-  /* 匾面阴刻填的墨。比 --ink 更纯黑一点——它是填在木头凹槽里的漆，
-     不是纸上的字，不跟正文那三档走。 */
+  /* 匾面阴刻填墨，比 --ink 略纯 */
   --mo-90:       #232120;
 
   /* ── 朱 · 点缀 ── */
   --zhu:         #9E2B25;
   --zhu-soft:    #F2E0DA;
-  /* 登录键那一枚是**立体的漆钮**：上沿提亮、下沿压深、底下再垫一道边，
-     四个色缺一不可，少了就是一块平涂的红方块。 */
+  /* 登录朱钮立体四档 */
   --zhu-lit:     #B33A2C;
   --zhu-d:       #7C1C17;
   --zhu-edge:    #4E120E;
 
-  /* ── 石 · 次按钮（微信授权那一枚）──
-     不用灰：这套里没有中性灰，石青灰才是它的家族色。同样四档，同样的立体做法。 */
+  /* ── 石 · 次按钮立体四档 ── */
   --shi:         #C2D3D8;
   --shi-lit:     #D9E6E9;
   --shi-d:       #ADC2C8;
   --shi-edge:    #8DA5AD;
 
   /* ── 金线 ── */
-  --gold:        #CBA86B;   /* 装饰用的浅金（细线、描边） */
+  --gold:        #CBA86B;   /* 装饰浅金 */
   --gold-soft:   #E2CB9E;
   --gold-line:   #D9BE8E;
 
-  /* ── 墨 · 文字 ──
-     三档都用 scripts/check-contrast.js 量过：
-       --ink   卡片 14.65 / 页底 13.64
-       --sub   卡片  7.79 / 页底  7.26
-       --muted 卡片  5.66 / 页底  5.27
-     全部高于 WCAG AA 对正文的 4.5:1。--muted 承担提示文字、
-     tabBar 未选中标签、空态说明这些"看不清就真的看不见"的角色，
-     往浅里调之前先跑那个脚本。 */
+  /* ── 墨 · 文字（对比：ink 13.6+ / sub 7.2+ / muted 5.2+）── */
   --ink:         #23262E;
   --sub:         #4C505C;
   --muted:       #6B6459;
-  /* 设计稿里另有 --ink-2 / --ink-3 两个名字：ink-2 和 --sub 同值，
-     ink-3 比 --muted 暖一点，专给"纸上的小字"（题签、页脚、输入框占位）。
-     搬过来是为了登录页那几处能照抄设计稿的值，不用换算。 */
+  /* --ink-2＝--sub；--ink-3 略暖，纸上小字 */
   --ink-2:       #4C505C;
   --ink-3:       #5D584B;
   --ghost:       #D6CDB8;   /* 空态大图标、占位符这类纯装饰的浅色 */
@@ -202,11 +166,7 @@ page {
 }
 /* ══ 令牌区结束 ══ */
 
-/* ── 宋体辅助类 ──
-   ShuyuanSong 是内嵌子集（见 styles/font-shuyuan-song.wxss）。
-   回退栈保持完整：字体万一没生效，观感退回原来的系统字，不会白屏也不会豆腐块。
-   之所以内嵌而不是 wx.loadFontFace：安卓多个品牌对网络字体的 CORS 校验不一致，
-   做不到「所有设备都正常显示」。 */
+/* 宋体辅助类；字体内嵌于 styles/font-shuyuan-song.wxss */
 .serif { font-family: "ShuyuanSong", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif; }
 
 /* ── Flex 工具类 ── */
@@ -241,19 +201,7 @@ page {
   box-shadow: var(--shadow-sm);
 }
 
-/* ══ 装置③ 印 —— 栏目标题旁的朱红方印 ══
-   对照 design/demo/v2/shuyuan.css 的 .sec-head / .sec-title / .seal-sm /
-   .sec-rule，以及 home.html、news-detail.html 里的用法。
-
-   这一族原来住在 pages/index/index.wxss，只有首页能用；而 app.wxss 这边
-   另有一条同名的 .sec-title——34rpx 粗体 + 一道 ::before 竖条。
-   两条撞在一起的后果是**首页每个段头同时挂着一枚印和一根朱竖条**：
-   页面那条盖不住 ::before（它压根没写这个伪元素），于是竖条一直画着。
-   全仓 .sec-title 只有首页在用，那条竖条版本连自己的位置都没有，
-   现在整条删掉，只留定稿这一版，搬到这里供首页与二级页共用。
-
-   竖条是通用 UI 的做法，说不出是什么；定稿用的是**一枚朱印**——
-   占地极小，却是全站最强的身份标记。 */
+/* 段头：朱印 + 标题；供首页与二级页共用 */
 .sec-head {
   display: flex;
   align-items: center;
@@ -281,9 +229,7 @@ page {
   align-items: center;
   gap: 4rpx;
 }
-/* 双线：上粗下细，下面那道半透明——两道之间留 2rpx 空，是版框的做法。
-   正中压一枚**朱红菱形**，外面描一圈纸色把线断开：
-   线是版框，菱形是版框中缝的鱼尾，少了它两道线就只是普通分割线。 */
+/* 版框双线 + 中缝朱红菱形（鱼尾） */
 .sec-rule {
   margin: 12rpx 0 24rpx;
   position: relative;
@@ -308,10 +254,6 @@ page {
 }
 .sec-rule-b { margin-top: 2rpx; opacity: .5; }
 
-/* 这里原先还有 .cat-tag / .cat-active（32rpx 全圆胶囊 + blue→navy 渐变）
-   和 .cover-image（--sky-2 底）。全仓 wxml / js / 其它 wxss 都没有引用，
-   是旧版面留下的死规则，跟着这次收口一起删掉，免得下次照着它再抄一份出去。 */
-
 /* ── 空状态 ── */
 .empty-state {
   display: flex;
@@ -322,17 +264,7 @@ page {
 }
 .empty-state text { margin-top: 16rpx; font-size: 26rpx; }
 
-/*
- * 页面加载/错误态（uibatch6 视觉对接完成）。
- *
- * 与活动详情/报名页既有的 .state-box / .detail-retry / .detail-refresh-bar 同一套配方，
- * 差别只在那两页是页面内私有 class、这里是全局的。四处「重新加载」胶囊
- * （.page-state-action / .detail-retry / .enroll-retry / .pl-retry）现在静息同为 --sky-2、
- * 按下同为 --sky，不再各写各的十六进制。
- *
- * 横向边距默认 28rpx，对齐详情页 .detail-wrap 与资源列表 .res 的栏距；
- * 栏距是 32rpx 的 5 个 Tab/列表页在各自 wxss 里覆写（搜 page-refresh-bar）。
- */
+/* 页面加载 / 错误态；横向边距默认 28rpx，32rpx 栏距页各自覆写 */
 .page-state-box {
   padding: 120rpx 40rpx;
   text-align: center;
@@ -416,17 +348,7 @@ button.lbtn {
   line-height: normal;
 }
 
-/*
- * 通栏按钮的宽度钉死。真机 iPad 上这几个按钮明显比同一列的输入框窄一大截，
- * 按钮文字是 nowrap、又被基础库自带的 overflow:hidden 切掉
- * （登录页「微信授权登录」只剩半截）。页面里写的都是 width:100%，
- * 浏览器里复现不出来，说明是基础库自己的按钮宽度规则在宽屏下生效了——
- * 那条规则的选择器我们看不到，只能用 !important 压住。
- *
- * 只列**独占一行**的按钮。activity/detail 的 .btn-primary / .btn-outline 放在
- * display:flex 的 .foot-bar 里，有单按钮和「查看凭证 + 取消报名」两种排法，
- * 钉成 100% 会把那一行挤坏，所以不在此列。
- */
+/* 通栏按钮钉 width:100%（宽屏基础库会缩窄）；.foot-bar 内按钮除外 */
 button.lbtn,
 button.save-btn,
 button.fb-submit,
@@ -460,44 +382,21 @@ button.lbtn-ghost[disabled] {
 .ft-doc  { background: #2C66C2; }
 .ft-xlsx { background: #1E7A45; }
 
-/* ── 没有封面图时的兜底底色 hc1-hc5 ──
-   条目按 index % 5 轮着取（utils/decorate.js），所以相邻几张不能同色，
-   也不能同明度——一列全是深色块就成了一堵墙。
-
-   原来这五档是旧蓝紫调色板：靛蓝、青蓝、酒红、草绿、紫。
-   它们不在这套配色里的任何一条线上，而这五块在动态/展馆/课程/活动
-   四张列表页上占的面积都不小 ——「整体色调不对」有一半出在这儿。
-
-   换成这套自己的山水色：远山的青、黛瓦、石青山、木、朱。
-   每一档都是**同色系里深浅两档**收出来的，不跨色相拉渐变
-   （旧的 hc2 从蓝拉到青、hc4 从墨绿拉到草绿，中间那段是脏的）。
-
-   上面压的是 rgba(255,255,255,.92) 的白图标。浅的那一端最吃紧，
-   量过：5.23 / 5.19 / 8.94 / 7.58 / 6.88，都高于图形要的 3:1。 */
+/* 无封面兜底色 hc1–hc5（index%5）；山水色同系深浅，白图标对比 ≥5.19 */
 .hc1 { background: linear-gradient(135deg, var(--qing-90), var(--tile-dark)); }
 .hc2 { background: linear-gradient(135deg, var(--qing-90), var(--shan-1)); }
 .hc3 { background: linear-gradient(135deg, var(--zhu-edge), var(--zhu-d)); }
 .hc4 { background: linear-gradient(135deg, var(--wood-95), var(--wood-85)); }
 .hc5 { background: linear-gradient(135deg, var(--qing-90), var(--qing-80)); }
 
-/* 轮播色阶 .s1~.s3 已删。
-   轮播现在是裱起来的画心：有封面图就满强度铺图，没有就顶一幅横幅小青绿，
-   两种都不需要色块垫底。这三块本来就是旧蓝紫调色板剩下的，
-   而且藏在 app.wxss 里，棘轮当初整文件跳过，一直没扫到。 */
+/* 轮播旧色阶 .s1~.s3 已删 */
 
-/* ══════════════ 装裱 ══════════════
-   设计稿里每一个图片框（轮播、展馆封面、资讯缩略图）都是**裱起来**的：
-   木纹裱边 → 画心 → 四角角叶 → 竖排题签 / 绢条。
-   这几个类放在 app.wxss 是因为三处都要用，样式必须是同一套。
-
-   小程序不保证支持 :has()，所以设计稿里那些 .mount-art:has(> img.cover)
-   全部改成 WXML 上挂一个 .has-cover —— 由数据算出来，确定且可测。 */
+/* 装裱：木边 → 画心 → 角叶 → 题签/绢；有封面时 WXML 挂 .has-cover */
 .mount {
   padding: 7rpx;
   border-radius: 12rpx;
   background-color: var(--wood-50);
-  /* 木纹：三道不同疏密的竖条纹叠出来的。设计稿里还叠了一张 --wood-fig-v
-     的木射线贴图（data URI），那张在小程序上收益不大、体积不小，这里不搬。 */
+  /* 木纹竖条；--wood-fig-v 贴图未搬 */
   background-image:
     repeating-linear-gradient(90deg,
       rgba(58,34,14,.10) 0 2rpx, rgba(255,240,220,.05) 2rpx 4rpx, transparent 4rpx 10rpx),
@@ -519,9 +418,7 @@ button.lbtn-ghost[disabled] {
   box-shadow: inset 0 0 0 2rpx rgba(58,34,14,.45),
               inset 0 4rpx 14rpx rgba(20,14,6,.40);
 }
-/* 角叶：四个角分别一张图，--bj 是边长。
-   边长永远不超过短边的 1/3 —— 早先那版实心三角占了 33%，
-   两个角一接头就把短边吃没了，125×92 的卡片直接变成八边形。 */
+/* 角叶；--bj 不超过短边约 1/3 */
 .mount-art::before {
   content: '';
   position: absolute;
@@ -537,8 +434,7 @@ button.lbtn-ghost[disabled] {
 }
 .mount--lg .mount-art::before { --bj: 64rpx; }
 .mount--sm .mount-art::before { --bj: 28rpx; }
-/* 真封面图：铺满画心、垫在最底层，**满强度**。
-   角叶(z2)、题签与绢条(z4/z5) 都在它上面，所以图再满也压不住这几件。 */
+/* 封面满铺画心底层 */
 .mount-cover {
   position: absolute;
   left: 0; top: 0; right: 0; bottom: 0;
@@ -546,18 +442,7 @@ button.lbtn-ghost[disabled] {
   height: 100%;
   z-index: 0;
 }
-/* ── 回纹（雷纹）带 ──
-   「万字不到头」的刻痕带。设计稿里它出现在两处：
-     · 首页等 tab 页：标签栏上方，页面收底的那一笔；
-     · 二级页（动态详情）：正文和「相关推荐」之间的分隔。
-   这一份给**页面**用。自定义 tabBar 是页面之外的独立层，
-   app.wxss 的 class 规则到不了那儿，所以它在
-   custom-tab-bar/index.wxss 里另有一份一样的 —— 两份必须同步，
-   check-tabbar-routes 会把两边的画法比一遍。
-
-   同一组纹样画两遍：深色（--fret-cut）当刻痕在上，
-   浅色（--fret-lit）往下错 2.2rpx 当受光面在下。
-   两层缺一层就不是「刻」出来的，是贴上去的。 */
+/* 回纹带（页面用）；tabBar 组件另有一份，画法须一致 */
 .fret {
   height: 40rpx;
   background-color: rgba(173, 130, 72, .07);
@@ -653,11 +538,7 @@ button.lbtn-ghost[disabled] {
   box-shadow: inset 0 -92rpx 112rpx -40rpx rgba(20,16,12,.50),
               inset 0 52rpx 68rpx -36rpx rgba(20,16,12,.30);
 }
-/* 竖排题签：栏目名写在签上，图再满也盖不住名字。签脚一道朱。
-   竖排**不走 writing-mode**：各端 WebView 对它的支持参差，
-   实测一试就把四个字挤成一团。改用"签条只有一个字宽"——
-   中文本来就能逐字断行，一个字宽的盒子里自然每行一个字，
-   哪儿都一样，也不需要 text-orientation 把字扶正。 */
+/* 竖排题签：单字宽自然断行，不用 writing-mode */
 .tag-v {
   position: absolute;
   z-index: 5;
@@ -770,15 +651,7 @@ button.lbtn-ghost[disabled] {
   flex-shrink: 0;
 }
 
-/* ── 小签（原来叫「胶囊标签」）──
-   对照 design/demo/v2/shuyuan.css 的 .pill。
-   原来是 20rpx 全圆角 + --sky-2 底 + --navy 字：那是旧稿的 Material 胶囊，
-   换了调色板之后底色变成一块淡绿、字是金棕，谁也不挨着谁。
-
-   定稿里它不是胶囊，是**一方小签**：直角（2px 圆角）、纸底、一圈细框、
-   底下一道受光的白线。和题签、界标是同一门语言。
-   字色 --wood-80（＝设计稿的 --wood-dark），在这层纸上量到 5.80~6.79，
-   20rpx 的小字按正文算，要 4.5:1，够。 */
+/* 小签：直角纸底细框（--wood-80 对比约 5.8~6.8） */
 .pill {
   font-size: 21rpx;                 /* 设计稿 10.5px */
   padding: 4rpx 14rpx;              /* 设计稿 2px 7px */
@@ -789,23 +662,13 @@ button.lbtn-ghost[disabled] {
   box-shadow: 0 2rpx 0 rgba(255,252,244,.8);
   flex-shrink: 0;
 }
-/* 两个变体：朱签用在"要紧"的那一条（设计稿的 .pill.zhu）；
-   金签留给既有的「字幕」这类附加说明。两个都只换字色和框色，
-   底纸不换——底纸一换就又变回色块了。 */
+/* 两个变体：朱签 / 金签，只换字色与框色 */
 .pill.zhu  { color: var(--zhu);    border-color: rgba(158,43,37,.32); }
 .pill.gold { color: var(--jin-70); border-color: rgba(158,125,69,.34); }
 
-/* 详情页收藏按钮（展馆/文创/课程/资源共用） */
-/* 三处调用都在 .detail-wrap（padding: 24rpx 28rpx）里，这里再给 28rpx 横向外边距
-   会把胶囊比同页其他内容多缩进一个 28rpx，右边缘对不齐联系卡片与海报按钮。
-   横向留给容器，这里只管上下节奏。 */
+/* 详情页收藏；横向边距交给 .detail-wrap */
 .fav-bar { display: flex; justify-content: flex-end; margin: 24rpx 0 8rpx; }
-/* 文案在「收藏」(2 字) 与「已收藏」(3 字) 之间切换 = 25rpx 宽度差，
-   而胶囊是右对齐的，不锁宽就会每点一次左边缘蹦一下。按长的那个态定死下限：
-   图标 32rpx + gap 8rpx + 3×25rpx 文字 + 28rpx×2 内边距 = 171rpx。 */
-/* 收藏本身是个"盖不盖章"的动作，所以未收藏是一方空白小签、
-   收了就把签盖成朱的。原来是 30rpx 全圆胶囊 + 白底，
-   选中态另写了 #F3C9C2 / #FDF1EF 两个旧调色板的粉色。 */
+/* 收藏签；min-width 锁「已收藏」态宽度 */
 .fav-btn {
   display: inline-flex;
   align-items: center;
@@ -828,11 +691,7 @@ button.lbtn-ghost[disabled] {
   box-shadow: none;
 }
 .fav-bar-inline { margin: 20rpx 0 0; justify-content: flex-start; }
-/* 资源列表里它与 .res-dl 并排。两颗都是正圆，尺寸/底色必须一致，
-   否则同一行里一大一小、一个带描边一个不带，看着像没对齐。
-   现在两颗一起换成**纸钮 + 金线**（同「我的」页的菜单图标）：
-   72rpx、纸面压一道、一圈细金线。原来是 --sky-2 的淡绿底 + 无描边，
-   选中态另写了 #FDF1EF / #F8E3DF 两个旧粉色。 */
+/* 与 .res-dl 并排的纸钮 + 金线（72rpx） */
 .fav-icon {
   width: 72rpx;
   height: 72rpx;

@@ -13,19 +13,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 日志类数据保留：把超过保留期的 event_log / sys_log / subscribe_outbox 分批删掉。
- *
- * <p>为什么需要：这三张表原先只写不删。event_log 是学生端每次浏览/点赞/收藏/分享/下载/
- * 报名/播放都写一行，按 DAU 5000、人均 20 次交互估算约 10 万行/天，一年 5GB 量级——
- * 而它的统计价值在 StatsDailyJob 每日聚合进 stat_daily 之后就基本用尽了。
- *
- * <p>三条安全约束：
- * <ul>
- *   <li>只按时间删，且每条 DELETE 带 LIMIT，避免长事务锁住学生端还在写的表；</li>
- *   <li>subscribe_outbox 只删 sent / failed / skipped 这些<b>终态</b>，pending 与 processing
- *       是还没投递完的活儿，任何时候都不碰；</li>
- *   <li>单表单轮有批次上限，一次运行删不完就留到下一轮，不会把数据库占死。</li>
- * </ul>
+ * 日志保留期清理：按时间分批删除 event_log / sys_log / subscribe_outbox。
+ * subscribe_outbox 只删终态；每批带 LIMIT，单轮有上限。
  */
 @Slf4j
 @Service

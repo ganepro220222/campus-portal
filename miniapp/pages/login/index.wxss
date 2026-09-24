@@ -6,11 +6,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* 定稿是**纸**，不是夜空。原来这里是
-     radial-gradient(var(--navy), 两个深蓝紫) ——
-     别名令牌把 --navy 换算成棕金之后，它和两个深蓝紫混在一起，
-     出来正是审看意见点名不要的"暗沉像黄昏"。
-     现在三层：顶上一道白光、一层纸纤维、底下从绢青化到纸。 */
+  /* 纸色底 + 顶光 + 纤维 + 绢青过渡 */
   background-color: var(--paper);
   background-image:
     radial-gradient(120% 56% at 50% 6%, rgba(255,255,255,.75) 0%, transparent 60%),
@@ -19,8 +15,7 @@
   background-size: auto, 320rpx 320rpx, auto;
 }
 
-/* 棂格底纹：只在中上部浮现、往四周化开。
-   满屏铺就成了网格纸——遮罩是这件事成立的关键。 */
+/* 棂格底纹：中上部遮罩，不满铺 */
 .login-lattice {
   position: absolute;
   left: 0; top: 0; right: 0; bottom: 0;
@@ -34,8 +29,7 @@
   mask-image: radial-gradient(90% 60% at 50% 34%, black 0%, transparent 74%);
 }
 
-/* 返回键：纸色圆钮 + 木色描边，和二级页顶栏那一枚同一族。
-   原来是深色底上的半透明白，页面翻浅之后那一枚就看不见了。 */
+/* 返回：纸钮 + 木描边 */
 .login-back {
   position: absolute;
   left: 32rpx;
@@ -54,11 +48,7 @@
 }
 .login-back-hover { background: var(--xing-05); }
 
-/* 檐：压在纸上，檐脚再落一层影，才是"压在上面"而不是"画在上面"。
-   檐必须**通栏出血**。.login-inner 有 76rpx 的左右内边距、又是 align-items:center，
-   檐若只写 width:100% 就被挤进内容区（375pt 上只剩 299px）居中摆着，
-   两边各露 38px 的纸——屋檐悬在半空，不是压在页面上。
-   用负外边距把它顶回屏幕两边。 */
+/* 檐通栏出血：负 margin 抵消 .login-inner 左右 76rpx */
 .login-eave {
   display: block;
   width: calc(100% + 152rpx);
@@ -85,9 +75,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* 左右 76rpx，表单与标题大致同轴。
-     顶上原来还有 108rpx —— 那是旧夜空稿给印章留的空。现在顶上是状态栏
-     占位 + 屋檐，再留 108rpx 就把檐整个往下推了 54px，所以去掉。 */
+  /* 左右 76rpx；顶不再另留 108rpx（檐已占位） */
   padding: 0 76rpx 40rpx;
   min-height: 100vh;
   box-sizing: border-box;
@@ -95,18 +83,12 @@
 
 /* 高屏剩余高度按 3:1:3 分给顶、中、底；不够时隔条为 0 */
 .lg-sp { width: 100%; }
-/* 印章离檐的间距有**下限**。原来只有 flex-grow，屏一矮隔条就被压成 0，
-   印章直接贴在檐脚上——设计稿量出来檐底到印章顶是 20px（= 40rpx），
-   这里给下限 44rpx（设计稿 .seal-plate 的 margin-top 是 22px），
-   还有余量时照旧按 flex 分配。 */
+/* 印章离檐下限 44rpx（＝设计稿 22px） */
 .lg-sp-top { flex-grow: 3; min-height: 44rpx; }
 .lg-sp-mid { flex-grow: 1; }
 .lg-sp-bot { flex-grow: 3; }
 
-/* ── 印章钤在一方纸上：这一页的视觉中心 ──
-   纸给了印章对比度，直接落在底纹上会糊。一圈金线、一圈木框、再一圈金线，
-   三道箍把这方纸"裱"起来，才像一件东西而不是一个白方块。
-   原来这里是 academy-seal-gold.png（金印浮在深色上），换成朱砂那一版。 */
+/* 印章垫纸 + 金木三道框 */
 .seal-plate {
   width: 156rpx;
   height: 156rpx;
@@ -125,10 +107,7 @@
 }
 .seal-img { width: 104rpx; height: 104rpx; }
 
-/* ── 校名：书法字图片 ──
-   原来是文字排版「云端书院」+ ❖ + 「中华文化书院」+ EN，三行。
-   定稿只有书法字一行 + 如意云头分隔 + 英文，而且「云端书院」
-   这个名字在定稿里根本没出现。 */
+/* 校名：书法图 + 祥云分隔 + 英文 */
 .brand { margin-top: 52rpx; text-align: center; }
 .brand-img {
   height: 72rpx;
@@ -153,21 +132,7 @@
 .brand-div-line-r {
   background: linear-gradient(90deg, rgba(192,153,78,.85), transparent);
 }
-/* ── 祥云分隔 ──────────────────────────────────────────────
-   设计稿是 ruyi_divider()。名字叫「如意」，画的其实是**祥云**——
-   那边的注释写得很清楚：如意云头怎么调都像一颗心，辨识度靠两侧的内卷，
-   光靠三个圆瓣区分不开，所以换成和封面那批云同一套的祥云单元。
-
-   形制：三个圆瓣压一道圆角横条，**金边朱面**，两侧各一道内卷。
-   金边不是描边（圆的并集没法直接描边），是在底下垫一层大一圈的金色，
-   露出来的那一圈就是边。
-
-   上一版用 8 个 view 摞出来，金层和朱层都有了，**唯独内卷没搬**——
-   理由写的是"1.8rpx 这个尺寸上画不出来"。可设计稿的注释说的正是
-   "辨识度靠两侧的内卷"：跳过的恰好是让它成立的那一件，
-   落到屏幕上就是一坨红团。CSS 画不了那道弧，SVG 能，
-   所以改成一枚生成的 data URI 令牌（scripts/build-ruyi-token.mjs），
-   顺带从 8 个节点降到 1 个。尺寸也由令牌给，页面不再自己换算。 */
+/* 祥云分隔：--ruyi 令牌（scripts/build-ruyi-token.mjs） */
 .ruyi {
   flex: none;
   width: var(--ruyi-w);
@@ -200,8 +165,7 @@
   display: flex; align-items: center; justify-content: center;
   z-index: 2;
 }
-/* 输入框：一方**凹进去的纸**。原来是深色底上的半透明白，页面翻浅之后
-   那层白在纸上什么都看不见。内阴影负责"凹"，下沿一道白负责"边"。 */
+/* 输入：凹纸内阴影 */
 .field-input {
   width: 100%;
   height: 92rpx;
@@ -238,28 +202,21 @@
   justify-content: flex-end;
   margin: 4rpx 12rpx 12rpx;
 }
-/* 定稿这里写的是 --wood-70，但那是在设计稿的纸上量的；
-   小程序的页底 --paper 稍浅，同一个色只剩 4.32:1，低于 AA 的 4.5。
-   往深一档到 --wood-75（5.25:1），色相不变、版面不变。 */
+/* 「忘记密码」用 --wood-75（纸上约 5.25:1；--wood-70 约 4.32） */
 .forgot-link {
   color: var(--wood-75);
   font-size: 24rpx;
 }
 .field-ph { color: var(--ink-3); }
 
-/* 聚焦态：两个输入框长得一样，点进去只有一个光标，容易忘了在填哪一格。
-   描边换成金、再加一圈很淡的外发光，不引入新颜色。 */
+/* 聚焦：金描边 + 淡外光 */
 .field-input.on {
   border-color: rgba(192,153,78,.75);
   box-shadow: inset 0 4rpx 8rpx rgba(88,110,104,.20),
               0 0 0 4rpx rgba(192,153,78,.18);
 }
 
-/* 按钮 */
-/* 两枚按钮都是**有厚度的钮**：底下垫一道深色边（0 Nrpx 0 var(--*-edge)），
-   按下去往下沉、那道边同时变薄，手感就出来了。
-   平涂 + 圆角那种做法在这套里不成立——页面全是有材质的东西，
-   只有按钮是两块平色块，会显得是另一套东西贴上来的。 */
+/* 立体钮：底边 --*-edge，按下沉 */
 .lbtn {
   width: 100%;
   height: 92rpx;
@@ -346,19 +303,7 @@
   line-height: 1.8;
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 }
-/* 校徽做成一枚圆牌：纸底 + 内外双金环。
-   白方块里嵌一个圆徽是最廉价的做法，边缘还会硬切。
-   multiply 让它压进纸里，不像一枚贴上去的贴纸。
-
-   尺寸这里有过一处**没按设计稿**：设计稿是牌 52px、徽 42px（徽占牌 0.81），
-   小程序牌换算成 104rpx 是对的，徽却只给了 72rpx（0.69）——
-   牌面空出一圈，看着就是"徽偏小"。
-
-   这一版在补回那个比例的同时整体放大 30%（牌 104→136rpx）：
-   设计稿那句"校徽退到页脚小尺寸，不抢书法字"仍然成立——
-   书法字高 72rpx 且横向通栏，这枚牌再大一圈也压不过它。
-   金环三道、投影、内高光全部按 136/104 同比缩放，形制不变。
-   徽的原图是 288×288，136rpx 在 3 倍屏上要 204 物理像素，还有余量。 */
+/* 页脚校徽圆牌：136rpx（徽约占牌 0.81）；投影偏移 3rpx 免环缘不匀 */
 .foot-emblem-plate {
   width: 136rpx;
   height: 136rpx;
@@ -371,11 +316,7 @@
   box-shadow: 0 0 0 3rpx rgba(192,153,78,.85),
               0 0 0 9rpx rgba(122,86,38,.55),
               0 0 0 12rpx rgba(192,153,78,.55),
-              /* 投影往下偏太多，金环下缘会比上缘厚一截，
-                 眼睛把外轮廓当成环，里面的徽就看着偏上了——
-                 量过：5rpx 偏移时上 18 / 下 24~26 设备像素（差 44%）。
-                 收到 3rpx 之后四个方向 18/19/18/18，差 1 像素；
-                 偏移仍保留，牌子还是"浮"在纸上，不是平贴。 */
+              /* 投影偏移 3rpx，环缘上下接近匀称 */
               0 3rpx 16rpx rgba(74,50,30,.20),
               inset 0 3rpx 5rpx rgba(255,255,255,.9);
 }

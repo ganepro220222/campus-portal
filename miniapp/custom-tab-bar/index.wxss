@@ -1,10 +1,7 @@
-/* 自定义底部导航 —— 方案「书院 · 檐棂印」
-   对照 design/demo/v2/shuyuan.css 的 .fret / .tabbar / .tab 三条规则。
-   设计稿是 375pt 宽的 px，这里一律 ×2 换成 rpx。 */
+/* 自定义底部导航；设计稿 px×2＝rpx */
 
 /* ══ 令牌副本开始 · 由 scripts/build-tabbar-tokens.mjs 生成，勿手改 ══ */
-/* 自定义 tabBar 是页面之外的独立层，继承不到 page 上的令牌，
-   所以在组件自己的根节点上补一份。值从 app.wxss 现抄，别手改。 */
+/* tabBar 独立层，继承不到 page 令牌 */
 .tabbar-wrap {
   --fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)' opacity='0.05'/%3E%3C/svg%3E");
   --fret-cut: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Cg fill='none' stroke='%237A5626' stroke-width='1.15' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M3.2,17.6 V4.4 H20.8 V15.2 H7.2 V7.2 H16.8 V12.8 H11.2 V9.6'/%3E%3Cpath d='M44.8,17.6 V4.4 H27.2 V15.2 H40.8 V7.2 H31.2 V12.8 H36.8 V9.6'/%3E%3C/g%3E%3Cg fill='none' stroke='%237A5626' stroke-width='0.75' stroke-linecap='square'%3E%3Cpath d='M0,2.2 H48 M0,19.0 H48 M0,17.6 H3.2 M20.8,17.6 H27.2 M44.8,17.6 H48'/%3E%3C/g%3E%3C/svg%3E");
@@ -23,20 +20,11 @@
   right: 0;
   bottom: 0;
   z-index: 500;
-  /* 这一层必须**不透明**。
-     设计稿里 .fret 是画在页面那张纸上的，底色只是 7% 的金棕水，
-     靠下面的 --paper 把它托住。小程序这边它住在一个 fixed 的空层里，
-     背后什么都没有，于是 93% 透明——页面滚上来的内容、
-     收起的问答抽屉，全都从纹样里透出来，回纹就看不见了。
-     补一层 --paper，合成结果和设计稿一模一样。 */
+  /* 不透明纸底，托住半透明回纹 */
   background-color: var(--paper);
 }
 
-/* ── 回纹带 ──────────────────────────────────────────────────
-   同一组纹样画两遍：深色（--fret-cut）当刻痕在上，
-   浅色（--fret-lit）往下错 2.2rpx 当受光面在下。
-   两层缺一层就不是「刻」出来的，是贴上去的。
-   底色是一层极淡的金棕——设计稿里就是写死的 rgba，照搬。 */
+/* 回纹：刻痕 + 受光错位 2.2rpx */
 .fret {
   height: 40rpx;
   background-color: rgba(173, 130, 72, .07);

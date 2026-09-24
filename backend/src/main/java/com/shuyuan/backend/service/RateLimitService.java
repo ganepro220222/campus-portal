@@ -30,15 +30,7 @@ public class RateLimitService {
     /** 意见反馈每日上限 */
     public static final String SCENE_FEEDBACK_DAY = "feedback-day";
 
-    /*
-     * 退还一次已占用的计数。
-     *
-     * <p>不能直接 DECR：Redis 对**不存在**的键执行 DECR 会新建一个值为 -1 且**不带 TTL** 的键。
-     * 请求跨过窗口边界时（自然日键跨零点、分钟窗口跨整分），窗口键正好在退还前过期，
-     * 直接 DECR 就会凭空造出一个永不过期的负数键——带日期的键永久泄漏，
-     * 不带日期的键（如 ratelimit:enroll:u:7）还会让这个用户凭空多出额度且计数错乱。
-     * 用 Lua 把「存在才减」做成一步原子操作，从根上消掉这一类。
-     */
+    /* 退还计数：键不存在时不 DECR（否则会造出无 TTL 的 -1 键） */
     private static final RedisScript<Long> REFUND_SCRIPT = new DefaultRedisScript<>(
             """
                     local v = redis.call('GET', KEYS[1])

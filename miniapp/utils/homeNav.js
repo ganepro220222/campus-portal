@@ -13,20 +13,7 @@ const DEFAULT_ENTRIES = [
   { id: 5, label: '活动报名', icon: 'entry-enroll', path: '/pages/activity/index', toneClass: 'e5' }
 ]
 
-/*
- * 五个入口用的是**多色填充的器物图**，不是 icon 组件那套线描。
- *
- * 这一条是返工留下的规矩：线描是 tabBar 与顶栏那一档的语言
- * （小、要一眼认出轮廓）；入口这一档在定稿里是大的、多色的、有体积的器物。
- * icon 组件只吃一个颜色，装不下多色，所以走图片。
- * 图由 scripts/build-entry-icons.mjs 从设计稿的 icon_set() 生成。
- *
- * 展馆与课程各有两枚同名不同档的图标：
- * tabBar 走线描的 museum / course，入口走多色的 entry-hall / entry-course。
- *
- * 后台可以给入口配任意图标名；配到表外的名字就退回 icon 组件的单色线描，
- * 不至于开天窗。
- */
+/* 入口器具图（多色）；未知名退回单色线描 icon */
 const ENTRY_IMAGES = {
   'entry-news':     '/assets/images/entry-news.png',
   'entry-hall':     '/assets/images/entry-hall.png',

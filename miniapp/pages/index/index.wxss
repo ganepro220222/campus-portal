@@ -4,32 +4,20 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  /* 卷首那幅画顶在最上面，页面底色只在画以下露出来，所以是平铺的纸，
-     不再是原来那道冷蓝到纸色的渐变。 */
+  /* 卷首画顶满，页底平铺纸色 */
   background: var(--paper);
 }
 .home-error-box { padding-top: 80rpx; }
 .home-page .page-refresh-bar { margin-left: 32rpx; margin-right: 32rpx; }
 .home-section-bar { margin: 0 0 16rpx; }
 
-/* ══════════════ 卷首 ══════════════
-   定稿里首页开篇是**通栏出血的一幅青绿山水，屋檐压在画上**，
-   书法题名和搜索行都落在画里。这幅画是整套方案最强的身份标记。
-
-   它有 736rpx（＝设计稿 368px）高，占掉小半屏，所以不可能吸顶——
-   卷首整体跟着内容滚走，滚过去之后由下面那条 .topbar 接手搜索。
-
-   画和檐是两张 PNG（scripts/build-hero.mjs 生成）：
-   WXML 不渲染内联 SVG，WXSS 的 background-image 也不收本地路径。
-   分两张而不是合成一张，是因为**檐的位置跟着机型走**——
-   状态栏高度各机型不同，合成就把檐钉死在某一个偏移上了。 */
+/* 卷首：736rpx（＝设计稿 368px）；山水与檐分两张 PNG，檐位随状态栏高度 */
 .hero {
   position: relative;
   min-height: 736rpx;
   overflow: hidden;
 }
-/* 画铺满整个卷首。scaleToFill 对应设计稿那个 preserveAspectRatio="none"：
-   画本来就是按屏宽拉伸用的，换机型只是纵向拉高一点。 */
+/* 画铺满卷首；scaleToFill ＝ 设计稿 preserveAspectRatio="none" */
 .hero-shan {
   position: absolute;
   left: 0;
@@ -46,7 +34,7 @@
   height: 124rpx;        /* ＝设计稿 62px，满檐；顶栏组件那张是矮一档的 46px，两张不通用 */
   margin-bottom: -4rpx;  /* 檐脚压住下面一点点，中间不透缝 */
 }
-/* 画上的题名：比二级页顶栏那一档大，它现在是这幅画的题款 */
+/* 画上题名 */
 .hero-brand {
   padding: 44rpx 0 0;
   display: flex;
@@ -55,10 +43,7 @@
 .hero-brand-img {
   height: 80rpx;         /* ＝设计稿 40px */
   width: auto;
-  /* 刻痕的两面墙烤在图里了（scripts/build-hero.mjs 的 carve）：
-     上壁背光压暗、下壁受光提亮。CSS 的 drop-shadow 只画得到笔画**外面**，
-     再往下压白边就会和图里那道受光叠成一圈光晕，沟反而看不出来。
-     所以外面只留两样：沟口那一点唇光，和一道很浅的远影（压在绿山上也读得住）。 */
+  /* 刻痕已烤进图；外层只留唇光与浅远影，避免叠光晕 */
   filter: drop-shadow(0 1rpx 0 rgba(255,255,255,.55))
           drop-shadow(0 3rpx 5rpx rgba(46,66,60,.16));
 }
@@ -70,8 +55,7 @@
   gap: 20rpx;
   padding: 36rpx 32rpx 0;
 }
-/* 画的颜色不定（后面还会换图），所以三件工具都垫一方半透明的纸，
-   和二级页返回键同一个办法——直接落在绢底最深处只有 3.74:1。 */
+/* 工具钮垫半透明纸（绢底最深处对比约 3.74:1） */
 .hi {
   position: relative;
   flex: none;
@@ -95,9 +79,7 @@
   border-radius: 50%;
   background: var(--zhu);
 }
-/* 搜索框（卷首上那一条）。原来是冷蓝灰的填充加一圈冷蓝灰描边——
-   那两个值是旧配色留下的，又不在旧调色板对照表里，所以护栏一直扫不到。
-   这里换成"半透明的纸 + 木色描边"，和它脚下那幅画是一家人。 */
+/* 卷首搜索：半透明纸 + 木色描边 */
 .search {
   flex: 1;
   min-width: 0;
@@ -124,10 +106,7 @@
   white-space: nowrap;
 }
 
-/* ── 细吸顶搜索条 ──
-   卷首滚走之后顶上淡入这一条，搜索始终点得到。
-   触发点由 JS 量出来（卷首那条搜索行的下沿减去本条高度），
-   所以两个搜索框不会同时出现在屏幕上。 */
+/* 卷首滚走后淡入的吸顶搜索；触发点由 JS 按卷首搜索下沿计算 */
 .topbar {
   position: fixed;
   left: 0;
@@ -164,27 +143,10 @@
 /* ── 可滚动内容区 ── */
 .scroll-body { flex: 1; overflow: hidden; }
 .wrap { padding: 0 32rpx; }
-/* 底部留白要盖过整条标签栏，**再留出设计稿那口气**。
-   标签栏 = 回纹带 40rpx + 栏身 104rpx = 144rpx（安全区两边都另算，抵消）。
-   原来写 150rpx，是标签栏还只有 108rpx 那会儿定的；加了回纹带之后
-   净空隙从 42rpx 掉到 6rpx（3px），最后一块卡片几乎贴着回纹带。
-   设计稿 home.html 给 .fret 的是 margin-top: 20px = 40rpx，
-   所以这里取 144 + 40 = 184rpx。改标签栏高度时这个数要跟着改，
-   check:tabbar-routes 会拦。 */
+/* 底留白：标签栏 144rpx + 设计稿 40rpx＝184rpx */
 .scroll-bottom { height: calc(184rpx + env(safe-area-inset-bottom)); }
 
-/* ── 轮播 ──
-   定稿里轮播是**裱起来的一幅画**：木纹裱边、四角角叶、右上一枚竖排题签、
-   左下一条绢上写标题。装裱那几个类在 app.wxss（展馆封面、资讯缩略图要共用），
-   这里只管轮播自己的尺寸。
-
-   改掉的旧做法：封面图原来铺在一块 .s1~.s3 的渐变色块上、
-   自己压到 opacity .32。那三块色阶是旧蓝紫调色板（.s1 走 var(--navy-deep)
-   和 var(--blue)，被别名令牌换算成棕金），照片压淡之后叠在棕金上，
-   出来是一块说不清是什么的灰褐方块 —— 反馈原话是"不知道是什么内容，
-   不知道是不是没有加载出来"。
-   定稿的办法是照片**满强度**铺满，可读性交给两件事：画心的暗角、
-   以及标题脚下那条绢。压淡照片既丢信息又不解决对比度。 */
+/* 轮播：裱框尺寸；装裱类在 app.wxss；封面满强度铺满 */
 .banner {
   position: relative;
   height: 372rpx;          /* 裱边 20rpx + 画心 352rpx；设计稿画心 176px */
@@ -228,15 +190,10 @@
   background: var(--line);
   transition: 0.3s;
 }
-/* 选中态是**朱**，不是金。金是全站的强调色（印、匾、段头箭头），
-   轮播的当前页是"位置指示"不是"强调"，定稿给的就是朱。 */
+/* 轮播点选中用朱 */
 .bdot-on { width: 28rpx; border-radius: 6rpx; background: var(--zhu); }
 
-/* ── 公告条 ──
-   定稿是**杏色底 + 朱红左竖条**，不是白卡片。左沿方角、右沿圆角，
-   像一张从左边压进来的笺。原来是 var(--paper-card) 白底 + 四周 --line 描边，
-   和它上下的纸底几乎一个色，整条看不出边界；图标也是金的，
-   定稿里那枚铃是朱的——朱是这套设计唯一的点缀色，公告正该用它。 */
+/* 公告：杏底 + 朱红左竖条；铃用朱 */
 .notice-bar {
   display: flex;
   align-items: center;
@@ -257,24 +214,15 @@
   white-space: nowrap;
 }
 
-/* ── 精品好物：一方匾额 ──
-   原来是一条金棕渐变横条（#8C5A2B → --jin-60 → #D4B76A）。
-   那条渐变正好撞上审看意见里点名不要的"暗沉像黄昏"，
-   而且它是整页唯一一块大面积高饱和暖色，什么内容都压不住它。
-
-   定稿是**一方木匾**：一圈竖纹实木的框、里面一面横纹的匾心，
-   左边一枚朱印钤在纸上，字是**阴刻填墨**——浅原木匾就该这么做，
-   描金是黑漆匾的规矩，浅木上描金反而没对比。 */
+/* 精品好物：木匾（竖纹框、横纹心、阴刻填墨） */
 .plaque {
   margin: 28rpx 32rpx 0;
   padding: 10rpx;
   border-radius: 14rpx;
   position: relative;
-  /* 匾框比匾心深两档：匾本来就该比它挂的那面墙深，
-     不然摆在米白页面上和纸一个色，"匾"这件事就没了。 */
+  /* 匾框比匾心深两档 */
   background-color: var(--wood-75);
-  /* 木理用设计稿那张竖向木射线贴图（--wood-fig-v，feTurbulence 生成），
-     不是我早先手搓的等距细纹——等距细纹出来是瓦楞纸，不是木头。 */
+  /* 竖向木理 --wood-fig-v */
   background-image:
     var(--wood-fig-v),
     linear-gradient(150deg, var(--wood-65), var(--wood-75) 52%, var(--wood-85));
@@ -287,8 +235,7 @@
   transform: translateY(2rpx);
   box-shadow: 0 2rpx 10rpx rgba(82,66,44,.26);
 }
-/* 匾面斜斜扫过一道光。少了它整块匾是平的——
-   木头是有光泽的，"平涂两块棕色"和"一块木头"的差别一半在这道光上。 */
+/* 匾面扫光 */
 .plaque::after {
   content: '';
   position: absolute;
@@ -299,8 +246,7 @@
     transparent 0 32%, rgba(255,252,242,.16) 44%, rgba(255,252,242,.26) 50%,
     rgba(255,252,242,.10) 57%, transparent 70% 100%);
 }
-/* 匾心内一圈**金线 + 朱红环**。这是匾的规制里最要紧的一道，
-   我上一版整个漏了，匾心就成了一块光板木头。 */
+/* 匾心内圈：金线 + 朱红环 */
 .plaque-inner::before {
   content: '';
   position: absolute;
@@ -318,10 +264,9 @@
   display: flex;
   align-items: center;
   gap: 22rpx;
-  /* 匾心的木理是**横**的，和框条的竖纹交叉——实木匾就是这么开料的 */
+  /* 匾心木理横向，与框竖纹交叉 */
   position: relative;
   background-color: var(--wood-45);
-  /* 匾心的木理是**横**的，和框条的竖纹交叉——实木匾就是这么开料的 */
   background-image:
     var(--wood-fig),
     linear-gradient(180deg, var(--wood-35) 0%, var(--wood-45) 58%, var(--wood-55) 100%);
@@ -330,7 +275,7 @@
               inset 0 -2rpx 0 rgba(255,250,238,.45),
               0 2rpx 0 rgba(255,250,238,.22);
 }
-/* 印章钤在一方纸上——纸给了印章对比度，直接盖在木头上会糊 */
+/* 印垫在纸上，保证对比 */
 .plaque-seal-paper {
   width: 68rpx;
   height: 68rpx;
@@ -364,16 +309,7 @@
 }
 .plaque-go { color: var(--wood-90); flex: none; display: flex; }
 
-/* ── 功能入口矩阵：一张书页的版框 ──
-   定稿里这一块是**一张书页**：杏色纸底 + 纸纤维纹 + 一圈金棕实边，
-   里面再退 5rpx 描一道细线（双线版框），正上方中缝压一枚朱红圭形标记。
-   那三件我上一版全漏了，剩下一个浅杏圆角方块，说不出是什么。
-
-   逐项和定稿对过的差：
-     底色  --xing-05 → --xing-10（原来浅了一整档，压不住页底）
-     描边  var(--line) 几乎看不见 → rgba(132,102,44,.92) 金棕实边
-     圆角  28rpx 太圆，像卡片 → 12rpx（设计稿 6px），版框就该是方的
-     纸纹  无 → var(--fiber-page) */
+/* 功能入口：杏纸版框（--xing-10、金棕边、12rpx 圆角、纸纹） */
 .entries-wrap {
   position: relative;
   margin: 32rpx 32rpx 0;
@@ -385,7 +321,7 @@
   border: 3rpx solid rgba(132, 102, 44, 0.92);
   box-shadow: 0 2rpx 4rpx rgba(120, 96, 52, 0.09);
 }
-/* 版框的内线：往里退 5rpx 再描一道，两道之间留出的空就是"版框" */
+/* 版框内线（内退 5rpx） */
 .entries-wrap::after {
   content: '';
   position: absolute;
@@ -394,8 +330,7 @@
   border-radius: 4rpx;
   border: 2rpx solid rgba(150, 118, 54, 0.42);
 }
-/* 中缝上那枚朱红圭形小标记。clip-path 不支持时退化成一小块朱红方片，
-   位置和分量都还在，不会散版。 */
+/* 中缝朱红圭形；不支持 clip-path 时退化为方片 */
 .entries-wrap::before {
   content: '';
   position: absolute;
@@ -418,9 +353,7 @@
   min-width: 0;
 }
 .entry:active .ico { transform: translateY(-4rpx); }
-/* 入口图标：定稿里是**多色器物直接放在书页上**，没有色块底。
-   原来那五个蓝紫渐变圆块（.e1~.e5）和这套配色完全不搭，一并去掉；
-   器物本身有颜色有体积，再压一层色块只会把它盖住。 */
+/* 入口：多色器物图，无色块底 */
 .ico {
   width: 100rpx;
   height: 100rpx;
@@ -432,27 +365,8 @@
   align-items: center;
   justify-content: center;
 }
- /* ── 五个入口的色阶 ──────────────────────────────────────
-   旧版是五个几乎一样的蓝（var(--blue) / #4E7CC4 / #5867B8 / #6E8FCB / #5C79C8），
-   100rpx 的尺寸下分不出来，看着像没调准而不像有意为之；早先第五格还是金色，
-   金是全站的强调色（印章、徽记、精品好物大卡），放在五个平级入口之一上会让
-   「报名」看着像主操作。
-
-   现在改成**等对比度的色相扫描**：色相从 238° 走到 198°（40° 跨度，
-   由品牌蓝起、到深青止，全程仍在冷色一族，不会散成一堆杂色），
-   而每一格的明度是**按"白色图标落在它上面的对比度"反推出来的**，
-   五格统一钉在 6.2:1 —— HSL 的 L 不等于人眼感知亮度（同样 L，青色比紫色亮得多），
-   直接扫色相会让越靠后的格子图标越淡。等对比度之后五格视觉分量一致，
-   差别只在色相，既拉得开又不跳。
-
-   实测白色图标对比度：6.21 / 6.16 / 6.20 / 6.23 / 6.14（图形类要求 ≥3）。
-   数值由 scratchpad 的色板脚本二分算出，改任一格都要重算，别手调。 */
-/* .e1~.e5 那五个蓝紫渐变色块已删。
-   它们是旧配色留下的最后一块——W0-1 那轮机械替换扫不到它们，
-   因为这五个值不在旧调色板的对照表里，是这一页自己的语义色。
-   定稿里入口本来就没有色块底，所以不是改配色，是去掉一件多余的东西。
-   toneClass 字段先留着（后台数据里有），不再对应任何样式。 */
-/* 后台可以填任意长度的名字，超出格宽就省略号，不许挤到邻格上去 */
+/* .e1~.e5 旧色块已删；toneClass 仍可由后台返回，无对应样式 */
+/* 标签超长省略，不挤邻格 */
 .entry-label {
   font-size: 23rpx;
   color: var(--ink);
@@ -465,20 +379,7 @@
 
 /* ── Section 通用 ── */
 .section { margin-top: 40rpx; }
-/* ──「最新动态」整段的暖纸：通栏出血 ──
-   对照 design/demo/v2 的 .news-band。设计稿把理由写得很清楚：
-   页面的明暗节奏是 **深画 → 暖 → 白 → 暖 → 雷纹**，两头都压得住；
-   只在上半铺暖色（卷首那幅画 + 入口版框）整页就是头重脚轻的。
-   这一段一直没搬过来，首页从入口版框往下就一路白到底。
-
-   ⚠ 这里**不需要**负外边距，设计稿那对 -16px 不能照抄。
-   设计稿的 .news-band 是包在 .wrap **外面**的一层，那 -16px 是用来
-   抵消父级 wrap 的缩进；小程序这边把 band 加在了和 .wrap **同一个元素**上，
-   而 .sheet 没有横向内边距，.section 本来就通栏——再叠一对 -32rpx，
-   纸横跨到 -32…屏宽+32（两边各 32rpx 白白被裁），
-   内容也跟着整体左移 32rpx，段头那枚印就和上下两段对不齐了。
-   量过：印的左边缘 展馆 16px / 动态 0px / 课程 16px。
-   去掉之后三段都是 16px，纸正好 0…屏宽。 */
+/* 「最新动态」通栏暖纸；与 .wrap 同元素时勿叠横向负 margin */
 .section--band {
   margin-top: 8rpx;
   padding: 4rpx 32rpx 36rpx;
@@ -488,22 +389,12 @@
   box-shadow: inset 0 2rpx 0 rgba(255,252,244,.9),
               inset 0 -2rpx 0 rgba(150,120,66,.10);
 }
-/* 段内的卡片要比这张纸再亮一档，否则卡片就"陷"进去了。
-   .ncard 本来就是 --paper-card，这里写出来是为了**说明这件事是有意的**，
-   哪天有人把卡片底色改成 --paper-1 会先撞上这条注释。 */
+/* 段内卡片比暖纸亮一档，避免陷进底色 */
 .section--band .ncard { background-color: var(--paper-card); }
-/* 段头那一族（.sec-head / .sec-title / .seal-sm / .sec-more / .sec-rule）
-   已经搬到 app.wxss —— 动态详情的「相关推荐」也要用同一枚印，
-   留在这里只有首页够得着。搬家的另一半原因写在那边：
-   app.wxss 本来还有一条同名的 .sec-title（带 ::before 竖条），
-   和这一版撞在一起，首页的段头一直是「印 + 竖条」两件。 */
+/* 段头规则在 app.wxss（.sec-head / .sec-title / .seal-sm / .sec-more / .sec-rule） */
 
 
-/* ── 展馆横滑：裱起来的封面 + 一张题签 ──
-   原来是"封面色块 + 白底卡片包住名字"，色块走 .hc1~.hc5 那套旧蓝紫色阶。
-   定稿里展馆封面和轮播是同一件东西的两个尺寸档：都是裱起来的画心，
-   只是角叶收到 28rpx。名字不再压在图上，而是裱框下面**贴一张题签**——
-   签是手裁的纸，图再满也盖不住名字。 */
+/* ── 展馆横滑：裱框封面 + 题签 ── */
 .halls-scroll { width: 100%; }
 .halls-inner {
   display: flex;
@@ -534,10 +425,7 @@
   text-align: center;
   text-shadow: 0 2rpx 0 rgba(255,252,244,.85);
   box-sizing: border-box;
-  /* 定稿的签是一行、超了就截断，因为那边的签写的是展览名（「礼乐文明展」，五个字）。
-     这边的签写的是馆的**全名**（「贵州交通博物馆·教育基地」十几个字），
-     一行截断之后只剩「贵州交通博物…」，还不如不写。所以放到两行。
-     两行放不下再截断——比一行截断多出一倍的可读长度。 */
+  /* 馆名可两行；超长再截断 */
   line-height: 1.32;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -561,8 +449,7 @@
   transition: transform 0.15s;
 }
 .ncard:active, .ccard:active { transform: scale(0.99); }
-/* 缩略图也是裱起来的画心，只是最小的那一档（角叶 28rpx）。
-   没有封面图时里面垫一层绢底 + 器物图标，不再用 .hc* 那套旧色块。 */
+/* 缩略图裱框；无封面时绢底 + 器物图标 */
 .ncard-thumb { flex-shrink: 0; width: 176rpx; }
 .ccard-thumb { flex-shrink: 0; width: 152rpx; }
 .ncard-thumb .mount-art { height: 128rpx; }

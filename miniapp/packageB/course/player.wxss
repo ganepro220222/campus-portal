@@ -27,9 +27,7 @@
   align-items: center;
   justify-content: center;
   gap: 16rpx;
-  /* 这几行字是压在**暗台**上的，原来却用 --muted（纸上的提示灰）：
-     量过只有 3.22:1，正文要 4.5:1，一直都偏暗看不清。
-     换成纸色，对 --mo-90 是 12.3:1。 */
+  /* 暗台上用纸色字（对比约 12:1；--muted 仅约 3.2） */
   color: var(--paper-3);
   font-size: 26rpx;
 }

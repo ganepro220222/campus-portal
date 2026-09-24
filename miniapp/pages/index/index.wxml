@@ -21,8 +21,7 @@
     <view class="hero">
       <image class="hero-shan" src="/assets/images/hero-shan.png" mode="scaleToFill" />
       <view class="hero-flow">
-        <!-- 状态栏让位。这里**不再给胶囊单独让位**：实测胶囊落在瓦面上，
-             合成后黑色图标对比度 10.11:1，远在 AA 之上，所以照设计稿让檐顶到最上面。 -->
+        <!-- 状态栏高度；胶囊可压在瓦面上 -->
         <view style="height: {{statusBarHeight}}px;"></view>
         <image class="hero-eave" src="/assets/images/hero-eave.png" mode="scaleToFill" />
         <view class="hero-brand">
@@ -129,10 +128,7 @@
       </view>
     </view>
 
-    <!-- 功能入口矩阵。这里**不挂 .wrap**：.entries-wrap 自己写了
-         padding: 34rpx 8rpx 28rpx，同权重且写在后面，.wrap 的 0 32rpx
-         会被整条覆盖——挂着它一个像素也不动，只会让人以为栏距是它给的。
-         量过：挂与不挂，版框 16…359、内容 21…354，完全一致。 -->
+    <!-- 功能入口；自带边距，不挂 .wrap -->
     <view class="entries-wrap">
       <view class="entries">
         <view

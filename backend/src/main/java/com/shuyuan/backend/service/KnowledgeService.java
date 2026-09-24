@@ -281,18 +281,10 @@ public class KnowledgeService {
     }
 
     /**
-     * 本次检索是否真的捞到了能用来回答的资料。
+     * 检索结果是否够用来回答。
+     * 不用 chunks.isEmpty()：短 n-gram 易误命中；按加权分与 minScore 判定。
      *
-     * <p>为什么不能直接用 {@code chunks.isEmpty()} 判断：打分是 2–4 字字符 n-gram 的重合数，
-     * 只要有一个 gram 重合分数就大于 0。实测「比利时的首都在哪」「明天天气怎么样」这类
-     * 完全无关的问题也能命中 5 段（靠的是「怎么」「么样」这种到处都有的短词），
-     * 所以 isEmpty 几乎永远不成立，据此做判断等于没做。
-     *
-     * <p>这里换一套只用于「够不够格」判断的加权分：命中越长的 gram 权重越高
-     * （4 字的「报名活动」显然比 2 字的「怎么」有说服力，权重 3 : 1）。
-     * 不够格时学生问答给固定引导语，不展示弱相关摘录。
-     *
-     * @param minScore 加权分下限，低于它视为没有实质资料
+     * @param minScore 加权分下限
      */
     public boolean hasSubstantialMatch(String question, List<KnowledgeChunk> chunks, int minScore) {
         if (chunks == null || chunks.isEmpty() || question == null || question.isBlank()) {

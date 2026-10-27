@@ -102,8 +102,7 @@ export function fingerprint(t) {
 export function block(t) {
   return [
     BEGIN,
-    '/* 自定义 tabBar 是页面之外的独立层，继承不到 page 上的令牌，',
-    '   所以在组件自己的根节点上补一份。值从 app.wxss 现抄，别手改。 */',
+    '/* tabBar 独立层，继承不到 page 令牌 */',
     '.tabbar-wrap {',
     ...Object.entries(t).map(([k, v]) => `  ${k}: ${v};`),
     '}',

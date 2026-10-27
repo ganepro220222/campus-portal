@@ -3,7 +3,8 @@ const {
   applyLoginData,
   getToken,
   clearMustChangePasswordFlag,
-  isMustChangePasswordRequired
+  isMustChangePasswordRequired,
+  bindWxAuthenticated
 } = require('../../../utils/auth')
 const { post } = require('../../../utils/request')
 const {
@@ -17,6 +18,13 @@ const {
   buildChangePasswordPayload,
   validateNewPasswordPair
 } = require('../../../utils/changePasswordFlow')
+const {
+  WX_BIND_PROMPT,
+  LAST_LOGIN_METHOD_KEY,
+  shouldPromptWxBindAfterPasswordChange
+} = require('../../../utils/loginHelp')
+
+const HOME = '/pages/index/index'
 
 function wxLoginCode() {
   return new Promise((resolve, reject) => {
@@ -144,7 +152,11 @@ Page({
       applyLoginData(data)
       clearMustChangePasswordFlag()
       wx.showToast({ title: '修改成功', icon: 'success' })
-      setTimeout(() => wx.reLaunch({ url: '/pages/index/index' }), 500)
+      if (shouldPromptWxBindAfterPasswordChange(mode, data)) {
+        setTimeout(() => this._askBindWx(), 600)
+        return
+      }
+      setTimeout(() => wx.reLaunch({ url: HOME }), 500)
     } catch (err) {
       if (!shouldApplyChangePasswordSuccess(seq, this._submitSeq)) return
       const action401 = changePassword401PageAction(err, true)
@@ -158,6 +170,26 @@ Page({
         this.setData({ loading: false })
       }
     }
+  },
+
+  /* 首次改密后未绑微信：问一次。不绑也放行；绑定失败等 request.js 的提示显示完再走 */
+  _askBindWx() {
+    const goHome = () => wx.reLaunch({ url: HOME })
+    wx.showModal({
+      ...WX_BIND_PROMPT,
+      success: async (res) => {
+        if (!res.confirm) return goHome()
+        try {
+          await bindWxAuthenticated()
+          wx.setStorageSync(LAST_LOGIN_METHOD_KEY, 'wx')
+          wx.showToast({ title: '绑定成功', icon: 'success' })
+          setTimeout(goHome, 600)
+        } catch (e) {
+          setTimeout(goHome, 1800)
+        }
+      },
+      fail: goHome
+    })
   },
 
   onLogout() {

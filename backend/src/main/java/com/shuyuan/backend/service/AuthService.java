@@ -65,12 +65,12 @@ public class AuthService {
         MemberAccount account = verifyAccountCredentials(req.getStudentNo(), req.getPassword());
         Member member = memberMapper.selectById(account.getMemberId());
         if (member == null) {
-            throw new BusinessException(401, "账号或密码错误");
+            throw new BusinessException(401, "学号 / 工号或密码错误");
         }
         checkMemberActive(member);
         ensureWxOpenidAvailable(wxOpenid, member.getId());
         if (!StudentPasswordPolicy.isPlaceholderOpenid(member.getOpenid())) {
-            throw new BusinessException(400, "该学号已绑定其他微信，请联系管理员");
+            throw new BusinessException(400, "该学号 / 工号已绑定其他微信，请联系学院管理员解绑");
         }
         member.setOpenid(wxOpenid);
         memberMapper.updateById(member);
@@ -103,7 +103,7 @@ public class AuthService {
     public LoginVO accountLogin(AccountLoginRequest req) {
         String accountKey = req.getStudentNo() != null ? req.getStudentNo().trim() : "";
         if (accountKey.isEmpty()) {
-            throw new BusinessException(400, "学号/账号不能为空");
+            throw new BusinessException(400, "学号 / 工号不能为空");
         }
 
         loginLockService.ensureNotLocked(LoginLockService.SCENE_MEMBER, accountKey);
@@ -111,7 +111,7 @@ public class AuthService {
         Member member = memberMapper.selectById(account.getMemberId());
         if (member == null) {
             loginLockService.onFailure(LoginLockService.SCENE_MEMBER, accountKey);
-            throw new BusinessException(401, "账号或密码错误");
+            throw new BusinessException(401, "学号 / 工号或密码错误");
         }
         checkMemberActive(member);
         loginLockService.onSuccess(LoginLockService.SCENE_MEMBER, accountKey);
@@ -178,7 +178,7 @@ public class AuthService {
                 .eq(Member::getOpenid, openid)
                 .last("LIMIT 1"));
         if (member == null || StudentPasswordPolicy.isPlaceholderOpenid(member.getOpenid())) {
-            throw new BusinessException(400, "该微信尚未绑定学号账号，请联系学院管理员重置密码");
+            throw new BusinessException(400, "该微信尚未绑定学号 / 工号，请联系学院管理员重置密码");
         }
         Long currentId = MemberContext.getMemberId();
         if (currentId != null && !currentId.equals(member.getId())) {
@@ -236,7 +236,7 @@ public class AuthService {
 
     private MemberAccount verifyAccountCredentials(String accountKey, String password) {
         if (accountKey == null || accountKey.isBlank()) {
-            throw new BusinessException(400, "学号/账号不能为空");
+            throw new BusinessException(400, "学号 / 工号不能为空");
         }
         if (password == null || password.isBlank()) {
             throw new BusinessException(400, "密码不能为空");
@@ -251,7 +251,7 @@ public class AuthService {
                 && passwordEncoder.matches(password, account.getPasswordHash());
         if (!passwordOk) {
             loginLockService.onFailure(LoginLockService.SCENE_MEMBER, accountKey.trim());
-            throw new BusinessException(401, "账号或密码错误");
+            throw new BusinessException(401, "学号 / 工号或密码错误");
         }
         return account;
     }
@@ -261,7 +261,7 @@ public class AuthService {
                 .eq(Member::getOpenid, wxOpenid)
                 .last("LIMIT 1"));
         if (occupied != null && !occupied.getId().equals(currentMemberId)) {
-            throw new BusinessException(400, "该微信已绑定其他账号");
+            throw new BusinessException(400, "该微信已绑定其他学号 / 工号");
         }
     }
 

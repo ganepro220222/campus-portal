@@ -72,8 +72,9 @@ class LoginLockServiceThrowsTest {
     // 而这段代码此前零测试覆盖——AuthServiceTest 只把 LoginLockService mock 掉了。
     // 下面把错误码与文案钉死，作为那次拆分的等价性证明。
 
+    // 师生登录报错跟登录页叫「学号 / 工号」；后台登录仍叫账号，逐字不变
     @Test
-    void 登录失败文案与剩余次数逐字不变() {
+    void 师生登录失败文案说学号工号并带剩余次数() {
         ShuyuanProperties props = new ShuyuanProperties();
         int maxFail = props.getLogin().getMaxFailAttempts();
 
@@ -81,6 +82,20 @@ class LoginLockServiceThrowsTest {
             LoginLockService svc = realService(count);
             BusinessException ex = assertThrows(BusinessException.class,
                     () -> svc.onFailure(LoginLockService.SCENE_MEMBER, "2024001"));
+            assertEquals(401, ex.getCode());
+            assertEquals("学号 / 工号或密码错误，还可尝试 " + (maxFail - count) + " 次", ex.getMessage());
+        }
+    }
+
+    @Test
+    void 后台登录失败文案逐字不变() {
+        ShuyuanProperties props = new ShuyuanProperties();
+        int maxFail = props.getLogin().getMaxFailAttempts();
+
+        for (long count = 1; count < maxFail; count++) {
+            LoginLockService svc = realService(count);
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> svc.onFailure(LoginLockService.SCENE_ADMIN, "admin"));
             assertEquals(401, ex.getCode());
             assertEquals("账号或密码错误，还可尝试 " + (maxFail - count) + " 次", ex.getMessage());
         }

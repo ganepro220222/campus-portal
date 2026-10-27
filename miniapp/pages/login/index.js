@@ -1,16 +1,45 @@
 // pages/login/index.js
 const { wxLogin, bindWxAccount, applyLoginData, handlePostLogin } = require('../../utils/auth')
 const { post } = require('../../utils/request')
+const {
+  ACCOUNT_LABEL,
+  FIELD_TIPS,
+  WX_BIND_PROMPT,
+  LAST_LOGIN_METHOD_KEY,
+  initialLoginPanel,
+  wxLoginFailureToast
+} = require('../../utils/loginHelp')
+
+const HELP_PAGE = '/packageC/help/login'
+
+function rememberLoginMethod(method) {
+  try {
+    wx.setStorageSync(LAST_LOGIN_METHOD_KEY, method)
+  } catch (e) {
+    // 记不住不影响登录
+  }
+}
+
+function readLastLoginMethod() {
+  try {
+    return wx.getStorageSync(LAST_LOGIN_METHOD_KEY) || ''
+  } catch (e) {
+    return ''
+  }
+}
 
 Page({
   data: {
+    panel: 'wx', // wx | account | bind
+    accountLabel: ACCOUNT_LABEL,
+    tips: FIELD_TIPS,
+    openTip: '', // 同时只开一个问号
     studentNo: '',
     password: '',
     loading: false,
     statusBarHeight: 20,
-    bindMode: false,
     wxBindToken: '',
-    // 当前聚焦的输入框字段名。深色表单上两格长得一样，
+    // 当前聚焦的输入框字段名。两格长得一样，
     // 没有聚焦态就只剩一个光标可辨认（样式见 .field-input.on）。
     focusField: '',
     pwdVisible: {
@@ -18,14 +47,24 @@ Page({
     }
   },
 
-  onLoad(options) {
+  _panelBeforeBind: 'wx',  // 退出绑定时回到这里
+
+  onLoad() {
     const sys = wx.getSystemInfoSync()
-    this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
+    this.setData({
+      statusBarHeight: sys.statusBarHeight || 20,
+      panel: initialLoginPanel(readLastLoginMethod())
+    })
   },
 
   onBack() {
-    if (this.data.bindMode) {
-      this.setData({ bindMode: false, wxBindToken: '', studentNo: '', password: '' })
+    if (this.data.panel === 'bind') {
+      this.setData({
+        panel: this._panelBeforeBind,
+        wxBindToken: '',
+        password: '',
+        openTip: ''
+      })
       return
     }
     const pages = getCurrentPages()
@@ -34,6 +73,19 @@ Page({
     } else {
       wx.switchTab({ url: '/pages/index/index' })
     }
+  },
+
+  onShowAccount() {
+    this.setData({ panel: 'account', openTip: '' })
+  },
+
+  onToggleTip(e) {
+    const tip = e.currentTarget.dataset.tip || ''
+    this.setData({ openTip: this.data.openTip === tip ? '' : tip })
+  },
+
+  onHelp() {
+    wx.navigateTo({ url: HELP_PAGE })
   },
 
   onInput(e) {
@@ -63,17 +115,17 @@ Page({
   },
 
   onForgotPassword() {
-    if (this.data.bindMode) {
+    if (this.data.panel === 'bind') {
       wx.showModal({
         title: '无法自助找回',
-        content: '该微信尚未绑定学号。请联系学院管理员重置密码，用学号和临时密码登录后再绑定微信。',
+        content: '这个微信还没绑定学号 / 工号。请联系学院管理员重置密码，用临时密码登录后再绑定微信。',
         showCancel: false
       })
       return
     }
     wx.showModal({
       title: '忘记密码',
-      content: '若这个微信已绑定学号，可验证后直接设置新密码。尚未绑定请联系学院管理员重置。',
+      content: '这个微信已经绑定过学号 / 工号：验证后可直接设置新密码。还没绑定：请联系学院管理员重置。',
       confirmText: '微信验证',
       success: (res) => {
         if (res.confirm) {
@@ -89,16 +141,20 @@ Page({
     try {
       const data = await wxLogin()
       if (data && data.needBind) {
+        if (this.data.panel !== 'bind') this._panelBeforeBind = this.data.panel
         this.setData({
-          bindMode: true,
-          wxBindToken: data.wxBindToken || ''
+          panel: 'bind',
+          wxBindToken: data.wxBindToken || '',
+          password: '',
+          openTip: ''
         })
-        wx.showToast({ title: '请绑定账号', icon: 'none' })
         return
       }
+      rememberLoginMethod('wx')
       this._afterLogin(data)
     } catch (err) {
-      wx.showToast({ title: '登录失败，请重试', icon: 'none' })
+      const msg = wxLoginFailureToast(err)
+      if (msg) wx.showToast({ title: msg, icon: 'none' })
     } finally {
       this.setData({ loading: false })
     }
@@ -106,13 +162,14 @@ Page({
 
   async onBindWxAccount() {
     const { studentNo, password, wxBindToken } = this.data
-    if (!wxBindToken) return wx.showToast({ title: '请重新微信登录', icon: 'none' })
-    if (!studentNo.trim()) return wx.showToast({ title: '请输入账号', icon: 'none' })
+    if (!wxBindToken) return wx.showToast({ title: '请重新点微信一键登录', icon: 'none' })
+    if (!studentNo.trim()) return wx.showToast({ title: '请输入学号 / 工号', icon: 'none' })
     if (!password) return wx.showToast({ title: '请输入密码', icon: 'none' })
     if (this.data.loading) return
     this.setData({ loading: true })
     try {
       const data = await bindWxAccount(wxBindToken, studentNo.trim(), password)
+      rememberLoginMethod('wx')
       this._afterLogin(data)
     } catch {
       // request.js 统一错误提示
@@ -123,31 +180,32 @@ Page({
 
   async onAccountLogin() {
     const { studentNo, password } = this.data
-    if (!studentNo.trim()) return wx.showToast({ title: '请输入账号', icon: 'none' })
+    if (!studentNo.trim()) return wx.showToast({ title: '请输入学号 / 工号', icon: 'none' })
     if (!password) return wx.showToast({ title: '请输入密码', icon: 'none' })
     if (this.data.loading) return
     this.setData({ loading: true })
     try {
       const data = await post('/auth/account-login', { studentNo: studentNo.trim(), password })
       applyLoginData(data)
+      rememberLoginMethod('account')
       if (data.mustChangePassword) {
+        // 改密页改完会问绑定
         const { redirectToChangePassword } = require('../../utils/auth')
         redirectToChangePassword()
         return
       }
       if (data.wxBound === false) {
         wx.showModal({
-          title: '绑定微信',
-          content: '绑定后可使用微信一键登录，是否现在绑定？',
-          confirmText: '绑定',
+          ...WX_BIND_PROMPT,
           success: async (res) => {
             if (res.confirm) {
               try {
                 const { bindWxAuthenticated } = require('../../utils/auth')
                 await bindWxAuthenticated()
+                rememberLoginMethod('wx')
                 wx.showToast({ title: '绑定成功', icon: 'success' })
               } catch {
-                // 忽略，已学号登录成功
+                // request.js 已提示原因；已登录成功，照常放行
               }
             }
             this._loginSuccess()

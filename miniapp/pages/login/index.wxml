@@ -4,7 +4,7 @@
   <view class="login-lattice"></view>
 
   <!-- 返回键挂在檐下，不和胶囊抢那一行。檐底再往下 20rpx。 -->
-  <view class="login-back" style="top: calc({{statusBarHeight}}px + 124rpx + 20rpx);" bindtap="onBack" hover-class="login-back-hover">
+  <view class="login-back" style="top: calc({{statusBarHeight}}px + 124rpx + 20rpx);" bindtap="onBack" hover-class="login-back-hover" aria-role="button" aria-label="返回">
     <icon name="chevron-left" size="22" color="#614923" sw="2.6" />
   </view>
 
@@ -37,57 +37,91 @@
     </view>
     <view class="lg-sp lg-sp-mid"></view>
 
-    <!-- 登录表单 -->
     <view class="login-form">
-      <view class="field">
-        <view class="field-ic"><icon name="user" size="18" color="#856F4F" /></view>
-        <input
-          class="field-input {{focusField === 'studentNo' ? 'on' : ''}}"
-          placeholder="请输入账号"
-          placeholder-class="field-ph"
-          value="{{studentNo}}"
-          data-field="studentNo"
-          bindinput="onInput"
-          bindfocus="onFieldFocus"
-          bindblur="onFieldBlur"
-          maxlength="30"
-        />
-      </view>
-      <view class="field">
-        <view class="field-ic"><icon name="lock" size="18" color="#856F4F" /></view>
-        <input
-          class="field-input has-eye {{focusField === 'password' ? 'on' : ''}}"
-          placeholder="请输入密码"
-          placeholder-class="field-ph"
-          password="{{!pwdVisible.password}}"
-          value="{{password}}"
-          data-field="password"
-          bindinput="onInput"
-          bindfocus="onFieldFocus"
-          bindblur="onFieldBlur"
-          maxlength="50"
-        />
-        <view class="field-eye" data-field="password" bindtap="onTogglePwd" hover-class="field-eye-hover">
-          <icon name="{{pwdVisible.password ? 'eye-off' : 'eye'}}" size="18" color="#856F4F" />
+      <!-- 微信在前；未绑定转绑定态。学号 / 工号登录收为第二步，上次用它登录则默认展开 -->
+      <block wx:if="{{panel === 'wx'}}">
+        <button class="lbtn lbtn-primary lbtn-long serif" bindtap="onWxLogin" loading="{{loading}}" disabled="{{loading}}">
+          <icon name="wechat" size="20" color="#F5E7CE" />
+          <text class="lbtn-tx">微信一键登录</text>
+        </button>
+        <button class="lbtn lbtn-ghost lbtn-after-primary" bindtap="onShowAccount" disabled="{{loading}}">
+          <text class="lbtn-tx">用学号 / 工号登录</text>
+        </button>
+      </block>
+
+      <block wx:else>
+        <view wx:if="{{panel === 'bind'}}" class="bind-head">
+          <view class="bind-title serif">绑定学号 / 工号</view>
+          <view class="bind-sub">这个微信还没有绑定。填一次学号 / 工号和密码，以后点微信就能直接进。</view>
         </view>
+
+        <!-- 问号只答本格，长说明见「无法登录？」 -->
+        <view class="field-label">
+          <text class="field-name">{{accountLabel}}</text>
+          <view class="field-q {{openTip === 'account' ? 'on' : ''}}" data-tip="account" bindtap="onToggleTip" hover-class="field-q-hover" aria-role="button" aria-label="学号 / 工号怎么填">?</view>
+        </view>
+        <view wx:if="{{openTip === 'account'}}" class="field-tip" data-tip="account" bindtap="onToggleTip">{{tips.account}}</view>
+        <view class="field">
+          <view class="field-ic"><icon name="user" size="18" color="#856F4F" /></view>
+          <input
+            class="field-input {{focusField === 'studentNo' ? 'on' : ''}}"
+            placeholder="请输入学号 / 工号"
+            placeholder-class="field-ph"
+            value="{{studentNo}}"
+            data-field="studentNo"
+            bindinput="onInput"
+            bindfocus="onFieldFocus"
+            bindblur="onFieldBlur"
+            maxlength="30"
+          />
+        </view>
+
+        <view class="field-label">
+          <text class="field-name">密码</text>
+          <view class="field-q {{openTip === 'password' ? 'on' : ''}}" data-tip="password" bindtap="onToggleTip" hover-class="field-q-hover" aria-role="button" aria-label="第一次登录的密码从哪来">?</view>
+        </view>
+        <view wx:if="{{openTip === 'password'}}" class="field-tip" data-tip="password" bindtap="onToggleTip">{{tips.password}}</view>
+        <view class="field">
+          <view class="field-ic"><icon name="lock" size="18" color="#856F4F" /></view>
+          <input
+            class="field-input has-eye {{focusField === 'password' ? 'on' : ''}}"
+            placeholder="请输入密码"
+            placeholder-class="field-ph"
+            password="{{!pwdVisible.password}}"
+            value="{{password}}"
+            data-field="password"
+            bindinput="onInput"
+            bindfocus="onFieldFocus"
+            bindblur="onFieldBlur"
+            maxlength="50"
+          />
+          <view class="field-eye" data-field="password" bindtap="onTogglePwd" hover-class="field-eye-hover" aria-role="button" aria-label="{{pwdVisible.password ? '隐藏密码' : '显示密码'}}">
+            <icon name="{{pwdVisible.password ? 'eye-off' : 'eye'}}" size="18" color="#856F4F" />
+          </view>
+        </view>
+
+        <view wx:if="{{panel === 'account'}}" class="forgot-row" bindtap="onForgotPassword">
+          <text class="forgot-link">忘记密码</text>
+        </view>
+
+        <button class="lbtn lbtn-primary serif {{panel === 'bind' ? 'lbtn-long' : ''}}" bindtap="{{panel === 'bind' ? 'onBindWxAccount' : 'onAccountLogin'}}" loading="{{loading}}" disabled="{{loading}}">
+          <text class="lbtn-tx">{{panel === 'bind' ? '绑定并登录' : '登 录'}}</text>
+        </button>
+
+        <view wx:if="{{panel === 'bind'}}" class="bind-tip">忘了密码请联系学院管理员重置，绑定前无法自助找回。</view>
+
+        <block wx:if="{{panel === 'account'}}">
+          <view class="divider">其他登录方式</view>
+          <button class="lbtn lbtn-ghost" bindtap="onWxLogin" loading="{{loading}}" disabled="{{loading}}">
+            <icon name="wechat" size="20" color="#23262E" />
+            <text class="lbtn-tx">微信一键登录</text>
+          </button>
+        </block>
+      </block>
+
+      <view class="help-row">
+        <text class="help-link" bindtap="onHelp" hover-class="help-link-hover" aria-role="link">无法登录？</text>
       </view>
-
-      <view wx:if="{{!bindMode}}" class="forgot-row" bindtap="onForgotPassword">
-        <text class="forgot-link">忘记密码</text>
-      </view>
-
-      <button class="lbtn lbtn-primary serif" bindtap="{{bindMode ? 'onBindWxAccount' : 'onAccountLogin'}}" loading="{{loading}}" disabled="{{loading}}">
-        <text class="lbtn-tx">{{bindMode ? '绑定账号并登录' : '登 录'}}</text>
-      </button>
-
-      <view wx:if="{{bindMode}}" class="bind-tip">首次微信登录须绑定管理员分配的账号。忘记密码请联系学院管理员重置后再绑定，无法在未绑定前自助找回。</view>
-
-      <view class="divider">其他登录方式</view>
-
-      <button class="lbtn lbtn-ghost" bindtap="onWxLogin" loading="{{loading}}" disabled="{{loading}}" wx:if="{{!bindMode}}">
-        <icon name="wechat" size="20" color="#23262E" />
-        <text class="lbtn-tx">微信授权登录</text>
-      </button>
     </view>
 
     <!-- 页脚放在 login-inner 下，才能吃到下方隔条的剩余空间 -->

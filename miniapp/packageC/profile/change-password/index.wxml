@@ -91,7 +91,7 @@
         忘记当前密码？已绑定微信可验证后设置
       </view>
       <view wx:if="{{mode === 'forced'}}" class="bind-tip muted">设置完成后即可正常使用小程序</view>
-      <view wx:if="{{mode === 'wx'}}" class="bind-tip muted">未绑定微信的账号请联系学院管理员重置</view>
+      <view wx:if="{{mode === 'wx'}}" class="bind-tip muted">还没绑定微信的学号 / 工号，请联系学院管理员重置</view>
       <view wx:if="{{showLogout}}" class="bind-tip muted cp-logout {{loading ? 'cp-logout-disabled' : ''}}" bindtap="onLogout">退出并切换账号</view>
     </view>
   </view>

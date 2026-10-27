@@ -1,0 +1,37 @@
+<!-- packageC/help/login.wxml -->
+<view class="help-page">
+  <nav-bar title="登录帮助" />
+  <scroll-view scroll-y class="help-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="help-lead">按你遇到的情况点开看。都解决不了的话，页尾写了该找谁。</view>
+
+    <view class="qa-list">
+      <view wx:for="{{items}}" wx:key="id" class="qa {{openId === item.id ? 'open' : ''}}">
+        <view class="qa-q" data-id="{{item.id}}" bindtap="onToggle" hover-class="qa-q-hover" aria-role="button" aria-label="{{item.q}}">
+          <text class="qa-q-tx">{{item.q}}</text>
+          <view class="qa-chev"><icon name="chevron-right" size="16" color="#766246" /></view>
+        </view>
+        <view wx:if="{{openId === item.id}}" class="qa-a">
+          <view wx:for="{{item.a}}" wx:for-item="para" wx:key="*this" class="qa-p">{{para}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 登录不上进不了「意见反馈」，联系方式放这里 -->
+    <view class="help-contact">
+      <view class="hc-title serif">还是解决不了</view>
+      <view class="hc-p">请联系所在学院的管理员{{phone || email ? '，也可以联系书院：' : '。'}}</view>
+      <view wx:if="{{phone}}" class="c-row" bindtap="onCopy" data-val="{{phone}}" hover-class="c-row-hover">
+        <view class="c-ic"><icon name="megaphone" size="18" color="#7E6134" /></view>
+        <view class="c-body"><text class="c-k">电话</text><text class="c-v">{{phone}}</text></view>
+        <text class="c-act">复制</text>
+      </view>
+      <view wx:if="{{email}}" class="c-row" bindtap="onCopy" data-val="{{email}}" hover-class="c-row-hover">
+        <view class="c-ic"><icon name="send" size="24" color="#7E6134" /></view>
+        <view class="c-body"><text class="c-k">邮箱</text><text class="c-v">{{email}}</text></view>
+        <text class="c-act">复制</text>
+      </view>
+    </view>
+
+    <view class="help-bottom"></view>
+  </scroll-view>
+</view>

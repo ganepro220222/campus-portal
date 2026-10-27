@@ -60,7 +60,32 @@ try {
   assert.strictEqual(typeof request.getArrayBufferChunk, 'function')
   assert.strictEqual(typeof request.getUrlArrayBufferChunk, 'function')
 
-  console.log('[request.test] PASS')
 } finally {
   global.getApp = origGetApp
 }
+
+/* anonymous：公开接口不带 token。手机里留着失效的旧 token 时，
+   带上它去取「无法登录」问答会被当成登录过期踢回登录页。 */
+;(async () => {
+  const origWx = global.wx
+  const seen = []
+  global.getApp = () => ({ globalData: { token: 'stale-token' }, logout() { logoutCalls += 1 } })
+  global.wx = {
+    getStorageSync: () => '',
+    showToast() {},
+    request(opts) {
+      seen.push(opts.header.Authorization)
+      opts.success({ data: { code: 200, data: { ok: true } } })
+    }
+  }
+  try {
+    await request.get('/auth/login-help', {}, { anonymous: true, silent: true })
+    await request.get('/news/1')
+    assert.deepStrictEqual(seen, ['', 'Bearer stale-token'],
+      'anonymous 只对这一次请求生效，其余请求照常带 token')
+    console.log('[request.test] PASS')
+  } finally {
+    global.wx = origWx
+    global.getApp = origGetApp
+  }
+})().catch((e) => { console.error(e); process.exitCode = 1 })

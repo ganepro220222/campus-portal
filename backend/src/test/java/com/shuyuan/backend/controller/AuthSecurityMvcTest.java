@@ -47,6 +47,8 @@ class AuthSecurityMvcTest {
     @Mock
     private AuthService authService;
     @Mock
+    private com.shuyuan.backend.service.LoginHelpService loginHelpService;
+    @Mock
     private AdminBannerService adminBannerService;
     @Mock
     private JwtUtils jwtUtils;
@@ -66,7 +68,8 @@ class AuthSecurityMvcTest {
         AuthController authController = new AuthController(authService, new com.shuyuan.backend.service.MemberAuthGate(
                 jwtUtils,
                 org.mockito.Mockito.mock(com.shuyuan.backend.mapper.MemberMapper.class),
-                org.mockito.Mockito.mock(com.shuyuan.backend.mapper.MemberAccountMapper.class)));
+                org.mockito.Mockito.mock(com.shuyuan.backend.mapper.MemberAccountMapper.class)),
+                loginHelpService);
         authMockMvc = MockMvcBuilders.standaloneSetup(authController)
                 .setControllerAdvice(new GlobalExceptionHandler(new ApiErrorMetrics()))
                 .build();
@@ -78,6 +81,20 @@ class AuthSecurityMvcTest {
                 .setControllerAdvice(new GlobalExceptionHandler(new ApiErrorMetrics()))
                 .addInterceptors(adminAuthInterceptor)
                 .build();
+    }
+
+    /** 「无法登录」问答在登录前就要能取到：不带 token 也返回 200 */
+    @Test
+    void loginHelp_withoutToken_returns200() throws Exception {
+        when(loginHelpService.loginHelp()).thenReturn(java.util.Map.of(
+                "maxFailAttempts", 5, "lockMinutes", 5, "failWindowMinutes", 15,
+                "phone", "", "email", ""));
+
+        authMockMvc.perform(get("/api/v1/auth/login-help"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.maxFailAttempts").value(5))
+                .andExpect(jsonPath("$.data.lockMinutes").value(5));
     }
 
     @Test

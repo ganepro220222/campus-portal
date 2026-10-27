@@ -40,6 +40,21 @@ function main() {
     errs.push(`登录密码显隐 .field-eye 热区 ${eyeW}×${eyeH}rpx，低于 ${MIN_RPX}rpx（44pt）`)
   }
 
+  /* 登录页字段问号：34rpx 字形 + ::after 四周外扩 */
+  const q = ruleBlock('miniapp/pages/login/index.wxss', '.field-q')
+  const qAfter = ruleBlock('miniapp/pages/login/index.wxss', '.field-q::after')
+  const qBase = Math.min(rpx(q, 'width') || 0, rpx(q, 'height') || 0)
+  const qOut = Math.min(...['left', 'right', 'top', 'bottom'].map((k) => rpx(qAfter, k) || 0))
+  if (qBase + qOut * 2 < MIN_RPX) {
+    errs.push(`登录页问号 .field-q 热区 ${qBase + qOut * 2}rpx，低于 ${MIN_RPX}rpx（44pt）`)
+  }
+  /* 「无法登录？」：行高 + 上下 padding */
+  const help = ruleBlock('miniapp/pages/login/index.wxss', '.help-link')
+  const pad = help.match(/padding\s*:\s*(\d+)rpx/)
+  const helpH = (rpx(help, 'line-height') || 0) + (pad ? Number(pad[1]) * 2 : 0)
+  if (helpH < MIN_RPX) {
+    errs.push(`登录页「无法登录？」.help-link 热区高度 ${helpH}rpx，低于 ${MIN_RPX}rpx（44pt）`)
+  }
   const sclear = ruleBlock('miniapp/packageC/search/index.wxss', '.sclear')
   const scW = rpx(sclear, 'width')
   const scH = rpx(sclear, 'height')
@@ -121,7 +136,7 @@ function main() {
     for (const e of errs) console.error('  ✗ ' + e)
     process.exit(1)
   }
-  console.log(`check-touch-targets OK（密码显隐 / 搜索清空 / 反馈删除 / 播放器重试 / 顶栏返回与搜索均 ≥${MIN_RPX}rpx，tabBar 色已同步）`)
+  console.log(`check-touch-targets OK（密码显隐 / 登录问号 / 无法登录 / 搜索清空 / 反馈删除 / 播放器重试 / 顶栏返回与搜索均 ≥${MIN_RPX}rpx，tabBar 色已同步）`)
 }
 
 main()

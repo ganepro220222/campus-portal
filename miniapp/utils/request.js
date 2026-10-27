@@ -110,7 +110,8 @@ function handlePasswordChangeRequired(body, silent) {
 const request = (url, method = 'GET', data = {}, options = {}) => {
   const silent = options.silent === true
   return new Promise((resolve, reject) => {
-    const token = resolveToken()
+    /* anonymous：公开接口不带 token，免得失效的旧 token 把人踢回登录页 */
+    const token = options.anonymous === true ? '' : resolveToken()
 
     wx.request({
       url: resolveBaseUrl() + url,

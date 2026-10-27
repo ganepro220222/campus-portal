@@ -6,6 +6,7 @@ import com.shuyuan.backend.dto.MemberChangePasswordRequest;
 import com.shuyuan.backend.dto.WxBindRequest;
 import com.shuyuan.backend.dto.WxLoginRequest;
 import com.shuyuan.backend.service.AuthService;
+import com.shuyuan.backend.service.LoginHelpService;
 import com.shuyuan.backend.service.MemberAuthGate;
 import com.shuyuan.backend.vo.LoginVO;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,10 +28,17 @@ public class AuthController {
 
     private final AuthService authService;
     private final MemberAuthGate memberAuthGate;
+    private final LoginHelpService loginHelpService;
 
     @GetMapping("/session")
     public Result<Map<String, Object>> session() {
         return Result.ok(memberAuthGate.buildSessionSnapshot());
+    }
+
+    /** 「无法登录」问答：锁定次数与时长、学院联系方式。未登录可取。 */
+    @GetMapping("/login-help")
+    public Result<Map<String, Object>> loginHelp() {
+        return Result.ok(loginHelpService.loginHelp());
     }
 
     @PostMapping("/wx-login")

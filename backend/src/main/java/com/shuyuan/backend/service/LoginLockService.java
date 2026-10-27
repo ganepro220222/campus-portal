@@ -91,10 +91,16 @@ public class LoginLockService {
             throw new BusinessException(429,
                     "连续登录失败次数过多，请" + state.lockMinutes() + "分钟后再试");
         }
+        String wrong = credentialNoun(scene) + "或密码错误";
         if (state.remaining() > 0) {
-            throw new BusinessException(401, "账号或密码错误，还可尝试 " + state.remaining() + " 次");
+            throw new BusinessException(401, wrong + "，还可尝试 " + state.remaining() + " 次");
         }
-        throw new BusinessException(401, "账号或密码错误");
+        throw new BusinessException(401, wrong);
+    }
+
+    /** 师生登录填的是学号 / 工号，报错跟登录页同一叫法；后台登录名仍叫账号 */
+    static String credentialNoun(String scene) {
+        return SCENE_MEMBER.equals(scene) ? "学号 / 工号" : "账号";
     }
 
     private String failKey(String scene, String account) {

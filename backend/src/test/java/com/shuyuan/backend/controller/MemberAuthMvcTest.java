@@ -61,6 +61,8 @@ class MemberAuthMvcTest {
     @Mock
     private AuthService authService;
     @Mock
+    private com.shuyuan.backend.service.LoginHelpService loginHelpService;
+    @Mock
     private ProfileService profileService;
 
     private MemberAuthGate memberAuthGate;
@@ -77,7 +79,7 @@ class MemberAuthMvcTest {
                 .addInterceptors(authInterceptor)
                 .build();
 
-        AuthController authController = new AuthController(authService, memberAuthGate);
+        AuthController authController = new AuthController(authService, memberAuthGate, loginHelpService);
         authMockMvc = MockMvcBuilders.standaloneSetup(authController)
                 .setControllerAdvice(new GlobalExceptionHandler(new ApiErrorMetrics()))
                 .addInterceptors(authInterceptor)

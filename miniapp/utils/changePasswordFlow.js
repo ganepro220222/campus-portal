@@ -40,7 +40,7 @@ function changePasswordPageCopy(mode) {
   if (mode === 'wx') {
     return {
       title: '设置新密码',
-      subtitle: '将通过微信验证你的身份。若该微信尚未绑定学号，请联系学院管理员重置。'
+      subtitle: '将通过微信验证你的身份。这个微信还没绑定学号 / 工号的话，请联系学院管理员重置。'
     }
   }
   if (mode === 'voluntary') {
@@ -51,7 +51,7 @@ function changePasswordPageCopy(mode) {
   }
   return {
     title: '请设置新密码',
-    subtitle: '为保障账号安全，须设置新密码后才能继续使用'
+    subtitle: '初始密码和临时密码只用于这一次登录，换成自己的新密码后就能继续使用'
   }
 }
 

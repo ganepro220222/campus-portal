@@ -1,0 +1,97 @@
+/* packageC/help/login.wxss — 「无法登录？」问答：纸色底栏，不用白卡片 */
+.help-page {
+  height: 100vh; display: flex; flex-direction: column;
+  background-color: var(--paper);
+  background-image: var(--fiber);
+  background-size: 320rpx 320rpx;
+}
+.help-scroll { flex: 1; overflow: hidden; }
+
+.help-lead {
+  margin: 28rpx 32rpx 8rpx;
+  font-size: 24rpx;
+  line-height: 1.65;
+  color: var(--ink-3);
+}
+
+.qa-list { padding: 12rpx 28rpx 0; }
+.qa { margin-top: 16rpx; }
+
+/* 问题栏：纸底渐变、细框、受光白线 */
+.qa-q {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-height: 96rpx;
+  padding: 0 20rpx 0 28rpx;
+  box-sizing: border-box;
+  border-radius: 10rpx;
+  background: linear-gradient(180deg, rgba(255,252,244,.92), var(--paper-2));
+  border: 1rpx solid var(--line);
+  box-shadow: inset 0 2rpx 0 rgba(255,255,255,.85), 0 2rpx 6rpx rgba(74,50,30,.06);
+}
+.qa-q-hover { background: var(--paper-3); }
+.qa-q-tx {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  line-height: 1.45;
+  color: var(--ink);
+  padding: 22rpx 0;
+}
+.qa-chev {
+  flex: none;
+  width: 32rpx;
+  height: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .18s;
+}
+/* 展开：杏色一档，箭头转下（朱只留给印） */
+.qa.open .qa-q {
+  background: linear-gradient(180deg, var(--xing-05), var(--xing-10));
+  border-color: rgba(198,158,98,.45);
+}
+.qa.open .qa-chev { transform: rotate(90deg); }
+
+/* 回答直接落在纸上 */
+.qa-a { padding: 18rpx 12rpx 10rpx 28rpx; }
+.qa-p {
+  font-size: 26rpx;
+  line-height: 1.8;
+  color: var(--ink-2);
+  text-align: justify;
+}
+.qa-p + .qa-p { margin-top: 10rpx; }
+
+/* 找谁 */
+.help-contact {
+  margin: 44rpx 28rpx 0;
+  padding: 28rpx 28rpx 8rpx;
+  border-top: 2rpx solid var(--line);
+}
+.hc-title { font-size: 30rpx; font-weight: 700; color: var(--ink); letter-spacing: 2rpx; }
+.hc-p { margin-top: 12rpx; font-size: 26rpx; line-height: 1.7; color: var(--ink-2); }
+
+.c-row { display: flex; align-items: center; gap: 20rpx; padding: 20rpx 0; margin-top: 8rpx; }
+.c-row + .c-row { border-top: 1rpx solid var(--line); }
+.c-row-hover { opacity: .7; }
+/* 纸钮 + 金线，同关于页 */
+.c-ic {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 16rpx;
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.45), inset 0 2rpx 0 rgba(255,252,244,.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.c-body { flex: 1; min-width: 0; }
+.c-k { font-size: 22rpx; color: var(--muted); display: block; }
+.c-v { font-size: 27rpx; color: var(--ink); margin-top: 4rpx; display: block; word-break: break-all; }
+.c-act { flex: none; font-size: 22rpx; color: var(--jin-70); font-weight: 600; }
+
+.help-bottom { height: calc(60rpx + env(safe-area-inset-bottom)); }

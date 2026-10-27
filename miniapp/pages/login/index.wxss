@@ -276,6 +276,101 @@
               0 4rpx 12rpx rgba(88,110,104,.22);
 }
 
+/* 长字朱钮收字距：12rpx 只适合「登 录」两字 */
+.lbtn-long { letter-spacing: 4rpx; }
+/* 让开朱钮 8rpx 漆边与落影 */
+.lbtn-after-primary { margin-top: 40rpx; }
+
+/* 字段名常驻框上（占位符一打字就没了）；问号点开纸签，再点收起 */
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin: 0 6rpx 12rpx;
+}
+.field-name {
+  font-size: 24rpx;
+  color: var(--ink-2);
+  letter-spacing: 1rpx;
+  line-height: 1.3;
+}
+/* 纸钮 + 金线；34rpx 字形，::after 撑到 88rpx 热区 */
+.field-q {
+  position: relative;
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--wood-75);
+  background: linear-gradient(180deg, var(--wood-05), var(--paper-2));
+  box-shadow: inset 0 0 0 1rpx rgba(198,158,98,.65), inset 0 2rpx 0 rgba(255,252,244,.9);
+}
+.field-q::after {
+  content: "";
+  position: absolute;
+  left: -27rpx;
+  right: -27rpx;
+  top: -27rpx;
+  bottom: -27rpx;
+}
+.field-q.on {
+  color: var(--paper-card);
+  background: var(--wood-75);
+  box-shadow: inset 0 0 0 1rpx rgba(74,50,30,.35);
+}
+.field-q-hover { background: var(--paper-3); }
+.field-q.on.field-q-hover { background: var(--wood-85); }
+
+/* 纸签：纸底渐变、细框、受光白线，不用白卡片 */
+.field-tip {
+  margin: 0 0 16rpx;
+  padding: 16rpx 22rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(180deg, rgba(255,252,244,.96), var(--paper-2));
+  border: 1rpx solid var(--line);
+  box-shadow: inset 0 2rpx 0 rgba(255,255,255,.85), 0 4rpx 10rpx rgba(74,50,30,.08);
+  font-size: 24rpx;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+
+/* 绑定态：标题写明在做什么 */
+.bind-head {
+  text-align: center;
+  margin-bottom: 30rpx;
+}
+.bind-title {
+  font-size: 36rpx;
+  color: var(--ink);
+  letter-spacing: 4rpx;
+}
+.bind-sub {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+
+/* 无法登录？：上下 27rpx 留白撑到 88rpx 热区；色同「忘记密码」 */
+.help-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 18rpx;
+}
+.help-link {
+  display: block;
+  padding: 27rpx 32rpx;
+  font-size: 24rpx;
+  line-height: 34rpx;
+  color: var(--wood-75);
+}
+.help-link-hover { opacity: .6; }
+
 .divider {
   display: flex;
   align-items: center;

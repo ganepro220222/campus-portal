@@ -65,7 +65,8 @@ nav-bar { flex: 0 0 auto; }
   transition: transform 0.15s;
 }
 .ccard:active { transform: scale(0.99); }
-.ccard-thumb { flex-shrink: 0; width: 168rpx; }
+/* 靠上不拉伸：标题折两行时框不跟着变高 */
+.ccard-thumb { flex-shrink: 0; width: 168rpx; align-self: flex-start; }
 .ccard-thumb .mount-art { height: 168rpx; }
 .ccard-img { width: 100%; height: 100%; }
 .ccard-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }

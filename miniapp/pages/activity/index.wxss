@@ -21,7 +21,8 @@
   transition: transform 0.15s;
 }
 .acard:active { transform: scale(0.99); }
-.acard-cover { flex-shrink: 0; width: 180rpx; }
+/* 靠上不拉伸：标题折两行时框不跟着变高 */
+.acard-cover { flex-shrink: 0; width: 180rpx; align-self: flex-start; }
 .acard-cover .mount-art { height: 180rpx; }
 .acard-img { width: 100%; height: 100%; }
 /* 活动类型那一条原来是黑 28% 底 + 白字：整页只有它一块是纯黑的。

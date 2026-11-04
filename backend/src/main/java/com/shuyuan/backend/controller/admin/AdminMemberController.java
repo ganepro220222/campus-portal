@@ -41,6 +41,12 @@ public class AdminMemberController {
         return Result.ok(adminMemberService.create(req));
     }
 
+    /** 学号 / 工号位数，后台表单和导入说明照着写 */
+    @GetMapping("/no-format")
+    public Result<Map<String, Object>> noFormat() {
+        return Result.ok(adminMemberService.noFormat());
+    }
+
     @GetMapping("/import-template")
     public void importTemplate(HttpServletResponse response) throws IOException {
         adminMemberService.writeImportTemplate(response);

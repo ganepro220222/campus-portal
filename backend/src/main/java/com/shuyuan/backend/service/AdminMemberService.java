@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shuyuan.backend.common.PageResult;
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.dto.MemberCreateRequest;
 import com.shuyuan.backend.dto.MemberResetPasswordRequest;
 import com.shuyuan.backend.entity.Member;
@@ -16,6 +17,7 @@ import com.shuyuan.backend.mapper.MemberMapper;
 import com.shuyuan.backend.mapper.MemberProfileMapper;
 import com.shuyuan.backend.mapper.MemberPurgeMapper;
 import com.shuyuan.backend.util.FormatUtils;
+import com.shuyuan.backend.util.MemberNoRule;
 import com.shuyuan.backend.util.MemberPasswordPolicy;
 import com.shuyuan.backend.util.StudentPasswordPolicy;
 import com.shuyuan.backend.util.TokenVersionSupport;
@@ -59,6 +61,7 @@ public class AdminMemberService {
     private final DangerousActionGuard dangerousActionGuard;
     private final AdminPermissionService adminPermissionService;
     private final MemberRowImportService memberRowImportService;
+    private final ShuyuanProperties properties;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public PageResult<Map<String, Object>> list(String keyword, Integer status, int page, int size) {
@@ -185,8 +188,9 @@ public class AdminMemberService {
         for (String h : MemberImportRow.TEMPLATE_HEADERS) {
             head.add(List.of(h));
         }
+        // 示例号码是编的：学号按 12 位写，身份证校验位是对的
         List<List<String>> sample = List.of(
-                List.of("2024001", "示例学生", "示例学院", "2024", "13800000000", "520101200001011234"));
+                List.of("123456789012", "示例学生", "示例学院", "2024", "13800000000", "520101200001011239"));
         EasyExcel.write(response.getOutputStream())
                 .head(head)
                 .sheet("师生账号")
@@ -534,7 +538,7 @@ public class AdminMemberService {
         if (req == null) {
             throw new BusinessException(400, "请填写账号信息");
         }
-        String studentNo = trim(req.getStudentNo());
+        String studentNo = MemberNoRule.normalize(req.getStudentNo());
         String realName = trim(req.getRealName());
         if (studentNo == null || studentNo.isBlank()) {
             throw new BusinessException(400, "学号不能为空");
@@ -542,12 +546,26 @@ public class AdminMemberService {
         if (realName == null || realName.isBlank()) {
             throw new BusinessException(400, "姓名不能为空");
         }
+        String noProblem = MemberNoRule.problem(studentNo, properties.getMemberNo());
+        if (noProblem != null) {
+            throw new BusinessException(400, noProblem);
+        }
         if (studentNoTaken(studentNo)) {
             throw new BusinessException(400, "学号 " + studentNo + " 已存在");
         }
         Long memberId = memberRowImportService.insertSingle(studentNo, realName, trim(req.getIdCard()),
                 trim(req.getCollege()), trim(req.getGrade()), trim(req.getPhone()));
         return toVo(memberMapper.selectById(memberId));
+    }
+
+    /** 后台新增表单与导入说明里写的位数；0 表示不检查 */
+    public Map<String, Object> noFormat() {
+        adminPermissionService.require("admin:super");
+        ShuyuanProperties.MemberNo rule = properties.getMemberNo();
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("studentDigits", rule.checks() ? rule.getStudentDigits() : 0);
+        m.put("staffDigits", rule.checks() ? rule.getStaffDigits() : 0);
+        return m;
     }
 
     private boolean studentNoTaken(String studentNo) {
@@ -561,7 +579,7 @@ public class AdminMemberService {
      */
 
     private void processRow(MemberImportRow row, int rowNum, ImportAccumulator acc) {
-        String studentNo = trim(row.getStudentNo());
+        String studentNo = MemberNoRule.normalize(row.getStudentNo());
         String realName = trim(row.getRealName());
         if (studentNo == null || studentNo.isBlank()) {
             acc.fail(rowNum, row, "学号不能为空");
@@ -573,6 +591,12 @@ public class AdminMemberService {
         }
         if (studentNoTaken(studentNo)) {
             acc.skip();
+            return;
+        }
+        // 已有的账号先跳过再查格式：重导整份名册时，建号前的老账号不该变成失败
+        String noProblem = MemberNoRule.problem(studentNo, properties.getMemberNo());
+        if (noProblem != null) {
+            acc.fail(rowNum, row, noProblem);
             return;
         }
         try {

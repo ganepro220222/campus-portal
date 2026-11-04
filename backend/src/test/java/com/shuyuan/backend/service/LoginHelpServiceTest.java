@@ -17,7 +17,7 @@ class LoginHelpServiceTest {
         login.setLockMinutes(30);
         login.setFailWindowMinutes(60);
 
-        Map<String, Object> m = LoginHelpService.build(login, Map.of());
+        Map<String, Object> m = LoginHelpService.build(login, new ShuyuanProperties.MemberNo(), Map.of());
 
         assertEquals(3, m.get("maxFailAttempts"));
         assertEquals(30, m.get("lockMinutes"));
@@ -26,7 +26,7 @@ class LoginHelpServiceTest {
 
     @Test
     void 默认值与锁定服务一致() {
-        Map<String, Object> m = LoginHelpService.build(new ShuyuanProperties.Login(), null);
+        Map<String, Object> m = LoginHelpService.build(new ShuyuanProperties.Login(), new ShuyuanProperties.MemberNo(), null);
 
         assertEquals(5, m.get("maxFailAttempts"));
         assertEquals(5, m.get("lockMinutes"));
@@ -39,9 +39,22 @@ class LoginHelpServiceTest {
         about.put("phone", " 0851-1234567 ");
         about.put("email", null);
 
-        Map<String, Object> m = LoginHelpService.build(new ShuyuanProperties.Login(), about);
+        Map<String, Object> m = LoginHelpService.build(new ShuyuanProperties.Login(), new ShuyuanProperties.MemberNo(), about);
 
         assertEquals("0851-1234567", m.get("phone"));
         assertEquals("", m.get("email"));
+    }
+
+    @Test
+    void 位数跟着配置走_任一设0两项都给0() {
+        Map<String, Object> m = LoginHelpService.build(new ShuyuanProperties.Login(), new ShuyuanProperties.MemberNo(), null);
+        assertEquals(12, m.get("studentDigits"));
+        assertEquals(7, m.get("staffDigits"));
+
+        ShuyuanProperties.MemberNo off = new ShuyuanProperties.MemberNo();
+        off.setStaffDigits(0);
+        Map<String, Object> o = LoginHelpService.build(new ShuyuanProperties.Login(), off, null);
+        assertEquals(0, o.get("studentDigits"));
+        assertEquals(0, o.get("staffDigits"));
     }
 }

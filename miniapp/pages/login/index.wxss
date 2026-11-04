@@ -326,6 +326,13 @@
 .field-q-hover { background: var(--paper-3); }
 .field-q.on.field-q-hover { background: var(--wood-85); }
 
+/* 位数对不上的提醒：贴在框下，朱色小字（纸底上 6.7:1） */
+.field-warn {
+  margin: -14rpx 6rpx 22rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: var(--zhu);
+}
 /* 纸签：纸底渐变、细框、受光白线，不用白卡片 */
 .field-tip {
   margin: 0 0 16rpx;

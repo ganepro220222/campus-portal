@@ -2,6 +2,7 @@ package com.shuyuan.backend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.shuyuan.backend.common.exception.BusinessException;
+import com.shuyuan.backend.config.ShuyuanProperties;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.shuyuan.backend.dto.MemberCreateRequest;
 import com.shuyuan.backend.dto.MemberResetPasswordRequest;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -63,6 +65,8 @@ class AdminMemberServiceDeleteTest {
     private AdminPermissionService adminPermissionService;
     @Mock
     private MemberRowImportService memberRowImportService;
+    @Spy
+    private ShuyuanProperties properties = new ShuyuanProperties();
 
     @InjectMocks
     private AdminMemberService adminMemberService;

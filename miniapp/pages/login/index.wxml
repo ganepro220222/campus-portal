@@ -75,6 +75,7 @@
             maxlength="30"
           />
         </view>
+        <view wx:if="{{accountHint}}" class="field-warn">{{accountHint}}</view>
 
         <view class="field-label">
           <text class="field-name">密码</text>

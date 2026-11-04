@@ -8,6 +8,8 @@ const {
   FIELD_TIPS,
   DEFAULT_LOGIN_POLICY,
   normalizeLoginHelp,
+  accountTip,
+  accountLengthHint,
   loginFaqItems,
   wxLoginFailureToast,
   WX_BIND_PROMPT,
@@ -26,11 +28,12 @@ assert.ok(!/后\s*6\s*位/.test(FIELD_TIPS.password), '初始密码的具体取�
 
 /* —— 接口值的清洗 —— */
 assert.deepStrictEqual(normalizeLoginHelp(null), {
-  ...DEFAULT_LOGIN_POLICY, phone: '', email: ''
+  ...DEFAULT_LOGIN_POLICY, studentDigits: 0, staffDigits: 0, phone: '', email: ''
 })
 assert.deepStrictEqual(normalizeLoginHelp({
   maxFailAttempts: 3, lockMinutes: 10, failWindowMinutes: 30, phone: ' 0851-1234567 ', email: 'a@b.cn'
-}), { maxFailAttempts: 3, lockMinutes: 10, failWindowMinutes: 30, phone: '0851-1234567', email: 'a@b.cn' })
+}), { maxFailAttempts: 3, lockMinutes: 10, failWindowMinutes: 30, studentDigits: 0, staffDigits: 0,
+  phone: '0851-1234567', email: 'a@b.cn' })
 /* 越界、非数字、缺失都退回默认，不把 0 次、负数写进问答 */
 const bad = normalizeLoginHelp({ maxFailAttempts: 0, lockMinutes: -5, failWindowMinutes: 'x', phone: 123 })
 assert.strictEqual(bad.maxFailAttempts, 5)
@@ -39,6 +42,22 @@ assert.strictEqual(bad.failWindowMinutes, 15)
 assert.strictEqual(bad.phone, '')
 /* 超长的联系方式当作脏数据丢掉，不撑破版面 */
 assert.strictEqual(normalizeLoginHelp({ phone: '1'.repeat(41) }).phone, '')
+
+/* —— 学号 / 工号位数（号码都是编的） —— */
+const FMT = { studentDigits: 12, staffDigits: 7 }
+assert.strictEqual(accountTip(FMT), '学生填 12 位学号，教师填 7 位工号。由学校统一导入，不需要注册。')
+assert.strictEqual(accountTip(null), FIELD_TIPS.account, '位数取不到：照旧，不写数')
+/* 只给一项、给 0、越界：都当不知道，不写半截格式 */
+for (const bad of [{ studentDigits: 12 }, { studentDigits: 12, staffDigits: 0 }, { studentDigits: 99, staffDigits: 7 }]) {
+  const n = normalizeLoginHelp(bad)
+  assert.strictEqual(n.studentDigits + n.staffDigits, 0, JSON.stringify(bad))
+}
+assert.strictEqual(accountLengthHint('123456789012', FMT), '')
+assert.strictEqual(accountLengthHint(' 1234567 ', FMT), '', '首尾空格登录时会去掉，不算错')
+assert.strictEqual(accountLengthHint('', FMT), '', '没填不提醒')
+assert.strictEqual(accountLengthHint('12345678901', FMT), '学号 12 位、工号 7 位，这里填了 11 位，请核对')
+assert.ok(accountLengthHint('T2024', FMT).includes('只有数字'))
+assert.strictEqual(accountLengthHint('12345678901', null), '', '位数不知道就不提醒')
 
 /* —— 问答 —— */
 const faq = loginFaqItems(null)
@@ -58,6 +77,9 @@ for (const item of faq) {
 const locked = loginFaqItems({ maxFailAttempts: 3, lockMinutes: 30, failWindowMinutes: 60 })
   .find((x) => x.id === 'locked').a[0]
 assert.ok(locked.includes('60 分钟内连续输错 3 次') && locked.includes('锁定 30 分钟'), locked)
+const firstWithDigits = loginFaqItems(FMT).find((x) => x.id === 'first').a[0]
+assert.ok(firstWithDigits.startsWith('学生填 12 位学号，教师填 7 位工号。'), firstWithDigits)
+assert.ok(faq.find((x) => x.id === 'first').a[0].startsWith('学生填学号，教师填工号。'))
 const lockedDefault = faq.find((x) => x.id === 'locked').a[0]
 assert.ok(lockedDefault.includes('15 分钟内连续输错 5 次') && lockedDefault.includes('锁定 5 分钟'))
 /* 换微信那条必须写清「联系管理员解绑」以及数据还在 */

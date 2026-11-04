@@ -27,13 +27,18 @@ let navigates = []
 let switched = []
 let posts = []
 let postHandler = () => Promise.resolve({})
+let helpResponse = Promise.resolve({})
+let gets = []
 let wxLoginFails = false
 let modalAnswer = { confirm: false }
 
 require.cache[requestPath] = {
   id: requestPath, filename: requestPath, loaded: true,
   exports: {
-    get() { return Promise.resolve({}) },
+    get(url, params, opts) {
+      gets.push({ url, opts })
+      return helpResponse
+    },
     post(url, body) {
       posts.push(url)
       return postHandler(url, body)
@@ -100,7 +105,60 @@ async function settle() { for (let i = 0; i < 6; i++) await flush() }
   page = makePage(); page.onLoad()
   assert.strictEqual(page.data.panel, 'account', '上次用学号 / 工号进来的：默认展开表单')
 
+  /* —— 位数：取自 /auth/login-help，不带 token（号码都是编的） —— */
+  store = {}
+  helpResponse = Promise.resolve({ studentDigits: 12, staffDigits: 7 })
+  gets = []
+  page = makePage(); page.onLoad(); await settle()
+  assert.deepStrictEqual(gets.map((g) => g.url), ['/auth/login-help'])
+  assert.strictEqual(gets[0].opts.anonymous, true, '手机里可能留着失效的旧 token，取格式不能带')
+  assert.strictEqual(page.data.tips.account, '学生填 12 位学号，教师填 7 位工号。由学校统一导入，不需要注册。')
+  assert.ok(page.data.tips.password.includes('初始密码'), '只改学号那一格，密码问号不动')
+
+  /* 打字时不打扰；失焦才提醒；改对了立刻消失 */
+  const typeNo = (v) => page.onInput({ currentTarget: { dataset: { field: 'studentNo' } }, detail: { value: v } })
+  const blurNo = () => page.onFieldBlur({ currentTarget: { dataset: { field: 'studentNo' } } })
+  typeNo('1234')
+  assert.strictEqual(page.data.accountHint, '', '还在打，不提醒')
+  typeNo('12345678901'); blurNo()
+  assert.strictEqual(page.data.accountHint, '学号 12 位、工号 7 位，这里填了 11 位，请核对')
+  typeNo('123456789012')
+  assert.strictEqual(page.data.accountHint, '', '改对了立刻消失')
+  typeNo('1234567'); blurNo()
+  assert.strictEqual(page.data.accountHint, '', '7 位工号也对')
+
+  /* 先失焦、后拿到位数：回来后补一句，不用再点一次输入框 */
+  let releaseHelp
+  helpResponse = new Promise((resolve) => { releaseHelp = resolve })
+  page = makePage(); page.onLoad()
+  const lateType = (v) => page.onInput({ currentTarget: { dataset: { field: 'studentNo' } }, detail: { value: v } })
+  const lateBlur = () => page.onFieldBlur({ currentTarget: { dataset: { field: 'studentNo' } } })
+  lateType('12345678901'); lateBlur()
+  assert.strictEqual(page.data.accountHint, '', '位数还没取到，不瞎提醒')
+  releaseHelp({ studentDigits: 12, staffDigits: 7 })
+  await settle()
+  assert.strictEqual(page.data.accountHint, '学号 12 位、工号 7 位，这里填了 11 位，请核对')
+  helpResponse = Promise.resolve({ studentDigits: 12, staffDigits: 7 })
+
+  /* 只提醒不拦：位数不对照样发登录请求（建号前的老账号不合格式也得能登） */
+  reset()
+  postHandler = () => Promise.reject({ code: 401, message: '学号 / 工号或密码错误' })
+  page.setData({ panel: 'account', studentNo: 'T2024', password: 'abc12345' }); blurNo()
+  assert.ok(page.data.accountHint.includes('只有数字'))
+  await page.onAccountLogin(); await settle()
+  assert.deepStrictEqual(posts, ['/auth/account-login'], '提醒不能变成拦截')
+
+  /* 取不到格式：问号照旧，不提醒 */
+  helpResponse = Promise.reject(new Error('offline'))
+  page = makePage(); page.onLoad(); await settle()
+  assert.strictEqual(page.data.tips.account, '学生填学号，教师填工号。由学校统一导入，不需要注册。')
+  page.setData({ studentNo: '12345678901' }); blurNo()
+  assert.strictEqual(page.data.accountHint, '', '不知道位数就不瞎提醒')
+  helpResponse = Promise.resolve({})
+
   /* —— 问号 —— */
+  store = { lastLoginMethod: 'account' }
+  page = makePage(); page.onLoad()
   page.onToggleTip({ currentTarget: { dataset: { tip: 'account' } } })
   assert.strictEqual(page.data.openTip, 'account')
   page.onToggleTip({ currentTarget: { dataset: { tip: 'password' } } })

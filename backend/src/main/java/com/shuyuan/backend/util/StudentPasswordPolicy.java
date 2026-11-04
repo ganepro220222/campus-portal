@@ -9,9 +9,13 @@ public final class StudentPasswordPolicy {
     }
 
     public static String resolveInitialPassword(String studentNo, String idCard) {
-        String fromId = extractIdCardSuffix(idCard);
-        if (fromId != null) {
-            return fromId;
+        String id = MemberNoRule.normalize(idCard);
+        if (id != null && !id.isEmpty()) {
+            String problem = idCardProblem(id);
+            if (problem != null) {
+                throw new BusinessException(400, problem);
+            }
+            return extractIdCardSuffix(id);
         }
         if (studentNo == null || studentNo.isBlank()) {
             throw new BusinessException(400, "学号不能为空，无法生成初始密码");
@@ -29,6 +33,40 @@ public final class StudentPasswordPolicy {
             throw new BusinessException(400, "学号过短且未提供身份证号，无法生成初始密码");
         }
         return source.substring(source.length() - 6);
+    }
+
+    private static final int[] ID_WEIGHTS = {7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2};
+    private static final String ID_CHECK = "10X98765432";
+
+    /**
+     * 身份证号按 GB 11643 核校验位；合格返回 null。
+     *
+     * <p>身份证列在 Excel 里是数字格式时只留 15 位有效数字，末 3 位变成 000，
+     * 算出的初始密码是错的，导入也不报错，学生拿真号后 6 位登不上。
+     * 校验位只能拦下约 10/11，剩下的会悄悄导进去，所以末 3 位是 000 的单独拦。
+     * 原因里不写号码本身：身份证号不入库，也不该出现在失败明细里。
+     */
+    static String idCardProblem(String id) {
+        String v = id.toUpperCase();
+        if (v.matches("\\d(\\.\\d+)?E[+-]?\\d+")) {
+            return "身份证号被 Excel 改成了科学计数法，后几位已经丢了。"
+                    + "把身份证列设为文本格式，重新粘贴原始号码；没有身份证的留空";
+        }
+        if (!v.matches("\\d{17}[\\dX]")) {
+            return "身份证号应为 18 位（末位可以是 X）。没有身份证的留空，会改用学号 / 工号后 6 位";
+        }
+        if (v.endsWith("000")) {
+            return "身份证号末 3 位是 000，多半是 Excel 当成数字截掉了。把身份证列设为文本格式，重新粘贴原始号码；"
+                    + "核对原件确实是 000 的，这一格留空，改用学号 / 工号后 6 位";
+        }
+        int sum = 0;
+        for (int i = 0; i < 17; i++) {
+            sum += (v.charAt(i) - '0') * ID_WEIGHTS[i];
+        }
+        if (ID_CHECK.charAt(sum % 11) != v.charAt(17)) {
+            return "身份证号校验位不对，可能抄错了，请核对原件。没有身份证的留空";
+        }
+        return null;
     }
 
     static String extractIdCardSuffix(String idCard) {

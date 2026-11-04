@@ -31,7 +31,12 @@
     <el-alert type="info" :closable="false" show-icon class="import-hint">
       <template #title>导入格式说明</template>
       <p>仅 <strong>学号</strong>、<strong>姓名</strong> 必填；学院/年级/手机号/身份证可选。</p>
-      <p>身份证列只用来取后 6 位作初始密码，<strong>系统不保存身份证号</strong>；不填则改用学号后 6 位。</p>
+      <p>身份证列只用来取后 6 位作初始密码，<strong>系统不保存身份证号</strong>；不填则改用学号 / 工号后 6 位。</p>
+      <p v-if="noFormatText">学号 / 工号按当前位数核对：{{ noFormatText }}。不符的行会列进失败明细。</p>
+      <p>
+        学号、身份证两列请先在 Excel 里设为<strong>文本格式</strong>再粘贴：数字格式下长号码会变成科学计数法，
+        身份证末 3 位会变成 000，这些行导入时会被拦下。
+      </p>
       <p>校方内部表不必逐格手抄：在 Excel 中将表头改为系统识别的列名即可直接导入（如「学生学号」→「学号」、「院系」→「学院」）。</p>
       <p>支持的表头别名见《师生 Excel 导入说明》；导入失败可导出明细 Excel 逐行核对。</p>
     </el-alert>
@@ -46,7 +51,8 @@
     </div>
 
     <el-table v-loading="loading" :data="list" stripe border>
-      <el-table-column prop="studentNo" label="学号" width="120" />
+      <!-- 12 位学号：Arial 系 14px 约 93px、DejaVu 约 107px，120 宽扣掉内边距只剩 96px -->
+      <el-table-column prop="studentNo" label="学号" width="140" />
       <el-table-column prop="realName" label="姓名" width="100" />
       <el-table-column prop="college" label="学院" min-width="160" show-overflow-tooltip />
       <el-table-column prop="grade" label="年级" width="80" />
@@ -127,6 +133,7 @@
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="76px">
         <el-form-item label="学号" prop="studentNo">
           <el-input v-model="createForm.studentNo" placeholder="全库唯一，登录用" />
+          <FieldHint v-if="noFormatText" :text="noFormatText + '。'" />
         </el-form-item>
         <el-form-item label="姓名" prop="realName">
           <el-input v-model="createForm.realName" placeholder="真实姓名" />
@@ -142,7 +149,7 @@
         </el-form-item>
         <el-form-item label="身份证">
           <el-input v-model="createForm.idCard" placeholder="选填，仅用于取后 6 位作初始密码" />
-          <FieldHint text="不填则取学号后 6 位作初始密码。身份证号不入库。" />
+          <FieldHint text="不填则取学号 / 工号后 6 位作初始密码。填了会核对校验位；身份证号不入库。" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -191,6 +198,7 @@ import {
   createMember,
   deleteMember,
   fetchMemberDeleteImpact,
+  fetchMemberNoFormat,
   fetchMembers,
   resetMemberPassword,
   unbindMemberWechat,
@@ -222,6 +230,21 @@ const createForm = reactive({
   phone: '',
   idCard: ''
 })
+/* 位数取自后端配置，取不到就不写 */
+const noFormat = ref({ studentDigits: 0, staffDigits: 0 })
+const noFormatText = computed(() => {
+  const { studentDigits, staffDigits } = noFormat.value
+  return studentDigits && staffDigits ? `学生填 ${studentDigits} 位学号，教师填 ${staffDigits} 位工号，只能是数字` : ''
+})
+
+async function loadNoFormat() {
+  try {
+    noFormat.value = await fetchMemberNoFormat()
+  } catch {
+    // 只影响提示文字
+  }
+}
+
 const createRules: FormRules = {
   studentNo: [{ required: true, message: '请输入学号', trigger: 'blur' }],
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }]
@@ -502,7 +525,10 @@ async function onDeleteConfirm(password: string) {
   }
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  loadNoFormat()
+})
 </script>
 
 <style scoped>

@@ -12,6 +12,7 @@ public class ShuyuanProperties {
     private Jwt jwt = new Jwt();
     private Wx wx = new Wx();
     private Login login = new Login();
+    private MemberNo memberNo = new MemberNo();
     private RateLimit rateLimit = new RateLimit();
     private Ai ai = new Ai();
     private Subscribe subscribe = new Subscribe();
@@ -29,6 +30,19 @@ public class ShuyuanProperties {
         private int lockMinutes = 5;
         /** 失败计数窗口（分钟），超时未再失败则清零 */
         private int failWindowMinutes = 15;
+    }
+
+    /** 学号 / 工号格式。两项都大于 0 才检查，任一设 0 = 不查 */
+    @Data
+    public static class MemberNo {
+        /** 学号位数（全数字） */
+        private int studentDigits = 12;
+        /** 工号位数（全数字） */
+        private int staffDigits = 7;
+
+        public boolean checks() {
+            return studentDigits > 0 && staffDigits > 0;
+        }
     }
 
     @Data

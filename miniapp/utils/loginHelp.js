@@ -35,13 +35,44 @@ function cleanText(value, maxLength) {
 /** 越界或缺失退回默认；联系方式只收短字符串 */
 function normalizeLoginHelp(raw) {
   const r = raw && typeof raw === 'object' ? raw : {}
+  /* 位数取不到就当不知道（0），不在前端写死位数 */
+  let studentDigits = boundedInt(r.studentDigits, 0, 0, 30)
+  let staffDigits = boundedInt(r.staffDigits, 0, 0, 30)
+  if (!studentDigits || !staffDigits) studentDigits = staffDigits = 0
   return {
     maxFailAttempts: boundedInt(r.maxFailAttempts, DEFAULT_LOGIN_POLICY.maxFailAttempts, 1, 100),
     lockMinutes: boundedInt(r.lockMinutes, DEFAULT_LOGIN_POLICY.lockMinutes, 1, 1440),
     failWindowMinutes: boundedInt(r.failWindowMinutes, DEFAULT_LOGIN_POLICY.failWindowMinutes, 1, 1440),
+    studentDigits,
+    staffDigits,
     phone: cleanText(r.phone, 40),
     email: cleanText(r.email, 80)
   }
+}
+
+/** 「学生填 12 位学号，教师填 7 位工号」；位数不知道时不写数 */
+function whoFillsWhat(p) {
+  return p.studentDigits
+    ? `学生填 ${p.studentDigits} 位学号，教师填 ${p.staffDigits} 位工号。`
+    : '学生填学号，教师填工号。'
+}
+
+/** 学号 / 工号问号的说明，跟着接口给的位数走 */
+function accountTip(policy) {
+  return whoFillsWhat(normalizeLoginHelp(policy)) + '由学校统一导入，不需要注册。'
+}
+
+/**
+ * 位数对不上时框下的一句提醒；对得上或位数未知返回 ''。
+ * 只提醒不拦：建号前的老账号可能不合这个格式，拦了就登不进来。
+ */
+function accountLengthHint(value, policy) {
+  const p = normalizeLoginHelp(policy)
+  const v = String(value == null ? '' : value).trim()
+  if (!v || !p.studentDigits) return ''
+  if (!/^\d+$/.test(v)) return '学号、工号都只有数字，请核对'
+  if (v.length === p.studentDigits || v.length === p.staffDigits) return ''
+  return `学号 ${p.studentDigits} 位、工号 ${p.staffDigits} 位，这里填了 ${v.length} 位，请核对`
 }
 
 /** 「无法登录」问答，按常见程度排序；不放任何像证件号的例子 */
@@ -52,7 +83,7 @@ function loginFaqItems(policy) {
       id: 'first',
       q: '第一次登录，该填什么？',
       a: [
-        '学生填学号，教师填工号。账号由学校统一导入，不需要注册。',
+        whoFillsWhat(p) + '账号由学校统一导入，不需要注册。',
         '密码填学院告知的初始密码。登录后会要求马上换成新密码：至少 8 位，同时包含字母和数字。',
         '也可以直接点「微信一键登录」：这个微信还没绑定时，系统会请你填同一组学号 / 工号和密码，顺带完成绑定。'
       ]
@@ -133,6 +164,8 @@ module.exports = {
   FIELD_TIPS,
   DEFAULT_LOGIN_POLICY,
   normalizeLoginHelp,
+  accountTip,
+  accountLengthHint,
   loginFaqItems,
   wxLoginFailureToast,
   WX_BIND_PROMPT,

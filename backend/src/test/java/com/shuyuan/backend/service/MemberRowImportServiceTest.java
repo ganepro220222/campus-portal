@@ -1,5 +1,6 @@
 package com.shuyuan.backend.service;
 
+import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.entity.Member;
 import com.shuyuan.backend.entity.MemberAccount;
 import com.shuyuan.backend.entity.MemberProfile;
@@ -17,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -81,5 +83,16 @@ class MemberRowImportServiceTest {
 
         assertThrows(RuntimeException.class, () -> memberRowImportService.insertImportRow(
                 "2024888", "失败行", null, null, null, null));
+    }
+
+    /** 身份证号不对：在写任何一张表之前就失败，这一行什么都不留 */
+    @Test
+    void insertImportRow_身份证被截断_一张表都不写() {
+        BusinessException ex = assertThrows(BusinessException.class, () -> memberRowImportService.insertImportRow(
+                "123456789012", "测试", "520101200001011000", null, null, null));
+        assertEquals(400, ex.getCode());
+        verify(memberMapper, never()).insert(any(Member.class));
+        verify(memberAccountMapper, never()).insert(any(MemberAccount.class));
+        verify(memberProfileMapper, never()).insert(any(MemberProfile.class));
     }
 }

@@ -1,9 +1,12 @@
 // pages/login/index.js
 const { wxLogin, bindWxAccount, applyLoginData, handlePostLogin } = require('../../utils/auth')
-const { post } = require('../../utils/request')
+const { get, post } = require('../../utils/request')
 const {
   ACCOUNT_LABEL,
   FIELD_TIPS,
+  normalizeLoginHelp,
+  accountTip,
+  accountLengthHint,
   WX_BIND_PROMPT,
   LAST_LOGIN_METHOD_KEY,
   initialLoginPanel,
@@ -35,6 +38,7 @@ Page({
     tips: FIELD_TIPS,
     openTip: '', // 同时只开一个问号
     studentNo: '',
+    accountHint: '', // 位数对不上时框下一句提醒，不拦登录
     password: '',
     loading: false,
     statusBarHeight: 20,
@@ -48,6 +52,7 @@ Page({
   },
 
   _panelBeforeBind: 'wx',  // 退出绑定时回到这里
+  _policy: null,           // /auth/login-help；取不到就不写位数
 
   onLoad() {
     const sys = wx.getSystemInfoSync()
@@ -55,6 +60,23 @@ Page({
       statusBarHeight: sys.statusBarHeight || 20,
       panel: initialLoginPanel(readLastLoginMethod())
     })
+    this._loadPolicy()
+  },
+
+  /* 不带 token、不弹错：取不到时问号照旧，只是不写位数 */
+  _loadPolicy() {
+    return get('/auth/login-help', {}, { anonymous: true, silent: true })
+      .then((res) => {
+        this._policy = normalizeLoginHelp(res)
+        this.setData({ 'tips.account': accountTip(this._policy) })
+        // 已经离开输入框才补提醒；还在打字就不打断
+        if (this.data.focusField !== 'studentNo') this._checkAccount()
+      })
+      .catch(() => {})
+  },
+
+  _checkAccount() {
+    this.setData({ accountHint: accountLengthHint(this.data.studentNo, this._policy) })
   },
 
   onBack() {
@@ -89,7 +111,10 @@ Page({
   },
 
   onInput(e) {
-    this.setData({ [e.currentTarget.dataset.field]: e.detail.value })
+    const field = e.currentTarget.dataset.field
+    this.setData({ [field]: e.detail.value })
+    // 提醒已经出来了才边打边更新，改对了立刻消失；没出来之前不打扰
+    if (field === 'studentNo' && this.data.accountHint) this._checkAccount()
   },
 
   onFieldFocus(e) {
@@ -99,9 +124,11 @@ Page({
   /* 失焦时只清掉"还是自己"的那一次：两格之间切换时 blur 与 focus 的先后
      在不同基础库上并不一致，无条件清空会把刚聚上的那格也一起熄掉。 */
   onFieldBlur(e) {
-    if (this.data.focusField === e.currentTarget.dataset.field) {
+    const field = e.currentTarget.dataset.field
+    if (this.data.focusField === field) {
       this.setData({ focusField: '' })
     }
+    if (field === 'studentNo') this._checkAccount()
   },
 
   /* 点眼睛会让输入框失焦（小程序里点任何 view 都会），因而聚焦态那圈金边会消失。

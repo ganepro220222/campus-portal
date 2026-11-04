@@ -59,6 +59,17 @@ export interface MemberImportResult {
   errorRows?: MemberImportErrorRow[]
 }
 
+/** 学号 / 工号位数（全数字）；0 = 不查 */
+export interface MemberNoFormat {
+  studentDigits: number
+  staffDigits: number
+}
+
+export function fetchMemberNoFormat() {
+  // 只用来写提示，失败不弹错
+  return get<MemberNoFormat>('/admin/members/no-format', undefined, { silent: true })
+}
+
 export function fetchMembers(keyword?: string, status?: number, page = 1, size = 20) {
   return get<PageResult<MemberItem>>('/admin/members', { keyword, status, page, size })
 }

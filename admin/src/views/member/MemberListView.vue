@@ -22,7 +22,7 @@
 
     <p class="text-muted">
       零星一两个人用「新增账号」，整批入学用「Excel 批量导入」——两条路建出来的账号完全一致。
-      初始密码默认身份证后 6 位（无身份证则取学号后 6 位）；<strong>身份证号仅用于生成初始密码，不会存入系统</strong>，所以下表里也查不到它。
+      初始密码默认身份证后 6 位（无身份证则取学号 / 工号后 6 位）；<strong>身份证号仅用于生成初始密码，不会存入系统</strong>，所以下表里也查不到它。
       学生首次登录须修改初始密码；微信登录须绑定学号。
       忘记密码：已绑定微信的学生可在小程序用微信验证后自助设置；未绑定，或微信号也丢了，
       用该行的「重置密码」（后者须先「解绑微信」再重置，才能得到可电话告知的临时密码）。
@@ -462,6 +462,7 @@ async function onCreate() {
   await form.validate()
   creating.value = true
   try {
+    const hasIdCard = !!createForm.idCard.trim()
     await createMember({
       studentNo: createForm.studentNo.trim(),
       realName: createForm.realName.trim(),
@@ -471,7 +472,7 @@ async function onCreate() {
       idCard: createForm.idCard.trim() || undefined
     })
     createVisible.value = false
-    ElMessage.success('账号已创建，初始密码见页面说明')
+    ElMessage.success(`账号已创建，初始密码是${hasIdCard ? '身份证号' : '学号 / 工号'}后 6 位`)
     await loadData()
   } finally {
     creating.value = false

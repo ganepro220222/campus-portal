@@ -3,8 +3,11 @@
  * 运行：node miniapp/utils/loginHelp.test.js
  */
 const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 const {
   ACCOUNT_LABEL,
+  INITIAL_PASSWORD_RULE,
   FIELD_TIPS,
   DEFAULT_LOGIN_POLICY,
   normalizeLoginHelp,
@@ -20,11 +23,17 @@ const {
 /* —— 叫法 —— */
 assert.strictEqual(ACCOUNT_LABEL, '学号 / 工号')
 assert.ok(FIELD_TIPS.account.includes('学生填学号') && FIELD_TIPS.account.includes('教师填工号'))
-/* 密码问号只答「第一次的密码从哪来」，并且提前说清 6 位不是长期密码 */
-assert.ok(FIELD_TIPS.password.includes('初始密码'))
+/* 密码问号直接写出初始密码是什么，并且提前说清 6 位不是长期密码 */
+assert.ok(FIELD_TIPS.password.includes('身份证号后 6 位'), FIELD_TIPS.password)
+assert.ok(FIELD_TIPS.password.includes('学号 / 工号后 6 位'), FIELD_TIPS.password)
+assert.ok(FIELD_TIPS.password.includes('X 要大写'), '库里存的是大写 X，输小写登不上')
 assert.ok(FIELD_TIPS.password.includes('至少 8 位'))
-/* 初始密码的具体取法先不写进问号 */
-assert.ok(!/后\s*6\s*位/.test(FIELD_TIPS.password), '初始密码的具体取法先不写进问号')
+assert.ok(!FIELD_TIPS.password.includes('学院告知'), '不再让人去问学院初始密码是什么')
+/* 知识库《登录与账号》是同一套说法，书院助手答的要和问号一致 */
+const kb = fs.readFileSync(path.join(__dirname, '../../sql/knowledge/02-login-account.md'), 'utf8')
+for (const phrase of ['身份证号后 6 位', '学号 / 工号后 6 位', 'X 要大写']) {
+  assert.ok(kb.includes(phrase), `知识库《登录与账号》没写「${phrase}」，和登录页问号对不上`)
+}
 
 /* —— 接口值的清洗 —— */
 assert.deepStrictEqual(normalizeLoginHelp(null), {
@@ -77,6 +86,11 @@ for (const item of faq) {
 const locked = loginFaqItems({ maxFailAttempts: 3, lockMinutes: 30, failWindowMinutes: 60 })
   .find((x) => x.id === 'locked').a[0]
 assert.ok(locked.includes('60 分钟内连续输错 3 次') && locked.includes('锁定 30 分钟'), locked)
+/* 「第一次登录」问答写出初始密码，并说清管理员重置过的用临时密码 */
+const firstAnswer = faq.find((x) => x.id === 'first').a.join('')
+assert.ok(firstAnswer.includes(INITIAL_PASSWORD_RULE), firstAnswer)
+assert.ok(firstAnswer.includes('两种都试'), firstAnswer)
+assert.ok(firstAnswer.includes('临时密码'), firstAnswer)
 const firstWithDigits = loginFaqItems(FMT).find((x) => x.id === 'first').a[0]
 assert.ok(firstWithDigits.startsWith('学生填 12 位学号，教师填 7 位工号。'), firstWithDigits)
 assert.ok(faq.find((x) => x.id === 'first').a[0].startsWith('学生填学号，教师填工号。'))

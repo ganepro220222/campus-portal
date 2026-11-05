@@ -4,11 +4,14 @@
 
 const ACCOUNT_LABEL = '学号 / 工号'
 
-/* 问号只答本格。初始密码的具体取法先不写出来：
-   没有身份证时用的是学号后 6 位，学号在同学之间是公开的 */
+/* 初始密码的取法同后端 StudentPasswordPolicy：身份证号后 6 位（X 存成大写），
+   导入时没登记身份证号的取学号 / 工号后 6 位。规则改了这里和知识库要一起改 */
+const INITIAL_PASSWORD_RULE = '初始密码是身份证号后 6 位（末位 X 要大写）；学校没登记身份证号的，是学号 / 工号后 6 位。'
+
+/* 问号只答本格 */
 const FIELD_TIPS = {
   account: '学生填学号，教师填工号。由学校统一导入，不需要注册。',
-  password: '第一次登录用学院告知的初始密码。进门后要换成新密码：至少 8 位，同时包含字母和数字。'
+  password: INITIAL_PASSWORD_RULE + '登录后要换成新密码：至少 8 位，同时包含字母和数字。'
 }
 
 /* 同后端 ShuyuanProperties.Login 默认值；实际值由 /auth/login-help 下发（可被环境变量改） */
@@ -84,7 +87,8 @@ function loginFaqItems(policy) {
       q: '第一次登录，该填什么？',
       a: [
         whoFillsWhat(p) + '账号由学校统一导入，不需要注册。',
-        '密码填学院告知的初始密码。登录后会要求马上换成新密码：至少 8 位，同时包含字母和数字。',
+        INITIAL_PASSWORD_RULE + '不确定学校登记了哪个，就两种都试一下。',
+        '登录后会要求马上换成新密码：至少 8 位，同时包含字母和数字。管理员帮你重置过密码的，用管理员告诉你的临时密码。',
         '也可以直接点「微信一键登录」：这个微信还没绑定时，系统会请你填同一组学号 / 工号和密码，顺带完成绑定。'
       ]
     },
@@ -161,6 +165,7 @@ function initialLoginPanel(lastMethod) {
 
 module.exports = {
   ACCOUNT_LABEL,
+  INITIAL_PASSWORD_RULE,
   FIELD_TIPS,
   DEFAULT_LOGIN_POLICY,
   normalizeLoginHelp,

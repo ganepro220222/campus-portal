@@ -48,6 +48,26 @@ WHERE `member_id` = 1 AND `student_no` = '2021001';
 INSERT IGNORE INTO `member_account` (`member_id`, `student_no`, `username`, `password_hash`, `status`, `must_change_password`) VALUES
 (1, '202600000001', '202600000001', '$2a$10$n02b3OAoCAg6uU7fG9M9M.sv5aYClRTH/zPpTxz5LGse0ralSt8si', 1, 0);
 
+-- 测试教师：工号 7 位，密码与测试学员相同，同样不强制下次再改
+INSERT INTO `member` (`openid`, `nickname`, `points`, `status`)
+SELECT 'acct:9000001', '测试教师', 0, 1
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `member` WHERE `openid` = 'acct:9000001');
+
+INSERT INTO `member_profile` (`member_id`, `real_name`, `college`, `phone`)
+SELECT m.id, '测试教师', '中华文化书院', '13800009001'
+FROM `member` m
+WHERE m.openid = 'acct:9000001'
+  AND NOT EXISTS (SELECT 1 FROM `member_profile` p WHERE p.member_id = m.id);
+
+INSERT INTO `member_account` (`member_id`, `student_no`, `username`, `password_hash`, `status`, `must_change_password`)
+SELECT m.id, '9000001', '9000001', '$2a$10$n02b3OAoCAg6uU7fG9M9M.sv5aYClRTH/zPpTxz5LGse0ralSt8si', 1, 0
+FROM `member` m
+WHERE m.openid = 'acct:9000001'
+  AND NOT EXISTS (
+    SELECT 1 FROM `member_account` a WHERE a.student_no = '9000001' OR a.member_id = m.id
+  );
+
 -- 分类
 INSERT IGNORE INTO `category` (`id`, `type`, `name`, `sort`, `status`) VALUES
 (1,  'news',   '书院动态', 1, 1),

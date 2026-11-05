@@ -83,6 +83,15 @@ DELETE FROM `member_account`   WHERE `member_id` = 1;
 DELETE FROM `member_profile`   WHERE `member_id` = 1;
 DELETE FROM `member`           WHERE `id` = 1;
 
+-- 测试教师不占用固定 id，按 openid 删，避免误删同号位上的真实账号
+DELETE a FROM `member_account` a
+INNER JOIN `member` m ON m.id = a.member_id
+WHERE m.openid = 'acct:9000001';
+DELETE p FROM `member_profile` p
+INNER JOIN `member` m ON m.id = p.member_id
+WHERE m.openid = 'acct:9000001';
+DELETE FROM `member` WHERE `openid` = 'acct:9000001';
+
 -- 注意：sys_user / sys_role 不在清理范围内——seed-dev 只是 UPDATE 了它们的
 -- 名称与密码，行本身来自 init.sql。删掉就没人能登录后台了。
 -- 上线前请改用后台「修改密码」，或重跑 patch-admin-account-security.sql。

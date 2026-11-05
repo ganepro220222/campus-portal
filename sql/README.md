@@ -101,7 +101,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 | 15 | `patch-subtitle-asr-poll.sql` | 课程 ASR 轮询元数据字段（`subtitle_asr_*`） | ✅ 已并入 init.sql；**可重复执行** |
 | 16 | `patch-subject-neutral-config.sql` | **主体归属对齐**：把库里随 init.sql 写入的旧默认文案与机构占位串换成中性表述 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
 | 17 | `patch-college-app-demo.sql` | **首页关联应用**：`college_app` 从旧版 11 条学院名收敛为通途星 | ✅ 新库无需执行；**旧库必跑、可重复执行** |
-| 18 | `seed-dev-cleanup.sql` | **交付前清场**：反向删除 `seed-dev.sql` 灌入的全部演示数据 | 非日常；两道护栏，见下 |
+| 18 | `seed-dev-cleanup.sql` | **交付前清场**：反向删除 `seed-dev.sql` 灌入的全部演示数据，连同两个演示账号测试期间留下的报名、收藏、点赞、下载等，并把活动名额、点赞 / 收藏数、下载次数减回去 | 非日常；两道护栏，见下 |
 | 19 | `patch-course-progress-watched-seconds.sql` | 课程进度累计观看 + 上次上报位置；旧库高进度回填 | ✅ 已并入 init.sql；**可重复执行** |
 | 20 | `patch-hall-vr-720-subdomains-20260829.sql` | 展馆 VR 链接切换到 720 云可校验子域名 + 11 号馆牙舟陶上线 | 仅数据；seed 已同步 |
 | 21 | `patch-hall-vr-visibility-20260829.sql` | 条件关闭空「待上线」页签 + 8/9 号馆第三方 VR 入口暂下线（展馆保留） | 仅数据；seed 已同步；**可重复执行** |
@@ -130,7 +130,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 
 | 脚本 | 护栏 |
 |------|------|
-| `seed-dev-cleanup.sql` | ① 必须显式 `SET @wipe_demo='YES'`；② 库里必须还有 seed 标记行（`member` id=1 / `acct:202600000001` / 昵称「测试学员」） |
+| `seed-dev-cleanup.sql` | ① 必须显式 `SET @wipe_demo='YES'`；② 库里必须还有 seed 标记行（`member` id=1，学号 `202600000001`）。按学号认：测试时绑过微信 openid 会换，昵称本人也能改 |
 | `patch-loadtest-cleanup.sql` | ① `member` 101–150 必须全是 `loadtest_` 开头的 openid；② `activity` 99 的标题必须是压测活动 |
 
 护栏用存储过程 + `SIGNAL` 实现（`SIGNAL` 只能在存储程序里用）。执行账号需要

@@ -68,7 +68,7 @@ docker compose -f docker-compose.dev.yml restart backend
 
 然后在微信开发者工具中 **编译 → 清缓存 → 重新编译**，各 Tab 页下拉刷新。
 
-**Dev login:** student `2021001` / password `Admin@123`. Admin console `admin` / `Admin@123`. WeChat login works in dev mode without AppID.
+**Dev login:** student `202600000001` / password `Test2026a`. Admin console `admin` / `Admin@123`. WeChat login works in dev mode without AppID.
 
 **Login lock (§2.1):** 5 consecutive wrong passwords lock the account for 5 minutes (Redis). Clear dev locks: `docker exec shuyuan-redis-1 redis-cli -a dev123456 KEYS "login:*"`.
 

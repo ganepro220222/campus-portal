@@ -2,9 +2,15 @@
 
 SET NAMES utf8mb4;
 
--- 测试学员（学号 2021001，密码 Admin@123，与后台超管相同 BCrypt）
+-- 测试学员：学号 12 位。密码已满足「至少 8 位，同时有字母和数字」，不强制下次再改。
+-- 不用学号后 6 位：那是导入时的初始密码，纯数字 6 位过不了改密规则，登进去就会被拦住。
 INSERT IGNORE INTO `member` (`id`, `openid`, `nickname`, `points`, `status`) VALUES
-(1, 'acct:2021001', '测试学员', 28, 1);
+(1, 'acct:202600000001', '测试学员', 28, 1);
+
+-- 已有库里的旧测试号是 7 位，只在 openid、昵称都对得上时改成上面这个，避免误改别人的号
+UPDATE `member`
+SET `openid` = 'acct:202600000001', `nickname` = '测试学员'
+WHERE `id` = 1 AND `openid` = 'acct:2021001' AND `nickname` = '测试学员';
 
 -- 超管密码同步为 Admin@123（与 init.sql 旧哈希不一致时用 UPDATE 修正）
 UPDATE `sys_user` SET `password_hash` = '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm',
@@ -31,8 +37,16 @@ INSERT IGNORE INTO `member_profile` (`member_id`, `real_name`, `college`, `phone
 (1, '测试学员', '中华文化书院', '13800001234')
 ON DUPLICATE KEY UPDATE `phone` = VALUES(`phone`), `real_name` = VALUES(`real_name`);
 
-INSERT IGNORE INTO `member_account` (`member_id`, `student_no`, `username`, `password_hash`, `status`) VALUES
-(1, '2021001', '2021001', '$2a$10$hJGSAarox5iMOYI8DpsGy.THWSBVwDsvKQleMKKA2G271zQamP7gm', 1);
+UPDATE `member_account`
+SET `student_no` = '202600000001',
+    `username` = '202600000001',
+    `password_hash` = '$2a$10$n02b3OAoCAg6uU7fG9M9M.sv5aYClRTH/zPpTxz5LGse0ralSt8si',
+    `status` = 1,
+    `must_change_password` = 0
+WHERE `member_id` = 1 AND `student_no` = '2021001';
+
+INSERT IGNORE INTO `member_account` (`member_id`, `student_no`, `username`, `password_hash`, `status`, `must_change_password`) VALUES
+(1, '202600000001', '202600000001', '$2a$10$n02b3OAoCAg6uU7fG9M9M.sv5aYClRTH/zPpTxz5LGse0ralSt8si', 1, 0);
 
 -- 分类
 INSERT IGNORE INTO `category` (`id`, `type`, `name`, `sort`, `status`) VALUES

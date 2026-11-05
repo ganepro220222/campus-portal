@@ -15,11 +15,11 @@ BEGIN
 
   SELECT COUNT(1) INTO marker
   FROM `member`
-  WHERE `id` = 1 AND `openid` = 'acct:2021001' AND `nickname` = '测试学员';
+  WHERE `id` = 1 AND `openid` = 'acct:202600000001' AND `nickname` = '测试学员';
 
   IF marker = 0 THEN
     SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = '中止：找不到 seed-dev 的标记行（member id=1 / acct:2021001 / 测试学员），这个库可能不是演示库。';
+      SET MESSAGE_TEXT = '中止：找不到 seed-dev 的标记行（member id=1 / acct:202600000001 / 测试学员），这个库可能不是演示库。';
   END IF;
 END$$
 DELIMITER ;

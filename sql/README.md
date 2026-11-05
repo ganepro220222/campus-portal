@@ -130,7 +130,7 @@ mysql -uroot -p shuyuan < sql/patch-builtin-knowledge.sql
 
 | 脚本 | 护栏 |
 |------|------|
-| `seed-dev-cleanup.sql` | ① 必须显式 `SET @wipe_demo='YES'`；② 库里必须还有 seed 标记行（`member` id=1 / `acct:2021001` / 昵称「测试学员」） |
+| `seed-dev-cleanup.sql` | ① 必须显式 `SET @wipe_demo='YES'`；② 库里必须还有 seed 标记行（`member` id=1 / `acct:202600000001` / 昵称「测试学员」） |
 | `patch-loadtest-cleanup.sql` | ① `member` 101–150 必须全是 `loadtest_` 开头的 openid；② `activity` 99 的标题必须是压测活动 |
 
 护栏用存储过程 + `SIGNAL` 实现（`SIGNAL` 只能在存储程序里用）。执行账号需要

@@ -54,8 +54,8 @@ for (const table of deleted) {
 if (!/@wipe_demo/.test(cleanup)) {
   errs.push('seed-dev-cleanup.sql 缺少 @wipe_demo 显式确认护栏')
 }
-if (!/acct:2021001/.test(cleanup)) {
-  errs.push('seed-dev-cleanup.sql 缺少 seed 标记行校验（member id=1 / acct:2021001）')
+if (!/acct:202600000001/.test(cleanup) || !/acct:202600000001/.test(seed)) {
+  errs.push('seed 标记行须同时写在 seed-dev.sql 和 seed-dev-cleanup.sql（member id=1 / acct:202600000001）')
 }
 if (!/SIGNAL SQLSTATE '45000'/.test(cleanup)) {
   errs.push('seed-dev-cleanup.sql 的护栏必须用 SIGNAL 中止，不能只打印警告')

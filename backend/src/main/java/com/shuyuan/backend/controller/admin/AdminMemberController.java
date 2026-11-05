@@ -30,9 +30,10 @@ public class AdminMemberController {
     public Result<PageResult<Map<String, Object>>> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Boolean anonymized,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return Result.ok(adminMemberService.list(keyword, status, page, size));
+        return Result.ok(adminMemberService.list(keyword, status, anonymized, page, size));
     }
 
     /** 单个新增：只有一两个人要建号时，不必走「下载模板→填→上传」一整圈 */

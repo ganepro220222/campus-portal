@@ -70,8 +70,8 @@ export function fetchMemberNoFormat() {
   return get<MemberNoFormat>('/admin/members/no-format', undefined, { silent: true })
 }
 
-export function fetchMembers(keyword?: string, status?: number, page = 1, size = 20) {
-  return get<PageResult<MemberItem>>('/admin/members', { keyword, status, page, size })
+export function fetchMembers(keyword?: string, status?: number, page = 1, size = 20, anonymized?: boolean) {
+  return get<PageResult<MemberItem>>('/admin/members', { keyword, status, page, size, anonymized })
 }
 
 export function importMembers(file: File) {

@@ -64,10 +64,16 @@ public class AdminMemberService {
     private final ShuyuanProperties properties;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public PageResult<Map<String, Object>> list(String keyword, Integer status, int page, int size) {
+    public PageResult<Map<String, Object>> list(String keyword, Integer status, Boolean anonymized, int page, int size) {
         adminPermissionService.require("admin:super");
         LambdaQueryWrapper<Member> qw = new LambdaQueryWrapper<Member>()
                 .orderByDesc(Member::getCreateTime);
+        // 已清退的人留在库里撑报名、积分这些历史统计，日常名单默认不占一行
+        if (Boolean.TRUE.equals(anonymized)) {
+            qw.likeRight(Member::getOpenid, ANONYMIZED_OPENID_PREFIX);
+        } else {
+            qw.notLikeRight(Member::getOpenid, ANONYMIZED_OPENID_PREFIX);
+        }
         if (status != null) {
             qw.eq(Member::getStatus, status);
         }

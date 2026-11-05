@@ -1,7 +1,9 @@
 package com.shuyuan.backend.service;
 
 import com.alibaba.excel.EasyExcel;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.shuyuan.backend.common.exception.BusinessException;
 import com.shuyuan.backend.config.ShuyuanProperties;
 import com.shuyuan.backend.dto.MemberCreateRequest;
@@ -12,6 +14,10 @@ import com.shuyuan.backend.mapper.MemberMapper;
 import com.shuyuan.backend.mapper.MemberProfileMapper;
 import com.shuyuan.backend.mapper.MemberPurgeMapper;
 import com.shuyuan.backend.vo.MemberImportResult;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.mockito.ArgumentCaptor;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,6 +44,13 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AdminMemberServiceTest {
+
+    @BeforeAll
+    static void initMybatisPlusEntityCache() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), Member.class.getName()),
+                Member.class);
+    }
 
     @Mock
     private MemberMapper memberMapper;
@@ -215,5 +228,22 @@ class AdminMemberServiceTest {
         Map<String, Object> off = adminMemberService.noFormat();
         assertEquals(0, off.get("studentDigits"));
         assertEquals(0, off.get("staffDigits"), "任一设 0 就整个不查，两项都报 0");
+    }
+
+    @Test
+    void list_默认不列出已清退_指定时只列已清退() {
+        when(memberMapper.selectPage(any(), any())).thenReturn(new Page<>(1, 20));
+
+        adminMemberService.list(null, null, null, 1, 20);
+        ArgumentCaptor<LambdaQueryWrapper<Member>> hidden = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(memberMapper).selectPage(any(), hidden.capture());
+        String hiddenSql = hidden.getValue().getCustomSqlSegment().toLowerCase();
+        assertTrue(hiddenSql.contains("not like"), hiddenSql);
+
+        adminMemberService.list(null, null, true, 1, 20);
+        ArgumentCaptor<LambdaQueryWrapper<Member>> only = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(memberMapper, times(2)).selectPage(any(), only.capture());
+        String onlySql = only.getValue().getCustomSqlSegment().toLowerCase();
+        assertTrue(onlySql.contains("like") && !onlySql.contains("not like"), onlySql);
     }
 }

@@ -43,9 +43,11 @@
 
     <div class="toolbar">
       <el-input v-model="keyword" placeholder="学号 / 姓名" clearable style="width: 220px" @keyup.enter="loadData" />
-      <el-select v-model="statusFilter" placeholder="状态" clearable style="width: 120px" @change="loadData">
-        <el-option label="正常" :value="1" />
-        <el-option label="禁用" :value="0" />
+      <el-select v-model="listScope" style="width: 140px" @change="onScopeChange">
+        <el-option label="在用账号" value="active" />
+        <el-option label="正常" value="normal" />
+        <el-option label="禁用" value="disabled" />
+        <el-option label="已清退" value="anonymized" />
       </el-select>
       <el-button @click="loadData">查询</el-button>
     </div>
@@ -215,7 +217,8 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const keyword = ref('')
-const statusFilter = ref<number | undefined>()
+/** 日常名单不放已清退；要核对历史时再切到「已清退」 */
+const listScope = ref<'active' | 'normal' | 'disabled' | 'anonymized'>('active')
 const lastImportErrors = ref<MemberImportErrorRow[]>([])
 let listRequestSeq = 0
 
@@ -296,11 +299,23 @@ const deleteRefs = computed<DangerReference[]>(() => {
   }))
 })
 
+function onScopeChange() {
+  page.value = 1
+  loadData()
+}
+
 async function loadData() {
   const seq = ++listRequestSeq
   loading.value = true
   try {
-    const res = await fetchMembers(keyword.value || undefined, statusFilter.value, page.value, pageSize.value)
+    const scope = listScope.value
+    const res = await fetchMembers(
+      keyword.value || undefined,
+      scope === 'normal' ? 1 : scope === 'disabled' ? 0 : undefined,
+      page.value,
+      pageSize.value,
+      scope === 'anonymized' ? true : undefined
+    )
     if (!shouldApplyListResult(seq, listRequestSeq)) {
       return
     }
